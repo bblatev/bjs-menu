@@ -1,0 +1,20 @@
+{
+  "item_id": "3d6870cf",
+  "timestamp": "20260118_133733",
+  "detection": {
+    "bbox": [
+      270,
+      405,
+      540,
+      675
+    ],
+    "class_name": "bottle",
+    "confidence": 0.95
+  },
+  "classification": {
+    "sku_id": "46_SCRAPED-C0F0EACA",
+    "sku_name": "Jagermeister",
+    "confidence": 0.5879400968551636,
+    "is_unknown": false
+  }
+}

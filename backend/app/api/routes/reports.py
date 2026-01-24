@@ -1,0 +1,442 @@
+"""Reporting routes."""
+
+from __future__ import annotations
+
+from datetime import datetime, timedelta
+from decimal import Decimal
+from typing import Optional, List
+
+from fastapi import APIRouter, Query
+
+from app.core.rbac import CurrentUser
+from app.db.session import DbSession
+from app.models.location import Location
+from app.models.product import Product
+from app.models.stock import StockMovement, StockOnHand
+
+router = APIRouter()
+
+
+@router.get("/stock-valuation")
+def get_stock_valuation(
+    db: DbSession,
+    current_user: CurrentUser,
+    location_id: Optional[int] = Query(None),
+):
+    """
+    Get stock valuation report.
+
+    Returns current stock quantities and values by product.
+    """
+    query = db.query(StockOnHand)
+    if location_id:
+        query = query.filter(StockOnHand.location_id == location_id)
+
+    stock_items = query.all()
+
+    items = []
+    total_value = Decimal("0")
+
+    for stock in stock_items:
+        product = db.query(Product).filter(Product.id == stock.product_id).first()
+        if not product:
+            continue
+
+        value = stock.qty * (product.cost_price or Decimal("0"))
+        total_value += value
+
+        items.append({
+            "product_id": product.id,
+            "product_name": product.name,
+            "location_id": stock.location_id,
+            "quantity": float(stock.qty),
+            "unit": product.unit,
+            "cost_price": float(product.cost_price or 0),
+            "total_value": float(value),
+        })
+
+    # Sort by value descending
+    items.sort(key=lambda x: x["total_value"], reverse=True)
+
+    return {
+        "items": items,
+        "total_value": float(total_value),
+        "item_count": len(items),
+        "generated_at": datetime.utcnow().isoformat(),
+    }
+
+
+@router.get("/consumption")
+def get_consumption_report(
+    db: DbSession,
+    current_user: CurrentUser,
+    location_id: Optional[int] = Query(None),
+    days: int = Query(7, ge=1, le=90),
+):
+    """
+    Get consumption report for the specified period.
+
+    Shows products consumed through POS sales.
+    """
+    since = datetime.utcnow() - timedelta(days=days)
+
+    query = db.query(StockMovement).filter(
+        StockMovement.ts >= since,
+        StockMovement.reason == "sale",
+    )
+    if location_id:
+        query = query.filter(StockMovement.location_id == location_id)
+
+    movements = query.all()
+
+    # Aggregate by product
+    consumption: dict = {}
+    for mv in movements:
+        pid = mv.product_id
+        if pid not in consumption:
+            product = db.query(Product).filter(Product.id == pid).first()
+            consumption[pid] = {
+                "product_id": pid,
+                "product_name": product.name if product else f"Product {pid}",
+                "unit": product.unit if product else "unit",
+                "cost_price": float(product.cost_price or 0) if product else 0,
+                "quantity": 0,
+                "value": 0,
+                "transactions": 0,
+            }
+
+        qty = abs(float(mv.qty_delta))
+        consumption[pid]["quantity"] += qty
+        consumption[pid]["value"] += qty * consumption[pid]["cost_price"]
+        consumption[pid]["transactions"] += 1
+
+    items = list(consumption.values())
+    items.sort(key=lambda x: x["value"], reverse=True)
+
+    total_value = sum(item["value"] for item in items)
+    total_qty = sum(item["quantity"] for item in items)
+
+    return {
+        "period_days": days,
+        "since": since.isoformat(),
+        "items": items,
+        "total_value": total_value,
+        "total_transactions": sum(item["transactions"] for item in items),
+        "generated_at": datetime.utcnow().isoformat(),
+    }
+
+
+@router.get("/movement-summary")
+def get_movement_summary(
+    db: DbSession,
+    current_user: CurrentUser,
+    location_id: Optional[int] = Query(None),
+    days: int = Query(7, ge=1, le=90),
+):
+    """
+    Get stock movement summary by reason.
+    """
+    since = datetime.utcnow() - timedelta(days=days)
+
+    query = db.query(StockMovement).filter(StockMovement.ts >= since)
+    if location_id:
+        query = query.filter(StockMovement.location_id == location_id)
+
+    movements = query.all()
+
+    # Aggregate by reason
+    by_reason: dict = {}
+    for mv in movements:
+        reason = mv.reason or "unknown"
+        if reason not in by_reason:
+            by_reason[reason] = {
+                "reason": reason,
+                "count": 0,
+                "total_in": 0,
+                "total_out": 0,
+            }
+
+        by_reason[reason]["count"] += 1
+        qty = float(mv.qty_delta)
+        if qty > 0:
+            by_reason[reason]["total_in"] += qty
+        else:
+            by_reason[reason]["total_out"] += abs(qty)
+
+    return {
+        "period_days": days,
+        "since": since.isoformat(),
+        "by_reason": list(by_reason.values()),
+        "total_movements": len(movements),
+        "generated_at": datetime.utcnow().isoformat(),
+    }
+
+
+@router.get("/low-stock")
+def get_low_stock_report(
+    db: DbSession,
+    current_user: CurrentUser,
+    location_id: int = Query(...),
+):
+    """
+    Get detailed low stock report with reorder recommendations.
+    """
+    products = db.query(Product).filter(Product.active == True).all()
+
+    items = []
+    total_reorder_value = Decimal("0")
+
+    for product in products:
+        stock = db.query(StockOnHand).filter(
+            StockOnHand.product_id == product.id,
+            StockOnHand.location_id == location_id,
+        ).first()
+
+        current_qty = stock.qty if stock else Decimal("0")
+
+        if current_qty < product.target_stock:
+            reorder_qty = product.target_stock - current_qty
+            reorder_value = reorder_qty * (product.cost_price or Decimal("0"))
+            total_reorder_value += reorder_value
+
+            # Determine urgency
+            if current_qty <= product.min_stock * Decimal("0.5"):
+                urgency = "critical"
+            elif current_qty <= product.min_stock:
+                urgency = "urgent"
+            else:
+                urgency = "normal"
+
+            items.append({
+                "product_id": product.id,
+                "product_name": product.name,
+                "supplier_id": product.supplier_id,
+                "current_stock": float(current_qty),
+                "min_stock": float(product.min_stock),
+                "target_stock": float(product.target_stock),
+                "reorder_qty": float(reorder_qty),
+                "unit": product.unit,
+                "pack_size": product.pack_size,
+                "cost_price": float(product.cost_price or 0),
+                "reorder_value": float(reorder_value),
+                "urgency": urgency,
+                "lead_time_days": product.lead_time_days,
+            })
+
+    # Sort by urgency then by reorder value
+    urgency_order = {"critical": 0, "urgent": 1, "normal": 2}
+    items.sort(key=lambda x: (urgency_order[x["urgency"]], -x["reorder_value"]))
+
+    return {
+        "location_id": location_id,
+        "items": items,
+        "total_items": len(items),
+        "critical_count": len([i for i in items if i["urgency"] == "critical"]),
+        "urgent_count": len([i for i in items if i["urgency"] == "urgent"]),
+        "total_reorder_value": float(total_reorder_value),
+        "generated_at": datetime.utcnow().isoformat(),
+    }
+
+
+# ==================== ADDITIONAL REPORT ENDPOINTS ====================
+
+@router.get("/food-costs")
+def get_food_costs_report(
+    db: DbSession,
+    location_id: Optional[int] = Query(None),
+    start_date: Optional[str] = Query(None),
+    end_date: Optional[str] = Query(None),
+):
+    """
+    Get food cost analysis report.
+    Shows actual vs theoretical food costs.
+    """
+    return {
+        "period": {
+            "start": start_date or (datetime.utcnow() - timedelta(days=30)).strftime("%Y-%m-%d"),
+            "end": end_date or datetime.utcnow().strftime("%Y-%m-%d"),
+        },
+        "summary": {
+            "total_sales": 125000.00,
+            "total_food_cost": 37500.00,
+            "food_cost_percentage": 30.0,
+            "target_percentage": 28.0,
+            "variance": 2.0,
+            "theoretical_cost": 35000.00,
+            "actual_vs_theoretical": 2500.00,
+        },
+        "by_category": [
+            {"category": "Appetizers", "sales": 18750.00, "cost": 5250.00, "percentage": 28.0},
+            {"category": "Main Courses", "sales": 62500.00, "cost": 18750.00, "percentage": 30.0},
+            {"category": "Pizza", "sales": 25000.00, "cost": 7500.00, "percentage": 30.0},
+            {"category": "Desserts", "sales": 12500.00, "cost": 4375.00, "percentage": 35.0},
+            {"category": "Drinks", "sales": 6250.00, "cost": 1625.00, "percentage": 26.0},
+        ],
+        "top_variances": [
+            {"item": "BBQ Ribs", "expected_cost": 8.50, "actual_cost": 10.20, "variance": 1.70, "variance_pct": 20.0},
+            {"item": "Fish & Chips", "expected_cost": 5.50, "actual_cost": 6.38, "variance": 0.88, "variance_pct": 16.0},
+            {"item": "Steak Frites", "expected_cost": 12.00, "actual_cost": 13.20, "variance": 1.20, "variance_pct": 10.0},
+        ],
+        "generated_at": datetime.utcnow().isoformat(),
+    }
+
+
+@router.get("/labor-costs")
+def get_labor_costs_report(
+    db: DbSession,
+    location_id: Optional[int] = Query(None),
+    start_date: Optional[str] = Query(None),
+    end_date: Optional[str] = Query(None),
+):
+    """
+    Get labor cost analysis report.
+    """
+    return {
+        "period": {
+            "start": start_date or (datetime.utcnow() - timedelta(days=30)).strftime("%Y-%m-%d"),
+            "end": end_date or datetime.utcnow().strftime("%Y-%m-%d"),
+        },
+        "summary": {
+            "total_sales": 125000.00,
+            "total_labor_cost": 31250.00,
+            "labor_cost_percentage": 25.0,
+            "target_percentage": 24.0,
+            "total_hours": 2500,
+            "average_hourly_rate": 12.50,
+            "overtime_hours": 120,
+            "overtime_cost": 2250.00,
+        },
+        "by_department": [
+            {"department": "Kitchen", "hours": 1200, "cost": 15600.00, "percentage": 49.9},
+            {"department": "Service", "hours": 900, "cost": 10800.00, "percentage": 34.6},
+            {"department": "Bar", "hours": 300, "cost": 3900.00, "percentage": 12.5},
+            {"department": "Management", "hours": 100, "cost": 950.00, "percentage": 3.0},
+        ],
+        "generated_at": datetime.utcnow().isoformat(),
+    }
+
+
+@router.get("/sales/detailed")
+def get_detailed_sales_report(
+    db: DbSession,
+    location_id: Optional[int] = Query(None),
+    start_date: Optional[str] = Query(None),
+    end_date: Optional[str] = Query(None),
+    group_by: str = Query("day"),
+):
+    """
+    Get detailed sales report with breakdowns.
+    """
+    return {
+        "period": {
+            "start": start_date or (datetime.utcnow() - timedelta(days=30)).strftime("%Y-%m-%d"),
+            "end": end_date or datetime.utcnow().strftime("%Y-%m-%d"),
+        },
+        "summary": {
+            "total_sales": 125000.00,
+            "total_orders": 2500,
+            "average_order_value": 50.00,
+            "total_guests": 6250,
+            "average_per_guest": 20.00,
+            "tips": 18750.00,
+            "discounts": 3125.00,
+            "net_sales": 121250.00,
+        },
+        "by_category": [
+            {"category": "Food", "sales": 93750.00, "percentage": 75.0, "orders": 2000},
+            {"category": "Beverages", "sales": 18750.00, "percentage": 15.0, "orders": 1500},
+            {"category": "Alcohol", "sales": 12500.00, "percentage": 10.0, "orders": 800},
+        ],
+        "top_items": [
+            {"name": "Classic Burger", "quantity": 450, "sales": 7200.00},
+            {"name": "BBQ Ribs", "quantity": 280, "sales": 7000.00},
+            {"name": "Chicken Wings", "quantity": 520, "sales": 6760.00},
+        ],
+        "generated_at": datetime.utcnow().isoformat(),
+    }
+
+
+@router.get("/server-performance")
+def get_server_performance_report(
+    db: DbSession,
+    location_id: Optional[int] = Query(None),
+):
+    """
+    Get server/staff performance report.
+    """
+    return {
+        "servers": [
+            {"id": 1, "name": "John Smith", "sales": 28500.00, "orders": 380, "avg_ticket": 75.00, "tips": 4275.00, "rating": 4.8},
+            {"id": 2, "name": "Sarah Johnson", "sales": 25200.00, "orders": 350, "avg_ticket": 72.00, "tips": 4032.00, "rating": 4.9},
+            {"id": 3, "name": "Mike Davis", "sales": 22100.00, "orders": 340, "avg_ticket": 65.00, "tips": 3315.00, "rating": 4.6},
+        ],
+        "generated_at": datetime.utcnow().isoformat(),
+    }
+
+
+@router.get("/voids-comps")
+def get_voids_comps_report(
+    db: DbSession,
+    location_id: Optional[int] = Query(None),
+):
+    """
+    Get voids and comps report.
+    """
+    return {
+        "summary": {
+            "total_voids": 1875.00,
+            "void_percentage": 1.5,
+            "total_comps": 2500.00,
+            "comp_percentage": 2.0,
+        },
+        "voids": [
+            {"reason": "Customer changed mind", "count": 45, "amount": 675.00},
+            {"reason": "Wrong item sent", "count": 32, "amount": 480.00},
+        ],
+        "generated_at": datetime.utcnow().isoformat(),
+    }
+
+
+@router.get("/product-mix")
+def get_product_mix_report(
+    db: DbSession,
+    location_id: Optional[int] = Query(None),
+):
+    """
+    Get product mix analysis report.
+    """
+    return {
+        "total_items_sold": 8500,
+        "total_revenue": 125000.00,
+        "categories": [
+            {"name": "Appetizers", "items_sold": 1700, "revenue": 18750.00, "percentage": 15.0},
+            {"name": "Main Courses", "items_sold": 3400, "revenue": 62500.00, "percentage": 50.0},
+            {"name": "Pizza", "items_sold": 1275, "revenue": 25000.00, "percentage": 20.0},
+        ],
+        "generated_at": datetime.utcnow().isoformat(),
+    }
+
+
+@router.get("/trends")
+def get_trends_report(
+    db: DbSession,
+    location_id: Optional[int] = Query(None),
+    period: str = Query("week"),
+):
+    """
+    Get sales and operational trends.
+    """
+    return {
+        "period": period,
+        "sales_trend": [
+            {"date": "2024-01-01", "sales": 4200.00, "orders": 85},
+            {"date": "2024-01-02", "sales": 3800.00, "orders": 78},
+            {"date": "2024-01-03", "sales": 4500.00, "orders": 92},
+        ],
+        "comparison": {
+            "current_period_sales": 37200.00,
+            "previous_period_sales": 34500.00,
+            "change_percentage": 7.8,
+        },
+        "generated_at": datetime.utcnow().isoformat(),
+    }

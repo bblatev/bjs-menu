@@ -1,0 +1,20 @@
+{
+  "item_id": "832f699f",
+  "timestamp": "20260117_191157",
+  "detection": {
+    "bbox": [
+      89,
+      177,
+      573,
+      795
+    ],
+    "class_name": "cup",
+    "confidence": 0.30350804328918457
+  },
+  "classification": {
+    "sku_id": "25_SCRAPED-55786D30",
+    "sku_name": "Finlandia Vodka",
+    "confidence": 0.5168278217315674,
+    "is_unknown": false
+  }
+}

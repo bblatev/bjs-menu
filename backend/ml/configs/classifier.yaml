@@ -1,0 +1,104 @@
+# SKU Classifier Configuration (Stage 2)
+# Target: Top-1 Accuracy >= 93% for Top 100 SKUs
+
+model:
+  backbone: "efficientnet_b2"  # Good balance of size/accuracy
+  embedding_dim: 512
+  num_classes: null  # Set dynamically based on SKU count
+
+  # Metric learning head
+  metric_head:
+    type: "arcface"  # arcface | triplet | cosface
+    margin: 0.5
+    scale: 64
+
+data:
+  train_path: "data/classifier/train"
+  val_path: "data/classifier/val"
+  test_path: "data/classifier/test"
+  image_size: 224
+  batch_size: 32
+  num_workers: 4
+
+  # Minimum images per SKU
+  min_images_per_sku: 300
+
+  # Class balancing
+  sampler: "balanced"  # balanced | random
+
+  # Hard negative mining
+  hard_negative_mining:
+    enabled: true
+    num_hard_negatives: 3
+    refresh_interval: 5  # Epochs between HNM refresh
+
+training:
+  epochs: 150
+  patience: 30
+  optimizer: "AdamW"
+  lr: 0.0003
+  weight_decay: 0.01
+  scheduler: "cosine_warmup"
+  warmup_epochs: 5
+
+  # Label smoothing
+  label_smoothing: 0.1
+
+  # Mixed precision
+  amp: true
+
+  # Gradient accumulation for larger effective batch
+  gradient_accumulation_steps: 2
+
+  # Data augmentation
+  augment:
+    random_crop: true
+    horizontal_flip: true
+    color_jitter:
+      brightness: 0.3
+      contrast: 0.3
+      saturation: 0.3
+      hue: 0.1
+    random_rotation: 15
+    random_blur:
+      probability: 0.2
+      kernel_size: [3, 5]
+    random_noise:
+      probability: 0.1
+      std: 0.02
+    # Bar-specific augmentations
+    random_lighting:
+      probability: 0.3
+      gamma_range: [0.7, 1.3]
+    shelf_reflection:
+      probability: 0.2
+
+validation:
+  top_k: [1, 3, 5]  # Report Top-1, Top-3, Top-5 accuracy
+  confusion_matrix: true
+  per_class_metrics: true
+
+# Embeddings for similarity search (production)
+embeddings:
+  export_embeddings: true
+  embedding_index: "faiss"  # faiss | annoy
+  index_type: "IVF256,Flat"
+  nprobe: 16
+
+export:
+  formats:
+    - onnx
+    - coreml
+    - tflite
+  opset: 14
+  simplify: true
+  quantize:
+    int8: true
+    calibration_images: 1000
+
+# Performance targets (hard requirements)
+targets:
+  top1_accuracy_min: 0.93
+  top3_accuracy_min: 0.98
+  inference_ms_max: 30
+  embedding_dim: 512

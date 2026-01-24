@@ -1,0 +1,268 @@
+"""Inventory session and line routes."""
+
+from __future__ import annotations
+
+from datetime import datetime
+from decimal import Decimal
+from typing import Optional, List
+
+from fastapi import APIRouter, HTTPException, Query, status
+
+from app.core.rbac import CurrentUser
+from app.db.session import DbSession
+from app.models.inventory import CountMethod, InventoryLine, InventorySession, SessionStatus
+from app.models.location import Location
+from app.models.product import Product
+from app.models.stock import MovementReason, StockMovement, StockOnHand
+from app.schemas.inventory import (
+    InventoryLineCreate,
+    InventoryLineResponse,
+    InventoryLineUpdate,
+    InventorySessionCommitResponse,
+    InventorySessionCreate,
+    InventorySessionResponse,
+)
+
+router = APIRouter()
+
+
+@router.get("/sessions", response_model=List[InventorySessionResponse])
+def list_sessions(
+    db: DbSession,
+    current_user: CurrentUser,
+    location_id: Optional[int] = Query(None),
+    status_filter: Optional[SessionStatus] = Query(None, alias="status"),
+):
+    """List inventory sessions with optional filters."""
+    query = db.query(InventorySession)
+    if location_id:
+        query = query.filter(InventorySession.location_id == location_id)
+    if status_filter:
+        query = query.filter(InventorySession.status == status_filter)
+    return query.order_by(InventorySession.started_at.desc()).all()
+
+
+@router.get("/sessions/{session_id}", response_model=InventorySessionResponse)
+def get_session(session_id: int, db: DbSession, current_user: CurrentUser):
+    """Get a specific inventory session with lines."""
+    session = db.query(InventorySession).filter(InventorySession.id == session_id).first()
+    if not session:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Session not found")
+    return session
+
+
+@router.post("/sessions", response_model=InventorySessionResponse, status_code=status.HTTP_201_CREATED)
+def create_session(request: InventorySessionCreate, db: DbSession, current_user: CurrentUser):
+    """Create a new inventory session."""
+    # Verify location exists
+    location = db.query(Location).filter(Location.id == request.location_id).first()
+    if not location:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Location not found")
+
+    session = InventorySession(
+        location_id=request.location_id,
+        notes=request.notes,
+        created_by=current_user.user_id,
+    )
+    db.add(session)
+    db.commit()
+    db.refresh(session)
+    return session
+
+
+@router.post("/sessions/{session_id}/lines", response_model=InventoryLineResponse, status_code=status.HTTP_201_CREATED)
+def add_line(session_id: int, request: InventoryLineCreate, db: DbSession, current_user: CurrentUser):
+    """Add a line to an inventory session."""
+    session = db.query(InventorySession).filter(InventorySession.id == session_id).first()
+    if not session:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Session not found")
+    if session.status != SessionStatus.DRAFT:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Cannot add lines to a non-draft session",
+        )
+
+    # Verify product exists
+    product = db.query(Product).filter(Product.id == request.product_id).first()
+    if not product:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Product not found")
+
+    # Check if line for this product already exists in session
+    existing_line = (
+        db.query(InventoryLine)
+        .filter(InventoryLine.session_id == session_id, InventoryLine.product_id == request.product_id)
+        .first()
+    )
+
+    if existing_line:
+        # Update existing line (add to count)
+        existing_line.counted_qty += request.counted_qty
+        existing_line.method = request.method
+        existing_line.confidence = request.confidence
+        existing_line.counted_at = datetime.utcnow()
+        db.commit()
+        db.refresh(existing_line)
+        return existing_line
+
+    # Create new line
+    line = InventoryLine(
+        session_id=session_id,
+        product_id=request.product_id,
+        counted_qty=request.counted_qty,
+        method=request.method,
+        confidence=request.confidence,
+        photo_id=request.photo_id,
+    )
+    db.add(line)
+    db.commit()
+    db.refresh(line)
+    return line
+
+
+@router.put("/sessions/{session_id}/lines/{line_id}", response_model=InventoryLineResponse)
+def update_line(
+    session_id: int,
+    line_id: int,
+    request: InventoryLineUpdate,
+    db: DbSession,
+    current_user: CurrentUser,
+):
+    """Update a line in an inventory session."""
+    session = db.query(InventorySession).filter(InventorySession.id == session_id).first()
+    if not session:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Session not found")
+    if session.status != SessionStatus.DRAFT:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Cannot update lines in a non-draft session",
+        )
+
+    line = (
+        db.query(InventoryLine)
+        .filter(InventoryLine.id == line_id, InventoryLine.session_id == session_id)
+        .first()
+    )
+    if not line:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Line not found")
+
+    update_data = request.model_dump(exclude_unset=True)
+    for field, value in update_data.items():
+        setattr(line, field, value)
+    line.counted_at = datetime.utcnow()
+
+    db.commit()
+    db.refresh(line)
+    return line
+
+
+@router.delete("/sessions/{session_id}/lines/{line_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_line(session_id: int, line_id: int, db: DbSession, current_user: CurrentUser):
+    """Delete a line from an inventory session."""
+    session = db.query(InventorySession).filter(InventorySession.id == session_id).first()
+    if not session:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Session not found")
+    if session.status != SessionStatus.DRAFT:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Cannot delete lines from a non-draft session",
+        )
+
+    line = (
+        db.query(InventoryLine)
+        .filter(InventoryLine.id == line_id, InventoryLine.session_id == session_id)
+        .first()
+    )
+    if not line:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Line not found")
+
+    db.delete(line)
+    db.commit()
+
+
+@router.post("/sessions/{session_id}/commit", response_model=InventorySessionCommitResponse)
+def commit_session(session_id: int, db: DbSession, current_user: CurrentUser):
+    """
+    Commit an inventory session.
+
+    This will:
+    1. Calculate the difference between counted and current stock
+    2. Create stock movements for the adjustments
+    3. Update stock on hand
+    4. Mark the session as committed
+    """
+    session = db.query(InventorySession).filter(InventorySession.id == session_id).first()
+    if not session:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Session not found")
+    if session.status != SessionStatus.DRAFT:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Session is not in draft status",
+        )
+    if not session.lines:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Session has no lines to commit",
+        )
+
+    movements_created = 0
+    adjustments = []
+
+    for line in session.lines:
+        # Get current stock on hand
+        stock = (
+            db.query(StockOnHand)
+            .filter(
+                StockOnHand.product_id == line.product_id,
+                StockOnHand.location_id == session.location_id,
+            )
+            .first()
+        )
+
+        current_qty = stock.qty if stock else Decimal("0")
+        delta = line.counted_qty - current_qty
+
+        if delta != 0:
+            # Create stock movement
+            movement = StockMovement(
+                product_id=line.product_id,
+                location_id=session.location_id,
+                qty_delta=delta,
+                reason=MovementReason.INVENTORY_COUNT.value,
+                ref_type="inventory_session",
+                ref_id=session.id,
+                created_by=current_user.user_id,
+            )
+            db.add(movement)
+            movements_created += 1
+
+            # Update or create stock on hand
+            if stock:
+                stock.qty = line.counted_qty
+            else:
+                stock = StockOnHand(
+                    product_id=line.product_id,
+                    location_id=session.location_id,
+                    qty=line.counted_qty,
+                )
+                db.add(stock)
+
+            adjustments.append({
+                "product_id": line.product_id,
+                "previous_qty": float(current_qty),
+                "counted_qty": float(line.counted_qty),
+                "delta": float(delta),
+            })
+
+    # Mark session as committed
+    session.status = SessionStatus.COMMITTED
+    session.committed_at = datetime.utcnow()
+
+    db.commit()
+
+    return InventorySessionCommitResponse(
+        session_id=session.id,
+        status=session.status,
+        committed_at=session.committed_at,
+        movements_created=movements_created,
+        stock_adjustments=adjustments,
+    )

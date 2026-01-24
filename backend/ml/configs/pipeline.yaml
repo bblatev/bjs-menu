@@ -1,0 +1,74 @@
+# 2-Stage Pipeline Configuration
+# Stage 1: Bottle Detection (YOLO)
+# Stage 2: SKU Classification (EfficientNet + ArcFace)
+
+pipeline:
+  version: "v2"
+  feature_flag: "AI_V2"
+
+stage1_detector:
+  model_path: "models/detector/best.onnx"  # Falls back to yolov8n.pt if not found
+  conf_threshold: 0.15  # Very low threshold for better recall on difficult images
+  iou_threshold: 0.45
+  max_detections: 50
+  device: "auto"  # auto | cpu | cuda | mps
+
+  # Classes to process (COCO class names for pre-trained model)
+  process_classes:
+    - bottle       # COCO class 39
+    - wine glass   # COCO class 40
+    - cup          # COCO class 41
+
+  # Crop padding (fraction of bbox)
+  crop_padding: 0.15
+
+stage2_classifier:
+  model_path: "models/classifier/best.onnx"  # Optional - will use CLIP if not found
+  embeddings_path: "models/classifier/embeddings.npy"  # Required - exported from DB
+  sku_mapping_path: "models/classifier/sku_mapping.json"  # Required - SKU info
+  device: "auto"
+
+  # Similarity search
+  similarity:
+    metric: "cosine"  # cosine | euclidean
+    top_k: 5
+    min_confidence: 0.65
+    ambiguity_threshold: 0.05  # Diff between top-1 and top-2
+
+  # Unknown detection
+  unknown_threshold: 0.50  # Below this = unknown SKU
+
+# Stage 3: OCR for label text recognition
+stage3_ocr:
+  enabled: true
+  confidence_threshold: 0.50  # Min OCR confidence to use text (lowered for more coverage)
+  boost_threshold: 0.03       # Min score diff to switch classification (more aggressive)
+  ocr_weight: 0.4             # Weight of OCR in combined score (0.4 = 40% OCR, 60% visual)
+
+# Counting logic
+counting:
+  # Dedupe overlapping detections
+  iou_dedupe_threshold: 0.5
+
+  # Group by SKU for final count
+  group_by_sku: true
+
+# Active learning
+active_learning:
+  enabled: true
+  low_confidence_threshold: 0.70
+  queue_path: "data/active_learning_queue"
+  max_queue_size: 1000
+
+# Performance thresholds (for alerts)
+thresholds:
+  detection_recall_min: 0.98
+  classification_accuracy_min: 0.93
+  count_mae_max: 0.30
+
+# Logging
+logging:
+  save_predictions: true
+  predictions_path: "logs/predictions"
+  save_crops: true
+  crops_path: "logs/crops"

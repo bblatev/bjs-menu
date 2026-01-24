@@ -1,0 +1,20 @@
+{
+  "item_id": "ea5fe8e9",
+  "timestamp": "20260117_165439",
+  "detection": {
+    "bbox": [
+      134,
+      234,
+      266,
+      366
+    ],
+    "class_name": "bottle",
+    "confidence": 0.95
+  },
+  "classification": {
+    "sku_id": "55_SAVOY-0DA35A21",
+    "sku_name": "Savoy Silver Vodka",
+    "confidence": 0.5632859468460083,
+    "is_unknown": false
+  }
+}

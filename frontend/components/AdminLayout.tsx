@@ -1,0 +1,482 @@
+'use client';
+
+import { useState, ReactNode, useEffect } from 'react';
+import Link from 'next/link';
+import { usePathname } from 'next/navigation';
+import dynamic from 'next/dynamic';
+
+const RealtimeNotifications = dynamic(
+  () => import('./RealtimeNotifications'),
+  { ssr: false }
+);
+
+// Navigation structure with all pages organized by category
+const navigationGroups = [
+  {
+    name: 'Main',
+    items: [
+      { name: 'Dashboard', href: '/dashboard', icon: '📊' },
+      { name: 'Waiter Terminal', href: '/waiter', icon: '🧑‍🍳' },
+      { name: 'Orders', href: '/orders', icon: '📋', badge: 12 },
+      { name: 'Tables', href: '/tables', icon: '🪑' },
+      { name: 'Reservations', href: '/reservations', icon: '📅', badge: 3 },
+    ]
+  },
+  {
+    name: 'Kitchen & Bar',
+    items: [
+      { name: 'Kitchen Display', href: '/kitchen', icon: '👨‍🍳' },
+      { name: 'Kitchen Stations', href: '/kitchen/stations', icon: '🍳' },
+      { name: '86\'d Items', href: '/kitchen/86-items', icon: '🚫' },
+      { name: 'Bar Management', href: '/bar', icon: '🍺' },
+      { name: 'Bar Inventory', href: '/bar/inventory', icon: '🥃' },
+      { name: 'Cocktail Recipes', href: '/bar/recipes', icon: '🍹' },
+      { name: 'Keg Tracking', href: '/bar/kegs', icon: '🛢️' },
+      { name: 'Happy Hours', href: '/bar/happy-hours', icon: '🎉' },
+      { name: 'Pour Costs', href: '/bar/pour-costs', icon: '💧' },
+      { name: 'Spillage', href: '/bar/spillage', icon: '💦' },
+      { name: 'Bar Tabs', href: '/bar/tabs', icon: '🧾' },
+      { name: 'Waiter Calls', href: '/waiter-calls', icon: '🔔' },
+    ]
+  },
+  {
+    name: 'Menu',
+    items: [
+      { name: 'Menu Items', href: '/menu', icon: '📖' },
+      { name: 'Categories', href: '/menu/categories', icon: '📁' },
+      { name: 'Modifiers', href: '/menu/modifiers', icon: '➕' },
+      { name: 'Combos & Deals', href: '/menu/combos', icon: '🎁' },
+      { name: 'Allergens', href: '/menu/allergens', icon: '⚠️' },
+      { name: 'Menu Scheduling', href: '/menu/scheduling', icon: '🕐' },
+      { name: 'Menu Features', href: '/menu/features', icon: '✨' },
+      { name: 'Menu Inventory', href: '/menu/inventory', icon: '📦' },
+      { name: 'Menu Engineering', href: '/menu-engineering', icon: '📈' },
+      { name: 'Recipes', href: '/recipes', icon: '📝' },
+      { name: 'Recipe Management', href: '/recipes/management', icon: '🧪' },
+    ]
+  },
+  {
+    name: 'Inventory & Stock',
+    items: [
+      { name: 'Stock Overview', href: '/stock', icon: '📦' },
+      { name: 'Inventory Levels', href: '/stock/inventory', icon: '📊' },
+      { name: 'Stock Counts', href: '/stock/counts', icon: '🔢' },
+      { name: 'Stock Transfers', href: '/stock/transfers', icon: '🔄' },
+      { name: 'Waste Tracking', href: '/stock/waste', icon: '🗑️' },
+      { name: 'RFID Inventory', href: '/stock/rfid', icon: '📡' },
+      { name: 'Bulk Tanks', href: '/stock/tanks', icon: '🛢️' },
+      { name: 'Stock Features', href: '/stock/features', icon: '⚙️' },
+      { name: 'Par Levels', href: '/stock/par-levels', icon: '📏' },
+      { name: 'Forecasting', href: '/stock/forecasting', icon: '🔮' },
+      { name: 'Variance Analysis', href: '/stock/variance', icon: '📉' },
+      { name: 'Aging Report', href: '/stock/aging', icon: '📅' },
+      { name: 'Recipe Costs', href: '/stock/recipe-costs', icon: '💰' },
+      { name: 'Supplier Performance', href: '/stock/supplier-performance', icon: '⭐' },
+      { name: 'Warehouses', href: '/warehouses', icon: '🏭' },
+    ]
+  },
+  {
+    name: 'Purchasing',
+    items: [
+      { name: 'Suppliers', href: '/suppliers', icon: '🚛' },
+      { name: 'Supplier Management', href: '/suppliers/management', icon: '📋' },
+      { name: 'Purchase Orders', href: '/purchase-orders', icon: '📝' },
+      { name: 'PO Management', href: '/purchase-orders/management', icon: '📊' },
+      { name: 'Invoices', href: '/invoices', icon: '🧾' },
+      { name: 'Invoice OCR', href: '/invoices/ocr', icon: '📸' },
+      { name: 'Invoice Upload', href: '/invoices/upload', icon: '⬆️' },
+      { name: 'Price Tracker', href: '/price-tracker', icon: '💲' },
+      { name: 'Auto Reorder', href: '/auto-reorder', icon: '🔄' },
+    ]
+  },
+  {
+    name: 'Staff',
+    items: [
+      { name: 'Staff Overview', href: '/staff', icon: '👥' },
+      { name: 'Schedules', href: '/staff/schedules', icon: '📅' },
+      { name: 'Time Clock', href: '/staff/time-clock', icon: '⏰' },
+      { name: 'Performance', href: '/staff/performance', icon: '📈' },
+      { name: 'Sections', href: '/staff/sections', icon: '🗺️' },
+      { name: 'Tips', href: '/staff/tips', icon: '💵' },
+      { name: 'Shifts', href: '/shifts', icon: '🔄' },
+      { name: 'Payroll', href: '/payroll', icon: '💰' },
+    ]
+  },
+  {
+    name: 'Customers & CRM',
+    items: [
+      { name: 'Customers', href: '/customers', icon: '👤' },
+      { name: 'Loyalty Program', href: '/loyalty', icon: '⭐' },
+      { name: 'VIP Management', href: '/vip-management', icon: '👑' },
+      { name: 'Referrals', href: '/referrals', icon: '🤝' },
+      { name: 'Feedback', href: '/feedback', icon: '💬' },
+      { name: 'RFM Analytics', href: '/rfm-analytics', icon: '📊' },
+    ]
+  },
+  {
+    name: 'Marketing',
+    items: [
+      { name: 'Marketing Hub', href: '/marketing', icon: '📣' },
+      { name: 'Campaigns', href: '/marketing/campaigns', icon: '🎯' },
+      { name: 'Promotions', href: '/marketing/promotions', icon: '🎁' },
+      { name: 'Email Marketing', href: '/marketing/email', icon: '📧' },
+      { name: 'SMS Marketing', href: '/sms-marketing', icon: '📱' },
+      { name: 'Dynamic Pricing', href: '/marketing/pricing', icon: '💰' },
+      { name: 'Gamification', href: '/marketing/gamification', icon: '🎮' },
+    ]
+  },
+  {
+    name: 'Analytics & Reports',
+    items: [
+      { name: 'Analytics', href: '/analytics', icon: '📈' },
+      { name: 'AI Forecasting', href: '/analytics/forecasting', icon: '🔮' },
+      { name: 'Video Analytics', href: '/analytics/video', icon: '📹' },
+      { name: 'Labor Analytics', href: '/analytics/labor', icon: '👷' },
+      { name: 'Theft Detection', href: '/analytics/theft', icon: '🔍' },
+      { name: 'Reports Hub', href: '/reports', icon: '📊' },
+      { name: 'Sales Reports', href: '/reports/sales', icon: '💰' },
+      { name: 'Inventory Reports', href: '/reports/inventory', icon: '📦' },
+      { name: 'Staff Reports', href: '/reports/staff', icon: '👥' },
+      { name: 'Customer Reports', href: '/reports/customers', icon: '👤' },
+      { name: 'Financial Reports', href: '/reports/financial', icon: '💵' },
+      { name: 'Kitchen Reports', href: '/reports/kitchen', icon: '🍳' },
+      { name: 'Comprehensive', href: '/reports/comprehensive', icon: '📋' },
+      { name: 'Benchmarking', href: '/benchmarking', icon: '📏' },
+    ]
+  },
+  {
+    name: 'Finance',
+    items: [
+      { name: 'Financial Management', href: '/financial-management', icon: '💰' },
+      { name: 'Daily Close', href: '/daily-close', icon: '📅' },
+      { name: 'Expenses', href: '/expenses', icon: '💸' },
+      { name: 'Budgets', href: '/budgets', icon: '📊' },
+      { name: 'Chart of Accounts', href: '/chart-of-accounts', icon: '📋' },
+      { name: 'Bank Reconciliation', href: '/bank-reconciliation', icon: '🏦' },
+      { name: 'Tax Center', href: '/tax-center', icon: '🧾' },
+      { name: 'Fraud Detection', href: '/fraud-detection', icon: '🚨' },
+      { name: 'Audit Logs', href: '/audit-logs', icon: '📝' },
+    ]
+  },
+  {
+    name: 'Operations',
+    items: [
+      { name: 'Self-Service Kiosk', href: '/kiosk', icon: '🖥️' },
+      { name: 'Drive-Thru', href: '/drive-thru', icon: '🚗' },
+      { name: 'Catering', href: '/catering', icon: '🍽️' },
+      { name: 'Cloud Kitchen', href: '/cloud-kitchen', icon: '☁️' },
+      { name: 'Multi-Location', href: '/locations', icon: '📍' },
+      { name: 'Table QR Codes', href: '/tables/qr', icon: '📱' },
+      { name: 'Waitlist', href: '/reservations/waitlist', icon: '⏳' },
+      { name: 'HACCP & Safety', href: '/haccp-safety', icon: '🛡️' },
+    ]
+  },
+  {
+    name: 'Integrations',
+    items: [
+      { name: 'Marketplace', href: '/integrations/marketplace', icon: '🔗' },
+      { name: 'Accounting', href: '/integrations/accounting', icon: '📊' },
+      { name: 'QuickBooks', href: '/integrations/quickbooks', icon: '📗' },
+      { name: 'Delivery Platforms', href: '/delivery-aggregators', icon: '🚴' },
+      { name: 'Hotel PMS', href: '/hotel-pms', icon: '🏨' },
+      { name: 'Voice Assistant', href: '/voice', icon: '🎤' },
+      { name: 'Conversational AI', href: '/conversational', icon: '🤖' },
+      { name: 'Mobile App', href: '/mobile-app', icon: '📱' },
+    ]
+  },
+  {
+    name: 'Settings',
+    items: [
+      { name: 'General', href: '/settings/general', icon: '⚙️' },
+      { name: 'Venue', href: '/settings/venue', icon: '🏪' },
+      { name: 'Payment', href: '/settings/payment', icon: '💳' },
+      { name: 'Fiscal', href: '/settings/fiscal', icon: '🧾' },
+      { name: 'Integrations', href: '/settings/integrations', icon: '🔌' },
+      { name: 'Security', href: '/settings/security', icon: '🔒' },
+      { name: 'Notifications', href: '/settings/notifications', icon: '🔔' },
+    ]
+  },
+];
+
+export default function AdminLayout({ children }: { children: ReactNode }) {
+  const pathname = usePathname();
+  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [expandedGroups, setExpandedGroups] = useState<string[]>(['Main']);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [searchResults, setSearchResults] = useState<{name: string, href: string, icon: string, group: string}[]>([]);
+  const [showSearch, setShowSearch] = useState(false);
+
+  // Auto-expand group containing current page
+  useEffect(() => {
+    navigationGroups.forEach(group => {
+      const hasActivePage = group.items.some(item =>
+        pathname === item.href || pathname?.startsWith(item.href + '/')
+      );
+      if (hasActivePage && !expandedGroups.includes(group.name)) {
+        setExpandedGroups(prev => [...prev, group.name]);
+      }
+    });
+  }, [pathname]);
+
+  // Search functionality
+  useEffect(() => {
+    if (searchTerm.length > 0) {
+      const results: {name: string, href: string, icon: string, group: string}[] = [];
+      navigationGroups.forEach(group => {
+        group.items.forEach(item => {
+          if (item.name.toLowerCase().includes(searchTerm.toLowerCase())) {
+            results.push({ ...item, group: group.name });
+          }
+        });
+      });
+      setSearchResults(results);
+      setShowSearch(true);
+    } else {
+      setSearchResults([]);
+      setShowSearch(false);
+    }
+  }, [searchTerm]);
+
+  const toggleGroup = (groupName: string) => {
+    setExpandedGroups(prev =>
+      prev.includes(groupName)
+        ? prev.filter(g => g !== groupName)
+        : [...prev, groupName]
+    );
+  };
+
+  // Skip layout for auth pages, customer-facing pages, and terminal pages
+  const isPublicPage = pathname?.startsWith('/login') ||
+                       pathname?.startsWith('/logout') ||
+                       pathname?.startsWith('/table/') ||
+                       pathname?.startsWith('/kiosk') ||
+                       pathname === '/';
+
+  // Terminal pages should be fullscreen without sidebar
+  const isTerminalPage = pathname === '/waiter' ||
+                         pathname?.startsWith('/waiter/') ||
+                         pathname === '/bar' ||
+                         pathname?.startsWith('/bar/') ||
+                         pathname === '/kitchen' ||
+                         pathname?.startsWith('/kitchen/');
+
+  if (isPublicPage || isTerminalPage) {
+    return <>{children}</>;
+  }
+
+  return (
+    <div className="min-h-screen bg-surface-50">
+      {/* Sidebar */}
+      <aside className={`fixed inset-y-0 left-0 z-30 flex flex-col bg-white border-r border-surface-200 transition-all duration-300 ${sidebarOpen ? 'w-72' : 'w-20'}`}>
+        {/* Logo */}
+        <div className="flex items-center gap-3 px-4 py-4 border-b border-surface-100">
+          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center text-white font-bold text-lg">
+            V9
+          </div>
+          {sidebarOpen && (
+            <div className="flex flex-col">
+              <span className="font-bold text-surface-900">V99 POS</span>
+              <span className="text-xs text-surface-500">Restaurant System</span>
+            </div>
+          )}
+        </div>
+
+        {/* Search in Sidebar */}
+        {sidebarOpen && (
+          <div className="px-3 py-3 border-b border-surface-100">
+            <div className="relative">
+              <input
+                type="text"
+                placeholder="Search pages..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full pl-9 pr-3 py-2 bg-surface-50 border border-surface-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500"
+              />
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-surface-400">🔍</span>
+            </div>
+
+            {/* Search Results Dropdown */}
+            {showSearch && searchResults.length > 0 && (
+              <div className="absolute left-3 right-3 mt-1 bg-white border border-surface-200 rounded-lg shadow-lg max-h-64 overflow-y-auto z-50">
+                {searchResults.map((item) => (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    onClick={() => { setSearchTerm(''); setShowSearch(false); }}
+                    className="flex items-center gap-2 px-3 py-2 hover:bg-surface-50 text-sm"
+                  >
+                    <span>{item.icon}</span>
+                    <span className="flex-1 text-surface-900">{item.name}</span>
+                    <span className="text-xs text-surface-400">{item.group}</span>
+                  </Link>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Navigation */}
+        <nav className="flex-1 overflow-y-auto px-3 py-2">
+          {navigationGroups.map((group) => {
+            const isExpanded = expandedGroups.includes(group.name);
+            const hasActivePage = group.items.some(item =>
+              pathname === item.href || pathname?.startsWith(item.href + '/')
+            );
+
+            return (
+              <div key={group.name} className="mb-1">
+                {/* Group Header */}
+                <button
+                  onClick={() => toggleGroup(group.name)}
+                  className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                    hasActivePage ? 'text-amber-700 bg-amber-50' : 'text-surface-600 hover:bg-surface-50'
+                  }`}
+                >
+                  {sidebarOpen ? (
+                    <>
+                      <span>{group.name}</span>
+                      <svg
+                        className={`w-4 h-4 transition-transform ${isExpanded ? 'rotate-180' : ''}`}
+                        fill="none" viewBox="0 0 24 24" stroke="currentColor"
+                      >
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                      </svg>
+                    </>
+                  ) : (
+                    <span className="mx-auto text-lg">{group.items[0]?.icon}</span>
+                  )}
+                </button>
+
+                {/* Group Items */}
+                {sidebarOpen && isExpanded && (
+                  <ul className="ml-2 mt-1 space-y-0.5 border-l-2 border-surface-100 pl-2">
+                    {group.items.map((item) => {
+                      const isActive = pathname === item.href || pathname?.startsWith(item.href + '/');
+                      return (
+                        <li key={item.href}>
+                          <Link
+                            href={item.href}
+                            className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm transition-colors ${
+                              isActive
+                                ? 'bg-amber-100 text-amber-800 font-medium'
+                                : 'text-surface-600 hover:bg-surface-50 hover:text-surface-900'
+                            }`}
+                          >
+                            <span className="text-base">{item.icon}</span>
+                            <span className="flex-1 truncate">{item.name}</span>
+                            {item.badge && (
+                              <span className={`px-1.5 py-0.5 text-xs font-semibold rounded-full ${
+                                isActive ? 'bg-amber-600 text-white' : 'bg-surface-200 text-surface-600'
+                              }`}>
+                                {item.badge}
+                              </span>
+                            )}
+                          </Link>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                )}
+              </div>
+            );
+          })}
+        </nav>
+
+        {/* Quick Stats */}
+        {sidebarOpen && (
+          <div className="border-t border-surface-100 p-3">
+            <div className="grid grid-cols-2 gap-2 text-center text-xs">
+              <div className="bg-green-50 rounded-lg p-2">
+                <div className="text-green-600 font-bold">12</div>
+                <div className="text-green-700">Orders</div>
+              </div>
+              <div className="bg-blue-50 rounded-lg p-2">
+                <div className="text-blue-600 font-bold">8</div>
+                <div className="text-blue-700">Tables</div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* User Profile */}
+        <div className="border-t border-surface-100 p-3">
+          <div className={`flex items-center gap-3 ${sidebarOpen ? '' : 'justify-center'}`}>
+            <div className="w-9 h-9 rounded-full bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center text-white font-semibold text-sm">
+              AD
+            </div>
+            {sidebarOpen && (
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium text-surface-900 truncate">Admin</p>
+                <p className="text-xs text-surface-500 truncate">admin@v99pos.com</p>
+              </div>
+            )}
+          </div>
+        </div>
+      </aside>
+
+      {/* Main Content */}
+      <div className={`transition-all duration-300 ${sidebarOpen ? 'pl-72' : 'pl-20'}`}>
+        {/* Top Header */}
+        <header className="sticky top-0 z-20 bg-white/90 backdrop-blur-md border-b border-surface-200">
+          <div className="flex items-center justify-between px-6 py-3">
+            <div className="flex items-center gap-4">
+              <button
+                onClick={() => setSidebarOpen(!sidebarOpen)}
+                className="p-2 rounded-lg text-surface-500 hover:bg-surface-100 hover:text-surface-700 transition-colors"
+              >
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 6h16M4 12h16M4 18h16" />
+                </svg>
+              </button>
+
+              {/* Breadcrumb */}
+              <div className="text-sm text-surface-500">
+                {pathname?.split('/').filter(Boolean).map((segment, index, arr) => (
+                  <span key={segment}>
+                    <span className="capitalize">{segment.replace(/-/g, ' ')}</span>
+                    {index < arr.length - 1 && <span className="mx-2">/</span>}
+                  </span>
+                ))}
+              </div>
+            </div>
+
+            <div className="flex items-center gap-3">
+              {/* Quick Actions */}
+              <Link href="/orders/new" className="px-3 py-1.5 bg-amber-500 text-white rounded-lg text-sm font-medium hover:bg-amber-600">
+                + New Order
+              </Link>
+
+              {/* Status */}
+              <div className="flex items-center gap-2 px-3 py-1.5 bg-green-50 rounded-full">
+                <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
+                <span className="text-xs font-medium text-green-700">Online</span>
+              </div>
+
+              {/* Notifications */}
+              <Link href="/settings/notifications" className="relative p-2 rounded-lg text-surface-500 hover:bg-surface-100">
+                <span className="text-xl">🔔</span>
+                <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full" />
+              </Link>
+
+              {/* Version */}
+              <span className="text-xs text-surface-400 font-mono">v9.0</span>
+            </div>
+          </div>
+        </header>
+
+        {/* Page Content */}
+        <main className="p-6">
+          {children}
+        </main>
+      </div>
+
+      {/* Real-time Notifications */}
+      <RealtimeNotifications
+        venueId={1}
+        position="top-right"
+        maxNotifications={5}
+        autoHideDuration={5000}
+      />
+    </div>
+  );
+}

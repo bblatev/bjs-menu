@@ -1,0 +1,69 @@
+# YOLOv8 Bottle Detector Configuration
+# Target: Recall >= 0.98, mAP50 >= 0.95
+
+model:
+  architecture: "yolov8m"  # Medium model for balance of speed/accuracy
+  pretrained: "yolov8m.pt"
+  num_classes: 4  # bottle, can, glass, unknown_container
+
+data:
+  train_path: "data/detector/train"
+  val_path: "data/detector/val"
+  test_path: "data/detector/test"
+  image_size: 640
+  batch_size: 16
+  num_workers: 4
+
+  # Class names
+  classes:
+    - bottle
+    - can
+    - glass
+    - unknown_container
+
+training:
+  epochs: 100
+  patience: 20  # Early stopping patience
+  optimizer: "AdamW"
+  lr0: 0.001
+  lrf: 0.01  # Final learning rate factor
+  momentum: 0.937
+  weight_decay: 0.0005
+  warmup_epochs: 3
+
+  # Data augmentation
+  augment:
+    hsv_h: 0.015
+    hsv_s: 0.7
+    hsv_v: 0.4
+    degrees: 10
+    translate: 0.1
+    scale: 0.5
+    shear: 0.0
+    perspective: 0.0
+    flipud: 0.0
+    fliplr: 0.5
+    mosaic: 1.0
+    mixup: 0.1
+    copy_paste: 0.1
+
+validation:
+  conf_threshold: 0.25
+  iou_threshold: 0.45
+  max_det: 300
+
+export:
+  formats:
+    - onnx
+    - coreml
+    - tflite
+  opset: 12
+  simplify: true
+  dynamic: false
+  int8: false  # Enable for production quantization
+
+# Performance targets (hard requirements)
+targets:
+  recall_min: 0.98
+  map50_min: 0.95
+  inference_ms_max: 50  # Max inference time on target device

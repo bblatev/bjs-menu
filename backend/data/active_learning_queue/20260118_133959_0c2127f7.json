@@ -1,0 +1,20 @@
+{
+  "item_id": "0c2127f7",
+  "timestamp": "20260118_133959",
+  "detection": {
+    "bbox": [
+      270,
+      405,
+      540,
+      675
+    ],
+    "class_name": "bottle",
+    "confidence": 0.95
+  },
+  "classification": {
+    "sku_id": "44_SCRAPED-A678196B",
+    "sku_name": "Don Julio",
+    "confidence": 0.6506432890892029,
+    "is_unknown": false
+  }
+}

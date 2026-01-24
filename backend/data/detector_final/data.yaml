@@ -1,0 +1,10 @@
+names:
+  0: bottle
+  1: glass
+  2: cup
+  3: can
+nc: 4
+path: /Users/zver/Downloads/V99/inventory-system/backend/data/detector_final
+test: test/images
+train: train/images
+val: val/images
