@@ -43,6 +43,33 @@ router = APIRouter()
 
 # ==================== Reconciliation Endpoints ====================
 
+@router.get("/results")
+def get_reconciliation_results(
+    db: DbSession,
+    limit: int = 20,
+):
+    """Get recent reconciliation results."""
+    results = db.query(ReconciliationResult).order_by(
+        ReconciliationResult.created_at.desc()
+    ).limit(limit).all()
+    return {
+        "results": [
+            {
+                "id": r.id,
+                "session_id": r.session_id,
+                "product_id": r.product_id,
+                "expected_qty": float(r.expected_qty) if r.expected_qty else 0,
+                "counted_qty": float(r.counted_qty) if r.counted_qty else 0,
+                "variance_qty": float(r.variance_qty) if r.variance_qty else 0,
+                "severity": r.severity.value if r.severity else None,
+                "created_at": r.created_at.isoformat() if r.created_at else None,
+            }
+            for r in results
+        ],
+        "total": len(results),
+    }
+
+
 @router.post("/reconcile", response_model=ReconciliationSummary)
 def run_reconciliation(
     request: ReconcileRequest,

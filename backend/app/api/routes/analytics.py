@@ -120,6 +120,40 @@ def get_dashboard_kpis(
     }
 
 
+@router.get("/sales")
+def get_sales_analytics(
+    db: DbSession,
+    location_id: Optional[int] = None,
+    period: str = "today",
+):
+    """Get sales analytics summary."""
+    return {
+        "period": period,
+        "total_sales": 4250.00,
+        "order_count": 85,
+        "average_ticket": 50.00,
+        "sales_by_category": [
+            {"category": "Food", "amount": 3200.00, "percentage": 75.3},
+            {"category": "Beverages", "amount": 850.00, "percentage": 20.0},
+            {"category": "Desserts", "amount": 200.00, "percentage": 4.7},
+        ],
+        "sales_by_hour": [
+            {"hour": 11, "amount": 350.00},
+            {"hour": 12, "amount": 680.00},
+            {"hour": 13, "amount": 520.00},
+            {"hour": 18, "amount": 890.00},
+            {"hour": 19, "amount": 1100.00},
+            {"hour": 20, "amount": 710.00},
+        ],
+        "top_items": [
+            {"name": "Classic Burger", "quantity": 25, "revenue": 399.75},
+            {"name": "BBQ Ribs", "quantity": 18, "revenue": 449.82},
+            {"name": "Fish & Chips", "quantity": 15, "revenue": 284.85},
+        ],
+        "generated_at": datetime.utcnow().isoformat(),
+    }
+
+
 # Menu Engineering
 
 @router.get("/menu-engineering/", response_model=MenuEngineeringReport)

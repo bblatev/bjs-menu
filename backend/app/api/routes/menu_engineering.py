@@ -70,6 +70,33 @@ _sample_items = [
 ]
 
 
+@router.get("/analysis")
+def get_menu_analysis(
+    db: DbSession,
+    days: int = 30,
+):
+    """Get overall menu engineering analysis."""
+    total_items = len(_sample_items)
+    quadrant_counts = {}
+    for item in _sample_items:
+        q = item.get("quadrant", "unknown")
+        quadrant_counts[q] = quadrant_counts.get(q, 0) + 1
+
+    return {
+        "summary": {
+            "total_items": total_items,
+            "average_food_cost_percentage": 28.5,
+            "average_profit_margin": 71.5,
+            "total_revenue": sum(i.get("revenue", 0) for i in _sample_items),
+            "total_profit": sum(i.get("profit", 0) for i in _sample_items),
+        },
+        "quadrant_distribution": quadrant_counts,
+        "top_performers": [i for i in _sample_items if i.get("quadrant") == "star"][:5],
+        "needs_attention": [i for i in _sample_items if i.get("quadrant") == "dog"][:5],
+        "analysis_period_days": days,
+    }
+
+
 @router.get("/items")
 def get_menu_items(
     db: DbSession,

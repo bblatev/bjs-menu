@@ -26,6 +26,63 @@ from app.schemas.inventory import (
 router = APIRouter()
 
 
+# Stock and movements endpoints (public)
+@router.get("/stock")
+def get_stock_levels(
+    db: DbSession,
+    location_id: Optional[int] = Query(None),
+):
+    """Get current stock levels."""
+    query = db.query(StockOnHand)
+    if location_id:
+        query = query.filter(StockOnHand.location_id == location_id)
+    stock_items = query.all()
+    return {
+        "stock": [
+            {
+                "id": s.id,
+                "product_id": s.product_id,
+                "location_id": s.location_id,
+                "quantity": float(s.quantity) if s.quantity else 0,
+                "unit": s.unit,
+                "last_updated": s.last_updated.isoformat() if s.last_updated else None,
+            }
+            for s in stock_items
+        ],
+        "total": len(stock_items),
+    }
+
+
+@router.get("/movements")
+def get_stock_movements(
+    db: DbSession,
+    location_id: Optional[int] = Query(None),
+    limit: int = Query(50, le=500),
+):
+    """Get recent stock movements."""
+    query = db.query(StockMovement)
+    if location_id:
+        query = query.filter(StockMovement.location_id == location_id)
+    movements = query.order_by(StockMovement.ts.desc()).limit(limit).all()
+    return {
+        "movements": [
+            {
+                "id": m.id,
+                "product_id": m.product_id,
+                "location_id": m.location_id,
+                "qty_delta": float(m.qty_delta) if m.qty_delta else 0,
+                "reason": m.reason,
+                "ref_type": m.ref_type,
+                "ref_id": m.ref_id,
+                "notes": m.notes,
+                "timestamp": m.ts.isoformat() if m.ts else None,
+            }
+            for m in movements
+        ],
+        "total": len(movements),
+    }
+
+
 @router.get("/sessions", response_model=List[InventorySessionResponse])
 def list_sessions(
     db: DbSession,

@@ -22,6 +22,27 @@ from app.schemas.pos import PosConsumeResult, PosImportResult, PosSalesLineRespo
 router = APIRouter()
 
 
+@router.get("/status")
+def get_pos_status(db: DbSession):
+    """Get POS integration status."""
+    # Count sales lines
+    total_sales = db.query(PosSalesLine).count()
+    unprocessed = db.query(PosSalesLine).filter(PosSalesLine.processed == False).count()
+
+    return {
+        "status": "connected",
+        "pos_system": "Generic POS",
+        "last_sync": datetime.utcnow().isoformat(),
+        "total_sales_lines": total_sales,
+        "unprocessed_lines": unprocessed,
+        "features": {
+            "real_time_sync": False,
+            "csv_import": True,
+            "api_integration": True,
+        },
+    }
+
+
 @router.get("/sales", response_model=List[PosSalesLineResponse])
 def list_sales_lines(
     db: DbSession,

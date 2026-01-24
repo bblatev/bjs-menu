@@ -139,6 +139,25 @@ def get_quick_menu(db: DbSession):
     return _menu_items
 
 
+# Alias endpoints for API compatibility
+@router.get("/tables")
+def get_tables(db: DbSession):
+    """Get all tables (alias for floor-plan)."""
+    return {"tables": _tables, "total": len(_tables)}
+
+
+@router.get("/menu")
+def get_menu(db: DbSession):
+    """Get menu items (alias for menu/quick)."""
+    return {"items": _menu_items, "total": len(_menu_items)}
+
+
+@router.get("/checks")
+def get_all_checks(db: DbSession):
+    """Get all active checks."""
+    return {"checks": list(_checks.values()), "total": len(_checks)}
+
+
 @router.post("/tables/{table_id}/seat")
 def seat_table(
     db: DbSession,

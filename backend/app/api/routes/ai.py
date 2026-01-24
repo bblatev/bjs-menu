@@ -615,6 +615,31 @@ async def upload_training_video(
     return results
 
 
+@router.get("/training/status")
+def get_training_status(
+    db: DbSession = None,
+):
+    """Get AI training system status. No auth required."""
+    total_images = db.query(TrainingImage).count() if db else 0
+    products_trained = db.query(TrainingImage.stock_item_id).distinct().count() if db else 0
+
+    return {
+        "status": "ready",
+        "model_version": "1.0.0",
+        "last_trained": None,
+        "total_training_images": total_images,
+        "products_with_training": products_trained,
+        "training_in_progress": False,
+        "queue_size": 0,
+        "capabilities": {
+            "yolo_detection": False,
+            "clip_classification": False,
+            "ocr_refinement": False,
+            "hand_crafted_features": True,
+        },
+    }
+
+
 @router.get("/training/stats", response_model=TrainingStatsResponse)
 def get_training_stats(
     db: DbSession = None,
