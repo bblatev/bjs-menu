@@ -11,7 +11,7 @@ from app.api.routes import (
     price_lists, menu_complete, purchase_orders,
     bar, financial, loyalty, vip, tax, shifts, payroll,
     audit_logs, benchmarking, price_tracker, referrals, haccp, warehouses,
-    gift_cards
+    gift_cards, feedback, notifications, settings, integrations
 )
 
 api_router = APIRouter()
@@ -121,3 +121,16 @@ api_router.include_router(haccp.router, prefix="/haccp", tags=["haccp", "food-sa
 
 # Warehouses
 api_router.include_router(warehouses.router, prefix="/warehouses", tags=["warehouses", "storage"])
+
+# Feedback & Reviews
+api_router.include_router(feedback.router, prefix="/v5/feedback", tags=["feedback", "reviews"])
+api_router.include_router(feedback.router, prefix="/reviews", tags=["reviews"])
+
+# Notifications
+api_router.include_router(notifications.router, prefix="/notifications", tags=["notifications"])
+
+# Settings
+api_router.include_router(settings.router, prefix="/settings", tags=["settings"])
+
+# Integrations
+api_router.include_router(integrations.router, prefix="/integrations", tags=["integrations"])
