@@ -8,7 +8,10 @@ from app.api.routes import (
     invoices, marketing, reservations, delivery, analytics,
     advanced_features, kitchen, tables, waiter, menu_engineering,
     enterprise, inventory_hardware, guest_orders, staff, customers,
-    price_lists, menu_complete, purchase_orders
+    price_lists, menu_complete, purchase_orders,
+    bar, financial, loyalty, vip, tax, shifts, payroll,
+    audit_logs, benchmarking, price_tracker, referrals, haccp, warehouses,
+    gift_cards
 )
 
 api_router = APIRouter()
@@ -77,3 +80,44 @@ api_router.include_router(menu_complete.router, tags=["menu-complete", "variants
 
 # Purchase Orders Management (PO, GRN, invoices, approvals, three-way matching)
 api_router.include_router(purchase_orders.router, prefix="/purchase-orders", tags=["purchase-orders", "procurement", "grn", "three-way-match"])
+
+# Bar Management
+api_router.include_router(bar.router, prefix="/bar", tags=["bar", "drinks", "spillage"])
+
+# Financial & Budgets
+api_router.include_router(financial.router, prefix="/financial", tags=["financial", "budgets"])
+
+# Loyalty & Gift Cards
+api_router.include_router(loyalty.router, prefix="/loyalty", tags=["loyalty"])
+api_router.include_router(gift_cards.router, prefix="/gift-cards", tags=["gift-cards"])
+
+# VIP Management
+api_router.include_router(vip.router, prefix="/vip", tags=["vip", "customers"])
+
+# Tax Management
+api_router.include_router(tax.router, prefix="/tax", tags=["tax", "filings"])
+
+# Shifts (v5 compatibility)
+api_router.include_router(shifts.router, prefix="/v5", tags=["shifts", "scheduling"])
+
+# Payroll
+api_router.include_router(payroll.router, prefix="/payroll", tags=["payroll"])
+
+# Audit Logs
+api_router.include_router(audit_logs.router, prefix="/audit-logs", tags=["audit", "logs"])
+
+# Benchmarking
+api_router.include_router(benchmarking.router, prefix="/benchmarking", tags=["benchmarking"])
+api_router.include_router(benchmarking.router, prefix="/api/v5/benchmarking", tags=["benchmarking-v5"])
+
+# Price Tracker
+api_router.include_router(price_tracker.router, prefix="/price-tracker", tags=["price-tracker", "alerts"])
+
+# Referrals
+api_router.include_router(referrals.router, prefix="/referrals", tags=["referrals"])
+
+# HACCP / Food Safety
+api_router.include_router(haccp.router, prefix="/haccp", tags=["haccp", "food-safety"])
+
+# Warehouses
+api_router.include_router(warehouses.router, prefix="/warehouses", tags=["warehouses", "storage"])
