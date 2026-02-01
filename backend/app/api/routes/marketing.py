@@ -237,27 +237,27 @@ def update_trigger(
 async def process_all_triggers(db: DbSession):
     """Process all active triggers."""
     service = AutomatedTriggerService(db)
-    results = await service.process_all_triggers()
+    results = await service.process_triggers()
     return {"processed": len(results), "results": results}
 
 
 # Menu Recommendations ("Picked for You")
 
-@router.get("/recommendations/{customer_id}", response_model=CustomerRecommendations)
-async def get_customer_recommendations(
+@router.get("/recommendations/{customer_id}")
+def get_customer_recommendations(
     db: DbSession,
     customer_id: int,
     limit: int = 5,
 ):
     """Get personalized menu recommendations for a customer."""
     service = MenuRecommendationService(db)
-    recommendations = await service.generate_recommendations(customer_id, limit)
+    recommendations = service.get_recommendations(customer_id=customer_id)
 
-    return CustomerRecommendations(
-        customer_id=customer_id,
-        recommendations=recommendations,
-        generated_at=datetime.utcnow()
-    )
+    return {
+        "customer_id": customer_id,
+        "recommendations": recommendations[:limit],
+        "generated_at": datetime.utcnow().isoformat()
+    }
 
 
 @router.post("/recommendations/{recommendation_id}/presented")

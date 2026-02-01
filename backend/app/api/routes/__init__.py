@@ -7,7 +7,8 @@ from app.api.routes import (
     pos, recipes, ai, sync, reports, reconciliation,
     invoices, marketing, reservations, delivery, analytics,
     advanced_features, kitchen, tables, waiter, menu_engineering,
-    enterprise, inventory_hardware, guest_orders
+    enterprise, inventory_hardware, guest_orders, staff, customers,
+    price_lists, menu_complete
 )
 
 api_router = APIRouter()
@@ -34,6 +35,10 @@ api_router.include_router(reservations.router, prefix="/reservations", tags=["re
 api_router.include_router(delivery.router, prefix="/delivery", tags=["delivery", "doordash", "ubereats"])
 api_router.include_router(analytics.router, prefix="/analytics", tags=["analytics", "ai-insights", "scale"])
 
+# Waitlist direct access (also available under /reservations/waitlist)
+from app.api.routes import waitlist as waitlist_router
+api_router.include_router(waitlist_router.router, prefix="/waitlist", tags=["waitlist"])
+
 # Advanced competitor features (25 feature areas)
 api_router.include_router(advanced_features.router, tags=["advanced-features"])
 
@@ -57,3 +62,15 @@ api_router.include_router(inventory_hardware.router, prefix="/inventory-hardware
 
 # Guest/Customer Ordering (no auth required)
 api_router.include_router(guest_orders.router, tags=["guest-ordering", "menu"])
+
+# Staff Management (staff, shifts, time-clock, performance, tips)
+api_router.include_router(staff.router, tags=["staff", "schedules", "time-clock", "performance", "tips"])
+
+# Customer Management (CRM)
+api_router.include_router(customers.router, tags=["customers", "crm"])
+
+# Price Lists, Daily Menus, Manager Alerts (TouchSale gap features)
+api_router.include_router(price_lists.router, tags=["price-lists", "daily-menu", "alerts"])
+
+# Menu Complete (variants, tags, combos, upsells, LTOs, 86'd items, digital boards)
+api_router.include_router(menu_complete.router, tags=["menu-complete", "variants", "tags", "combos"])

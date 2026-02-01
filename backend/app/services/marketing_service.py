@@ -226,6 +226,33 @@ class MarketingAutomationService:
         # For now, return placeholder
         return []
 
+    def preview_segment(self, criteria: Dict[str, Any]) -> Dict[str, Any]:
+        """Preview customers matching segment criteria."""
+        from app.models.customer import Customer
+
+        query = self.db.query(Customer)
+
+        # Apply filters based on criteria
+        if criteria.get("min_visits"):
+            query = query.filter(Customer.total_orders >= criteria["min_visits"])
+        if criteria.get("min_spend"):
+            query = query.filter(Customer.total_spent >= criteria["min_spend"])
+        if criteria.get("last_visit_days"):
+            threshold = datetime.utcnow() - timedelta(days=criteria["last_visit_days"])
+            query = query.filter(Customer.last_visit >= threshold)
+
+        total_count = query.count()
+        sample = query.limit(10).all()
+
+        return {
+            "matching_count": total_count,
+            "sample_customers": [
+                {"id": c.id, "name": c.name, "email": c.email}
+                for c in sample
+            ],
+            "criteria": criteria
+        }
+
 
 class AutomatedTriggerService:
     """Manage automated marketing triggers."""
@@ -391,7 +418,7 @@ class MenuRecommendationService:
         # For now, return top products
 
         products = self.db.query(Product).filter(
-            Product.is_active == True
+            Product.active == True
         ).limit(10).all()
 
         return [
@@ -453,6 +480,34 @@ class LoyaltyService:
 
     def __init__(self, db: Session):
         self.db = db
+
+    def award_points(
+        self,
+        customer_id: int,
+        points: int,
+        description: Optional[str] = None,
+        order_id: Optional[int] = None
+    ) -> Dict[str, Any]:
+        """Award points to customer account."""
+        loyalty = self.db.query(CustomerLoyalty).filter(
+            CustomerLoyalty.customer_id == customer_id
+        ).first()
+
+        if not loyalty:
+            loyalty = CustomerLoyalty(customer_id=customer_id)
+            self.db.add(loyalty)
+
+        loyalty.current_points += points
+        loyalty.lifetime_points += points
+
+        self.db.commit()
+
+        return {
+            "customer_id": customer_id,
+            "points_awarded": points,
+            "new_balance": loyalty.current_points,
+            "lifetime_points": loyalty.lifetime_points
+        }
 
     def add_points(
         self,

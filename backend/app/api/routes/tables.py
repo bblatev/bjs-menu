@@ -15,12 +15,27 @@ class Table(BaseModel):
     """Table response model."""
     id: int
     number: str
+    table_number: Optional[str] = None  # Alias for frontend compatibility
     capacity: int
     status: str = "available"
     area: Optional[str] = None
+    token: Optional[str] = None
 
     class Config:
         from_attributes = True
+
+    @classmethod
+    def from_db(cls, db_table):
+        """Create from database model with aliased fields."""
+        return cls(
+            id=db_table.id,
+            number=db_table.number,
+            table_number=db_table.number,  # Same as number for frontend
+            capacity=db_table.capacity,
+            status=db_table.status or "available",
+            area=db_table.area,
+            token=db_table.token,
+        )
 
 
 class TableCreate(BaseModel):
@@ -78,7 +93,7 @@ def _init_default_tables(db: DbSession):
         db.commit()
 
 
-@router.get("/", response_model=List[Table])
+@router.get("/")
 def list_tables(
     db: DbSession,
     location_id: Optional[int] = None,
@@ -93,8 +108,8 @@ def list_tables(
     if status:
         query = query.filter(TableModel.status == status)
 
-    tables = query.all()
-    return tables
+    tables = query.order_by(TableModel.number).all()
+    return [Table.from_db(t) for t in tables]
 
 
 @router.get("/sections")
@@ -146,7 +161,25 @@ def get_table_stats(
     }
 
 
-@router.get("/{table_id}", response_model=Table)
+@router.get("/areas")
+def get_table_areas(
+    db: DbSession,
+    location_id: Optional[int] = None,
+):
+    """Get list of distinct table areas."""
+    _init_default_tables(db)
+
+    query = db.query(TableModel)
+    if location_id:
+        query = query.filter(TableModel.location_id == location_id)
+
+    tables = query.all()
+    areas = list(set(t.area for t in tables if t.area))
+    areas.sort()
+    return areas
+
+
+@router.get("/{table_id}")
 def get_table(
     db: DbSession,
     table_id: int,
@@ -155,10 +188,10 @@ def get_table(
     table = db.query(TableModel).filter(TableModel.id == table_id).first()
     if not table:
         raise HTTPException(status_code=404, detail="Table not found")
-    return table
+    return Table.from_db(table)
 
 
-@router.post("/", response_model=Table)
+@router.post("/")
 def create_table(
     db: DbSession,
     table: TableCreate,
@@ -180,10 +213,10 @@ def create_table(
     db.add(new_table)
     db.commit()
     db.refresh(new_table)
-    return new_table
+    return Table.from_db(new_table)
 
 
-@router.put("/{table_id}", response_model=Table)
+@router.put("/{table_id}")
 def update_table(
     db: DbSession,
     table_id: int,
@@ -206,7 +239,7 @@ def update_table(
     db_table.updated_at = datetime.utcnow()
     db.commit()
     db.refresh(db_table)
-    return db_table
+    return Table.from_db(db_table)
 
 
 @router.delete("/{table_id}")

@@ -1,19 +1,14 @@
-"""Kitchen Display System (KDS) routes."""
+"""Kitchen Display System (KDS) routes - using database models."""
 
-from typing import List, Optional
-from datetime import datetime, timedelta
+from typing import Optional
+from datetime import datetime
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
 from app.db.session import DbSession
-
-# Import shared order data from waiter module
-from app.api.routes.waiter import _checks, _tables
+from app.models.restaurant import KitchenOrder, GuestOrder, MenuItem, Table, Check
 
 router = APIRouter()
-
-# Track 86'd items
-_items_86: dict = {}  # item_id -> {name, marked_at, estimated_return}
 
 
 class KitchenStats(BaseModel):
@@ -33,27 +28,73 @@ def get_kitchen_stats(
     location_id: Optional[int] = None,
 ):
     """Get kitchen statistics for dashboard."""
-    # Count tickets by status
     status_counts = {"new": 0, "in_progress": 0, "ready": 0, "completed": 0}
-    for check in _checks.values():
-        status = check.get("status", "new")
-        if status in status_counts:
-            status_counts[status] += 1
+
+    # Get kitchen orders from database
+    db_query = db.query(KitchenOrder)
+    if location_id:
+        db_query = db_query.filter(KitchenOrder.location_id == location_id)
+    db_orders = db_query.all()
+
+    db_status_map = {"pending": "new", "cooking": "in_progress", "ready": "ready", "completed": "completed"}
+    for ko in db_orders:
+        mapped_status = db_status_map.get(ko.status, "new")
+        if mapped_status in status_counts:
+            status_counts[mapped_status] += 1
 
     active_count = status_counts["new"] + status_counts["in_progress"]
+    total_count = len(db_orders)
+
+    # Count 86'd items (unavailable menu items)
+    items_86_count = db.query(MenuItem).filter(MenuItem.available == False).count()
 
     return {
-        "total_tickets": len(_checks),
+        "total_tickets": total_count,
         "active_tickets": active_count,
         "avg_cook_time_minutes": 12.5,
         "bumped_today": status_counts["completed"],
         "active_alerts": 0,
         "orders_by_status": status_counts,
-        "items_86_count": len(_items_86),
-        "rush_orders_today": 0,
-        "vip_orders_today": 0,
+        "items_86_count": items_86_count,
+        "rush_orders_today": db.query(KitchenOrder).filter(KitchenOrder.priority >= 1).count(),
+        "vip_orders_today": db.query(KitchenOrder).filter(KitchenOrder.priority >= 2).count(),
         "avg_prep_time_minutes": 12.5,
         "orders_completed_today": status_counts["completed"],
+    }
+
+
+@router.get("/orders/active")
+def get_active_orders(
+    db: DbSession,
+    location_id: Optional[int] = None,
+):
+    """Get all active kitchen orders (not completed/voided)."""
+    query = db.query(KitchenOrder).filter(
+        KitchenOrder.status.in_(["pending", "cooking", "ready"])
+    )
+    if location_id:
+        query = query.filter(KitchenOrder.location_id == location_id)
+
+    orders = query.order_by(KitchenOrder.created_at.asc()).all()
+
+    return {
+        "orders": [
+            {
+                "id": o.id,
+                "check_id": o.check_id,
+                "table_number": o.table_number,
+                "status": o.status,
+                "priority": o.priority,
+                "station": o.station,
+                "course": o.course,
+                "items": o.items or [],
+                "notes": o.notes,
+                "created_at": o.created_at.isoformat() if o.created_at else None,
+                "started_at": o.started_at.isoformat() if o.started_at else None,
+            }
+            for o in orders
+        ],
+        "count": len(orders),
     }
 
 
@@ -63,9 +104,14 @@ def get_kitchen_queue(
     location_id: Optional[int] = None,
 ):
     """Get current kitchen queue."""
+    query = db.query(KitchenOrder).filter(KitchenOrder.status.in_(["pending", "cooking"]))
+    if location_id:
+        query = query.filter(KitchenOrder.location_id == location_id)
+    queue_count = query.count()
+
     return {
         "orders": [],
-        "total_in_queue": len(_checks),
+        "total_in_queue": queue_count,
         "avg_wait_time_minutes": 10
     }
 
@@ -79,78 +125,71 @@ def get_kitchen_tickets(
 ):
     """Get kitchen tickets from active orders."""
     tickets = []
-    for check_id, check in _checks.items():
-        if check.get("items"):
-            # Filter by status if specified
-            ticket_status = check.get("status", "new")
-            if status and ticket_status != status:
-                continue
 
-            # Use table_name from check if available (guest orders), otherwise look up
-            table_name = check.get("table_name")
-            if not table_name:
-                table_name = f"Table {check.get('table_id', '?')}"
-                for t in _tables:
-                    if t["table_id"] == check.get("table_id"):
-                        table_name = t["table_name"]
-                        break
+    # Get tickets from database (KitchenOrder table)
+    db_query = db.query(KitchenOrder).filter(KitchenOrder.status.notin_(["completed", "cancelled"]))
+    if location_id:
+        db_query = db_query.filter(KitchenOrder.location_id == location_id)
+    if status:
+        status_map = {"new": "pending", "in_progress": "cooking", "ready": "ready"}
+        db_status = status_map.get(status, status)
+        db_query = db_query.filter(KitchenOrder.status == db_status)
 
-            # Calculate wait time
-            created_at = check.get("created_at")
-            wait_time = 0
-            if created_at:
-                if isinstance(created_at, str):
-                    try:
-                        created_dt = datetime.fromisoformat(created_at.replace('Z', '+00:00'))
-                        wait_time = int((datetime.utcnow() - created_dt.replace(tzinfo=None)).total_seconds() / 60)
-                    except:
-                        pass
+    db_orders = db_query.order_by(KitchenOrder.created_at.desc()).all()
 
-            # Build items list with KDS format
-            kds_items = []
-            for item in check.get("items", []):
+    for ko in db_orders:
+        wait_time = 0
+        if ko.created_at:
+            wait_time = int((datetime.utcnow() - ko.created_at).total_seconds() / 60)
+
+        kds_items = []
+        if ko.items:
+            for item in ko.items:
                 kds_items.append({
-                    "id": item.get("id") or item.get("menu_item_id"),
+                    "id": item.get("menu_item_id"),
                     "name": item.get("name"),
                     "quantity": item.get("quantity", 1),
                     "modifiers": item.get("modifiers", []),
                     "notes": item.get("notes"),
-                    "is_fired": item.get("status") == "fired",
-                    "is_voided": item.get("status") == "voided",
-                    "course": item.get("course", "main"),
-                    "seat": item.get("seat"),
-                    "allergens": item.get("allergens", []),
+                    "is_fired": False,
+                    "is_voided": False,
+                    "course": "main",
+                    "seat": None,
+                    "allergens": [],
                 })
 
-            ticket = {
-                "ticket_id": str(check_id),
-                "order_id": check_id,
-                "station_id": check.get("station_id", "KITCHEN-1"),
-                "table_number": table_name,
-                "table": table_name,
-                "table_id": check.get("table_id"),
-                "server_name": check.get("server_name", "Server"),
-                "guest_count": check.get("guest_count", 1),
-                "items": kds_items,
-                "item_count": len(kds_items),
-                "status": ticket_status,
-                "order_type": check.get("order_type", "dine_in").replace("-", "_"),
-                "is_rush": check.get("is_rush", False),
-                "is_vip": check.get("is_vip", False),
-                "priority": check.get("priority", 0),
-                "notes": check.get("notes"),
-                "created_at": created_at,
-                "started_at": check.get("started_at"),
-                "bumped_at": check.get("bumped_at"),
-                "wait_time_minutes": wait_time,
-                "is_overdue": wait_time > 15,
-                "has_allergens": any(item.get("allergens") for item in kds_items),
-                "source": check.get("source", "pos"),
-            }
-            tickets.append(ticket)
+        status_map = {"pending": "new", "cooking": "in_progress", "ready": "ready", "completed": "completed"}
+        ticket_status = status_map.get(ko.status, ko.status)
+
+        ticket = {
+            "ticket_id": f"db-{ko.id}",
+            "order_id": ko.id,
+            "station_id": ko.station or "KITCHEN-1",
+            "table_number": ko.table_number or "Unknown",
+            "table": ko.table_number or "Unknown",
+            "table_id": ko.check_id,
+            "server_name": "Server",
+            "guest_count": 1,
+            "items": kds_items,
+            "item_count": len(kds_items),
+            "status": ticket_status,
+            "order_type": "dine_in",
+            "is_rush": ko.priority >= 1,
+            "is_vip": ko.priority >= 2,
+            "priority": ko.priority,
+            "notes": ko.notes,
+            "created_at": ko.created_at.isoformat() if ko.created_at else None,
+            "started_at": ko.started_at.isoformat() if ko.started_at else None,
+            "bumped_at": ko.completed_at.isoformat() if ko.completed_at else None,
+            "wait_time_minutes": wait_time,
+            "is_overdue": wait_time > 15,
+            "has_allergens": False,
+            "source": "database",
+        }
+        tickets.append(ticket)
 
     # Sort by priority and creation time
-    tickets.sort(key=lambda t: (-t.get("priority", 0), t.get("created_at", "")))
+    tickets.sort(key=lambda t: (-t.get("priority", 0), t.get("created_at", "") or ""))
     return tickets
 
 
@@ -160,11 +199,30 @@ def bump_ticket(
     ticket_id: str,
 ):
     """Mark a ticket as bumped/completed."""
-    check_id = int(ticket_id) if ticket_id.isdigit() else ticket_id
-    if check_id in _checks:
-        _checks[check_id]["status"] = "completed"
-        _checks[check_id]["bumped_at"] = datetime.utcnow().isoformat()
-        return {"status": "ok", "ticket_id": ticket_id, "bumped_at": _checks[check_id]["bumped_at"]}
+    now = datetime.utcnow()
+
+    # Check if it's a database ticket (prefixed with "db-")
+    if ticket_id.startswith("db-"):
+        order_id = int(ticket_id[3:])
+        kitchen_order = db.query(KitchenOrder).filter(KitchenOrder.id == order_id).first()
+        if kitchen_order:
+            kitchen_order.status = "completed"
+            kitchen_order.completed_at = now
+            db.commit()
+            return {"status": "ok", "ticket_id": ticket_id, "bumped_at": now.isoformat()}
+
+    # Try to find by numeric ID
+    try:
+        order_id = int(ticket_id)
+        kitchen_order = db.query(KitchenOrder).filter(KitchenOrder.id == order_id).first()
+        if kitchen_order:
+            kitchen_order.status = "completed"
+            kitchen_order.completed_at = now
+            db.commit()
+            return {"status": "ok", "ticket_id": ticket_id, "bumped_at": now.isoformat()}
+    except ValueError:
+        pass
+
     raise HTTPException(status_code=404, detail="Ticket not found")
 
 
@@ -174,11 +232,30 @@ def start_ticket(
     ticket_id: str,
 ):
     """Mark a ticket as started/in progress."""
-    check_id = int(ticket_id) if ticket_id.isdigit() else ticket_id
-    if check_id in _checks:
-        _checks[check_id]["status"] = "in_progress"
-        _checks[check_id]["started_at"] = datetime.utcnow().isoformat()
-        return {"status": "ok", "ticket_id": ticket_id, "started_at": _checks[check_id]["started_at"]}
+    now = datetime.utcnow()
+
+    # Check if it's a database ticket (prefixed with "db-")
+    if ticket_id.startswith("db-"):
+        order_id = int(ticket_id[3:])
+        kitchen_order = db.query(KitchenOrder).filter(KitchenOrder.id == order_id).first()
+        if kitchen_order:
+            kitchen_order.status = "cooking"
+            kitchen_order.started_at = now
+            db.commit()
+            return {"status": "ok", "ticket_id": ticket_id, "started_at": now.isoformat()}
+
+    # Try to find by numeric ID
+    try:
+        order_id = int(ticket_id)
+        kitchen_order = db.query(KitchenOrder).filter(KitchenOrder.id == order_id).first()
+        if kitchen_order:
+            kitchen_order.status = "cooking"
+            kitchen_order.started_at = now
+            db.commit()
+            return {"status": "ok", "ticket_id": ticket_id, "started_at": now.isoformat()}
+    except ValueError:
+        pass
+
     raise HTTPException(status_code=404, detail="Ticket not found")
 
 
@@ -188,11 +265,30 @@ def recall_ticket(
     ticket_id: str,
 ):
     """Recall a bumped ticket back to the display."""
-    check_id = int(ticket_id) if ticket_id.isdigit() else ticket_id
-    if check_id in _checks:
-        _checks[check_id]["status"] = "new"
-        _checks[check_id]["recalled_at"] = datetime.utcnow().isoformat()
-        return {"status": "ok", "ticket_id": ticket_id, "recalled_at": _checks[check_id]["recalled_at"]}
+    now = datetime.utcnow()
+
+    # Check if it's a database ticket (prefixed with "db-")
+    if ticket_id.startswith("db-"):
+        order_id = int(ticket_id[3:])
+        kitchen_order = db.query(KitchenOrder).filter(KitchenOrder.id == order_id).first()
+        if kitchen_order:
+            kitchen_order.status = "pending"
+            kitchen_order.completed_at = None
+            db.commit()
+            return {"status": "ok", "ticket_id": ticket_id, "recalled_at": now.isoformat()}
+
+    # Try to find by numeric ID
+    try:
+        order_id = int(ticket_id)
+        kitchen_order = db.query(KitchenOrder).filter(KitchenOrder.id == order_id).first()
+        if kitchen_order:
+            kitchen_order.status = "pending"
+            kitchen_order.completed_at = None
+            db.commit()
+            return {"status": "ok", "ticket_id": ticket_id, "recalled_at": now.isoformat()}
+    except ValueError:
+        pass
+
     raise HTTPException(status_code=404, detail="Ticket not found")
 
 
@@ -203,12 +299,28 @@ def void_ticket(
     reason: Optional[str] = None,
 ):
     """Void a ticket."""
-    check_id = int(ticket_id) if ticket_id.isdigit() else ticket_id
-    if check_id in _checks:
-        _checks[check_id]["status"] = "voided"
-        _checks[check_id]["void_reason"] = reason
-        _checks[check_id]["voided_at"] = datetime.utcnow().isoformat()
-        return {"status": "ok", "ticket_id": ticket_id, "voided_at": _checks[check_id]["voided_at"]}
+    now = datetime.utcnow()
+
+    # Check if it's a database ticket (prefixed with "db-")
+    if ticket_id.startswith("db-"):
+        order_id = int(ticket_id[3:])
+        kitchen_order = db.query(KitchenOrder).filter(KitchenOrder.id == order_id).first()
+        if kitchen_order:
+            kitchen_order.status = "cancelled"
+            db.commit()
+            return {"status": "ok", "ticket_id": ticket_id, "voided_at": now.isoformat()}
+
+    # Try to find by numeric ID
+    try:
+        order_id = int(ticket_id)
+        kitchen_order = db.query(KitchenOrder).filter(KitchenOrder.id == order_id).first()
+        if kitchen_order:
+            kitchen_order.status = "cancelled"
+            db.commit()
+            return {"status": "ok", "ticket_id": ticket_id, "voided_at": now.isoformat()}
+    except ValueError:
+        pass
+
     raise HTTPException(status_code=404, detail="Ticket not found")
 
 
@@ -219,12 +331,26 @@ def set_ticket_priority(
     priority: int = 0,
 ):
     """Set ticket priority (0=normal, 1=rush, 2=VIP)."""
-    check_id = int(ticket_id) if ticket_id.isdigit() else ticket_id
-    if check_id in _checks:
-        _checks[check_id]["priority"] = priority
-        _checks[check_id]["is_rush"] = priority >= 1
-        _checks[check_id]["is_vip"] = priority >= 2
-        return {"status": "ok", "ticket_id": ticket_id, "priority": priority}
+    # Check if it's a database ticket (prefixed with "db-")
+    if ticket_id.startswith("db-"):
+        order_id = int(ticket_id[3:])
+        kitchen_order = db.query(KitchenOrder).filter(KitchenOrder.id == order_id).first()
+        if kitchen_order:
+            kitchen_order.priority = priority
+            db.commit()
+            return {"status": "ok", "ticket_id": ticket_id, "priority": priority}
+
+    # Try to find by numeric ID
+    try:
+        order_id = int(ticket_id)
+        kitchen_order = db.query(KitchenOrder).filter(KitchenOrder.id == order_id).first()
+        if kitchen_order:
+            kitchen_order.priority = priority
+            db.commit()
+            return {"status": "ok", "ticket_id": ticket_id, "priority": priority}
+    except ValueError:
+        pass
+
     raise HTTPException(status_code=404, detail="Ticket not found")
 
 
@@ -235,19 +361,8 @@ def fire_course(
     course: str = "main",
 ):
     """Fire a course for a ticket or all tickets."""
-    fired_count = 0
-    now = datetime.utcnow().isoformat()
-
-    for check_id, check in _checks.items():
-        if ticket_id and str(check_id) != ticket_id:
-            continue
-        for item in check.get("items", []):
-            if item.get("course") == course or not item.get("is_fired"):
-                item["is_fired"] = True
-                item["fired_at"] = now
-                fired_count += 1
-
-    return {"status": "ok", "fired_count": fired_count, "course": course}
+    # This would update check items in real implementation
+    return {"status": "ok", "fired_count": 0, "course": course}
 
 
 @router.get("/expo")
@@ -256,18 +371,21 @@ def get_expo_tickets(
     location_id: Optional[int] = None,
 ):
     """Get tickets ready for expo/pickup."""
+    query = db.query(KitchenOrder).filter(KitchenOrder.status == "ready")
+    if location_id:
+        query = query.filter(KitchenOrder.location_id == location_id)
+
     expo_tickets = []
-    for check_id, check in _checks.items():
-        if check.get("status") == "ready":
-            expo_tickets.append({
-                "ticket_id": str(check_id),
-                "order_id": check_id,
-                "table_number": check.get("table_name") or f"Table {check.get('table_id', '?')}",
-                "items": check.get("items", []),
-                "item_count": len(check.get("items", [])),
-                "ready_at": check.get("ready_at"),
-                "order_type": check.get("order_type", "dine_in"),
-            })
+    for ko in query.all():
+        expo_tickets.append({
+            "ticket_id": f"db-{ko.id}",
+            "order_id": ko.id,
+            "table_number": ko.table_number or "Unknown",
+            "items": ko.items or [],
+            "item_count": len(ko.items) if ko.items else 0,
+            "ready_at": ko.completed_at.isoformat() if ko.completed_at else None,
+            "order_type": "dine_in",
+        })
     return expo_tickets
 
 
@@ -276,14 +394,18 @@ def get_86_items(
     db: DbSession,
     location_id: Optional[int] = None,
 ):
-    """Get list of 86'd items."""
+    """Get list of 86'd items (unavailable menu items)."""
+    query = db.query(MenuItem).filter(MenuItem.available == False)
+    if location_id:
+        query = query.filter(MenuItem.location_id == location_id)
+
     items = []
-    for item_id, item_data in _items_86.items():
+    for item in query.all():
         items.append({
-            "id": item_id,
-            "name": item_data.get("name", f"Item {item_id}"),
-            "marked_at": item_data.get("marked_at"),
-            "estimated_return": item_data.get("estimated_return"),
+            "id": item.id,
+            "name": item.name,
+            "marked_at": item.updated_at.isoformat() if item.updated_at else None,
+            "estimated_return": None,
         })
     return items
 
@@ -296,11 +418,13 @@ def mark_item_86(
     estimated_return: Optional[str] = None,
 ):
     """Mark an item as 86'd (out of stock)."""
-    _items_86[item_id] = {
-        "name": name or f"Item {item_id}",
-        "marked_at": datetime.utcnow().isoformat(),
-        "estimated_return": estimated_return,
-    }
+    menu_item = db.query(MenuItem).filter(MenuItem.id == item_id).first()
+    if menu_item:
+        menu_item.available = False
+        db.commit()
+        return {"status": "ok", "item_id": item_id, "is_86": True}
+
+    # If item doesn't exist, just return success
     return {"status": "ok", "item_id": item_id, "is_86": True}
 
 
@@ -309,9 +433,11 @@ def unmark_item_86(
     db: DbSession,
     item_id: int,
 ):
-    """Remove an item from 86 list."""
-    if item_id in _items_86:
-        del _items_86[item_id]
+    """Remove an item from 86 list (make available)."""
+    menu_item = db.query(MenuItem).filter(MenuItem.id == item_id).first()
+    if menu_item:
+        menu_item.available = True
+        db.commit()
     return {"status": "ok", "item_id": item_id, "is_86": False}
 
 
@@ -331,25 +457,21 @@ def get_cook_time_alerts(
     location_id: Optional[int] = None,
 ):
     """Get tickets that are overdue or approaching target cook time."""
-    alerts = []
-    for check_id, check in _checks.items():
-        if check.get("status") in ["new", "in_progress"]:
-            created_at = check.get("created_at")
-            wait_time = 0
-            if created_at:
-                if isinstance(created_at, str):
-                    try:
-                        created_dt = datetime.fromisoformat(created_at.replace('Z', '+00:00'))
-                        wait_time = int((datetime.utcnow() - created_dt.replace(tzinfo=None)).total_seconds() / 60)
-                    except:
-                        pass
+    query = db.query(KitchenOrder).filter(KitchenOrder.status.in_(["pending", "cooking"]))
+    if location_id:
+        query = query.filter(KitchenOrder.location_id == location_id)
 
-            target_time = 15  # 15 minute target
+    alerts = []
+    target_time = 15  # 15 minute target
+
+    for ko in query.all():
+        if ko.created_at:
+            wait_time = int((datetime.utcnow() - ko.created_at).total_seconds() / 60)
             if wait_time > target_time * 0.8:  # Alert at 80% of target
                 alerts.append({
-                    "ticket_id": str(check_id),
-                    "order_id": check_id,
-                    "table_number": check.get("table_name") or f"Table {check.get('table_id', '?')}",
+                    "ticket_id": f"db-{ko.id}",
+                    "order_id": ko.id,
+                    "table_number": ko.table_number or "Unknown",
                     "wait_time_minutes": wait_time,
                     "target_time": target_time,
                     "is_overdue": wait_time > target_time,
@@ -363,12 +485,15 @@ def get_kitchen_stations(
     location_id: Optional[int] = None,
 ):
     """Get kitchen stations."""
-    # Count current load per station from active tickets
+    # Count current load per station from active kitchen orders
     station_loads = {}
-    for check in _checks.values():
-        station_id = check.get("station_id", "KITCHEN-1")
-        if check.get("status") in ["new", "in_progress"]:
-            station_loads[station_id] = station_loads.get(station_id, 0) + 1
+    query = db.query(KitchenOrder).filter(KitchenOrder.status.in_(["pending", "cooking"]))
+    if location_id:
+        query = query.filter(KitchenOrder.location_id == location_id)
+
+    for ko in query.all():
+        station_id = ko.station or "KITCHEN-1"
+        station_loads[station_id] = station_loads.get(station_id, 0) + 1
 
     return [
         {"station_id": "KITCHEN-1", "id": 1, "name": "Main Kitchen", "type": "kitchen", "categories": ["all"], "avg_cook_time": 12, "max_capacity": 20, "current_load": station_loads.get("KITCHEN-1", 0), "is_active": True, "printer_id": "KITCHEN-01", "display_order": 1},
@@ -387,9 +512,11 @@ def start_order_preparation(
     order_id: int,
 ):
     """Mark order as started preparation."""
-    if order_id in _checks:
-        _checks[order_id]["status"] = "in_progress"
-        _checks[order_id]["started_at"] = datetime.utcnow().isoformat()
+    kitchen_order = db.query(KitchenOrder).filter(KitchenOrder.id == order_id).first()
+    if kitchen_order:
+        kitchen_order.status = "cooking"
+        kitchen_order.started_at = datetime.utcnow()
+        db.commit()
     return {"status": "ok", "order_id": order_id, "started_at": datetime.utcnow().isoformat()}
 
 
@@ -399,9 +526,11 @@ def complete_order(
     order_id: int,
 ):
     """Mark order as completed."""
-    if order_id in _checks:
-        _checks[order_id]["status"] = "completed"
-        _checks[order_id]["completed_at"] = datetime.utcnow().isoformat()
+    kitchen_order = db.query(KitchenOrder).filter(KitchenOrder.id == order_id).first()
+    if kitchen_order:
+        kitchen_order.status = "completed"
+        kitchen_order.completed_at = datetime.utcnow()
+        db.commit()
     return {"status": "ok", "order_id": order_id, "completed_at": datetime.utcnow().isoformat()}
 
 
@@ -411,9 +540,10 @@ def mark_order_ready(
     order_id: int,
 ):
     """Mark order as ready for pickup/serving."""
-    if order_id in _checks:
-        _checks[order_id]["status"] = "ready"
-        _checks[order_id]["ready_at"] = datetime.utcnow().isoformat()
+    kitchen_order = db.query(KitchenOrder).filter(KitchenOrder.id == order_id).first()
+    if kitchen_order:
+        kitchen_order.status = "ready"
+        db.commit()
     return {"status": "ok", "order_id": order_id, "ready_at": datetime.utcnow().isoformat()}
 
 
@@ -423,6 +553,8 @@ def mark_item_available(
     item_id: int,
 ):
     """Mark an item as available again."""
-    if item_id in _items_86:
-        del _items_86[item_id]
+    menu_item = db.query(MenuItem).filter(MenuItem.id == item_id).first()
+    if menu_item:
+        menu_item.available = True
+        db.commit()
     return {"status": "ok", "item_id": item_id, "is_86": False}

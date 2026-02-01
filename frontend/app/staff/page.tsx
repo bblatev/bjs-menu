@@ -85,7 +85,8 @@ export default function StaffManagementPage() {
 
       if (response.ok) {
         const data = await response.json();
-        setStaff(data);
+        // Handle both array and {staff: [...]} response formats
+        setStaff(Array.isArray(data) ? data : (data.staff || []));
       }
     } catch (error) {
       console.error("Error loading staff:", error);
@@ -116,8 +117,9 @@ export default function StaffManagementPage() {
   const loadAreas = async () => {
     try {
       const token = localStorage.getItem("access_token");
+      // Try the areas endpoint, fall back to extracting from tables
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/tables/areas/list`,
+        `${process.env.NEXT_PUBLIC_API_URL}/tables/areas`,
         {
           headers: { Authorization: `Bearer ${token}` },
         }
@@ -125,7 +127,20 @@ export default function StaffManagementPage() {
 
       if (response.ok) {
         const data = await response.json();
-        setAreas(data.areas || []);
+        setAreas(Array.isArray(data) ? data : (data.areas || []));
+      } else {
+        // Fallback: extract unique areas from tables data
+        const tablesResponse = await fetch(
+          `${process.env.NEXT_PUBLIC_API_URL}/tables/`,
+          {
+            headers: { Authorization: `Bearer ${token}` },
+          }
+        );
+        if (tablesResponse.ok) {
+          const tablesData = await tablesResponse.json();
+          const uniqueAreas = [...new Set(tablesData.map((t: Table) => t.area).filter(Boolean))] as string[];
+          setAreas(uniqueAreas);
+        }
       }
     } catch (error) {
       console.error("Error loading areas:", error);
@@ -225,9 +240,9 @@ export default function StaffManagementPage() {
     e.preventDefault();
     const token = localStorage.getItem("access_token");
 
-    // Validate PIN
-    if (!editingStaff && (!formData.pin_code || formData.pin_code.length < 4)) {
-      alert("PIN must be at least 4 digits");
+    // Validate PIN only if provided
+    if (!editingStaff && formData.pin_code && formData.pin_code.length < 4) {
+      alert("PIN must be at least 4 digits (or leave empty)");
       return;
     }
 
@@ -254,7 +269,15 @@ export default function StaffManagementPage() {
           throw new Error(errorData.detail || "Failed to update staff");
         }
       } else {
-        // Create new staff with PIN
+        // Create new staff (PIN optional)
+        const createData: { full_name: string; role: string; pin_code?: string } = {
+          full_name: formData.full_name,
+          role: formData.role,
+        };
+        if (formData.pin_code) {
+          createData.pin_code = formData.pin_code;
+        }
+
         const response = await fetch(
           `${process.env.NEXT_PUBLIC_API_URL}/staff`,
           {
@@ -263,11 +286,7 @@ export default function StaffManagementPage() {
               "Content-Type": "application/json",
               Authorization: `Bearer ${token}`,
             },
-            body: JSON.stringify({
-              full_name: formData.full_name,
-              role: formData.role,
-              pin_code: formData.pin_code,
-            }),
+            body: JSON.stringify(createData),
           }
         );
 
@@ -713,7 +732,7 @@ export default function StaffManagementPage() {
 
               {!editingStaff && (
                 <div>
-                  <label className="text-gray-900 block mb-2">PIN Code</label>
+                  <label className="text-gray-900 block mb-2">PIN Code (Optional)</label>
                   <input
                     type="password"
                     inputMode="numeric"
@@ -723,14 +742,12 @@ export default function StaffManagementPage() {
                       const value = e.target.value.replace(/\D/g, '').slice(0, 6);
                       setFormData({ ...formData, pin_code: value });
                     }}
-                    required
-                    minLength={4}
                     maxLength={6}
-                    placeholder="4-6 digits"
+                    placeholder="4-6 digits (optional)"
                     className="w-full px-4 py-3 bg-gray-100 text-gray-900 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500 text-center text-2xl tracking-widest"
                   />
                   <p className="text-gray-500 text-sm mt-1 text-center">
-                    Staff will use this PIN to clock in
+                    Staff will use this PIN to clock in (can be set later)
                   </p>
                 </div>
               )}

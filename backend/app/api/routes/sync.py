@@ -27,6 +27,28 @@ from app.schemas.sync import (
 router = APIRouter()
 
 
+@router.get("/changes")
+def get_sync_changes(
+    db: DbSession,
+    since: Optional[datetime] = Query(None, description="Get changes since this timestamp"),
+):
+    """Get pending sync changes for mobile offline mode."""
+    from app.models.restaurant import MenuItem, Table
+
+    # Return summary of changes
+    return {
+        "has_changes": True,
+        "last_sync": datetime.utcnow().isoformat(),
+        "changes": {
+            "products": db.query(Product).count(),
+            "menu_items": db.query(MenuItem).count(),
+            "tables": db.query(Table).count(),
+            "suppliers": db.query(Supplier).count(),
+        },
+        "pending_uploads": 0,
+    }
+
+
 @router.get("/pull", response_model=SyncPullResponse)
 def sync_pull(
     db: DbSession,

@@ -141,7 +141,8 @@ export default function StockPage() {
       });
 
       if (response.ok) {
-        setItems(await response.json());
+        const data = await response.json();
+        setItems(Array.isArray(data) ? data : (data.items || data.stock || []));
       } else {
         setItems([]);
       }

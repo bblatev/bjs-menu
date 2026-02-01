@@ -7,6 +7,7 @@ from sqlalchemy import func
 
 from app.db.session import DbSession
 from app.models.pos import PosSalesLine
+from app.models.restaurant import GuestOrder
 from app.models.analytics import (
     MenuAnalysis, ServerPerformance, SalesForecast, DailyMetrics,
     ConversationalQuery, Benchmark, BottleWeight, ScaleReading,
@@ -44,8 +45,22 @@ def get_dashboard_stats(
     """Get dashboard statistics for admin panel."""
     today_start = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
 
-    # Total orders (count of distinct pos_item_id transactions) and items sold
-    sales_query = db.query(
+    # Get guest orders from database
+    guest_orders_query = db.query(GuestOrder).filter(GuestOrder.created_at >= today_start)
+    if location_id:
+        guest_orders_query = guest_orders_query.filter(GuestOrder.location_id == location_id)
+    guest_orders = guest_orders_query.all()
+
+    # Calculate totals from guest orders
+    total_orders = len(guest_orders)
+    total_revenue = sum(float(o.total) if o.total else 0 for o in guest_orders)
+
+    # Count active orders (non-completed statuses)
+    active_statuses = ["received", "confirmed", "preparing", "ready"]
+    active_orders = len([o for o in guest_orders if o.status in active_statuses])
+
+    # Also check POS sales lines for additional data
+    pos_query = db.query(
         func.count(PosSalesLine.id).label("total_items"),
         func.sum(PosSalesLine.qty).label("total_qty")
     ).filter(
@@ -53,44 +68,65 @@ def get_dashboard_stats(
         PosSalesLine.is_refund == False
     )
     if location_id:
-        sales_query = sales_query.filter(PosSalesLine.location_id == location_id)
+        pos_query = pos_query.filter(PosSalesLine.location_id == location_id)
+    pos_result = pos_query.first()
+    pos_items = pos_result.total_items or 0
+    pos_qty = float(pos_result.total_qty or 0)
 
-    result = sales_query.first()
-    total_items = result.total_items or 0
-    total_qty = float(result.total_qty or 0)
+    # Combine with POS data
+    total_orders += pos_items
+    total_revenue += pos_qty * 15.0  # Estimate POS revenue
 
-    # Estimate revenue (assuming average price of 15 per item for demo)
-    estimated_revenue = total_qty * 15.0
+    # Top items from guest orders
+    item_counts = {}
+    for order in guest_orders:
+        if order.items:
+            for item in order.items:
+                name = item.get("name", "Unknown")
+                qty = item.get("quantity", 1)
+                item_counts[name] = item_counts.get(name, 0) + qty
 
-    # Top items by name
-    top_items_query = db.query(
+    # Add POS top items
+    pos_top_items = db.query(
         PosSalesLine.name,
         func.sum(PosSalesLine.qty).label("count")
     ).filter(
         PosSalesLine.ts >= today_start,
         PosSalesLine.is_refund == False
-    ).group_by(PosSalesLine.name).order_by(
-        func.sum(PosSalesLine.qty).desc()
-    ).limit(5)
+    ).group_by(PosSalesLine.name).all()
 
-    top_items = [{"name": item.name, "count": int(item.count)} for item in top_items_query.all()]
+    for item in pos_top_items:
+        item_counts[item.name] = item_counts.get(item.name, 0) + int(item.count)
 
-    # Orders by hour
+    top_items = sorted(
+        [{"name": name, "count": count} for name, count in item_counts.items()],
+        key=lambda x: x["count"],
+        reverse=True
+    )[:5]
+
+    # Orders by hour from guest orders
     orders_by_hour = []
     for hour in range(24):
         hour_start = today_start.replace(hour=hour)
         hour_end = today_start.replace(hour=hour, minute=59, second=59)
-        count = db.query(func.count(PosSalesLine.id)).filter(
+
+        # Count guest orders in this hour
+        hour_count = len([o for o in guest_orders
+                         if o.created_at and hour_start <= o.created_at <= hour_end])
+
+        # Add POS sales in this hour
+        pos_count = db.query(func.count(PosSalesLine.id)).filter(
             PosSalesLine.ts >= hour_start,
             PosSalesLine.ts <= hour_end,
             PosSalesLine.is_refund == False
         ).scalar() or 0
-        orders_by_hour.append({"hour": hour, "count": count})
+
+        orders_by_hour.append({"hour": hour, "count": hour_count + pos_count})
 
     return {
-        "total_orders_today": total_items,
-        "total_revenue_today": estimated_revenue,
-        "active_orders": 0,
+        "total_orders_today": total_orders,
+        "total_revenue_today": round(total_revenue, 2),
+        "active_orders": active_orders,
         "pending_calls": 0,
         "average_rating": 4.5,
         "top_items": top_items,
@@ -104,11 +140,49 @@ def get_dashboard_kpis(
     location_id: Optional[int] = None,
 ):
     """Get key performance indicators for dashboard widgets."""
+    today_start = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
+    yesterday_start = today_start - timedelta(days=1)
+
+    # Get today's orders
+    today_query = db.query(GuestOrder).filter(GuestOrder.created_at >= today_start)
+    if location_id:
+        today_query = today_query.filter(GuestOrder.location_id == location_id)
+    today_orders = today_query.all()
+
+    # Get yesterday's orders for comparison
+    yesterday_query = db.query(GuestOrder).filter(
+        GuestOrder.created_at >= yesterday_start,
+        GuestOrder.created_at < today_start
+    )
+    if location_id:
+        yesterday_query = yesterday_query.filter(GuestOrder.location_id == location_id)
+    yesterday_orders = yesterday_query.all()
+
+    # Calculate today's metrics
+    today_revenue = sum(float(o.total) if o.total else 0 for o in today_orders)
+    today_count = len(today_orders)
+    today_avg_ticket = today_revenue / today_count if today_count > 0 else 0
+
+    # Calculate yesterday's metrics
+    yesterday_revenue = sum(float(o.total) if o.total else 0 for o in yesterday_orders)
+    yesterday_count = len(yesterday_orders)
+    yesterday_avg_ticket = yesterday_revenue / yesterday_count if yesterday_count > 0 else 0
+
+    # Calculate changes
+    def calc_change(today_val, yesterday_val):
+        if yesterday_val > 0:
+            return round((today_val - yesterday_val) / yesterday_val * 100, 1)
+        return 0 if today_val == 0 else 100
+
+    revenue_change = calc_change(today_revenue, yesterday_revenue)
+    order_change = calc_change(today_count, yesterday_count)
+    ticket_change = calc_change(today_avg_ticket, yesterday_avg_ticket)
+
     return {
         "kpis": [
-            {"name": "Revenue Today", "value": 4250.00, "change": 12.5, "trend": "up", "unit": "currency"},
-            {"name": "Orders Today", "value": 85, "change": 8.2, "trend": "up", "unit": "count"},
-            {"name": "Avg Ticket", "value": 50.00, "change": 3.8, "trend": "up", "unit": "currency"},
+            {"name": "Revenue Today", "value": round(today_revenue, 2), "change": revenue_change, "trend": "up" if revenue_change >= 0 else "down", "unit": "currency"},
+            {"name": "Orders Today", "value": today_count, "change": order_change, "trend": "up" if order_change >= 0 else "down", "unit": "count"},
+            {"name": "Avg Ticket", "value": round(today_avg_ticket, 2), "change": ticket_change, "trend": "up" if ticket_change >= 0 else "down", "unit": "currency"},
             {"name": "Table Turns", "value": 2.4, "change": -5.0, "trend": "down", "unit": "ratio"},
             {"name": "Labor Cost %", "value": 24.5, "change": -1.2, "trend": "up", "unit": "percentage"},
             {"name": "Food Cost %", "value": 29.8, "change": 0.5, "trend": "down", "unit": "percentage"},
@@ -126,30 +200,99 @@ def get_sales_analytics(
     location_id: Optional[int] = None,
     period: str = "today",
 ):
-    """Get sales analytics summary."""
+    """Get sales analytics summary from database."""
+    # Calculate date range based on period
+    now = datetime.utcnow()
+    if period == "today":
+        start_date = now.replace(hour=0, minute=0, second=0, microsecond=0)
+    elif period == "week":
+        start_date = now - timedelta(days=7)
+    elif period == "month":
+        start_date = now - timedelta(days=30)
+    else:
+        start_date = now.replace(hour=0, minute=0, second=0, microsecond=0)
+
+    # Get guest orders from database
+    query = db.query(GuestOrder).filter(GuestOrder.created_at >= start_date)
+    if location_id:
+        query = query.filter(GuestOrder.location_id == location_id)
+    orders = query.all()
+
+    # Calculate totals
+    total_sales = sum(float(o.total) if o.total else 0 for o in orders)
+    order_count = len(orders)
+    average_ticket = total_sales / order_count if order_count > 0 else 0
+
+    # Calculate sales by category
+    category_sales = {}
+    item_sales = {}
+    for order in orders:
+        if order.items:
+            for item in order.items:
+                name = item.get("name", "Unknown")
+                category = item.get("category", "Food")  # Default to Food if not specified
+                price = float(item.get("price", 0))
+                qty = item.get("quantity", 1)
+                item_total = price * qty
+
+                # Determine category based on item name patterns
+                if any(drink in name.lower() for drink in ["drink", "coffee", "tea", "juice", "soda"]):
+                    category = "Beverages"
+                elif any(dessert in name.lower() for dessert in ["brownie", "cheesecake", "sundae", "ice cream", "cake"]):
+                    category = "Desserts"
+                else:
+                    category = "Food"
+
+                category_sales[category] = category_sales.get(category, 0) + item_total
+                if name not in item_sales:
+                    item_sales[name] = {"quantity": 0, "revenue": 0}
+                item_sales[name]["quantity"] += qty
+                item_sales[name]["revenue"] += item_total
+
+    # Format category sales
+    sales_by_category = []
+    for cat, amount in category_sales.items():
+        percentage = (amount / total_sales * 100) if total_sales > 0 else 0
+        sales_by_category.append({
+            "category": cat,
+            "amount": round(amount, 2),
+            "percentage": round(percentage, 1)
+        })
+
+    # Sort by amount descending
+    sales_by_category.sort(key=lambda x: x["amount"], reverse=True)
+
+    # Calculate sales by hour
+    sales_by_hour = {}
+    for order in orders:
+        if order.created_at:
+            hour = order.created_at.hour
+            order_total = float(order.total) if order.total else 0
+            sales_by_hour[hour] = sales_by_hour.get(hour, 0) + order_total
+
+    formatted_sales_by_hour = [
+        {"hour": hour, "amount": round(amount, 2)}
+        for hour, amount in sorted(sales_by_hour.items())
+    ]
+
+    # Get top items
+    top_items = sorted(
+        [{"name": name, "quantity": data["quantity"], "revenue": round(data["revenue"], 2)}
+         for name, data in item_sales.items()],
+        key=lambda x: x["revenue"],
+        reverse=True
+    )[:10]
+
     return {
         "period": period,
-        "total_sales": 4250.00,
-        "order_count": 85,
-        "average_ticket": 50.00,
-        "sales_by_category": [
-            {"category": "Food", "amount": 3200.00, "percentage": 75.3},
-            {"category": "Beverages", "amount": 850.00, "percentage": 20.0},
-            {"category": "Desserts", "amount": 200.00, "percentage": 4.7},
+        "total_sales": round(total_sales, 2),
+        "order_count": order_count,
+        "average_ticket": round(average_ticket, 2),
+        "sales_by_category": sales_by_category if sales_by_category else [
+            {"category": "Food", "amount": 0, "percentage": 0}
         ],
-        "sales_by_hour": [
-            {"hour": 11, "amount": 350.00},
-            {"hour": 12, "amount": 680.00},
-            {"hour": 13, "amount": 520.00},
-            {"hour": 18, "amount": 890.00},
-            {"hour": 19, "amount": 1100.00},
-            {"hour": 20, "amount": 710.00},
-        ],
-        "top_items": [
-            {"name": "Classic Burger", "quantity": 25, "revenue": 399.75},
-            {"name": "BBQ Ribs", "quantity": 18, "revenue": 449.82},
-            {"name": "Fish & Chips", "quantity": 15, "revenue": 284.85},
-        ],
+        "sales_by_hour": formatted_sales_by_hour,
+        "top_items": top_items,
         "generated_at": datetime.utcnow().isoformat(),
     }
 
@@ -610,3 +753,52 @@ def get_scale_session_summary(db: DbSession, session_id: int):
     """Get summary of inventory session with scale readings."""
     service = InventoryCountingService(db)
     return service.get_session_summary(session_id)
+
+
+@router.get("/scale-integration")
+def get_scale_integration_status(db: DbSession):
+    """Get scale integration status and connected devices."""
+    return {
+        "status": "active",
+        "connected_devices": [],
+        "last_reading": None,
+        "supported_scales": ["Bluetooth Digital Scale", "USB Scale", "WiFi Scale"],
+        "features": {
+            "auto_detect": True,
+            "batch_weighing": True,
+            "tare_support": True,
+        },
+    }
+
+
+@router.get("/menu-analysis")
+def get_menu_analysis(db: DbSession):
+    """Get menu analysis and engineering insights."""
+    from app.models.restaurant import MenuItem
+    items = db.query(MenuItem).all()
+
+    categories = {}
+    for item in items:
+        cat = item.category or "Other"
+        if cat not in categories:
+            categories[cat] = {"count": 0, "total_price": 0}
+        categories[cat]["count"] += 1
+        categories[cat]["total_price"] += float(item.price or 0)
+
+    return {
+        "total_items": len(items),
+        "active_items": len([i for i in items if i.available]),
+        "categories": [
+            {
+                "name": k,
+                "item_count": v["count"],
+                "avg_price": v["total_price"] / v["count"] if v["count"] > 0 else 0,
+            }
+            for k, v in categories.items()
+        ],
+        "insights": {
+            "top_performers": [],
+            "underperformers": [],
+            "pricing_opportunities": [],
+        },
+    }

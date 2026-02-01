@@ -73,7 +73,7 @@ export default function BarTabsPage() {
       const headers: HeadersInit = token ? { Authorization: `Bearer ${token}` } : {};
 
       // Build query params based on filter
-      let endpoint = `${API_BASE_URL}/tabs/`;
+      let endpoint = `${API_BASE_URL}/pos/bar-tabs`;
       if (filter !== 'all') {
         const statusMap: Record<string, string> = {
           'open': 'open',

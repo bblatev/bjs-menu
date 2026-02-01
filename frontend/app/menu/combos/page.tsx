@@ -99,16 +99,20 @@ export default function MenuCombosPage() {
 
       if (combosRes.ok) {
         const combosData = await combosRes.json();
-        setCombos(combosData);
+        // Handle both array and {items: [...], combos: [...]} response formats
+        const combosArray = Array.isArray(combosData) ? combosData : (combosData.combos || combosData.items || []);
+        setCombos(combosArray);
       }
 
       if (itemsRes.ok) {
         const itemsData = await itemsRes.json();
+        // Handle both array and {items: [...]} response formats
+        const itemsArray = Array.isArray(itemsData) ? itemsData : (itemsData.items || []);
         // Transform items to simple format
-        const simpleItems = itemsData.map((item: any) => ({
+        const simpleItems = itemsArray.map((item: any) => ({
           id: item.id,
-          name: item.name.en || item.name.bg,
-          category: item.category_name || 'Unknown',
+          name: typeof item.name === 'string' ? item.name : (item.name?.en || item.name?.bg || 'Unknown'),
+          category: item.category_name || item.category || 'Unknown',
           price: item.price,
         }));
         setMenuItems(simpleItems);

@@ -27,6 +27,24 @@ from app.schemas.delivery import (
 router = APIRouter()
 
 
+# Root endpoint
+
+@router.get("/")
+def get_delivery_status(db: DbSession):
+    """Get delivery aggregator status overview."""
+    service = DeliveryAggregatorService(db)
+    integrations = service.get_all_integrations()
+    active_count = len([i for i in integrations if i.is_active])
+
+    return {
+        "status": "active" if active_count > 0 else "inactive",
+        "total_integrations": len(integrations),
+        "active_integrations": active_count,
+        "platforms": ["uber_eats", "doordash", "wolt", "glovo", "deliveroo"],
+        "pending_orders": 0,
+    }
+
+
 # Integrations
 
 @router.get("/integrations/", response_model=List[DeliveryIntegrationResponse])

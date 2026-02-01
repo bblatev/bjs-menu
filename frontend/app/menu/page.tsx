@@ -134,12 +134,19 @@ export default function MenuPage() {
       ]);
 
       if (catsRes.ok) {
-        const cats = await catsRes.json();
+        const catsData = await catsRes.json();
+        const cats = Array.isArray(catsData) ? catsData : (catsData.categories || []);
         setCategories(cats);
         if (cats.length > 0 && !activeCategory) setActiveCategory(cats[0].id);
       }
-      if (itemsRes.ok) setItems(await itemsRes.json());
-      if (stationsRes.ok) setStations(await stationsRes.json());
+      if (itemsRes.ok) {
+        const itemsData = await itemsRes.json();
+        setItems(Array.isArray(itemsData) ? itemsData : (itemsData.items || []));
+      }
+      if (stationsRes.ok) {
+        const stationsData = await stationsRes.json();
+        setStations(Array.isArray(stationsData) ? stationsData : (stationsData.stations || []));
+      }
     } catch (error) {
       console.error("Error loading data:", error);
     } finally {

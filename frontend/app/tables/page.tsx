@@ -46,6 +46,17 @@ export default function TablesPage() {
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [newTable, setNewTable] = useState({ table_number: '', capacity: 4, area: 'Main' });
+  const [isReservationModalOpen, setIsReservationModalOpen] = useState(false);
+  const [newReservation, setNewReservation] = useState({
+    guest_name: '',
+    guest_count: 2,
+    date: new Date().toISOString().split('T')[0],
+    time: '19:00',
+    notes: ''
+  });
+  const [isOrderModalOpen, setIsOrderModalOpen] = useState(false);
+  const [guestCount, setGuestCount] = useState(2);
+  const [actionLoading, setActionLoading] = useState(false);
 
   useEffect(() => {
     const fetchTables = async () => {
@@ -144,6 +155,177 @@ export default function TablesPage() {
       setNewTable({ table_number: '', capacity: 4, area: 'Main' });
     } catch (err) {
       alert(err instanceof Error ? err.message : 'Failed to create table');
+    }
+  };
+
+  // Handle starting a new order (seat guests)
+  const handleNewOrder = async () => {
+    if (!selectedTable) return;
+    setActionLoading(true);
+
+    try {
+      const token = localStorage.getItem('access_token');
+      const response = await fetch(`${API_URL}/waiter/tables/${selectedTable.id}/seat?guest_count=${guestCount}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token && { 'Authorization': `Bearer ${token}` }),
+        },
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.detail || 'Failed to create order');
+      }
+
+      const result = await response.json();
+
+      // Update table status locally
+      setTables(tables.map(t =>
+        t.id === selectedTable.id
+          ? { ...t, status: 'occupied' as const, currentGuests: guestCount }
+          : t
+      ));
+
+      setIsOrderModalOpen(false);
+      setSelectedTable(null);
+      setGuestCount(2);
+
+      // Redirect to waiter terminal with check
+      if (result.check_id) {
+        window.location.href = `/waiter?table=${selectedTable.id}&check=${result.check_id}`;
+      }
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Failed to create order');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  // Handle creating a reservation
+  const handleReservation = async () => {
+    if (!selectedTable) return;
+    setActionLoading(true);
+
+    try {
+      const token = localStorage.getItem('access_token');
+
+      // First, create the reservation
+      const reservationResponse = await fetch(`${API_URL}/reservations/`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token && { 'Authorization': `Bearer ${token}` }),
+        },
+        body: JSON.stringify({
+          table_ids: [selectedTable.id],
+          guest_name: newReservation.guest_name,
+          party_size: newReservation.guest_count,
+          date: newReservation.date,
+          time: newReservation.time,
+          notes: newReservation.notes,
+        }),
+      });
+
+      if (!reservationResponse.ok) {
+        const errorData = await reservationResponse.json().catch(() => ({}));
+        throw new Error(errorData.detail || 'Failed to create reservation');
+      }
+
+      // Then update table status to reserved
+      await fetch(`${API_URL}/tables/${selectedTable.id}/reserve`, {
+        method: 'POST',
+        headers: {
+          ...(token && { 'Authorization': `Bearer ${token}` }),
+        },
+      });
+
+      // Update table status locally
+      setTables(tables.map(t =>
+        t.id === selectedTable.id
+          ? {
+              ...t,
+              status: 'reserved' as const,
+              reservation: {
+                name: newReservation.guest_name,
+                time: newReservation.time,
+                guests: newReservation.guest_count
+              }
+            }
+          : t
+      ));
+
+      setIsReservationModalOpen(false);
+      setSelectedTable(null);
+      setNewReservation({
+        guest_name: '',
+        guest_count: 2,
+        date: new Date().toISOString().split('T')[0],
+        time: '19:00',
+        notes: ''
+      });
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Failed to create reservation');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  // Handle deleting a table
+  const handleDeleteTable = async () => {
+    if (!selectedTable) return;
+    if (!confirm(`Сигурни ли сте, че искате да изтриете маса ${selectedTable.number}?`)) return;
+
+    setActionLoading(true);
+
+    try {
+      const token = localStorage.getItem('access_token');
+      const response = await fetch(`${API_URL}/tables/${selectedTable.id}`, {
+        method: 'DELETE',
+        headers: {
+          ...(token && { 'Authorization': `Bearer ${token}` }),
+        },
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.detail || 'Failed to delete table');
+      }
+
+      // Remove table from local state
+      setTables(tables.filter(t => t.id !== selectedTable.id));
+      setSelectedTable(null);
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Failed to delete table');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  // Handle freeing a table
+  const handleFreeTable = async () => {
+    if (!selectedTable) return;
+    setActionLoading(true);
+
+    try {
+      const token = localStorage.getItem('access_token');
+      await fetch(`${API_URL}/tables/${selectedTable.id}/free`, {
+        method: 'POST',
+        headers: {
+          ...(token && { 'Authorization': `Bearer ${token}` }),
+        },
+      });
+
+      setTables(tables.map(t =>
+        t.id === selectedTable.id
+          ? { ...t, status: 'available' as const, reservation: undefined, currentOrder: undefined }
+          : t
+      ));
+      setSelectedTable(null);
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Failed to free table');
+    } finally {
+      setActionLoading(false);
     }
   };
 
@@ -460,24 +642,79 @@ export default function TablesPage() {
                 </div>
               )}
             </div>
-            <div className="p-6 border-t border-surface-100 grid grid-cols-2 gap-3">
+            <div className="p-6 border-t border-surface-100 space-y-3">
               {selectedTable.status === 'available' && (
-                <>
-                  <button className="py-3 bg-primary-600 text-gray-900 font-semibold rounded-xl hover:bg-primary-500 transition-colors">Нова Поръчка</button>
-                  <button className="py-3 bg-warning-600 text-gray-900 font-semibold rounded-xl hover:bg-warning-500 transition-colors">Резервирай</button>
-                </>
+                <div className="grid grid-cols-2 gap-3">
+                  <button
+                    onClick={() => setIsOrderModalOpen(true)}
+                    className="py-3 bg-primary-600 text-gray-900 font-semibold rounded-xl hover:bg-primary-500 transition-colors"
+                  >
+                    🍽️ Нова Поръчка
+                  </button>
+                  <button
+                    onClick={() => setIsReservationModalOpen(true)}
+                    className="py-3 bg-warning-600 text-gray-900 font-semibold rounded-xl hover:bg-warning-500 transition-colors"
+                  >
+                    📅 Резервирай
+                  </button>
+                </div>
               )}
               {selectedTable.status === 'occupied' && (
-                <>
-                  <button className="py-3 bg-surface-100 text-surface-700 font-semibold rounded-xl hover:bg-surface-200 transition-colors">Добави</button>
-                  <button className="py-3 bg-success-600 text-gray-900 font-semibold rounded-xl hover:bg-success-500 transition-colors">Плащане</button>
-                </>
+                <div className="grid grid-cols-2 gap-3">
+                  <button
+                    onClick={() => window.location.href = `/waiter?table=${selectedTable.id}`}
+                    className="py-3 bg-surface-100 text-surface-700 font-semibold rounded-xl hover:bg-surface-200 transition-colors"
+                  >
+                    ➕ Добави
+                  </button>
+                  <button
+                    onClick={() => window.location.href = `/waiter?table=${selectedTable.id}&action=payment`}
+                    className="py-3 bg-success-600 text-gray-900 font-semibold rounded-xl hover:bg-success-500 transition-colors"
+                  >
+                    💳 Плащане
+                  </button>
+                </div>
               )}
               {selectedTable.status === 'reserved' && (
-                <>
-                  <button className="py-3 bg-primary-600 text-gray-900 font-semibold rounded-xl hover:bg-primary-500 transition-colors">Пристигнаха</button>
-                  <button className="py-3 bg-error-600 text-gray-900 font-semibold rounded-xl hover:bg-error-500 transition-colors">Отмени</button>
-                </>
+                <div className="grid grid-cols-2 gap-3">
+                  <button
+                    onClick={() => setIsOrderModalOpen(true)}
+                    className="py-3 bg-primary-600 text-gray-900 font-semibold rounded-xl hover:bg-primary-500 transition-colors"
+                  >
+                    ✅ Пристигнаха
+                  </button>
+                  <button
+                    onClick={handleFreeTable}
+                    disabled={actionLoading}
+                    className="py-3 bg-error-600 text-gray-900 font-semibold rounded-xl hover:bg-error-500 transition-colors disabled:opacity-50"
+                  >
+                    ❌ Отмени
+                  </button>
+                </div>
+              )}
+              {selectedTable.status === 'cleaning' && (
+                <button
+                  onClick={handleFreeTable}
+                  disabled={actionLoading}
+                  className="w-full py-3 bg-success-600 text-gray-900 font-semibold rounded-xl hover:bg-success-500 transition-colors disabled:opacity-50"
+                >
+                  ✅ Готово (Свободна)
+                </button>
+              )}
+
+              {/* Delete Button - always visible */}
+              <button
+                onClick={handleDeleteTable}
+                disabled={actionLoading || selectedTable.status === 'occupied'}
+                className="w-full py-3 bg-error-100 text-error-700 font-semibold rounded-xl hover:bg-error-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              >
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                </svg>
+                Изтрий Маса
+              </button>
+              {selectedTable.status === 'occupied' && (
+                <p className="text-xs text-center text-surface-500">Не можете да изтриете заета маса</p>
               )}
             </div>
           </div>
@@ -549,6 +786,169 @@ export default function TablesPage() {
                 className="flex-1 py-3 bg-primary-600 text-gray-900 font-semibold rounded-xl hover:bg-primary-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Добави
+              </button>
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* New Order Modal */}
+      {isOrderModalOpen && selectedTable && (
+        <>
+          <div className="fixed inset-0 bg-black/30 backdrop-blur-sm z-50" onClick={() => setIsOrderModalOpen(false)} />
+          <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-50 w-full max-w-md bg-white rounded-3xl shadow-2xl">
+            <div className="p-6 border-b border-surface-100">
+              <div className="flex items-center justify-between">
+                <h2 className="text-xl font-display font-bold text-surface-900">Нова Поръчка - Маса {selectedTable.number}</h2>
+                <button onClick={() => setIsOrderModalOpen(false)} className="p-2 rounded-lg hover:bg-surface-100 transition-colors">
+                  <svg className="w-5 h-5 text-surface-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+            <div className="p-6 space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-surface-700 mb-2">Брой гости</label>
+                <div className="flex items-center gap-4">
+                  <button
+                    onClick={() => setGuestCount(Math.max(1, guestCount - 1))}
+                    className="w-12 h-12 rounded-xl bg-surface-100 text-surface-700 text-xl font-bold hover:bg-surface-200 transition-colors"
+                  >
+                    -
+                  </button>
+                  <span className="text-4xl font-display font-bold text-surface-900 w-16 text-center">{guestCount}</span>
+                  <button
+                    onClick={() => setGuestCount(Math.min(selectedTable.seats, guestCount + 1))}
+                    className="w-12 h-12 rounded-xl bg-surface-100 text-surface-700 text-xl font-bold hover:bg-surface-200 transition-colors"
+                  >
+                    +
+                  </button>
+                </div>
+                <p className="text-sm text-surface-500 mt-2">Максимум {selectedTable.seats} места</p>
+              </div>
+            </div>
+            <div className="p-6 border-t border-surface-100 flex gap-3">
+              <button
+                onClick={() => setIsOrderModalOpen(false)}
+                className="flex-1 py-3 bg-surface-100 text-surface-700 font-semibold rounded-xl hover:bg-surface-200 transition-colors"
+              >
+                Отказ
+              </button>
+              <button
+                onClick={handleNewOrder}
+                disabled={actionLoading}
+                className="flex-1 py-3 bg-primary-600 text-gray-900 font-semibold rounded-xl hover:bg-primary-500 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+              >
+                {actionLoading ? (
+                  <>
+                    <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                    Зареждане...
+                  </>
+                ) : (
+                  <>🍽️ Започни Поръчка</>
+                )}
+              </button>
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* Reservation Modal */}
+      {isReservationModalOpen && selectedTable && (
+        <>
+          <div className="fixed inset-0 bg-black/30 backdrop-blur-sm z-50" onClick={() => setIsReservationModalOpen(false)} />
+          <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-50 w-full max-w-md bg-white rounded-3xl shadow-2xl">
+            <div className="p-6 border-b border-surface-100">
+              <div className="flex items-center justify-between">
+                <h2 className="text-xl font-display font-bold text-surface-900">Резервация - Маса {selectedTable.number}</h2>
+                <button onClick={() => setIsReservationModalOpen(false)} className="p-2 rounded-lg hover:bg-surface-100 transition-colors">
+                  <svg className="w-5 h-5 text-surface-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+            <div className="p-6 space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-surface-700 mb-1">Име на гост</label>
+                <input
+                  type="text"
+                  value={newReservation.guest_name}
+                  onChange={(e) => setNewReservation({ ...newReservation, guest_name: e.target.value })}
+                  className="w-full px-4 py-3 border border-surface-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  placeholder="Име на клиента"
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-surface-700 mb-1">Дата</label>
+                  <input
+                    type="date"
+                    value={newReservation.date}
+                    onChange={(e) => setNewReservation({ ...newReservation, date: e.target.value })}
+                    className="w-full px-4 py-3 border border-surface-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-surface-700 mb-1">Час</label>
+                  <input
+                    type="time"
+                    value={newReservation.time}
+                    onChange={(e) => setNewReservation({ ...newReservation, time: e.target.value })}
+                    className="w-full px-4 py-3 border border-surface-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  />
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-surface-700 mb-1">Брой гости</label>
+                <div className="flex items-center gap-4">
+                  <button
+                    onClick={() => setNewReservation({ ...newReservation, guest_count: Math.max(1, newReservation.guest_count - 1) })}
+                    className="w-10 h-10 rounded-xl bg-surface-100 text-surface-700 text-lg font-bold hover:bg-surface-200 transition-colors"
+                  >
+                    -
+                  </button>
+                  <span className="text-2xl font-display font-bold text-surface-900 w-12 text-center">{newReservation.guest_count}</span>
+                  <button
+                    onClick={() => setNewReservation({ ...newReservation, guest_count: Math.min(selectedTable.seats, newReservation.guest_count + 1) })}
+                    className="w-10 h-10 rounded-xl bg-surface-100 text-surface-700 text-lg font-bold hover:bg-surface-200 transition-colors"
+                  >
+                    +
+                  </button>
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-surface-700 mb-1">Бележки</label>
+                <textarea
+                  value={newReservation.notes}
+                  onChange={(e) => setNewReservation({ ...newReservation, notes: e.target.value })}
+                  className="w-full px-4 py-3 border border-surface-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  rows={2}
+                  placeholder="Специални изисквания..."
+                />
+              </div>
+            </div>
+            <div className="p-6 border-t border-surface-100 flex gap-3">
+              <button
+                onClick={() => setIsReservationModalOpen(false)}
+                className="flex-1 py-3 bg-surface-100 text-surface-700 font-semibold rounded-xl hover:bg-surface-200 transition-colors"
+              >
+                Отказ
+              </button>
+              <button
+                onClick={handleReservation}
+                disabled={actionLoading || !newReservation.guest_name}
+                className="flex-1 py-3 bg-warning-600 text-gray-900 font-semibold rounded-xl hover:bg-warning-500 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+              >
+                {actionLoading ? (
+                  <>
+                    <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                    Зареждане...
+                  </>
+                ) : (
+                  <>📅 Резервирай</>
+                )}
               </button>
             </div>
           </div>

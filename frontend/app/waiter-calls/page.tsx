@@ -108,39 +108,42 @@ export default function WaiterCallsPage() {
     }
 
     try {
-      // Load active waiter calls
-      const callsResponse = await fetch(`${API_URL}/waiter-calls/active`, {
+      // Load active waiter calls - use /waiter/calls endpoint
+      const callsResponse = await fetch(`${API_URL}/waiter/calls?status=pending`, {
         headers: { Authorization: `Bearer ${token}` },
       });
 
       if (callsResponse.ok) {
         const callsData = await callsResponse.json();
         // Transform API data to match component interface
-        const transformedCalls: WaiterCall[] = callsData.map((call: {
+        // Backend returns { calls: [...], total: N }
+        const rawCalls = callsData.calls || callsData || [];
+        const transformedCalls: WaiterCall[] = rawCalls.map((call: {
           id: number;
           table_id: number;
-          reason: string;
-          message: string | null;
+          table_name: string;
+          call_type: string;
+          notes: string | null;
           status: string;
           created_at: string;
           acknowledged_at: string | null;
-          resolved_at: string | null;
+          completed_at: string | null;
         }) => ({
           id: call.id,
-          table_number: call.table_id.toString(),
+          table_number: call.table_name?.replace('Table ', '') || call.table_id.toString(),
           table_id: call.table_id,
-          reason: call.reason,
-          message: call.message,
-          status: call.status as WaiterCall['status'],
-          priority: call.reason === 'complaint' ? 'urgent' as const : call.reason === 'water' ? 'low' as const : 'normal' as const,
+          reason: call.call_type || 'other', // Map call_type to reason
+          message: call.notes,
+          status: call.status === 'completed' ? 'resolved' : call.status as WaiterCall['status'],
+          priority: call.call_type === 'complaint' ? 'urgent' as const : call.call_type === 'refill' ? 'low' as const : 'normal' as const,
           created_at: call.created_at,
           acknowledged_at: call.acknowledged_at,
-          resolved_at: call.resolved_at,
-          zone: 'Main Floor', // Default zone - would need table data to determine actual zone
+          resolved_at: call.completed_at,
+          zone: 'Main Floor', // Default zone
         }));
         setCalls(transformedCalls);
       } else {
-        console.error('Failed to load waiter calls');
+        console.error('Failed to load waiter calls:', callsResponse.status);
         setCalls([]);
       }
 
@@ -285,13 +288,29 @@ export default function WaiterCallsPage() {
     if (!token) return;
 
     try {
-      const response = await fetch(`${API_URL}/waiter-calls/${callId}/status`, {
-        method: 'PUT',
+      // Map status to correct endpoint
+      let endpoint = '';
+      let method = 'POST';
+
+      if (newStatus === 'acknowledged') {
+        endpoint = `${API_URL}/waiter/calls/${callId}/acknowledge`;
+      } else if (newStatus === 'resolved' || newStatus === 'completed') {
+        endpoint = `${API_URL}/waiter/calls/${callId}/complete`;
+      } else if (newStatus === 'spam') {
+        // For spam, we just dismiss/delete the call
+        endpoint = `${API_URL}/waiter/calls/${callId}`;
+        method = 'DELETE';
+      } else {
+        console.error('Unknown status:', newStatus);
+        return;
+      }
+
+      const response = await fetch(endpoint, {
+        method,
         headers: {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({ status: newStatus }),
       });
 
       if (response.ok) {
@@ -319,8 +338,7 @@ export default function WaiterCallsPage() {
           }
         }
       } else {
-        console.error('Failed to update call status');
-        // Optionally show error to user
+        console.error('Failed to update call status:', response.status);
       }
     } catch (err) {
       console.error('Error updating call status:', err);
@@ -348,12 +366,30 @@ export default function WaiterCallsPage() {
   ];
 
   const getReasonLabel = (reason: string) => {
-    const labels: Record<string, string> = { bill: 'Request Bill', help: 'Need Help', complaint: 'Complaint', water: 'Request Water', other: 'Other' };
+    const labels: Record<string, string> = {
+      bill: 'Request Bill',
+      check: 'Request Bill',
+      help: 'Need Help',
+      assistance: 'Need Assistance',
+      complaint: 'Complaint',
+      water: 'Request Water',
+      refill: 'Refill',
+      other: 'Other'
+    };
     return labels[reason] || reason;
   };
 
   const getReasonIcon = (reason: string) => {
-    const icons: Record<string, string> = { bill: '💳', help: '🙋', complaint: '😠', water: '💧', other: '📋' };
+    const icons: Record<string, string> = {
+      bill: '💳',
+      check: '💳',
+      help: '🙋',
+      assistance: '🙋',
+      complaint: '😠',
+      water: '💧',
+      refill: '🥤',
+      other: '📋'
+    };
     return icons[reason] || '📋';
   };
 

@@ -107,9 +107,49 @@ class ReservationService:
         duration: int
     ) -> List[int]:
         """Find available tables for reservation."""
-        # This would integrate with table management
-        # For now, return empty list
-        return []
+        from app.models.restaurant import Table
+
+        # Get all tables that can accommodate the party size
+        tables = self.db.query(Table).filter(
+            Table.capacity >= party_size
+        ).order_by(Table.capacity).all()  # Order by capacity to get smallest suitable table first
+
+        if not tables:
+            return []
+
+        # Calculate reservation time window
+        res_start = reservation_date
+        res_end = reservation_date + timedelta(minutes=duration)
+
+        # Get existing reservations that might conflict
+        existing_reservations = self.db.query(Reservation).filter(
+            Reservation.status.notin_([ReservationStatus.CANCELLED, ReservationStatus.NO_SHOW, ReservationStatus.COMPLETED]),
+            Reservation.reservation_date >= res_start - timedelta(minutes=duration),
+            Reservation.reservation_date <= res_end
+        ).all()
+
+        # Find tables that are already reserved during this time
+        reserved_table_ids = set()
+        for res in existing_reservations:
+            if res.table_ids:
+                for tid in res.table_ids:
+                    # Check if this reservation overlaps with requested time
+                    existing_start = res.reservation_date
+                    existing_end = res.reservation_date + timedelta(minutes=res.duration_minutes or 90)
+                    if existing_start < res_end and existing_end > res_start:
+                        reserved_table_ids.add(tid)
+
+        # Find available tables
+        available_tables = []
+        for table in tables:
+            if table.id not in reserved_table_ids:
+                available_tables.append(table.id)
+                # For now, just return the first suitable table
+                # Could be extended to handle larger parties needing multiple tables
+                if len(available_tables) >= 1:
+                    break
+
+        return available_tables
 
     def _update_guest_history(
         self,

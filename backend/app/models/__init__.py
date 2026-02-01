@@ -82,6 +82,39 @@ from app.models.restaurant import (
     KitchenOrder,
     GuestOrder,
 )
+from app.models.staff import (
+    StaffUser,
+    Shift,
+    TimeOffRequest,
+    TimeClockEntry,
+    TableAssignment,
+    PerformanceMetric,
+    PerformanceGoal,
+    TipPool,
+    TipDistribution,
+)
+from app.models.customer import Customer
+from app.models.price_lists import (
+    PriceList,
+    ProductPrice,
+    DailyMenu,
+    OperatorRecentItem,
+    ManagerAlert,
+    CustomerCredit,
+)
+from app.models.hardware import (
+    Keg,
+    Tank,
+    RFIDTag,
+    InventoryCountSession,
+    BarTab,
+    WaiterCall,
+    Integration,
+    ThrottleRule,
+    HotelGuest,
+    OfflineQueueItem,
+    OCRJob,
+)
 
 __all__ = [
     # Core models
@@ -166,4 +199,23 @@ __all__ = [
     "MenuItem",
     "KitchenOrder",
     "GuestOrder",
+    # Staff Management
+    "StaffUser",
+    "Shift",
+    "TimeOffRequest",
+    "TimeClockEntry",
+    "TableAssignment",
+    "PerformanceMetric",
+    "PerformanceGoal",
+    "TipPool",
+    "TipDistribution",
+    # Customers
+    "Customer",
+    # Price Lists & Daily Menus (TouchSale gap features)
+    "PriceList",
+    "ProductPrice",
+    "DailyMenu",
+    "OperatorRecentItem",
+    "ManagerAlert",
+    "CustomerCredit",
 ]

@@ -177,8 +177,17 @@ export default function MenuFeaturesPage() {
       });
       if (res.ok) {
         const data = await res.json();
-        setMenuItems(data);
-        if (data.length > 0) setSelectedItem(data[0]);
+        // Handle both array and {items: [...]} response formats
+        const items = Array.isArray(data) ? data : (data.items || []);
+        // Normalize items to have MultiLang name format
+        const normalizedItems = items.map((item: Record<string, unknown>) => ({
+          ...item,
+          name: typeof item.name === 'string'
+            ? { bg: item.name as string, en: item.name as string }
+            : (item.name || { bg: '', en: '' })
+        }));
+        setMenuItems(normalizedItems);
+        if (normalizedItems.length > 0) setSelectedItem(normalizedItems[0]);
       }
     } catch (error) {
       console.error("Error loading menu items:", error);

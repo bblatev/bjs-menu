@@ -673,21 +673,28 @@ def list_training_images(
     db: DbSession = None,
 ):
     """List training images, optionally filtered by product. No auth required."""
-    query = db.query(TrainingImage).join(StockItem)
+    query = db.query(TrainingImage)
 
     if product_id:
         query = query.filter(TrainingImage.stock_item_id == product_id)
 
     images = query.offset(skip).limit(limit).all()
 
+    # Get stock item names for display
+    stock_item_ids = [img.stock_item_id for img in images]
+    stock_items = {}
+    if stock_item_ids:
+        items = db.query(StockItem).filter(StockItem.id.in_(stock_item_ids)).all()
+        stock_items = {item.id: item.name for item in items}
+
     return [
         {
             "id": img.id,
-            "product_id": img.product_id,
-            "product_name": img.product.name,
+            "product_id": img.stock_item_id,
+            "product_name": stock_items.get(img.stock_item_id, f"Item {img.stock_item_id}"),
             "storage_path": img.storage_path,
-            "created_at": img.created_at.isoformat(),
-            "is_verified": img.is_verified,
+            "created_at": img.created_at.isoformat() if img.created_at else None,
+            "is_verified": getattr(img, 'is_verified', False),
         }
         for img in images
     ]

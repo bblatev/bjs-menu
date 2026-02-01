@@ -1,4 +1,4 @@
-"""POS integration routes."""
+"""POS integration routes - using database for bar tabs."""
 
 from __future__ import annotations
 
@@ -10,6 +10,8 @@ from typing import Optional, List
 
 from fastapi import APIRouter, File, HTTPException, Query, UploadFile, status
 
+from pydantic import BaseModel
+
 from app.core.rbac import CurrentUser, RequireManager
 from app.db.session import DbSession
 from app.models.location import Location
@@ -17,9 +19,22 @@ from app.models.pos import PosRawEvent, PosSalesLine
 from app.models.product import Product
 from app.models.recipe import Recipe, RecipeLine
 from app.models.stock import MovementReason, StockMovement, StockOnHand
+from app.models.hardware import BarTab as BarTabModel
 from app.schemas.pos import PosConsumeResult, PosImportResult, PosSalesLineResponse
 
 router = APIRouter()
+
+
+class BarTabCreate(BaseModel):
+    customer_name: str
+    seat_number: Optional[int] = None
+    card_on_file: bool = False
+
+
+class BarTabItemAdd(BaseModel):
+    menu_item_id: int
+    quantity: int = 1
+    notes: Optional[str] = None
 
 
 @router.get("/status")
@@ -40,6 +55,60 @@ def get_pos_status(db: DbSession):
             "csv_import": True,
             "api_integration": True,
         },
+    }
+
+
+@router.get("/menu")
+def get_pos_menu(db: DbSession):
+    """Get menu items for POS terminal."""
+    # Try MenuItem first, fallback to Product
+    from app.models.restaurant import MenuItem
+    items = db.query(MenuItem).filter(MenuItem.available == True).all()
+    if items:
+        return {
+            "items": [
+                {
+                    "id": i.id,
+                    "name": i.name,
+                    "price": float(i.price) if i.price else 0,
+                    "category": i.category or "Other",
+                    "available": i.available,
+                }
+                for i in items
+            ]
+        }
+    # Fallback to products
+    products = db.query(Product).all()
+    return {
+        "items": [
+            {
+                "id": p.id,
+                "name": p.name,
+                "price": float(p.unit_cost) if p.unit_cost else 0,
+                "category": p.category or "Other",
+                "available": True,
+            }
+            for p in products
+        ]
+    }
+
+
+@router.get("/tables")
+def get_pos_tables(db: DbSession):
+    """Get table status for POS terminal."""
+    from app.models.restaurant import Table
+    tables = db.query(Table).all()
+    return {
+        "tables": [
+            {
+                "id": t.id,
+                "number": t.number,
+                "capacity": t.capacity,
+                "status": t.status,
+                "area": t.area,
+            }
+            for t in tables
+        ]
     }
 
 
@@ -274,3 +343,161 @@ def consume_sales(
         unmatched_items=list(set(unmatched)),  # Deduplicate
         errors=errors[:20],
     )
+
+
+# ==================== BAR TABS (DATABASE) ====================
+
+@router.get("/bar-tabs")
+def list_bar_tabs(db: DbSession):
+    """List all open bar tabs."""
+    tabs = db.query(BarTabModel).filter(BarTabModel.status == "open").all()
+
+    tab_list = [{
+        "id": tab.id,
+        "customer_name": tab.customer_name,
+        "seat_number": tab.seat_number,
+        "card_on_file": tab.card_on_file,
+        "status": tab.status,
+        "items": tab.items or [],
+        "subtotal": tab.subtotal,
+        "tax": tab.tax,
+        "total": tab.total,
+        "created_at": tab.created_at.isoformat() if tab.created_at else None,
+    } for tab in tabs]
+
+    return {
+        "tabs": tab_list,
+        "total": len(tab_list)
+    }
+
+
+@router.post("/bar-tabs")
+def create_bar_tab(db: DbSession, tab: BarTabCreate):
+    """Create a new bar tab."""
+    new_tab = BarTabModel(
+        customer_name=tab.customer_name,
+        seat_number=tab.seat_number,
+        card_on_file=tab.card_on_file,
+        status="open",
+        items=[],
+        subtotal=0.0,
+        tax=0.0,
+        tip=0.0,
+        total=0.0,
+    )
+    db.add(new_tab)
+    db.commit()
+    db.refresh(new_tab)
+
+    return {"status": "created", "tab": {
+        "id": new_tab.id,
+        "customer_name": new_tab.customer_name,
+        "seat_number": new_tab.seat_number,
+        "card_on_file": new_tab.card_on_file,
+        "status": new_tab.status,
+        "items": new_tab.items or [],
+        "subtotal": new_tab.subtotal,
+        "tax": new_tab.tax,
+        "total": new_tab.total,
+        "created_at": new_tab.created_at.isoformat() if new_tab.created_at else None,
+    }}
+
+
+@router.get("/bar-tabs/{tab_id}")
+def get_bar_tab(db: DbSession, tab_id: int):
+    """Get a specific bar tab."""
+    tab = db.query(BarTabModel).filter(BarTabModel.id == tab_id).first()
+    if not tab:
+        raise HTTPException(status_code=404, detail="Bar tab not found")
+
+    return {
+        "id": tab.id,
+        "customer_name": tab.customer_name,
+        "seat_number": tab.seat_number,
+        "card_on_file": tab.card_on_file,
+        "status": tab.status,
+        "items": tab.items or [],
+        "subtotal": tab.subtotal,
+        "tax": tab.tax,
+        "total": tab.total,
+        "created_at": tab.created_at.isoformat() if tab.created_at else None,
+    }
+
+
+@router.post("/bar-tabs/{tab_id}/items")
+def add_item_to_tab(tab_id: int, item: BarTabItemAdd, db: DbSession):
+    """Add item to bar tab."""
+    from app.models.restaurant import MenuItem
+
+    tab = db.query(BarTabModel).filter(BarTabModel.id == tab_id).first()
+    if not tab:
+        raise HTTPException(status_code=404, detail="Bar tab not found")
+
+    menu_item = db.query(MenuItem).filter(MenuItem.id == item.menu_item_id).first()
+    if not menu_item:
+        raise HTTPException(status_code=404, detail="Menu item not found")
+
+    item_total = float(menu_item.price) * item.quantity
+
+    # Get current items or initialize empty list
+    items = list(tab.items) if tab.items else []
+    items.append({
+        "menu_item_id": menu_item.id,
+        "name": menu_item.name,
+        "quantity": item.quantity,
+        "price": float(menu_item.price),
+        "total": item_total,
+        "notes": item.notes,
+    })
+
+    # Update tab
+    tab.items = items
+    tab.subtotal = sum(i["total"] for i in items)
+    tab.tax = tab.subtotal * 0.1  # 10% tax
+    tab.total = tab.subtotal + tab.tax
+
+    db.commit()
+    db.refresh(tab)
+
+    return {"status": "ok", "tab": {
+        "id": tab.id,
+        "customer_name": tab.customer_name,
+        "items": tab.items,
+        "subtotal": tab.subtotal,
+        "tax": tab.tax,
+        "total": tab.total,
+    }}
+
+
+@router.post("/bar-tabs/{tab_id}/close")
+def close_bar_tab(db: DbSession, tab_id: int, payment_method: str = Query("card")):
+    """Close a bar tab."""
+    tab = db.query(BarTabModel).filter(BarTabModel.id == tab_id).first()
+    if not tab:
+        raise HTTPException(status_code=404, detail="Bar tab not found")
+
+    tab.status = "closed"
+    tab.closed_at = datetime.utcnow()
+    db.commit()
+
+    return {"status": "closed", "tab": {
+        "id": tab.id,
+        "customer_name": tab.customer_name,
+        "status": tab.status,
+        "total": tab.total,
+        "payment_method": payment_method,
+        "closed_at": tab.closed_at.isoformat() if tab.closed_at else None,
+    }}
+
+
+@router.delete("/bar-tabs/{tab_id}")
+def void_bar_tab(db: DbSession, tab_id: int, reason: str = Query("voided")):
+    """Void/delete a bar tab."""
+    tab = db.query(BarTabModel).filter(BarTabModel.id == tab_id).first()
+    if not tab:
+        raise HTTPException(status_code=404, detail="Bar tab not found")
+
+    tab.status = "void"
+    db.commit()
+
+    return {"status": "voided", "tab_id": tab_id, "reason": reason}

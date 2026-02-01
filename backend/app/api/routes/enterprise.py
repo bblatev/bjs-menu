@@ -1,4 +1,4 @@
-"""Enterprise feature routes - integrations, throttling, hotel PMS, offline, mobile app, invoice OCR."""
+"""Enterprise feature routes - integrations, throttling, hotel PMS, offline, mobile app, invoice OCR - using database."""
 
 from datetime import datetime, timedelta
 from typing import List, Optional
@@ -7,6 +7,13 @@ from pydantic import BaseModel
 from enum import Enum
 
 from app.db.session import DbSession
+from app.models.hardware import (
+    Integration as IntegrationModel,
+    ThrottleRule as ThrottleRuleModel,
+    HotelGuest as HotelGuestModel,
+    OfflineQueueItem as OfflineQueueModel,
+    OCRJob as OCRJobModel,
+)
 
 router = APIRouter()
 
@@ -137,9 +144,9 @@ class OCRJob(BaseModel):
     confidence: Optional[float] = None
 
 
-# ==================== IN-MEMORY STORAGE (will be replaced with DB) ====================
+# ==================== INTEGRATION MARKETPLACE (static data) ====================
 
-_integrations_marketplace = [
+INTEGRATIONS_MARKETPLACE = [
     {"id": "quickbooks", "name": "QuickBooks", "category": "accounting", "description": "Sync sales and expenses with QuickBooks", "icon": "quickbooks"},
     {"id": "xero", "name": "Xero", "category": "accounting", "description": "Accounting integration with Xero", "icon": "xero"},
     {"id": "square", "name": "Square POS", "category": "pos", "description": "Import sales from Square", "icon": "square"},
@@ -152,19 +159,7 @@ _integrations_marketplace = [
     {"id": "stripe", "name": "Stripe", "category": "payments", "description": "Payment processing", "icon": "stripe"},
 ]
 
-_connected_integrations = {}
-_throttle_rules = [
-    {"id": 1, "name": "Default", "max_orders_per_hour": 60, "max_items_per_order": 25, "active": True, "priority": 0, "applies_to": "all"},
-]
-_throttle_status = {
-    "is_throttling": False,
-    "current_orders_per_hour": 0,
-    "snoozed_until": None,
-}
-_hotel_connection = None
-_hotel_guests = []
-_offline_queue = []
-_ocr_jobs = []
+# Mobile config stored in database would be overkill - keep simple dict
 _mobile_config = {
     "app_name": "BJ's Bar & Grill",
     "bundle_id": "com.bjsbar.app",
@@ -172,6 +167,61 @@ _mobile_config = {
     "features_enabled": ["ordering", "loyalty", "reservations"],
     "theme_colors": {"primary": "#e68a00", "secondary": "#0066e6"},
 }
+
+# Throttle status is runtime state, not persisted
+_throttle_status = {
+    "is_throttling": False,
+    "current_orders_per_hour": 0,
+    "snoozed_until": None,
+}
+
+
+# ==================== MULTI-LOCATION ====================
+
+@router.get("/locations")
+def get_enterprise_locations(db: DbSession):
+    """Get all locations for enterprise/multi-location setup."""
+    from app.models.location import Location
+    locations = db.query(Location).all()
+    return {
+        "locations": [
+            {
+                "id": loc.id,
+                "name": loc.name,
+                "description": loc.description,
+                "is_active": loc.active,
+                "is_default": loc.is_default,
+            }
+            for loc in locations
+        ],
+        "total": len(locations),
+    }
+
+
+@router.get("/consolidated")
+def get_consolidated_report(db: DbSession):
+    """Get consolidated enterprise report across all locations."""
+    from app.models.location import Location
+    from app.models.pos import PosSalesLine
+
+    locations = db.query(Location).all()
+    total_sales = db.query(PosSalesLine).count()
+
+    return {
+        "period": "today",
+        "locations_count": len(locations),
+        "total_revenue": 0.0,
+        "total_orders": total_sales,
+        "by_location": [
+            {
+                "location_id": loc.id,
+                "location_name": loc.name,
+                "revenue": 0.0,
+                "orders": 0,
+            }
+            for loc in locations
+        ],
+    }
 
 
 # ==================== INTEGRATIONS ====================
@@ -182,7 +232,7 @@ def get_integrations_marketplace(
     category: Optional[str] = None,
 ):
     """Get available integrations from marketplace."""
-    integrations = _integrations_marketplace
+    integrations = INTEGRATIONS_MARKETPLACE
     if category:
         integrations = [i for i in integrations if i["category"] == category]
     return {"integrations": integrations, "total": len(integrations)}
@@ -191,13 +241,17 @@ def get_integrations_marketplace(
 @router.get("/integrations/")
 def list_integrations(db: DbSession):
     """List all available integrations with connection status."""
+    # Get connected integrations from database
+    connected = db.query(IntegrationModel).filter(IntegrationModel.status == "connected").all()
+    connected_ids = {c.integration_id for c in connected}
+
     result = []
-    for integration in _integrations_marketplace:
-        connected = _connected_integrations.get(integration["id"])
+    for integration in INTEGRATIONS_MARKETPLACE:
+        conn = next((c for c in connected if c.integration_id == integration["id"]), None)
         result.append({
             **integration,
-            "status": "connected" if connected else "disconnected",
-            "connected_at": connected.get("connected_at") if connected else None,
+            "status": "connected" if integration["id"] in connected_ids else "disconnected",
+            "connected_at": conn.connected_at.isoformat() if conn and conn.connected_at else None,
         })
     return {"integrations": result}
 
@@ -205,11 +259,18 @@ def list_integrations(db: DbSession):
 @router.get("/integrations/connected")
 def get_connected_integrations(db: DbSession):
     """Get only connected integrations."""
+    connected = db.query(IntegrationModel).filter(IntegrationModel.status == "connected").all()
+
     result = []
-    for int_id, conn_data in _connected_integrations.items():
-        integration = next((i for i in _integrations_marketplace if i["id"] == int_id), None)
-        if integration:
-            result.append({**integration, "status": "connected", **conn_data})
+    for conn in connected:
+        marketplace_info = next((i for i in INTEGRATIONS_MARKETPLACE if i["id"] == conn.integration_id), None)
+        if marketplace_info:
+            result.append({
+                **marketplace_info,
+                "status": "connected",
+                "connected_at": conn.connected_at.isoformat() if conn.connected_at else None,
+                "config": conn.config,
+            })
     return {"integrations": result, "total": len(result)}
 
 
@@ -219,14 +280,30 @@ def connect_integration(
     connection: IntegrationConnection,
 ):
     """Connect to an integration."""
-    integration = next((i for i in _integrations_marketplace if i["id"] == connection.integration_id), None)
-    if not integration:
+    marketplace_info = next((i for i in INTEGRATIONS_MARKETPLACE if i["id"] == connection.integration_id), None)
+    if not marketplace_info:
         raise HTTPException(status_code=404, detail="Integration not found")
 
-    _connected_integrations[connection.integration_id] = {
-        "connected_at": datetime.utcnow(),
-        "config": connection.credentials or {},
-    }
+    # Check if already exists
+    existing = db.query(IntegrationModel).filter(IntegrationModel.integration_id == connection.integration_id).first()
+
+    if existing:
+        existing.status = "connected"
+        existing.connected_at = datetime.utcnow()
+        existing.config = connection.credentials
+    else:
+        new_integration = IntegrationModel(
+            integration_id=connection.integration_id,
+            name=marketplace_info["name"],
+            category=marketplace_info["category"],
+            description=marketplace_info["description"],
+            status="connected",
+            config=connection.credentials,
+            connected_at=datetime.utcnow(),
+        )
+        db.add(new_integration)
+
+    db.commit()
 
     return {"status": "connected", "integration_id": connection.integration_id}
 
@@ -237,8 +314,11 @@ def disconnect_integration(
     integration_id: str,
 ):
     """Disconnect from an integration."""
-    if integration_id in _connected_integrations:
-        del _connected_integrations[integration_id]
+    integration = db.query(IntegrationModel).filter(IntegrationModel.integration_id == integration_id).first()
+    if integration:
+        integration.status = "disconnected"
+        integration.connected_at = None
+        db.commit()
     return {"status": "disconnected", "integration_id": integration_id}
 
 
@@ -247,10 +327,14 @@ def disconnect_integration(
 @router.get("/throttling/status")
 def get_throttle_status(db: DbSession, location_id: Optional[int] = None):
     """Get current throttling status."""
+    # Get the first active rule for max_orders_per_hour
+    rule = db.query(ThrottleRuleModel).filter(ThrottleRuleModel.active == True).order_by(ThrottleRuleModel.priority.desc()).first()
+    max_orders = rule.max_orders_per_hour if rule else 60
+
     return ThrottleStatus(
         is_throttling=_throttle_status["is_throttling"],
         current_orders_per_hour=_throttle_status["current_orders_per_hour"],
-        max_orders_per_hour=_throttle_rules[0]["max_orders_per_hour"] if _throttle_rules else 60,
+        max_orders_per_hour=max_orders,
         queue_length=0,
         estimated_wait_minutes=0,
         snoozed_until=_throttle_status.get("snoozed_until"),
@@ -260,7 +344,19 @@ def get_throttle_status(db: DbSession, location_id: Optional[int] = None):
 @router.get("/throttling/rules")
 def get_throttle_rules(db: DbSession, location_id: Optional[int] = None):
     """Get throttling rules."""
-    return {"rules": _throttle_rules}
+    rules = db.query(ThrottleRuleModel).all()
+
+    rule_list = [{
+        "id": r.id,
+        "name": r.name,
+        "max_orders_per_hour": r.max_orders_per_hour,
+        "max_items_per_order": r.max_items_per_order,
+        "active": r.active,
+        "priority": r.priority,
+        "applies_to": r.applies_to,
+    } for r in rules]
+
+    return {"rules": rule_list}
 
 
 @router.post("/throttling/rules/")
@@ -269,13 +365,27 @@ def create_throttle_rule(
     rule: ThrottleRuleCreate,
 ):
     """Create a new throttling rule."""
-    new_id = max(r["id"] for r in _throttle_rules) + 1 if _throttle_rules else 1
-    new_rule = {
-        "id": new_id,
-        **rule.model_dump(),
+    new_rule = ThrottleRuleModel(
+        name=rule.name,
+        max_orders_per_hour=rule.max_orders_per_hour,
+        max_items_per_order=rule.max_items_per_order,
+        active=rule.active,
+        priority=rule.priority,
+        applies_to=rule.applies_to,
+    )
+    db.add(new_rule)
+    db.commit()
+    db.refresh(new_rule)
+
+    return {
+        "id": new_rule.id,
+        "name": new_rule.name,
+        "max_orders_per_hour": new_rule.max_orders_per_hour,
+        "max_items_per_order": new_rule.max_items_per_order,
+        "active": new_rule.active,
+        "priority": new_rule.priority,
+        "applies_to": new_rule.applies_to,
     }
-    _throttle_rules.append(new_rule)
-    return new_rule
 
 
 @router.put("/throttling/rules/{rule_id}")
@@ -285,18 +395,36 @@ def update_throttle_rule(
     rule: ThrottleRuleCreate,
 ):
     """Update a throttling rule."""
-    for i, r in enumerate(_throttle_rules):
-        if r["id"] == rule_id:
-            _throttle_rules[i] = {"id": rule_id, **rule.model_dump()}
-            return _throttle_rules[i]
-    raise HTTPException(status_code=404, detail="Rule not found")
+    existing = db.query(ThrottleRuleModel).filter(ThrottleRuleModel.id == rule_id).first()
+    if not existing:
+        raise HTTPException(status_code=404, detail="Rule not found")
+
+    existing.name = rule.name
+    existing.max_orders_per_hour = rule.max_orders_per_hour
+    existing.max_items_per_order = rule.max_items_per_order
+    existing.active = rule.active
+    existing.priority = rule.priority
+    existing.applies_to = rule.applies_to
+    db.commit()
+
+    return {
+        "id": existing.id,
+        "name": existing.name,
+        "max_orders_per_hour": existing.max_orders_per_hour,
+        "max_items_per_order": existing.max_items_per_order,
+        "active": existing.active,
+        "priority": existing.priority,
+        "applies_to": existing.applies_to,
+    }
 
 
 @router.delete("/throttling/rules/{rule_id}")
 def delete_throttle_rule(db: DbSession, rule_id: int):
     """Delete a throttling rule."""
-    global _throttle_rules
-    _throttle_rules = [r for r in _throttle_rules if r["id"] != rule_id]
+    rule = db.query(ThrottleRuleModel).filter(ThrottleRuleModel.id == rule_id).first()
+    if rule:
+        db.delete(rule)
+        db.commit()
     return {"status": "deleted"}
 
 
@@ -323,9 +451,23 @@ def resume_throttling(db: DbSession):
 @router.get("/hotel-pms/connection")
 def get_hotel_connection(db: DbSession):
     """Get hotel PMS connection status."""
-    if not _hotel_connection:
+    # Check if we have a hotel-pms integration connected
+    integration = db.query(IntegrationModel).filter(
+        IntegrationModel.category == "hotel-pms",
+        IntegrationModel.status == "connected"
+    ).first()
+
+    if not integration:
         return {"connected": False, "connection": None}
-    return {"connected": True, "connection": _hotel_connection}
+
+    return {"connected": True, "connection": {
+        "id": integration.id,
+        "hotel_name": integration.name,
+        "pms_type": integration.config.get("pms_type") if integration.config else "unknown",
+        "status": "connected",
+        "api_endpoint": integration.config.get("api_endpoint") if integration.config else None,
+        "connected_at": integration.connected_at.isoformat() if integration.connected_at else None,
+    }}
 
 
 @router.post("/hotel-pms/connect")
@@ -337,24 +479,51 @@ def connect_hotel_pms(
     api_key: Optional[str] = None,
 ):
     """Connect to a hotel PMS system."""
-    global _hotel_connection
-    _hotel_connection = {
-        "id": 1,
+    # Check if already connected
+    existing = db.query(IntegrationModel).filter(IntegrationModel.category == "hotel-pms").first()
+
+    if existing:
+        existing.name = hotel_name
+        existing.status = "connected"
+        existing.connected_at = datetime.utcnow()
+        existing.config = {
+            "pms_type": pms_type,
+            "api_endpoint": api_endpoint,
+            "api_key": api_key,
+        }
+    else:
+        new_integration = IntegrationModel(
+            integration_id=f"hotel-pms-{pms_type}",
+            name=hotel_name,
+            category="hotel-pms",
+            description=f"{pms_type.upper()} Hotel PMS Integration",
+            status="connected",
+            connected_at=datetime.utcnow(),
+            config={
+                "pms_type": pms_type,
+                "api_endpoint": api_endpoint,
+                "api_key": api_key,
+            },
+        )
+        db.add(new_integration)
+
+    db.commit()
+
+    return {"status": "connected", "connection": {
         "hotel_name": hotel_name,
         "pms_type": pms_type,
-        "status": "connected",
         "api_endpoint": api_endpoint,
-        "connected_at": datetime.utcnow(),
-        "last_sync": None,
-    }
-    return {"status": "connected", "connection": _hotel_connection}
+    }}
 
 
 @router.post("/hotel-pms/disconnect")
 def disconnect_hotel_pms(db: DbSession):
     """Disconnect from hotel PMS."""
-    global _hotel_connection
-    _hotel_connection = None
+    integration = db.query(IntegrationModel).filter(IntegrationModel.category == "hotel-pms").first()
+    if integration:
+        integration.status = "disconnected"
+        integration.connected_at = None
+        db.commit()
     return {"status": "disconnected"}
 
 
@@ -365,27 +534,67 @@ def get_hotel_guests(
     vip_only: bool = False,
 ):
     """Get hotel guests."""
-    guests = _hotel_guests
+    query = db.query(HotelGuestModel)
     if room_number:
-        guests = [g for g in guests if g["room_number"] == room_number]
+        query = query.filter(HotelGuestModel.room_number == room_number)
     if vip_only:
-        guests = [g for g in guests if g.get("vip_status")]
-    return {"guests": guests, "total": len(guests)}
+        query = query.filter(HotelGuestModel.vip_status.isnot(None))
+
+    guests = query.all()
+
+    guest_list = [{
+        "id": g.id,
+        "room_number": g.room_number,
+        "guest_name": g.guest_name,
+        "check_in": g.check_in.isoformat() if g.check_in else None,
+        "check_out": g.check_out.isoformat() if g.check_out else None,
+        "vip_status": g.vip_status,
+        "preferences": g.preferences,
+    } for g in guests]
+
+    return {"guests": guest_list, "total": len(guest_list)}
 
 
 @router.post("/hotel-pms/sync-guests")
 def sync_hotel_guests(db: DbSession):
     """Sync guests from hotel PMS."""
-    global _hotel_guests
-    # Simulate syncing guests
-    _hotel_guests = [
-        {"id": 1, "room_number": "101", "guest_name": "John Smith", "check_in": datetime.utcnow(), "check_out": datetime.utcnow() + timedelta(days=3), "vip_status": "gold"},
-        {"id": 2, "room_number": "205", "guest_name": "Jane Doe", "check_in": datetime.utcnow(), "check_out": datetime.utcnow() + timedelta(days=2), "vip_status": None},
-        {"id": 3, "room_number": "302", "guest_name": "Bob Wilson", "check_in": datetime.utcnow(), "check_out": datetime.utcnow() + timedelta(days=5), "vip_status": "platinum"},
+    # Clear existing guests and add sample data
+    db.query(HotelGuestModel).delete()
+
+    sample_guests = [
+        HotelGuestModel(
+            room_number="101",
+            guest_name="John Smith",
+            check_in=datetime.utcnow(),
+            check_out=datetime.utcnow() + timedelta(days=3),
+            vip_status="gold",
+        ),
+        HotelGuestModel(
+            room_number="205",
+            guest_name="Jane Doe",
+            check_in=datetime.utcnow(),
+            check_out=datetime.utcnow() + timedelta(days=2),
+        ),
+        HotelGuestModel(
+            room_number="302",
+            guest_name="Bob Wilson",
+            check_in=datetime.utcnow(),
+            check_out=datetime.utcnow() + timedelta(days=5),
+            vip_status="platinum",
+        ),
     ]
-    if _hotel_connection:
-        _hotel_connection["last_sync"] = datetime.utcnow()
-    return {"status": "synced", "guests_count": len(_hotel_guests)}
+
+    for guest in sample_guests:
+        db.add(guest)
+
+    # Update last sync on hotel PMS integration
+    integration = db.query(IntegrationModel).filter(IntegrationModel.category == "hotel-pms").first()
+    if integration and integration.config:
+        integration.config["last_sync"] = datetime.utcnow().isoformat()
+
+    db.commit()
+
+    return {"status": "synced", "guests_count": len(sample_guests)}
 
 
 @router.post("/hotel-pms/charges")
@@ -394,7 +603,7 @@ def post_hotel_charge(
     charge: HotelCharge,
 ):
     """Post a charge to a hotel guest's room."""
-    guest = next((g for g in _hotel_guests if g["id"] == charge.guest_id), None)
+    guest = db.query(HotelGuestModel).filter(HotelGuestModel.id == charge.guest_id).first()
     if not guest:
         raise HTTPException(status_code=404, detail="Guest not found")
 
@@ -402,7 +611,7 @@ def post_hotel_charge(
     return {
         "status": "posted",
         "charge_id": f"CHG-{datetime.utcnow().strftime('%Y%m%d%H%M%S')}",
-        "guest": guest["guest_name"],
+        "guest": guest.guest_name,
         "room": charge.room_number,
         "amount": charge.amount,
     }
@@ -413,11 +622,13 @@ def post_hotel_charge(
 @router.get("/offline/connectivity")
 def get_offline_status(db: DbSession):
     """Get offline/online connectivity status."""
+    pending_count = db.query(OfflineQueueModel).filter(OfflineQueueModel.status == "pending").count()
+
     return OfflineStatus(
         is_online=True,
         last_sync=datetime.utcnow(),
-        pending_sync_count=len(_offline_queue),
-        sync_queue_size=len(_offline_queue),
+        pending_sync_count=pending_count,
+        sync_queue_size=pending_count,
         offline_since=None,
     )
 
@@ -425,15 +636,32 @@ def get_offline_status(db: DbSession):
 @router.get("/offline/sync-queue")
 def get_sync_queue(db: DbSession):
     """Get pending sync queue items."""
-    return {"queue": _offline_queue, "total": len(_offline_queue)}
+    items = db.query(OfflineQueueModel).filter(OfflineQueueModel.status == "pending").all()
+
+    item_list = [{
+        "id": item.id,
+        "type": item.item_type,
+        "data": item.data,
+        "created_at": item.created_at.isoformat() if item.created_at else None,
+        "retry_count": item.retry_count,
+        "status": item.status,
+    } for item in items]
+
+    return {"queue": item_list, "total": len(item_list)}
 
 
 @router.post("/offline/sync")
 def trigger_sync(db: DbSession):
     """Trigger a sync of offline data."""
-    global _offline_queue
-    synced_count = len(_offline_queue)
-    _offline_queue = []  # Clear queue after sync
+    pending_items = db.query(OfflineQueueModel).filter(OfflineQueueModel.status == "pending").all()
+    synced_count = len(pending_items)
+
+    # Mark all as synced
+    for item in pending_items:
+        item.status = "synced"
+
+    db.commit()
+
     return {
         "status": "synced",
         "items_synced": synced_count,
@@ -448,16 +676,22 @@ def add_to_sync_queue(
     data: dict,
 ):
     """Add an item to the offline sync queue."""
-    new_item = {
-        "id": len(_offline_queue) + 1,
-        "type": item_type,
-        "data": data,
-        "created_at": datetime.utcnow(),
-        "retry_count": 0,
-        "status": "pending",
-    }
-    _offline_queue.append(new_item)
-    return {"status": "queued", "item": new_item}
+    new_item = OfflineQueueModel(
+        item_type=item_type,
+        data=data,
+        status="pending",
+        retry_count=0,
+    )
+    db.add(new_item)
+    db.commit()
+    db.refresh(new_item)
+
+    return {"status": "queued", "item": {
+        "id": new_item.id,
+        "type": new_item.item_type,
+        "status": new_item.status,
+        "created_at": new_item.created_at.isoformat() if new_item.created_at else None,
+    }}
 
 
 # ==================== MOBILE APP ====================
@@ -511,22 +745,19 @@ async def upload_invoice_for_ocr(
 ):
     """Upload an invoice for OCR processing."""
     # Create OCR job
-    job = {
-        "id": len(_ocr_jobs) + 1,
-        "filename": file.filename,
-        "status": "processing",
-        "created_at": datetime.utcnow(),
-        "completed_at": None,
-        "result": None,
-        "confidence": None,
-    }
-    _ocr_jobs.append(job)
+    job = OCRJobModel(
+        filename=file.filename,
+        status="processing",
+    )
+    db.add(job)
+    db.commit()
+    db.refresh(job)
 
     # Simulate OCR processing (in production, would use actual OCR)
-    job["status"] = "completed"
-    job["completed_at"] = datetime.utcnow()
-    job["confidence"] = 0.92
-    job["result"] = {
+    job.status = "completed"
+    job.completed_at = datetime.utcnow()
+    job.confidence = 0.92
+    job.result = {
         "vendor": "Sample Supplier",
         "invoice_number": f"INV-{datetime.utcnow().strftime('%Y%m%d')}",
         "date": datetime.utcnow().strftime("%Y-%m-%d"),
@@ -537,8 +768,17 @@ async def upload_invoice_for_ocr(
             {"description": "Spirits - Vodka", "quantity": 4, "unit_price": 100.00, "total": 400.00},
         ],
     }
+    db.commit()
 
-    return {"status": "processing", "job": job}
+    return {"status": "processing", "job": {
+        "id": job.id,
+        "filename": job.filename,
+        "status": job.status,
+        "created_at": job.created_at.isoformat() if job.created_at else None,
+        "completed_at": job.completed_at.isoformat() if job.completed_at else None,
+        "confidence": job.confidence,
+        "result": job.result,
+    }}
 
 
 @router.get("/invoice-ocr/jobs")
@@ -547,16 +787,38 @@ def get_ocr_jobs(
     status: Optional[str] = None,
 ):
     """Get OCR processing jobs."""
-    jobs = _ocr_jobs
+    query = db.query(OCRJobModel)
     if status:
-        jobs = [j for j in jobs if j["status"] == status]
-    return {"jobs": jobs, "total": len(jobs)}
+        query = query.filter(OCRJobModel.status == status)
+
+    jobs = query.all()
+
+    job_list = [{
+        "id": job.id,
+        "filename": job.filename,
+        "status": job.status,
+        "created_at": job.created_at.isoformat() if job.created_at else None,
+        "completed_at": job.completed_at.isoformat() if job.completed_at else None,
+        "confidence": job.confidence,
+        "result": job.result,
+    } for job in jobs]
+
+    return {"jobs": job_list, "total": len(job_list)}
 
 
 @router.get("/invoice-ocr/jobs/{job_id}")
 def get_ocr_job(db: DbSession, job_id: int):
     """Get a specific OCR job."""
-    job = next((j for j in _ocr_jobs if j["id"] == job_id), None)
+    job = db.query(OCRJobModel).filter(OCRJobModel.id == job_id).first()
     if not job:
         raise HTTPException(status_code=404, detail="Job not found")
-    return job
+
+    return {
+        "id": job.id,
+        "filename": job.filename,
+        "status": job.status,
+        "created_at": job.created_at.isoformat() if job.created_at else None,
+        "completed_at": job.completed_at.isoformat() if job.completed_at else None,
+        "confidence": job.confidence,
+        "result": job.result,
+    }

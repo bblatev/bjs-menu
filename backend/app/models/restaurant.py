@@ -184,6 +184,12 @@ class GuestOrder(Base):
 
     location_id = Column(Integer, ForeignKey("locations.id"), nullable=True)
 
+    # Payment fields
+    payment_status = Column(String(20), default="unpaid")  # unpaid, pending, paid, refunded
+    payment_method = Column(String(20), nullable=True)  # card, cash, online
+    tip_amount = Column(Numeric(10, 2), default=Decimal("0"))
+    paid_at = Column(DateTime, nullable=True)
+
     created_at = Column(DateTime, default=datetime.utcnow)
     confirmed_at = Column(DateTime, nullable=True)
     ready_at = Column(DateTime, nullable=True)
