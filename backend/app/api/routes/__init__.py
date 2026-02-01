@@ -8,7 +8,7 @@ from app.api.routes import (
     invoices, marketing, reservations, delivery, analytics,
     advanced_features, kitchen, tables, waiter, menu_engineering,
     enterprise, inventory_hardware, guest_orders, staff, customers,
-    price_lists, menu_complete
+    price_lists, menu_complete, purchase_orders
 )
 
 api_router = APIRouter()
@@ -74,3 +74,6 @@ api_router.include_router(price_lists.router, tags=["price-lists", "daily-menu",
 
 # Menu Complete (variants, tags, combos, upsells, LTOs, 86'd items, digital boards)
 api_router.include_router(menu_complete.router, tags=["menu-complete", "variants", "tags", "combos"])
+
+# Purchase Orders Management (PO, GRN, invoices, approvals, three-way matching)
+api_router.include_router(purchase_orders.router, prefix="/purchase-orders", tags=["purchase-orders", "procurement", "grn", "three-way-match"])
