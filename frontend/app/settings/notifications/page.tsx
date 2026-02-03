@@ -35,7 +35,7 @@ export default function NotificationSettingsPage() {
   }, []);
 
   const fetchData = async () => {
-    const token = localStorage.getItem('token');
+    const token = localStorage.getItem('access_token');
     try {
       const [alertsRes, prefsRes] = await Promise.all([
         fetch(`\${API_URL}/notifications/alerts/config`, {
@@ -62,7 +62,7 @@ export default function NotificationSettingsPage() {
   };
 
   const toggleAlert = async (alertType: string, enabled: boolean) => {
-    const token = localStorage.getItem('token');
+    const token = localStorage.getItem('access_token');
     setSaving(true);
     try {
       await fetch(`\${API_URL}/notifications/alerts/config/\${alertType}`, {
@@ -82,7 +82,7 @@ export default function NotificationSettingsPage() {
   };
 
   const testNotification = async () => {
-    const token = localStorage.getItem('token');
+    const token = localStorage.getItem('access_token');
     try {
       await fetch(`\${API_URL}/notifications/test/all-channels`, {
         method: 'POST',

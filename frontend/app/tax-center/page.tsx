@@ -141,7 +141,7 @@ export default function TaxCenterPage() {
   const fetchTaxData = useCallback(async () => {
     setIsLoading(true);
     try {
-      const token = localStorage.getItem('token');
+      const token = localStorage.getItem('access_token');
       const response = await fetch(`${API_URL}/tax/filings?year=${year}`, {
         headers: {
           'Authorization': `Bearer ${token}`,

@@ -93,7 +93,7 @@ export default function HACCPFoodSafetyPage() {
   const fetchHACCPData = useCallback(async () => {
     setIsLoading(true);
     try {
-      const token = localStorage.getItem('token');
+      const token = localStorage.getItem('access_token');
       const response = await fetch(`${API_URL}/haccp/dashboard`, {
         headers: {
           'Authorization': `Bearer ${token}`,

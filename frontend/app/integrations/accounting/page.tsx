@@ -31,7 +31,7 @@ export default function AccountingIntegrationsPage() {
   }, []);
 
   const fetchData = async () => {
-    const token = localStorage.getItem('token');
+    const token = localStorage.getItem('access_token');
     try {
       const [availRes, connRes] = await Promise.all([
         fetch(`\${API_URL}/integrations/accounting/available`),
@@ -57,7 +57,7 @@ export default function AccountingIntegrationsPage() {
 
   const connectIntegration = async (type: string) => {
     setConnecting(type);
-    const token = localStorage.getItem('token');
+    const token = localStorage.getItem('access_token');
     
     try {
       const res = await fetch(`\${API_URL}/integrations/accounting/connect`, {
@@ -88,7 +88,7 @@ export default function AccountingIntegrationsPage() {
   };
 
   const disconnectIntegration = async (type: string) => {
-    const token = localStorage.getItem('token');
+    const token = localStorage.getItem('access_token');
     try {
       await fetch(`\${API_URL}/integrations/accounting/\${type}`, {
         method: 'DELETE',

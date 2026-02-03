@@ -561,7 +561,7 @@ export default function CustomerCreditsPage() {
                       Select Customer
                     </label>
                     <select
-                      value={selectedCustomer?.id || ""}
+                      value=""
                       onChange={(e) => {
                         const customer = customers.find(
                           (c) => c.id === parseInt(e.target.value)
