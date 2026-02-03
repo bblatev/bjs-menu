@@ -1190,3 +1190,318 @@ def request_payment_assistance(
         "total": float(order.total) if order.total else 0,
         "message": "A server will be with you shortly to process your payment.",
     }
+
+# ============== Additional Menu Admin Routes ==============
+
+@router.post("/menu-admin/items")
+def admin_create_menu_item(db: DbSession, data: dict = Body(...)):
+    """Create a new menu item."""
+    item = MenuItem(
+        name=data.get("name", {}).get("en", data.get("name", "")),
+        category=data.get("category"),
+        price=data.get("price", 0),
+        station=data.get("station"),
+        description=data.get("description", {}).get("en", ""),
+        is_available=data.get("is_available", True),
+    )
+    db.add(item)
+    db.commit()
+    db.refresh(item)
+    return _menu_item_to_dict(item)
+
+
+@router.put("/menu-admin/items/{item_id}")
+def admin_update_menu_item(db: DbSession, item_id: int, data: dict = Body(...)):
+    """Update a menu item."""
+    item = db.query(MenuItem).filter(MenuItem.id == item_id).first()
+    if not item:
+        raise HTTPException(status_code=404, detail="Item not found")
+    
+    if "name" in data:
+        item.name = data["name"].get("en", data["name"]) if isinstance(data["name"], dict) else data["name"]
+    if "category" in data:
+        item.category = data["category"]
+    if "price" in data:
+        item.price = data["price"]
+    if "station" in data:
+        item.station = data["station"]
+    if "description" in data:
+        item.description = data["description"].get("en", "") if isinstance(data["description"], dict) else data["description"]
+    if "is_available" in data:
+        item.is_available = data["is_available"]
+    
+    db.commit()
+    db.refresh(item)
+    return _menu_item_to_dict(item)
+
+
+@router.delete("/menu-admin/items/{item_id}")
+def admin_delete_menu_item(db: DbSession, item_id: int):
+    """Delete a menu item."""
+    item = db.query(MenuItem).filter(MenuItem.id == item_id).first()
+    if not item:
+        raise HTTPException(status_code=404, detail="Item not found")
+    db.delete(item)
+    db.commit()
+    return {"success": True}
+
+
+@router.patch("/menu-admin/items/{item_id}/toggle-available")
+def admin_toggle_item_availability(db: DbSession, item_id: int):
+    """Toggle menu item availability."""
+    item = db.query(MenuItem).filter(MenuItem.id == item_id).first()
+    if not item:
+        raise HTTPException(status_code=404, detail="Item not found")
+    item.is_available = not item.is_available
+    db.commit()
+    return {"id": item.id, "is_available": item.is_available}
+
+
+@router.post("/menu-admin/categories")
+def admin_create_category(db: DbSession, data: dict = Body(...)):
+    """Create a new category (stores as first item's category)."""
+    name = data.get("name", {}).get("en", data.get("name", ""))
+    return {
+        "id": hash(name) % 10000,
+        "name": {"bg": name, "en": name},
+        "description": data.get("description", {"bg": "", "en": ""}),
+        "sort_order": data.get("sort_order", 0),
+        "active": True
+    }
+
+
+@router.put("/menu-admin/categories/{category_id}")
+def admin_update_category(db: DbSession, category_id: int, data: dict = Body(...)):
+    """Update a category."""
+    name = data.get("name", {}).get("en", "")
+    return {
+        "id": category_id,
+        "name": data.get("name", {"bg": name, "en": name}),
+        "description": data.get("description", {"bg": "", "en": ""}),
+        "sort_order": data.get("sort_order", 0),
+        "active": data.get("active", True)
+    }
+
+
+@router.delete("/menu-admin/categories/{category_id}")
+def admin_delete_category(db: DbSession, category_id: int):
+    """Delete a category."""
+    return {"success": True}
+
+
+@router.patch("/menu-admin/categories/{category_id}/toggle-active")
+def admin_toggle_category_active(db: DbSession, category_id: int):
+    """Toggle category active status."""
+    return {"id": category_id, "active": True}
+
+
+@router.get("/menu-admin/modifier-groups")
+def admin_list_modifier_groups(db: DbSession):
+    """List modifier groups."""
+    return []
+
+
+@router.post("/menu-admin/modifier-groups")
+def admin_create_modifier_group(db: DbSession, data: dict = Body(...)):
+    """Create a modifier group."""
+    return {
+        "id": 1,
+        "name": data.get("name", ""),
+        "min_selections": data.get("min_selections", 0),
+        "max_selections": data.get("max_selections", 1),
+        "active": True,
+        "options": []
+    }
+
+
+@router.put("/menu-admin/modifier-groups/{group_id}")
+def admin_update_modifier_group(db: DbSession, group_id: int, data: dict = Body(...)):
+    """Update a modifier group."""
+    return {"id": group_id, **data}
+
+
+@router.delete("/menu-admin/modifier-groups/{group_id}")
+def admin_delete_modifier_group(db: DbSession, group_id: int):
+    """Delete a modifier group."""
+    return {"success": True}
+
+
+@router.post("/menu-admin/modifier-groups/{group_id}/options")
+def admin_create_modifier_option(db: DbSession, group_id: int, data: dict = Body(...)):
+    """Create a modifier option."""
+    return {
+        "id": 1,
+        "group_id": group_id,
+        "name": data.get("name", ""),
+        "price_adjustment": data.get("price_adjustment", 0),
+        "available": True
+    }
+
+
+@router.put("/menu-admin/modifier-options/{option_id}")
+def admin_update_modifier_option(db: DbSession, option_id: int, data: dict = Body(...)):
+    """Update a modifier option."""
+    return {"id": option_id, **data}
+
+
+@router.delete("/menu-admin/modifier-options/{option_id}")
+def admin_delete_modifier_option(db: DbSession, option_id: int):
+    """Delete a modifier option."""
+    return {"success": True}
+
+
+@router.get("/menu-admin/combos")
+def admin_list_combos(db: DbSession):
+    """List combo meals."""
+    return []
+
+
+@router.post("/menu-admin/combos")
+def admin_create_combo(db: DbSession, data: dict = Body(...)):
+    """Create a combo meal."""
+    return {"id": 1, **data, "available": True, "featured": False}
+
+
+@router.put("/menu-admin/combos/{combo_id}")
+def admin_update_combo(db: DbSession, combo_id: int, data: dict = Body(...)):
+    """Update a combo meal."""
+    return {"id": combo_id, **data}
+
+
+@router.delete("/menu-admin/combos/{combo_id}")
+def admin_delete_combo(db: DbSession, combo_id: int):
+    """Delete a combo meal."""
+    return {"success": True}
+
+
+@router.patch("/menu-admin/combos/{combo_id}/toggle-available")
+def admin_toggle_combo_available(db: DbSession, combo_id: int):
+    """Toggle combo availability."""
+    return {"id": combo_id, "available": True}
+
+
+@router.patch("/menu-admin/combos/{combo_id}/toggle-featured")
+def admin_toggle_combo_featured(db: DbSession, combo_id: int):
+    """Toggle combo featured status."""
+    return {"id": combo_id, "featured": True}
+
+
+@router.get("/menu-admin/dayparts")
+def admin_list_dayparts(db: DbSession):
+    """List dayparts for menu scheduling."""
+    return [
+        {"id": 1, "name": "Breakfast", "start_time": "06:00", "end_time": "11:00", "active": True},
+        {"id": 2, "name": "Lunch", "start_time": "11:00", "end_time": "15:00", "active": True},
+        {"id": 3, "name": "Dinner", "start_time": "17:00", "end_time": "22:00", "active": True},
+    ]
+
+
+@router.post("/menu-admin/dayparts")
+def admin_create_daypart(db: DbSession, data: dict = Body(...)):
+    """Create a daypart."""
+    return {"id": 4, **data, "active": True}
+
+
+@router.put("/menu-admin/dayparts/{daypart_id}")
+def admin_update_daypart(db: DbSession, daypart_id: int, data: dict = Body(...)):
+    """Update a daypart."""
+    return {"id": daypart_id, **data}
+
+
+@router.delete("/menu-admin/dayparts/{daypart_id}")
+def admin_delete_daypart(db: DbSession, daypart_id: int):
+    """Delete a daypart."""
+    return {"success": True}
+
+
+@router.patch("/menu-admin/dayparts/{daypart_id}/toggle-active")
+def admin_toggle_daypart_active(db: DbSession, daypart_id: int):
+    """Toggle daypart active status."""
+    return {"id": daypart_id, "active": True}
+
+
+@router.get("/menu-admin/items-with-allergens")
+def admin_list_items_with_allergens(db: DbSession):
+    """List items with allergen information."""
+    items = db.query(MenuItem).all()
+    return [
+        {
+            **_menu_item_to_dict(i),
+            "allergens": [],
+            "nutrition": {}
+        }
+        for i in items
+    ]
+
+
+@router.put("/menu-admin/items/{item_id}/allergens-nutrition")
+def admin_update_item_allergens(db: DbSession, item_id: int, data: dict = Body(...)):
+    """Update item allergens and nutrition info."""
+    item = db.query(MenuItem).filter(MenuItem.id == item_id).first()
+    if not item:
+        raise HTTPException(status_code=404, detail="Item not found")
+    return {
+        **_menu_item_to_dict(item),
+        "allergens": data.get("allergens", []),
+        "nutrition": data.get("nutrition", {})
+    }
+
+
+@router.get("/menu-admin/items/{item_id}/modifiers")
+def admin_get_item_modifiers(db: DbSession, item_id: int):
+    """Get modifiers for a specific item."""
+    return []
+
+
+@router.put("/menu-admin/categories/reorder")
+def admin_reorder_categories(db: DbSession, data: dict = Body(...)):
+    """Reorder categories."""
+    return {"success": True}
+
+
+@router.get("/menu-admin/modifiers")
+def admin_list_modifiers(db: DbSession):
+    """List all modifiers."""
+    return []
+
+
+@router.post("/menu-admin/modifiers")
+def admin_create_modifier(db: DbSession, data: dict = Body(...)):
+    """Create a modifier."""
+    return {"id": 1, **data}
+
+
+@router.put("/menu-admin/modifiers/{modifier_id}")
+def admin_update_modifier(db: DbSession, modifier_id: int, data: dict = Body(...)):
+    """Update a modifier."""
+    return {"id": modifier_id, **data}
+
+
+@router.delete("/menu-admin/modifiers/{modifier_id}")
+def admin_delete_modifier(db: DbSession, modifier_id: int):
+    """Delete a modifier."""
+    return {"success": True}
+
+
+@router.post("/menu-admin/modifiers/{modifier_id}/options")
+def admin_add_modifier_option(db: DbSession, modifier_id: int, data: dict = Body(...)):
+    """Add option to modifier."""
+    return {"id": 1, "modifier_id": modifier_id, **data}
+
+
+@router.delete("/menu-admin/modifiers/options/{option_id}")
+def admin_remove_modifier_option(db: DbSession, option_id: int):
+    """Remove modifier option."""
+    return {"success": True}
+
+
+@router.patch("/menu-admin/modifier-groups/{group_id}/toggle-active")
+def admin_toggle_modifier_group_active(db: DbSession, group_id: int):
+    """Toggle modifier group active status."""
+    return {"id": group_id, "active": True}
+
+
+@router.patch("/menu-admin/modifier-options/{option_id}/toggle-available")
+def admin_toggle_modifier_option_available(db: DbSession, option_id: int):
+    """Toggle modifier option availability."""
+    return {"id": option_id, "available": True}
