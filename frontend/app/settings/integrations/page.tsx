@@ -35,7 +35,12 @@ export default function SettingsIntegrationsPage() {
   const [showHardwareModal, setShowHardwareModal] = useState(false);
 
   // Webhook settings
-  const [webhooks, setWebhooks] = useState({
+  const [webhooks, setWebhooks] = useState<{
+    enabled: boolean;
+    endpoints: Array<{ url: string; events: string[] }>;
+    retry_attempts: number;
+    timeout_seconds: number;
+  }>({
     enabled: false,
     endpoints: [],
     retry_attempts: 3,
@@ -43,7 +48,7 @@ export default function SettingsIntegrationsPage() {
   });
 
   // API Keys
-  const [apiKeys, setApiKeys] = useState([]);
+  const [apiKeys, setApiKeys] = useState<Array<{ id: string; name: string; key: string; created_at: string }>>([]);
   const [showApiKeyModal, setShowApiKeyModal] = useState(false);
 
   // Multi-location sync

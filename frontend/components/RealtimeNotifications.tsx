@@ -209,6 +209,7 @@ export function RealtimeNotifications({
       }, autoHideDuration);
       return () => clearTimeout(timer);
     }
+    return undefined;
   }, [notifications, autoHideDuration]);
 
   const removeNotification = (id: string) => {

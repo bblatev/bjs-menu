@@ -221,8 +221,8 @@ export default function ManagerAlertsPage() {
     }
   };
 
-  const testAlert = async (alert: ManagerAlert) => {
-    setTestingAlert(alert.id);
+  const testAlert = async (alertItem: ManagerAlert) => {
+    setTestingAlert(alertItem.id);
     const token = getToken();
 
     try {
@@ -233,24 +233,24 @@ export default function ManagerAlertsPage() {
           Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({
-          alert_type: alert.alert_type,
-          value: alert.threshold_value ? alert.threshold_value + 1 : 100,
-          message: `Test alert: ${alert.name}`,
+          alert_type: alertItem.alert_type,
+          value: alertItem.threshold_value ? alertItem.threshold_value + 1 : 100,
+          message: `Test alert: ${alertItem.name}`,
         }),
       });
 
       if (response.ok) {
         const result = await response.json();
         if (result.triggered_count > 0) {
-          alert(`Test sent! Would notify:\n${result.alerts.map((a: any) =>
+          window.alert(`Test sent! Would notify:\n${result.alerts.map((a: { phones: string[]; emails: string[] }) =>
             `- ${a.phones.join(", ")} ${a.emails.join(", ")}`
           ).join("\n")}`);
         } else {
-          alert("Alert not triggered (may be on cooldown or threshold not met)");
+          window.alert("Alert not triggered (may be on cooldown or threshold not met)");
         }
       }
     } catch (error) {
-      alert("Error testing alert");
+      window.alert("Error testing alert");
     } finally {
       setTestingAlert(null);
     }
