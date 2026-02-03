@@ -5,6 +5,7 @@ from datetime import datetime, date, time, timedelta
 from fastapi import APIRouter, HTTPException, Body, Query
 from sqlalchemy import func, and_, or_
 
+from app.core.security import get_password_hash, verify_password
 from app.db.session import DbSession
 from app.models.staff import (
     StaffUser, Shift, TimeOffRequest, TimeClockEntry,
@@ -122,7 +123,7 @@ def create_staff(db: DbSession, data: StaffCreate):
     staff = StaffUser(
         full_name=data.full_name,
         role=data.role,
-        pin_hash=data.pin_code,
+        pin_hash=get_password_hash(data.pin_code) if data.pin_code else None,
         hourly_rate=data.hourly_rate,
         max_hours_week=data.max_hours_week,
         color=data.color or "#3B82F6",
@@ -1136,10 +1137,30 @@ def set_staff_pin(db: DbSession, staff_id: int, data: dict = Body(...)):
     if not pin_code.isdigit():
         raise HTTPException(status_code=400, detail="PIN must contain only numbers")
 
-    staff.pin_hash = pin_code
+    staff.pin_hash = get_password_hash(pin_code)
     db.commit()
     db.refresh(staff)
     return _staff_to_dict(staff)
+
+
+@router.post("/staff/{staff_id}/verify-pin")
+def verify_staff_pin(db: DbSession, staff_id: int, data: dict = Body(...)):
+    """Verify PIN for a staff member."""
+    staff = db.query(StaffUser).filter(StaffUser.id == staff_id).first()
+    if not staff:
+        raise HTTPException(status_code=404, detail="Staff member not found")
+
+    pin_code = data.get("pin_code")
+    if not pin_code:
+        raise HTTPException(status_code=400, detail="pin_code is required")
+
+    if not staff.pin_hash:
+        raise HTTPException(status_code=401, detail="Staff member has no PIN set")
+
+    if not verify_password(pin_code, staff.pin_hash):
+        raise HTTPException(status_code=401, detail="Invalid PIN")
+
+    return {"valid": True, "staff_id": staff.id, "name": staff.full_name}
 
 
 @router.delete("/staff/{staff_id}/pin")

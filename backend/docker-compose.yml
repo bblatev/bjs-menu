@@ -10,9 +10,11 @@ services:
     volumes:
       - ./data:/app/data
     environment:
-      - DATABASE_URL=sqlite:///./data/bjsbar.db
-      - SECRET_KEY=your-super-secret-key-change-in-production
-      - CORS_ORIGINS=https://menu.bjs.bar,http://menu.bjs.bar,http://localhost:3000
+      - DATABASE_URL=${DATABASE_URL:-sqlite:///./data/bjsbar.db}
+      - SECRET_KEY=${SECRET_KEY:?SECRET_KEY must be set in .env file}
+      - CORS_ORIGINS=${CORS_ORIGINS:-https://menu.bjs.bar,http://menu.bjs.bar,http://localhost:3000}
+    env_file:
+      - .env
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
       interval: 30s

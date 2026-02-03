@@ -2,11 +2,14 @@
 
 from __future__ import annotations
 
+import csv
+import io
 from datetime import datetime, timedelta
 from decimal import Decimal
 from typing import Optional, List
 
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, Query, Body
+from fastapi.responses import StreamingResponse
 
 from app.core.rbac import CurrentUser
 from app.db.session import DbSession
@@ -622,3 +625,119 @@ def get_turnover_base_prices_report(
         "by_item": items,
         "generated_at": datetime.utcnow().isoformat(),
     }
+
+
+@router.post("/export/{report_type}")
+def export_report(
+    db: DbSession,
+    current_user: CurrentUser,
+    report_type: str,
+    format: str = Body(..., embed=True),
+    period: str = Body("week", embed=True),
+):
+    """
+    Export report in requested format (csv, excel).
+    
+    Supported report types: sales, inventory, financial, customers, staff
+    """
+    # Calculate date range based on period
+    end_date = datetime.utcnow().date()
+    if period == "day":
+        start_date = end_date
+    elif period == "week":
+        start_date = end_date - timedelta(days=7)
+    elif period == "month":
+        start_date = end_date - timedelta(days=30)
+    elif period == "quarter":
+        start_date = end_date - timedelta(days=90)
+    elif period == "year":
+        start_date = end_date - timedelta(days=365)
+    else:
+        start_date = end_date - timedelta(days=7)
+
+    # Generate report data based on type
+    if report_type == "sales":
+        data = _generate_sales_export(db, start_date, end_date)
+        headers = ["Date", "Order ID", "Items", "Total", "Payment Method"]
+    elif report_type == "inventory":
+        data = _generate_inventory_export(db)
+        headers = ["Product", "SKU", "Quantity", "Unit", "Value"]
+    elif report_type == "staff":
+        data = _generate_staff_export(db, start_date, end_date)
+        headers = ["Staff Name", "Role", "Hours Worked", "Sales Total"]
+    else:
+        data = []
+        headers = ["No data available"]
+
+    # Generate CSV response
+    if format == "csv":
+        output = io.StringIO()
+        writer = csv.writer(output)
+        writer.writerow(headers)
+        for row in data:
+            writer.writerow(row)
+        output.seek(0)
+        
+        return StreamingResponse(
+            iter([output.getvalue()]),
+            media_type="text/csv",
+            headers={
+                "Content-Disposition": f"attachment; filename={report_type}_report_{end_date}.csv"
+            }
+        )
+    
+    # Default: return JSON
+    return {
+        "report_type": report_type,
+        "period": {"start": str(start_date), "end": str(end_date)},
+        "headers": headers,
+        "data": data,
+        "generated_at": datetime.utcnow().isoformat()
+    }
+
+
+def _generate_sales_export(db, start_date, end_date):
+    """Generate sales data for export."""
+    from app.models.pos import PosSalesLine
+    
+    sales = db.query(PosSalesLine).filter(
+        PosSalesLine.ts >= datetime.combine(start_date, datetime.min.time()),
+        PosSalesLine.ts <= datetime.combine(end_date, datetime.max.time())
+    ).limit(1000).all()
+    
+    return [
+        [str(s.ts.date()), s.order_ref or "", s.product_name or "", float(s.total or 0), s.payment_type or ""]
+        for s in sales
+    ]
+
+
+def _generate_inventory_export(db):
+    """Generate inventory data for export."""
+    from app.models.stock import StockOnHand
+    from app.models.product import Product
+    
+    stock = db.query(StockOnHand).limit(1000).all()
+    result = []
+    for s in stock:
+        product = db.query(Product).filter(Product.id == s.product_id).first()
+        if product:
+            value = float(s.qty or 0) * float(product.cost_price or 0)
+            result.append([product.name, product.sku or "", float(s.qty or 0), product.unit or "", value])
+    return result
+
+
+def _generate_staff_export(db, start_date, end_date):
+    """Generate staff data for export."""
+    from app.models.staff import StaffUser, TimeClockEntry
+    
+    staff = db.query(StaffUser).filter(StaffUser.is_active == True).all()
+    result = []
+    for s in staff:
+        entries = db.query(TimeClockEntry).filter(
+            TimeClockEntry.staff_id == s.id,
+            TimeClockEntry.clock_in >= datetime.combine(start_date, datetime.min.time()),
+            TimeClockEntry.clock_in <= datetime.combine(end_date, datetime.max.time())
+        ).all()
+        total_hours = sum(e.total_hours or 0 for e in entries)
+        result.append([s.full_name, s.role, total_hours, 0])  # Sales total would need POS data
+    return result
