@@ -67,22 +67,31 @@ export default function TablesPage() {
         const token = localStorage.getItem('access_token');
 
         if (!token) {
-          window.location.href = '/login';
+          setError('Моля, влезте в системата.');
+          setLoading(false);
           return;
         }
 
         const url = `${API_URL}/tables/`;
+
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 10000); // 10s timeout
 
         const response = await fetch(url, {
           headers: {
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${token}`,
           },
+          signal: controller.signal,
         });
+
+        clearTimeout(timeoutId);
 
         if (!response.ok) {
           if (response.status === 401) {
-            throw new Error('Неоторизиран достъп. Моля, влезте отново.');
+            localStorage.removeItem('access_token');
+            setError('Сесията изтече. Моля, влезте отново.');
+            return;
           }
           throw new Error(`Грешка при зареждане на масите (${response.status})`);
         }
@@ -106,7 +115,11 @@ export default function TablesPage() {
 
         setTables(mappedTables);
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'Възникна неочаквана грешка');
+        if (err instanceof Error && err.name === 'AbortError') {
+          setError('Заявката отне твърде дълго време. Моля, опитайте отново.');
+        } else {
+          setError(err instanceof Error ? err.message : 'Възникна неочаквана грешка');
+        }
       } finally {
         setLoading(false);
       }
