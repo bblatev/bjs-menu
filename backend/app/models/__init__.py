@@ -101,6 +101,7 @@ from app.models.price_lists import (
     OperatorRecentItem,
     ManagerAlert,
     CustomerCredit,
+    SubTable,
 )
 from app.models.hardware import (
     Keg,
@@ -218,4 +219,5 @@ __all__ = [
     "OperatorRecentItem",
     "ManagerAlert",
     "CustomerCredit",
+    "SubTable",
 ]

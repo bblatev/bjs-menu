@@ -558,3 +558,226 @@ def mark_item_available(
         menu_item.available = True
         db.commit()
     return {"status": "ok", "item_id": item_id, "is_86": False}
+
+
+# ==================== WORKFLOW MODES (Gap 11) ====================
+
+@router.get("/requests/pending")
+def get_pending_requests(
+    db: DbSession,
+    location_id: Optional[int] = None,
+):
+    """
+    Get pending order requests (for Request mode workflow).
+    These are orders that need confirmation before going to kitchen.
+    """
+    query = db.query(KitchenOrder).filter(
+        KitchenOrder.workflow_mode == "request",
+        KitchenOrder.is_confirmed == False,
+        KitchenOrder.status != "cancelled",
+    )
+    if location_id:
+        query = query.filter(KitchenOrder.location_id == location_id)
+
+    requests = query.order_by(KitchenOrder.created_at.asc()).all()
+
+    return {
+        "requests": [
+            {
+                "id": r.id,
+                "check_id": r.check_id,
+                "table_number": r.table_number,
+                "items": r.items or [],
+                "notes": r.notes,
+                "priority": r.priority,
+                "station": r.station,
+                "created_at": r.created_at.isoformat() if r.created_at else None,
+                "wait_time_minutes": int((datetime.utcnow() - r.created_at).total_seconds() / 60) if r.created_at else 0,
+            }
+            for r in requests
+        ],
+        "count": len(requests),
+    }
+
+
+@router.post("/requests/{request_id}/confirm")
+def confirm_request(
+    db: DbSession,
+    request_id: int,
+    staff_id: Optional[int] = None,
+):
+    """
+    Confirm an order request and send it to kitchen.
+    """
+    kitchen_order = db.query(KitchenOrder).filter(KitchenOrder.id == request_id).first()
+    if not kitchen_order:
+        raise HTTPException(status_code=404, detail="Request not found")
+
+    if kitchen_order.workflow_mode != "request":
+        raise HTTPException(status_code=400, detail="This order is not in request mode")
+
+    if kitchen_order.is_confirmed:
+        raise HTTPException(status_code=400, detail="Request already confirmed")
+
+    kitchen_order.is_confirmed = True
+    kitchen_order.confirmed_by = staff_id
+    kitchen_order.confirmed_at = datetime.utcnow()
+    kitchen_order.status = "pending"  # Now it goes to kitchen queue
+
+    db.commit()
+
+    return {
+        "status": "confirmed",
+        "request_id": request_id,
+        "confirmed_at": kitchen_order.confirmed_at.isoformat(),
+    }
+
+
+@router.post("/requests/{request_id}/reject")
+def reject_request(
+    db: DbSession,
+    request_id: int,
+    reason: Optional[str] = None,
+    staff_id: Optional[int] = None,
+):
+    """
+    Reject an order request.
+    """
+    kitchen_order = db.query(KitchenOrder).filter(KitchenOrder.id == request_id).first()
+    if not kitchen_order:
+        raise HTTPException(status_code=404, detail="Request not found")
+
+    if kitchen_order.workflow_mode != "request":
+        raise HTTPException(status_code=400, detail="This order is not in request mode")
+
+    kitchen_order.status = "cancelled"
+    kitchen_order.rejection_reason = reason
+    kitchen_order.confirmed_by = staff_id
+    kitchen_order.confirmed_at = datetime.utcnow()
+
+    db.commit()
+
+    return {
+        "status": "rejected",
+        "request_id": request_id,
+        "reason": reason,
+    }
+
+
+@router.post("/requests/{request_id}/modify")
+def modify_request(
+    db: DbSession,
+    request_id: int,
+    items: Optional[list] = None,
+    notes: Optional[str] = None,
+):
+    """
+    Modify a pending order request before confirming.
+    """
+    kitchen_order = db.query(KitchenOrder).filter(KitchenOrder.id == request_id).first()
+    if not kitchen_order:
+        raise HTTPException(status_code=404, detail="Request not found")
+
+    if kitchen_order.is_confirmed:
+        raise HTTPException(status_code=400, detail="Cannot modify confirmed request")
+
+    if items is not None:
+        kitchen_order.items = items
+    if notes is not None:
+        kitchen_order.notes = notes
+
+    db.commit()
+
+    return {
+        "status": "modified",
+        "request_id": request_id,
+        "items": kitchen_order.items,
+        "notes": kitchen_order.notes,
+    }
+
+
+@router.get("/workflow/settings")
+def get_workflow_settings(
+    db: DbSession,
+    location_id: Optional[int] = None,
+):
+    """
+    Get current workflow mode settings.
+    """
+    # In production, this would come from a settings table
+    return {
+        "default_workflow_mode": "order",  # or "request"
+        "require_confirmation_for": [
+            "high_value_orders",  # Orders above certain amount
+            "large_party",        # Tables with many guests
+            "special_items",      # Items marked as requiring confirmation
+        ],
+        "confirmation_timeout_minutes": 5,
+        "auto_reject_on_timeout": False,
+        "notify_on_new_request": True,
+        "request_mode_stations": [],  # Specific stations requiring request mode
+    }
+
+
+@router.put("/workflow/settings")
+def update_workflow_settings(
+    db: DbSession,
+    default_mode: Optional[str] = None,
+    confirmation_timeout: Optional[int] = None,
+):
+    """
+    Update workflow mode settings.
+    """
+    # In production, this would save to a settings table
+    return {
+        "status": "updated",
+        "default_workflow_mode": default_mode or "order",
+        "confirmation_timeout_minutes": confirmation_timeout or 5,
+    }
+
+
+@router.post("/order/create")
+def create_kitchen_order(
+    db: DbSession,
+    check_id: Optional[int] = None,
+    table_number: Optional[str] = None,
+    items: list = [],
+    notes: Optional[str] = None,
+    station: Optional[str] = None,
+    workflow_mode: str = "order",
+    priority: int = 0,
+    location_id: Optional[int] = None,
+):
+    """
+    Create a new kitchen order with specified workflow mode.
+
+    workflow_mode:
+    - "order": Direct to kitchen (default)
+    - "request": Needs confirmation before kitchen
+    """
+    is_confirmed = workflow_mode == "order"
+
+    kitchen_order = KitchenOrder(
+        check_id=check_id,
+        table_number=table_number,
+        items=items,
+        notes=notes,
+        station=station,
+        workflow_mode=workflow_mode,
+        is_confirmed=is_confirmed,
+        status="pending" if is_confirmed else "request_pending",
+        priority=priority,
+        location_id=location_id,
+    )
+
+    db.add(kitchen_order)
+    db.commit()
+    db.refresh(kitchen_order)
+
+    return {
+        "id": kitchen_order.id,
+        "workflow_mode": kitchen_order.workflow_mode,
+        "is_confirmed": kitchen_order.is_confirmed,
+        "status": kitchen_order.status,
+        "created_at": kitchen_order.created_at.isoformat() if kitchen_order.created_at else None,
+    }

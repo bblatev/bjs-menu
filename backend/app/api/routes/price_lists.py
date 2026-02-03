@@ -12,6 +12,7 @@ from app.models.price_lists import (
     OperatorRecentItem, ManagerAlert, CustomerCredit
 )
 from app.models.staff import StaffUser
+from app.services.notification_service import NotificationService
 
 router = APIRouter()
 
@@ -647,17 +648,52 @@ def trigger_alert(db: DbSession, data: dict = Body(...)):
 
         # Trigger alert
         alert.last_triggered = datetime.utcnow()
-        triggered.append({
+
+        alert_data = {
             "alert_id": alert.id,
             "name": alert.name,
             "phones": alert.recipient_phones if alert.send_sms else [],
             "emails": alert.recipient_emails if alert.send_email else [],
             "message": message,
-        })
+            "sms_sent": False,
+            "email_sent": False,
+            "errors": [],
+        }
+
+        # Send SMS notifications
+        if alert.send_sms and alert.recipient_phones:
+            try:
+                sms_result = NotificationService.send_manager_alert(
+                    alert_type=alert_type,
+                    message=message,
+                    phones=alert.recipient_phones,
+                    emails=None
+                )
+                alert_data["sms_sent"] = sms_result.get("sms", {}).get("success", False)
+                if not alert_data["sms_sent"] and sms_result.get("sms", {}).get("error"):
+                    alert_data["errors"].append(f"SMS: {sms_result['sms']['error']}")
+            except Exception as e:
+                alert_data["errors"].append(f"SMS error: {str(e)}")
+
+        # Send email notifications
+        if alert.send_email and alert.recipient_emails:
+            try:
+                email_result = NotificationService.send_manager_alert(
+                    alert_type=alert_type,
+                    message=message,
+                    phones=None,
+                    emails=alert.recipient_emails
+                )
+                alert_data["email_sent"] = email_result.get("email", {}).get("success", False)
+                if not alert_data["email_sent"] and email_result.get("email", {}).get("error"):
+                    alert_data["errors"].append(f"Email: {email_result['email']['error']}")
+            except Exception as e:
+                alert_data["errors"].append(f"Email error: {str(e)}")
+
+        triggered.append(alert_data)
 
     db.commit()
 
-    # In production, would actually send SMS/email here
     return {"triggered_count": len(triggered), "alerts": triggered}
 
 
@@ -796,3 +832,214 @@ def reorder_previous_order(db: DbSession, order_id: int, data: dict = Body(...))
         "original_order_id": order_id,
         "new_order_id": None,  # Would return actual new order ID
     }
+
+
+# ============== Subtables ==============
+
+class SubTableCreate(BaseModel):
+    name: str
+    seats: int = 2
+
+
+class SubTableUpdate(BaseModel):
+    name: Optional[str] = None
+    seats: Optional[int] = None
+    current_guests: Optional[int] = None
+    status: Optional[str] = None
+    waiter_id: Optional[int] = None
+    current_order_id: Optional[int] = None
+
+
+def _subtable_to_dict(st) -> dict:
+    return {
+        "id": st.id,
+        "parent_table_id": st.parent_table_id,
+        "name": st.name,
+        "seats": st.seats,
+        "current_guests": st.current_guests,
+        "status": st.status,
+        "current_order_id": st.current_order_id,
+        "waiter_id": st.waiter_id,
+        "is_active": st.is_active,
+        "created_at": st.created_at.isoformat() if st.created_at else None,
+    }
+
+
+@router.get("/tables/{table_id}/subtables")
+def list_subtables(db: DbSession, table_id: int):
+    """List all subtables for a table."""
+    from app.models.price_lists import SubTable
+
+    subtables = db.query(SubTable).filter(
+        SubTable.parent_table_id == table_id,
+        SubTable.is_active == True
+    ).order_by(SubTable.name).all()
+
+    return [_subtable_to_dict(st) for st in subtables]
+
+
+@router.post("/tables/{table_id}/subtables")
+def create_subtable(db: DbSession, table_id: int, data: SubTableCreate):
+    """Create a new subtable under a table."""
+    from app.models.price_lists import SubTable
+
+    # Check for duplicate name
+    existing = db.query(SubTable).filter(
+        SubTable.parent_table_id == table_id,
+        SubTable.name == data.name,
+        SubTable.is_active == True
+    ).first()
+
+    if existing:
+        raise HTTPException(status_code=400, detail=f"Subtable '{data.name}' already exists for this table")
+
+    subtable = SubTable(
+        parent_table_id=table_id,
+        name=data.name,
+        seats=data.seats,
+        status="available",
+    )
+    db.add(subtable)
+    db.commit()
+    db.refresh(subtable)
+
+    return _subtable_to_dict(subtable)
+
+
+@router.post("/tables/{table_id}/subtables/auto-create")
+def auto_create_subtables(db: DbSession, table_id: int, data: dict = Body(...)):
+    """Auto-create multiple subtables (A, B, C or 1, 2, 3)."""
+    from app.models.price_lists import SubTable
+
+    count = data.get("count", 2)
+    naming = data.get("naming", "letter")  # "letter" (A, B, C) or "number" (1, 2, 3)
+    seats_each = data.get("seats_each", 2)
+
+    if count < 2 or count > 10:
+        raise HTTPException(status_code=400, detail="Count must be between 2 and 10")
+
+    # Delete existing subtables for this table
+    db.query(SubTable).filter(SubTable.parent_table_id == table_id).delete()
+
+    created = []
+    for i in range(count):
+        name = chr(65 + i) if naming == "letter" else str(i + 1)  # A, B, C or 1, 2, 3
+        subtable = SubTable(
+            parent_table_id=table_id,
+            name=name,
+            seats=seats_each,
+            status="available",
+        )
+        db.add(subtable)
+        created.append(subtable)
+
+    db.commit()
+
+    return {
+        "status": "created",
+        "count": len(created),
+        "subtables": [_subtable_to_dict(st) for st in created],
+    }
+
+
+@router.put("/subtables/{subtable_id}")
+def update_subtable(db: DbSession, subtable_id: int, data: SubTableUpdate):
+    """Update a subtable."""
+    from app.models.price_lists import SubTable
+
+    subtable = db.query(SubTable).filter(SubTable.id == subtable_id).first()
+    if not subtable:
+        raise HTTPException(status_code=404, detail="Subtable not found")
+
+    if data.name is not None:
+        subtable.name = data.name
+    if data.seats is not None:
+        subtable.seats = data.seats
+    if data.current_guests is not None:
+        subtable.current_guests = data.current_guests
+    if data.status is not None:
+        subtable.status = data.status
+    if data.waiter_id is not None:
+        subtable.waiter_id = data.waiter_id
+    if data.current_order_id is not None:
+        subtable.current_order_id = data.current_order_id
+
+    db.commit()
+    db.refresh(subtable)
+
+    return _subtable_to_dict(subtable)
+
+
+@router.post("/subtables/{subtable_id}/occupy")
+def occupy_subtable(db: DbSession, subtable_id: int, data: dict = Body(...)):
+    """Mark a subtable as occupied with guests."""
+    from app.models.price_lists import SubTable
+
+    subtable = db.query(SubTable).filter(SubTable.id == subtable_id).first()
+    if not subtable:
+        raise HTTPException(status_code=404, detail="Subtable not found")
+
+    subtable.status = "occupied"
+    subtable.current_guests = data.get("guests", 1)
+    subtable.waiter_id = data.get("waiter_id")
+
+    db.commit()
+
+    return _subtable_to_dict(subtable)
+
+
+@router.post("/subtables/{subtable_id}/clear")
+def clear_subtable(db: DbSession, subtable_id: int):
+    """Clear a subtable (mark as available)."""
+    from app.models.price_lists import SubTable
+
+    subtable = db.query(SubTable).filter(SubTable.id == subtable_id).first()
+    if not subtable:
+        raise HTTPException(status_code=404, detail="Subtable not found")
+
+    subtable.status = "available"
+    subtable.current_guests = 0
+    subtable.current_order_id = None
+    subtable.waiter_id = None
+
+    db.commit()
+
+    return _subtable_to_dict(subtable)
+
+
+@router.post("/tables/{table_id}/subtables/merge")
+def merge_subtables(db: DbSession, table_id: int):
+    """Merge all subtables back into the main table (delete subtables)."""
+    from app.models.price_lists import SubTable
+
+    # Check if any subtable has active orders
+    active = db.query(SubTable).filter(
+        SubTable.parent_table_id == table_id,
+        SubTable.status == "occupied"
+    ).count()
+
+    if active > 0:
+        raise HTTPException(status_code=400, detail=f"{active} subtable(s) are occupied. Clear them first.")
+
+    deleted = db.query(SubTable).filter(SubTable.parent_table_id == table_id).delete()
+    db.commit()
+
+    return {"status": "merged", "deleted_count": deleted}
+
+
+@router.delete("/subtables/{subtable_id}")
+def delete_subtable(db: DbSession, subtable_id: int):
+    """Delete a specific subtable."""
+    from app.models.price_lists import SubTable
+
+    subtable = db.query(SubTable).filter(SubTable.id == subtable_id).first()
+    if not subtable:
+        raise HTTPException(status_code=404, detail="Subtable not found")
+
+    if subtable.status == "occupied":
+        raise HTTPException(status_code=400, detail="Cannot delete occupied subtable")
+
+    db.delete(subtable)
+    db.commit()
+
+    return {"status": "deleted", "id": subtable_id}

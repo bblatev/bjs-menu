@@ -11,7 +11,8 @@ from app.api.routes import (
     price_lists, menu_complete, purchase_orders,
     bar, financial, loyalty, vip, tax, shifts, payroll,
     audit_logs, benchmarking, price_tracker, referrals, haccp, warehouses,
-    gift_cards, feedback, notifications, settings, integrations
+    gift_cards, feedback, notifications, settings, integrations,
+    fiscal, accounting_export, biometric
 )
 
 api_router = APIRouter()
@@ -134,3 +135,12 @@ api_router.include_router(settings.router, prefix="/settings", tags=["settings"]
 
 # Integrations
 api_router.include_router(integrations.router, prefix="/integrations", tags=["integrations"])
+
+# Bulgarian Fiscal Device (NRA compliance)
+api_router.include_router(fiscal.router, prefix="/fiscal", tags=["fiscal", "nra", "bulgaria"])
+
+# Bulgarian Accounting Export (AtomS3, etc.)
+api_router.include_router(accounting_export.router, prefix="/accounting-export", tags=["accounting", "atoms3", "export"])
+
+# Biometric & Card Reader Access Control
+api_router.include_router(biometric.router, prefix="/biometric", tags=["biometric", "fingerprint", "card-reader", "access-control"])

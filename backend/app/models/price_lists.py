@@ -151,3 +151,30 @@ class CustomerCredit(Base, TimestampMixin):
     last_payment_amount: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
 
     location_id: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+
+
+class SubTable(Base, TimestampMixin):
+    """Subtable for splitting large tables into sections."""
+
+    __tablename__ = "subtables"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    parent_table_id: Mapped[int] = mapped_column(Integer, nullable=False)  # References tables
+    name: Mapped[str] = mapped_column(String(50), nullable=False)  # "A", "B", "C" or "1", "2", "3"
+
+    # Capacity
+    seats: Mapped[int] = mapped_column(Integer, default=2, nullable=False)
+    current_guests: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+
+    # Status
+    status: Mapped[str] = mapped_column(String(20), default="available", nullable=False)
+    # Statuses: "available", "occupied", "reserved"
+
+    # Current order
+    current_order_id: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+
+    # Assigned waiter
+    waiter_id: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    location_id: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)

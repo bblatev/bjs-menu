@@ -114,6 +114,7 @@ class MenuItem(Base):
     name = Column(String(200), nullable=False)
     description = Column(Text, nullable=True)
     price = Column(Numeric(10, 2), nullable=False)
+    base_price = Column(Numeric(10, 2), nullable=True)  # Cost/base price for turnover reporting
     category = Column(String(100), nullable=False)
 
     image_url = Column(String(500), nullable=True)
@@ -145,6 +146,13 @@ class KitchenOrder(Base):
 
     station = Column(String(50), nullable=True)
     course = Column(String(20), nullable=True)
+
+    # Workflow mode support (Gap 11)
+    workflow_mode = Column(String(20), default="order")  # "order" (direct) or "request" (needs confirmation)
+    is_confirmed = Column(Boolean, default=True)  # For request mode: needs manager/kitchen confirmation
+    confirmed_by = Column(Integer, nullable=True)  # Staff ID who confirmed
+    confirmed_at = Column(DateTime, nullable=True)
+    rejection_reason = Column(String(200), nullable=True)
 
     created_at = Column(DateTime, default=datetime.utcnow)
     started_at = Column(DateTime, nullable=True)

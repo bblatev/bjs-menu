@@ -413,6 +413,12 @@ export default function CustomersPage() {
         </div>
         <div className="flex gap-4">
           <Link
+            href="/customers/credits"
+            className="px-4 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600"
+          >
+            💳 Credit Accounts
+          </Link>
+          <Link
             href="/rfm-analytics"
             className="px-4 py-2 bg-purple-600 text-gray-900 rounded-lg hover:bg-purple-700"
           >

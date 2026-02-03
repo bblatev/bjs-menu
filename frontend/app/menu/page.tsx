@@ -780,7 +780,11 @@ export default function MenuPage() {
         </div>
 
         {/* Quick Navigation */}
-        <div className="grid grid-cols-3 md:grid-cols-6 gap-3 mb-4">
+        <div className="grid grid-cols-3 md:grid-cols-7 gap-3 mb-4">
+          <Link href="/daily-menu" className="bg-orange-50 hover:bg-orange-100 border border-orange-200 rounded-xl p-3 text-center transition-colors">
+            <span className="text-2xl">📅</span>
+            <p className="text-orange-700 text-sm mt-1 font-medium">Daily Menu</p>
+          </Link>
           <Link href="/menu/categories" className="bg-gray-50 hover:bg-gray-100 rounded-xl p-3 text-center transition-colors">
             <span className="text-2xl">📁</span>
             <p className="text-gray-900 text-sm mt-1">Categories</p>

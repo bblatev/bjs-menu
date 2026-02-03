@@ -90,6 +90,10 @@ class StaffUser(Base, TimestampMixin):
     color: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)
     location_id: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
     last_login: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    # Service deduction / commission tracking
+    commission_percentage: Mapped[float] = mapped_column(Float, default=0.0, nullable=False)
+    service_fee_percentage: Mapped[float] = mapped_column(Float, default=0.0, nullable=False)
+    auto_logout_after_close: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
 
     # Relationships
     shifts = relationship("Shift", back_populates="staff")

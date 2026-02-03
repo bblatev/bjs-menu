@@ -415,6 +415,13 @@ export default function TablesPage() {
               </svg>
             </button>
           </div>
+          <a
+            href="/tables/subtables"
+            className="flex items-center gap-2 px-4 py-2.5 bg-orange-100 text-orange-700 font-medium rounded-xl hover:bg-orange-200 transition-all"
+          >
+            <span>✂️</span>
+            Подмаси
+          </a>
           <button
             onClick={() => setIsAddModalOpen(true)}
             className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-primary-500 to-primary-600 text-gray-900 font-semibold rounded-xl hover:from-primary-400 hover:to-primary-500 transition-all shadow-sm hover:shadow-lg hover:shadow-primary-500/25"

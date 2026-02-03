@@ -140,6 +140,42 @@ export default function SettingsPage() {
           </div>
         )}
 
+        {/* Quick Settings Navigation */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+          <a
+            href="/settings/alerts"
+            className="bg-orange-50 hover:bg-orange-100 border border-orange-200 rounded-xl p-4 text-center transition-colors"
+          >
+            <span className="text-2xl">🔔</span>
+            <p className="text-orange-700 text-sm mt-1 font-medium">Manager Alerts</p>
+            <p className="text-orange-500 text-xs">SMS & Email notifications</p>
+          </a>
+          <a
+            href="/settings/printers"
+            className="bg-gray-50 hover:bg-gray-100 border border-gray-200 rounded-xl p-4 text-center transition-colors"
+          >
+            <span className="text-2xl">🖨️</span>
+            <p className="text-gray-700 text-sm mt-1 font-medium">Printers</p>
+            <p className="text-gray-500 text-xs">Receipt & kitchen printers</p>
+          </a>
+          <a
+            href="/settings/integrations"
+            className="bg-gray-50 hover:bg-gray-100 border border-gray-200 rounded-xl p-4 text-center transition-colors"
+          >
+            <span className="text-2xl">🔗</span>
+            <p className="text-gray-700 text-sm mt-1 font-medium">Integrations</p>
+            <p className="text-gray-500 text-xs">Third-party connections</p>
+          </a>
+          <a
+            href="/settings/users"
+            className="bg-gray-50 hover:bg-gray-100 border border-gray-200 rounded-xl p-4 text-center transition-colors"
+          >
+            <span className="text-2xl">👥</span>
+            <p className="text-gray-700 text-sm mt-1 font-medium">Users & Roles</p>
+            <p className="text-gray-500 text-xs">Staff permissions</p>
+          </a>
+        </div>
+
         <div className="space-y-6">
           {/* General Settings */}
           <div className="bg-secondary rounded-lg shadow p-6">

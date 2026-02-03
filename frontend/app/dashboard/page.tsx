@@ -237,6 +237,7 @@ function DashboardContent() {
 
   const quickActions = [
     { icon: '➕', label: 'Нова поръчка', href: '/orders/new', color: 'primary' },
+    { icon: '🍽️', label: 'Дневно меню', href: '/daily-menu', color: 'warning' },
     { icon: '📅', label: 'Резервации', href: '/reservations', color: 'accent' },
     { icon: '👨‍🍳', label: 'Кухня', href: '/kitchen', color: 'warning' },
     { icon: '🍸', label: 'Бар', href: '/bar', color: 'accent' },
@@ -421,7 +422,7 @@ function DashboardContent() {
       {/* Quick Actions */}
       <div className="bg-white rounded-2xl p-6 shadow-sm border border-surface-100">
         <h2 className="text-lg font-semibold text-surface-900 mb-4">Бързи действия</h2>
-        <div className="grid grid-cols-6 gap-4">
+        <div className="grid grid-cols-7 gap-4">
           {quickActions.map((action, i) => (
             <Link
               key={i}

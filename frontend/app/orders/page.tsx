@@ -586,6 +586,12 @@ export default function OrdersPage() {
             <button onClick={loadData} className="px-4 py-2 bg-gray-100 text-gray-700 rounded-xl hover:bg-gray-200">
               🔄 Обнови
             </button>
+            <Link
+              href="/orders/quick-reorder"
+              className="px-4 py-2 bg-orange-100 text-orange-700 rounded-xl hover:bg-orange-200 flex items-center gap-2"
+            >
+              ↺ Повтори
+            </Link>
             <button
               onClick={() => setShowNewOrderModal(true)}
               className="px-6 py-2 bg-blue-600 text-gray-900 rounded-xl hover:bg-blue-700 shadow-sm flex items-center gap-2"

@@ -106,6 +106,9 @@ def _staff_to_dict(staff: StaffUser) -> dict:
         "hourly_rate": staff.hourly_rate,
         "max_hours_week": staff.max_hours_week,
         "color": staff.color,
+        "commission_percentage": getattr(staff, 'commission_percentage', 0.0),
+        "service_fee_percentage": getattr(staff, 'service_fee_percentage', 0.0),
+        "auto_logout_after_close": getattr(staff, 'auto_logout_after_close', False),
         "created_at": staff.created_at.isoformat() if staff.created_at else None,
         "last_login": staff.last_login.isoformat() if staff.last_login else None,
     }
@@ -1211,3 +1214,201 @@ def remove_staff_pin(db: DbSession, staff_id: int):
     db.commit()
     db.refresh(staff)
     return _staff_to_dict(staff)
+
+
+# ============== Service Deduction Reports ==============
+
+@router.get("/staff/reports/service-deductions")
+def get_service_deduction_report(
+    db: DbSession,
+    start_date: str = Query(...),
+    end_date: str = Query(...),
+    staff_id: Optional[int] = None,
+):
+    """
+    Generate service deduction report for staff.
+    Shows gross sales, commission earned, service fees, and net earnings.
+    """
+    try:
+        start = datetime.strptime(start_date, "%Y-%m-%d").date()
+        end = datetime.strptime(end_date, "%Y-%m-%d").date()
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid date format. Use YYYY-MM-DD")
+
+    # Get staff with commission/service fee settings
+    query = db.query(StaffUser).filter(StaffUser.is_active == True)
+    if staff_id:
+        query = query.filter(StaffUser.id == staff_id)
+
+    staff_list = query.all()
+
+    report = []
+    total_gross_sales = 0
+    total_commission = 0
+    total_service_fees = 0
+    total_net_earnings = 0
+
+    for staff in staff_list:
+        # Get performance metrics for the period
+        metrics = db.query(PerformanceMetric).filter(
+            PerformanceMetric.staff_id == staff.id,
+            PerformanceMetric.period_date >= start,
+            PerformanceMetric.period_date <= end,
+        ).all()
+
+        gross_sales = sum(m.sales_amount for m in metrics) if metrics else 0
+        tips_received = sum(m.tips_received for m in metrics) if metrics else 0
+        hours_worked = sum(m.hours_worked for m in metrics) if metrics else 0
+
+        # Calculate commission and service fees
+        commission_pct = getattr(staff, 'commission_percentage', 0.0) or 0.0
+        service_fee_pct = getattr(staff, 'service_fee_percentage', 0.0) or 0.0
+
+        commission_earned = gross_sales * (commission_pct / 100)
+        service_fee_deducted = gross_sales * (service_fee_pct / 100)
+
+        # Calculate base pay
+        base_pay = hours_worked * staff.hourly_rate
+
+        # Net earnings = base pay + commission + tips - service fees
+        net_earnings = base_pay + commission_earned + tips_received - service_fee_deducted
+
+        staff_report = {
+            "staff_id": staff.id,
+            "staff_name": staff.full_name,
+            "role": staff.role,
+            "hours_worked": round(hours_worked, 2),
+            "hourly_rate": staff.hourly_rate,
+            "base_pay": round(base_pay, 2),
+            "gross_sales": round(gross_sales, 2),
+            "commission_percentage": commission_pct,
+            "commission_earned": round(commission_earned, 2),
+            "tips_received": round(tips_received, 2),
+            "service_fee_percentage": service_fee_pct,
+            "service_fee_deducted": round(service_fee_deducted, 2),
+            "net_earnings": round(net_earnings, 2),
+        }
+
+        report.append(staff_report)
+
+        total_gross_sales += gross_sales
+        total_commission += commission_earned
+        total_service_fees += service_fee_deducted
+        total_net_earnings += net_earnings
+
+    return {
+        "period": {
+            "start_date": start.isoformat(),
+            "end_date": end.isoformat(),
+        },
+        "summary": {
+            "total_staff": len(report),
+            "total_gross_sales": round(total_gross_sales, 2),
+            "total_commission_paid": round(total_commission, 2),
+            "total_service_fees_collected": round(total_service_fees, 2),
+            "total_net_earnings": round(total_net_earnings, 2),
+        },
+        "staff_reports": report,
+    }
+
+
+@router.patch("/staff/{staff_id}/commission")
+def update_staff_commission(db: DbSession, staff_id: int, data: dict = Body(...)):
+    """Update commission and service fee settings for a staff member."""
+    staff = db.query(StaffUser).filter(StaffUser.id == staff_id).first()
+    if not staff:
+        raise HTTPException(status_code=404, detail="Staff member not found")
+
+    commission_pct = data.get("commission_percentage")
+    service_fee_pct = data.get("service_fee_percentage")
+    auto_logout = data.get("auto_logout_after_close")
+
+    if commission_pct is not None:
+        if commission_pct < 0 or commission_pct > 100:
+            raise HTTPException(status_code=400, detail="Commission must be between 0-100%")
+        staff.commission_percentage = commission_pct
+
+    if service_fee_pct is not None:
+        if service_fee_pct < 0 or service_fee_pct > 100:
+            raise HTTPException(status_code=400, detail="Service fee must be between 0-100%")
+        staff.service_fee_percentage = service_fee_pct
+
+    if auto_logout is not None:
+        staff.auto_logout_after_close = auto_logout
+
+    db.commit()
+    db.refresh(staff)
+
+    return _staff_to_dict(staff)
+
+
+@router.get("/staff/{staff_id}/earnings-summary")
+def get_staff_earnings_summary(
+    db: DbSession,
+    staff_id: int,
+    period: str = Query("month"),
+):
+    """Get earnings summary for a specific staff member."""
+    staff = db.query(StaffUser).filter(StaffUser.id == staff_id).first()
+    if not staff:
+        raise HTTPException(status_code=404, detail="Staff member not found")
+
+    today = date.today()
+
+    if period == "day":
+        start = today
+    elif period == "week":
+        start = today - timedelta(days=7)
+    elif period == "month":
+        start = today - timedelta(days=30)
+    elif period == "year":
+        start = today - timedelta(days=365)
+    else:
+        start = today - timedelta(days=30)
+
+    # Get metrics
+    metrics = db.query(PerformanceMetric).filter(
+        PerformanceMetric.staff_id == staff_id,
+        PerformanceMetric.period_date >= start,
+        PerformanceMetric.period_date <= today,
+    ).all()
+
+    total_sales = sum(m.sales_amount for m in metrics) if metrics else 0
+    total_tips = sum(m.tips_received for m in metrics) if metrics else 0
+    total_hours = sum(m.hours_worked for m in metrics) if metrics else 0
+    total_orders = sum(m.orders_count for m in metrics) if metrics else 0
+
+    commission_pct = getattr(staff, 'commission_percentage', 0.0) or 0.0
+    service_fee_pct = getattr(staff, 'service_fee_percentage', 0.0) or 0.0
+
+    base_pay = total_hours * staff.hourly_rate
+    commission = total_sales * (commission_pct / 100)
+    service_fee = total_sales * (service_fee_pct / 100)
+    net_earnings = base_pay + commission + total_tips - service_fee
+
+    return {
+        "staff_id": staff_id,
+        "staff_name": staff.full_name,
+        "period": period,
+        "period_start": start.isoformat(),
+        "period_end": today.isoformat(),
+        "summary": {
+            "hours_worked": round(total_hours, 2),
+            "total_orders": total_orders,
+            "total_sales": round(total_sales, 2),
+            "avg_ticket": round(total_sales / total_orders, 2) if total_orders > 0 else 0,
+            "sales_per_hour": round(total_sales / total_hours, 2) if total_hours > 0 else 0,
+        },
+        "earnings": {
+            "base_pay": round(base_pay, 2),
+            "commission": round(commission, 2),
+            "tips": round(total_tips, 2),
+            "service_fee_deduction": round(service_fee, 2),
+            "net_total": round(net_earnings, 2),
+        },
+        "rates": {
+            "hourly_rate": staff.hourly_rate,
+            "commission_percentage": commission_pct,
+            "service_fee_percentage": service_fee_pct,
+        },
+    }

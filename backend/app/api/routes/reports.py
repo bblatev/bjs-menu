@@ -440,3 +440,185 @@ def get_trends_report(
         },
         "generated_at": datetime.utcnow().isoformat(),
     }
+
+
+# ==================== TURNOVER AT BASE PRICES ====================
+
+@router.get("/turnover-base-prices")
+def get_turnover_base_prices_report(
+    db: DbSession,
+    start_date: str = Query(..., description="Start date YYYY-MM-DD"),
+    end_date: str = Query(..., description="End date YYYY-MM-DD"),
+    location_id: Optional[int] = Query(None),
+    category: Optional[str] = Query(None),
+):
+    """
+    Turnover at Base Prices Report (TouchSale Gap 13).
+
+    Shows revenue at selling prices vs base/cost prices.
+    Useful for understanding true markup and gross profit margin.
+
+    - actual_revenue: Sum of sales at selling price
+    - base_revenue: Sum of sales at base/cost price
+    - markup_amount: Difference (actual - base)
+    - markup_percentage: Markup as percentage of base
+    - gross_margin: Markup as percentage of actual
+    """
+    from app.models.restaurant import Check, CheckItem, MenuItem
+
+    try:
+        start = datetime.strptime(start_date, "%Y-%m-%d")
+        end = datetime.strptime(end_date, "%Y-%m-%d").replace(hour=23, minute=59, second=59)
+    except ValueError:
+        return {"error": "Invalid date format. Use YYYY-MM-DD"}
+
+    # Query closed checks within date range
+    check_query = db.query(Check).filter(
+        Check.status == "closed",
+        Check.closed_at >= start,
+        Check.closed_at <= end,
+    )
+
+    if location_id:
+        check_query = check_query.filter(Check.location_id == location_id)
+
+    checks = check_query.all()
+    check_ids = [c.id for c in checks]
+
+    if not check_ids:
+        return {
+            "period": {"start_date": start_date, "end_date": end_date},
+            "summary": {
+                "actual_revenue": 0,
+                "base_revenue": 0,
+                "markup_amount": 0,
+                "markup_percentage": 0,
+                "gross_margin_percentage": 0,
+                "total_items_sold": 0,
+                "total_checks": 0,
+            },
+            "by_category": [],
+            "by_item": [],
+            "generated_at": datetime.utcnow().isoformat(),
+        }
+
+    # Get check items
+    items_query = db.query(CheckItem).filter(
+        CheckItem.check_id.in_(check_ids),
+        CheckItem.status != "voided",
+    )
+    check_items = items_query.all()
+
+    # Build menu item lookup with base prices
+    menu_item_ids = list(set(ci.menu_item_id for ci in check_items if ci.menu_item_id))
+    menu_items_map = {}
+    if menu_item_ids:
+        menu_items = db.query(MenuItem).filter(MenuItem.id.in_(menu_item_ids)).all()
+        menu_items_map = {mi.id: mi for mi in menu_items}
+
+    # Calculate totals
+    total_actual = Decimal("0")
+    total_base = Decimal("0")
+    total_items = 0
+    by_category_data: dict = {}
+    by_item_data: dict = {}
+
+    for ci in check_items:
+        actual_price = ci.total or (ci.price * ci.quantity)
+        total_actual += actual_price
+        total_items += ci.quantity
+
+        # Get base price from menu item
+        base_price = Decimal("0")
+        item_category = "Other"
+
+        if ci.menu_item_id and ci.menu_item_id in menu_items_map:
+            mi = menu_items_map[ci.menu_item_id]
+            base_price = (mi.base_price or mi.price * Decimal("0.35")) * ci.quantity  # Default 35% cost if no base
+            item_category = mi.category or "Other"
+        else:
+            # Estimate 35% cost if no menu item link
+            base_price = actual_price * Decimal("0.35")
+
+        # Filter by category if specified
+        if category and item_category != category:
+            continue
+
+        total_base += base_price
+
+        # Aggregate by category
+        if item_category not in by_category_data:
+            by_category_data[item_category] = {
+                "category": item_category,
+                "actual_revenue": Decimal("0"),
+                "base_revenue": Decimal("0"),
+                "items_sold": 0,
+            }
+        by_category_data[item_category]["actual_revenue"] += actual_price
+        by_category_data[item_category]["base_revenue"] += base_price
+        by_category_data[item_category]["items_sold"] += ci.quantity
+
+        # Aggregate by item
+        item_name = ci.name
+        if item_name not in by_item_data:
+            by_item_data[item_name] = {
+                "name": item_name,
+                "actual_revenue": Decimal("0"),
+                "base_revenue": Decimal("0"),
+                "quantity_sold": 0,
+            }
+        by_item_data[item_name]["actual_revenue"] += actual_price
+        by_item_data[item_name]["base_revenue"] += base_price
+        by_item_data[item_name]["quantity_sold"] += ci.quantity
+
+    # Calculate markup
+    markup_amount = total_actual - total_base
+    markup_pct = (markup_amount / total_base * 100) if total_base > 0 else Decimal("0")
+    gross_margin_pct = (markup_amount / total_actual * 100) if total_actual > 0 else Decimal("0")
+
+    # Format category data
+    categories = []
+    for cat_data in by_category_data.values():
+        cat_markup = cat_data["actual_revenue"] - cat_data["base_revenue"]
+        cat_margin = (cat_markup / cat_data["actual_revenue"] * 100) if cat_data["actual_revenue"] > 0 else 0
+        categories.append({
+            "category": cat_data["category"],
+            "actual_revenue": float(cat_data["actual_revenue"]),
+            "base_revenue": float(cat_data["base_revenue"]),
+            "markup_amount": float(cat_markup),
+            "gross_margin_percentage": float(cat_margin),
+            "items_sold": cat_data["items_sold"],
+        })
+    categories.sort(key=lambda x: x["actual_revenue"], reverse=True)
+
+    # Format item data (top 20)
+    items = []
+    for item_data in by_item_data.values():
+        item_markup = item_data["actual_revenue"] - item_data["base_revenue"]
+        item_margin = (item_markup / item_data["actual_revenue"] * 100) if item_data["actual_revenue"] > 0 else 0
+        items.append({
+            "name": item_data["name"],
+            "actual_revenue": float(item_data["actual_revenue"]),
+            "base_revenue": float(item_data["base_revenue"]),
+            "markup_amount": float(item_markup),
+            "gross_margin_percentage": float(item_margin),
+            "quantity_sold": item_data["quantity_sold"],
+        })
+    items.sort(key=lambda x: x["actual_revenue"], reverse=True)
+    items = items[:20]  # Top 20 items
+
+    return {
+        "period": {"start_date": start_date, "end_date": end_date},
+        "summary": {
+            "actual_revenue": float(total_actual),
+            "base_revenue": float(total_base),
+            "markup_amount": float(markup_amount),
+            "markup_percentage": float(markup_pct),
+            "gross_margin_percentage": float(gross_margin_pct),
+            "total_items_sold": total_items,
+            "total_checks": len(checks),
+        },
+        "by_category": categories,
+        "by_item": items,
+        "generated_at": datetime.utcnow().isoformat(),
+    }
