@@ -65,17 +65,13 @@ export default function TablesPage() {
         setError(null);
 
         const token = localStorage.getItem('access_token');
-        console.log('Tables page - Token:', token ? token.substring(0, 20) + '...' : 'NONE');
-        console.log('Tables page - API_URL:', API_URL);
 
         if (!token) {
-          console.log('No token, redirecting to login...');
           window.location.href = '/login';
           return;
         }
 
         const url = `${API_URL}/tables/`;
-        console.log('Fetching:', url);
 
         const response = await fetch(url, {
           headers: {
@@ -83,8 +79,6 @@ export default function TablesPage() {
             'Authorization': `Bearer ${token}`,
           },
         });
-
-        console.log('Response status:', response.status);
 
         if (!response.ok) {
           if (response.status === 401) {
@@ -112,7 +106,6 @@ export default function TablesPage() {
 
         setTables(mappedTables);
       } catch (err) {
-        console.error('Tables fetch error:', err);
         setError(err instanceof Error ? err.message : 'Възникна неочаквана грешка');
       } finally {
         setLoading(false);

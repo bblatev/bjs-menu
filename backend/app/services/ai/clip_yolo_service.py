@@ -554,7 +554,7 @@ def get_status() -> Dict[str, Any]:
         try:
             import torch
             status["device"] = "cuda" if torch.cuda.is_available() else "cpu"
-        except:
+        except Exception:
             status["device"] = "unknown"
 
     return status

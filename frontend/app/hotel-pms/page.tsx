@@ -139,8 +139,9 @@ export default function HotelPMSPage() {
         body: JSON.stringify({
           provider: selectedProvider,
           config: {
-            api_key: 'demo_key',
-            property_id: 'demo_property'
+            // TODO: Replace with form inputs
+            api_key: '',
+            property_id: ''
           }
         })
       });

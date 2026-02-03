@@ -68,11 +68,11 @@ export default function AccountingIntegrationsPage() {
         },
         body: JSON.stringify({
           integration_type: type,
-          // Demo credentials
-          client_id: 'demo_client',
-          client_secret: 'demo_secret',
-          access_token: 'demo_token',
-          tenant_id: 'demo_tenant'
+          // TODO: Replace with form inputs for real credentials
+          client_id: '',
+          client_secret: '',
+          access_token: '',
+          tenant_id: ''
         })
       });
       
@@ -80,8 +80,8 @@ export default function AccountingIntegrationsPage() {
         await fetchData();
         alert('Integration connected successfully!');
       }
-    } catch (error) {
-      console.error('Error:', error);
+    } catch {
+      // Connection failed
     } finally {
       setConnecting(null);
     }
@@ -95,8 +95,8 @@ export default function AccountingIntegrationsPage() {
         headers: { 'Authorization': `Bearer \${token}` }
       });
       await fetchData();
-    } catch (error) {
-      console.error('Error:', error);
+    } catch {
+      // Disconnect failed
     }
   };
 

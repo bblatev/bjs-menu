@@ -89,6 +89,28 @@ def _time_entry_to_dict(entry: TimeClockEntry, staff_name: str = None) -> dict:
     }
 
 
+def _init_default_staff(db: DbSession):
+    """Initialize default staff members if none exist."""
+    count = db.query(StaffUser).count()
+    if count == 0:
+        default_staff = [
+            {"full_name": "Admin User", "role": "manager", "hourly_rate": 25.0},
+            {"full_name": "John Waiter", "role": "waiter", "hourly_rate": 15.0},
+            {"full_name": "Jane Bartender", "role": "bar", "hourly_rate": 18.0},
+            {"full_name": "Mike Kitchen", "role": "kitchen", "hourly_rate": 16.0},
+        ]
+        for s in default_staff:
+            staff = StaffUser(
+                full_name=s["full_name"],
+                role=s["role"],
+                hourly_rate=s["hourly_rate"],
+                max_hours_week=40,
+                is_active=True,
+            )
+            db.add(staff)
+        db.commit()
+
+
 # ============== Staff CRUD ==============
 
 @router.get("/staff")

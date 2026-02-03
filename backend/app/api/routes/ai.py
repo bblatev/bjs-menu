@@ -627,7 +627,7 @@ async def upload_training_video(
         import os as os_module
         try:
             os_module.unlink(tmp_path)
-        except:
+        except OSError:
             pass
 
     return results

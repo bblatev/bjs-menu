@@ -1,6 +1,7 @@
 """Waiter Terminal API routes - using database models."""
 
 import asyncio
+import logging
 from typing import List, Optional
 from datetime import datetime
 from decimal import Decimal
@@ -10,6 +11,8 @@ from pydantic import BaseModel
 from app.db.session import DbSession
 from app.models.restaurant import Table, MenuItem, Check, CheckItem, CheckPayment
 from app.models.hardware import WaiterCall as WaiterCallModel
+
+logger = logging.getLogger(__name__)
 
 
 async def broadcast_waiter_call(call_data: dict):
@@ -23,7 +26,7 @@ async def broadcast_waiter_call(call_data: dict):
             "data": call_data
         }, "waiter-calls")
     except Exception as e:
-        print(f"WebSocket broadcast error: {e}")
+        logger.warning(f"WebSocket broadcast error: {e}")
 
 router = APIRouter()
 

@@ -275,8 +275,6 @@ export default function TableOrderPage() {
         order_type: 'dine-in',
       };
 
-      console.log('Placing order:', orderData);
-
       // Use the correct guest order endpoint
       const response = await fetch(`${API_URL}/orders/guest`, {
         method: 'POST',
@@ -285,8 +283,7 @@ export default function TableOrderPage() {
       });
 
       if (response.ok) {
-        const result = await response.json();
-        console.log('Order placed:', result);
+        await response.json();
         setOrderPlaced(true);
         setCart([]);
         setShowCart(false);
