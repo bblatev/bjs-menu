@@ -2,6 +2,7 @@
 
 import io
 from datetime import datetime
+from typing import Dict
 
 from reportlab.lib import colors
 from reportlab.lib.pagesizes import A4
@@ -17,9 +18,24 @@ from app.models.product import Product
 from app.models.supplier import Supplier
 
 
+def _prefetch_order_data(order: PurchaseOrder, db: Session) -> tuple[Supplier | None, Dict[int, Product]]:
+    """Prefetch supplier and products to avoid N+1 queries."""
+    # Fetch supplier
+    supplier = db.query(Supplier).filter(Supplier.id == order.supplier_id).first()
+
+    # Batch fetch all products for order lines
+    product_ids = [line.product_id for line in order.lines if line.product_id]
+    products = {}
+    if product_ids:
+        product_list = db.query(Product).filter(Product.id.in_(product_ids)).all()
+        products = {p.id: p for p in product_list}
+
+    return supplier, products
+
+
 def generate_whatsapp_text(order: PurchaseOrder, db: Session) -> str:
     """Generate WhatsApp-ready text for a purchase order."""
-    supplier = db.query(Supplier).filter(Supplier.id == order.supplier_id).first()
+    supplier, products = _prefetch_order_data(order, db)
 
     lines = []
     lines.append(f"*PURCHASE ORDER #{order.id}*")
@@ -31,7 +47,7 @@ def generate_whatsapp_text(order: PurchaseOrder, db: Session) -> str:
 
     total_items = 0
     for line in order.lines:
-        product = db.query(Product).filter(Product.id == line.product_id).first()
+        product = products.get(line.product_id)
         if product:
             lines.append(f"• {product.name}: {line.qty} {product.unit}")
             total_items += 1
@@ -48,6 +64,8 @@ def generate_whatsapp_text(order: PurchaseOrder, db: Session) -> str:
 
 def generate_pdf(order: PurchaseOrder, db: Session) -> bytes:
     """Generate PDF for a purchase order."""
+    supplier, products = _prefetch_order_data(order, db)
+
     buffer = io.BytesIO()
     doc = SimpleDocTemplate(buffer, pagesize=A4, topMargin=2 * cm, bottomMargin=2 * cm)
 
@@ -65,7 +83,6 @@ def generate_pdf(order: PurchaseOrder, db: Session) -> bytes:
     elements.append(Paragraph(f"Purchase Order #{order.id}", title_style))
 
     # Supplier info
-    supplier = db.query(Supplier).filter(Supplier.id == order.supplier_id).first()
     if supplier:
         elements.append(Paragraph(f"<b>Supplier:</b> {supplier.name}", styles["Normal"]))
         if supplier.contact_phone:
@@ -84,7 +101,7 @@ def generate_pdf(order: PurchaseOrder, db: Session) -> bytes:
 
     total_cost = 0
     for idx, line in enumerate(order.lines, 1):
-        product = db.query(Product).filter(Product.id == line.product_id).first()
+        product = products.get(line.product_id)
         if product:
             unit_cost = line.unit_cost or product.cost_price or 0
             line_total = float(line.qty) * float(unit_cost)
@@ -128,6 +145,8 @@ def generate_pdf(order: PurchaseOrder, db: Session) -> bytes:
 
 def generate_xlsx(order: PurchaseOrder, db: Session) -> bytes:
     """Generate Excel file for a purchase order."""
+    supplier, products = _prefetch_order_data(order, db)
+
     wb = Workbook()
     ws = wb.active
     ws.title = f"PO-{order.id}"
@@ -143,8 +162,6 @@ def generate_xlsx(order: PurchaseOrder, db: Session) -> bytes:
     )
 
     # Header info
-    supplier = db.query(Supplier).filter(Supplier.id == order.supplier_id).first()
-
     ws["A1"] = f"Purchase Order #{order.id}"
     ws["A1"].font = Font(bold=True, size=14)
     ws.merge_cells("A1:G1")
@@ -169,7 +186,7 @@ def generate_xlsx(order: PurchaseOrder, db: Session) -> bytes:
     total_cost = 0
     for idx, line in enumerate(order.lines, 1):
         row = 7 + idx
-        product = db.query(Product).filter(Product.id == line.product_id).first()
+        product = products.get(line.product_id)
         if product:
             unit_cost = float(line.unit_cost or product.cost_price or 0)
             line_total = float(line.qty) * unit_cost

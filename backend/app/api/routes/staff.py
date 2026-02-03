@@ -1,9 +1,8 @@
 """Staff management routes - comprehensive CRUD for staff, shifts, time clock, performance, tips."""
 
-from typing import List, Optional
+from typing import List, Optional, Dict
 from datetime import datetime, date, time, timedelta
 from fastapi import APIRouter, HTTPException, Body, Query
-from pydantic import BaseModel
 from sqlalchemy import func, and_, or_
 
 from app.db.session import DbSession
@@ -12,87 +11,27 @@ from app.models.staff import (
     TableAssignment, PerformanceMetric, PerformanceGoal,
     TipPool, TipDistribution
 )
+from app.schemas.staff import (
+    StaffCreate, StaffUpdate, StaffResponse,
+    ShiftCreate, ShiftUpdate, ShiftResponse,
+    TimeOffCreate, TimeOffResponse,
+    TipPoolCreate, TipPoolResponse,
+    TimeClockEntryResponse,
+)
 
 router = APIRouter()
 
 
-# ============== Pydantic Schemas ==============
-
-class StaffCreate(BaseModel):
-    full_name: str
-    role: str = "waiter"
-    pin_code: Optional[str] = None
-    hourly_rate: float = 15.0
-    max_hours_week: int = 40
-    color: Optional[str] = None
-
-
-class StaffUpdate(BaseModel):
-    full_name: Optional[str] = None
-    role: Optional[str] = None
-    hourly_rate: Optional[float] = None
-    max_hours_week: Optional[int] = None
-    color: Optional[str] = None
-
-
-class ShiftCreate(BaseModel):
-    staff_id: int
-    date: str  # YYYY-MM-DD
-    shift_type: str = "morning"
-    start_time: str  # HH:MM
-    end_time: str  # HH:MM
-    break_minutes: int = 30
-    position: Optional[str] = None
-    notes: Optional[str] = None
-
-
-class ShiftUpdate(BaseModel):
-    staff_id: Optional[int] = None
-    date: Optional[str] = None
-    shift_type: Optional[str] = None
-    start_time: Optional[str] = None
-    end_time: Optional[str] = None
-    break_minutes: Optional[int] = None
-    status: Optional[str] = None
-    position: Optional[str] = None
-    notes: Optional[str] = None
-
-
-class TimeOffCreate(BaseModel):
-    staff_id: int
-    start_date: str
-    end_date: str
-    type: str = "vacation"
-    notes: Optional[str] = None
-
-
-class TipPoolCreate(BaseModel):
-    date: str
-    shift: str = "evening"
-    total_tips_cash: float = 0
-    total_tips_card: float = 0
-    distribution_method: str = "equal"
-    participant_ids: List[int] = []
-
-
 # ============== Helper Functions ==============
 
-def _init_default_staff(db: DbSession):
-    """Initialize default staff if none exist."""
-    count = db.query(StaffUser).count()
-    if count == 0:
-        default_staff = [
-            {"full_name": "John Smith", "role": "waiter", "pin_hash": "1234", "color": "#3B82F6"},
-            {"full_name": "Jane Doe", "role": "waiter", "pin_hash": "2345", "color": "#10B981"},
-            {"full_name": "Mike Johnson", "role": "bar", "pin_hash": "3456", "color": "#F59E0B"},
-            {"full_name": "Sarah Wilson", "role": "kitchen", "pin_hash": None, "color": "#EF4444"},
-            {"full_name": "Tom Brown", "role": "manager", "pin_hash": "5678", "color": "#8B5CF6"},
-            {"full_name": "Emily Davis", "role": "admin", "pin_hash": "6789", "color": "#EC4899"},
-        ]
-        for s in default_staff:
-            staff = StaffUser(**s)
-            db.add(staff)
-        db.commit()
+def _prefetch_staff_names(db: DbSession, staff_ids: List[int]) -> Dict[int, str]:
+    """Batch fetch staff names to avoid N+1 queries."""
+    if not staff_ids:
+        return {}
+    staff_list = db.query(StaffUser.id, StaffUser.full_name).filter(
+        StaffUser.id.in_(staff_ids)
+    ).all()
+    return {s.id: s.full_name for s in staff_list}
 
 
 def _staff_to_dict(staff: StaffUser) -> dict:
@@ -106,9 +45,9 @@ def _staff_to_dict(staff: StaffUser) -> dict:
         "hourly_rate": staff.hourly_rate,
         "max_hours_week": staff.max_hours_week,
         "color": staff.color,
-        "commission_percentage": getattr(staff, 'commission_percentage', 0.0),
-        "service_fee_percentage": getattr(staff, 'service_fee_percentage', 0.0),
-        "auto_logout_after_close": getattr(staff, 'auto_logout_after_close', False),
+        "commission_percentage": staff.commission_percentage if hasattr(staff, 'commission_percentage') and staff.commission_percentage is not None else 0.0,
+        "service_fee_percentage": staff.service_fee_percentage if hasattr(staff, 'service_fee_percentage') and staff.service_fee_percentage is not None else 0.0,
+        "auto_logout_after_close": staff.auto_logout_after_close if hasattr(staff, 'auto_logout_after_close') and staff.auto_logout_after_close is not None else False,
         "created_at": staff.created_at.isoformat() if staff.created_at else None,
         "last_login": staff.last_login.isoformat() if staff.last_login else None,
     }

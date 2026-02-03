@@ -1,6 +1,8 @@
 """Authentication routes."""
 
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, HTTPException, Request, status
+from slowapi import Limiter
+from slowapi.util import get_remote_address
 
 from app.core.rbac import CurrentUser
 from app.core.security import create_access_token, get_password_hash, verify_password
@@ -11,12 +13,16 @@ from app.schemas.user import UserCreate, UserResponse
 
 router = APIRouter()
 
+# Rate limiter for auth endpoints (stricter limits)
+limiter = Limiter(key_func=get_remote_address)
+
 
 @router.post("/login", response_model=Token)
-def login(request: LoginRequest, db: DbSession):
+@limiter.limit("10/minute")
+def login(request: Request, login_request: LoginRequest, db: DbSession):
     """Authenticate user and return JWT token."""
-    user = db.query(User).filter(User.email == request.email).first()
-    if not user or not verify_password(request.password, user.password_hash):
+    user = db.query(User).filter(User.email == login_request.email).first()
+    if not user or not verify_password(login_request.password, user.password_hash):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid email or password",
@@ -34,25 +40,18 @@ def login(request: LoginRequest, db: DbSession):
 
 
 @router.post("/login/pin", response_model=Token)
-def login_with_pin(request: PinLoginRequest, db: DbSession):
+@limiter.limit("10/minute")
+def login_with_pin(request: Request, pin_request: PinLoginRequest, db: DbSession):
     """Authenticate user with PIN code."""
-    # Default PINs for demo/testing (waiter terminals)
-    default_pins = {
-        "1234": {"id": 1, "email": "waiter@bjs.bar", "role": "staff"},
-        "0000": {"id": 2, "email": "manager@bjs.bar", "role": "manager"},
-        "9999": {"id": 3, "email": "admin@bjs.bar", "role": "owner"},
-    }
-
-    # Check default PINs first
-    if request.pin in default_pins:
-        user_data = default_pins[request.pin]
-        token = create_access_token(
-            data={"sub": str(user_data["id"]), "email": user_data["email"], "role": user_data["role"]}
+    # Validate PIN format (4-6 digits)
+    if not pin_request.pin or not pin_request.pin.isdigit() or len(pin_request.pin) < 4 or len(pin_request.pin) > 6:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="PIN must be 4-6 digits",
         )
-        return Token(access_token=token)
 
-    # Then check database users
-    user = db.query(User).filter(User.pin == request.pin).first()
+    # Authenticate against database users only
+    user = db.query(User).filter(User.pin == pin_request.pin).first()
     if not user:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -71,7 +70,8 @@ def login_with_pin(request: PinLoginRequest, db: DbSession):
 
 
 @router.post("/register", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
-def register(request: UserCreate, db: DbSession):
+@limiter.limit("5/minute")
+def register(request: Request, user_create: UserCreate, db: DbSession):
     """Register a new user (for initial setup only)."""
     # Check if any users exist (only allow registration if no users)
     existing_user = db.query(User).first()
@@ -83,10 +83,10 @@ def register(request: UserCreate, db: DbSession):
 
     # Create first user as owner
     user = User(
-        email=request.email,
-        password_hash=get_password_hash(request.password),
-        name=request.name,
-        role=request.role,
+        email=user_create.email,
+        password_hash=get_password_hash(user_create.password),
+        name=user_create.name,
+        role=user_create.role,
     )
     db.add(user)
     db.commit()

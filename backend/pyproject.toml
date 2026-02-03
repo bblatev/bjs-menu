@@ -29,6 +29,7 @@ dependencies = [
     "numpy>=1.26.3",
     "pytz>=2024.1",
     "typing_extensions>=4.0.0",
+    "slowapi>=0.1.9",
 ]
 
 [project.optional-dependencies]

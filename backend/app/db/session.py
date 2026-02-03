@@ -11,13 +11,26 @@ from app.core.config import settings
 
 # Create engine - handle SQLite specially for check_same_thread
 connect_args = {}
+pool_config = {}
+
 if settings.database_url.startswith("sqlite"):
     connect_args = {"check_same_thread": False}
+    # SQLite doesn't support connection pooling the same way
+    pool_config = {"pool_pre_ping": True}
+else:
+    # PostgreSQL/MySQL connection pooling configuration
+    pool_config = {
+        "pool_size": 20,          # Number of connections to keep open
+        "max_overflow": 40,       # Additional connections allowed beyond pool_size
+        "pool_pre_ping": True,    # Test connections before using them
+        "pool_recycle": 3600,     # Recycle connections after 1 hour
+    }
 
 engine = create_engine(
     settings.database_url,
     connect_args=connect_args,
     echo=settings.debug,
+    **pool_config,
 )
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)

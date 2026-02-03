@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 import os
 import uuid
 from datetime import datetime
@@ -11,6 +12,8 @@ from typing import Annotated, Optional, List
 
 from fastapi import APIRouter, File, Form, HTTPException, UploadFile, status
 from sqlalchemy import func
+
+logger = logging.getLogger(__name__)
 
 from app.core.config import settings
 from app.core.rbac import CurrentUser
@@ -64,6 +67,10 @@ TRAINING_DIR = Path(settings.ai_training_images_path)
 TRAINING_DIR.mkdir(parents=True, exist_ok=True)
 
 
+# Allowed image MIME types
+ALLOWED_IMAGE_TYPES = {"image/jpeg", "image/png", "image/webp", "image/gif"}
+
+
 @router.post("/shelf-scan", response_model=ShelfScanResponse)
 async def shelf_scan(
     image: UploadFile = File(..., description="Image of shelf/fridge to scan"),
@@ -78,15 +85,22 @@ async def shelf_scan(
     Returns detected products with counts and confidence scores.
     StockItems are mapped to catalog items where possible.
     """
-    # Validate image
-    if not image.content_type.startswith("image/"):
+    # Validate content type
+    if image.content_type not in ALLOWED_IMAGE_TYPES:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="File must be an image",
+            detail=f"File must be an image. Allowed types: {', '.join(ALLOWED_IMAGE_TYPES)}",
         )
 
-    # Read image data
+    # Read image data with size limit
+    max_size = settings.max_upload_size_mb * 1024 * 1024
     image_data = await image.read()
+
+    if len(image_data) > max_size:
+        raise HTTPException(
+            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+            detail=f"File too large. Maximum size is {settings.max_upload_size_mb}MB",
+        )
 
     # Run inference
     start_time = datetime.utcnow()
@@ -249,8 +263,10 @@ async def upload_training_image(
         buffer = io.BytesIO()
         img.save(buffer, format='JPEG', quality=95)
         image_data = buffer.getvalue()
-    except Exception:
-        pass
+    except ImportError:
+        logger.debug("PIL not available for EXIF orientation fix")
+    except Exception as e:
+        logger.warning(f"Failed to process image EXIF orientation: {e}")
 
     # Extract CLIP features (2048 bytes = 512 float32) for recognition
     # This is the modern approach that works with the /recognize endpoint
@@ -273,10 +289,12 @@ async def upload_training_image(
         try:
             feature_vectors = augment_and_extract_features(image_data, n_augments=5)
             feature_vector = aggregate_product_features(feature_vectors) if feature_vectors else None
-        except Exception:
+        except Exception as e:
+            logger.debug(f"Augmented feature extraction failed: {e}")
             try:
                 feature_vector = extract_combined_features(image_data)
-            except Exception:
+            except Exception as e2:
+                logger.warning(f"All feature extraction methods failed: {e2}")
                 feature_vector = None
 
     # Extract OCR text from label
@@ -290,8 +308,8 @@ async def upload_training_image(
                 ocr_text = label_info.raw_text if label_info.raw_text else None
                 ocr_brand = label_info.brand
                 ocr_product_name = label_info.product_name
-        except Exception:
-            pass
+        except Exception as e:
+            logger.warning(f"OCR text extraction failed: {e}")
 
     # Create database record - no file saved, only features stored
     training_image = TrainingImage(

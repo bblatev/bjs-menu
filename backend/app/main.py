@@ -7,12 +7,20 @@ from typing import List, Dict, Any
 
 from fastapi import FastAPI, Request, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware
+
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.util import get_remote_address
+from slowapi.errors import RateLimitExceeded
 
 from app.api.routes import api_router
 from app.core.config import settings
 from app.db.session import engine
 from app.db.base import Base
+
+# Rate limiter instance
+limiter = Limiter(key_func=get_remote_address, enabled=settings.rate_limit_enabled)
 
 
 # WebSocket Connection Manager for real-time updates
@@ -87,10 +95,14 @@ app = FastAPI(
     redoc_url="/redoc" if settings.debug else None,
 )
 
-# CORS middleware
+# Rate limiting setup
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
+# CORS middleware - origins configured via CORS_ORIGINS env variable
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # In production, specify allowed origins
+    allow_origins=settings.cors_origins_list,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
