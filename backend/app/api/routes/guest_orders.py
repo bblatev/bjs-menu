@@ -1196,13 +1196,19 @@ def request_payment_assistance(
 @router.post("/menu-admin/items")
 def admin_create_menu_item(db: DbSession, data: dict = Body(...)):
     """Create a new menu item."""
+    # Handle both string and dict formats for name/description
+    name_data = data.get("name", "")
+    name = name_data.get("en", name_data) if isinstance(name_data, dict) else name_data
+    desc_data = data.get("description", "")
+    description = desc_data.get("en", desc_data) if isinstance(desc_data, dict) else (desc_data or "")
+
     item = MenuItem(
-        name=data.get("name", {}).get("en", data.get("name", "")),
-        category=data.get("category"),
+        name=name,
+        category=data.get("category", "Uncategorized"),
         price=data.get("price", 0),
         station=data.get("station"),
-        description=data.get("description", {}).get("en", ""),
-        is_available=data.get("is_available", True),
+        description=description,
+        available=data.get("available", data.get("is_available", True)),
     )
     db.add(item)
     db.commit()
