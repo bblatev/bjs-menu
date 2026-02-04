@@ -90,7 +90,6 @@ class CheckResponse(BaseModel):
 
 
 class DiscountRequest(BaseModel):
-    check_id: int
     discount_type: str  # "percent" or "amount"
     discount_value: float
     reason: Optional[str] = None
@@ -98,7 +97,6 @@ class DiscountRequest(BaseModel):
 
 
 class VoidRequest(BaseModel):
-    item_id: int
     reason: str
     manager_pin: Optional[str] = None
 
