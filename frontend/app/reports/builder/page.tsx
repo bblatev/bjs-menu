@@ -3,6 +3,8 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Link from 'next/link';
+import { PageLoading } from '@/components/ui/LoadingSpinner';
+import { ErrorAlert } from '@/components/ui/ErrorAlert';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1';
 
@@ -87,6 +89,8 @@ export default function ReportBuilderPage() {
   });
   const [reportResults, setReportResults] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
+  const [initialLoading, setInitialLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [savedReports, setSavedReports] = useState<any[]>([]);
   const [showReportList, setShowReportList] = useState(false);
@@ -99,6 +103,8 @@ export default function ReportBuilderPage() {
   }, []);
 
   const loadDataSources = async () => {
+    setInitialLoading(true);
+    setError(null);
     try {
       const res = await fetch(`${API_URL}/custom-reports/data-sources`);
       if (res.ok) {
@@ -108,8 +114,11 @@ export default function ReportBuilderPage() {
           setReport({ ...report, data_source_id: data[0].id });
         }
       }
-    } catch (error) {
-      console.error('Error loading data sources:', error);
+    } catch (err) {
+      console.error('Error loading data sources:', err);
+      setError('Failed to load data sources. Please try again.');
+    } finally {
+      setInitialLoading(false);
     }
   };
 

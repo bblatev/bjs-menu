@@ -3,6 +3,8 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import Link from 'next/link';
+import { PageLoading } from '@/components/ui/LoadingSpinner';
+import { ErrorAlert } from '@/components/ui/ErrorAlert';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1';
 
@@ -53,6 +55,7 @@ export default function KDSLocalizationPage() {
   const [activeTab, setActiveTab] = useState<'stations' | 'translations' | 'preview'>('stations');
   const [selectedLanguage, setSelectedLanguage] = useState('es');
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -75,8 +78,9 @@ export default function KDSLocalizationPage() {
         const data = await translationsRes.json();
         setTranslations(data);
       }
-    } catch (error) {
-      console.error('Error loading data:', error);
+    } catch (err) {
+      console.error('Error loading data:', err);
+      setError('Failed to load localization settings. Please try again.');
     } finally {
       setLoading(false);
     }

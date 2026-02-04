@@ -3,6 +3,8 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Link from 'next/link';
+import { PageLoading } from '@/components/ui/LoadingSpinner';
+import { ErrorAlert, EmptyState } from '@/components/ui/ErrorAlert';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1';
 
@@ -67,6 +69,7 @@ export default function BirthdayRewardsPage() {
   const [activeTab, setActiveTab] = useState<'rules' | 'rewards' | 'upcoming'>('rules');
   const [stats, setStats] = useState<any>({});
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   const [ruleForm, setRuleForm] = useState<Partial<RewardRule>>({
     name: '',
@@ -87,6 +90,7 @@ export default function BirthdayRewardsPage() {
 
   const loadData = async () => {
     setLoading(true);
+    setError(null);
     try {
       const [rulesRes, rewardsRes, statsRes] = await Promise.all([
         fetch(`${API_URL}/birthday-rewards/rules`),
@@ -106,8 +110,9 @@ export default function BirthdayRewardsPage() {
         const data = await statsRes.json();
         setStats(data);
       }
-    } catch (error) {
-      console.error('Error loading data:', error);
+    } catch (err) {
+      console.error('Error loading data:', err);
+      setError('Failed to load birthday rewards data. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -245,8 +250,17 @@ export default function BirthdayRewardsPage() {
         </div>
       </div>
 
+      {/* Loading and Error States */}
+      {loading && <PageLoading message="Loading birthday rewards..." />}
+
+      {error && !loading && (
+        <div className="max-w-7xl mx-auto px-6 py-6">
+          <ErrorAlert message={error} onRetry={loadData} />
+        </div>
+      )}
+
       {/* Stats */}
-      <div className="max-w-7xl mx-auto px-6 py-6">
+      {!loading && !error && <div className="max-w-7xl mx-auto px-6 py-6">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
           <div className="bg-white rounded-xl p-4 border border-surface-200">
             <div className="text-3xl font-bold text-surface-900">{stats.total_rules || 0}</div>
@@ -387,8 +401,8 @@ export default function BirthdayRewardsPage() {
 
         {/* Rewards Tab */}
         {activeTab === 'rewards' && (
-          <div className="bg-white rounded-xl border border-surface-200 overflow-hidden">
-            <table className="w-full">
+          <div className="bg-white rounded-xl border border-surface-200 overflow-hidden overflow-x-auto">
+            <table className="w-full min-w-[600px]">
               <thead className="bg-surface-50">
                 <tr>
                   <th className="px-4 py-3 text-left text-sm font-medium text-surface-700">Customer</th>
@@ -462,7 +476,7 @@ export default function BirthdayRewardsPage() {
             </p>
           </div>
         )}
-      </div>
+      </div>}
 
       {/* Rule Modal */}
       <AnimatePresence>

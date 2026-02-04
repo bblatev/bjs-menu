@@ -3,6 +3,8 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Link from 'next/link';
+import { PageLoading } from '@/components/ui/LoadingSpinner';
+import { ErrorAlert } from '@/components/ui/ErrorAlert';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1';
 
@@ -60,6 +62,7 @@ export default function ScheduledReportsPage() {
   const [showModal, setShowModal] = useState(false);
   const [editingSchedule, setEditingSchedule] = useState<ScheduledReport | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   const [form, setForm] = useState<Partial<ScheduledReport>>({
     name: '',
@@ -80,14 +83,16 @@ export default function ScheduledReportsPage() {
 
   const loadData = async () => {
     setLoading(true);
+    setError(null);
     try {
       const res = await fetch(`${API_URL}/scheduled-reports/schedules`);
       if (res.ok) {
         const data = await res.json();
         setSchedules(data);
       }
-    } catch (error) {
-      console.error('Error loading data:', error);
+    } catch (err) {
+      console.error('Error loading data:', err);
+      setError('Failed to load scheduled reports. Please try again.');
     } finally {
       setLoading(false);
     }

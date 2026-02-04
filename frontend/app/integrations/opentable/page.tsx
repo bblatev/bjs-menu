@@ -3,6 +3,8 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Link from 'next/link';
+import { PageLoading } from '@/components/ui/LoadingSpinner';
+import { ErrorAlert } from '@/components/ui/ErrorAlert';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1';
 
@@ -66,6 +68,7 @@ export default function OpenTableIntegrationPage() {
   });
   const [activeTab, setActiveTab] = useState<'reservations' | 'guests' | 'settings'>('reservations');
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [syncing, setSyncing] = useState(false);
   const [showConfigModal, setShowConfigModal] = useState(false);
   const [stats, setStats] = useState<any>({});
@@ -76,6 +79,7 @@ export default function OpenTableIntegrationPage() {
 
   const loadData = async () => {
     setLoading(true);
+    setError(null);
     try {
       const [reservationsRes, guestsRes, statsRes, configRes] = await Promise.all([
         fetch(`${API_URL}/opentable/reservations`),
@@ -100,8 +104,9 @@ export default function OpenTableIntegrationPage() {
         const data = await configRes.json();
         setConfig(prev => ({ ...prev, ...data }));
       }
-    } catch (error) {
-      console.error('Error loading data:', error);
+    } catch (err) {
+      console.error('Error loading data:', err);
+      setError('Failed to load OpenTable data. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -260,7 +265,8 @@ export default function OpenTableIntegrationPage() {
               <h3 className="font-semibold text-surface-900">Recent Reservations</h3>
               <span className="text-sm text-surface-500">{reservations.length} total</span>
             </div>
-            <table className="w-full">
+            <div className="overflow-x-auto">
+            <table className="w-full min-w-[700px]">
               <thead className="bg-surface-50">
                 <tr>
                   <th className="px-4 py-3 text-left text-sm font-medium text-surface-700">Guest</th>
@@ -335,6 +341,7 @@ export default function OpenTableIntegrationPage() {
                 )}
               </tbody>
             </table>
+            </div>
           </div>
         )}
 
@@ -344,7 +351,8 @@ export default function OpenTableIntegrationPage() {
             <div className="p-4 border-b border-surface-100">
               <h3 className="font-semibold text-surface-900">Guest Profiles from OpenTable</h3>
             </div>
-            <table className="w-full">
+            <div className="overflow-x-auto">
+            <table className="w-full min-w-[600px]">
               <thead className="bg-surface-50">
                 <tr>
                   <th className="px-4 py-3 text-left text-sm font-medium text-surface-700">Guest</th>
@@ -404,6 +412,7 @@ export default function OpenTableIntegrationPage() {
                 )}
               </tbody>
             </table>
+            </div>
           </div>
         )}
 

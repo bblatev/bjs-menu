@@ -3,6 +3,8 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Link from 'next/link';
+import { PageLoading } from '@/components/ui/LoadingSpinner';
+import { ErrorAlert } from '@/components/ui/ErrorAlert';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1';
 
@@ -59,12 +61,16 @@ export default function GoogleReservePage() {
   const [syncing, setSyncing] = useState(false);
   const [activeTab, setActiveTab] = useState<'bookings' | 'settings'>('bookings');
   const [showConfigModal, setShowConfigModal] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     loadData();
   }, []);
 
   const loadData = async () => {
+    setLoading(true);
+    setError(null);
     try {
       const [configRes, bookingsRes, statsRes] = await Promise.all([
         fetch(`${API_URL}/google-reserve/config`),
@@ -84,8 +90,11 @@ export default function GoogleReservePage() {
         const data = await statsRes.json();
         setStats(data);
       }
-    } catch (error) {
-      console.error('Error loading data:', error);
+    } catch (err) {
+      console.error('Error loading data:', err);
+      setError('Failed to load Google Reserve data. Please try again.');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -280,8 +289,8 @@ export default function GoogleReservePage() {
 
         {/* Bookings Tab */}
         {activeTab === 'bookings' && (
-          <div className="bg-white rounded-xl border border-surface-200 overflow-hidden">
-            <table className="w-full">
+          <div className="bg-white rounded-xl border border-surface-200 overflow-hidden overflow-x-auto">
+            <table className="w-full min-w-[600px]">
               <thead className="bg-surface-50">
                 <tr>
                   <th className="px-4 py-3 text-left text-sm font-medium text-surface-700">Guest</th>
