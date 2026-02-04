@@ -14,7 +14,8 @@ from app.api.routes import (
     gift_cards, feedback, notifications, settings, integrations,
     fiscal, accounting_export, biometric,
     payments, quickbooks, printers,
-    google_reserve, training, scheduled_reports, email_campaigns
+    google_reserve, training, scheduled_reports, email_campaigns,
+    opentable, birthday_rewards, kds_localization
 )
 
 api_router = APIRouter()
@@ -167,3 +168,12 @@ api_router.include_router(scheduled_reports.router, prefix="/scheduled-reports",
 
 # Email Campaign Builder
 api_router.include_router(email_campaigns.router, prefix="/email-campaigns", tags=["email-campaigns", "marketing", "templates"])
+
+# OpenTable Integration
+api_router.include_router(opentable.router, prefix="/opentable", tags=["opentable", "reservations", "integrations"])
+
+# Birthday & Anniversary Auto-Rewards
+api_router.include_router(birthday_rewards.router, prefix="/birthday-rewards", tags=["birthday-rewards", "loyalty", "automation"])
+
+# KDS Localization (Multilingual Kitchen Display)
+api_router.include_router(kds_localization.router, prefix="/kds-localization", tags=["kds", "localization", "multilingual"])
