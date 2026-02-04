@@ -11,6 +11,38 @@ from app.models.restaurant import KitchenOrder, GuestOrder, MenuItem, Table, Che
 router = APIRouter()
 
 
+def _sync_guest_order_status(db: DbSession, kitchen_order: KitchenOrder, new_status: str):
+    """
+    Sync the guest order status when kitchen order status changes.
+    Maps kitchen statuses to guest order statuses.
+    """
+    # Status mapping: kitchen -> guest order
+    status_map = {
+        "pending": "received",
+        "cooking": "preparing",
+        "ready": "ready",
+        "completed": "served",
+        "cancelled": "cancelled",
+    }
+
+    guest_status = status_map.get(new_status)
+    if not guest_status:
+        return
+
+    # Find the corresponding guest order by table_number and similar creation time
+    # Guest orders are created just before kitchen orders, so find orders with matching table
+    if kitchen_order.table_number:
+        guest_order = db.query(GuestOrder).filter(
+            GuestOrder.table_number == kitchen_order.table_number,
+            GuestOrder.status.notin_(["completed", "cancelled", "paid"]),
+        ).order_by(GuestOrder.created_at.desc()).first()
+
+        if guest_order:
+            guest_order.status = guest_status
+            if new_status == "ready":
+                guest_order.ready_at = datetime.utcnow()
+
+
 class KitchenStats(BaseModel):
     """Kitchen statistics response."""
     active_alerts: int = 0
@@ -229,6 +261,7 @@ def bump_ticket(
         if kitchen_order:
             kitchen_order.status = "completed"
             kitchen_order.completed_at = now
+            _sync_guest_order_status(db, kitchen_order, "completed")
             db.commit()
             return {"status": "ok", "ticket_id": ticket_id, "bumped_at": now.isoformat()}
 
@@ -239,6 +272,7 @@ def bump_ticket(
         if kitchen_order:
             kitchen_order.status = "completed"
             kitchen_order.completed_at = now
+            _sync_guest_order_status(db, kitchen_order, "completed")
             db.commit()
             return {"status": "ok", "ticket_id": ticket_id, "bumped_at": now.isoformat()}
     except ValueError:
@@ -262,6 +296,7 @@ def start_ticket(
         if kitchen_order:
             kitchen_order.status = "cooking"
             kitchen_order.started_at = now
+            _sync_guest_order_status(db, kitchen_order, "cooking")
             db.commit()
             return {"status": "ok", "ticket_id": ticket_id, "started_at": now.isoformat()}
 
@@ -272,6 +307,7 @@ def start_ticket(
         if kitchen_order:
             kitchen_order.status = "cooking"
             kitchen_order.started_at = now
+            _sync_guest_order_status(db, kitchen_order, "cooking")
             db.commit()
             return {"status": "ok", "ticket_id": ticket_id, "started_at": now.isoformat()}
     except ValueError:
@@ -564,6 +600,7 @@ def mark_order_ready(
     kitchen_order = db.query(KitchenOrder).filter(KitchenOrder.id == order_id).first()
     if kitchen_order:
         kitchen_order.status = "ready"
+        _sync_guest_order_status(db, kitchen_order, "ready")
         db.commit()
     return {"status": "ok", "order_id": order_id, "ready_at": datetime.utcnow().isoformat()}
 
