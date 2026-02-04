@@ -72,9 +72,9 @@ class IssuedReward:
     occasion_type: OccasionType
     reward_type: RewardType
     reward_value: float
-    reward_item_id: Optional[str] = None
     code: str  # Redemption code
     message: str
+    reward_item_id: Optional[str] = None
     status: RewardStatus = RewardStatus.PENDING
     valid_from: date = field(default_factory=date.today)
     valid_until: date = field(default_factory=date.today)
