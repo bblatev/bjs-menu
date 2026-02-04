@@ -1234,7 +1234,9 @@ def admin_update_menu_item(db: DbSession, item_id: int, data: dict = Body(...)):
     if "description" in data:
         item.description = data["description"].get("en", "") if isinstance(data["description"], dict) else data["description"]
     if "is_available" in data:
-        item.is_available = data["is_available"]
+        item.available = data["is_available"]
+    if "available" in data:
+        item.available = data["available"]
     
     db.commit()
     db.refresh(item)
@@ -1258,9 +1260,9 @@ def admin_toggle_item_availability(db: DbSession, item_id: int):
     item = db.query(MenuItem).filter(MenuItem.id == item_id).first()
     if not item:
         raise HTTPException(status_code=404, detail="Item not found")
-    item.is_available = not item.is_available
+    item.available = not item.available
     db.commit()
-    return {"id": item.id, "is_available": item.is_available}
+    return {"id": item.id, "available": item.available}
 
 
 @router.post("/menu-admin/categories")
