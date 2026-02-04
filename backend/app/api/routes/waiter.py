@@ -9,7 +9,7 @@ from fastapi import APIRouter, HTTPException, Query, BackgroundTasks
 from pydantic import BaseModel
 
 from app.db.session import DbSession
-from app.models.restaurant import Table, MenuItem, Check, CheckItem, CheckPayment
+from app.models.restaurant import Table, MenuItem, Check, CheckItem, CheckPayment, KitchenOrder
 from app.models.hardware import WaiterCall as WaiterCallModel
 
 logger = logging.getLogger(__name__)
@@ -390,6 +390,7 @@ def create_order(db: DbSession, order: OrderCreate):
 
     # Add items to check
     items_added = 0
+    kitchen_items = []
     for item in order.items:
         menu_item = db.query(MenuItem).filter(MenuItem.id == item.menu_item_id).first()
         if not menu_item:
@@ -411,11 +412,34 @@ def create_order(db: DbSession, order: OrderCreate):
         db.add(check_item)
         items_added += 1
 
+        # Collect items for kitchen order
+        kitchen_items.append({
+            "menu_item_id": menu_item.id,
+            "name": menu_item.name,
+            "price": float(menu_item.price),
+            "quantity": item.quantity,
+            "notes": item.special_instructions,
+            "total": float(menu_item.price * item.quantity),
+        })
+
     db.commit()
 
     # Recalculate totals
     db.refresh(check)
     recalculate_check(check, db)
+
+    # Create a kitchen order so it appears on kitchen display
+    if kitchen_items:
+        kitchen_order = KitchenOrder(
+            check_id=check.id,
+            table_number=table.number if table else None,
+            status="pending",
+            items=kitchen_items,
+            notes=None,
+            location_id=1,  # Default location
+        )
+        db.add(kitchen_order)
+        db.commit()
 
     return {"status": "ok", "check_id": check.id, "items_added": items_added}
 
