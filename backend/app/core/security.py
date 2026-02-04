@@ -7,13 +7,11 @@ from typing import Any, Dict, Optional
 import logging
 
 from jose import JWTError, jwt
-from passlib.context import CryptContext
+import bcrypt
 
 from app.core.config import settings
 
 logger = logging.getLogger(__name__)
-
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
@@ -22,7 +20,10 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
     Uses bcrypt's built-in timing-safe comparison.
     """
     try:
-        return pwd_context.verify(plain_password, hashed_password)
+        return bcrypt.checkpw(
+            plain_password.encode('utf-8'),
+            hashed_password.encode('utf-8')
+        )
     except Exception as e:
         logger.warning(f"Password verification error: {e}")
         return False
@@ -30,7 +31,10 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
 
 def get_password_hash(password: str) -> str:
     """Hash a password using bcrypt."""
-    return pwd_context.hash(password)
+    return bcrypt.hashpw(
+        password.encode('utf-8'),
+        bcrypt.gensalt()
+    ).decode('utf-8')
 
 
 def verify_pin(plain_pin: str, hashed_pin: str) -> bool:
@@ -39,7 +43,10 @@ def verify_pin(plain_pin: str, hashed_pin: str) -> bool:
     Uses bcrypt's built-in timing-safe comparison.
     """
     try:
-        return pwd_context.verify(plain_pin, hashed_pin)
+        return bcrypt.checkpw(
+            plain_pin.encode('utf-8'),
+            hashed_pin.encode('utf-8')
+        )
     except Exception as e:
         logger.warning(f"PIN verification error: {e}")
         return False
@@ -47,7 +54,10 @@ def verify_pin(plain_pin: str, hashed_pin: str) -> bool:
 
 def get_pin_hash(pin: str) -> str:
     """Hash a PIN code using bcrypt."""
-    return pwd_context.hash(pin)
+    return bcrypt.hashpw(
+        pin.encode('utf-8'),
+        bcrypt.gensalt()
+    ).decode('utf-8')
 
 
 def create_access_token(data: dict[str, Any], expires_delta: timedelta | None = None) -> str:

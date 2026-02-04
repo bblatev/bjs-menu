@@ -203,12 +203,24 @@ def create_table(
         max_id = db.query(TableModel).count() + 1
         table_number = str(max_id)
 
+    token = f"table{table_number.lower().replace(' ', '')}"
+
+    # Check if table with this token/number already exists
+    existing = db.query(TableModel).filter(
+        (TableModel.token == token) | (TableModel.number == table_number)
+    ).first()
+    if existing:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Table with number '{table_number}' already exists"
+        )
+
     new_table = TableModel(
         number=table_number,
         capacity=table.capacity,
         area=table.area,
         status=table.status,
-        token=f"table{table_number.lower().replace(' ', '')}",
+        token=token,
     )
     db.add(new_table)
     db.commit()

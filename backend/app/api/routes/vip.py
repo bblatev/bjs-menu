@@ -48,6 +48,14 @@ class TierChange(BaseModel):
     date: str
 
 
+class VIPCustomerCreate(BaseModel):
+    venue_id: int
+    customer_id: int
+    tier: str  # silver, gold, platinum, diamond
+    notes: Optional[str] = None
+    preferences: List[str] = []
+
+
 @router.get("/customers")
 async def get_vip_customers():
     """Get all VIP customers."""
@@ -56,6 +64,18 @@ async def get_vip_customers():
         VIPCustomer(id="2", name="Maria Ivanova", email="maria@business.com", phone="+359888333444", tier="gold", total_spent=8500.00, visits=65, avg_spend=130.77, preferences=["Quiet table", "Red wine"], last_visit="2026-01-28"),
         VIPCustomer(id="3", name="David Chen", email="david@invest.com", phone="+359888555666", tier="diamond", total_spent=42000.00, visits=200, avg_spend=210.00, preferences=["Private room", "Whiskey collection"], notes="Investment banker, hosts client dinners", last_visit="2026-01-30"),
     ]
+
+
+@router.post("/customers")
+async def create_vip_customer(data: VIPCustomerCreate):
+    """Add a customer to VIP program."""
+    return {
+        "success": True,
+        "id": str(data.customer_id),
+        "customer_id": data.customer_id,
+        "tier": data.tier,
+        "message": f"Customer {data.customer_id} added to VIP program as {data.tier}"
+    }
 
 
 @router.get("/occasions")

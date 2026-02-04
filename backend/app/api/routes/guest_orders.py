@@ -1268,11 +1268,21 @@ def admin_toggle_item_availability(db: DbSession, item_id: int):
 @router.post("/menu-admin/categories")
 def admin_create_category(db: DbSession, data: dict = Body(...)):
     """Create a new category (stores as first item's category)."""
-    name = data.get("name", {}).get("en", data.get("name", ""))
+    name_data = data.get("name", "")
+    # Handle both string and dict formats
+    if isinstance(name_data, dict):
+        name = name_data.get("en", name_data.get("bg", ""))
+    else:
+        name = str(name_data)
+
+    desc_data = data.get("description", {"bg": "", "en": ""})
+    if isinstance(desc_data, str):
+        desc_data = {"bg": desc_data, "en": desc_data}
+
     return {
         "id": hash(name) % 10000,
         "name": {"bg": name, "en": name},
-        "description": data.get("description", {"bg": "", "en": ""}),
+        "description": desc_data,
         "sort_order": data.get("sort_order", 0),
         "active": True
     }
@@ -1281,11 +1291,20 @@ def admin_create_category(db: DbSession, data: dict = Body(...)):
 @router.put("/menu-admin/categories/{category_id}")
 def admin_update_category(db: DbSession, category_id: int, data: dict = Body(...)):
     """Update a category."""
-    name = data.get("name", {}).get("en", "")
+    name_data = data.get("name", "")
+    if isinstance(name_data, dict):
+        name = name_data.get("en", name_data.get("bg", ""))
+    else:
+        name = str(name_data) if name_data else ""
+
+    desc_data = data.get("description", {"bg": "", "en": ""})
+    if isinstance(desc_data, str):
+        desc_data = {"bg": desc_data, "en": desc_data}
+
     return {
         "id": category_id,
-        "name": data.get("name", {"bg": name, "en": name}),
-        "description": data.get("description", {"bg": "", "en": ""}),
+        "name": {"bg": name, "en": name},
+        "description": desc_data,
         "sort_order": data.get("sort_order", 0),
         "active": data.get("active", True)
     }
