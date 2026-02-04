@@ -15,7 +15,8 @@ from app.api.routes import (
     fiscal, accounting_export, biometric,
     payments, quickbooks, printers,
     google_reserve, training, scheduled_reports, email_campaigns,
-    opentable, birthday_rewards, kds_localization
+    opentable, birthday_rewards, kds_localization,
+    mobile_wallet, custom_reports, card_terminals
 )
 
 api_router = APIRouter()
@@ -177,3 +178,12 @@ api_router.include_router(birthday_rewards.router, prefix="/birthday-rewards", t
 
 # KDS Localization (Multilingual Kitchen Display)
 api_router.include_router(kds_localization.router, prefix="/kds-localization", tags=["kds", "localization", "multilingual"])
+
+# Mobile Wallet (Apple Pay, Google Pay)
+api_router.include_router(mobile_wallet.router, prefix="/mobile-wallet", tags=["mobile-wallet", "apple-pay", "google-pay"])
+
+# Custom Report Builder
+api_router.include_router(custom_reports.router, prefix="/custom-reports", tags=["custom-reports", "report-builder", "analytics"])
+
+# EMV Card Terminals
+api_router.include_router(card_terminals.router, prefix="/card-terminals", tags=["card-terminals", "emv", "stripe-terminal"])
