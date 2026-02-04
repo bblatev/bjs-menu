@@ -107,11 +107,32 @@ def get_kitchen_queue(
     query = db.query(KitchenOrder).filter(KitchenOrder.status.in_(["pending", "cooking"]))
     if location_id:
         query = query.filter(KitchenOrder.location_id == location_id)
-    queue_count = query.count()
+
+    orders = query.order_by(KitchenOrder.created_at.asc()).all()
+
+    queue_orders = []
+    for o in orders:
+        wait_time = 0
+        if o.created_at:
+            wait_time = int((datetime.utcnow() - o.created_at).total_seconds() / 60)
+
+        queue_orders.append({
+            "id": o.id,
+            "ticket_id": f"db-{o.id}",
+            "table_number": o.table_number or "Unknown",
+            "status": o.status,
+            "priority": o.priority,
+            "items": o.items or [],
+            "item_count": len(o.items) if o.items else 0,
+            "notes": o.notes,
+            "created_at": o.created_at.isoformat() if o.created_at else None,
+            "wait_time_minutes": wait_time,
+            "is_overdue": wait_time > 15,
+        })
 
     return {
-        "orders": [],
-        "total_in_queue": queue_count,
+        "orders": queue_orders,
+        "total_in_queue": len(orders),
         "avg_wait_time_minutes": 10
     }
 
