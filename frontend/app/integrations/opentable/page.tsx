@@ -12,7 +12,7 @@ interface Reservation {
   guest_name: string;
   guest_email: string;
   guest_phone: string;
-  party_size: int;
+  party_size: number;
   reservation_date: string;
   reservation_time: string;
   status: string;
