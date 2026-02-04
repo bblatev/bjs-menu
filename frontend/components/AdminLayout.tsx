@@ -4,6 +4,7 @@ import { useState, ReactNode, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import dynamic from 'next/dynamic';
+import { ThemeToggle } from '@/components/ui/ThemeProvider';
 
 const RealtimeNotifications = dynamic(
   () => import('./RealtimeNotifications'),
@@ -427,7 +428,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
       {/* Main Content */}
       <div className={`transition-all duration-300 ${sidebarOpen ? 'pl-72' : 'pl-20'}`}>
         {/* Top Header */}
-        <header className="sticky top-0 z-20 bg-white/90 backdrop-blur-md border-b border-surface-200">
+        <header className="sticky top-0 z-20 bg-white/90 dark:bg-surface-900/90 backdrop-blur-md border-b border-surface-200 dark:border-surface-700">
           <div className="flex items-center justify-between px-6 py-3">
             <div className="flex items-center gap-4">
               <button
@@ -462,8 +463,11 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
                 <span className="text-xs font-medium text-green-700">Online</span>
               </div>
 
+              {/* Theme Toggle */}
+              <ThemeToggle />
+
               {/* Notifications */}
-              <Link href="/settings/notifications" className="relative p-2 rounded-lg text-surface-500 hover:bg-surface-100">
+              <Link href="/settings/notifications" className="relative p-2 rounded-lg text-surface-500 hover:bg-surface-100 dark:hover:bg-surface-800">
                 <span className="text-xl">🔔</span>
                 <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full" />
               </Link>

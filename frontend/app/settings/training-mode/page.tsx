@@ -3,6 +3,8 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Link from 'next/link';
+import { PageLoading } from '@/components/ui/LoadingSpinner';
+import { ErrorAlert } from '@/components/ui/ErrorAlert';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1';
 
@@ -51,6 +53,8 @@ export default function TrainingModePage() {
   const [activeSessions, setActiveSessions] = useState<TrainingSession[]>([]);
   const [stats, setStats] = useState<any>({});
   const [saving, setSaving] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [showStartModal, setShowStartModal] = useState(false);
   const [newSessionStaffId, setNewSessionStaffId] = useState('');
   const [activeTab, setActiveTab] = useState<'overview' | 'sessions' | 'settings'>('overview');
@@ -62,6 +66,8 @@ export default function TrainingModePage() {
   }, []);
 
   const loadData = async () => {
+    setLoading(true);
+    setError(null);
     try {
       const [configRes, sessionsRes, activeRes, statsRes] = await Promise.all([
         fetch(`${API_URL}/training/config`),
@@ -86,8 +92,11 @@ export default function TrainingModePage() {
         const data = await statsRes.json();
         setStats(data);
       }
-    } catch (error) {
-      console.error('Error loading data:', error);
+    } catch (err) {
+      console.error('Error loading data:', err);
+      setError('Failed to load training mode data. Please try again.');
+    } finally {
+      setLoading(false);
     }
   };
 

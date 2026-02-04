@@ -2,6 +2,7 @@ import './globals.css'
 import type { Metadata } from 'next'
 import { DM_Sans, Playfair_Display, JetBrains_Mono } from 'next/font/google'
 import AdminLayout from '@/components/AdminLayout'
+import { Providers } from '@/components/Providers'
 
 const dmSans = DM_Sans({
   subsets: ['latin'],
@@ -35,11 +36,13 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="en" className={`${dmSans.variable} ${playfair.variable} ${jetbrainsMono.variable}`}>
-      <body className="bg-white text-gray-900 antialiased font-sans">
-        <AdminLayout>
-          {children}
-        </AdminLayout>
+    <html lang="en" className={`${dmSans.variable} ${playfair.variable} ${jetbrainsMono.variable}`} suppressHydrationWarning>
+      <body className="bg-white dark:bg-surface-900 text-gray-900 dark:text-surface-100 antialiased font-sans">
+        <Providers>
+          <AdminLayout>
+            {children}
+          </AdminLayout>
+        </Providers>
       </body>
     </html>
   )

@@ -3,6 +3,8 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence, Reorder } from 'framer-motion';
 import Link from 'next/link';
+import { PageLoading } from '@/components/ui/LoadingSpinner';
+import { ErrorAlert } from '@/components/ui/ErrorAlert';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1';
 
@@ -56,6 +58,8 @@ export default function TemplateBuilderPage() {
   const [selectedBlock, setSelectedBlock] = useState<string | null>(null);
   const [previewHtml, setPreviewHtml] = useState<string>('');
   const [saving, setSaving] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [templates, setTemplates] = useState<EmailTemplate[]>([]);
   const [showTemplateList, setShowTemplateList] = useState(false);
 
@@ -68,14 +72,19 @@ export default function TemplateBuilderPage() {
   }, [template.blocks]);
 
   const loadTemplates = async () => {
+    setLoading(true);
+    setError(null);
     try {
       const res = await fetch(`${API_URL}/email-campaigns/templates`);
       if (res.ok) {
         const data = await res.json();
         setTemplates(data);
       }
-    } catch (error) {
-      console.error('Error loading templates:', error);
+    } catch (err) {
+      console.error('Error loading templates:', err);
+      setError('Failed to load email templates. Please try again.');
+    } finally {
+      setLoading(false);
     }
   };
 
