@@ -2,11 +2,14 @@
 
 from __future__ import annotations
 
+import logging
 from datetime import datetime
 from decimal import Decimal
 from typing import Optional, List
 
 from fastapi import APIRouter, HTTPException, Query, status
+
+logger = logging.getLogger("inventory")
 
 from app.core.rbac import CurrentUser
 from app.db.session import DbSession
@@ -124,6 +127,7 @@ def create_session(request: InventorySessionCreate, db: DbSession, current_user:
     db.add(session)
     db.commit()
     db.refresh(session)
+    logger.info(f"Inventory session created: ID={session.id}, location={request.location_id}, user={current_user.user_id}")
     return session
 
 
@@ -315,6 +319,13 @@ def commit_session(session_id: int, db: DbSession, current_user: CurrentUser):
     session.committed_at = datetime.utcnow()
 
     db.commit()
+
+    logger.info(
+        f"Inventory session committed: ID={session.id}, location={session.location_id}, "
+        f"movements={movements_created}, user={current_user.user_id}"
+    )
+    if adjustments:
+        logger.info(f"Stock adjustments for session {session.id}: {adjustments}")
 
     return InventorySessionCommitResponse(
         session_id=session.id,

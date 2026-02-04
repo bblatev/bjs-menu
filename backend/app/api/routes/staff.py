@@ -12,6 +12,7 @@ from app.models.staff import (
     TableAssignment, PerformanceMetric, PerformanceGoal,
     TipPool, TipDistribution
 )
+from app.schemas.pagination import paginate_query
 from app.schemas.staff import (
     StaffCreate, StaffUpdate, StaffResponse,
     ShiftCreate, ShiftUpdate, ShiftResponse,
@@ -118,8 +119,10 @@ def list_staff(
     db: DbSession,
     role: Optional[str] = None,
     active_only: Optional[bool] = None,
+    skip: int = Query(0, ge=0, description="Number of items to skip"),
+    limit: int = Query(50, ge=1, le=500, description="Maximum items to return"),
 ):
-    """List all staff members."""
+    """List all staff members with pagination."""
     _init_default_staff(db)
 
     query = db.query(StaffUser)
@@ -129,8 +132,16 @@ def list_staff(
     if active_only is not None:
         query = query.filter(StaffUser.is_active == active_only)
 
-    staff = query.order_by(StaffUser.full_name).all()
-    return [_staff_to_dict(s) for s in staff]
+    query = query.order_by(StaffUser.full_name)
+    items, total = paginate_query(query, skip, limit)
+
+    return {
+        "items": [_staff_to_dict(s) for s in items],
+        "total": total,
+        "skip": skip,
+        "limit": limit,
+        "has_more": (skip + len(items)) < total,
+    }
 
 
 @router.post("/staff")

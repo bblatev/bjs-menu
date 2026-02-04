@@ -9,25 +9,29 @@ from typing import Optional, List
 
 from fastapi import APIRouter, File, HTTPException, Query, UploadFile, status
 
+from app.core.file_utils import sanitize_filename
 from app.core.rbac import CurrentUser, RequireManager
 from app.db.session import DbSession
 from app.models.product import Product
 from app.models.supplier import Supplier
+from app.schemas.pagination import paginate_query
 from app.schemas.product import ProductCreate, ProductResponse, ProductUpdate
 from app.services.sku_mapping_service import SKUMappingService
 
 router = APIRouter()
 
 
-@router.get("/", response_model=List[ProductResponse])
+@router.get("/")
 def list_products(
     db: DbSession,
     current_user: CurrentUser,
     active_only: bool = Query(True, description="Only show active products"),
     supplier_id: Optional[int] = Query(None, description="Filter by supplier"),
     search: Optional[str] = Query(None, description="Search by name or barcode"),
+    skip: int = Query(0, ge=0, description="Number of items to skip"),
+    limit: int = Query(50, ge=1, le=500, description="Maximum items to return"),
 ):
-    """List products with optional filters."""
+    """List products with optional filters and pagination."""
     query = db.query(Product)
 
     if active_only:
@@ -40,7 +44,16 @@ def list_products(
             (Product.name.ilike(search_term)) | (Product.barcode.ilike(search_term))
         )
 
-    return query.order_by(Product.name).all()
+    query = query.order_by(Product.name)
+    items, total = paginate_query(query, skip, limit)
+
+    return {
+        "items": items,
+        "total": total,
+        "skip": skip,
+        "limit": limit,
+        "has_more": (skip + len(items)) < total,
+    }
 
 
 @router.get("/by-barcode/{barcode}", response_model=ProductResponse)
@@ -118,7 +131,9 @@ def import_products(
 
     CSV format: name,barcode,supplier_name,pack_size,unit,min_stock,target_stock,lead_time_days,cost_price,sku,ai_label
     """
-    if not file.filename.endswith(".csv"):
+    # Validate file extension with sanitized filename
+    safe_filename = sanitize_filename(file.filename) if file.filename else "upload.csv"
+    if not safe_filename.lower().endswith(".csv"):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="File must be a CSV",

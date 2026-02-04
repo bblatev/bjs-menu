@@ -12,6 +12,7 @@ from fastapi import APIRouter, File, HTTPException, Query, UploadFile, status
 
 from pydantic import BaseModel
 
+from app.core.file_utils import sanitize_filename
 from app.core.rbac import CurrentUser, RequireManager
 from app.db.session import DbSession
 from app.models.location import Location
@@ -143,7 +144,9 @@ def import_pos_csv(
     - qty: Quantity sold (positive number)
     - is_refund: true/false (optional, default false)
     """
-    if not file.filename.endswith(".csv"):
+    # Validate file extension
+    safe_filename = sanitize_filename(file.filename) if file.filename else "upload.csv"
+    if not safe_filename.lower().endswith(".csv"):
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="File must be a CSV")
 
     # Verify location exists
@@ -153,10 +156,10 @@ def import_pos_csv(
 
     content = file.file.read().decode("utf-8")
 
-    # Store raw event
+    # Store raw event with sanitized filename
     raw_event = PosRawEvent(
         source="csv",
-        payload_json={"filename": file.filename, "location_id": location_id},
+        payload_json={"filename": safe_filename, "location_id": location_id},
     )
     db.add(raw_event)
     db.flush()

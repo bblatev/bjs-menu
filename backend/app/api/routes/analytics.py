@@ -1,9 +1,10 @@
 """Analytics, Conversational AI & Scale routes - Lightspeed/WISK style."""
 
 from typing import List, Optional
-from datetime import datetime, date, timedelta
+from datetime import datetime, date, timedelta, timezone
 from fastapi import APIRouter, HTTPException, Query
-from sqlalchemy import func
+from sqlalchemy import func, and_
+from sqlalchemy.orm import joinedload
 
 from app.db.session import DbSession
 from app.models.pos import PosSalesLine
@@ -35,6 +36,11 @@ from app.schemas.analytics import (
 router = APIRouter()
 
 
+def _utc_now() -> datetime:
+    """Get current UTC time with timezone awareness."""
+    return datetime.now(timezone.utc)
+
+
 # Dashboard
 
 @router.get("/dashboard")
@@ -42,34 +48,46 @@ def get_dashboard_stats(
     db: DbSession,
     location_id: Optional[int] = None,
 ):
-    """Get dashboard statistics for admin panel."""
-    today_start = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
+    """Get dashboard statistics for admin panel.
 
-    # Get guest orders from database
-    guest_orders_query = db.query(GuestOrder).filter(GuestOrder.created_at >= today_start)
+    Optimized to use database aggregation instead of loading all orders into memory.
+    """
+    today_start = _utc_now().replace(hour=0, minute=0, second=0, microsecond=0)
+
+    # Use database aggregation for guest orders instead of loading all into memory
+    base_filter = [GuestOrder.created_at >= today_start]
     if location_id:
-        guest_orders_query = guest_orders_query.filter(GuestOrder.location_id == location_id)
-    guest_orders = guest_orders_query.all()
+        base_filter.append(GuestOrder.location_id == location_id)
 
-    # Calculate totals from guest orders
-    total_orders = len(guest_orders)
-    total_revenue = sum(float(o.total) if o.total else 0 for o in guest_orders)
+    # Get totals using database aggregation
+    guest_stats = db.query(
+        func.count(GuestOrder.id).label("total_count"),
+        func.coalesce(func.sum(GuestOrder.total), 0).label("total_revenue")
+    ).filter(*base_filter).first()
 
-    # Count active orders (non-completed statuses)
+    total_orders = guest_stats.total_count or 0
+    total_revenue = float(guest_stats.total_revenue or 0)
+
+    # Count active orders using database query
     active_statuses = ["received", "confirmed", "preparing", "ready"]
-    active_orders = len([o for o in guest_orders if o.status in active_statuses])
+    active_orders = db.query(func.count(GuestOrder.id)).filter(
+        *base_filter,
+        GuestOrder.status.in_(active_statuses)
+    ).scalar() or 0
 
-    # Also check POS sales lines for additional data
-    pos_query = db.query(
-        func.count(PosSalesLine.id).label("total_items"),
-        func.sum(PosSalesLine.qty).label("total_qty")
-    ).filter(
+    # POS sales aggregation
+    pos_filter = [
         PosSalesLine.ts >= today_start,
         PosSalesLine.is_refund == False
-    )
+    ]
     if location_id:
-        pos_query = pos_query.filter(PosSalesLine.location_id == location_id)
-    pos_result = pos_query.first()
+        pos_filter.append(PosSalesLine.location_id == location_id)
+
+    pos_result = db.query(
+        func.count(PosSalesLine.id).label("total_items"),
+        func.coalesce(func.sum(PosSalesLine.qty), 0).label("total_qty")
+    ).filter(*pos_filter).first()
+
     pos_items = pos_result.total_items or 0
     pos_qty = float(pos_result.total_qty or 0)
 
@@ -77,51 +95,43 @@ def get_dashboard_stats(
     total_orders += pos_items
     total_revenue += pos_qty * 15.0  # Estimate POS revenue
 
-    # Top items from guest orders
-    item_counts = {}
-    for order in guest_orders:
-        if order.items:
-            for item in order.items:
-                name = item.get("name", "Unknown")
-                qty = item.get("quantity", 1)
-                item_counts[name] = item_counts.get(name, 0) + qty
-
-    # Add POS top items
+    # Get top items from POS using database aggregation (more reliable than JSON parsing)
     pos_top_items = db.query(
         PosSalesLine.name,
         func.sum(PosSalesLine.qty).label("count")
-    ).filter(
-        PosSalesLine.ts >= today_start,
-        PosSalesLine.is_refund == False
-    ).group_by(PosSalesLine.name).all()
+    ).filter(*pos_filter).group_by(
+        PosSalesLine.name
+    ).order_by(
+        func.sum(PosSalesLine.qty).desc()
+    ).limit(10).all()
 
-    for item in pos_top_items:
-        item_counts[item.name] = item_counts.get(item.name, 0) + int(item.count)
+    top_items = [
+        {"name": item.name or "Unknown", "count": int(item.count or 0)}
+        for item in pos_top_items
+    ][:5]
 
-    top_items = sorted(
-        [{"name": name, "count": count} for name, count in item_counts.items()],
-        key=lambda x: x["count"],
-        reverse=True
-    )[:5]
+    # Orders by hour using database aggregation - single query instead of 24 queries
+    # Use EXTRACT for PostgreSQL or strftime for SQLite
+    try:
+        # Try PostgreSQL syntax first
+        hourly_stats = db.query(
+            func.extract('hour', PosSalesLine.ts).label("hour"),
+            func.count(PosSalesLine.id).label("count")
+        ).filter(*pos_filter).group_by(
+            func.extract('hour', PosSalesLine.ts)
+        ).all()
+    except Exception:
+        # Fallback for SQLite
+        hourly_stats = db.query(
+            func.strftime('%H', PosSalesLine.ts).label("hour"),
+            func.count(PosSalesLine.id).label("count")
+        ).filter(*pos_filter).group_by(
+            func.strftime('%H', PosSalesLine.ts)
+        ).all()
 
-    # Orders by hour from guest orders
-    orders_by_hour = []
-    for hour in range(24):
-        hour_start = today_start.replace(hour=hour)
-        hour_end = today_start.replace(hour=hour, minute=59, second=59)
-
-        # Count guest orders in this hour
-        hour_count = len([o for o in guest_orders
-                         if o.created_at and hour_start <= o.created_at <= hour_end])
-
-        # Add POS sales in this hour
-        pos_count = db.query(func.count(PosSalesLine.id)).filter(
-            PosSalesLine.ts >= hour_start,
-            PosSalesLine.ts <= hour_end,
-            PosSalesLine.is_refund == False
-        ).scalar() or 0
-
-        orders_by_hour.append({"hour": hour, "count": hour_count + pos_count})
+    # Build full 24-hour array
+    hourly_dict = {int(h.hour): int(h.count) for h in hourly_stats if h.hour is not None}
+    orders_by_hour = [{"hour": h, "count": hourly_dict.get(h, 0)} for h in range(24)]
 
     return {
         "total_orders_today": total_orders,
@@ -546,12 +556,14 @@ def submit_query_feedback(db: DbSession, feedback: QueryFeedback):
 def list_benchmarks(
     db: DbSession,
     category: Optional[str] = None,
+    skip: int = Query(0, ge=0, description="Number of records to skip"),
+    limit: int = Query(50, ge=1, le=200, description="Maximum records to return"),
 ):
-    """List industry benchmarks."""
+    """List industry benchmarks with pagination."""
     query = db.query(Benchmark)
     if category:
         query = query.filter(Benchmark.category == category)
-    return query.all()
+    return query.offset(skip).limit(limit).all()
 
 
 @router.get("/benchmarks/compare", response_model=PerformanceReport)

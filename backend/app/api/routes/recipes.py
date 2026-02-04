@@ -9,6 +9,7 @@ from decimal import Decimal
 from typing import Optional, List
 from fastapi import APIRouter, File, HTTPException, Query, UploadFile, status
 
+from app.core.file_utils import sanitize_filename
 from app.core.rbac import CurrentUser, RequireManager
 from app.db.session import DbSession
 from app.models.product import Product
@@ -163,7 +164,9 @@ def import_recipes(
 
     Each row adds a line to the recipe. If recipe doesn't exist, it's created.
     """
-    if not file.filename.endswith(".csv"):
+    # Validate file extension with sanitized filename
+    safe_filename = sanitize_filename(file.filename) if file.filename else "upload.csv"
+    if not safe_filename.lower().endswith(".csv"):
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="File must be a CSV")
 
     content = file.file.read().decode("utf-8")

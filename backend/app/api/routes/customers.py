@@ -195,10 +195,10 @@ def list_customers(
     search: Optional[str] = None,
     tag: Optional[str] = None,
     segment: Optional[str] = None,
-    limit: int = Query(100, le=500),
-    offset: int = 0,
+    skip: int = Query(0, ge=0, description="Number of items to skip"),
+    limit: int = Query(50, ge=1, le=500, description="Maximum items to return"),
 ):
-    """List all customers with optional filtering."""
+    """List all customers with optional filtering and pagination."""
     _init_demo_customers(db)
 
     query = db.query(Customer)
@@ -224,11 +224,14 @@ def list_customers(
         query = query.filter(Customer.segment == segment)
 
     total = query.count()
-    customers = query.order_by(Customer.total_spent.desc()).offset(offset).limit(limit).all()
+    customers = query.order_by(Customer.total_spent.desc()).offset(skip).limit(limit).all()
 
     return {
-        "customers": [_customer_to_dict(c) for c in customers],
+        "items": [_customer_to_dict(c) for c in customers],
         "total": total,
+        "skip": skip,
+        "limit": limit,
+        "has_more": (skip + len(customers)) < total,
     }
 
 

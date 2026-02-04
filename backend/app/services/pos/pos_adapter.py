@@ -12,17 +12,97 @@ via environment variables and a mapping configuration file.
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
-from datetime import datetime, date, timedelta
+from datetime import datetime, date, timedelta, timezone
 from decimal import Decimal
-from typing import Optional, List, Dict, Any
+from typing import Optional, List, Dict, Any, Set
 import os
 import json
 import logging
+import re
 
-from sqlalchemy import create_engine, text
+from sqlalchemy import create_engine, text, MetaData, Table, Column, select, func
 from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy.engine import Engine
 
 logger = logging.getLogger(__name__)
+
+
+# Security: Whitelist of allowed table and column name patterns
+# Only alphanumeric characters and underscores allowed
+SAFE_IDENTIFIER_PATTERN = re.compile(r'^[a-zA-Z_][a-zA-Z0-9_]*$')
+
+# Maximum allowed identifier length (prevents DoS via long names)
+MAX_IDENTIFIER_LENGTH = 128
+
+
+def validate_sql_identifier(name: str, identifier_type: str = "identifier") -> str:
+    """Validate and sanitize SQL identifiers (table/column names).
+
+    Args:
+        name: The identifier to validate
+        identifier_type: Description for error messages ("table", "column", etc.)
+
+    Returns:
+        The validated identifier
+
+    Raises:
+        ValueError: If the identifier is invalid or potentially malicious
+    """
+    if not name:
+        raise ValueError(f"Empty {identifier_type} name not allowed")
+
+    if len(name) > MAX_IDENTIFIER_LENGTH:
+        raise ValueError(f"{identifier_type} name too long (max {MAX_IDENTIFIER_LENGTH} chars)")
+
+    if not SAFE_IDENTIFIER_PATTERN.match(name):
+        raise ValueError(
+            f"Invalid {identifier_type} name '{name}': only alphanumeric characters "
+            "and underscores allowed, must start with letter or underscore"
+        )
+
+    # Additional check for SQL keywords that should never be table/column names
+    sql_keywords = {
+        'select', 'insert', 'update', 'delete', 'drop', 'create', 'alter',
+        'truncate', 'grant', 'revoke', 'union', 'exec', 'execute'
+    }
+    if name.lower() in sql_keywords:
+        raise ValueError(f"{identifier_type} name '{name}' is a reserved SQL keyword")
+
+    return name
+
+
+def validate_mapping_config(mapping: Dict[str, Any]) -> Dict[str, Any]:
+    """Validate an entire mapping configuration for SQL safety.
+
+    Args:
+        mapping: The mapping configuration dictionary
+
+    Returns:
+        The validated mapping
+
+    Raises:
+        ValueError: If any identifier in the mapping is invalid
+    """
+    validated = {}
+
+    for entity_name, config in mapping.items():
+        validate_sql_identifier(entity_name, "entity")
+        validated[entity_name] = {}
+
+        if "table" in config:
+            validated[entity_name]["table"] = validate_sql_identifier(
+                config["table"], "table"
+            )
+
+        if "fields" in config:
+            validated[entity_name]["fields"] = {}
+            for our_field, pos_field in config["fields"].items():
+                validate_sql_identifier(our_field, "field alias")
+                validated[entity_name]["fields"][our_field] = validate_sql_identifier(
+                    pos_field, "column"
+                )
+
+    return validated
 
 
 # ============== Data Transfer Objects ==============
@@ -477,17 +557,22 @@ class ExternalPOSAdapter(POSAdapterBase):
         self.Session = sessionmaker(bind=self.engine)
 
     def _load_mapping(self, mapping_path: Optional[str]) -> Dict[str, Any]:
-        """Load field mapping configuration."""
+        """Load field mapping configuration with security validation."""
         if not mapping_path:
             # Return default mapping (assumes similar schema)
             return self._default_mapping()
 
         try:
             with open(mapping_path, 'r') as f:
-                return json.load(f)
+                raw_mapping = json.load(f)
+                # Validate all identifiers in the mapping
+                return validate_mapping_config(raw_mapping)
         except FileNotFoundError:
             logger.warning(f"Mapping file not found: {mapping_path}, using defaults")
             return self._default_mapping()
+        except ValueError as e:
+            logger.error(f"Invalid mapping configuration: {e}")
+            raise ValueError(f"Mapping configuration validation failed: {e}")
 
     def _default_mapping(self) -> Dict[str, Any]:
         """Default field mapping assuming similar schema."""
@@ -548,24 +633,31 @@ class ExternalPOSAdapter(POSAdapterBase):
     ) -> List[POSProduct]:
         """Fetch products from external POS database."""
         mapping = self.mapping.get("products", {})
-        table = mapping.get("table", "products")
+        table_name = mapping.get("table", "products")
         fields = mapping.get("fields", {})
 
-        # Build SELECT clause
-        select_parts = []
-        for our_field, pos_field in fields.items():
-            select_parts.append(f"{pos_field} as {our_field}")
+        # Validate all identifiers (defense in depth - mapping should already be validated)
+        table_name = validate_sql_identifier(table_name, "table")
+        validated_fields = {
+            validate_sql_identifier(k, "field"): validate_sql_identifier(v, "column")
+            for k, v in fields.items()
+        }
 
-        query = f"SELECT {', '.join(select_parts)} FROM {table}"
+        # Build SELECT clause with validated identifiers
+        select_parts = []
+        for our_field, pos_field in validated_fields.items():
+            select_parts.append(f'"{pos_field}" as "{our_field}"')
+
+        query = f'SELECT {", ".join(select_parts)} FROM "{table_name}"'
         conditions = []
         params = {}
 
-        if active_only and "active" in fields:
-            conditions.append(f"{fields['active']} = :active")
+        if active_only and "active" in validated_fields:
+            conditions.append(f'"{validated_fields["active"]}" = :active')
             params["active"] = True
 
-        if supplier_id and "supplier_id" in fields:
-            conditions.append(f"{fields['supplier_id']} = :supplier_id")
+        if supplier_id and "supplier_id" in validated_fields:
+            conditions.append(f'"{validated_fields["supplier_id"]}" = :supplier_id')
             params["supplier_id"] = supplier_id
 
         if conditions:
@@ -598,11 +690,18 @@ class ExternalPOSAdapter(POSAdapterBase):
     def get_product_by_id(self, product_id: int) -> Optional[POSProduct]:
         """Fetch a single product by ID from external POS."""
         mapping = self.mapping.get("products", {})
-        table = mapping.get("table", "products")
+        table_name = validate_sql_identifier(mapping.get("table", "products"), "table")
         fields = mapping.get("fields", {})
 
-        select_parts = [f"{pos_field} as {our_field}" for our_field, pos_field in fields.items()]
-        query = f"SELECT {', '.join(select_parts)} FROM {table} WHERE {fields.get('id', 'id')} = :id"
+        # Validate all field names
+        validated_fields = {
+            validate_sql_identifier(k, "field"): validate_sql_identifier(v, "column")
+            for k, v in fields.items()
+        }
+
+        select_parts = [f'"{pos_field}" as "{our_field}"' for our_field, pos_field in validated_fields.items()]
+        id_column = validate_sql_identifier(validated_fields.get("id", "id"), "column")
+        query = f'SELECT {", ".join(select_parts)} FROM "{table_name}" WHERE "{id_column}" = :id'
 
         rows = self._execute_query(query, {"id": product_id})
         if not rows:
@@ -623,11 +722,17 @@ class ExternalPOSAdapter(POSAdapterBase):
     def get_suppliers(self, active_only: bool = True) -> List[POSSupplier]:
         """Fetch suppliers from external POS database."""
         mapping = self.mapping.get("suppliers", {})
-        table = mapping.get("table", "suppliers")
+        table_name = validate_sql_identifier(mapping.get("table", "suppliers"), "table")
         fields = mapping.get("fields", {})
 
-        select_parts = [f"{pos_field} as {our_field}" for our_field, pos_field in fields.items()]
-        query = f"SELECT {', '.join(select_parts)} FROM {table}"
+        # Validate all field names
+        validated_fields = {
+            validate_sql_identifier(k, "field"): validate_sql_identifier(v, "column")
+            for k, v in fields.items()
+        }
+
+        select_parts = [f'"{pos_field}" as "{our_field}"' for our_field, pos_field in validated_fields.items()]
+        query = f'SELECT {", ".join(select_parts)} FROM "{table_name}"'
 
         rows = self._execute_query(query)
 
@@ -648,22 +753,30 @@ class ExternalPOSAdapter(POSAdapterBase):
     ) -> List[POSStockLevel]:
         """Fetch stock levels from external POS database."""
         mapping = self.mapping.get("stock", {})
-        table = mapping.get("table", "stock_on_hand")
+        table_name = validate_sql_identifier(mapping.get("table", "stock_on_hand"), "table")
         fields = mapping.get("fields", {})
 
-        select_parts = [f"{pos_field} as {our_field}" for our_field, pos_field in fields.items()]
-        query = f"SELECT {', '.join(select_parts)} FROM {table}"
+        # Validate all field names
+        validated_fields = {
+            validate_sql_identifier(k, "field"): validate_sql_identifier(v, "column")
+            for k, v in fields.items()
+        }
+
+        select_parts = [f'"{pos_field}" as "{our_field}"' for our_field, pos_field in validated_fields.items()]
+        query = f'SELECT {", ".join(select_parts)} FROM "{table_name}"'
 
         conditions = []
         params = {}
 
-        if location_id and "location_id" in fields:
-            conditions.append(f"{fields['location_id']} = :location_id")
+        if location_id and "location_id" in validated_fields:
+            loc_col = validated_fields["location_id"]
+            conditions.append(f'"{loc_col}" = :location_id')
             params["location_id"] = location_id
 
-        if product_ids and "product_id" in fields:
+        if product_ids and "product_id" in validated_fields:
+            prod_col = validated_fields["product_id"]
             placeholders = ", ".join([f":pid{i}" for i in range(len(product_ids))])
-            conditions.append(f"{fields['product_id']} IN ({placeholders})")
+            conditions.append(f'"{prod_col}" IN ({placeholders})')
             for i, pid in enumerate(product_ids):
                 params[f"pid{i}"] = pid
 
@@ -692,24 +805,25 @@ class ExternalPOSAdapter(POSAdapterBase):
     ) -> List[POSSalesAggregate]:
         """Fetch aggregated sales from external POS database."""
         mapping = self.mapping.get("sales", {})
-        table = mapping.get("table", "pos_sales_lines")
+        table_name = validate_sql_identifier(mapping.get("table", "pos_sales_lines"), "table")
         fields = mapping.get("fields", {})
 
-        ts_field = fields.get("timestamp", "ts")
-        pid_field = fields.get("product_id", "pos_item_id")
-        qty_field = fields.get("qty", "qty")
-        refund_field = fields.get("is_refund", "is_refund")
-        loc_field = fields.get("location_id", "location_id")
+        # Validate all column names
+        ts_field = validate_sql_identifier(fields.get("timestamp", "ts"), "column")
+        pid_field = validate_sql_identifier(fields.get("product_id", "pos_item_id"), "column")
+        qty_field = validate_sql_identifier(fields.get("qty", "qty"), "column")
+        refund_field = validate_sql_identifier(fields.get("is_refund", "is_refund"), "column")
+        loc_field = validate_sql_identifier(fields.get("location_id", "location_id"), "column")
 
         query = f"""
-            SELECT {pid_field} as product_id,
-                   {loc_field} as location_id,
-                   SUM({qty_field}) as total_qty,
+            SELECT "{pid_field}" as product_id,
+                   "{loc_field}" as location_id,
+                   SUM("{qty_field}") as total_qty,
                    COUNT(*) as num_transactions
-            FROM {table}
-            WHERE {ts_field} >= :start_date
-              AND {ts_field} <= :end_date
-              AND ({refund_field} = 0 OR {refund_field} IS NULL)
+            FROM "{table_name}"
+            WHERE "{ts_field}" >= :start_date
+              AND "{ts_field}" <= :end_date
+              AND ("{refund_field}" = 0 OR "{refund_field}" IS NULL)
         """
 
         params = {
@@ -718,10 +832,10 @@ class ExternalPOSAdapter(POSAdapterBase):
         }
 
         if location_id:
-            query += f" AND {loc_field} = :location_id"
+            query += f' AND "{loc_field}" = :location_id'
             params["location_id"] = location_id
 
-        query += f" GROUP BY {pid_field}, {loc_field}"
+        query += f' GROUP BY "{pid_field}", "{loc_field}"'
 
         rows = self._execute_query(query, params)
         days_in_period = (end_date - start_date).days + 1

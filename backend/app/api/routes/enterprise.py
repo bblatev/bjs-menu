@@ -6,6 +6,7 @@ from fastapi import APIRouter, HTTPException, UploadFile, File, Form
 from pydantic import BaseModel
 from enum import Enum
 
+from app.core.file_utils import sanitize_filename
 from app.db.session import DbSession
 from app.models.hardware import (
     Integration as IntegrationModel,
@@ -744,9 +745,12 @@ async def upload_invoice_for_ocr(
     file: UploadFile = File(...),
 ):
     """Upload an invoice for OCR processing."""
+    # Sanitize filename to prevent injection attacks
+    safe_filename = sanitize_filename(file.filename) if file.filename else "unnamed"
+
     # Create OCR job
     job = OCRJobModel(
-        filename=file.filename,
+        filename=safe_filename,
         status="processing",
     )
     db.add(job)

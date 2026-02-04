@@ -25,5 +25,5 @@ class User(Base, TimestampMixin):
         nullable=False,
     )
     name: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
-    pin: Mapped[Optional[str]] = mapped_column(String(10), nullable=True)
+    pin_hash: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
