@@ -318,13 +318,44 @@ def get_price_history(
 def get_price_trends(
     db: DbSession,
     product_id: int,
-    supplier_id: Optional[int] = None,
+    days: int = 30,
 ):
     """Get price trends for a product."""
     service = PriceTrackingService(db)
-    result = service.get_price_trends(product_id, supplier_id)
+    results = service.get_price_trends(product_ids=[product_id], days=days)
 
-    if "error" in result:
-        raise HTTPException(status_code=404, detail=result["error"])
+    # Get product name
+    from app.models.stock_item import StockItem
+    product = db.query(StockItem).filter(StockItem.id == product_id).first()
+    product_name = product.name if product else f"Product {product_id}"
 
-    return result
+    # Get price history
+    history = service.get_price_history(product_id, days=days)
+    price_history = [
+        {"date": h.recorded_at.isoformat(), "price": float(h.price), "supplier_id": h.supplier_id}
+        for h in history
+    ] if history else []
+
+    if not results:
+        return {
+            "product_id": product_id,
+            "product_name": product_name,
+            "current_price": 0,
+            "avg_price_30d": 0,
+            "min_price_30d": 0,
+            "max_price_30d": 0,
+            "trend": "stable",
+            "price_history": price_history
+        }
+
+    r = results[0]
+    return {
+        "product_id": product_id,
+        "product_name": product_name,
+        "current_price": r.get("current_price") or 0,
+        "avg_price_30d": r.get("avg_price") or 0,
+        "min_price_30d": r.get("min_price") or 0,
+        "max_price_30d": r.get("max_price") or 0,
+        "trend": r.get("trend", "stable"),
+        "price_history": price_history
+    }
