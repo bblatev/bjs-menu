@@ -12,7 +12,9 @@ from app.api.routes import (
     bar, financial, loyalty, vip, tax, shifts, payroll,
     audit_logs, benchmarking, price_tracker, referrals, haccp, warehouses,
     gift_cards, feedback, notifications, settings, integrations,
-    fiscal, accounting_export, biometric
+    fiscal, accounting_export, biometric,
+    payments, quickbooks, printers,
+    google_reserve, training, scheduled_reports, email_campaigns
 )
 
 api_router = APIRouter()
@@ -144,3 +146,24 @@ api_router.include_router(accounting_export.router, prefix="/accounting-export",
 
 # Biometric & Card Reader Access Control
 api_router.include_router(biometric.router, prefix="/biometric", tags=["biometric", "fingerprint", "card-reader", "access-control"])
+
+# Payment Processing (Stripe)
+api_router.include_router(payments.router, prefix="/payments", tags=["payments", "stripe", "refunds"])
+
+# QuickBooks Integration
+api_router.include_router(quickbooks.router, prefix="/quickbooks", tags=["quickbooks", "accounting", "sync"])
+
+# Receipt Printers (ESC/POS)
+api_router.include_router(printers.router, prefix="/printers", tags=["printers", "receipts", "esc-pos"])
+
+# Google Reserve Integration
+api_router.include_router(google_reserve.router, prefix="/google-reserve", tags=["google-reserve", "maps-booking"])
+
+# Training/Sandbox Mode
+api_router.include_router(training.router, prefix="/training", tags=["training", "sandbox", "practice"])
+
+# Scheduled Reports
+api_router.include_router(scheduled_reports.router, prefix="/scheduled-reports", tags=["scheduled-reports", "automation"])
+
+# Email Campaign Builder
+api_router.include_router(email_campaigns.router, prefix="/email-campaigns", tags=["email-campaigns", "marketing", "templates"])
