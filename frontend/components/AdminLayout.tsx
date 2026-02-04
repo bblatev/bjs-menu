@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import { ThemeToggle } from '@/components/ui/ThemeProvider';
+import { SkipLink } from '@/components/ui/SkipLink';
 
 const RealtimeNotifications = dynamic(
   () => import('./RealtimeNotifications'),
@@ -276,9 +277,15 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
   }
 
   return (
-    <div className="min-h-screen bg-surface-50">
+    <div className="min-h-screen bg-surface-50 dark:bg-surface-900">
+      <SkipLink />
+
       {/* Sidebar */}
-      <aside className={`fixed inset-y-0 left-0 z-30 flex flex-col bg-white border-r border-surface-200 transition-all duration-300 ${sidebarOpen ? 'w-72' : 'w-20'}`}>
+      <aside
+        className={`fixed inset-y-0 left-0 z-30 flex flex-col bg-white dark:bg-surface-800 border-r border-surface-200 dark:border-surface-700 transition-all duration-300 ${sidebarOpen ? 'w-72' : 'w-20'}`}
+        role="navigation"
+        aria-label="Main navigation"
+      >
         {/* Logo */}
         <div className="flex items-center gap-3 px-4 py-4 border-b border-surface-100">
           <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center text-white font-bold text-lg">
@@ -479,7 +486,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
         </header>
 
         {/* Page Content */}
-        <main className="p-6">
+        <main id="main-content" className="p-6" role="main" aria-label="Page content">
           {children}
         </main>
       </div>
