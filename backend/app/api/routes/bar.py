@@ -266,8 +266,12 @@ def get_recent_activity(
     now = datetime.utcnow()
 
     for movement, product in movements:
-        # Calculate time ago
-        diff = now - movement.ts
+        # Calculate time ago - handle timezone-aware timestamps
+        movement_ts = movement.ts
+        if movement_ts.tzinfo is not None:
+            # Convert to naive UTC for comparison
+            movement_ts = movement_ts.replace(tzinfo=None)
+        diff = now - movement_ts
         if diff.seconds < 60:
             time_ago = "just now"
         elif diff.seconds < 3600:
