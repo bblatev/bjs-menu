@@ -5,7 +5,7 @@ from decimal import Decimal
 from fastapi.testclient import TestClient
 
 from app.core.rbac import UserRole
-from app.core.security import get_password_hash, create_access_token
+from app.core.security import get_password_hash, get_pin_hash, create_access_token
 from app.models.user import User
 from app.models.product import Product
 from app.models.supplier import Supplier
@@ -74,7 +74,7 @@ class TestAuthEndpoints:
             role=UserRole.STAFF,
             name="PIN User",
             is_active=True,
-            pin="1234",
+            pin_hash=get_pin_hash("1234"),
         )
         db_session.add(user)
         db_session.commit()
@@ -145,15 +145,17 @@ class TestProductEndpoints:
         """Test listing products when none exist."""
         response = client.get("/api/v1/products/", headers=auth_headers)
         assert response.status_code == 200
-        assert response.json() == []
+        data = response.json()
+        assert data["items"] == []
+        assert data["total"] == 0
 
     def test_list_products(self, client: TestClient, db_session, auth_headers, test_product):
         """Test listing products."""
         response = client.get("/api/v1/products/", headers=auth_headers)
         assert response.status_code == 200
         data = response.json()
-        assert len(data) == 1
-        assert data[0]["name"] == "Test Beer"
+        assert len(data["items"]) == 1
+        assert data["items"][0]["name"] == "Test Beer"
 
     def test_list_products_filter_by_supplier(self, client: TestClient, db_session, auth_headers, test_product, test_supplier):
         """Test filtering products by supplier."""
@@ -163,23 +165,23 @@ class TestProductEndpoints:
         )
         assert response.status_code == 200
         data = response.json()
-        assert len(data) == 1
+        assert len(data["items"]) == 1
 
         # Non-existent supplier
         response = client.get("/api/v1/products/?supplier_id=9999", headers=auth_headers)
         assert response.status_code == 200
-        assert response.json() == []
+        assert response.json()["items"] == []
 
     def test_list_products_search(self, client: TestClient, db_session, auth_headers, test_product):
         """Test searching products by name."""
         response = client.get("/api/v1/products/?search=Beer", headers=auth_headers)
         assert response.status_code == 200
         data = response.json()
-        assert len(data) == 1
+        assert len(data["items"]) == 1
 
         response = client.get("/api/v1/products/?search=Wine", headers=auth_headers)
         assert response.status_code == 200
-        assert response.json() == []
+        assert response.json()["items"] == []
 
     def test_list_products_active_only(self, client: TestClient, db_session, auth_headers, test_supplier):
         """Test filtering active/inactive products."""
@@ -201,11 +203,11 @@ class TestProductEndpoints:
 
         # Active only (default)
         response = client.get("/api/v1/products/", headers=auth_headers)
-        assert len(response.json()) == 1
+        assert len(response.json()["items"]) == 1
 
         # All products
         response = client.get("/api/v1/products/?active_only=false", headers=auth_headers)
-        assert len(response.json()) == 2
+        assert len(response.json()["items"]) == 2
 
     def test_get_product_by_id(self, client: TestClient, db_session, auth_headers, test_product):
         """Test getting a product by ID."""
@@ -875,7 +877,9 @@ class TestPagination:
 
         response = client.get("/api/v1/products/", headers=auth_headers)
         assert response.status_code == 200
-        assert len(response.json()) == 50
+        data = response.json()
+        assert len(data["items"]) == 50
+        assert data["total"] == 50
 
     def test_smart_search_limit(self, client: TestClient, db_session, auth_headers, test_supplier):
         """Test smart search respects limit parameter."""

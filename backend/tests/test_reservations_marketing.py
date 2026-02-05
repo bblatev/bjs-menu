@@ -289,10 +289,15 @@ class TestWaitlistEndpoints:
 class TestReservationSettingsEndpoints:
     """Test reservation settings endpoints."""
 
-    def test_get_settings_not_found(self, client: TestClient, db_session, test_location):
-        """Test getting settings when none exist."""
+    def test_get_settings_returns_defaults(self, client: TestClient, db_session, test_location):
+        """Test getting settings returns defaults when none exist."""
         response = client.get(f"/api/v1/reservations/settings/{test_location.id}")
-        assert response.status_code == 404
+        assert response.status_code == 200
+        data = response.json()
+        # Should return default settings
+        assert data["location_id"] == test_location.id
+        assert data["max_party_size"] == 20
+        assert data["default_duration_minutes"] == 90
 
     def test_create_settings(self, client: TestClient, db_session, test_location):
         """Test creating reservation settings."""
