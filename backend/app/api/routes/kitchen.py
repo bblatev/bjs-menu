@@ -508,6 +508,67 @@ def add_86_item(
     return mark_item_86(db, item_id, name)
 
 
+@router.get("/")
+def get_all_alerts(
+    db: DbSession,
+    active_only: bool = True,
+    location_id: Optional[int] = None,
+):
+    """Get all kitchen alerts (for /kitchen-alerts/ endpoint)."""
+    alerts = []
+
+    # Get overdue tickets as alerts
+    query = db.query(KitchenOrder).filter(KitchenOrder.status.in_(["pending", "cooking"]))
+    if location_id:
+        query = query.filter(KitchenOrder.location_id == location_id)
+
+    target_time = 15  # 15 minute target
+    for ko in query.all():
+        if ko.created_at:
+            wait_time = int((datetime.utcnow() - ko.created_at).total_seconds() / 60)
+            if wait_time > target_time:
+                alerts.append({
+                    "id": ko.id,
+                    "alert_type": "overdue",
+                    "message": f"Order #{ko.id} (Table {ko.table_number or 'Unknown'}) overdue by {wait_time - target_time} min",
+                    "order_id": ko.id,
+                    "created_at": ko.created_at.isoformat() if ko.created_at else None,
+                    "severity": "high" if wait_time > target_time * 1.5 else "medium",
+                })
+            elif ko.priority >= 2:
+                alerts.append({
+                    "id": ko.id + 10000,
+                    "alert_type": "vip",
+                    "message": f"VIP Order #{ko.id} (Table {ko.table_number or 'Unknown'})",
+                    "order_id": ko.id,
+                    "created_at": ko.created_at.isoformat() if ko.created_at else None,
+                    "severity": "high",
+                })
+            elif ko.priority >= 1:
+                alerts.append({
+                    "id": ko.id + 20000,
+                    "alert_type": "rush",
+                    "message": f"Rush Order #{ko.id} (Table {ko.table_number or 'Unknown'})",
+                    "order_id": ko.id,
+                    "created_at": ko.created_at.isoformat() if ko.created_at else None,
+                    "severity": "medium",
+                })
+
+    # Get 86'd items as alerts
+    items_86 = db.query(MenuItem).filter(MenuItem.available == False).all()
+    for item in items_86:
+        alerts.append({
+            "id": item.id + 30000,
+            "alert_type": "item_86",
+            "message": f"{item.name} is 86'd (out of stock)",
+            "order_id": None,
+            "created_at": item.updated_at.isoformat() if item.updated_at else None,
+            "severity": "low",
+        })
+
+    return alerts
+
+
 @router.get("/alerts/cook-time")
 def get_cook_time_alerts(
     db: DbSession,
