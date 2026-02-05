@@ -94,15 +94,6 @@ def get_invoice_suppliers(db: DbSession):
                     "total_amount": float(total or 0),
                 })
 
-    # If no suppliers found, return demo data
-    if not suppliers:
-        suppliers = [
-            {"id": 1, "name": "Fresh Foods Co.", "invoice_count": 25, "total_amount": 15420.00},
-            {"id": 2, "name": "Beverage World", "invoice_count": 18, "total_amount": 8750.00},
-            {"id": 3, "name": "Premium Meats", "invoice_count": 12, "total_amount": 22100.00},
-            {"id": 4, "name": "Sysco", "invoice_count": 45, "total_amount": 38500.00},
-        ]
-
     return suppliers
 
 

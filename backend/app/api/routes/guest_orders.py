@@ -1687,38 +1687,91 @@ def admin_toggle_combo_featured(db: DbSession, combo_id: int):
     return {"id": combo.id, "featured": combo.featured}
 
 
+DAYPART_STORE = "menu_dayparts"
+DAYPART_DEFAULTS = [
+    {"id": 1, "name": "Breakfast", "start_time": "06:00", "end_time": "11:00", "active": True},
+    {"id": 2, "name": "Lunch", "start_time": "11:00", "end_time": "15:00", "active": True},
+    {"id": 3, "name": "Dinner", "start_time": "17:00", "end_time": "22:00", "active": True},
+]
+
+
+def _load_dayparts(db: DbSession) -> list:
+    from app.models.hardware import Integration
+    rec = db.query(Integration).filter(Integration.integration_id == DAYPART_STORE).first()
+    if rec and rec.config and isinstance(rec.config, dict):
+        return rec.config.get("items", DAYPART_DEFAULTS)
+    return DAYPART_DEFAULTS
+
+
+def _save_dayparts(db: DbSession, items: list):
+    from app.models.hardware import Integration
+    rec = db.query(Integration).filter(Integration.integration_id == DAYPART_STORE).first()
+    next_id = max((d.get("id", 0) for d in items), default=0) + 1
+    if not rec:
+        rec = Integration(
+            integration_id=DAYPART_STORE,
+            name="Menu Dayparts",
+            category="menu",
+            status="active",
+            config={"items": items, "next_id": next_id},
+        )
+        db.add(rec)
+    else:
+        rec.config = {"items": items, "next_id": next_id}
+    db.commit()
+
+
 @router.get("/menu-admin/dayparts")
 def admin_list_dayparts(db: DbSession):
     """List dayparts for menu scheduling."""
-    return [
-        {"id": 1, "name": "Breakfast", "start_time": "06:00", "end_time": "11:00", "active": True},
-        {"id": 2, "name": "Lunch", "start_time": "11:00", "end_time": "15:00", "active": True},
-        {"id": 3, "name": "Dinner", "start_time": "17:00", "end_time": "22:00", "active": True},
-    ]
+    return _load_dayparts(db)
 
 
 @router.post("/menu-admin/dayparts")
 def admin_create_daypart(db: DbSession, data: dict = Body(...)):
     """Create a daypart."""
-    return {"id": 4, **data, "active": True}
+    items = _load_dayparts(db)
+    from app.models.hardware import Integration
+    rec = db.query(Integration).filter(Integration.integration_id == DAYPART_STORE).first()
+    next_id = (rec.config.get("next_id", len(items) + 1) if rec and rec.config else len(items) + 1)
+    new_item = {"id": next_id, **data, "active": data.get("active", True)}
+    items.append(new_item)
+    _save_dayparts(db, items)
+    return new_item
 
 
 @router.put("/menu-admin/dayparts/{daypart_id}")
 def admin_update_daypart(db: DbSession, daypart_id: int, data: dict = Body(...)):
     """Update a daypart."""
-    return {"id": daypart_id, **data}
+    items = _load_dayparts(db)
+    for item in items:
+        if item.get("id") == daypart_id:
+            item.update(data)
+            item["id"] = daypart_id
+            _save_dayparts(db, items)
+            return item
+    raise HTTPException(status_code=404, detail="Daypart not found")
 
 
 @router.delete("/menu-admin/dayparts/{daypart_id}")
 def admin_delete_daypart(db: DbSession, daypart_id: int):
     """Delete a daypart."""
+    items = _load_dayparts(db)
+    items = [d for d in items if d.get("id") != daypart_id]
+    _save_dayparts(db, items)
     return {"success": True}
 
 
 @router.patch("/menu-admin/dayparts/{daypart_id}/toggle-active")
 def admin_toggle_daypart_active(db: DbSession, daypart_id: int):
     """Toggle daypart active status."""
-    return {"id": daypart_id, "active": True}
+    items = _load_dayparts(db)
+    for item in items:
+        if item.get("id") == daypart_id:
+            item["active"] = not item.get("active", True)
+            _save_dayparts(db, items)
+            return {"id": daypart_id, "active": item["active"]}
+    raise HTTPException(status_code=404, detail="Daypart not found")
 
 
 @router.get("/menu-admin/items-with-allergens")

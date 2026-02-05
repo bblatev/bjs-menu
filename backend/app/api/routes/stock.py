@@ -296,7 +296,8 @@ def get_stock_batches(
             }
             for b in batches
         ]
-    except Exception:
+    except Exception as e:
+        logger.error("Failed to load batches: %s", e)
         return []
 
 
@@ -335,7 +336,8 @@ def get_expiring_items(
                 "status": "expired" if days_left and days_left <= 0 else "critical" if days_left and days_left <= 3 else "warning",
             })
         return items
-    except Exception:
+    except Exception as e:
+        logger.error("Failed to load expiring items: %s", e)
         return []
 
 

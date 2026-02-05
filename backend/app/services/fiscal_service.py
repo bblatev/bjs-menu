@@ -418,3 +418,28 @@ class FiscalService:
             "last_receipt": cls._receipt_counter - 1,
             "last_z_report": datetime.utcnow().strftime("%d.%m.%Y"),
         }
+
+    @classmethod
+    def get_receipt_by_number(cls, receipt_number: int) -> Optional[Dict[str, Any]]:
+        """
+        Look up a past receipt by its number.
+
+        Returns receipt data dict or None if not found.
+        In virtual mode, returns a synthetic receipt.
+        """
+        if receipt_number < 1 or receipt_number >= cls._receipt_counter:
+            return None
+
+        return {
+            "receipt_number": receipt_number,
+            "device_serial": cls._device_serial,
+            "fiscal_memory": cls._fiscal_memory_number,
+            "text": (
+                f"===== ФИСКАЛЕН БОН / FISCAL RECEIPT =====\n"
+                f"Бон №: {receipt_number}\n"
+                f"Устройство: {cls._device_serial}\n"
+                f"ФП: {cls._fiscal_memory_number}\n"
+                f"========================================\n"
+                f"(Архивен запис / Archive record)\n"
+            ),
+        }

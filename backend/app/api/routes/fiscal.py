@@ -227,10 +227,12 @@ def get_receipt_text(db: DbSession, receipt_number: int):
     Get formatted receipt text for a past receipt.
     For reprinting purposes.
     """
-    # In production, this would look up the receipt from database
+    receipt = FiscalService.get_receipt_by_number(receipt_number)
+    if not receipt:
+        raise HTTPException(status_code=404, detail=f"Receipt #{receipt_number} not found")
     return {
         "receipt_number": receipt_number,
-        "message": "Receipt lookup not implemented - would retrieve from database",
+        "text": receipt.get("text", ""),
         "reprint_allowed": True,
     }
 

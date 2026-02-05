@@ -46,109 +46,6 @@ class CustomerUpdate(BaseModel):
 
 # ============== Helper Functions ==============
 
-def _init_demo_customers(db: DbSession):
-    """Initialize demo customers if none exist."""
-    count = db.query(Customer).count()
-    if count == 0:
-        demo_customers = [
-            {
-                "name": "Иван Петров",
-                "phone": "+359 888 123 456",
-                "email": "ivan.petrov@email.com",
-                "total_orders": 45,
-                "total_spent": 2850.50,
-                "average_order": 63.34,
-                "visit_frequency": 4.5,
-                "lifetime_value": 4500.00,
-                "tags": ["VIP", "Regular"],
-                "segment": "Champions",
-                "spend_trend": "up",
-                "rfm_recency": 5,
-                "rfm_frequency": 5,
-                "rfm_monetary": 5,
-                "acquisition_source": "referral",
-                "birthday": datetime(1985, 6, 15),
-                "favorite_items": ["Margherita Pizza", "Tiramisu"],
-            },
-            {
-                "name": "Maria Ivanova",
-                "phone": "+359 888 234 567",
-                "email": "maria.i@email.com",
-                "total_orders": 28,
-                "total_spent": 1540.00,
-                "average_order": 55.00,
-                "visit_frequency": 2.8,
-                "lifetime_value": 2500.00,
-                "tags": ["Regular"],
-                "segment": "Loyal",
-                "spend_trend": "stable",
-                "rfm_recency": 4,
-                "rfm_frequency": 4,
-                "rfm_monetary": 4,
-                "acquisition_source": "walk-in",
-            },
-            {
-                "name": "Georgi Dimitrov",
-                "phone": "+359 888 345 678",
-                "email": None,
-                "total_orders": 8,
-                "total_spent": 420.00,
-                "average_order": 52.50,
-                "visit_frequency": 0.8,
-                "lifetime_value": 600.00,
-                "tags": ["New"],
-                "segment": "Potential",
-                "spend_trend": "up",
-                "rfm_recency": 3,
-                "rfm_frequency": 2,
-                "rfm_monetary": 2,
-                "acquisition_source": "google",
-            },
-            {
-                "name": "Elena Stoyanova",
-                "phone": "+359 888 456 789",
-                "email": "elena.s@email.com",
-                "total_orders": 52,
-                "total_spent": 3650.00,
-                "average_order": 70.19,
-                "visit_frequency": 5.2,
-                "lifetime_value": 5800.00,
-                "tags": ["VIP", "Business"],
-                "segment": "Champions",
-                "spend_trend": "up",
-                "rfm_recency": 5,
-                "rfm_frequency": 5,
-                "rfm_monetary": 5,
-                "acquisition_source": "website",
-                "allergies": ["Gluten"],
-                "notes": "Always requests corner table",
-            },
-            {
-                "name": "Nikolay Todorov",
-                "phone": "+359 888 567 890",
-                "total_orders": 3,
-                "total_spent": 145.00,
-                "average_order": 48.33,
-                "visit_frequency": 0.3,
-                "lifetime_value": 200.00,
-                "tags": [],
-                "segment": "At Risk",
-                "spend_trend": "down",
-                "rfm_recency": 1,
-                "rfm_frequency": 1,
-                "rfm_monetary": 1,
-                "acquisition_source": "facebook",
-            },
-        ]
-
-        for c in demo_customers:
-            customer = Customer(**c)
-            customer.first_visit = datetime.utcnow() - timedelta(days=180)
-            customer.last_visit = datetime.utcnow() - timedelta(days=7)
-            db.add(customer)
-        db.commit()
-
-
 def _customer_to_dict(customer: Customer) -> dict:
     """Convert Customer to response dict."""
     return {
@@ -199,7 +96,6 @@ def list_customers(
     limit: int = Query(50, ge=1, le=500, description="Maximum items to return"),
 ):
     """List all customers with optional filtering and pagination."""
-    _init_demo_customers(db)
 
     query = db.query(Customer)
 
@@ -390,7 +286,6 @@ def get_upcoming_events(
     days: int = Query(30, le=90),
 ):
     """Get customers with upcoming birthdays and anniversaries."""
-    _init_demo_customers(db)
 
     today = date.today()
     events = []
@@ -439,7 +334,6 @@ def get_upcoming_events(
 @router.get("/crm/customers/segments")
 def get_customer_segments(db: DbSession):
     """Get customer segment statistics."""
-    _init_demo_customers(db)
 
     segments = ["Champions", "Loyal", "Potential", "New", "At Risk", "Lost"]
     result = []
@@ -462,7 +356,6 @@ def get_customer_segments(db: DbSession):
 @router.get("/crm/customers/stats")
 def get_customer_stats(db: DbSession):
     """Get overall customer statistics."""
-    _init_demo_customers(db)
 
     total = db.query(Customer).count()
     total_revenue = db.query(func.sum(Customer.total_spent)).scalar() or 0

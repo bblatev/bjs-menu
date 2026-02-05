@@ -831,20 +831,53 @@ def auto_assign_tables(
         Reservation.status.notin_([ReservationStatus.CANCELLED, ReservationStatus.NO_SHOW]),
     ).all()
 
-    # In production, this would use a smart table assignment algorithm
+    # Get available tables for the venue, sorted by capacity ascending (best-fit)
+    from app.models.restaurant import Table as RestaurantTable
+    tables = db.query(RestaurantTable).filter(
+        RestaurantTable.location_id == venue_id,
+    ).order_by(RestaurantTable.capacity.asc()).all()
+
+    if not tables:
+        # Fallback: try all tables if no location filter matches
+        tables = db.query(RestaurantTable).order_by(RestaurantTable.capacity.asc()).all()
+
+    # Build a set of table IDs already assigned for this date's reservations
+    used_table_ids = set()
+    for res in reservations:
+        if res.table_ids:
+            if isinstance(res.table_ids, list):
+                used_table_ids.update(res.table_ids)
+
     assigned_count = 0
     for res in reservations:
-        if not res.table_ids:
-            # Mock assignment - would query tables and find best fit
+        if res.table_ids:
+            continue  # already assigned
+
+        party = res.party_size or 2
+        # Find best-fit table: smallest capacity >= party_size, not already used
+        best_table = None
+        for t in tables:
+            if t.id not in used_table_ids and t.capacity >= party:
+                best_table = t
+                break
+
+        if best_table:
+            res.table_ids = [best_table.id]
+            used_table_ids.add(best_table.id)
             assigned_count += 1
+
+    db.commit()
+
+    total_unassigned = sum(1 for r in reservations if not r.table_ids)
+    efficiency = int((assigned_count / max(1, assigned_count + total_unassigned)) * 100)
 
     return {
         "success": True,
         "date": request.date,
         "assigned_count": assigned_count,
         "total_reservations": len(reservations),
-        "optimization_score": 85,
-        "message": f"Auto-assigned {assigned_count} tables with 85% efficiency"
+        "optimization_score": efficiency,
+        "message": f"Auto-assigned {assigned_count} tables with {efficiency}% efficiency"
     }
 
 

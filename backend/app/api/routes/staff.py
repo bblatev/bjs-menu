@@ -673,14 +673,46 @@ def get_leaderboard(
     # Get all active staff
     staff = db.query(StaffUser).filter(StaffUser.is_active == True).all()
 
-    # Generate sample metrics for demo
-    import random
+    # Determine date range
+    today = date.today()
+    if period == "day":
+        start_date = today
+    elif period == "week":
+        start_date = today - timedelta(days=7)
+    elif period == "year":
+        start_date = today - timedelta(days=365)
+    else:  # month
+        start_date = today - timedelta(days=30)
+
     leaderboard = []
 
     for i, s in enumerate(staff):
-        sales = random.uniform(500, 5000)
-        orders = random.randint(20, 100)
-        hours = random.uniform(20, 45)
+        # Get performance metrics for the period
+        metrics = db.query(PerformanceMetric).filter(
+            PerformanceMetric.staff_id == s.id,
+            PerformanceMetric.period_date >= start_date,
+            PerformanceMetric.period_date <= today,
+        ).all()
+
+        sales = sum(m.sales_amount for m in metrics) if metrics else 0
+        orders = sum(m.orders_count for m in metrics) if metrics else 0
+        tips = sum(m.tips_received for m in metrics) if metrics else 0
+        rating = 0.0
+        reviews = sum(m.reviews_count for m in metrics) if metrics else 0
+
+        # Calculate average rating (weighted by reviews)
+        if metrics:
+            rated = [(m.customer_rating, m.reviews_count) for m in metrics if m.reviews_count > 0]
+            if rated:
+                total_reviews = sum(r[1] for r in rated)
+                rating = sum(r[0] * r[1] for r in rated) / total_reviews if total_reviews > 0 else 0
+
+        # Get hours from time clock entries
+        entries = db.query(TimeClockEntry).filter(
+            TimeClockEntry.staff_id == s.id,
+            func.date(TimeClockEntry.clock_in) >= start_date,
+        ).all()
+        hours = sum(e.total_hours or 0 for e in entries)
 
         leaderboard.append({
             "rank": i + 1,
@@ -695,13 +727,13 @@ def get_leaderboard(
                 "sales_amount": round(sales, 2),
                 "orders_count": orders,
                 "avg_ticket": round(sales / orders, 2) if orders > 0 else 0,
-                "tips_received": round(sales * 0.18, 2),
+                "tips_received": round(tips, 2),
                 "hours_worked": round(hours, 1),
                 "sales_per_hour": round(sales / hours, 2) if hours > 0 else 0,
-                "customer_rating": round(random.uniform(4.0, 5.0), 1),
-                "reviews_count": random.randint(5, 30),
+                "customer_rating": round(rating, 1),
+                "reviews_count": reviews,
             },
-            "change": random.randint(-3, 3),
+            "change": 0,
         })
 
     # Sort by selected metric
