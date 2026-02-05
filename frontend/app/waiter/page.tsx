@@ -522,8 +522,29 @@ export default function WaiterTerminal() {
 
   const transferTable = async (toTableId: number) => {
     if (!table || !check) return;
-    // Transfer all items to new table
-    notify("Transfer not yet implemented");
+    setSending(true);
+    try {
+      const res = await fetch(`${API()}/waiter/checks/${check.check_id}/transfer`, {
+        method: "POST",
+        headers: headers(),
+        body: JSON.stringify({ to_table_id: toTableId }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        notify(`Transferred to Table ${toTableId}`);
+        // Refresh tables and go back to table view
+        await loadTables();
+        setScreen("tables");
+        setTable(null);
+        setCheck(null);
+      } else {
+        const err = await res.json();
+        notify(err.detail || "Transfer failed");
+      }
+    } catch (e) {
+      notify("Connection error");
+    }
+    setSending(false);
     setShowTransfer(false);
   };
 

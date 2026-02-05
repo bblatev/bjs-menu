@@ -713,3 +713,115 @@ def dismiss_call(db: DbSession, call_id: int):
     db.commit()
 
     return {"status": "dismissed", "call_id": call_id}
+
+
+# ============== CHECK TRANSFER ==============
+
+class TransferCheckRequest(BaseModel):
+    to_table_id: int
+    items_to_transfer: Optional[List[int]] = None  # If None, transfer all items
+
+
+@router.post("/checks/{check_id}/transfer")
+def transfer_check(db: DbSession, check_id: int, request: TransferCheckRequest):
+    """Transfer check or specific items to another table.
+
+    If items_to_transfer is None or empty, transfers the entire check.
+    Otherwise, transfers only specified items to a new check on the destination table.
+    """
+    # Get source check
+    source_check = db.query(Check).filter(Check.id == check_id).first()
+    if not source_check:
+        raise HTTPException(status_code=404, detail="Check not found")
+
+    if source_check.status != "open":
+        raise HTTPException(status_code=400, detail="Can only transfer open checks")
+
+    # Get destination table
+    dest_table = db.query(Table).filter(Table.id == request.to_table_id).first()
+    if not dest_table:
+        raise HTTPException(status_code=404, detail="Destination table not found")
+
+    # Get or create check on destination table
+    dest_check = db.query(Check).filter(
+        Check.table_id == request.to_table_id,
+        Check.status == "open"
+    ).first()
+
+    transfer_all = not request.items_to_transfer
+
+    if transfer_all:
+        # Transfer entire check - just update the table_id
+        old_table_id = source_check.table_id
+        source_check.table_id = request.to_table_id
+
+        # Update source table status
+        old_table = db.query(Table).filter(Table.id == old_table_id).first()
+        if old_table:
+            old_table.status = "available"
+
+        # Update destination table status
+        dest_table.status = "occupied"
+
+        db.commit()
+
+        return {
+            "status": "ok",
+            "message": "Check transferred successfully",
+            "check_id": source_check.id,
+            "from_table_id": old_table_id,
+            "to_table_id": request.to_table_id,
+            "items_transferred": len(source_check.items),
+        }
+    else:
+        # Transfer specific items
+        if not dest_check:
+            dest_check = Check(
+                table_id=request.to_table_id,
+                status="open",
+                guest_count=1,
+                opened_at=datetime.utcnow(),
+                subtotal=Decimal("0"),
+                tax=Decimal("0"),
+                discount=Decimal("0"),
+                total=Decimal("0"),
+                balance_due=Decimal("0"),
+            )
+            db.add(dest_check)
+            db.flush()
+
+        items_transferred = 0
+        for item_id in request.items_to_transfer:
+            item = db.query(CheckItem).filter(
+                CheckItem.id == item_id,
+                CheckItem.check_id == check_id
+            ).first()
+            if item:
+                item.check_id = dest_check.id
+                items_transferred += 1
+
+        # Recalculate both checks
+        recalculate_check(source_check, db)
+        recalculate_check(dest_check, db)
+
+        # Update table statuses
+        dest_table.status = "occupied"
+
+        # If source check is now empty, close it
+        remaining_items = [i for i in source_check.items if i.status != "voided"]
+        if not remaining_items:
+            source_check.status = "closed"
+            source_table = db.query(Table).filter(Table.id == source_check.table_id).first()
+            if source_table:
+                source_table.status = "available"
+
+        db.commit()
+
+        return {
+            "status": "ok",
+            "message": f"Transferred {items_transferred} items",
+            "from_check_id": check_id,
+            "to_check_id": dest_check.id,
+            "to_table_id": request.to_table_id,
+            "items_transferred": items_transferred,
+        }
