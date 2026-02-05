@@ -3,7 +3,7 @@
 import asyncio
 import logging
 from typing import List, Optional
-from datetime import datetime
+from datetime import datetime, timezone
 from decimal import Decimal
 from fastapi import APIRouter, HTTPException, Query, BackgroundTasks
 from pydantic import BaseModel
@@ -120,7 +120,7 @@ def table_to_response(table: Table, db: DbSession) -> dict:
 
     time_seated = None
     if active_check and active_check.opened_at:
-        time_seated = int((datetime.utcnow() - active_check.opened_at).total_seconds() / 60)
+        time_seated = int((datetime.now(timezone.utc) - active_check.opened_at).total_seconds() / 60)
 
     return {
         "table_id": table.id,
@@ -339,7 +339,7 @@ def clear_table(db: DbSession, table_id: int):
     ).all()
     for check in open_checks:
         check.status = "closed"
-        check.closed_at = datetime.utcnow()
+        check.closed_at = datetime.now(timezone.utc)
 
     table.status = "available"
     db.commit()
@@ -452,7 +452,7 @@ def fire_course(db: DbSession, check_id: int, course: str = "main"):
         raise HTTPException(status_code=404, detail="Check not found")
 
     # Update items for this course
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
     for item in check.items:
         if item.course == course or not item.fired_at:
             item.status = "fired"
@@ -488,7 +488,7 @@ def void_item(db: DbSession, item_id: int, request: VoidRequest):
         raise HTTPException(status_code=404, detail="Item not found")
 
     item.status = "voided"
-    item.voided_at = datetime.utcnow()
+    item.voided_at = datetime.now(timezone.utc)
     item.void_reason = request.reason
 
     # Recalculate check
@@ -672,7 +672,7 @@ def acknowledge_call(db: DbSession, call_id: int):
         raise HTTPException(status_code=404, detail="Call not found")
 
     call.status = "acknowledged"
-    call.acknowledged_at = datetime.utcnow()
+    call.acknowledged_at = datetime.now(timezone.utc)
     db.commit()
 
     return {"status": "ok", "call": {
@@ -691,7 +691,7 @@ def complete_call(db: DbSession, call_id: int):
         raise HTTPException(status_code=404, detail="Call not found")
 
     call.status = "completed"
-    call.completed_at = datetime.utcnow()
+    call.completed_at = datetime.now(timezone.utc)
     db.commit()
 
     return {"status": "ok", "call": {
@@ -780,7 +780,7 @@ def transfer_check(db: DbSession, check_id: int, request: TransferCheckRequest):
                 table_id=request.to_table_id,
                 status="open",
                 guest_count=1,
-                opened_at=datetime.utcnow(),
+                opened_at=datetime.now(timezone.utc),
                 subtotal=Decimal("0"),
                 tax=Decimal("0"),
                 discount=Decimal("0"),
