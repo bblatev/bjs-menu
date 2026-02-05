@@ -3,18 +3,22 @@ import { test, expect } from '@playwright/test';
 test.describe('Navigation', () => {
   test('should load the home page', async ({ page }) => {
     await page.goto('/');
-    await expect(page).toHaveTitle(/BJ's Menu/);
+    // The app is branded as V99 POS
+    await expect(page).toHaveTitle(/V99 POS/);
   });
 
-  test('should navigate to menu management', async ({ page }) => {
+  test('should navigate to menu page', async ({ page }) => {
     await page.goto('/');
-    await page.click('text=Menu');
+    // Click the Menu button in sidebar to expand, then click Menu Items link
+    const menuGroup = page.locator('button:has-text("Menu")');
+    await menuGroup.click();
+    await page.click('text=Menu Items');
     await expect(page).toHaveURL(/\/menu/);
   });
 
   test('should navigate to tables page', async ({ page }) => {
     await page.goto('/');
-    await page.click('text=Tables');
+    await page.click('a:has-text("Tables")');
     await expect(page).toHaveURL(/\/tables/);
   });
 
@@ -42,7 +46,7 @@ test.describe('Navigation', () => {
     const menuGroup = page.locator('button:has-text("Menu")');
     await menuGroup.click();
 
-    // Check that submenu items are visible
-    await expect(page.locator('text=Menu Management')).toBeVisible();
+    // Check that submenu items are visible (Menu Items is the actual link text)
+    await expect(page.locator('text=Menu Items')).toBeVisible();
   });
 });
