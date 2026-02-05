@@ -89,14 +89,18 @@ jobs:
           NEXT_PUBLIC_API_URL: http://localhost:8000/api/v1
 
       - name: List build output
-        run: ls -la .next/ || echo "No .next directory found"
+        run: |
+          echo "Working directory: $(pwd)"
+          echo "Workspace: ${{ github.workspace }}"
+          ls -la .next/ || echo "No .next directory found"
+          ls -la ${{ github.workspace }}/frontend/.next/ || echo "No frontend/.next from workspace"
 
       - name: Upload build artifact
         uses: actions/upload-artifact@v4
         with:
           name: frontend-build
-          path: frontend/.next
-          if-no-files-found: warn
+          path: ${{ github.workspace }}/frontend/.next
+          if-no-files-found: error
 
   # E2E Tests
   e2e-test:
@@ -126,7 +130,7 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: frontend-build
-          path: frontend/.next
+          path: ${{ github.workspace }}/frontend/.next
 
       - name: Run E2E tests
         run: npx playwright test --project=chromium
