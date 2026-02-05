@@ -128,9 +128,13 @@ class MenuItem(Base):
 
     location_id = Column(Integer, ForeignKey("locations.id"), nullable=True)
     pos_item_id = Column(String(50), nullable=True)
+    recipe_id = Column(Integer, ForeignKey("recipes.id"), nullable=True)  # Link to recipe for stock deduction
 
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    # Relationships
+    recipe = relationship("Recipe", foreign_keys=[recipe_id])
 
 
 class KitchenOrder(Base):

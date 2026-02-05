@@ -241,3 +241,116 @@ def import_recipes(
         "lines_added": lines_added,
         "errors": errors[:20],
     }
+
+
+# ==================== MENU ITEM LINKING ====================
+
+@router.post("/{recipe_id}/link-menu-item")
+def link_recipe_to_menu_item(
+    recipe_id: int,
+    menu_item_id: int,
+    db: DbSession,
+    current_user: RequireManager,
+):
+    """Link a recipe to a menu item for automatic stock deduction."""
+    from app.models.restaurant import MenuItem
+
+    recipe = db.query(Recipe).filter(Recipe.id == recipe_id).first()
+    if not recipe:
+        raise HTTPException(status_code=404, detail="Recipe not found")
+
+    menu_item = db.query(MenuItem).filter(MenuItem.id == menu_item_id).first()
+    if not menu_item:
+        raise HTTPException(status_code=404, detail="Menu item not found")
+
+    # Link the recipe
+    menu_item.recipe_id = recipe_id
+
+    # Also update recipe with pos_item_id for backup lookup
+    if not recipe.pos_item_id:
+        recipe.pos_item_id = str(menu_item_id)
+    if not recipe.pos_item_name:
+        recipe.pos_item_name = menu_item.name
+
+    db.commit()
+
+    return {
+        "status": "linked",
+        "recipe_id": recipe_id,
+        "recipe_name": recipe.name,
+        "menu_item_id": menu_item_id,
+        "menu_item_name": menu_item.name,
+    }
+
+
+@router.delete("/{recipe_id}/unlink-menu-item")
+def unlink_recipe_from_menu_item(
+    recipe_id: int,
+    menu_item_id: int,
+    db: DbSession,
+    current_user: RequireManager,
+):
+    """Unlink a recipe from a menu item."""
+    from app.models.restaurant import MenuItem
+
+    menu_item = db.query(MenuItem).filter(MenuItem.id == menu_item_id).first()
+    if not menu_item:
+        raise HTTPException(status_code=404, detail="Menu item not found")
+
+    if menu_item.recipe_id != recipe_id:
+        raise HTTPException(status_code=400, detail="Menu item is not linked to this recipe")
+
+    menu_item.recipe_id = None
+    db.commit()
+
+    return {"status": "unlinked", "recipe_id": recipe_id, "menu_item_id": menu_item_id}
+
+
+@router.get("/{recipe_id}/linked-menu-items")
+def get_linked_menu_items(
+    recipe_id: int,
+    db: DbSession,
+    current_user: CurrentUser,
+):
+    """Get all menu items linked to a recipe."""
+    from app.models.restaurant import MenuItem
+
+    recipe = db.query(Recipe).filter(Recipe.id == recipe_id).first()
+    if not recipe:
+        raise HTTPException(status_code=404, detail="Recipe not found")
+
+    menu_items = db.query(MenuItem).filter(MenuItem.recipe_id == recipe_id).all()
+
+    return {
+        "recipe_id": recipe_id,
+        "recipe_name": recipe.name,
+        "menu_items": [
+            {
+                "id": m.id,
+                "name": m.name,
+                "price": float(m.price) if m.price else 0,
+                "category": m.category,
+                "available": m.available,
+            }
+            for m in menu_items
+        ],
+    }
+
+
+@router.get("/{recipe_id}/stock-availability")
+def get_recipe_stock_availability(
+    recipe_id: int,
+    location_id: int = Query(1),
+    db: DbSession = None,
+    current_user: CurrentUser = None,
+):
+    """Check stock availability for a recipe - how many can be made."""
+    from app.services.stock_deduction_service import StockDeductionService
+
+    service = StockDeductionService(db)
+    result = service.get_stock_for_recipe(recipe_id, location_id)
+
+    if "error" in result:
+        raise HTTPException(status_code=404, detail=result["error"])
+
+    return result

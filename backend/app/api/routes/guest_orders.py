@@ -8,6 +8,10 @@ from pydantic import BaseModel
 
 from app.db.session import DbSession
 from app.models.restaurant import GuestOrder as GuestOrderModel, KitchenOrder, Table, MenuItem
+from app.services.stock_deduction_service import StockDeductionService
+import logging
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -543,6 +547,19 @@ def place_guest_order(
         db_table.status = "occupied"
 
     db.commit()
+
+    # Deduct stock for ordered items
+    try:
+        stock_service = StockDeductionService(db)
+        stock_result = stock_service.deduct_for_order(
+            order_items=validated_items,
+            location_id=1,
+            reference_type="guest_order",
+            reference_id=db_order.id,
+        )
+        logger.info(f"Stock deduction for guest order {db_order.id}: {stock_result['total_ingredients_deducted']} ingredients")
+    except Exception as e:
+        logger.warning(f"Stock deduction failed for guest order {db_order.id}: {e}")
 
     return GuestOrderResponse(
         order_id=db_order.id,

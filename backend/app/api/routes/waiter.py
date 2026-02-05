@@ -11,6 +11,7 @@ from pydantic import BaseModel
 from app.db.session import DbSession
 from app.models.restaurant import Table, MenuItem, Check, CheckItem, CheckPayment, KitchenOrder
 from app.models.hardware import WaiterCall as WaiterCallModel
+from app.services.stock_deduction_service import StockDeductionService
 
 logger = logging.getLogger(__name__)
 
@@ -441,7 +442,27 @@ def create_order(db: DbSession, order: OrderCreate):
         db.add(kitchen_order)
         db.commit()
 
-    return {"status": "ok", "check_id": check.id, "items_added": items_added}
+    # Deduct stock for ordered items
+    stock_deduction = None
+    if kitchen_items:
+        try:
+            stock_service = StockDeductionService(db)
+            stock_deduction = stock_service.deduct_for_order(
+                order_items=kitchen_items,
+                location_id=1,
+                reference_type="pos_sale",
+                reference_id=check.id,
+            )
+            logger.info(f"Stock deduction for check {check.id}: {stock_deduction['total_ingredients_deducted']} ingredients")
+        except Exception as e:
+            logger.warning(f"Stock deduction failed for check {check.id}: {e}")
+
+    return {
+        "status": "ok",
+        "check_id": check.id,
+        "items_added": items_added,
+        "stock_deduction": stock_deduction,
+    }
 
 
 @router.post("/orders/{check_id}/fire-course")
