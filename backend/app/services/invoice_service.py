@@ -2,7 +2,7 @@
 
 import re
 import hashlib
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Optional, List, Dict, Any, Tuple
 from sqlalchemy.orm import Session
 from sqlalchemy import func, and_
@@ -75,7 +75,7 @@ class InvoiceOCRService:
             original_image_path=image_path,
             ocr_raw_text=raw_text,
             ocr_confidence=parsed_data.get("confidence", 0.0),
-            ocr_processed_at=datetime.utcnow(),
+            ocr_processed_at=datetime.now(timezone.utc),
             status=InvoiceStatus.NEEDS_REVIEW if not parsed_data.get("invoice_number") else InvoiceStatus.PENDING
         )
 
@@ -315,7 +315,7 @@ class APAutomationService:
         if action == "approve":
             invoice.status = InvoiceStatus.APPROVED
             invoice.approved_by = approver_id
-            invoice.approved_at = datetime.utcnow()
+            invoice.approved_at = datetime.now(timezone.utc)
             if notes:
                 invoice.notes = notes
 
@@ -333,7 +333,7 @@ class APAutomationService:
         elif action == "reject":
             invoice.status = InvoiceStatus.REJECTED
             invoice.approved_by = approver_id
-            invoice.approved_at = datetime.utcnow()
+            invoice.approved_at = datetime.now(timezone.utc)
             invoice.rejection_reason = notes
         else:
             return {"error": f"Invalid action: {action}"}
@@ -355,7 +355,7 @@ class APAutomationService:
 
         invoice.status = InvoiceStatus.APPROVED
         invoice.approved_by = user_id
-        invoice.approved_at = datetime.utcnow()
+        invoice.approved_at = datetime.now(timezone.utc)
 
         if gl_code:
             invoice.gl_code = gl_code
@@ -388,7 +388,7 @@ class APAutomationService:
 
         invoice.status = InvoiceStatus.REJECTED
         invoice.approved_by = user_id
-        invoice.approved_at = datetime.utcnow()
+        invoice.approved_at = datetime.now(timezone.utc)
         invoice.rejection_reason = reason
 
         self.db.commit()
@@ -405,7 +405,7 @@ class APAutomationService:
             raise ValueError("Invoice not found")
 
         invoice.status = InvoiceStatus.PAID
-        invoice.payment_date = datetime.utcnow()
+        invoice.payment_date = datetime.now(timezone.utc)
         invoice.payment_reference = payment_reference
 
         self.db.commit()
@@ -427,7 +427,7 @@ class PriceTrackingService:
         """Get price history for a product."""
         query = self.db.query(PriceHistory).filter(
             PriceHistory.product_id == product_id,
-            PriceHistory.recorded_at >= datetime.utcnow() - timedelta(days=days)
+            PriceHistory.recorded_at >= datetime.now(timezone.utc) - timedelta(days=days)
         )
 
         if supplier_id:
@@ -447,7 +447,7 @@ class PriceTrackingService:
             func.max(PriceHistory.price).label("max_price"),
             func.avg(PriceHistory.price).label("avg_price"),
         ).filter(
-            PriceHistory.recorded_at >= datetime.utcnow() - timedelta(days=days)
+            PriceHistory.recorded_at >= datetime.now(timezone.utc) - timedelta(days=days)
         )
 
         if product_ids:
@@ -465,7 +465,7 @@ class PriceTrackingService:
             # Get price from start of period
             start_price = self.db.query(PriceHistory).filter(
                 PriceHistory.product_id == row.product_id,
-                PriceHistory.recorded_at >= datetime.utcnow() - timedelta(days=days)
+                PriceHistory.recorded_at >= datetime.now(timezone.utc) - timedelta(days=days)
             ).order_by(PriceHistory.recorded_at.asc()).first()
 
             change_percent = 0
@@ -526,7 +526,7 @@ class PriceTrackingService:
 
             if trigger_reason:
                 # Update alert
-                alert.last_triggered_at = datetime.utcnow()
+                alert.last_triggered_at = datetime.now(timezone.utc)
                 alert.trigger_count += 1
 
                 triggered.append({

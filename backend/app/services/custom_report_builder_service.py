@@ -5,7 +5,7 @@ columns, filters, grouping, and visualizations.
 """
 
 import logging
-from datetime import datetime, date, timedelta
+from datetime import datetime, date, timedelta, timezone
 from typing import Optional, List, Dict, Any
 from dataclasses import dataclass, field
 from enum import Enum
@@ -420,7 +420,7 @@ class CustomReportBuilderService:
                         continue
                 setattr(report, key, value)
 
-        report.updated_at = datetime.utcnow()
+        report.updated_at = datetime.now(timezone.utc)
 
         return report
 
@@ -494,13 +494,13 @@ class CustomReportBuilderService:
         if not report:
             return {"error": "Report not found"}
 
-        start_time = datetime.utcnow()
+        start_time = datetime.now(timezone.utc)
         params = parameters or {}
 
         # Generate sample data based on report configuration
         data = self._generate_sample_data(report, params)
 
-        execution_time = int((datetime.utcnow() - start_time).total_seconds() * 1000)
+        execution_time = int((datetime.now(timezone.utc) - start_time).total_seconds() * 1000)
 
         # Save run record
         run = SavedReportRun(
@@ -508,7 +508,7 @@ class CustomReportBuilderService:
             report_id=report_id,
             parameters=params,
             row_count=len(data),
-            executed_at=datetime.utcnow(),
+            executed_at=datetime.now(timezone.utc),
             execution_time_ms=execution_time,
         )
         self._runs[run.run_id] = run
@@ -581,7 +581,7 @@ class CustomReportBuilderService:
         elif col_def.column_type == ColumnType.DATE:
             return (date.today() - timedelta(days=index)).isoformat()
         elif col_def.column_type == ColumnType.DATETIME:
-            return datetime.utcnow().isoformat()
+            return datetime.now(timezone.utc).isoformat()
         elif col_def.column_type == ColumnType.BOOLEAN:
             return index % 2 == 0
         else:

@@ -1,6 +1,6 @@
 """Customer Journey Analytics Service."""
 
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, timedelta, timezone
 from decimal import Decimal
 from typing import List, Optional, Dict, Any
 
@@ -43,7 +43,7 @@ class CustomerJourneyService:
             utm_campaign=utm_campaign,
             device_type=device_type,
             browser=browser,
-            timestamp=datetime.utcnow(),
+            timestamp=datetime.now(timezone.utc),
         )
         self.db.add(event)
         self.db.commit()
@@ -68,7 +68,7 @@ class CustomerJourneyService:
         days: int = 30,
     ) -> List[CustomerJourneyEvent]:
         """Get journey events for a customer."""
-        start_date = datetime.utcnow() - timedelta(days=days)
+        start_date = datetime.now(timezone.utc) - timedelta(days=days)
 
         query = select(CustomerJourneyEvent).where(
             and_(

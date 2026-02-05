@@ -6,7 +6,7 @@ Handles Apple Pay and Google Pay payments via Stripe.
 import logging
 from typing import Optional, Dict, Any, List
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, timezone
 from enum import Enum
 import uuid
 
@@ -240,7 +240,7 @@ class MobileWalletService:
         # In production, verify with Stripe that payment succeeded
         # For now, simulate success
         payment.status = WalletPaymentStatus.SUCCEEDED
-        payment.completed_at = datetime.utcnow()
+        payment.completed_at = datetime.now(timezone.utc)
         payment.receipt_url = f"https://pay.stripe.com/receipts/{payment.stripe_payment_intent_id}"
 
         logger.info(f"Confirmed wallet payment {payment_id} via {wallet_type}")

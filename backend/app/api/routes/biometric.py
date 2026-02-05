@@ -10,7 +10,7 @@ Provides endpoints for:
 """
 
 from typing import Optional, List
-from datetime import datetime
+from datetime import datetime, timezone
 from fastapi import APIRouter, HTTPException, Body, Query
 from pydantic import BaseModel
 
@@ -298,7 +298,7 @@ def get_access_stats(
     days: int = Query(7, ge=1, le=90),
 ):
     """Get access statistics for the specified period."""
-    start = datetime.utcnow().replace(hour=0, minute=0, second=0) - \
+    start = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0) - \
             __import__('datetime').timedelta(days=days)
 
     log = BiometricService.get_access_log(start_date=start, limit=10000)
@@ -360,7 +360,7 @@ def clock_in(
         return {
             "success": True,
             "staff_id": result.get("staff_id"),
-            "clock_in_time": datetime.utcnow().isoformat(),
+            "clock_in_time": datetime.now(timezone.utc).isoformat(),
             "auth_method": auth_method,
             "message": "Clock in successful",
         }
@@ -394,7 +394,7 @@ def clock_out(
         return {
             "success": True,
             "staff_id": result.get("staff_id"),
-            "clock_out_time": datetime.utcnow().isoformat(),
+            "clock_out_time": datetime.now(timezone.utc).isoformat(),
             "auth_method": auth_method,
             "message": "Clock out successful",
         }

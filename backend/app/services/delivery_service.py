@@ -3,7 +3,7 @@
 import httpx
 import hashlib
 import hmac
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional, List, Dict, Any
 from sqlalchemy.orm import Session
 from sqlalchemy import and_
@@ -112,7 +112,7 @@ class DeliveryAggregatorService:
         # Auto-accept if configured
         if integration.auto_accept_orders:
             order.status = DeliveryOrderStatus.CONFIRMED
-            order.confirmed_at = datetime.utcnow()
+            order.confirmed_at = datetime.now(timezone.utc)
 
         self.db.commit()
 
@@ -168,17 +168,17 @@ class DeliveryAggregatorService:
             raise ValueError("Order not found")
 
         order.status = new_status
-        order.status_updated_at = datetime.utcnow()
+        order.status_updated_at = datetime.now(timezone.utc)
 
         # Set timestamps based on status
         if new_status == DeliveryOrderStatus.CONFIRMED:
-            order.confirmed_at = datetime.utcnow()
+            order.confirmed_at = datetime.now(timezone.utc)
         elif new_status == DeliveryOrderStatus.READY_FOR_PICKUP:
-            order.ready_at = datetime.utcnow()
+            order.ready_at = datetime.now(timezone.utc)
         elif new_status == DeliveryOrderStatus.PICKED_UP:
-            order.picked_up_at = datetime.utcnow()
+            order.picked_up_at = datetime.now(timezone.utc)
         elif new_status == DeliveryOrderStatus.DELIVERED:
-            order.delivered_at = datetime.utcnow()
+            order.delivered_at = datetime.now(timezone.utc)
 
         self.db.commit()
 
@@ -223,7 +223,7 @@ class MenuSyncService:
         sync_record = MenuSync(
             integration_id=integration_id,
             sync_type="full" if full_sync else "incremental",
-            started_at=datetime.utcnow()
+            started_at=datetime.now(timezone.utc)
         )
         self.db.add(sync_record)
         self.db.flush()
@@ -247,15 +247,15 @@ class MenuSyncService:
             sync_record.success = True
             sync_record.items_synced = items_synced
             sync_record.items_failed = items_failed
-            sync_record.completed_at = datetime.utcnow()
+            sync_record.completed_at = datetime.now(timezone.utc)
 
             integration.is_menu_synced = True
-            integration.last_menu_sync_at = datetime.utcnow()
+            integration.last_menu_sync_at = datetime.now(timezone.utc)
 
         except Exception as e:
             sync_record.success = False
             sync_record.error_message = str(e)
-            sync_record.completed_at = datetime.utcnow()
+            sync_record.completed_at = datetime.now(timezone.utc)
 
         self.db.commit()
         return sync_record
@@ -309,7 +309,7 @@ class MenuSyncService:
 
         availability.is_available = is_available
         availability.unavailable_reason = reason if not is_available else None
-        availability.updated_at = datetime.utcnow()
+        availability.updated_at = datetime.now(timezone.utc)
 
         # Get all active integrations
         integrations = self.db.query(DeliveryIntegration).filter(
@@ -328,7 +328,7 @@ class MenuSyncService:
                 results[integration.platform.value] = False
 
         availability.platforms_synced = results
-        availability.last_sync_at = datetime.utcnow()
+        availability.last_sync_at = datetime.now(timezone.utc)
 
         self.db.commit()
 

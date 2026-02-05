@@ -5,7 +5,7 @@ Supports chip card, contactless, and swipe payments.
 """
 
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional, List, Dict, Any
 from dataclasses import dataclass, field
 from enum import Enum
@@ -197,7 +197,7 @@ class CardTerminalService:
             return None
 
         terminal.status = status
-        terminal.last_seen = datetime.utcnow()
+        terminal.last_seen = datetime.now(timezone.utc)
         if ip_address:
             terminal.ip_address = ip_address
 
@@ -218,7 +218,7 @@ class CardTerminalService:
 
         token = ConnectionToken(
             secret=f"pst_test_{uuid.uuid4().hex}",
-            expires_at=datetime.utcnow(),
+            expires_at=datetime.now(timezone.utc),
         )
 
         self._connection_tokens.append(token)
@@ -305,7 +305,7 @@ class CardTerminalService:
         # In production, Stripe handles the actual processing
         # Simulate success
         payment.status = TerminalPaymentStatus.SUCCEEDED
-        payment.completed_at = datetime.utcnow()
+        payment.completed_at = datetime.now(timezone.utc)
         payment.receipt_url = f"https://pay.stripe.com/receipts/{payment.stripe_payment_intent_id}"
 
         logger.info(f"Processed terminal payment {payment_id}: {payment.status.value}")

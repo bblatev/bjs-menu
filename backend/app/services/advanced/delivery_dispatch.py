@@ -1,6 +1,6 @@
 """Multi-Provider Delivery Dispatch Service - Smart routing."""
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 from typing import List, Optional, Dict, Any
 
@@ -135,7 +135,7 @@ class DeliveryDispatchService:
             dispatch_reason=strategy,
             provider_quotes={q["provider_name"]: {"fee": q["estimated_fee"], "eta": q["estimated_eta_minutes"]} for q in quotes},
             quoted_fee=Decimal(str(selected_quote["estimated_fee"])),
-            dispatched_at=datetime.utcnow(),
+            dispatched_at=datetime.now(timezone.utc),
         )
         self.db.add(dispatch)
         self.db.commit()
@@ -230,7 +230,7 @@ class DeliveryDispatchService:
         days: int = 7,
     ) -> Dict[str, Any]:
         """Get delivery dispatch statistics."""
-        start_date = datetime.utcnow() - timedelta(days=days)
+        start_date = datetime.now(timezone.utc) - timedelta(days=days)
 
         # Overall stats
         query = select(

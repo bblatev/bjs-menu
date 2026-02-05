@@ -1,7 +1,7 @@
 """Tables management routes - database-backed."""
 
 from typing import List, Optional
-from datetime import datetime
+from datetime import datetime, timezone
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
@@ -248,7 +248,7 @@ def update_table(
     if table.area is not None:
         db_table.area = table.area
 
-    db_table.updated_at = datetime.utcnow()
+    db_table.updated_at = datetime.now(timezone.utc)
     db.commit()
     db.refresh(db_table)
     return Table.from_db(db_table)
@@ -280,7 +280,7 @@ def occupy_table(
         raise HTTPException(status_code=404, detail="Table not found")
 
     db_table.status = "occupied"
-    db_table.updated_at = datetime.utcnow()
+    db_table.updated_at = datetime.now(timezone.utc)
     db.commit()
     db.refresh(db_table)
     return {"status": "ok", "table": {"id": db_table.id, "number": db_table.number, "status": db_table.status}}
@@ -297,7 +297,7 @@ def free_table(
         raise HTTPException(status_code=404, detail="Table not found")
 
     db_table.status = "available"
-    db_table.updated_at = datetime.utcnow()
+    db_table.updated_at = datetime.now(timezone.utc)
     db.commit()
     db.refresh(db_table)
     return {"status": "ok", "table": {"id": db_table.id, "number": db_table.number, "status": db_table.status}}
@@ -314,7 +314,7 @@ def reserve_table(
         raise HTTPException(status_code=404, detail="Table not found")
 
     db_table.status = "reserved"
-    db_table.updated_at = datetime.utcnow()
+    db_table.updated_at = datetime.now(timezone.utc)
     db.commit()
     db.refresh(db_table)
     return {"status": "ok", "table": {"id": db_table.id, "number": db_table.number, "status": db_table.status}}
@@ -331,7 +331,7 @@ def set_table_cleaning(
         raise HTTPException(status_code=404, detail="Table not found")
 
     db_table.status = "cleaning"
-    db_table.updated_at = datetime.utcnow()
+    db_table.updated_at = datetime.now(timezone.utc)
     db.commit()
     db.refresh(db_table)
     return {"status": "ok", "table": {"id": db_table.id, "number": db_table.number, "status": db_table.status}}

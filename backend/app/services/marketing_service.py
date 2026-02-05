@@ -2,7 +2,7 @@
 
 import os
 import random
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Optional, List, Dict, Any
 from sqlalchemy.orm import Session
 from sqlalchemy import func, and_
@@ -190,7 +190,7 @@ class MarketingAutomationService:
                             body_html=campaign.content_html,
                             unsubscribe_link=f"https://example.com/unsubscribe/{campaign_recipient.id}"
                         )
-                        campaign_recipient.sent_at = datetime.utcnow()
+                        campaign_recipient.sent_at = datetime.now(timezone.utc)
 
                 if campaign.campaign_type in [CampaignType.SMS, CampaignType.MULTI_CHANNEL]:
                     if recipient.get("phone"):
@@ -198,7 +198,7 @@ class MarketingAutomationService:
                             to_number=recipient["phone"],
                             message=campaign.content_text
                         )
-                        campaign_recipient.sent_at = datetime.utcnow()
+                        campaign_recipient.sent_at = datetime.now(timezone.utc)
 
                 sent_count += 1
 
@@ -208,7 +208,7 @@ class MarketingAutomationService:
 
         # Update campaign stats
         campaign.status = CampaignStatus.ACTIVE
-        campaign.started_at = datetime.utcnow()
+        campaign.started_at = datetime.now(timezone.utc)
         campaign.total_sent = sent_count
 
         self.db.commit()
@@ -238,7 +238,7 @@ class MarketingAutomationService:
         if criteria.get("min_spend"):
             query = query.filter(Customer.total_spent >= criteria["min_spend"])
         if criteria.get("last_visit_days"):
-            threshold = datetime.utcnow() - timedelta(days=criteria["last_visit_days"])
+            threshold = datetime.now(timezone.utc) - timedelta(days=criteria["last_visit_days"])
             query = query.filter(Customer.last_visit >= threshold)
 
         total_count = query.count()
@@ -296,7 +296,7 @@ class AutomatedTriggerService:
 
     async def _process_birthday_trigger(self, trigger: AutomatedTrigger) -> int:
         """Send birthday emails/SMS."""
-        today = datetime.utcnow().date()
+        today = datetime.now(timezone.utc).date()
         send_days = trigger.send_days_before or 0
 
         target_date = today + timedelta(days=send_days)
@@ -316,7 +316,7 @@ class AutomatedTriggerService:
 
     async def _process_winback_trigger(self, trigger: AutomatedTrigger) -> int:
         """Send win-back campaigns to lapsed customers."""
-        threshold_date = datetime.utcnow() - timedelta(days=trigger.days_threshold or 30)
+        threshold_date = datetime.now(timezone.utc) - timedelta(days=trigger.days_threshold or 30)
 
         # Find customers who haven't visited since threshold
         lapsed = self.db.query(CustomerLoyalty).filter(
@@ -362,7 +362,7 @@ class MenuRecommendationService:
         context: Optional[Dict[str, Any]] = None
     ) -> List[Dict[str, Any]]:
         """Get personalized menu recommendations."""
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         day_of_week = now.weekday()
         hour = now.hour
 
@@ -580,13 +580,13 @@ class LoyaltyService:
         if not loyalty:
             loyalty = CustomerLoyalty(
                 customer_id=customer_id,
-                first_visit_at=datetime.utcnow()
+                first_visit_at=datetime.now(timezone.utc)
             )
             self.db.add(loyalty)
 
         loyalty.total_visits += 1
         loyalty.total_spend += spend_amount
-        loyalty.last_visit_at = datetime.utcnow()
+        loyalty.last_visit_at = datetime.now(timezone.utc)
 
         # Update favorite items
         if items_ordered:

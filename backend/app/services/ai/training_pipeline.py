@@ -11,7 +11,7 @@ import hashlib
 import io
 import json
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
@@ -201,7 +201,7 @@ class FeatureAggregator:
             cache.aggregated_features = aggregated.tobytes()
             cache.image_count = image_count
             cache.feature_version = feature_version
-            cache.updated_at = datetime.utcnow()
+            cache.updated_at = datetime.now(timezone.utc)
         else:
             cache = ProductFeatureCache(
                 stock_item_id=product_id,
@@ -305,7 +305,7 @@ class AccuracyTracker:
         source: Optional[str] = None,
     ) -> Dict:
         """Calculate accuracy metrics for recent recognitions."""
-        start_date = datetime.utcnow() - timedelta(days=days)
+        start_date = datetime.now(timezone.utc) - timedelta(days=days)
 
         query = self.db.query(RecognitionLog).filter(
             RecognitionLog.created_at >= start_date,
@@ -348,7 +348,7 @@ class AccuracyTracker:
         days: int = 30,
     ) -> Dict:
         """Get accuracy metrics for a specific product."""
-        start_date = datetime.utcnow() - timedelta(days=days)
+        start_date = datetime.now(timezone.utc) - timedelta(days=days)
 
         logs = (
             self.db.query(RecognitionLog)
@@ -384,7 +384,7 @@ class AccuracyTracker:
         min_samples: int = 5,
     ) -> Dict:
         """Get products that are frequently confused with each other."""
-        start_date = datetime.utcnow() - timedelta(days=days)
+        start_date = datetime.now(timezone.utc) - timedelta(days=days)
 
         # Get logs where user provided a correction
         logs = (
@@ -525,7 +525,7 @@ class TrainingPipeline:
                     stacked = np.stack(augmented_features)
                     image.augmented_features = stacked.tobytes()
 
-            image.updated_at = datetime.utcnow()
+            image.updated_at = datetime.now(timezone.utc)
             image.extraction_error = None
             self.db.flush()
 

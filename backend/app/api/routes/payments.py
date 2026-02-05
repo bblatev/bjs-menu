@@ -2,7 +2,7 @@
 
 import json
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional, List, Dict
 from fastapi import APIRouter, HTTPException, Request, Header
 from pydantic import BaseModel
@@ -330,7 +330,7 @@ async def stripe_webhook(
             if order:
                 order.payment_status = "paid"
                 order.payment_method = "card"
-                order.paid_at = datetime.utcnow()
+                order.paid_at = datetime.now(timezone.utc)
                 db.commit()
                 logger.info(f"Order {order_id} marked as paid via webhook (PI: {payment_intent_id})")
 

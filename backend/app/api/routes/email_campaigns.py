@@ -4,7 +4,7 @@ Visual email campaign builder with templates, segmentation, and tracking.
 """
 
 from typing import Optional, List
-from datetime import datetime
+from datetime import datetime, timezone
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, EmailStr
 
@@ -412,7 +412,7 @@ async def schedule_campaign(campaign_id: str, request: ScheduleCampaignRequest):
     except ValueError:
         raise HTTPException(status_code=400, detail="Invalid datetime format. Use ISO format.")
 
-    if scheduled_at < datetime.utcnow():
+    if scheduled_at < datetime.now(timezone.utc):
         raise HTTPException(status_code=400, detail="Scheduled time must be in the future")
 
     campaign = service.schedule_campaign(campaign_id, scheduled_at)

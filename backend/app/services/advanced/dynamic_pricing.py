@@ -1,6 +1,6 @@
 """Dynamic Surge Pricing Service."""
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 from typing import List, Optional, Dict, Any
 
@@ -150,7 +150,7 @@ class DynamicPricingService:
         adjustment = DynamicPriceAdjustment(
             rule_id=rule_id,
             location_id=location_id,
-            activated_at=datetime.utcnow(),
+            activated_at=datetime.now(timezone.utc),
             original_price=original_price,
             adjusted_price=adjusted_price,
             trigger_value=trigger_value,
@@ -173,7 +173,7 @@ class DynamicPricingService:
         if not adjustment:
             raise ValueError(f"Adjustment {adjustment_id} not found")
 
-        adjustment.deactivated_at = datetime.utcnow()
+        adjustment.deactivated_at = datetime.now(timezone.utc)
         self.db.commit()
         self.db.refresh(adjustment)
 
@@ -278,7 +278,7 @@ class DynamicPricingService:
         days: int = 7,
     ) -> Dict[str, Any]:
         """Get surge pricing history and analytics."""
-        start_date = datetime.utcnow() - timedelta(days=days)
+        start_date = datetime.now(timezone.utc) - timedelta(days=days)
 
         query = select(
             func.count(DynamicPriceAdjustment.id).label("total_surges"),

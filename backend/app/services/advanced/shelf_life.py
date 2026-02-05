@@ -1,6 +1,6 @@
 """Shelf Life & Expiration Tracking Service."""
 
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, timedelta, timezone
 from decimal import Decimal
 from typing import List, Optional, Dict, Any
 
@@ -277,7 +277,7 @@ class ShelfLifeService:
             raise ValueError(f"Alert {alert_id} not found")
 
         alert.action_taken = action_taken
-        alert.action_date = datetime.utcnow()
+        alert.action_date = datetime.now(timezone.utc)
         alert.action_by_id = action_by_id
         alert.acknowledged = True
 

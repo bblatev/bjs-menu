@@ -4,7 +4,7 @@ All data persisted to the integrations table using JSON config fields.
 """
 
 from typing import List, Optional
-from datetime import datetime
+from datetime import datetime, timezone
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
@@ -275,7 +275,7 @@ def get_86_items(db: DbSession):
 def create_86_item(db: DbSession, item: Item86):
     items = _load(db, STORE_86)
     item.id = _next_id(db, STORE_86)
-    item.eighty_sixed_at = datetime.utcnow().isoformat()
+    item.eighty_sixed_at = datetime.now(timezone.utc).isoformat()
     items.append(item.model_dump())
     _save(db, STORE_86, items, "86'd Items")
     return item

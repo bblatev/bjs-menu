@@ -6,7 +6,7 @@ Supports daily, weekly, and monthly reports in PDF and Excel formats.
 
 import logging
 import asyncio
-from datetime import datetime, date, time, timedelta
+from datetime import datetime, date, time, timedelta, timezone
 from typing import Optional, List, Dict, Any, Callable
 from dataclasses import dataclass, field
 from enum import Enum
@@ -122,7 +122,7 @@ class ScheduledReportsService:
         parameters: Optional[Dict[str, Any]] = None,
     ) -> ReportSchedule:
         """Create a new report schedule."""
-        schedule_id = f"RS-{datetime.utcnow().strftime('%Y%m%d%H%M%S')}"
+        schedule_id = f"RS-{datetime.now(timezone.utc).strftime('%Y%m%d%H%M%S')}"
 
         schedule = ReportSchedule(
             schedule_id=schedule_id,
@@ -161,7 +161,7 @@ class ScheduledReportsService:
             if hasattr(schedule, key) and value is not None:
                 setattr(schedule, key, value)
 
-        schedule.updated_at = datetime.utcnow()
+        schedule.updated_at = datetime.now(timezone.utc)
         schedule.next_run = self._calculate_next_run(schedule)
 
         logger.info(f"Updated report schedule {schedule_id}")
@@ -203,7 +203,7 @@ class ScheduledReportsService:
             return None
 
         schedule.is_active = is_active
-        schedule.updated_at = datetime.utcnow()
+        schedule.updated_at = datetime.now(timezone.utc)
 
         if is_active:
             schedule.next_run = self._calculate_next_run(schedule)
@@ -216,7 +216,7 @@ class ScheduledReportsService:
 
     def _calculate_next_run(self, schedule: ReportSchedule) -> datetime:
         """Calculate the next run time for a schedule."""
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         run_time = datetime.combine(now.date(), schedule.time_of_day)
 
         if schedule.frequency == ReportFrequency.DAILY:
@@ -280,12 +280,12 @@ class ScheduledReportsService:
             return None
 
         # Create run record
-        run_id = f"RR-{datetime.utcnow().strftime('%Y%m%d%H%M%S')}"
+        run_id = f"RR-{datetime.now(timezone.utc).strftime('%Y%m%d%H%M%S')}"
         run = ReportRun(
             run_id=run_id,
             schedule_id=schedule_id,
             report_type=schedule.report_type,
-            started_at=datetime.utcnow(),
+            started_at=datetime.now(timezone.utc),
         )
         self._runs[run_id] = run
 
@@ -319,7 +319,7 @@ class ScheduledReportsService:
                 run.recipients_notified = sent_count
 
             # Update run record
-            run.completed_at = datetime.utcnow()
+            run.completed_at = datetime.now(timezone.utc)
             run.status = "success"
 
             # Update schedule
@@ -331,7 +331,7 @@ class ScheduledReportsService:
             logger.info(f"Successfully ran report {schedule_id}")
 
         except Exception as e:
-            run.completed_at = datetime.utcnow()
+            run.completed_at = datetime.now(timezone.utc)
             run.status = "failed"
             run.error_message = str(e)
 
@@ -350,7 +350,7 @@ class ScheduledReportsService:
         format: ReportFormat,
     ) -> tuple:
         """Export report data to file."""
-        timestamp = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
+        timestamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
         file_name = f"{report_type.value}_{timestamp}"
 
         if format == ReportFormat.PDF:
@@ -400,7 +400,7 @@ class ScheduledReportsService:
 
             # Generated timestamp
             story.append(Paragraph(
-                f"Generated: {datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S UTC')}",
+                f"Generated: {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S UTC')}",
                 styles['Normal']
             ))
             story.append(Spacer(1, 20))
@@ -472,7 +472,7 @@ class ScheduledReportsService:
             row += 2
 
             # Generated timestamp
-            ws.cell(row=row, column=1, value=f"Generated: {datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S UTC')}")
+            ws.cell(row=row, column=1, value=f"Generated: {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S UTC')}")
             row += 2
 
             # Data sections
@@ -585,7 +585,7 @@ class ScheduledReportsService:
 
     async def check_and_run_due_reports(self):
         """Check for due reports and run them."""
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
 
         for schedule in self._schedules.values():
             if not schedule.is_active:

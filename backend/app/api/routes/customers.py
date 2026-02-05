@@ -1,7 +1,7 @@
 """Customer management routes - CRM functionality."""
 
 from typing import List, Optional
-from datetime import datetime, date, timedelta
+from datetime import datetime, date, timedelta, timezone
 from fastapi import APIRouter, HTTPException, Body, Query
 from pydantic import BaseModel
 from sqlalchemy import func, or_
@@ -159,7 +159,7 @@ def create_customer(db: DbSession, data: CustomerCreate):
         tags=data.tags or [],
         acquisition_source=data.acquisition_source,
         communication_preference=data.communication_preference,
-        first_visit=datetime.utcnow(),
+        first_visit=datetime.now(timezone.utc),
     )
 
     if data.birthday:

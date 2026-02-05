@@ -2,7 +2,7 @@
 
 import asyncio
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import List, Optional
 from dataclasses import dataclass
 import httpx
@@ -124,7 +124,7 @@ class NotificationService:
                     channel="sms",
                     recipient=to,
                     message=message,
-                    sent_at=datetime.utcnow(),
+                    sent_at=datetime.now(timezone.utc),
                 )
             else:
                 return NotificationResult(
@@ -176,7 +176,7 @@ class NotificationService:
                     channel="sms",
                     recipient=to,
                     message=message,
-                    sent_at=datetime.utcnow(),
+                    sent_at=datetime.now(timezone.utc),
                 )
             else:
                 return NotificationResult(
@@ -231,7 +231,7 @@ class NotificationService:
                     channel="sms",
                     recipient=to,
                     message=message,
-                    sent_at=datetime.utcnow(),
+                    sent_at=datetime.now(timezone.utc),
                 )
             else:
                 return NotificationResult(
@@ -259,7 +259,7 @@ class NotificationService:
             channel="sms",
             recipient=to,
             message=message,
-            sent_at=datetime.utcnow(),
+            sent_at=datetime.now(timezone.utc),
         )
 
     async def send_email(
@@ -336,7 +336,7 @@ class NotificationService:
                     channel="email",
                     recipient=to,
                     message=body,
-                    sent_at=datetime.utcnow(),
+                    sent_at=datetime.now(timezone.utc),
                 )
             else:
                 return NotificationResult(
@@ -394,7 +394,7 @@ class NotificationService:
                     channel="email",
                     recipient=to,
                     message=body,
-                    sent_at=datetime.utcnow(),
+                    sent_at=datetime.now(timezone.utc),
                 )
             else:
                 return NotificationResult(
@@ -426,7 +426,7 @@ class NotificationService:
                 channel="email",
                 recipient=to,
                 message=body,
-                sent_at=datetime.utcnow(),
+                sent_at=datetime.now(timezone.utc),
             )
 
         try:
@@ -457,7 +457,7 @@ class NotificationService:
                 channel="email",
                 recipient=to,
                 message=body,
-                sent_at=datetime.utcnow(),
+                sent_at=datetime.now(timezone.utc),
             )
 
         except Exception as e:

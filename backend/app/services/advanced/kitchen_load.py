@@ -1,6 +1,6 @@
 """Kitchen Load Balancing Service."""
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import List, Optional, Dict, Any
 
 from sqlalchemy import select, func, and_
@@ -81,7 +81,7 @@ class KitchenLoadService:
 
         metric = StationLoadMetric(
             station_id=station_id,
-            timestamp=datetime.utcnow(),
+            timestamp=datetime.now(timezone.utc),
             items_in_queue=items_in_queue,
             items_in_progress=items_in_progress,
             avg_wait_time_seconds=avg_wait_time_seconds,
@@ -112,7 +112,7 @@ class KitchenLoadService:
         hours: int = 4,
     ) -> List[StationLoadMetric]:
         """Get load history for a station."""
-        since = datetime.utcnow() - timedelta(hours=hours)
+        since = datetime.now(timezone.utc) - timedelta(hours=hours)
 
         query = select(StationLoadMetric).where(
             and_(

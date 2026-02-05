@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional
 
 from fastapi import APIRouter, Query
@@ -38,7 +38,7 @@ def get_sync_changes(
     # Return summary of changes
     return {
         "has_changes": True,
-        "last_sync": datetime.utcnow().isoformat(),
+        "last_sync": datetime.now(timezone.utc).isoformat(),
         "changes": {
             "products": db.query(Product).count(),
             "menu_items": db.query(MenuItem).count(),
@@ -128,7 +128,7 @@ def sync_pull(
         suppliers=suppliers,
         locations=locations,
         stock=stock,
-        server_timestamp=datetime.utcnow(),
+        server_timestamp=datetime.now(timezone.utc),
     )
 
 
@@ -189,6 +189,6 @@ def sync_push(
         sessions_created=sessions_created,
         lines_created=lines_created,
         conflicts=conflicts,
-        server_timestamp=datetime.utcnow(),
+        server_timestamp=datetime.now(timezone.utc),
         id_mappings=id_mappings,
     )

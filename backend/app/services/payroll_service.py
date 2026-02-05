@@ -6,7 +6,7 @@ Handles staff payroll calculations, pay periods, wages, and deductions.
 import logging
 from typing import Optional, Dict, Any, List
 from dataclasses import dataclass, field
-from datetime import datetime, date, timedelta
+from datetime import datetime, date, timedelta, timezone
 from enum import Enum
 import uuid
 
@@ -451,7 +451,7 @@ class PayrollService:
 
         period.status = PayrollStatus.APPROVED
         period.approved_by = approved_by
-        period.approved_at = datetime.utcnow()
+        period.approved_at = datetime.now(timezone.utc)
 
         return period
 

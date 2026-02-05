@@ -1,6 +1,6 @@
 """Real-time SMS Order Status Notification Service."""
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import List, Optional, Dict, Any
 
 from sqlalchemy import select, func, and_
@@ -57,10 +57,10 @@ class NotificationService:
 
         # In production, this would actually send via SMS/email/push
         # For now, just mark as sent
-        notification.sent_at = datetime.utcnow()
+        notification.sent_at = datetime.now(timezone.utc)
 
         # Simulate delivery after 2 seconds
-        notification.delivered_at = datetime.utcnow()
+        notification.delivered_at = datetime.now(timezone.utc)
 
         self.db.commit()
         self.db.refresh(notification)
@@ -136,7 +136,7 @@ class NotificationService:
         days: int = 7,
     ) -> Dict[str, Any]:
         """Get notification statistics."""
-        since = datetime.utcnow() - timedelta(days=days)
+        since = datetime.now(timezone.utc) - timedelta(days=days)
 
         # Total counts
         query = select(

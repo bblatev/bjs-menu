@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import csv
 import io
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 from typing import Optional, List
 
@@ -65,7 +65,7 @@ def get_stock_valuation(
         "items": items,
         "total_value": float(total_value),
         "item_count": len(items),
-        "generated_at": datetime.utcnow().isoformat(),
+        "generated_at": datetime.now(timezone.utc).isoformat(),
     }
 
 
@@ -81,7 +81,7 @@ def get_consumption_report(
 
     Shows products consumed through POS sales.
     """
-    since = datetime.utcnow() - timedelta(days=days)
+    since = datetime.now(timezone.utc) - timedelta(days=days)
 
     query = db.query(StockMovement).filter(
         StockMovement.ts >= since,
@@ -125,7 +125,7 @@ def get_consumption_report(
         "items": items,
         "total_value": total_value,
         "total_transactions": sum(item["transactions"] for item in items),
-        "generated_at": datetime.utcnow().isoformat(),
+        "generated_at": datetime.now(timezone.utc).isoformat(),
     }
 
 
@@ -139,7 +139,7 @@ def get_movement_summary(
     """
     Get stock movement summary by reason.
     """
-    since = datetime.utcnow() - timedelta(days=days)
+    since = datetime.now(timezone.utc) - timedelta(days=days)
 
     query = db.query(StockMovement).filter(StockMovement.ts >= since)
     if location_id:
@@ -171,7 +171,7 @@ def get_movement_summary(
         "since": since.isoformat(),
         "by_reason": list(by_reason.values()),
         "total_movements": len(movements),
-        "generated_at": datetime.utcnow().isoformat(),
+        "generated_at": datetime.now(timezone.utc).isoformat(),
     }
 
 
@@ -237,7 +237,7 @@ def get_low_stock_report(
         "critical_count": len([i for i in items if i["urgency"] == "critical"]),
         "urgent_count": len([i for i in items if i["urgency"] == "urgent"]),
         "total_reorder_value": float(total_reorder_value),
-        "generated_at": datetime.utcnow().isoformat(),
+        "generated_at": datetime.now(timezone.utc).isoformat(),
     }
 
 
@@ -256,8 +256,8 @@ def get_food_costs_report(
     """
     return {
         "period": {
-            "start": start_date or (datetime.utcnow() - timedelta(days=30)).strftime("%Y-%m-%d"),
-            "end": end_date or datetime.utcnow().strftime("%Y-%m-%d"),
+            "start": start_date or (datetime.now(timezone.utc) - timedelta(days=30)).strftime("%Y-%m-%d"),
+            "end": end_date or datetime.now(timezone.utc).strftime("%Y-%m-%d"),
         },
         "summary": {
             "total_sales": 125000.00,
@@ -280,7 +280,7 @@ def get_food_costs_report(
             {"item": "Fish & Chips", "expected_cost": 5.50, "actual_cost": 6.38, "variance": 0.88, "variance_pct": 16.0},
             {"item": "Steak Frites", "expected_cost": 12.00, "actual_cost": 13.20, "variance": 1.20, "variance_pct": 10.0},
         ],
-        "generated_at": datetime.utcnow().isoformat(),
+        "generated_at": datetime.now(timezone.utc).isoformat(),
     }
 
 
@@ -296,8 +296,8 @@ def get_labor_costs_report(
     """
     return {
         "period": {
-            "start": start_date or (datetime.utcnow() - timedelta(days=30)).strftime("%Y-%m-%d"),
-            "end": end_date or datetime.utcnow().strftime("%Y-%m-%d"),
+            "start": start_date or (datetime.now(timezone.utc) - timedelta(days=30)).strftime("%Y-%m-%d"),
+            "end": end_date or datetime.now(timezone.utc).strftime("%Y-%m-%d"),
         },
         "summary": {
             "total_sales": 125000.00,
@@ -315,7 +315,7 @@ def get_labor_costs_report(
             {"department": "Bar", "hours": 300, "cost": 3900.00, "percentage": 12.5},
             {"department": "Management", "hours": 100, "cost": 950.00, "percentage": 3.0},
         ],
-        "generated_at": datetime.utcnow().isoformat(),
+        "generated_at": datetime.now(timezone.utc).isoformat(),
     }
 
 
@@ -332,8 +332,8 @@ def get_detailed_sales_report(
     """
     return {
         "period": {
-            "start": start_date or (datetime.utcnow() - timedelta(days=30)).strftime("%Y-%m-%d"),
-            "end": end_date or datetime.utcnow().strftime("%Y-%m-%d"),
+            "start": start_date or (datetime.now(timezone.utc) - timedelta(days=30)).strftime("%Y-%m-%d"),
+            "end": end_date or datetime.now(timezone.utc).strftime("%Y-%m-%d"),
         },
         "summary": {
             "total_sales": 125000.00,
@@ -355,7 +355,7 @@ def get_detailed_sales_report(
             {"name": "BBQ Ribs", "quantity": 280, "sales": 7000.00},
             {"name": "Chicken Wings", "quantity": 520, "sales": 6760.00},
         ],
-        "generated_at": datetime.utcnow().isoformat(),
+        "generated_at": datetime.now(timezone.utc).isoformat(),
     }
 
 
@@ -373,7 +373,7 @@ def get_server_performance_report(
             {"id": 2, "name": "Sarah Johnson", "sales": 25200.00, "orders": 350, "avg_ticket": 72.00, "tips": 4032.00, "rating": 4.9},
             {"id": 3, "name": "Mike Davis", "sales": 22100.00, "orders": 340, "avg_ticket": 65.00, "tips": 3315.00, "rating": 4.6},
         ],
-        "generated_at": datetime.utcnow().isoformat(),
+        "generated_at": datetime.now(timezone.utc).isoformat(),
     }
 
 
@@ -396,7 +396,7 @@ def get_voids_comps_report(
             {"reason": "Customer changed mind", "count": 45, "amount": 675.00},
             {"reason": "Wrong item sent", "count": 32, "amount": 480.00},
         ],
-        "generated_at": datetime.utcnow().isoformat(),
+        "generated_at": datetime.now(timezone.utc).isoformat(),
     }
 
 
@@ -416,7 +416,7 @@ def get_product_mix_report(
             {"name": "Main Courses", "items_sold": 3400, "revenue": 62500.00, "percentage": 50.0},
             {"name": "Pizza", "items_sold": 1275, "revenue": 25000.00, "percentage": 20.0},
         ],
-        "generated_at": datetime.utcnow().isoformat(),
+        "generated_at": datetime.now(timezone.utc).isoformat(),
     }
 
 
@@ -441,7 +441,7 @@ def get_trends_report(
             "previous_period_sales": 34500.00,
             "change_percentage": 7.8,
         },
-        "generated_at": datetime.utcnow().isoformat(),
+        "generated_at": datetime.now(timezone.utc).isoformat(),
     }
 
 
@@ -502,7 +502,7 @@ def get_turnover_base_prices_report(
             },
             "by_category": [],
             "by_item": [],
-            "generated_at": datetime.utcnow().isoformat(),
+            "generated_at": datetime.now(timezone.utc).isoformat(),
         }
 
     # Get check items
@@ -623,7 +623,7 @@ def get_turnover_base_prices_report(
         },
         "by_category": categories,
         "by_item": items,
-        "generated_at": datetime.utcnow().isoformat(),
+        "generated_at": datetime.now(timezone.utc).isoformat(),
     }
 
 
@@ -641,7 +641,7 @@ def export_report(
     Supported report types: sales, inventory, financial, customers, staff
     """
     # Calculate date range based on period
-    end_date = datetime.utcnow().date()
+    end_date = datetime.now(timezone.utc).date()
     if period == "day":
         start_date = end_date
     elif period == "week":
@@ -692,7 +692,7 @@ def export_report(
         "period": {"start": str(start_date), "end": str(end_date)},
         "headers": headers,
         "data": data,
-        "generated_at": datetime.utcnow().isoformat()
+        "generated_at": datetime.now(timezone.utc).isoformat()
     }
 
 

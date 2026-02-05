@@ -1,6 +1,6 @@
 """IoT Equipment Monitoring Service."""
 
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, timedelta, timezone
 from typing import List, Optional, Dict, Any
 
 from sqlalchemy import select, func, and_
@@ -87,7 +87,7 @@ class IoTMonitoringService:
 
         reading = SensorReading(
             sensor_id=sensor_db_id,
-            timestamp=datetime.utcnow(),
+            timestamp=datetime.now(timezone.utc),
             value=value,
             unit=unit,
             is_alert=is_alert,
@@ -109,7 +109,7 @@ class IoTMonitoringService:
     ) -> None:
         """Check if predictive maintenance alert should be created."""
         # Get recent alerts
-        since = datetime.utcnow() - timedelta(hours=24)
+        since = datetime.now(timezone.utc) - timedelta(hours=24)
 
         query = select(func.count(SensorReading.id)).where(
             and_(
@@ -143,7 +143,7 @@ class IoTMonitoringService:
         alerts_only: bool = False,
     ) -> List[SensorReading]:
         """Get sensor readings."""
-        since = datetime.utcnow() - timedelta(hours=hours)
+        since = datetime.now(timezone.utc) - timedelta(hours=hours)
 
         query = select(SensorReading).where(
             and_(
@@ -166,7 +166,7 @@ class IoTMonitoringService:
         hours: int = 24,
     ) -> List[SensorReading]:
         """Get all alerts for a location."""
-        since = datetime.utcnow() - timedelta(hours=hours)
+        since = datetime.now(timezone.utc) - timedelta(hours=hours)
 
         # Get sensor IDs for location
         sensors = self.get_sensors(location_id)
@@ -222,7 +222,7 @@ class IoTMonitoringService:
 
         maintenance.acknowledged = True
         maintenance.action_taken = action_taken
-        maintenance.resolved_at = datetime.utcnow()
+        maintenance.resolved_at = datetime.now(timezone.utc)
 
         self.db.commit()
         self.db.refresh(maintenance)

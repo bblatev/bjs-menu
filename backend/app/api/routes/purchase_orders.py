@@ -1,6 +1,6 @@
 """Purchase Orders API routes - database-backed."""
 
-from datetime import datetime
+from datetime import datetime, timezone
 from decimal import Decimal
 from typing import List, Optional
 from fastapi import APIRouter, HTTPException, Query
@@ -337,7 +337,7 @@ def approve_purchase_order(db: DbSession, po_id: int):
     if po.status not in (POStatus.DRAFT,):
         raise HTTPException(status_code=400, detail=f"Cannot approve PO in status '{po.status.value}'")
     po.status = POStatus.SENT
-    po.sent_at = datetime.utcnow()
+    po.sent_at = datetime.now(timezone.utc)
     db.commit()
     return {"success": True, "message": f"Purchase order PO-{po.id:04d} approved and sent"}
 
@@ -362,7 +362,7 @@ def approve_approval(db: DbSession, approval_id: int):
     if not po:
         raise HTTPException(status_code=404, detail="Approval request not found")
     po.status = POStatus.SENT
-    po.sent_at = datetime.utcnow()
+    po.sent_at = datetime.now(timezone.utc)
     db.commit()
     return {"success": True, "message": f"Approval for PO-{po.id:04d} approved"}
 
@@ -447,7 +447,7 @@ def receive_purchase_order(
         })
 
     po.status = POStatus.RECEIVED
-    po.received_at = datetime.utcnow()
+    po.received_at = datetime.now(timezone.utc)
     if request and request.notes:
         po.notes = (po.notes or "") + f"\nReceived: {request.notes}"
     db.commit()

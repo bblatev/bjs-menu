@@ -1,6 +1,6 @@
 """AI Cross-Sell Engine Service."""
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 from typing import List, Optional, Dict, Any
 
@@ -136,7 +136,7 @@ class CrossSellService:
             rule_id=rule_id,
             order_id=order_id,
             recommended_product_id=recommended_product_id,
-            shown_at=datetime.utcnow(),
+            shown_at=datetime.now(timezone.utc),
         )
         self.db.add(impression)
 
@@ -161,7 +161,7 @@ class CrossSellService:
             raise ValueError(f"Impression {impression_id} not found")
 
         impression.converted = True
-        impression.converted_at = datetime.utcnow()
+        impression.converted_at = datetime.now(timezone.utc)
         impression.added_product_id = added_product_id
         impression.revenue = revenue
 
@@ -181,7 +181,7 @@ class CrossSellService:
         days: int = 30,
     ) -> Dict[str, Any]:
         """Get cross-sell performance statistics."""
-        start_date = datetime.utcnow() - timedelta(days=days)
+        start_date = datetime.now(timezone.utc) - timedelta(days=days)
 
         # Build base query
         rules_query = select(CrossSellRule)

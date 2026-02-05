@@ -1,6 +1,6 @@
 """Enterprise feature routes - integrations, throttling, hotel PMS, offline, mobile app, invoice OCR - using database."""
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import List, Optional
 from fastapi import APIRouter, HTTPException, UploadFile, File, Form
 from pydantic import BaseModel
@@ -312,7 +312,7 @@ def connect_integration(
 
     if existing:
         existing.status = "connected"
-        existing.connected_at = datetime.utcnow()
+        existing.connected_at = datetime.now(timezone.utc)
         existing.config = connection.credentials
     else:
         new_integration = IntegrationModel(
@@ -322,7 +322,7 @@ def connect_integration(
             description=marketplace_info["description"],
             status="connected",
             config=connection.credentials,
-            connected_at=datetime.utcnow(),
+            connected_at=datetime.now(timezone.utc),
         )
         db.add(new_integration)
 
@@ -459,7 +459,7 @@ def snooze_throttling(
 ):
     """Temporarily disable throttling."""
     ts = _load_config(db, "enterprise_throttle", _DEFAULT_THROTTLE_STATUS)
-    snoozed_until = (datetime.utcnow() + timedelta(minutes=minutes)).isoformat()
+    snoozed_until = (datetime.now(timezone.utc) + timedelta(minutes=minutes)).isoformat()
     ts["snoozed_until"] = snoozed_until
     ts["is_throttling"] = False
     _save_config(db, "enterprise_throttle", ts, "Throttle Status")
@@ -514,7 +514,7 @@ def connect_hotel_pms(
     if existing:
         existing.name = hotel_name
         existing.status = "connected"
-        existing.connected_at = datetime.utcnow()
+        existing.connected_at = datetime.now(timezone.utc)
         existing.config = {
             "pms_type": pms_type,
             "api_endpoint": api_endpoint,
@@ -527,7 +527,7 @@ def connect_hotel_pms(
             category="hotel-pms",
             description=f"{pms_type.upper()} Hotel PMS Integration",
             status="connected",
-            connected_at=datetime.utcnow(),
+            connected_at=datetime.now(timezone.utc),
             config={
                 "pms_type": pms_type,
                 "api_endpoint": api_endpoint,
@@ -597,7 +597,7 @@ def sync_hotel_guests(db: DbSession):
         raise HTTPException(status_code=400, detail="Hotel PMS not connected. Configure PMS integration first.")
 
     # Update last sync timestamp
-    integration.config = {**integration.config, "last_sync": datetime.utcnow().isoformat()}
+    integration.config = {**integration.config, "last_sync": datetime.now(timezone.utc).isoformat()}
     db.commit()
 
     guest_count = db.query(HotelGuestModel).count()
@@ -617,7 +617,7 @@ def post_hotel_charge(
     # In production, this would post to the PMS
     return {
         "status": "posted",
-        "charge_id": f"CHG-{datetime.utcnow().strftime('%Y%m%d%H%M%S')}",
+        "charge_id": f"CHG-{datetime.now(timezone.utc).strftime('%Y%m%d%H%M%S')}",
         "guest": guest.guest_name,
         "room": charge.room_number,
         "amount": charge.amount,
@@ -633,7 +633,7 @@ def get_offline_status(db: DbSession):
 
     return OfflineStatus(
         is_online=True,
-        last_sync=datetime.utcnow(),
+        last_sync=datetime.now(timezone.utc),
         pending_sync_count=pending_count,
         sync_queue_size=pending_count,
         offline_since=None,
@@ -672,7 +672,7 @@ def trigger_sync(db: DbSession):
     return {
         "status": "synced",
         "items_synced": synced_count,
-        "synced_at": datetime.utcnow(),
+        "synced_at": datetime.now(timezone.utc),
     }
 
 
@@ -732,12 +732,12 @@ def trigger_mobile_build(
 
     for p in platforms:
         build = {
-            "build_id": f"BUILD-{p.upper()}-{datetime.utcnow().strftime('%Y%m%d%H%M%S')}",
+            "build_id": f"BUILD-{p.upper()}-{datetime.now(timezone.utc).strftime('%Y%m%d%H%M%S')}",
             "platform": p,
             "version": mc.get("version", "1.0.0"),
             "status": "building",
             "download_url": None,
-            "created_at": datetime.utcnow(),
+            "created_at": datetime.now(timezone.utc),
         }
         builds.append(build)
 
@@ -766,12 +766,12 @@ async def upload_invoice_for_ocr(
 
     # Simulate OCR processing (in production, would use actual OCR)
     job.status = "completed"
-    job.completed_at = datetime.utcnow()
+    job.completed_at = datetime.now(timezone.utc)
     job.confidence = 0.92
     job.result = {
         "vendor": "Sample Supplier",
-        "invoice_number": f"INV-{datetime.utcnow().strftime('%Y%m%d')}",
-        "date": datetime.utcnow().strftime("%Y-%m-%d"),
+        "invoice_number": f"INV-{datetime.now(timezone.utc).strftime('%Y%m%d')}",
+        "date": datetime.now(timezone.utc).strftime("%Y-%m-%d"),
         "total": 1250.00,
         "items": [
             {"description": "Beer - Case", "quantity": 10, "unit_price": 45.00, "total": 450.00},

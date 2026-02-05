@@ -1,6 +1,6 @@
 """Menu Engineering & Analytics Service - Lightspeed style."""
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Optional, List, Dict, Any
 from sqlalchemy.orm import Session
 from sqlalchemy import func, and_, case
@@ -30,9 +30,9 @@ class MenuEngineeringService:
         Classifies items into quadrants based on popularity and profitability.
         """
         if not start_date:
-            start_date = datetime.utcnow() - timedelta(days=30)
+            start_date = datetime.now(timezone.utc) - timedelta(days=30)
         if not end_date:
-            end_date = datetime.utcnow()
+            end_date = datetime.now(timezone.utc)
 
         # Get sales data
         sales_query = self.db.query(
@@ -213,7 +213,7 @@ class MenuEngineeringService:
         days: int = 30
     ) -> Dict[str, Any]:
         """Get summary of menu items by quadrant."""
-        start_date = datetime.utcnow() - timedelta(days=days)
+        start_date = datetime.now(timezone.utc) - timedelta(days=days)
 
         query = self.db.query(MenuAnalysis).filter(
             MenuAnalysis.analysis_period_start >= start_date
@@ -270,9 +270,9 @@ class ServerPerformanceService:
     ) -> List[ServerPerformance]:
         """Analyze performance metrics for all servers."""
         if not start_date:
-            start_date = datetime.utcnow() - timedelta(days=30)
+            start_date = datetime.now(timezone.utc) - timedelta(days=30)
         if not end_date:
-            end_date = datetime.utcnow()
+            end_date = datetime.now(timezone.utc)
 
         # This would need integration with the main POS to get server data
         # For now, create a framework that can be extended
@@ -293,7 +293,7 @@ class ServerPerformanceService:
         days: int = 30
     ) -> Dict[str, Any]:
         """Get performance scorecard for a specific server."""
-        start_date = datetime.utcnow() - timedelta(days=days)
+        start_date = datetime.now(timezone.utc) - timedelta(days=days)
 
         perf = self.db.query(ServerPerformance).filter(
             ServerPerformance.user_id == user_id,
@@ -436,7 +436,7 @@ class DailyMetricsService:
                 last_week.total_revenue * 100
             )
 
-        metrics.calculated_at = datetime.utcnow()
+        metrics.calculated_at = datetime.now(timezone.utc)
 
         self.db.commit()
         return metrics
@@ -447,7 +447,7 @@ class DailyMetricsService:
         days: int = 7
     ) -> Dict[str, Any]:
         """Get summary of daily metrics for a period."""
-        start_date = datetime.utcnow() - timedelta(days=days)
+        start_date = datetime.now(timezone.utc) - timedelta(days=days)
 
         query = self.db.query(DailyMetrics).filter(
             DailyMetrics.date >= start_date
@@ -463,7 +463,7 @@ class DailyMetricsService:
 
         return {
             "period_start": start_date,
-            "period_end": datetime.utcnow(),
+            "period_end": datetime.now(timezone.utc),
             "total_revenue": sum(m.total_revenue or 0 for m in metrics),
             "total_orders": sum(m.total_orders or 0 for m in metrics),
             "avg_daily_revenue": sum(m.total_revenue or 0 for m in metrics) / len(metrics),

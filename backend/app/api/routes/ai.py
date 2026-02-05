@@ -5,7 +5,7 @@ from __future__ import annotations
 import logging
 import os
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 from decimal import Decimal
 from pathlib import Path
 from typing import Annotated, Optional, List
@@ -103,9 +103,9 @@ async def shelf_scan(
         )
 
     # Run inference
-    start_time = datetime.utcnow()
+    start_time = datetime.now(timezone.utc)
     raw_detections = run_inference(image_data)
-    inference_time = (datetime.utcnow() - start_time).total_seconds() * 1000
+    inference_time = (datetime.now(timezone.utc) - start_time).total_seconds() * 1000
 
     # Map detections to stock items
     detections = []
@@ -139,7 +139,7 @@ async def shelf_scan(
         detections=detections,
         meta={
             "model": "demo",  # Would be actual model name in production
-            "ts": datetime.utcnow().isoformat(),
+            "ts": datetime.now(timezone.utc).isoformat(),
             "inference_time_ms": round(inference_time, 2),
             "total_items_detected": sum(d.count for d in detections),
         },
@@ -197,7 +197,7 @@ def review_shelf_scan(
             existing_line.method = CountMethod.AI
             existing_line.confidence = detection.confidence
             existing_line.photo_id = request.photo_id
-            existing_line.counted_at = datetime.utcnow()
+            existing_line.counted_at = datetime.now(timezone.utc)
             lines_updated += 1
         else:
             # Create new line
@@ -771,7 +771,7 @@ async def recognize_bottle(
 
     # Read image data
     image_data = await image.read()
-    start_time = datetime.utcnow()
+    start_time = datetime.now(timezone.utc)
 
     # ===== FIX EXIF ORIENTATION =====
     # Mobile photos often have EXIF rotation data that needs to be applied
@@ -832,7 +832,7 @@ async def recognize_bottle(
     product_labels = {s.id: s.name for s in stock_items}
 
     if not training_images and not product_labels:
-        inference_time = (datetime.utcnow() - start_time).total_seconds() * 1000
+        inference_time = (datetime.now(timezone.utc) - start_time).total_seconds() * 1000
         return RecognitionResponse(
             results=[RecognitionResult(
                 product_id=None,
@@ -1031,7 +1031,7 @@ async def recognize_bottle(
         results.sort(key=lambda x: (x.confidence, x.text_match_score or 0), reverse=True)
         results = results[:5]
 
-    inference_time = (datetime.utcnow() - start_time).total_seconds() * 1000
+    inference_time = (datetime.now(timezone.utc) - start_time).total_seconds() * 1000
 
     # Filter to only return matches above threshold
     matched_results = [r for r in results if r.is_match]
@@ -1099,7 +1099,7 @@ async def recognize_multi(
 
     # Read and preprocess image
     image_data = await image.read()
-    start_time = datetime.utcnow()
+    start_time = datetime.now(timezone.utc)
 
     # Fix EXIF orientation
     try:
@@ -1119,7 +1119,7 @@ async def recognize_multi(
         img_width, img_height = 0, 0
 
     # ===== YOLO DETECTION - Find ALL items =====
-    yolo_start = datetime.utcnow()
+    yolo_start = datetime.now(timezone.utc)
     all_detections = []
 
     if CLIP_YOLO_AVAILABLE:
@@ -1157,10 +1157,10 @@ async def recognize_multi(
         filtered_detections.append(det)
 
     all_detections = filtered_detections
-    yolo_time = (datetime.utcnow() - yolo_start).total_seconds() * 1000
+    yolo_time = (datetime.now(timezone.utc) - yolo_start).total_seconds() * 1000
 
     if not all_detections:
-        inference_time = (datetime.utcnow() - start_time).total_seconds() * 1000
+        inference_time = (datetime.now(timezone.utc) - start_time).total_seconds() * 1000
         return MultiRecognitionResponse(
             total_detections=0,
             recognized_count=0,
@@ -1212,7 +1212,7 @@ async def recognize_multi(
     stock_items = {s.id: s.name for s in db.query(StockItem).filter(StockItem.is_active == True).all()}
 
     # ===== CROP ALL DETECTIONS =====
-    recognition_start = datetime.utcnow()
+    recognition_start = datetime.now(timezone.utc)
     cropped_images = []
 
     for det in all_detections:
@@ -1369,8 +1369,8 @@ async def recognize_multi(
             product_counts_dict[best_product_id]['confidences'].append(best_confidence)
             product_counts_dict[best_product_id]['detection_ids'].append(idx)
 
-    recognition_time = (datetime.utcnow() - recognition_start).total_seconds() * 1000
-    inference_time = (datetime.utcnow() - start_time).total_seconds() * 1000
+    recognition_time = (datetime.now(timezone.utc) - recognition_start).total_seconds() * 1000
+    inference_time = (datetime.now(timezone.utc) - start_time).total_seconds() * 1000
 
     # Build product counts list
     product_counts = []
@@ -1752,7 +1752,7 @@ async def recognize_bottle_v2(
         )
 
     image_data = await image.read()
-    start_time = datetime.utcnow()
+    start_time = datetime.now(timezone.utc)
 
     try:
         from ml.inference.pipeline_v2 import PipelineV2
@@ -1770,7 +1770,7 @@ async def recognize_bottle_v2(
         # Run 2-stage pipeline
         result = pipeline.process(image_rgb)
 
-        inference_time = (datetime.utcnow() - start_time).total_seconds() * 1000
+        inference_time = (datetime.now(timezone.utc) - start_time).total_seconds() * 1000
 
         # Map SKU IDs to database products
         sku_results = []
@@ -1843,7 +1843,7 @@ async def recognize_bottle_v2(
         )
     except Exception as e:
         if monitoring_enabled:
-            elapsed = (datetime.utcnow() - start_time).total_seconds() * 1000
+            elapsed = (datetime.now(timezone.utc) - start_time).total_seconds() * 1000
             ai_monitor.record_error("pipeline_error", elapsed)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,

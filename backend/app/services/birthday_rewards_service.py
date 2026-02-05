@@ -4,7 +4,7 @@ Automatically triggers rewards for customer birthdays and special occasions.
 """
 
 import logging
-from datetime import datetime, date, timedelta
+from datetime import datetime, date, timedelta, timezone
 from typing import Optional, List, Dict, Any
 from dataclasses import dataclass, field
 from enum import Enum
@@ -376,7 +376,7 @@ class BirthdayRewardsService:
         return {
             "issued": issued_count,
             "skipped": skipped_count,
-            "checked_at": datetime.utcnow().isoformat(),
+            "checked_at": datetime.now(timezone.utc).isoformat(),
         }
 
     def _get_existing_reward(
@@ -539,7 +539,7 @@ class BirthdayRewardsService:
         reward = self.get_reward_by_code(code)
         if reward:
             reward.status = RewardStatus.CLAIMED
-            reward.claimed_at = datetime.utcnow()
+            reward.claimed_at = datetime.now(timezone.utc)
             reward.order_id = order_id
 
             logger.info(f"Reward {reward.reward_id} claimed on order {order_id}")

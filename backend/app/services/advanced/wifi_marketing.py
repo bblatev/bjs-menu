@@ -1,6 +1,6 @@
 """Guest WiFi Marketing Service - WiFi data capture for marketing."""
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import List, Optional, Dict, Any
 
 from sqlalchemy import select, func, and_
@@ -41,13 +41,13 @@ class WifiMarketingService:
             existing.phone = phone or existing.phone
             existing.name = name or existing.name
             existing.visit_count += 1
-            existing.last_visit = datetime.utcnow()
-            existing.connected_at = datetime.utcnow()
+            existing.last_visit = datetime.now(timezone.utc)
+            existing.connected_at = datetime.now(timezone.utc)
             existing.disconnected_at = None
 
             if marketing_consent and not existing.marketing_consent:
                 existing.marketing_consent = True
-                existing.consent_timestamp = datetime.utcnow()
+                existing.consent_timestamp = datetime.now(timezone.utc)
 
             self.db.commit()
             self.db.refresh(existing)
@@ -62,7 +62,7 @@ class WifiMarketingService:
             phone=phone,
             name=name,
             marketing_consent=marketing_consent,
-            consent_timestamp=datetime.utcnow() if marketing_consent else None,
+            consent_timestamp=datetime.now(timezone.utc) if marketing_consent else None,
             visit_count=1,
         )
         self.db.add(session)
@@ -79,7 +79,7 @@ class WifiMarketingService:
         if not session:
             raise ValueError(f"Session {session_id} not found")
 
-        session.disconnected_at = datetime.utcnow()
+        session.disconnected_at = datetime.now(timezone.utc)
         if session.connected_at:
             duration = (session.disconnected_at - session.connected_at).total_seconds() / 60
             session.session_duration_minutes = int(duration)
@@ -142,7 +142,7 @@ class WifiMarketingService:
         days: int = 30,
     ) -> Dict[str, Any]:
         """Get WiFi marketing statistics."""
-        start_date = datetime.utcnow() - timedelta(days=days)
+        start_date = datetime.now(timezone.utc) - timedelta(days=days)
 
         # Total sessions in period
         sessions_query = select(
@@ -219,7 +219,7 @@ class WifiMarketingService:
 
         session.marketing_consent = marketing_consent
         if marketing_consent:
-            session.consent_timestamp = datetime.utcnow()
+            session.consent_timestamp = datetime.now(timezone.utc)
 
         self.db.commit()
         self.db.refresh(session)

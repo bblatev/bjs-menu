@@ -1,7 +1,7 @@
 """Gift cards API routes with real database queries."""
 
 from typing import List, Optional
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 import secrets
 import string
@@ -112,7 +112,7 @@ def determine_status(card: GiftCardModel) -> str:
     if not card.is_active:
         return "cancelled"
 
-    if card.expires_at and card.expires_at < datetime.utcnow():
+    if card.expires_at and card.expires_at < datetime.now(timezone.utc):
         return "expired"
 
     if card.current_balance <= 0:
@@ -223,14 +223,14 @@ async def get_gift_card_stats(db: DbSession):
         func.coalesce(func.sum(GiftCardModel.current_balance), 0)
     ).filter(
         GiftCardModel.is_active == True,
-        func.coalesce(GiftCardModel.expires_at > datetime.utcnow(), True)
+        func.coalesce(GiftCardModel.expires_at > datetime.now(timezone.utc), True)
     ).scalar() or 0
 
     # Expired unredeemed (current balance of expired cards)
     expired_unredeemed = db.query(
         func.coalesce(func.sum(GiftCardModel.current_balance), 0)
     ).filter(
-        GiftCardModel.expires_at <= datetime.utcnow(),
+        GiftCardModel.expires_at <= datetime.now(timezone.utc),
         GiftCardModel.current_balance > 0
     ).scalar() or 0
 
@@ -272,12 +272,12 @@ async def get_gift_cards(
             query = query.filter(
                 GiftCardModel.is_active == True,
                 GiftCardModel.current_balance > 0,
-                func.coalesce(GiftCardModel.expires_at > datetime.utcnow(), True)
+                func.coalesce(GiftCardModel.expires_at > datetime.now(timezone.utc), True)
             )
         elif status == "used":
             query = query.filter(GiftCardModel.current_balance <= 0)
         elif status == "expired":
-            query = query.filter(GiftCardModel.expires_at <= datetime.utcnow())
+            query = query.filter(GiftCardModel.expires_at <= datetime.now(timezone.utc))
         elif status == "cancelled":
             query = query.filter(GiftCardModel.is_active == False)
 
@@ -312,7 +312,7 @@ async def create_gift_card(card_data: GiftCardCreate, db: DbSession):
     # Calculate expiration date if expiration_months provided
     expires_at = None
     if card_data.expiration_months:
-        expires_at = datetime.utcnow() + timedelta(days=card_data.expiration_months * 30)
+        expires_at = datetime.now(timezone.utc) + timedelta(days=card_data.expiration_months * 30)
 
     # Create gift card
     new_card = GiftCardModel(

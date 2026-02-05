@@ -2,7 +2,7 @@
 
 import logging
 from typing import Optional, List
-from datetime import datetime, date
+from datetime import datetime, date, timezone
 from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel
 
@@ -32,7 +32,7 @@ def _save_qbo_tokens(db, tokens: QBOTokens):
         )
         db.add(integration)
     integration.status = "connected"
-    integration.connected_at = datetime.utcnow()
+    integration.connected_at = datetime.now(timezone.utc)
     integration.config = {
         "access_token": tokens.access_token,
         "refresh_token": tokens.refresh_token,
@@ -637,5 +637,5 @@ async def sync_daily_sales(db: DbSession, request: DailySalesSyncRequest):
         synced_count=synced,
         error_count=len(errors),
         errors=errors[:20],
-        last_sync=datetime.utcnow(),
+        last_sync=datetime.now(timezone.utc),
     )

@@ -1,6 +1,6 @@
 """Gift Card Platform Service."""
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 from typing import List, Optional, Dict, Any
 import secrets
@@ -107,7 +107,7 @@ class GiftCardService:
         # Calculate expiration
         expires_at = None
         if program.expiration_months:
-            expires_at = datetime.utcnow() + timedelta(days=program.expiration_months * 30)
+            expires_at = datetime.now(timezone.utc) + timedelta(days=program.expiration_months * 30)
 
         card = GiftCard(
             program_id=program_id,
@@ -193,7 +193,7 @@ class GiftCardService:
         if not card.is_active:
             raise ValueError("Card is not active")
 
-        if card.expires_at and card.expires_at < datetime.utcnow():
+        if card.expires_at and card.expires_at < datetime.now(timezone.utc):
             raise ValueError("Card has expired")
 
         total_available = card.current_balance + card.bonus_balance
@@ -340,7 +340,7 @@ class GiftCardService:
         days: int = 30,
     ) -> Dict[str, Any]:
         """Get gift card program statistics."""
-        start_date = datetime.utcnow() - timedelta(days=days)
+        start_date = datetime.now(timezone.utc) - timedelta(days=days)
 
         # Cards sold
         sold_query = select(

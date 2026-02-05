@@ -1,7 +1,7 @@
 """Menu Engineering routes - analyzes real menu items and order data."""
 
 from typing import List, Optional
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from fastapi import APIRouter, Query
 from sqlalchemy import func
 
@@ -13,7 +13,7 @@ router = APIRouter()
 
 def _build_engineering_items(db: DbSession, days: int = 30):
     """Build menu engineering analysis from real menu items and order data."""
-    cutoff = datetime.utcnow() - timedelta(days=days)
+    cutoff = datetime.now(timezone.utc) - timedelta(days=days)
 
     items = db.query(MenuItemModel).filter(MenuItemModel.available == True).all()
     if not items:

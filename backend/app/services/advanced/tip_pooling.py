@@ -1,6 +1,6 @@
 """Tips Pooling & Distribution Service."""
 
-from datetime import date, datetime
+from datetime import date, datetime, timezone
 from decimal import Decimal
 from typing import List, Optional, Dict, Any
 
@@ -182,7 +182,7 @@ class TipPoolingService:
             total_tips_distributed=total_distributed,
             employee_distributions=employee_distributions,
             approved_by_id=approved_by_id,
-            approved_at=datetime.utcnow() if approved_by_id else None,
+            approved_at=datetime.now(timezone.utc) if approved_by_id else None,
         )
         self.db.add(distribution)
         self.db.commit()
@@ -221,7 +221,7 @@ class TipPoolingService:
             raise ValueError(f"Distribution {distribution_id} not found")
 
         distribution.approved_by_id = approved_by_id
-        distribution.approved_at = datetime.utcnow()
+        distribution.approved_at = datetime.now(timezone.utc)
 
         self.db.commit()
         self.db.refresh(distribution)

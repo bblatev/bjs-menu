@@ -1,7 +1,7 @@
 """Reservations & Waitlist routes - TouchBistro style."""
 
 from typing import List, Optional, Union
-from datetime import date, time, datetime
+from datetime import date, time, datetime, timezone
 from fastapi import APIRouter, HTTPException, Query, BackgroundTasks
 from pydantic import BaseModel, Field
 
@@ -226,8 +226,8 @@ def get_reservation_settings(db: DbSession, location_id: int):
             max_waitlist_size=50,
             google_reserve_enabled=False,
             online_booking_enabled=True,
-            created_at=datetime.utcnow(),
-            updated_at=datetime.utcnow(),
+            created_at=datetime.now(timezone.utc),
+            updated_at=datetime.now(timezone.utc),
         )
 
     return settings
@@ -498,7 +498,7 @@ def confirm_reservation(db: DbSession, reservation_id: int):
         raise HTTPException(status_code=404, detail="Reservation not found")
 
     reservation.status = ReservationStatus.CONFIRMED
-    reservation.confirmed_at = datetime.utcnow()
+    reservation.confirmed_at = datetime.now(timezone.utc)
     db.commit()
     db.refresh(reservation)
     return reservation
@@ -528,7 +528,7 @@ def complete_reservation(db: DbSession, reservation_id: int):
         raise HTTPException(status_code=404, detail="Reservation not found")
 
     reservation.status = ReservationStatus.COMPLETED
-    reservation.completed_at = datetime.utcnow()
+    reservation.completed_at = datetime.now(timezone.utc)
     db.commit()
     db.refresh(reservation)
     return reservation
@@ -542,7 +542,7 @@ def mark_no_show(db: DbSession, reservation_id: int):
         raise HTTPException(status_code=404, detail="Reservation not found")
 
     reservation.status = ReservationStatus.NO_SHOW
-    reservation.no_show_at = datetime.utcnow()
+    reservation.no_show_at = datetime.now(timezone.utc)
     db.commit()
     db.refresh(reservation)
     return reservation
@@ -701,7 +701,7 @@ def configure_platform(db: DbSession, venue_id: int, config: PlatformConfig):
         db.add(integration)
     else:
         integration.status = "connected"
-        integration.connected_at = datetime.utcnow()
+        integration.connected_at = datetime.now(timezone.utc)
     integration.config = {"api_key": config.api_key} if hasattr(config, "api_key") else {}
     db.commit()
     return {
@@ -719,7 +719,7 @@ def collect_deposit(venue_id: int, request: DepositRequest):
         "reservation_id": request.reservation_id,
         "amount": request.amount,
         "payment_method": request.payment_method,
-        "transaction_id": f"txn_{request.reservation_id}_{int(datetime.utcnow().timestamp())}",
+        "transaction_id": f"txn_{request.reservation_id}_{int(datetime.now(timezone.utc).timestamp())}",
         "message": f"Deposit of ${request.amount:.2f} collected successfully"
     }
 
@@ -732,7 +732,7 @@ def sync_external_reservations(venue_id: int):
         "synced_count": 0,
         "platforms_synced": ["google", "opentable"],
         "message": "External reservations synced successfully",
-        "last_sync": datetime.utcnow().isoformat()
+        "last_sync": datetime.now(timezone.utc).isoformat()
     }
 
 
@@ -745,7 +745,7 @@ def get_turn_times(
     """Get table turn time analytics."""
     # Calculate average turn times from completed reservations
     return {
-        "date": date or datetime.utcnow().strftime("%Y-%m-%d"),
+        "date": date or datetime.now(timezone.utc).strftime("%Y-%m-%d"),
         "average_turn_time_minutes": 75,
         "turn_times_by_party_size": {
             "2": 60,
@@ -773,7 +773,7 @@ def get_party_size_optimization(
 ):
     """Get party size optimization analytics."""
     return {
-        "date": date or datetime.utcnow().strftime("%Y-%m-%d"),
+        "date": date or datetime.now(timezone.utc).strftime("%Y-%m-%d"),
         "recommendations": [
             {
                 "party_size": 2,
@@ -943,7 +943,7 @@ def process_refund(
         "success": True,
         "reservation_id": reservation_id,
         "refund_amount": amount,
-        "transaction_id": f"refund_{reservation_id}_{int(datetime.utcnow().timestamp())}",
+        "transaction_id": f"refund_{reservation_id}_{int(datetime.now(timezone.utc).timestamp())}",
         "message": f"Refund of ${amount:.2f} processed successfully"
     }
 

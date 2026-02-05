@@ -1,6 +1,6 @@
 """Blockchain Supply Chain Traceability Service."""
 
-from datetime import date, datetime
+from datetime import date, datetime, timezone
 from typing import List, Optional, Dict, Any
 import hashlib
 import secrets
@@ -57,7 +57,7 @@ class TraceabilityService:
             "harvest": str(harvest_date) if harvest_date else None,
             "processor": processor_name,
             "distributor": distributor_name,
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
         }
         blockchain_hash = self._generate_blockchain_hash(trace_data)
 
@@ -144,7 +144,7 @@ class TraceabilityService:
             "trace_id": trace_id,
             "is_verified": is_verified,
             "blockchain_hash": trace.blockchain_hash,
-            "verification_timestamp": datetime.utcnow().isoformat(),
+            "verification_timestamp": datetime.now(timezone.utc).isoformat(),
             "chain_integrity": is_verified,
         }
 

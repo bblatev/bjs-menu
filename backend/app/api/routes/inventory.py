@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 from decimal import Decimal
 from typing import Optional, List
 
@@ -160,7 +160,7 @@ def add_line(session_id: int, request: InventoryLineCreate, db: DbSession, curre
         existing_line.counted_qty += request.counted_qty
         existing_line.method = request.method
         existing_line.confidence = request.confidence
-        existing_line.counted_at = datetime.utcnow()
+        existing_line.counted_at = datetime.now(timezone.utc)
         db.commit()
         db.refresh(existing_line)
         return existing_line
@@ -209,7 +209,7 @@ def update_line(
     update_data = request.model_dump(exclude_unset=True)
     for field, value in update_data.items():
         setattr(line, field, value)
-    line.counted_at = datetime.utcnow()
+    line.counted_at = datetime.now(timezone.utc)
 
     db.commit()
     db.refresh(line)
@@ -316,7 +316,7 @@ def commit_session(session_id: int, db: DbSession, current_user: CurrentUser):
 
     # Mark session as committed
     session.status = SessionStatus.COMMITTED
-    session.committed_at = datetime.utcnow()
+    session.committed_at = datetime.now(timezone.utc)
 
     db.commit()
 

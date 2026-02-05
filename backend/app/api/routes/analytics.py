@@ -207,7 +207,7 @@ def get_dashboard_kpis(
     location_id: Optional[int] = None,
 ):
     """Get key performance indicators for dashboard widgets."""
-    today_start = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
+    today_start = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
     yesterday_start = today_start - timedelta(days=1)
 
     # Get today's orders
@@ -254,7 +254,7 @@ def get_dashboard_kpis(
             _compute_food_cost_kpi(db, today_start, yesterday_start, location_id),
         ],
         "comparison_period": "vs yesterday",
-        "generated_at": datetime.utcnow().isoformat(),
+        "generated_at": datetime.now(timezone.utc).isoformat(),
     }
 
 
@@ -266,7 +266,7 @@ def get_sales_analytics(
 ):
     """Get sales analytics summary from database."""
     # Calculate date range based on period
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
     if period == "today":
         start_date = now.replace(hour=0, minute=0, second=0, microsecond=0)
     elif period == "week":
@@ -357,7 +357,7 @@ def get_sales_analytics(
         ],
         "sales_by_hour": formatted_sales_by_hour,
         "top_items": top_items,
-        "generated_at": datetime.utcnow().isoformat(),
+        "generated_at": datetime.now(timezone.utc).isoformat(),
     }
 
 
@@ -371,8 +371,8 @@ def get_menu_engineering_report(
 ):
     """Get complete menu engineering analysis."""
     service = MenuEngineeringService(db)
-    start_date = datetime.utcnow() - timedelta(days=days)
-    end_date = datetime.utcnow()
+    start_date = datetime.now(timezone.utc) - timedelta(days=days)
+    end_date = datetime.now(timezone.utc)
     result = service.analyze_menu(location_id, start_date, end_date)
 
     # Group by quadrant
@@ -384,8 +384,8 @@ def get_menu_engineering_report(
     return MenuEngineeringReport(
         location_id=location_id,
         analysis_period={
-            "start": (datetime.utcnow() - timedelta(days=days)).isoformat(),
-            "end": datetime.utcnow().isoformat()
+            "start": (datetime.now(timezone.utc) - timedelta(days=days)).isoformat(),
+            "end": datetime.now(timezone.utc).isoformat()
         },
         total_items_analyzed=len(result),
         quadrant_summary={

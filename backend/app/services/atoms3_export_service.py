@@ -22,7 +22,7 @@ import os
 import csv
 import json
 from io import StringIO, BytesIO
-from datetime import datetime, date
+from datetime import datetime, date, timezone
 from typing import Optional, List, Dict, Any
 from dataclasses import dataclass, field
 from enum import Enum
@@ -220,7 +220,7 @@ class AtomS3ExportService:
 
         # Metadata
         meta = ET.SubElement(root, "Metadata")
-        ET.SubElement(meta, "ExportDate").text = datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%S")
+        ET.SubElement(meta, "ExportDate").text = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S")
         ET.SubElement(meta, "Software").text = "BJS Menu POS"
         ET.SubElement(meta, "Format").text = "AtomS3"
         if period_start:
@@ -276,7 +276,7 @@ class AtomS3ExportService:
         data = {
             "export_info": {
                 "format": "AtomS3",
-                "export_date": datetime.utcnow().isoformat(),
+                "export_date": datetime.now(timezone.utc).isoformat(),
                 "software": "BJS Menu POS",
                 "record_count": len(entries),
             },
@@ -372,7 +372,7 @@ class AtomS3ExportService:
         data = {
             "export_info": {
                 "format": "AtomS3",
-                "export_date": datetime.utcnow().isoformat(),
+                "export_date": datetime.now(timezone.utc).isoformat(),
                 "software": "BJS Menu POS",
                 "record_count": len(entries),
             },
@@ -483,5 +483,5 @@ class AtomS3ExportService:
                 "vat_due": float(vat_due),
                 "vat_refund": float(-vat_due) if vat_due < 0 else 0,
             },
-            "generated_at": datetime.utcnow().isoformat(),
+            "generated_at": datetime.now(timezone.utc).isoformat(),
         }

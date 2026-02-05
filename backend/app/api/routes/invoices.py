@@ -1,7 +1,7 @@
 """Invoice OCR & AP Automation routes - Toast xtraCHEF style."""
 
 from typing import List, Optional
-from datetime import date
+from datetime import date, timezone
 from fastapi import APIRouter, HTTPException, UploadFile, File, Query
 
 from app.db.session import DbSession
@@ -25,7 +25,7 @@ def get_invoice_stats(db: DbSession):
     from datetime import datetime
 
     try:
-        today = datetime.utcnow().date()
+        today = datetime.now(timezone.utc).date()
         month_start = today.replace(day=1)
 
         total_invoices = db.query(func.count(Invoice.id)).scalar() or 0

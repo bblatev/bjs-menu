@@ -7,7 +7,7 @@ aggregated feature vectors per product for faster recognition.
 import logging
 import pickle
 from typing import List, Optional, Dict, Tuple, Any
-from datetime import datetime
+from datetime import datetime, timezone
 
 import numpy as np
 from sqlalchemy.orm import Session
@@ -60,7 +60,7 @@ def update_product_cache(product_id: int, db: Session) -> Optional[ProductFeatur
     if cache_entry:
         cache_entry.aggregated_features = pickle.dumps(aggregated)
         cache_entry.image_count = len(vectors)
-        cache_entry.updated_at = datetime.utcnow()
+        cache_entry.updated_at = datetime.now(timezone.utc)
     else:
         cache_entry = ProductFeatureCache(
             stock_item_id=product_id,

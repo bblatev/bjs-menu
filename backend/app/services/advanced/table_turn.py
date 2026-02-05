@@ -1,6 +1,6 @@
 """Table Turn Optimization Service."""
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 from typing import List, Optional, Dict, Any
 
@@ -27,7 +27,7 @@ class TableTurnService:
         metric = TableTurnMetric(
             location_id=location_id,
             table_id=table_id,
-            seated_at=seated_at or datetime.utcnow(),
+            seated_at=seated_at or datetime.now(timezone.utc),
             party_size=party_size,
         )
         self.db.add(metric)
@@ -88,7 +88,7 @@ class TableTurnService:
         if not metric:
             raise ValueError(f"Turn {turn_id} not found")
 
-        ts = timestamp or datetime.utcnow()
+        ts = timestamp or datetime.now(timezone.utc)
 
         if milestone == "order_placed":
             metric.order_placed_at = ts
@@ -212,7 +212,7 @@ class TableTurnService:
         days: int = 7,
     ) -> Dict[str, Any]:
         """Get table turn summary."""
-        since = datetime.utcnow() - timedelta(days=days)
+        since = datetime.now(timezone.utc) - timedelta(days=days)
 
         query = select(
             func.count(TableTurnMetric.id).label("count"),
@@ -234,7 +234,7 @@ class TableTurnService:
         stats = result.first()
 
         # Today's turns
-        today_start = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
+        today_start = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
         today_query = select(func.count(TableTurnMetric.id)).where(
             and_(
                 TableTurnMetric.location_id == location_id,

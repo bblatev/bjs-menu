@@ -2,7 +2,7 @@
 
 import secrets
 import string
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Optional, List, Dict, Any
 from sqlalchemy.orm import Session
 from sqlalchemy import func, and_, or_
@@ -172,7 +172,7 @@ class ReservationService:
                 guest_phone=phone,
                 guest_email=email,
                 total_visits=0,
-                first_visit_at=datetime.utcnow()
+                first_visit_at=datetime.now(timezone.utc)
             )
             self.db.add(guest)
 
@@ -203,7 +203,7 @@ class ReservationService:
                 body_html=self._generate_confirmation_email(reservation, restaurant_name)
             )
 
-        reservation.confirmed_at = datetime.utcnow()
+        reservation.confirmed_at = datetime.now(timezone.utc)
         self.db.commit()
 
     def _generate_confirmation_email(
@@ -309,8 +309,8 @@ class ReservationService:
             return {"error": "Reservation not found"}
 
         reservation.status = ReservationStatus.SEATED
-        reservation.arrived_at = datetime.utcnow()
-        reservation.seated_at = datetime.utcnow()
+        reservation.arrived_at = datetime.now(timezone.utc)
+        reservation.seated_at = datetime.now(timezone.utc)
 
         if table_ids:
             reservation.table_ids = table_ids
@@ -340,7 +340,7 @@ class ReservationService:
 
     async def send_reminders(self) -> Dict[str, int]:
         """Send reservation reminders."""
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         sent_24h = 0
         sent_2h = 0
 
@@ -617,7 +617,7 @@ class WaitlistService:
                 guest_name=entry.guest_name
             )
             entry.sms_ready_sent = True
-            entry.sms_ready_sent_at = datetime.utcnow()
+            entry.sms_ready_sent_at = datetime.now(timezone.utc)
 
         self.db.commit()
         return entry
@@ -639,7 +639,7 @@ class WaitlistService:
                 guest_name=entry.guest_name
             )
             entry.sms_ready_sent = True
-            entry.sms_ready_sent_at = datetime.utcnow()
+            entry.sms_ready_sent_at = datetime.now(timezone.utc)
 
         self.db.commit()
         return {"status": "notified", "entry": entry}
@@ -658,12 +658,12 @@ class WaitlistService:
             raise ValueError("Waitlist entry not found")
 
         entry.status = WaitlistStatus.SEATED
-        entry.seated_at = datetime.utcnow()
+        entry.seated_at = datetime.now(timezone.utc)
         entry.table_ids = table_ids
 
         # Calculate actual wait time
         if entry.added_at:
-            wait_delta = datetime.utcnow() - entry.added_at
+            wait_delta = datetime.now(timezone.utc) - entry.added_at
             entry.actual_wait_minutes = int(wait_delta.total_seconds() / 60)
 
         # Update positions for remaining entries
@@ -686,12 +686,12 @@ class WaitlistService:
             return {"error": "Waitlist entry not found"}
 
         entry.status = WaitlistStatus.SEATED
-        entry.seated_at = datetime.utcnow()
+        entry.seated_at = datetime.now(timezone.utc)
         entry.table_ids = table_ids
 
         # Calculate actual wait time
         if entry.added_at:
-            wait_delta = datetime.utcnow() - entry.added_at
+            wait_delta = datetime.now(timezone.utc) - entry.added_at
             entry.actual_wait_minutes = int(wait_delta.total_seconds() / 60)
 
         # Update positions for remaining entries
@@ -714,7 +714,7 @@ class WaitlistService:
             return {"error": "Waitlist entry not found"}
 
         entry.status = WaitlistStatus.LEFT if reason == "left" else WaitlistStatus.CANCELLED
-        entry.left_at = datetime.utcnow()
+        entry.left_at = datetime.now(timezone.utc)
         entry.left_reason = reason
 
         # Update positions
@@ -772,7 +772,7 @@ class WaitlistService:
         longest_entry = min(entries, key=lambda x: x.added_at) if entries else None
         longest_wait = 0
         if longest_entry and longest_entry.added_at:
-            longest_wait = int((datetime.utcnow() - longest_entry.added_at).total_seconds() / 60)
+            longest_wait = int((datetime.now(timezone.utc) - longest_entry.added_at).total_seconds() / 60)
 
         return {
             "total_waiting": total_waiting,

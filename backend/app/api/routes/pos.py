@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import csv
 import io
-from datetime import datetime
+from datetime import datetime, timezone
 from decimal import Decimal
 from typing import Optional, List
 
@@ -48,7 +48,7 @@ def get_pos_status(db: DbSession):
     return {
         "status": "connected",
         "pos_system": "Generic POS",
-        "last_sync": datetime.utcnow().isoformat(),
+        "last_sync": datetime.now(timezone.utc).isoformat(),
         "total_sales_lines": total_sales,
         "unprocessed_lines": unprocessed,
         "features": {
@@ -439,7 +439,7 @@ def close_bar_tab(db: DbSession, tab_id: int, payment_method: str = Query("card"
         raise HTTPException(status_code=404, detail="Bar tab not found")
 
     tab.status = "closed"
-    tab.closed_at = datetime.utcnow()
+    tab.closed_at = datetime.now(timezone.utc)
     db.commit()
 
     return {"status": "closed", "tab": {

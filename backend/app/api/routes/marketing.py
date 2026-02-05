@@ -1,7 +1,7 @@
 """Marketing Automation routes - SpotOn style."""
 
 from typing import List, Optional
-from datetime import datetime
+from datetime import datetime, timezone
 from fastapi import APIRouter, HTTPException, Query, BackgroundTasks
 
 from app.db.session import DbSession
@@ -256,7 +256,7 @@ def get_customer_recommendations(
     return {
         "customer_id": customer_id,
         "recommendations": recommendations[:limit],
-        "generated_at": datetime.utcnow().isoformat()
+        "generated_at": datetime.now(timezone.utc).isoformat()
     }
 
 
@@ -269,7 +269,7 @@ def mark_recommendation_presented(
     rec = db.query(MenuRecommendation).filter(MenuRecommendation.id == recommendation_id).first()
     if rec:
         rec.is_presented = True
-        rec.presented_at = datetime.utcnow()
+        rec.presented_at = datetime.now(timezone.utc)
         db.commit()
     return {"status": "ok"}
 
@@ -283,7 +283,7 @@ def mark_recommendation_purchased(
     rec = db.query(MenuRecommendation).filter(MenuRecommendation.id == recommendation_id).first()
     if rec:
         rec.is_purchased = True
-        rec.purchased_at = datetime.utcnow()
+        rec.purchased_at = datetime.now(timezone.utc)
         db.commit()
     return {"status": "ok"}
 

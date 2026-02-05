@@ -1,6 +1,6 @@
 """ML Wait Time Prediction Service."""
 
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional, Dict, Any, List
 
 from sqlalchemy import select, func, and_
@@ -29,7 +29,7 @@ class WaitTimeService:
         item_count = len(order_items)
 
         # Determine time of day factor
-        hour = datetime.utcnow().hour
+        hour = datetime.now(timezone.utc).hour
         if 11 <= hour <= 14 or 18 <= hour <= 21:
             time_factor = "rush"
             time_multiplier = 1.5
@@ -75,7 +75,7 @@ class WaitTimeService:
             predicted_wait_minutes=predicted_minutes,
             confidence=confidence,
             factors=factors,
-            predicted_at=datetime.utcnow(),
+            predicted_at=datetime.now(timezone.utc),
         )
         self.db.add(prediction)
         self.db.commit()
@@ -100,7 +100,7 @@ class WaitTimeService:
 
         prediction.actual_wait_minutes = actual_wait_minutes
         prediction.prediction_error = actual_wait_minutes - prediction.predicted_wait_minutes
-        prediction.order_completed_at = datetime.utcnow()
+        prediction.order_completed_at = datetime.now(timezone.utc)
 
         self.db.commit()
         self.db.refresh(prediction)
@@ -124,7 +124,7 @@ class WaitTimeService:
         days: int = 7,
     ) -> Dict[str, Any]:
         """Get prediction accuracy statistics."""
-        since = datetime.utcnow() - datetime.timedelta(days=days) if hasattr(datetime, 'timedelta') else datetime.utcnow()
+        since = datetime.now(timezone.utc) - datetime.timedelta(days=days) if hasattr(datetime, 'timedelta') else datetime.now(timezone.utc)
 
         # Get all predictions with actual times
         query = select(WaitTimePrediction).where(

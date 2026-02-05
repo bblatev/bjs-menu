@@ -1,6 +1,6 @@
 """Curbside Pickup Service - "I'm Here" notifications."""
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import List, Optional, Dict, Any
 
 from sqlalchemy import select, func, and_
@@ -92,7 +92,7 @@ class CurbsideService:
         if not order:
             raise ValueError(f"Curbside order {order_id} not found")
 
-        order.customer_arrived_at = datetime.utcnow()
+        order.customer_arrived_at = datetime.now(timezone.utc)
         order.parking_spot = parking_spot
         order.arrival_notification_sent = True
 
@@ -125,7 +125,7 @@ class CurbsideService:
         if not order:
             raise ValueError(f"Curbside order {order_id} not found")
 
-        order.order_delivered_at = datetime.utcnow()
+        order.order_delivered_at = datetime.now(timezone.utc)
         self.db.commit()
         self.db.refresh(order)
         return order
@@ -142,7 +142,7 @@ class CurbsideService:
         avg_wait = None
         if arrived:
             total_wait = sum(
-                (datetime.utcnow() - o.customer_arrived_at).total_seconds() / 60
+                (datetime.now(timezone.utc) - o.customer_arrived_at).total_seconds() / 60
                 for o in arrived
             )
             avg_wait = total_wait / len(arrived)
@@ -160,7 +160,7 @@ class CurbsideService:
                     "vehicle_color": o.vehicle_color,
                     "parking_spot": o.parking_spot,
                     "arrived_at": o.customer_arrived_at.isoformat() if o.customer_arrived_at else None,
-                    "wait_minutes": int((datetime.utcnow() - o.customer_arrived_at).total_seconds() / 60)
+                    "wait_minutes": int((datetime.now(timezone.utc) - o.customer_arrived_at).total_seconds() / 60)
                         if o.customer_arrived_at else None,
                 }
                 for o in arrived
@@ -173,7 +173,7 @@ class CurbsideService:
         days: int = 7,
     ) -> Dict[str, Any]:
         """Get curbside pickup statistics."""
-        start_date = datetime.utcnow() - timedelta(days=days)
+        start_date = datetime.now(timezone.utc) - timedelta(days=days)
 
         query = select(
             func.count(CurbsideOrder.id).label("total_orders"),

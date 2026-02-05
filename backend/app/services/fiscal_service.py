@@ -22,7 +22,7 @@ SUPTO Declaration Requirements:
 import os
 import hashlib
 import secrets
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional, List, Dict, Any
 from dataclasses import dataclass, field
 from enum import Enum
@@ -167,7 +167,7 @@ class FiscalService:
         - Next 6 digits: Sequential counter
         - Last 2 digits: Checksum
         """
-        ts = timestamp or datetime.utcnow()
+        ts = timestamp or datetime.now(timezone.utc)
 
         # Device code (first 2 digits of serial)
         device_code = cls._device_serial[:2].replace("DT", "01")
@@ -353,7 +353,7 @@ class FiscalService:
             "success": True,
             "usn": receipt.usn,
             "nra_confirmation_code": secrets.token_hex(8).upper(),
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
             "message": "Receipt registered successfully",
         }
 
@@ -389,7 +389,7 @@ class FiscalService:
         """
         return {
             "report_type": "Z-Report",
-            "date": datetime.utcnow().strftime("%d.%m.%Y"),
+            "date": datetime.now(timezone.utc).strftime("%d.%m.%Y"),
             "fiscal_memory": cls._fiscal_memory_number,
             "device_serial": cls._device_serial,
             "receipts_count": cls._receipt_counter - 1,
@@ -401,7 +401,7 @@ class FiscalService:
                 "cash": 0.0,
                 "card": 0.0,
             },
-            "generated_at": datetime.utcnow().isoformat(),
+            "generated_at": datetime.now(timezone.utc).isoformat(),
         }
 
     @classmethod
@@ -416,7 +416,7 @@ class FiscalService:
             "status": "online",
             "paper_status": "ok",
             "last_receipt": cls._receipt_counter - 1,
-            "last_z_report": datetime.utcnow().strftime("%d.%m.%Y"),
+            "last_z_report": datetime.now(timezone.utc).strftime("%d.%m.%Y"),
         }
 
     @classmethod

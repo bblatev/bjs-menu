@@ -1,6 +1,6 @@
 """Auto Prep List Generation Service."""
 
-from datetime import date, datetime
+from datetime import date, datetime, timezone
 from decimal import Decimal
 from typing import List, Optional, Dict, Any
 
@@ -215,7 +215,7 @@ class PrepListService:
             raise ValueError(f"Prep list {prep_list_id} not found")
 
         prep_list.status = "in_progress"
-        prep_list.started_at = datetime.utcnow()
+        prep_list.started_at = datetime.now(timezone.utc)
 
         self.db.commit()
         self.db.refresh(prep_list)
@@ -233,7 +233,7 @@ class PrepListService:
 
         item.actual_prepped = actual_prepped
         item.completed = True
-        item.completed_at = datetime.utcnow()
+        item.completed_at = datetime.now(timezone.utc)
 
         self.db.commit()
         self.db.refresh(item)
@@ -249,7 +249,7 @@ class PrepListService:
             raise ValueError(f"Prep list {prep_list_id} not found")
 
         prep_list.status = "completed"
-        prep_list.completed_at = datetime.utcnow()
+        prep_list.completed_at = datetime.now(timezone.utc)
 
         self.db.commit()
         self.db.refresh(prep_list)

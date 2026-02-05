@@ -7,7 +7,7 @@ https://developers.google.com/maps-booking
 import logging
 import hmac
 import hashlib
-from datetime import datetime, date, time, timedelta
+from datetime import datetime, date, time, timedelta, timezone
 from typing import Optional, List, Dict, Any
 from dataclasses import dataclass, field
 from enum import Enum
@@ -194,7 +194,7 @@ class GoogleReserveService:
                 "phone": user_info.get("telephone", ""),
             },
             special_requests=booking_request.get("additional_request", ""),
-            created_at=datetime.utcnow(),
+            created_at=datetime.now(timezone.utc),
         )
 
         # Return booking confirmation

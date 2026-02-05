@@ -1,7 +1,7 @@
 """Delivery Aggregator routes - DoorDash/Uber Eats style."""
 
 from typing import List, Optional
-from datetime import datetime, date
+from datetime import datetime, date, timezone
 from fastapi import APIRouter, HTTPException, Query, Request, Header
 
 from app.db.session import DbSession
@@ -397,7 +397,7 @@ def get_platform_performance(
 
     from datetime import timedelta
 
-    start_date = datetime.utcnow() - timedelta(days=days)
+    start_date = datetime.now(timezone.utc) - timedelta(days=days)
 
     query = db.query(DeliveryOrder).filter(
         DeliveryOrder.platform == platform_enum,

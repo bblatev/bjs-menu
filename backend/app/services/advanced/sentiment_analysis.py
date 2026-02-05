@@ -1,6 +1,6 @@
 """Review Sentiment Analysis Service - AI-powered analysis."""
 
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, timedelta, timezone
 from typing import List, Optional, Dict, Any
 import re
 
@@ -323,7 +323,7 @@ class SentimentAnalysisService:
 
         review.response_sent = True
         review.response_text = response_text
-        review.responded_at = datetime.utcnow()
+        review.responded_at = datetime.now(timezone.utc)
 
         self.db.commit()
         self.db.refresh(review)

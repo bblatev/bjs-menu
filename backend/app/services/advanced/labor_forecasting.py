@@ -1,6 +1,6 @@
 """Advanced Labor Forecasting Service - 7shifts/HotSchedules style."""
 
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, timedelta, timezone
 from decimal import Decimal
 from typing import List, Optional, Dict, Any
 
@@ -301,7 +301,7 @@ class LaborForecastingService:
             raise ValueError(f"Violation {violation_id} not found")
 
         violation.resolved = True
-        violation.resolved_at = datetime.utcnow()
+        violation.resolved_at = datetime.now(timezone.utc)
         violation.resolution_notes = resolution_notes
 
         self.db.commit()

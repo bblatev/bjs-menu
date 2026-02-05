@@ -2,7 +2,7 @@
 
 import re
 import json
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Optional, List, Dict, Any, Tuple
 from sqlalchemy.orm import Session
 from sqlalchemy import func, text
@@ -30,7 +30,7 @@ class ConversationalAIService:
         conversation_id: Optional[str] = None
     ) -> Dict[str, Any]:
         """Process a natural language query and return results."""
-        start_time = datetime.utcnow()
+        start_time = datetime.now(timezone.utc)
 
         # Parse the query to understand intent
         intent, entities = self._parse_query(query_text)
@@ -41,7 +41,7 @@ class ConversationalAIService:
         )
 
         # Calculate processing time
-        processing_time = int((datetime.utcnow() - start_time).total_seconds() * 1000)
+        processing_time = int((datetime.now(timezone.utc) - start_time).total_seconds() * 1000)
 
         # Serialize entities for JSON storage (convert datetime objects to strings)
         serializable_entities = self._serialize_entities(entities)
@@ -113,7 +113,7 @@ class ConversationalAIService:
 
     def _extract_date_range(self, query: str) -> Optional[Dict[str, datetime]]:
         """Extract date range from query."""
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
 
         patterns = {
             "today": (now.replace(hour=0, minute=0, second=0), now),
@@ -240,8 +240,8 @@ class ConversationalAIService:
     ) -> Tuple[str, Dict[str, Any]]:
         """Handle sales-related queries."""
         date_range = entities.get("date_range", {})
-        start = date_range.get("start", datetime.utcnow() - timedelta(days=1))
-        end = date_range.get("end", datetime.utcnow())
+        start = date_range.get("start", datetime.now(timezone.utc) - timedelta(days=1))
+        end = date_range.get("end", datetime.now(timezone.utc))
         label = date_range.get("label", "the selected period")
 
         metric = entities.get("metric", "revenue")
@@ -291,7 +291,7 @@ class ConversationalAIService:
         """Handle comparison queries."""
         # Compare current period to previous
         date_range = entities.get("date_range", {})
-        end = date_range.get("end", datetime.utcnow())
+        end = date_range.get("end", datetime.now(timezone.utc))
         start = date_range.get("start", end - timedelta(days=7))
 
         duration = end - start
@@ -336,8 +336,8 @@ class ConversationalAIService:
     ) -> Tuple[str, Dict[str, Any]]:
         """Handle ranking queries (top/best items)."""
         date_range = entities.get("date_range", {})
-        start = date_range.get("start", datetime.utcnow() - timedelta(days=30))
-        end = date_range.get("end", datetime.utcnow())
+        start = date_range.get("start", datetime.now(timezone.utc) - timedelta(days=30))
+        end = date_range.get("end", datetime.now(timezone.utc))
 
         # Get top items
         top_items = self.db.query(
@@ -382,7 +382,7 @@ class ConversationalAIService:
         # Get daily metrics for trend
         days = 14
         metrics = self.db.query(DailyMetrics).filter(
-            DailyMetrics.date >= datetime.utcnow() - timedelta(days=days)
+            DailyMetrics.date >= datetime.now(timezone.utc) - timedelta(days=days)
         ).order_by(DailyMetrics.date).all()
 
         if not metrics:

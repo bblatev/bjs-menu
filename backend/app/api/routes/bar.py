@@ -2,7 +2,7 @@
 
 from typing import List, Optional
 from decimal import Decimal
-from datetime import datetime, time, date
+from datetime import datetime, time, date, timezone
 
 from fastapi import APIRouter, Query, HTTPException, status
 from pydantic import BaseModel
@@ -91,7 +91,7 @@ def get_bar_stats(
     from datetime import timedelta
 
     # Calculate date range
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
     if period == "today":
         start_date = now.replace(hour=0, minute=0, second=0, microsecond=0)
     elif period == "week":
@@ -157,7 +157,7 @@ def get_top_drinks(
     from app.models.restaurant import MenuItem
 
     # Calculate date range
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
     if period == "today":
         start_date = now.replace(hour=0, minute=0, second=0, microsecond=0)
     elif period == "week":
@@ -263,7 +263,7 @@ def get_recent_activity(
     ).order_by(StockMovement.ts.desc()).limit(limit).all()
 
     results = []
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
 
     for movement, product in movements:
         # Calculate time ago - handle timezone-aware timestamps
@@ -357,7 +357,7 @@ def create_spillage_record(
         cost_value=Decimal(str(record.cost)),
         reason=record.reason,
         ai_detected_item=record.item or record.item_name,
-        recorded_at=datetime.utcnow(),
+        recorded_at=datetime.now(timezone.utc),
     )
     db.add(entry)
 
@@ -533,7 +533,7 @@ def record_inventory_count(
     return {
         "success": True,
         "items_counted": updated,
-        "timestamp": datetime.utcnow().isoformat(),
+        "timestamp": datetime.now(timezone.utc).isoformat(),
         "message": f"Inventory count recorded: {updated} items updated",
     }
 

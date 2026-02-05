@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import io
 from collections import defaultdict
-from datetime import datetime
+from datetime import datetime, timezone
 from decimal import Decimal
 from typing import Optional, List
 
@@ -278,9 +278,9 @@ def update_order_status(
     stock_result = None
 
     if new_status == POStatus.SENT:
-        order.sent_at = datetime.utcnow()
+        order.sent_at = datetime.now(timezone.utc)
     elif new_status == POStatus.RECEIVED:
-        order.received_at = datetime.utcnow()
+        order.received_at = datetime.now(timezone.utc)
 
         # Add stock for all PO lines
         stock_service = StockDeductionService(db)
@@ -394,10 +394,10 @@ def receive_order(
                     batch_number=line.batch_number or f"PO{order.id}-{line.product_id}",
                     received_quantity=Decimal(str(line.received_qty)),
                     current_quantity=Decimal(str(line.received_qty)),
-                    received_date=datetime.utcnow().date(),
+                    received_date=datetime.now(timezone.utc).date(),
                     expiration_date=exp_date,
                     unit_cost=Decimal(str(line.unit_cost)) if line.unit_cost else None,
-                    is_expired=exp_date < datetime.utcnow().date() if exp_date else False,
+                    is_expired=exp_date < datetime.now(timezone.utc).date() if exp_date else False,
                 )
                 db.add(batch)
                 batches_created.append({
@@ -411,7 +411,7 @@ def receive_order(
     # Update PO status to RECEIVED if not already
     if order.status != POStatus.RECEIVED:
         order.status = POStatus.RECEIVED
-        order.received_at = datetime.utcnow()
+        order.received_at = datetime.now(timezone.utc)
 
     if request.notes:
         order.notes = (order.notes or "") + f"\nReceived: {request.notes}"

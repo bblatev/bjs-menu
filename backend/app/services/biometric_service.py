@@ -20,7 +20,7 @@ This foundation can be extended with actual hardware drivers.
 import os
 import hashlib
 import secrets
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Optional, List, Dict, Any
 from dataclasses import dataclass, field
 from enum import Enum
@@ -121,7 +121,7 @@ class BiometricService:
     _active_device: DeviceType = DeviceType.VIRTUAL
     _device_status: Dict[str, Any] = {
         "connected": True,
-        "last_seen": datetime.utcnow(),
+        "last_seen": datetime.now(timezone.utc),
         "firmware": "1.0.0-virtual",
     }
 
@@ -131,7 +131,7 @@ class BiometricService:
         return {
             "device_type": cls._active_device.value,
             "connected": cls._device_status.get("connected", False),
-            "last_seen": cls._device_status.get("last_seen", datetime.utcnow()).isoformat(),
+            "last_seen": cls._device_status.get("last_seen", datetime.now(timezone.utc)).isoformat(),
             "firmware": cls._device_status.get("firmware", "unknown"),
             "supported_methods": cls._get_supported_methods(),
         }
@@ -169,7 +169,7 @@ class BiometricService:
             auth_method=AuthMethod.FINGERPRINT,
             template_data=template_data or base64.b64encode(secrets.token_bytes(256)).decode(),
             quality_score=quality_score,
-            created_at=datetime.utcnow(),
+            created_at=datetime.now(timezone.utc),
             device_type=cls._active_device,
         )
 
@@ -203,8 +203,8 @@ class BiometricService:
             staff_id=staff_id,
             card_type=card_type,
             facility_code=facility_code,
-            valid_from=datetime.utcnow(),
-            valid_until=datetime.utcnow() + timedelta(days=valid_days),
+            valid_from=datetime.now(timezone.utc),
+            valid_until=datetime.now(timezone.utc) + timedelta(days=valid_days),
         )
 
         cls._cards[card_id] = card
@@ -257,7 +257,7 @@ class BiometricService:
                         "staff_id": staff_id,
                         "template_id": template_id,
                         "match_score": 0.95,
-                        "timestamp": datetime.utcnow().isoformat(),
+                        "timestamp": datetime.now(timezone.utc).isoformat(),
                     }
 
         # No match found
@@ -299,7 +299,7 @@ class BiometricService:
                     }
 
                 # Check validity period
-                now = datetime.utcnow()
+                now = datetime.now(timezone.utc)
                 if card.valid_until and now > card.valid_until:
                     cls._log_access(
                         staff_id=card.staff_id,
@@ -330,7 +330,7 @@ class BiometricService:
                     "result": result.value,
                     "staff_id": card.staff_id,
                     "card_id": card_id,
-                    "timestamp": datetime.utcnow().isoformat(),
+                    "timestamp": datetime.now(timezone.utc).isoformat(),
                 }
 
         # Card not found
@@ -383,7 +383,7 @@ class BiometricService:
         if staff_id not in cls._schedules:
             return True  # No schedule = always allowed
 
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         current_day = now.weekday()
         current_time = now.strftime("%H:%M")
 
@@ -408,7 +408,7 @@ class BiometricService:
         """Log an access attempt."""
         attempt = AccessAttempt(
             attempt_id=secrets.token_hex(8),
-            timestamp=datetime.utcnow(),
+            timestamp=datetime.now(timezone.utc),
             staff_id=staff_id,
             auth_method=auth_method,
             device_id=cls._active_device.value,
@@ -523,7 +523,7 @@ class BiometricService:
 
         cls._device_status = {
             "connected": True,
-            "last_seen": datetime.utcnow(),
+            "last_seen": datetime.now(timezone.utc),
             "firmware": "1.0.0" if device_type != "virtual" else "1.0.0-virtual",
             "connection_params": connection_params,
         }

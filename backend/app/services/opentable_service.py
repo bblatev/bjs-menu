@@ -7,7 +7,7 @@ and guest data synchronization.
 import logging
 import hmac
 import hashlib
-from datetime import datetime, date, time, timedelta
+from datetime import datetime, date, time, timedelta, timezone
 from typing import Optional, List, Dict, Any
 from dataclasses import dataclass, field
 from enum import Enum
@@ -136,7 +136,7 @@ class OpenTableService:
                     data = response.json()
                     self.access_token = data.get("access_token")
                     expires_in = data.get("expires_in", 3600)
-                    self.token_expires_at = datetime.utcnow() + timedelta(seconds=expires_in)
+                    self.token_expires_at = datetime.now(timezone.utc) + timedelta(seconds=expires_in)
                     logger.info("OpenTable authentication successful")
                     return True
                 else:
@@ -224,7 +224,7 @@ class OpenTableService:
             special_requests=res_data.get("special_requests", ""),
             occasion=res_data.get("occasion"),
             high_chair=res_data.get("high_chair", 0),
-            synced_at=datetime.utcnow(),
+            synced_at=datetime.now(timezone.utc),
         )
 
         self._reservations[reservation.reservation_id] = reservation
@@ -280,8 +280,8 @@ class OpenTableService:
             }
             reservation.status = status_map.get(res_data["status"], reservation.status)
 
-        reservation.updated_at = datetime.utcnow()
-        reservation.synced_at = datetime.utcnow()
+        reservation.updated_at = datetime.now(timezone.utc)
+        reservation.synced_at = datetime.now(timezone.utc)
 
         logger.info(f"Updated reservation {reservation.reservation_id}")
 
@@ -301,8 +301,8 @@ class OpenTableService:
         for reservation in self._reservations.values():
             if reservation.opentable_id == opentable_id:
                 reservation.status = ReservationStatus.CANCELLED
-                reservation.updated_at = datetime.utcnow()
-                reservation.synced_at = datetime.utcnow()
+                reservation.updated_at = datetime.now(timezone.utc)
+                reservation.synced_at = datetime.now(timezone.utc)
 
                 logger.info(f"Cancelled reservation {reservation.reservation_id}")
 
@@ -456,7 +456,7 @@ class OpenTableService:
             return None
 
         reservation.status = status
-        reservation.updated_at = datetime.utcnow()
+        reservation.updated_at = datetime.now(timezone.utc)
 
         if table_id:
             reservation.table_id = table_id

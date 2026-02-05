@@ -1,7 +1,7 @@
 """Price lists, daily menus, and manager alerts routes - TouchSale gap features."""
 
 from typing import List, Optional
-from datetime import datetime, date, time, timedelta
+from datetime import datetime, date, time, timedelta, timezone
 from fastapi import APIRouter, HTTPException, Body, Query
 from pydantic import BaseModel
 from sqlalchemy import func, and_
@@ -502,7 +502,7 @@ def record_item_use(db: DbSession, staff_id: int, product_id: int):
     ).first()
 
     if existing:
-        existing.last_used = datetime.utcnow()
+        existing.last_used = datetime.now(timezone.utc)
         existing.use_count += 1
         db.commit()
         return {"status": "updated", "use_count": existing.use_count}
@@ -510,7 +510,7 @@ def record_item_use(db: DbSession, staff_id: int, product_id: int):
     item = OperatorRecentItem(
         staff_id=staff_id,
         product_id=product_id,
-        last_used=datetime.utcnow(),
+        last_used=datetime.now(timezone.utc),
         use_count=1,
     )
     db.add(item)
@@ -629,7 +629,7 @@ def trigger_alert(db: DbSession, data: dict = Body(...)):
         # Check cooldown
         if alert.last_triggered:
             cooldown_end = alert.last_triggered + timedelta(minutes=alert.cooldown_minutes)
-            if datetime.utcnow() < cooldown_end:
+            if datetime.now(timezone.utc) < cooldown_end:
                 continue
 
         # Check threshold
@@ -647,7 +647,7 @@ def trigger_alert(db: DbSession, data: dict = Body(...)):
                 continue
 
         # Trigger alert
-        alert.last_triggered = datetime.utcnow()
+        alert.last_triggered = datetime.now(timezone.utc)
 
         alert_data = {
             "alert_id": alert.id,
@@ -788,7 +788,7 @@ def record_customer_payment(db: DbSession, customer_id: int, data: dict = Body(.
         raise HTTPException(status_code=404, detail="Customer has no credit account")
 
     credit.current_balance = max(0, credit.current_balance - amount)
-    credit.last_payment_date = datetime.utcnow()
+    credit.last_payment_date = datetime.now(timezone.utc)
     credit.last_payment_amount = amount
 
     db.commit()

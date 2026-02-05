@@ -5,7 +5,7 @@ scheduling, and tracking capabilities.
 """
 
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Optional, List, Dict, Any
 from dataclasses import dataclass, field
 from enum import Enum
@@ -309,7 +309,7 @@ class EmailCampaignService:
                 else:
                     setattr(template, key, value)
 
-        template.updated_at = datetime.utcnow()
+        template.updated_at = datetime.now(timezone.utc)
         return template
 
     def get_template(self, template_id: str) -> Optional[EmailTemplate]:
@@ -539,7 +539,7 @@ class EmailCampaignService:
             if hasattr(campaign, key) and value is not None:
                 setattr(campaign, key, value)
 
-        campaign.updated_at = datetime.utcnow()
+        campaign.updated_at = datetime.now(timezone.utc)
         return campaign
 
     def get_campaign(self, campaign_id: str) -> Optional[Campaign]:
@@ -581,7 +581,7 @@ class EmailCampaignService:
 
         campaign.scheduled_at = scheduled_at
         campaign.status = CampaignStatus.SCHEDULED
-        campaign.updated_at = datetime.utcnow()
+        campaign.updated_at = datetime.now(timezone.utc)
 
         return campaign
 
@@ -609,7 +609,7 @@ class EmailCampaignService:
             # ... send to all segment recipients
 
         campaign.sent_count = len(recipients)
-        campaign.sent_at = datetime.utcnow()
+        campaign.sent_at = datetime.now(timezone.utc)
 
         if not test_emails:
             campaign.status = CampaignStatus.SENT

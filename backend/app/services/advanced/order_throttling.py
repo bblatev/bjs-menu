@@ -1,6 +1,6 @@
 """Order Throttling Service - Olo style kitchen capacity management."""
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import List, Optional, Dict, Any
 
 from sqlalchemy import select, func, and_
@@ -72,11 +72,11 @@ class OrderThrottlingService:
             }
 
         # Get current load (orders in last 15 minutes)
-        window_start = datetime.utcnow() - timedelta(minutes=15)
+        window_start = datetime.now(timezone.utc) - timedelta(minutes=15)
         current_load = self._current_loads.get(location_id, 0)
 
         # Apply time-based multiplier
-        hour = datetime.utcnow().hour
+        hour = datetime.now(timezone.utc).hour
         is_peak = 11 <= hour <= 14 or 18 <= hour <= 21
         multiplier = config.peak_hour_multiplier if is_peak else config.off_peak_multiplier
 
@@ -114,7 +114,7 @@ class OrderThrottlingService:
             # Log throttle event
             event = OrderThrottleEvent(
                 location_id=location_id,
-                event_time=datetime.utcnow(),
+                event_time=datetime.now(timezone.utc),
                 throttle_type="delay" if capacity_status["estimated_wait_minutes"] < 30 else "reject",
                 current_load=capacity_status["current_load"],
                 max_capacity=capacity_status["max_capacity"],
@@ -162,7 +162,7 @@ class OrderThrottlingService:
         days: int = 7,
     ) -> Dict[str, Any]:
         """Get throttling statistics."""
-        start_date = datetime.utcnow() - timedelta(days=days)
+        start_date = datetime.now(timezone.utc) - timedelta(days=days)
 
         query = select(
             func.count(OrderThrottleEvent.id).label("total_events"),

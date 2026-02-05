@@ -1,7 +1,7 @@
 """Staff management routes - comprehensive CRUD for staff, shifts, time clock, performance, tips."""
 
 from typing import List, Optional, Dict
-from datetime import datetime, date, time, timedelta
+from datetime import datetime, date, time, timedelta, timezone
 from fastapi import APIRouter, HTTPException, Body, Query
 from sqlalchemy import func, and_, or_
 
@@ -432,7 +432,7 @@ def approve_time_off(db: DbSession, request_id: int):
         raise HTTPException(status_code=404, detail="Time off request not found")
 
     request.status = "approved"
-    request.reviewed_at = datetime.utcnow()
+    request.reviewed_at = datetime.now(timezone.utc)
     db.commit()
 
     return {"status": "approved", "id": request_id}
@@ -446,7 +446,7 @@ def reject_time_off(db: DbSession, request_id: int):
         raise HTTPException(status_code=404, detail="Time off request not found")
 
     request.status = "rejected"
-    request.reviewed_at = datetime.utcnow()
+    request.reviewed_at = datetime.now(timezone.utc)
     db.commit()
 
     return {"status": "rejected", "id": request_id}
@@ -547,7 +547,7 @@ def punch_in(db: DbSession, data: dict = Body(...)):
 
     entry = TimeClockEntry(
         staff_id=staff_id,
-        clock_in=datetime.utcnow(),
+        clock_in=datetime.now(timezone.utc),
         status="clocked_in",
         clock_in_method=method,
     )
@@ -574,7 +574,7 @@ def punch_out(db: DbSession, data: dict = Body(...)):
     if not entry:
         raise HTTPException(status_code=400, detail="Not clocked in")
 
-    entry.clock_out = datetime.utcnow()
+    entry.clock_out = datetime.now(timezone.utc)
     entry.status = "clocked_out"
 
     # Calculate hours
@@ -616,7 +616,7 @@ def start_break(db: DbSession, data: dict = Body(...)):
     if entry.status == "on_break":
         raise HTTPException(status_code=400, detail="Already on break")
 
-    entry.break_start = datetime.utcnow()
+    entry.break_start = datetime.now(timezone.utc)
     entry.status = "on_break"
     db.commit()
     db.refresh(entry)
@@ -644,7 +644,7 @@ def end_break(db: DbSession, data: dict = Body(...)):
     if entry.status != "on_break":
         raise HTTPException(status_code=400, detail="Not on break")
 
-    entry.break_end = datetime.utcnow()
+    entry.break_end = datetime.now(timezone.utc)
     entry.status = "clocked_in"
 
     # Calculate break hours
@@ -1107,7 +1107,7 @@ def distribute_tips(db: DbSession, data: dict = Body(...)):
         raise HTTPException(status_code=404, detail="Tip pool not found")
 
     pool.status = "distributed"
-    pool.distributed_at = datetime.utcnow()
+    pool.distributed_at = datetime.now(timezone.utc)
     db.commit()
 
     return {"status": "success", "pool_id": pool_id}

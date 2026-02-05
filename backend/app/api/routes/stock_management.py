@@ -887,7 +887,7 @@ def commit_ai_scan(
             })
 
     session.status = SessionStatus.COMMITTED
-    session.committed_at = datetime.utcnow()
+    session.committed_at = datetime.now(timezone.utc)
     db.commit()
 
     return {

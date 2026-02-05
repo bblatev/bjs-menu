@@ -1,7 +1,7 @@
 """QuickBooks Online Integration Service."""
 
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Optional, List, Dict, Any
 from dataclasses import dataclass
 from enum import Enum
@@ -114,7 +114,7 @@ class QuickBooksService:
                         access_token=data["access_token"],
                         refresh_token=data["refresh_token"],
                         token_type=data.get("token_type", "Bearer"),
-                        expires_at=datetime.utcnow() + timedelta(seconds=data.get("expires_in", 3600)),
+                        expires_at=datetime.now(timezone.utc) + timedelta(seconds=data.get("expires_in", 3600)),
                         realm_id=realm_id,
                     )
                     return self._tokens
@@ -157,7 +157,7 @@ class QuickBooksService:
                         access_token=data["access_token"],
                         refresh_token=data["refresh_token"],
                         token_type=data.get("token_type", "Bearer"),
-                        expires_at=datetime.utcnow() + timedelta(seconds=data.get("expires_in", 3600)),
+                        expires_at=datetime.now(timezone.utc) + timedelta(seconds=data.get("expires_in", 3600)),
                         realm_id=self._tokens.realm_id,
                     )
                     return True
@@ -183,7 +183,7 @@ class QuickBooksService:
             raise ValueError("Not authenticated. Call exchange_code_for_tokens first.")
 
         # Check if token needs refresh
-        if self._tokens.expires_at and datetime.utcnow() >= self._tokens.expires_at - timedelta(minutes=5):
+        if self._tokens.expires_at and datetime.now(timezone.utc) >= self._tokens.expires_at - timedelta(minutes=5):
             await self.refresh_tokens()
 
         if self._client is None:
@@ -714,7 +714,7 @@ class QuickBooksService:
             }
         ]
         """
-        result = SyncResult(success=True, last_sync=datetime.utcnow())
+        result = SyncResult(success=True, last_sync=datetime.now(timezone.utc))
 
         for sale in sales:
             try:

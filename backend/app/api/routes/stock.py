@@ -594,7 +594,7 @@ def update_count_item(
         raise HTTPException(status_code=404, detail="Count item not found")
 
     line.counted_qty = Decimal(str(counted_quantity))
-    line.counted_at = datetime.utcnow()
+    line.counted_at = datetime.now(timezone.utc)
     db.commit()
 
     return {"status": "updated", "item_id": item_id, "counted_quantity": counted_quantity}
@@ -667,7 +667,7 @@ def approve_stock_count(db: DbSession, count_id: int):
             })
 
     session.status = SessionStatus.COMMITTED
-    session.committed_at = datetime.utcnow()
+    session.committed_at = datetime.now(timezone.utc)
     db.commit()
 
     return {

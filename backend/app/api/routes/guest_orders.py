@@ -1,6 +1,6 @@
 """Guest ordering routes - customer-facing table ordering via QR code - using database."""
 
-from datetime import datetime
+from datetime import datetime, timezone
 from decimal import Decimal
 from typing import List, Optional
 from fastapi import APIRouter, HTTPException, Query, Body
@@ -415,7 +415,7 @@ def create_table(db: DbSession, table: TableCreate):
 
     # Generate a token for QR code
     import hashlib
-    token = hashlib.md5(f"table_{table.number}_{datetime.utcnow().isoformat()}".encode()).hexdigest()[:12]
+    token = hashlib.md5(f"table_{table.number}_{datetime.now(timezone.utc).isoformat()}".encode()).hexdigest()[:12]
 
     db_table = Table(
         number=table.number,
@@ -527,7 +527,7 @@ def place_guest_order(
         })
 
     # Create order in database
-    created_at = datetime.utcnow()
+    created_at = datetime.now(timezone.utc)
     db_order = GuestOrderModel(
         table_id=table["id"],
         table_token=order.table_token,
@@ -656,7 +656,7 @@ def update_order_status(
         raise HTTPException(status_code=404, detail="Order not found")
 
     order.status = status
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
 
     if status == "confirmed":
         order.confirmed_at = now
@@ -682,7 +682,7 @@ def update_guest_order_status(
         raise HTTPException(status_code=404, detail="Order not found")
 
     order.status = status
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
 
     if status == "confirmed":
         order.confirmed_at = now
@@ -1182,7 +1182,7 @@ def process_guest_payment(
         order.payment_status = "paid"
         order.payment_method = payment.payment_method
         order.tip_amount = tip
-        order.paid_at = datetime.utcnow()
+        order.paid_at = datetime.now(timezone.utc)
         order.status = "completed"
         db.commit()
 
@@ -1233,7 +1233,7 @@ def pay_all_table_orders(
     total_charged = Decimal(str(total_amount)) + tip
 
     # Mark all orders as paid
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
     for order in orders:
         order.payment_status = "paid"
         order.payment_method = payment_method

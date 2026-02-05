@@ -6,7 +6,7 @@ and are clearly marked as training data.
 """
 
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional, Dict, Any, List
 from dataclasses import dataclass, field
 from enum import Enum
@@ -89,7 +89,7 @@ class TrainingModeService:
                 return self._sessions[existing_session_id]
 
         # Create new session
-        session_id = f"TS-{datetime.utcnow().strftime('%Y%m%d%H%M%S')}-{user_id}"
+        session_id = f"TS-{datetime.now(timezone.utc).strftime('%Y%m%d%H%M%S')}-{user_id}"
         session = TrainingSession(
             session_id=session_id,
             user_id=user_id,
@@ -125,7 +125,7 @@ class TrainingModeService:
             return None
 
         session = self._sessions[sid]
-        session.ended_at = datetime.utcnow()
+        session.ended_at = datetime.now(timezone.utc)
 
         # Clean up active mappings
         if session.user_id in self._active_users:
@@ -185,7 +185,7 @@ class TrainingModeService:
         total = subtotal + tax
 
         # Create training order
-        order_id = f"TR-{datetime.utcnow().strftime('%Y%m%d%H%M%S')}-{session.orders_created + 1}"
+        order_id = f"TR-{datetime.now(timezone.utc).strftime('%Y%m%d%H%M%S')}-{session.orders_created + 1}"
         order = TrainingOrder(
             order_id=order_id,
             session_id=session.session_id,
@@ -270,7 +270,7 @@ class TrainingModeService:
         if session.ended_at:
             duration = (session.ended_at - session.started_at).total_seconds() / 60
         elif session.started_at:
-            duration = (datetime.utcnow() - session.started_at).total_seconds() / 60
+            duration = (datetime.now(timezone.utc) - session.started_at).total_seconds() / 60
 
         return {
             "session_id": session_id,
@@ -314,7 +314,7 @@ class TrainingModeService:
 
     def cleanup_old_sessions(self, hours: int = 24):
         """Clean up training sessions older than specified hours."""
-        cutoff = datetime.utcnow()
+        cutoff = datetime.now(timezone.utc)
         cutoff = cutoff.replace(hour=cutoff.hour - hours)
 
         removed_sessions = []

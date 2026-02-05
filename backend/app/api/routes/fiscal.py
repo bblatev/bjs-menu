@@ -10,7 +10,7 @@ Provides endpoints for:
 """
 
 from typing import Optional, List
-from datetime import datetime
+from datetime import datetime, timezone
 from fastapi import APIRouter, HTTPException, Body
 from pydantic import BaseModel
 
@@ -173,7 +173,7 @@ def generate_usn(db: DbSession):
     usn = FiscalService.generate_usn()
     return {
         "usn": usn,
-        "generated_at": datetime.utcnow().isoformat(),
+        "generated_at": datetime.now(timezone.utc).isoformat(),
     }
 
 
@@ -216,7 +216,7 @@ def generate_daily_report(db: DbSession):
     """
     report = FiscalService.get_daily_report()
     report["printed"] = True
-    report["closed_at"] = datetime.utcnow().isoformat()
+    report["closed_at"] = datetime.now(timezone.utc).isoformat()
 
     return report
 

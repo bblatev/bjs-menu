@@ -144,14 +144,14 @@ def get_waitlist_stats(
     # Current longest wait
     longest_wait = 0
     if waiting_entries:
-        from datetime import datetime
-        now = datetime.utcnow()
+        from datetime import datetime, timezone
+        now = datetime.now(timezone.utc)
         waits = [(now - e.added_at).total_seconds() / 60 for e in waiting_entries if e.added_at]
         longest_wait = max(waits) if waits else 0
 
     # Parties seated today
     from datetime import datetime, timedelta
-    today_start = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
+    today_start = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
     seated_today = db.query(Waitlist).filter(
         Waitlist.location_id == location_id,
         Waitlist.status == "seated",
@@ -245,7 +245,7 @@ def send_notification(
         raise HTTPException(status_code=404, detail="Waitlist entry not found")
 
     entry.sms_ready_sent = True
-    entry.sms_ready_sent_at = datetime.utcnow()
+    entry.sms_ready_sent_at = datetime.now(timezone.utc)
     entry.status = "notified"
 
     db.commit()
@@ -270,7 +270,7 @@ def seat_guest(
     if not entry:
         raise HTTPException(status_code=404, detail="Waitlist entry not found")
 
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
     entry.status = "seated"
     entry.seated_at = now
 
@@ -304,7 +304,7 @@ def cancel_waitlist_entry(
         raise HTTPException(status_code=404, detail="Waitlist entry not found")
 
     entry.status = "cancelled"
-    entry.left_at = datetime.utcnow()
+    entry.left_at = datetime.now(timezone.utc)
     entry.left_reason = reason
 
     db.commit()

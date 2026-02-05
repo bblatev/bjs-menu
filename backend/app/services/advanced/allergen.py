@@ -1,6 +1,6 @@
 """Allergen Cross-Contact Alert Service."""
 
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import List, Optional, Dict, Any
 
 from sqlalchemy import select, and_
@@ -198,7 +198,7 @@ class AllergenService:
 
         alert.acknowledged = True
         alert.acknowledged_by_id = acknowledged_by_id
-        alert.acknowledged_at = datetime.utcnow()
+        alert.acknowledged_at = datetime.now(timezone.utc)
 
         self.db.commit()
         self.db.refresh(alert)

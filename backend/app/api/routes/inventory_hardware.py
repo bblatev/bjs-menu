@@ -1,6 +1,6 @@
 """Inventory hardware routes - kegs, tanks, RFID, scales - using database."""
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import List, Optional
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
@@ -206,7 +206,7 @@ def create_keg(db: DbSession, keg: KegCreate):
         remaining_liters=keg.size_liters,
         status="full",
         location=keg.location,
-        expires_at=datetime.utcnow() + timedelta(days=60),
+        expires_at=datetime.now(timezone.utc) + timedelta(days=60),
     )
     db.add(new_keg)
     db.commit()
@@ -249,7 +249,7 @@ def tap_keg(
 
     keg.status = "in_use"
     keg.tap_number = tap_number
-    keg.tapped_at = datetime.utcnow()
+    keg.tapped_at = datetime.now(timezone.utc)
     keg.location = "Bar"
     db.commit()
 
@@ -376,7 +376,7 @@ def create_tank(db: DbSession, tank: TankCreate):
         capacity_liters=tank.capacity_liters,
         current_level_liters=tank.capacity_liters,
         status="full",
-        last_refill=datetime.utcnow(),
+        last_refill=datetime.now(timezone.utc),
         sensor_id=tank.sensor_id,
     )
     db.add(new_tank)
@@ -441,7 +441,7 @@ def refill_tank(db: DbSession, tank_id: int):
 
     tank.current_level_liters = tank.capacity_liters
     tank.status = "full"
-    tank.last_refill = datetime.utcnow()
+    tank.last_refill = datetime.now(timezone.utc)
     db.commit()
 
     return {"status": "refilled", "tank": {
@@ -540,7 +540,7 @@ def record_rfid_scan(
     tag = db.query(RFIDTagModel).filter(RFIDTagModel.tag_id == tag_id).first()
 
     if tag:
-        tag.last_seen = datetime.utcnow()
+        tag.last_seen = datetime.now(timezone.utc)
         if zone:
             tag.zone = zone
         if location:
@@ -553,13 +553,13 @@ def record_rfid_scan(
             product_name=tag.product_name,
             quantity=tag.quantity,
             recognized=True,
-            timestamp=datetime.utcnow(),
+            timestamp=datetime.now(timezone.utc),
         )
     else:
         return RFIDScanResult(
             tag_id=tag_id,
             recognized=False,
-            timestamp=datetime.utcnow(),
+            timestamp=datetime.now(timezone.utc),
         )
 
 
@@ -591,7 +591,7 @@ def start_rfid_inventory_count(
     """Start an RFID-based inventory count session."""
     session = CountSessionModel(
         zone=zone,
-        started_at=datetime.utcnow(),
+        started_at=datetime.now(timezone.utc),
         tags_scanned=0,
         discrepancies=0,
         status="in_progress",
@@ -618,7 +618,7 @@ def complete_rfid_inventory_count(
     if not session:
         raise HTTPException(status_code=404, detail="Session not found")
 
-    session.completed_at = datetime.utcnow()
+    session.completed_at = datetime.now(timezone.utc)
     session.status = "completed"
 
     # Count tags in the zone

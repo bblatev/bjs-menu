@@ -1,6 +1,6 @@
 """ESG & Sustainability Reporting Service."""
 
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, timedelta, timezone
 from decimal import Decimal
 from typing import List, Optional, Dict, Any
 
@@ -196,7 +196,7 @@ class SustainabilityService:
             raise ValueError(f"Report {report_id} not found")
 
         report.status = "published"
-        report.published_at = datetime.utcnow()
+        report.published_at = datetime.now(timezone.utc)
 
         self.db.commit()
         self.db.refresh(report)

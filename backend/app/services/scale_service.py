@@ -1,6 +1,6 @@
 """Bluetooth Scale Integration Service - WISK style."""
 
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional, List, Dict, Any
 from sqlalchemy.orm import Session
 from sqlalchemy import func
@@ -233,7 +233,7 @@ class BottleWeightDatabaseService:
             existing.brand = brand or existing.brand
             existing.alcohol_category = alcohol_category or existing.alcohol_category
             existing.verification_count += 1
-            existing.updated_at = datetime.utcnow()
+            existing.updated_at = datetime.now(timezone.utc)
             bottle = existing
         else:
             product = self.db.query(Product).filter(Product.id == product_id).first()
@@ -403,7 +403,7 @@ class InventoryCountingService:
         if existing_line:
             existing_line.counted_qty = total_count
             existing_line.method = "SCALE" if weight_grams else "VISUAL"
-            existing_line.counted_at = datetime.utcnow()
+            existing_line.counted_at = datetime.now(timezone.utc)
         else:
             line = InventoryLine(
                 session_id=session_id,
