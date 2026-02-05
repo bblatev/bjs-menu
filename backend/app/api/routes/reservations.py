@@ -332,39 +332,6 @@ def get_reservation_calendar(
     )
 
 
-@router.post("/availability", response_model=AvailabilityResponse)
-def check_availability(db: DbSession, request: AvailabilityRequest):
-    """Check availability for a specific party size and date."""
-    service = ReservationService(db)
-    result = service.check_availability(
-        location_id=request.location_id,
-        date=request.date,
-        party_size=request.party_size,
-        preferred_time=request.preferred_time
-    )
-
-    # Convert string times to time objects
-    def parse_time(t):
-        if isinstance(t, time):
-            return t
-        if isinstance(t, dict):
-            t = t.get("time", "00:00")
-        if isinstance(t, str):
-            parts = t.split(":")
-            return time(int(parts[0]), int(parts[1]) if len(parts) > 1 else 0)
-        return t
-
-    available = [parse_time(t) for t in result.get("available_times", [])]
-    suggested = [parse_time(t) for t in result.get("suggested_times", [])]
-
-    return AvailabilityResponse(
-        date=request.date,
-        party_size=request.party_size,
-        available_times=available,
-        suggested_times=suggested
-    )
-
-
 # ==================== CHECK AVAILABILITY (must be before /{reservation_id}) ====================
 
 @router.get("/check-availability")

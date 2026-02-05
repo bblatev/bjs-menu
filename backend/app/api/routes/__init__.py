@@ -24,8 +24,7 @@ api_router = APIRouter()
 # Core routes
 api_router.include_router(auth.router, prefix="/auth", tags=["auth"])
 api_router.include_router(suppliers.router, prefix="/suppliers", tags=["suppliers"])
-api_router.include_router(products.router, prefix="/products", tags=["products"])
-api_router.include_router(products.router, prefix="/stock", tags=["stock"])  # Alias for mobile app
+api_router.include_router(products.router, prefix="/products", tags=["products", "stock"])
 api_router.include_router(locations.router, prefix="/locations", tags=["locations"])
 api_router.include_router(inventory.router, prefix="/inventory", tags=["inventory"])
 api_router.include_router(orders.router, prefix="/orders", tags=["orders"])
@@ -43,14 +42,14 @@ api_router.include_router(reservations.router, prefix="/reservations", tags=["re
 api_router.include_router(delivery.router, prefix="/delivery", tags=["delivery", "doordash", "ubereats"])
 api_router.include_router(analytics.router, prefix="/analytics", tags=["analytics", "ai-insights", "scale"])
 
-# Waitlist direct access (also available under /reservations/waitlist)
+# Waitlist direct access (alias for /reservations/waitlist for frontend compatibility)
 from app.api.routes import waitlist as waitlist_router
 api_router.include_router(waitlist_router.router, prefix="/waitlist", tags=["waitlist"])
 
 # Advanced competitor features (25 feature areas)
 api_router.include_router(advanced_features.router, tags=["advanced-features"])
 
-# Kitchen and Tables
+# Kitchen and Tables (multiple prefixes for frontend compatibility)
 api_router.include_router(kitchen.router, prefix="/kitchen", tags=["kitchen", "kds"])
 api_router.include_router(kitchen.router, prefix="/kitchen-display", tags=["kitchen-display"])
 api_router.include_router(kitchen.router, prefix="/kitchen-alerts", tags=["kitchen-alerts"])
@@ -112,8 +111,7 @@ api_router.include_router(payroll.router, prefix="/payroll", tags=["payroll"])
 api_router.include_router(audit_logs.router, prefix="/audit-logs", tags=["audit", "logs"])
 
 # Benchmarking
-api_router.include_router(benchmarking.router, prefix="/benchmarking", tags=["benchmarking"])
-api_router.include_router(benchmarking.router, prefix="/api/v5/benchmarking", tags=["benchmarking-v5"])
+api_router.include_router(benchmarking.router, prefix="/benchmarking", tags=["benchmarking", "benchmarking-v5"])
 
 # Price Tracker
 api_router.include_router(price_tracker.router, prefix="/price-tracker", tags=["price-tracker", "alerts"])
@@ -128,8 +126,7 @@ api_router.include_router(haccp.router, prefix="/haccp", tags=["haccp", "food-sa
 api_router.include_router(warehouses.router, prefix="/warehouses", tags=["warehouses", "storage"])
 
 # Feedback & Reviews
-api_router.include_router(feedback.router, prefix="/v5/feedback", tags=["feedback", "reviews"])
-api_router.include_router(feedback.router, prefix="/reviews", tags=["reviews"])
+api_router.include_router(feedback.router, prefix="/feedback", tags=["feedback", "reviews"])
 
 # Notifications
 api_router.include_router(notifications.router, prefix="/notifications", tags=["notifications"])
