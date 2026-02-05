@@ -1,16 +1,65 @@
 """QuickBooks Online Integration API routes."""
 
+import logging
 from typing import Optional, List
 from datetime import datetime, date
 from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel
 
+from app.db.session import DbSession
+from app.models.hardware import Integration
 from app.services.quickbooks_service import (
     get_quickbooks_service,
     QBOTokens,
 )
 
+logger = logging.getLogger(__name__)
+
 router = APIRouter()
+
+QBO_INTEGRATION_ID = "quickbooks_online"
+
+
+def _save_qbo_tokens(db, tokens: QBOTokens):
+    """Persist QuickBooks tokens to the integrations table."""
+    integration = db.query(Integration).filter(Integration.integration_id == QBO_INTEGRATION_ID).first()
+    if not integration:
+        integration = Integration(
+            integration_id=QBO_INTEGRATION_ID,
+            name="QuickBooks Online",
+            category="accounting",
+            status="connected",
+        )
+        db.add(integration)
+    integration.status = "connected"
+    integration.connected_at = datetime.utcnow()
+    integration.config = {
+        "access_token": tokens.access_token,
+        "refresh_token": tokens.refresh_token,
+        "realm_id": tokens.realm_id,
+        "expires_at": tokens.expires_at.isoformat() if tokens.expires_at else None,
+    }
+    db.commit()
+
+
+def _load_qbo_tokens(db) -> Optional[QBOTokens]:
+    """Load QuickBooks tokens from the integrations table."""
+    integration = db.query(Integration).filter(Integration.integration_id == QBO_INTEGRATION_ID).first()
+    if not integration or not integration.config:
+        return None
+    config = integration.config
+    expires_at = None
+    if config.get("expires_at"):
+        try:
+            expires_at = datetime.fromisoformat(config["expires_at"])
+        except (ValueError, TypeError):
+            pass
+    return QBOTokens(
+        access_token=config.get("access_token", ""),
+        refresh_token=config.get("refresh_token", ""),
+        realm_id=config.get("realm_id", ""),
+        expires_at=expires_at,
+    )
 
 
 # ============================================================================
@@ -132,6 +181,7 @@ async def get_authorization_url(state: str = "random_state"):
 
 @router.get("/callback")
 async def oauth_callback(
+    db: DbSession,
     code: str = Query(...),
     realmId: str = Query(...),
     state: Optional[str] = Query(None),
@@ -151,7 +201,8 @@ async def oauth_callback(
     )
 
     if tokens:
-        # TODO: Save tokens to database for persistence
+        _save_qbo_tokens(db, tokens)
+        logger.info(f"QuickBooks tokens saved for realm {tokens.realm_id}")
         return {
             "success": True,
             "realm_id": tokens.realm_id,
@@ -163,8 +214,8 @@ async def oauth_callback(
 
 
 @router.post("/tokens")
-async def set_tokens(request: SetTokensRequest):
-    """Set tokens (load from database after restart)."""
+async def set_tokens(db: DbSession, request: SetTokensRequest):
+    """Set tokens manually and persist to database."""
     qbo = get_quickbooks_service()
     if not qbo:
         raise HTTPException(status_code=503, detail="QuickBooks not configured")
@@ -176,21 +227,30 @@ async def set_tokens(request: SetTokensRequest):
         expires_at=request.expires_at,
     )
     qbo.set_tokens(tokens)
+    _save_qbo_tokens(db, tokens)
 
-    return {"success": True, "message": "Tokens set successfully"}
+    return {"success": True, "message": "Tokens set and saved successfully"}
 
 
 @router.post("/refresh")
-async def refresh_tokens():
-    """Refresh access tokens."""
+async def refresh_tokens(db: DbSession):
+    """Refresh access tokens and persist new tokens to database."""
     qbo = get_quickbooks_service()
     if not qbo:
         raise HTTPException(status_code=503, detail="QuickBooks not configured")
+
+    # Load tokens from DB if service doesn't have them in memory
+    if not qbo.get_tokens():
+        saved_tokens = _load_qbo_tokens(db)
+        if saved_tokens:
+            qbo.set_tokens(saved_tokens)
 
     success = await qbo.refresh_tokens()
 
     if success:
         tokens = qbo.get_tokens()
+        if tokens:
+            _save_qbo_tokens(db, tokens)
         return {
             "success": True,
             "expires_at": tokens.expires_at.isoformat() if tokens and tokens.expires_at else None,
@@ -200,8 +260,8 @@ async def refresh_tokens():
 
 
 @router.get("/status")
-async def get_connection_status():
-    """Check QuickBooks connection status."""
+async def get_connection_status(db: DbSession):
+    """Check QuickBooks connection status, restoring tokens from DB if needed."""
     qbo = get_quickbooks_service()
 
     if not qbo:
@@ -212,6 +272,13 @@ async def get_connection_status():
         }
 
     tokens = qbo.get_tokens()
+    # Auto-restore tokens from database on server restart
+    if not tokens:
+        saved_tokens = _load_qbo_tokens(db)
+        if saved_tokens:
+            qbo.set_tokens(saved_tokens)
+            tokens = saved_tokens
+
     if not tokens:
         return {
             "configured": True,

@@ -437,7 +437,7 @@ def create_order(db: DbSession, order: OrderCreate):
             status="pending",
             items=kitchen_items,
             notes=None,
-            location_id=1,  # Default location
+            location_id=check.location_id or 1,
         )
         db.add(kitchen_order)
         db.commit()
@@ -449,7 +449,7 @@ def create_order(db: DbSession, order: OrderCreate):
             stock_service = StockDeductionService(db)
             stock_deduction = stock_service.deduct_for_order(
                 order_items=kitchen_items,
-                location_id=1,
+                location_id=check.location_id or 1,
                 reference_type="pos_sale",
                 reference_id=check.id,
             )
@@ -508,14 +508,16 @@ def void_item(db: DbSession, item_id: int, request: VoidRequest):
     if not item:
         raise HTTPException(status_code=404, detail="Item not found")
 
+    # Get the parent check for location_id
+    check = db.query(Check).filter(Check.id == item.check_id).first()
+
     # Only refund stock if item wasn't already voided
     stock_refund_result = None
     if item.status != "voided":
-        # Return stock to inventory
         stock_service = StockDeductionService(db)
         stock_refund_result = stock_service.refund_for_order(
             order_items=[{"menu_item_id": item.menu_item_id, "quantity": item.quantity}],
-            location_id=1,  # TODO: Get from check.location_id
+            location_id=(check.location_id if check else None) or 1,
             reference_type="void_item",
             reference_id=item_id
         )
@@ -525,7 +527,6 @@ def void_item(db: DbSession, item_id: int, request: VoidRequest):
     item.void_reason = request.reason
 
     # Recalculate check
-    check = db.query(Check).filter(Check.id == item.check_id).first()
     if check:
         recalculate_check(check, db)
 

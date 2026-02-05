@@ -135,6 +135,85 @@ class MenuItem(Base):
 
     # Relationships
     recipe = relationship("Recipe", foreign_keys=[recipe_id])
+    modifier_group_links = relationship("MenuItemModifierGroup", back_populates="menu_item", cascade="all, delete-orphan")
+
+
+class ModifierGroup(Base):
+    """A group of modifiers (e.g. 'Choose your side', 'Add toppings')."""
+    __tablename__ = "modifier_groups"
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String(200), nullable=False)
+    min_selections = Column(Integer, default=0)
+    max_selections = Column(Integer, default=1)
+    active = Column(Boolean, default=True)
+    sort_order = Column(Integer, default=0)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    options = relationship("ModifierOption", back_populates="group", cascade="all, delete-orphan")
+    menu_item_links = relationship("MenuItemModifierGroup", back_populates="modifier_group", cascade="all, delete-orphan")
+
+
+class ModifierOption(Base):
+    """An individual modifier option within a group."""
+    __tablename__ = "modifier_options"
+
+    id = Column(Integer, primary_key=True, index=True)
+    group_id = Column(Integer, ForeignKey("modifier_groups.id"), nullable=False)
+    name = Column(String(200), nullable=False)
+    price_adjustment = Column(Numeric(10, 2), default=Decimal("0"))
+    available = Column(Boolean, default=True)
+    sort_order = Column(Integer, default=0)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    group = relationship("ModifierGroup", back_populates="options")
+
+
+class MenuItemModifierGroup(Base):
+    """Link table between menu items and modifier groups."""
+    __tablename__ = "menu_item_modifier_groups"
+
+    id = Column(Integer, primary_key=True, index=True)
+    menu_item_id = Column(Integer, ForeignKey("menu_items.id"), nullable=False)
+    modifier_group_id = Column(Integer, ForeignKey("modifier_groups.id"), nullable=False)
+    sort_order = Column(Integer, default=0)
+
+    menu_item = relationship("MenuItem", back_populates="modifier_group_links")
+    modifier_group = relationship("ModifierGroup", back_populates="menu_item_links")
+
+
+class ComboMeal(Base):
+    """A combo meal that bundles multiple items at a set price."""
+    __tablename__ = "combo_meals"
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String(200), nullable=False)
+    description = Column(Text, nullable=True)
+    price = Column(Numeric(10, 2), nullable=False)
+    image_url = Column(String(500), nullable=True)
+    available = Column(Boolean, default=True)
+    featured = Column(Boolean, default=False)
+    category = Column(String(100), nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    items = relationship("ComboItem", back_populates="combo", cascade="all, delete-orphan")
+
+
+class ComboItem(Base):
+    """An item included in a combo meal."""
+    __tablename__ = "combo_items"
+
+    id = Column(Integer, primary_key=True, index=True)
+    combo_id = Column(Integer, ForeignKey("combo_meals.id"), nullable=False)
+    menu_item_id = Column(Integer, ForeignKey("menu_items.id"), nullable=True)
+    name = Column(String(200), nullable=False)
+    quantity = Column(Integer, default=1)
+    is_choice = Column(Boolean, default=False)  # True if guest picks from options
+    choice_group = Column(String(100), nullable=True)  # e.g. "Choose your side"
+
+    combo = relationship("ComboMeal", back_populates="items")
 
 
 class KitchenOrder(Base):

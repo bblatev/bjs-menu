@@ -147,16 +147,27 @@ def add_stock_item(
 
 @router.get("/categories")
 def get_stock_categories(db: DbSession):
-    """Get stock categories (derived from products)."""
-    return [
-        {"id": 1, "name": "Food", "count": 0},
-        {"id": 2, "name": "Beverages", "count": 0},
-        {"id": 3, "name": "Spirits", "count": 0},
-        {"id": 4, "name": "Wine", "count": 0},
-        {"id": 5, "name": "Beer", "count": 0},
-        {"id": 6, "name": "Supplies", "count": 0},
-        {"id": 7, "name": "Cleaning", "count": 0},
-    ]
+    """Get stock categories derived from product units and supplier groupings."""
+    # Group products by unit type as a proxy for category
+    unit_category_map = {
+        "kg": "Food", "g": "Food", "lb": "Food",
+        "L": "Beverages", "ml": "Beverages",
+        "btl": "Beverages", "can": "Beverages", "keg": "Beer",
+        "pcs": "Supplies", "box": "Supplies", "case": "Supplies",
+        "dozen": "Supplies",
+    }
+    products = db.query(Product).filter(Product.active == True).all()
+    category_counts: dict = {}
+    for p in products:
+        cat = unit_category_map.get(p.unit, "Other")
+        category_counts[cat] = category_counts.get(cat, 0) + 1
+    # Build stable IDs from sorted category names
+    categories = []
+    for idx, (name, count) in enumerate(sorted(category_counts.items()), start=1):
+        categories.append({"id": idx, "name": name, "count": count})
+    if not categories:
+        categories = [{"id": 1, "name": "All Products", "count": 0}]
+    return categories
 
 
 # ==================== MOVEMENTS ====================
@@ -694,9 +705,58 @@ def get_variance_analysis(
 # ==================== IMPORT / EXPORT ====================
 
 @router.post("/import")
-def import_stock(db: DbSession):
-    """Import stock from CSV (placeholder)."""
-    return {"status": "ok", "message": "CSV import endpoint ready. Send multipart/form-data with CSV file."}
+async def import_stock(db: DbSession, file: "UploadFile" = None):
+    """Import stock items from CSV. Expects columns: name, barcode, unit, min_stock, cost_price, par_level."""
+    from fastapi import UploadFile, File
+    import csv
+    import io
+
+    if file is None:
+        return {"status": "ok", "message": "CSV import endpoint ready. Send multipart/form-data with a 'file' field containing a CSV."}
+
+    content = await file.read()
+    text = content.decode("utf-8-sig")
+    reader = csv.DictReader(io.StringIO(text))
+
+    created = 0
+    updated = 0
+    errors = []
+    for row_num, row in enumerate(reader, start=2):
+        name = row.get("name", "").strip()
+        if not name:
+            errors.append(f"Row {row_num}: missing name")
+            continue
+        barcode = row.get("barcode", "").strip() or None
+        existing = None
+        if barcode:
+            existing = db.query(Product).filter(Product.barcode == barcode).first()
+        if not existing:
+            existing = db.query(Product).filter(Product.name == name).first()
+
+        if existing:
+            if row.get("unit"):
+                existing.unit = row["unit"].strip()
+            if row.get("min_stock"):
+                existing.min_stock = Decimal(row["min_stock"])
+            if row.get("cost_price"):
+                existing.cost_price = Decimal(row["cost_price"])
+            if row.get("par_level"):
+                existing.par_level = Decimal(row["par_level"])
+            updated += 1
+        else:
+            product = Product(
+                name=name,
+                barcode=barcode,
+                unit=row.get("unit", "pcs").strip(),
+                min_stock=Decimal(row.get("min_stock", "0")),
+                cost_price=Decimal(row["cost_price"]) if row.get("cost_price") else None,
+                par_level=Decimal(row["par_level"]) if row.get("par_level") else None,
+            )
+            db.add(product)
+            created += 1
+
+    db.commit()
+    return {"status": "ok", "created": created, "updated": updated, "errors": errors}
 
 
 @router.get("/export")

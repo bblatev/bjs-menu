@@ -1,14 +1,22 @@
 """Payment processing API routes (Stripe integration)."""
 
+import json
+import logging
+from datetime import datetime
 from typing import Optional, List, Dict
 from fastapi import APIRouter, HTTPException, Request, Header
 from pydantic import BaseModel
 
+from app.db.session import DbSession
+from app.models.restaurant import GuestOrder
 from app.services.stripe_service import (
     get_stripe_service,
     PaymentStatus,
     PaymentResult,
 )
+from app.services.notification_service import get_notification_service
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -285,6 +293,7 @@ async def list_customer_payment_methods(customer_id: str, type: str = "card"):
 @router.post("/webhook")
 async def stripe_webhook(
     request: Request,
+    db: DbSession,
     stripe_signature: str = Header(None, alias="Stripe-Signature"),
 ):
     """
@@ -303,7 +312,6 @@ async def stripe_webhook(
     if stripe_signature and not stripe.verify_webhook_signature(payload, stripe_signature):
         raise HTTPException(status_code=400, detail="Invalid webhook signature")
 
-    import json
     event = json.loads(payload)
 
     event_type = event.get("type")
@@ -311,41 +319,142 @@ async def stripe_webhook(
 
     # Handle different event types
     if event_type == "payment_intent.succeeded":
-        # Payment successful
         payment_intent_id = event_data.get("id")
         amount = event_data.get("amount_received")
         metadata = event_data.get("metadata", {})
         order_id = metadata.get("order_id")
 
-        # TODO: Update order status in database
-        # await update_order_payment_status(order_id, "paid", payment_intent_id)
+        # Update order payment status in database
+        if order_id:
+            order = db.query(GuestOrder).filter(GuestOrder.id == int(order_id)).first()
+            if order:
+                order.payment_status = "paid"
+                order.payment_method = "card"
+                order.paid_at = datetime.utcnow()
+                db.commit()
+                logger.info(f"Order {order_id} marked as paid via webhook (PI: {payment_intent_id})")
+
+        # Broadcast to staff via WebSocket
+        try:
+            from app.main import ws_manager
+            await ws_manager.broadcast({
+                "event": "payment_succeeded",
+                "order_id": order_id,
+                "amount": amount,
+                "payment_intent_id": payment_intent_id,
+            }, channel="staff-notifications")
+        except Exception as e:
+            logger.warning(f"WebSocket broadcast failed: {e}")
 
         return {"received": True, "action": "payment_succeeded", "order_id": order_id}
 
     elif event_type == "payment_intent.payment_failed":
-        # Payment failed
         payment_intent_id = event_data.get("id")
         error = event_data.get("last_payment_error", {})
         error_message = error.get("message", "Payment failed")
+        metadata = event_data.get("metadata", {})
+        order_id = metadata.get("order_id")
+        table_number = metadata.get("table_number")
 
-        # TODO: Notify staff or update order status
-        return {"received": True, "action": "payment_failed", "error": error_message}
+        # Update order status
+        if order_id:
+            order = db.query(GuestOrder).filter(GuestOrder.id == int(order_id)).first()
+            if order:
+                order.payment_status = "unpaid"
+                db.commit()
+
+        # Notify staff via WebSocket
+        try:
+            from app.main import ws_manager
+            await ws_manager.broadcast({
+                "event": "payment_failed",
+                "order_id": order_id,
+                "table_number": table_number,
+                "error": error_message,
+            }, channel="staff-notifications")
+        except Exception as e:
+            logger.warning(f"WebSocket broadcast failed: {e}")
+
+        # Send manager alert for failed payments
+        try:
+            notifier = get_notification_service()
+            await notifier.send_manager_alert(
+                alert_name="Payment Failed",
+                alert_type="payment",
+                message=f"Payment failed for order #{order_id} (Table {table_number}): {error_message}",
+                phones=[], emails=[],
+                send_sms=False, send_email=False,
+            )
+        except Exception as e:
+            logger.warning(f"Manager alert failed: {e}")
+
+        return {"received": True, "action": "payment_failed", "order_id": order_id, "error": error_message}
 
     elif event_type == "charge.refunded":
-        # Refund processed
         charge_id = event_data.get("id")
         amount_refunded = event_data.get("amount_refunded")
+        payment_intent_id = event_data.get("payment_intent")
+        metadata = event_data.get("metadata", {})
+        order_id = metadata.get("order_id")
 
-        # TODO: Update order status
-        return {"received": True, "action": "refunded", "amount": amount_refunded}
+        # Update order payment status to refunded
+        if order_id:
+            order = db.query(GuestOrder).filter(GuestOrder.id == int(order_id)).first()
+            if order:
+                order.payment_status = "refunded"
+                db.commit()
+                logger.info(f"Order {order_id} marked as refunded (amount: {amount_refunded})")
+
+        # Notify staff
+        try:
+            from app.main import ws_manager
+            await ws_manager.broadcast({
+                "event": "payment_refunded",
+                "order_id": order_id,
+                "amount_refunded": amount_refunded,
+                "charge_id": charge_id,
+            }, channel="staff-notifications")
+        except Exception as e:
+            logger.warning(f"WebSocket broadcast failed: {e}")
+
+        return {"received": True, "action": "refunded", "order_id": order_id, "amount": amount_refunded}
 
     elif event_type == "charge.dispute.created":
-        # Chargeback/dispute
         dispute_id = event_data.get("id")
         amount = event_data.get("amount")
+        reason = event_data.get("reason", "unknown")
+        charge_id = event_data.get("charge")
 
-        # TODO: Alert management
-        return {"received": True, "action": "dispute_created", "amount": amount}
+        logger.warning(f"CHARGEBACK DISPUTE created: {dispute_id}, amount={amount}, reason={reason}")
+
+        # Alert management via WebSocket
+        try:
+            from app.main import ws_manager
+            await ws_manager.broadcast({
+                "event": "chargeback_dispute",
+                "dispute_id": dispute_id,
+                "amount": amount,
+                "reason": reason,
+                "charge_id": charge_id,
+                "urgency": "high",
+            }, channel="staff-notifications")
+        except Exception as e:
+            logger.warning(f"WebSocket broadcast failed: {e}")
+
+        # Send manager alert
+        try:
+            notifier = get_notification_service()
+            await notifier.send_manager_alert(
+                alert_name="Chargeback Dispute",
+                alert_type="chargeback",
+                message=f"URGENT: Chargeback dispute {dispute_id} for ${amount/100:.2f}. Reason: {reason}. Respond within 7 days.",
+                phones=[], emails=[],
+                send_sms=False, send_email=False,
+            )
+        except Exception as e:
+            logger.warning(f"Manager alert failed: {e}")
+
+        return {"received": True, "action": "dispute_created", "dispute_id": dispute_id, "amount": amount}
 
     # Acknowledge other events
     return {"received": True, "event_type": event_type}

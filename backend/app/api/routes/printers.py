@@ -1,9 +1,12 @@
 """Receipt Printer API routes."""
 
+from datetime import datetime
 from typing import Optional, List
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel
 
+from app.db.session import DbSession
+from app.models.restaurant import GuestOrder, Check, CheckItem, KitchenOrder, MenuItem
 from app.services.printer_service import (
     get_printer_manager,
     PrinterConfig,
@@ -380,36 +383,122 @@ async def print_kitchen_ticket(request: PrintKitchenTicketRequest):
 # ============================================================================
 
 @router.post("/print/order/{order_id}/receipt")
-async def print_order_receipt(order_id: str, printer_id: str):
-    """
-    Print a receipt for an order.
+async def print_order_receipt(
+    order_id: int,
+    db: DbSession,
+    printer_id: str = Query(...),
+):
+    """Print a receipt for a guest order by fetching data from DB."""
+    manager = get_printer_manager()
+    printer = manager.get_printer(printer_id)
+    if not printer:
+        raise HTTPException(status_code=404, detail=f"Printer '{printer_id}' not found")
 
-    This endpoint fetches order data and prints automatically.
-    """
-    # TODO: Fetch order from database and print
-    # For now, return a placeholder
+    order = db.query(GuestOrder).filter(GuestOrder.id == order_id).first()
+    if not order:
+        raise HTTPException(status_code=404, detail="Order not found")
 
-    return {
-        "success": False,
-        "message": "Not yet implemented - integrate with order service",
-        "order_id": order_id,
-        "printer_id": printer_id,
-    }
+    # Build items from order's JSON items field
+    receipt_items = []
+    order_items = order.items if hasattr(order, "items") and order.items else []
+    if isinstance(order_items, list):
+        for item in order_items:
+            if isinstance(item, dict):
+                receipt_items.append(ReceiptItem(
+                    name=item.get("name", "Item"),
+                    quantity=item.get("quantity", 1),
+                    price=float(item.get("price", 0)),
+                    modifiers=item.get("modifiers", []) if isinstance(item.get("modifiers"), list) else [],
+                ))
+
+    receipt = Receipt(
+        venue_name="BJ's Restaurant",
+        order_number=str(order.id),
+        table_number=order.table_number or "",
+        order_type=order.order_type or "dine-in",
+        items=receipt_items,
+        subtotal=float(order.subtotal or 0),
+        tax=float(order.tax or 0),
+        total=float(order.total or 0),
+        tip=float(order.tip_amount or 0),
+        payment_method=order.payment_method or "",
+        amount_paid=float(order.total or 0) + float(order.tip_amount or 0),
+        footer_message="Thank you for dining with us!",
+    )
+
+    success = await printer.print_receipt(receipt)
+    if success:
+        return PrintResult(success=True, message=f"Receipt printed for order #{order_id}")
+    else:
+        return PrintResult(success=False, error="Failed to print receipt")
 
 
 @router.post("/print/order/{order_id}/kitchen")
-async def print_order_kitchen_tickets(order_id: str, station: Optional[str] = None):
-    """
-    Print kitchen tickets for an order.
+async def print_order_kitchen_tickets(
+    order_id: int,
+    db: DbSession,
+    printer_id: str = Query(None),
+    station: Optional[str] = None,
+):
+    """Print kitchen tickets for a guest order, grouped by station."""
+    order = db.query(GuestOrder).filter(GuestOrder.id == order_id).first()
+    if not order:
+        raise HTTPException(status_code=404, detail="Order not found")
 
-    This endpoint fetches order data and prints to appropriate kitchen stations.
-    """
-    # TODO: Fetch order from database and print to kitchen stations
-    # For now, return a placeholder
+    # Group items by station
+    station_items: dict = {}
+    order_items = order.items if hasattr(order, "items") and order.items else []
+    if isinstance(order_items, list):
+        for item in order_items:
+            if isinstance(item, dict):
+                item_station = item.get("station", "default")
+                if station and item_station != station:
+                    continue
+                station_items.setdefault(item_station, []).append(
+                    ReceiptItem(
+                        name=item.get("name", "Item"),
+                        quantity=item.get("quantity", 1),
+                        price=item.get("price", 0),
+                        modifiers=item.get("modifiers", []) if isinstance(item.get("modifiers"), list) else [],
+                    )
+                )
 
-    return {
-        "success": False,
-        "message": "Not yet implemented - integrate with order and kitchen services",
-        "order_id": order_id,
-        "station": station,
-    }
+    if not station_items:
+        return PrintResult(success=True, message="No items to print for the specified station")
+
+    manager = get_printer_manager()
+    printed = 0
+    errors = []
+
+    for stn, items in station_items.items():
+        # Use specified printer or find the station-assigned printer
+        target_printer_id = printer_id or stn
+        target_printer = manager.get_printer(target_printer_id)
+        if not target_printer:
+            # Fall back to any available printer
+            all_printers = manager.list_printers()
+            if all_printers:
+                target_printer = manager.get_printer(all_printers[0]["id"])
+
+        if not target_printer:
+            errors.append(f"No printer found for station '{stn}'")
+            continue
+
+        success = await target_printer.print_kitchen_ticket(
+            order_number=str(order.id),
+            table_number=order.table_number or "",
+            items=items,
+            order_type=order.order_type or "dine-in",
+            station=stn,
+        )
+        if success:
+            printed += 1
+        else:
+            errors.append(f"Failed to print to station '{stn}'")
+
+    if errors and printed == 0:
+        return PrintResult(success=False, error="; ".join(errors))
+    return PrintResult(
+        success=True,
+        message=f"Printed {printed} kitchen ticket(s)" + (f" ({'; '.join(errors)})" if errors else ""),
+    )

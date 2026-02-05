@@ -7,7 +7,11 @@ from fastapi import APIRouter, HTTPException, Query, Body
 from pydantic import BaseModel
 
 from app.db.session import DbSession
-from app.models.restaurant import GuestOrder as GuestOrderModel, KitchenOrder, Table, MenuItem
+from app.models.restaurant import (
+    GuestOrder as GuestOrderModel, KitchenOrder, Table, MenuItem,
+    ModifierGroup, ModifierOption, MenuItemModifierGroup,
+    ComboMeal, ComboItem,
+)
 from app.services.stock_deduction_service import StockDeductionService
 import logging
 
@@ -553,7 +557,7 @@ def place_guest_order(
         stock_service = StockDeductionService(db)
         stock_result = stock_service.deduct_for_order(
             order_items=validated_items,
-            location_id=1,
+            location_id=db_order.location_id or 1,
             reference_type="guest_order",
             reference_id=db_order.id,
         )
@@ -715,7 +719,7 @@ def void_order(
             stock_service = StockDeductionService(db)
             stock_refund_result = stock_service.refund_for_order(
                 order_items=order_items,
-                location_id=1,  # TODO: Get from order.location_id
+                location_id=order.location_id or 1,
                 reference_type="void_order",
                 reference_id=order_id
             )
@@ -772,7 +776,7 @@ def void_order_item(
                 "menu_item_id": item_to_refund.get("menu_item_id"),
                 "quantity": item_to_refund.get("quantity", 1)
             }],
-            location_id=1,  # TODO: Get from order.location_id
+            location_id=order.location_id or 1,
             reference_type="void_item",
             reference_id=order_id
         )
@@ -820,7 +824,7 @@ def cancel_order(
             stock_service = StockDeductionService(db)
             stock_refund_result = stock_service.refund_for_order(
                 order_items=order_items,
-                location_id=1,
+                location_id=order.location_id or 1,
                 reference_type="cancel_order",
                 reference_id=order_id
             )
@@ -863,7 +867,7 @@ def delete_order(
             stock_service = StockDeductionService(db)
             stock_refund_result = stock_service.refund_for_order(
                 order_items=order_items,
-                location_id=1,
+                location_id=order.location_id or 1,
                 reference_type="delete_order",
                 reference_id=order_id
             )
@@ -1436,93 +1440,251 @@ def admin_toggle_category_active(db: DbSession, category_id: int):
 
 @router.get("/menu-admin/modifier-groups")
 def admin_list_modifier_groups(db: DbSession):
-    """List modifier groups."""
-    return []
+    """List modifier groups with their options."""
+    groups = db.query(ModifierGroup).order_by(ModifierGroup.sort_order).all()
+    return [
+        {
+            "id": g.id,
+            "name": g.name,
+            "min_selections": g.min_selections,
+            "max_selections": g.max_selections,
+            "active": g.active,
+            "sort_order": g.sort_order,
+            "options": [
+                {
+                    "id": o.id,
+                    "group_id": o.group_id,
+                    "name": o.name,
+                    "price_adjustment": float(o.price_adjustment or 0),
+                    "available": o.available,
+                    "sort_order": o.sort_order,
+                }
+                for o in sorted(g.options, key=lambda x: x.sort_order)
+            ],
+        }
+        for g in groups
+    ]
 
 
 @router.post("/menu-admin/modifier-groups")
 def admin_create_modifier_group(db: DbSession, data: dict = Body(...)):
     """Create a modifier group."""
+    group = ModifierGroup(
+        name=data.get("name", ""),
+        min_selections=data.get("min_selections", 0),
+        max_selections=data.get("max_selections", 1),
+        sort_order=data.get("sort_order", 0),
+    )
+    db.add(group)
+    db.commit()
+    db.refresh(group)
     return {
-        "id": 1,
-        "name": data.get("name", ""),
-        "min_selections": data.get("min_selections", 0),
-        "max_selections": data.get("max_selections", 1),
-        "active": True,
-        "options": []
+        "id": group.id,
+        "name": group.name,
+        "min_selections": group.min_selections,
+        "max_selections": group.max_selections,
+        "active": group.active,
+        "sort_order": group.sort_order,
+        "options": [],
     }
 
 
 @router.put("/menu-admin/modifier-groups/{group_id}")
 def admin_update_modifier_group(db: DbSession, group_id: int, data: dict = Body(...)):
     """Update a modifier group."""
-    return {"id": group_id, **data}
+    group = db.query(ModifierGroup).filter(ModifierGroup.id == group_id).first()
+    if not group:
+        raise HTTPException(status_code=404, detail="Modifier group not found")
+    for key in ("name", "min_selections", "max_selections", "sort_order", "active"):
+        if key in data:
+            setattr(group, key, data[key])
+    db.commit()
+    db.refresh(group)
+    return {"id": group.id, "name": group.name, "min_selections": group.min_selections,
+            "max_selections": group.max_selections, "active": group.active, "sort_order": group.sort_order}
 
 
 @router.delete("/menu-admin/modifier-groups/{group_id}")
 def admin_delete_modifier_group(db: DbSession, group_id: int):
-    """Delete a modifier group."""
+    """Delete a modifier group and its options."""
+    group = db.query(ModifierGroup).filter(ModifierGroup.id == group_id).first()
+    if not group:
+        raise HTTPException(status_code=404, detail="Modifier group not found")
+    db.delete(group)
+    db.commit()
     return {"success": True}
 
 
 @router.post("/menu-admin/modifier-groups/{group_id}/options")
 def admin_create_modifier_option(db: DbSession, group_id: int, data: dict = Body(...)):
-    """Create a modifier option."""
+    """Create a modifier option in a group."""
+    group = db.query(ModifierGroup).filter(ModifierGroup.id == group_id).first()
+    if not group:
+        raise HTTPException(status_code=404, detail="Modifier group not found")
+    option = ModifierOption(
+        group_id=group_id,
+        name=data.get("name", ""),
+        price_adjustment=data.get("price_adjustment", 0),
+        sort_order=data.get("sort_order", 0),
+    )
+    db.add(option)
+    db.commit()
+    db.refresh(option)
     return {
-        "id": 1,
-        "group_id": group_id,
-        "name": data.get("name", ""),
-        "price_adjustment": data.get("price_adjustment", 0),
-        "available": True
+        "id": option.id,
+        "group_id": option.group_id,
+        "name": option.name,
+        "price_adjustment": float(option.price_adjustment or 0),
+        "available": option.available,
     }
 
 
 @router.put("/menu-admin/modifier-options/{option_id}")
 def admin_update_modifier_option(db: DbSession, option_id: int, data: dict = Body(...)):
     """Update a modifier option."""
-    return {"id": option_id, **data}
+    option = db.query(ModifierOption).filter(ModifierOption.id == option_id).first()
+    if not option:
+        raise HTTPException(status_code=404, detail="Modifier option not found")
+    for key in ("name", "price_adjustment", "available", "sort_order"):
+        if key in data:
+            setattr(option, key, data[key])
+    db.commit()
+    db.refresh(option)
+    return {"id": option.id, "group_id": option.group_id, "name": option.name,
+            "price_adjustment": float(option.price_adjustment or 0), "available": option.available}
 
 
 @router.delete("/menu-admin/modifier-options/{option_id}")
 def admin_delete_modifier_option(db: DbSession, option_id: int):
     """Delete a modifier option."""
+    option = db.query(ModifierOption).filter(ModifierOption.id == option_id).first()
+    if not option:
+        raise HTTPException(status_code=404, detail="Modifier option not found")
+    db.delete(option)
+    db.commit()
     return {"success": True}
 
 
 @router.get("/menu-admin/combos")
 def admin_list_combos(db: DbSession):
-    """List combo meals."""
-    return []
+    """List combo meals with their items."""
+    combos = db.query(ComboMeal).order_by(ComboMeal.name).all()
+    return [
+        {
+            "id": c.id,
+            "name": c.name,
+            "description": c.description,
+            "price": float(c.price),
+            "image_url": c.image_url,
+            "available": c.available,
+            "featured": c.featured,
+            "category": c.category,
+            "items": [
+                {
+                    "id": ci.id,
+                    "menu_item_id": ci.menu_item_id,
+                    "name": ci.name,
+                    "quantity": ci.quantity,
+                    "is_choice": ci.is_choice,
+                    "choice_group": ci.choice_group,
+                }
+                for ci in c.items
+            ],
+        }
+        for c in combos
+    ]
 
 
 @router.post("/menu-admin/combos")
 def admin_create_combo(db: DbSession, data: dict = Body(...)):
     """Create a combo meal."""
-    return {"id": 1, **data, "available": True, "featured": False}
+    combo = ComboMeal(
+        name=data.get("name", ""),
+        description=data.get("description"),
+        price=data.get("price", 0),
+        image_url=data.get("image_url"),
+        category=data.get("category"),
+    )
+    db.add(combo)
+    db.commit()
+    db.refresh(combo)
+    # Add items if provided
+    for item_data in data.get("items", []):
+        ci = ComboItem(
+            combo_id=combo.id,
+            menu_item_id=item_data.get("menu_item_id"),
+            name=item_data.get("name", ""),
+            quantity=item_data.get("quantity", 1),
+            is_choice=item_data.get("is_choice", False),
+            choice_group=item_data.get("choice_group"),
+        )
+        db.add(ci)
+    db.commit()
+    db.refresh(combo)
+    return {"id": combo.id, "name": combo.name, "price": float(combo.price),
+            "available": combo.available, "featured": combo.featured}
 
 
 @router.put("/menu-admin/combos/{combo_id}")
 def admin_update_combo(db: DbSession, combo_id: int, data: dict = Body(...)):
     """Update a combo meal."""
-    return {"id": combo_id, **data}
+    combo = db.query(ComboMeal).filter(ComboMeal.id == combo_id).first()
+    if not combo:
+        raise HTTPException(status_code=404, detail="Combo meal not found")
+    for key in ("name", "description", "price", "image_url", "category", "available", "featured"):
+        if key in data:
+            setattr(combo, key, data[key])
+    # Replace items if provided
+    if "items" in data:
+        for ci in combo.items:
+            db.delete(ci)
+        for item_data in data["items"]:
+            ci = ComboItem(
+                combo_id=combo.id,
+                menu_item_id=item_data.get("menu_item_id"),
+                name=item_data.get("name", ""),
+                quantity=item_data.get("quantity", 1),
+                is_choice=item_data.get("is_choice", False),
+                choice_group=item_data.get("choice_group"),
+            )
+            db.add(ci)
+    db.commit()
+    db.refresh(combo)
+    return {"id": combo.id, "name": combo.name, "price": float(combo.price),
+            "available": combo.available, "featured": combo.featured}
 
 
 @router.delete("/menu-admin/combos/{combo_id}")
 def admin_delete_combo(db: DbSession, combo_id: int):
-    """Delete a combo meal."""
+    """Delete a combo meal and its items."""
+    combo = db.query(ComboMeal).filter(ComboMeal.id == combo_id).first()
+    if not combo:
+        raise HTTPException(status_code=404, detail="Combo meal not found")
+    db.delete(combo)
+    db.commit()
     return {"success": True}
 
 
 @router.patch("/menu-admin/combos/{combo_id}/toggle-available")
 def admin_toggle_combo_available(db: DbSession, combo_id: int):
     """Toggle combo availability."""
-    return {"id": combo_id, "available": True}
+    combo = db.query(ComboMeal).filter(ComboMeal.id == combo_id).first()
+    if not combo:
+        raise HTTPException(status_code=404, detail="Combo meal not found")
+    combo.available = not combo.available
+    db.commit()
+    return {"id": combo.id, "available": combo.available}
 
 
 @router.patch("/menu-admin/combos/{combo_id}/toggle-featured")
 def admin_toggle_combo_featured(db: DbSession, combo_id: int):
     """Toggle combo featured status."""
-    return {"id": combo_id, "featured": True}
+    combo = db.query(ComboMeal).filter(ComboMeal.id == combo_id).first()
+    if not combo:
+        raise HTTPException(status_code=404, detail="Combo meal not found")
+    combo.featured = not combo.featured
+    db.commit()
+    return {"id": combo.id, "featured": combo.featured}
 
 
 @router.get("/menu-admin/dayparts")
@@ -1588,8 +1750,34 @@ def admin_update_item_allergens(db: DbSession, item_id: int, data: dict = Body(.
 
 @router.get("/menu-admin/items/{item_id}/modifiers")
 def admin_get_item_modifiers(db: DbSession, item_id: int):
-    """Get modifiers for a specific item."""
-    return []
+    """Get modifier groups linked to a specific menu item."""
+    links = (
+        db.query(MenuItemModifierGroup)
+        .filter(MenuItemModifierGroup.menu_item_id == item_id)
+        .order_by(MenuItemModifierGroup.sort_order)
+        .all()
+    )
+    result = []
+    for link in links:
+        g = link.modifier_group
+        if g:
+            result.append({
+                "id": g.id,
+                "name": g.name,
+                "min_selections": g.min_selections,
+                "max_selections": g.max_selections,
+                "active": g.active,
+                "options": [
+                    {
+                        "id": o.id,
+                        "name": o.name,
+                        "price_adjustment": float(o.price_adjustment or 0),
+                        "available": o.available,
+                    }
+                    for o in sorted(g.options, key=lambda x: x.sort_order)
+                ],
+            })
+    return result
 
 
 @router.put("/menu-admin/categories/reorder")
@@ -1600,47 +1788,115 @@ def admin_reorder_categories(db: DbSession, data: dict = Body(...)):
 
 @router.get("/menu-admin/modifiers")
 def admin_list_modifiers(db: DbSession):
-    """List all modifiers."""
-    return []
+    """List all modifier options across all groups."""
+    options = db.query(ModifierOption).order_by(ModifierOption.group_id, ModifierOption.sort_order).all()
+    return [
+        {
+            "id": o.id,
+            "group_id": o.group_id,
+            "name": o.name,
+            "price_adjustment": float(o.price_adjustment or 0),
+            "available": o.available,
+            "sort_order": o.sort_order,
+        }
+        for o in options
+    ]
 
 
 @router.post("/menu-admin/modifiers")
 def admin_create_modifier(db: DbSession, data: dict = Body(...)):
-    """Create a modifier."""
-    return {"id": 1, **data}
+    """Create a modifier option (must specify group_id)."""
+    group_id = data.get("group_id")
+    if group_id:
+        group = db.query(ModifierGroup).filter(ModifierGroup.id == group_id).first()
+        if not group:
+            raise HTTPException(status_code=404, detail="Modifier group not found")
+    option = ModifierOption(
+        group_id=group_id or 0,
+        name=data.get("name", ""),
+        price_adjustment=data.get("price_adjustment", 0),
+        sort_order=data.get("sort_order", 0),
+    )
+    db.add(option)
+    db.commit()
+    db.refresh(option)
+    return {"id": option.id, "group_id": option.group_id, "name": option.name,
+            "price_adjustment": float(option.price_adjustment or 0), "available": option.available}
 
 
 @router.put("/menu-admin/modifiers/{modifier_id}")
 def admin_update_modifier(db: DbSession, modifier_id: int, data: dict = Body(...)):
-    """Update a modifier."""
-    return {"id": modifier_id, **data}
+    """Update a modifier option."""
+    option = db.query(ModifierOption).filter(ModifierOption.id == modifier_id).first()
+    if not option:
+        raise HTTPException(status_code=404, detail="Modifier not found")
+    for key in ("name", "price_adjustment", "available", "sort_order", "group_id"):
+        if key in data:
+            setattr(option, key, data[key])
+    db.commit()
+    db.refresh(option)
+    return {"id": option.id, "group_id": option.group_id, "name": option.name,
+            "price_adjustment": float(option.price_adjustment or 0), "available": option.available}
 
 
 @router.delete("/menu-admin/modifiers/{modifier_id}")
 def admin_delete_modifier(db: DbSession, modifier_id: int):
-    """Delete a modifier."""
+    """Delete a modifier option."""
+    option = db.query(ModifierOption).filter(ModifierOption.id == modifier_id).first()
+    if not option:
+        raise HTTPException(status_code=404, detail="Modifier not found")
+    db.delete(option)
+    db.commit()
     return {"success": True}
 
 
 @router.post("/menu-admin/modifiers/{modifier_id}/options")
 def admin_add_modifier_option(db: DbSession, modifier_id: int, data: dict = Body(...)):
-    """Add option to modifier."""
-    return {"id": 1, "modifier_id": modifier_id, **data}
+    """Add option to a modifier group (modifier_id is treated as group_id)."""
+    group = db.query(ModifierGroup).filter(ModifierGroup.id == modifier_id).first()
+    if not group:
+        raise HTTPException(status_code=404, detail="Modifier group not found")
+    option = ModifierOption(
+        group_id=modifier_id,
+        name=data.get("name", ""),
+        price_adjustment=data.get("price_adjustment", 0),
+        sort_order=data.get("sort_order", 0),
+    )
+    db.add(option)
+    db.commit()
+    db.refresh(option)
+    return {"id": option.id, "modifier_id": modifier_id, "name": option.name,
+            "price_adjustment": float(option.price_adjustment or 0), "available": option.available}
 
 
 @router.delete("/menu-admin/modifiers/options/{option_id}")
 def admin_remove_modifier_option(db: DbSession, option_id: int):
     """Remove modifier option."""
+    option = db.query(ModifierOption).filter(ModifierOption.id == option_id).first()
+    if not option:
+        raise HTTPException(status_code=404, detail="Modifier option not found")
+    db.delete(option)
+    db.commit()
     return {"success": True}
 
 
 @router.patch("/menu-admin/modifier-groups/{group_id}/toggle-active")
 def admin_toggle_modifier_group_active(db: DbSession, group_id: int):
     """Toggle modifier group active status."""
-    return {"id": group_id, "active": True}
+    group = db.query(ModifierGroup).filter(ModifierGroup.id == group_id).first()
+    if not group:
+        raise HTTPException(status_code=404, detail="Modifier group not found")
+    group.active = not group.active
+    db.commit()
+    return {"id": group.id, "active": group.active}
 
 
 @router.patch("/menu-admin/modifier-options/{option_id}/toggle-available")
 def admin_toggle_modifier_option_available(db: DbSession, option_id: int):
     """Toggle modifier option availability."""
-    return {"id": option_id, "available": True}
+    option = db.query(ModifierOption).filter(ModifierOption.id == option_id).first()
+    if not option:
+        raise HTTPException(status_code=404, detail="Modifier option not found")
+    option.available = not option.available
+    db.commit()
+    return {"id": option.id, "available": option.available}
