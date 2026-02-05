@@ -17,7 +17,7 @@ from app.api.routes import (
     google_reserve, training, scheduled_reports, email_campaigns,
     opentable, birthday_rewards, kds_localization,
     mobile_wallet, custom_reports, card_terminals,
-    stock_management, stock
+    stock_management, stock, inventory_complete
 )
 
 api_router = APIRouter()
@@ -191,3 +191,6 @@ api_router.include_router(stock_management.router, prefix="/stock-management", t
 
 # Stock routes (frontend-facing /stock/* endpoints)
 api_router.include_router(stock.router, prefix="/stock", tags=["stock", "inventory"])
+
+# Inventory Complete (comprehensive inventory management for frontend)
+api_router.include_router(inventory_complete.router, prefix="/inventory-complete", tags=["inventory-complete", "stock"])

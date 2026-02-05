@@ -86,6 +86,32 @@ class CostMethodRequest(BaseModel):
     method: str = "weighted_average"  # fifo, weighted_average, last_cost
 
 
+class SmartParRequest(BaseModel):
+    lookback_days: int = 30
+    safety_factor: float = 1.5
+    order_cycle_days: int = 7
+
+
+class BulkParRequest(BaseModel):
+    location_id: int = 1
+    lookback_days: int = 30
+    safety_factor: float = 1.5
+    order_cycle_days: int = 7
+    auto_apply: bool = False
+
+
+class ReserveStockRequest(BaseModel):
+    order_items: List[dict]  # [{menu_item_id, quantity}]
+    location_id: int = 1
+    reference_id: Optional[int] = None
+
+
+class CancelReservationRequest(BaseModel):
+    reference_id: int
+    reference_type: str = "order_reservation"
+    location_id: int = 1
+
+
 # ==================== STOCK OVERVIEW ====================
 
 @router.get("/overview")
@@ -1050,3 +1076,121 @@ def get_variance_analysis(
     result["period_days"] = period_days
 
     return result
+
+
+# ==================== SMART PAR CALCULATION ====================
+
+@router.post("/calculate-par/{product_id}")
+def calculate_smart_par(
+    db: DbSession,
+    product_id: int,
+    location_id: int = Query(1),
+    lookback_days: int = Query(30, le=365),
+    safety_factor: float = Query(1.5),
+    order_cycle_days: int = Query(7),
+):
+    """
+    Calculate smart PAR level for a product using industry formula:
+    - avg_daily_usage = sum of SALE movements / lookback_days
+    - safety_stock = avg_daily_usage × safety_factor
+    - reorder_point = (avg_daily_usage × lead_time) + safety_stock
+    - recommended_par = reorder_point + (avg_daily_usage × order_cycle_days)
+
+    Matches MarketMan/xtraCHEF/Toast PAR calculation.
+    """
+    stock_service = StockDeductionService(db)
+    result = stock_service.calculate_smart_par(
+        product_id=product_id,
+        location_id=location_id,
+        lookback_days=lookback_days,
+        safety_factor=safety_factor,
+        order_cycle_days=order_cycle_days,
+    )
+    if "error" in result:
+        raise HTTPException(status_code=404, detail=result["error"])
+    return result
+
+
+@router.post("/recalculate-all-pars")
+def recalculate_all_pars(
+    db: DbSession,
+    request: BulkParRequest,
+):
+    """
+    Recalculate PAR levels for ALL active products using smart formula.
+    Set auto_apply=true to automatically update product PAR levels.
+    """
+    stock_service = StockDeductionService(db)
+    return stock_service.bulk_recalculate_pars(
+        location_id=request.location_id,
+        lookback_days=request.lookback_days,
+        safety_factor=request.safety_factor,
+        order_cycle_days=request.order_cycle_days,
+        auto_apply=request.auto_apply,
+    )
+
+
+# ==================== STOCK RESERVATION ====================
+
+@router.post("/reserve")
+def reserve_stock(
+    db: DbSession,
+    request: ReserveStockRequest,
+):
+    """
+    Reserve stock for an in-progress order.
+    Reserved stock remains physically present but is not available for new orders.
+    Use /stock-management/fulfill to convert reservation to actual deduction.
+    Use /stock-management/cancel-reservation to release reserved stock.
+    """
+    stock_service = StockDeductionService(db)
+    result = stock_service.reserve_for_order(
+        order_items=request.order_items,
+        location_id=request.location_id,
+        reference_id=request.reference_id,
+    )
+    if not result.get("success"):
+        raise HTTPException(status_code=400, detail=result.get("errors", "Reservation failed"))
+    return result
+
+
+@router.post("/cancel-reservation")
+def cancel_reservation(
+    db: DbSession,
+    request: CancelReservationRequest,
+):
+    """Cancel stock reservations and release reserved stock back to available pool."""
+    stock_service = StockDeductionService(db)
+    return stock_service.cancel_reservation(
+        reference_id=request.reference_id,
+        reference_type=request.reference_type,
+        location_id=request.location_id,
+    )
+
+
+# ==================== MULTI-LOCATION AGGREGATION ====================
+
+@router.get("/aggregate")
+def get_aggregate_stock(
+    db: DbSession,
+):
+    """
+    Company-wide stock aggregation across all locations.
+    Returns total quantity, value, and per-location breakdown for every product.
+    """
+    stock_service = StockDeductionService(db)
+    return stock_service.get_aggregate_stock()
+
+
+@router.get("/transfer-suggestions")
+def get_transfer_suggestions(
+    db: DbSession,
+    location_id: Optional[int] = None,
+):
+    """
+    Suggest stock transfers from overstocked to understocked locations.
+    Identifies products where one location has >150% of PAR
+    and another has <50% of PAR.
+    """
+    stock_service = StockDeductionService(db)
+    return stock_service.suggest_transfers(location_id=location_id)

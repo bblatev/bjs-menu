@@ -24,6 +24,8 @@ class MovementReason(str, Enum):
     WASTE = "waste"  # Spoilage, breakage
     ADJUSTMENT = "adjustment"  # Manual adjustment
     PURCHASE = "purchase"  # Goods received
+    RESERVATION = "reservation"  # Stock reserved for in-progress order
+    RESERVATION_RELEASE = "reservation_release"  # Reserved stock released (order cancelled/fulfilled)
 
 
 class StockOnHand(Base):
@@ -42,6 +44,7 @@ class StockOnHand(Base):
         ForeignKey("locations.id", ondelete="CASCADE"), nullable=False, index=True
     )
     qty: Mapped[Decimal] = mapped_column(Numeric(10, 2), default=0, nullable=False)
+    reserved_qty: Mapped[Decimal] = mapped_column(Numeric(10, 2), default=0, nullable=False, server_default="0")
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False
     )
