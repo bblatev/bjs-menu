@@ -116,6 +116,10 @@ from app.models.hardware import (
     OfflineQueueItem,
     OCRJob,
 )
+from app.models.advanced_features import (
+    HappyHour,
+    WasteTrackingEntry,
+)
 
 __all__ = [
     # Core models
@@ -220,4 +224,7 @@ __all__ = [
     "ManagerAlert",
     "CustomerCredit",
     "SubTable",
+    # Bar Management
+    "HappyHour",
+    "WasteTrackingEntry",
 ]

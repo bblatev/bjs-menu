@@ -435,6 +435,132 @@ class StockDeductionService:
         }
 
 
+    def deduct_for_recipe(
+        self,
+        recipe: Recipe,
+        quantity: Decimal,
+        location_id: int,
+        is_refund: bool = False,
+        reference_type: str = "pos_sale",
+        reference_id: Optional[int] = None,
+        notes: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        """
+        Deduct stock for a recipe directly (used by POS batch processing).
+
+        Args:
+            recipe: The Recipe object to deduct for
+            quantity: Number of items sold
+            location_id: Location to deduct from
+            is_refund: True if this is a refund (adds stock back)
+            reference_type: Type of reference
+            reference_id: ID of the reference
+            notes: Optional notes for the movement
+
+        Returns:
+            Dict with deduction summary
+        """
+        movements_created = 0
+        deductions = []
+
+        # Calculate multiplier (negative for sales, positive for refunds)
+        multiplier = quantity if is_refund else -quantity
+
+        for line in recipe.lines:
+            product = self.db.query(Product).filter(Product.id == line.product_id).first()
+            if not product:
+                continue
+
+            # Calculate qty delta
+            qty_delta = multiplier * line.qty
+
+            # Convert units if needed
+            if line.unit != product.unit:
+                converted = self._convert_units(abs(qty_delta), line.unit, product.unit)
+                if converted is not None:
+                    qty_delta = -converted if not is_refund else converted
+
+            # Create stock movement
+            movement = StockMovement(
+                product_id=line.product_id,
+                location_id=location_id,
+                qty_delta=qty_delta,
+                reason=MovementReason.REFUND.value if is_refund else MovementReason.SALE.value,
+                ref_type=reference_type,
+                ref_id=reference_id,
+                notes=notes or f"{recipe.name} x {quantity}",
+            )
+            self.db.add(movement)
+            movements_created += 1
+
+            # Update stock on hand
+            stock = self.db.query(StockOnHand).filter(
+                StockOnHand.product_id == line.product_id,
+                StockOnHand.location_id == location_id,
+            ).first()
+
+            if stock:
+                stock.qty += qty_delta
+            else:
+                stock = StockOnHand(
+                    product_id=line.product_id,
+                    location_id=location_id,
+                    qty=qty_delta,
+                )
+                self.db.add(stock)
+
+            deductions.append({
+                "product_id": product.id,
+                "product_name": product.name,
+                "qty_delta": float(qty_delta),
+                "unit": product.unit,
+            })
+
+        return {
+            "success": True,
+            "recipe_name": recipe.name,
+            "movements_created": movements_created,
+            "deductions": deductions,
+        }
+
+    def find_recipe_by_pos_data(
+        self,
+        pos_item_id: Optional[str],
+        name: str,
+    ) -> Optional[Recipe]:
+        """
+        Find a recipe by POS item ID or name.
+
+        Args:
+            pos_item_id: POS system item ID
+            name: Item name from POS
+
+        Returns:
+            Recipe if found, None otherwise
+        """
+        # Try by pos_item_id first
+        if pos_item_id:
+            recipe = self.db.query(Recipe).filter(
+                Recipe.pos_item_id == pos_item_id
+            ).first()
+            if recipe:
+                return recipe
+
+        # Try by exact name match (case-insensitive)
+        recipe = self.db.query(Recipe).filter(
+            Recipe.name.ilike(name)
+        ).first()
+        if recipe:
+            return recipe
+
+        # Try by pos_item_name
+        recipe = self.db.query(Recipe).filter(
+            Recipe.pos_item_name.ilike(name)
+        ).first()
+
+        return recipe
+
+
 def get_stock_deduction_service(db: Session) -> StockDeductionService:
     """Factory function to get stock deduction service."""
     return StockDeductionService(db)

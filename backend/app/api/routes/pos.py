@@ -247,7 +247,11 @@ def consume_sales(
     3. Create stock movements (negative for sales, positive for refunds)
     4. Update stock on hand
     5. Mark sales line as processed
+
+    Uses StockDeductionService for consistent stock deduction logic.
     """
+    from app.services.stock_deduction_service import StockDeductionService
+
     # Get unprocessed sales lines
     query = db.query(PosSalesLine).filter(PosSalesLine.processed == False)
     if location_id:
@@ -260,78 +264,33 @@ def consume_sales(
     unmatched = []
     errors = []
 
+    stock_service = StockDeductionService(db)
+
     for sales_line in sales_lines:
         try:
-            # Find recipe by pos_item_id first, then by name
-            recipe = None
-            if sales_line.pos_item_id:
-                recipe = (
-                    db.query(Recipe)
-                    .filter(Recipe.pos_item_id == sales_line.pos_item_id)
-                    .first()
-                )
-
-            if not recipe:
-                # Try matching by name (case-insensitive)
-                recipe = (
-                    db.query(Recipe)
-                    .filter(Recipe.name.ilike(sales_line.name))
-                    .first()
-                )
-
-            if not recipe:
-                # Try partial match
-                recipe = (
-                    db.query(Recipe)
-                    .filter(Recipe.pos_item_name.ilike(sales_line.name))
-                    .first()
-                )
+            # Find recipe using the service
+            recipe = stock_service.find_recipe_by_pos_data(
+                pos_item_id=sales_line.pos_item_id,
+                name=sales_line.name
+            )
 
             if not recipe:
                 unmatched.append(sales_line.name)
                 sales_line.processed = True  # Mark as processed anyway to avoid reprocessing
                 continue
 
-            # Calculate consumption for each recipe line
-            multiplier = -sales_line.qty if not sales_line.is_refund else sales_line.qty
+            # Deduct stock using the service
+            result = stock_service.deduct_for_recipe(
+                recipe=recipe,
+                quantity=sales_line.qty,
+                location_id=sales_line.location_id,
+                is_refund=sales_line.is_refund,
+                reference_type="pos_sale",
+                reference_id=sales_line.id,
+                notes=f"POS: {sales_line.name} x {sales_line.qty}",
+            )
 
-            for recipe_line in recipe.lines:
-                # Calculate qty delta (negative for consumption, positive for refund)
-                qty_delta = multiplier * recipe_line.qty
-
-                # Create stock movement
-                movement = StockMovement(
-                    product_id=recipe_line.product_id,
-                    location_id=sales_line.location_id,
-                    qty_delta=qty_delta,
-                    reason=MovementReason.REFUND.value if sales_line.is_refund else MovementReason.SALE.value,
-                    ref_type="pos_sale",
-                    ref_id=sales_line.id,
-                    notes=f"POS: {sales_line.name} x {sales_line.qty}",
-                )
-                db.add(movement)
-                movements_created += 1
-
-                # Update stock on hand
-                stock = (
-                    db.query(StockOnHand)
-                    .filter(
-                        StockOnHand.product_id == recipe_line.product_id,
-                        StockOnHand.location_id == sales_line.location_id,
-                    )
-                    .first()
-                )
-
-                if stock:
-                    stock.qty += qty_delta
-                else:
-                    stock = StockOnHand(
-                        product_id=recipe_line.product_id,
-                        location_id=sales_line.location_id,
-                        qty=qty_delta,
-                    )
-                    db.add(stock)
-
+            movements_created += result.get("movements_created", 0)
             sales_line.processed = True
             processed += 1
 

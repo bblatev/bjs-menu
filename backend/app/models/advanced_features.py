@@ -1364,3 +1364,48 @@ class SupplyChainTrace(Base, TimestampMixin):
 
     # QR code for customer scanning
     qr_code_url: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
+
+
+# ============================================================================
+# 26. HAPPY HOUR PROMOTIONS
+# ============================================================================
+
+class HappyHour(Base, TimestampMixin):
+    """Happy hour and time-based promotions."""
+
+    __tablename__ = "happy_hours"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    location_id: Mapped[Optional[int]] = mapped_column(Integer, nullable=True, index=True)
+
+    name: Mapped[str] = mapped_column(String(255), nullable=False)
+    description: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+
+    # Schedule
+    days: Mapped[List[str]] = mapped_column(JSON, nullable=False)  # ["Monday", "Tuesday", etc.]
+    start_time: Mapped[time] = mapped_column(Time, nullable=False)
+    end_time: Mapped[time] = mapped_column(Time, nullable=False)
+
+    # Date range (optional, for seasonal promos)
+    start_date: Mapped[Optional[date]] = mapped_column(Date, nullable=True)
+    end_date: Mapped[Optional[date]] = mapped_column(Date, nullable=True)
+
+    # Discount configuration
+    discount_type: Mapped[str] = mapped_column(String(20), nullable=False)  # percentage, fixed, bogo
+    discount_value: Mapped[Decimal] = mapped_column(Numeric(10, 2), nullable=False)
+
+    # Scope
+    applies_to: Mapped[str] = mapped_column(String(50), nullable=False)  # all, category, items
+    category_ids: Mapped[Optional[List[int]]] = mapped_column(JSON, nullable=True)
+    item_ids: Mapped[Optional[List[int]]] = mapped_column(JSON, nullable=True)
+
+    # Limits
+    max_per_customer: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    min_purchase: Mapped[Optional[Decimal]] = mapped_column(Numeric(10, 2), nullable=True)
+
+    # Status
+    status: Mapped[str] = mapped_column(String(20), nullable=False, default="active")  # active, inactive, scheduled
+
+    # Analytics
+    times_used: Mapped[int] = mapped_column(Integer, default=0)
+    total_discount_given: Mapped[Decimal] = mapped_column(Numeric(12, 2), default=0)
