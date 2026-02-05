@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Link from 'next/link';
+import { API_URL } from '@/lib/api';
 
 interface TimeClockEntry {
   id: number;
@@ -57,7 +58,7 @@ export default function TimeClockPage() {
       const token = localStorage.getItem('access_token');
 
       // Load current status
-      const statusResponse = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/staff/time-clock/status`, {
+      const statusResponse = await fetch(`${API_URL}/staff/time-clock/status`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (statusResponse.ok) {
@@ -66,7 +67,7 @@ export default function TimeClockPage() {
 
       // Load time entries
       const entriesResponse = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/staff/time-clock/entries?start_date=${dateRange.start}&end_date=${dateRange.end}`,
+        `${API_URL}/staff/time-clock/entries?start_date=${dateRange.start}&end_date=${dateRange.end}`,
         { headers: { Authorization: `Bearer ${token}` } }
       );
       if (entriesResponse.ok) {
@@ -91,7 +92,7 @@ export default function TimeClockPage() {
   const handlePunchIn = async () => {
     try {
       const token = localStorage.getItem('access_token');
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/staff/time-clock/punch-in`, {
+      const response = await fetch(`${API_URL}/staff/time-clock/punch-in`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -110,7 +111,7 @@ export default function TimeClockPage() {
   const handlePunchOut = async () => {
     try {
       const token = localStorage.getItem('access_token');
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/staff/time-clock/punch-out`, {
+      const response = await fetch(`${API_URL}/staff/time-clock/punch-out`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -129,7 +130,7 @@ export default function TimeClockPage() {
   const handleStartBreak = async () => {
     try {
       const token = localStorage.getItem('access_token');
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/staff/time-clock/break/start`, {
+      const response = await fetch(`${API_URL}/staff/time-clock/break/start`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -144,7 +145,7 @@ export default function TimeClockPage() {
   const handleEndBreak = async () => {
     try {
       const token = localStorage.getItem('access_token');
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/staff/time-clock/break/end`, {
+      const response = await fetch(`${API_URL}/staff/time-clock/break/end`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}` },
       });

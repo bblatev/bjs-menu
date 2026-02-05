@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { API_URL } from '@/lib/api';
 
 interface StaffMember {
   id: number;
@@ -84,7 +85,7 @@ export default function StaffPerformancePage() {
     try {
       const token = localStorage.getItem('access_token');
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/staff`,
+        `${API_URL}/staff`,
         {
           headers: { Authorization: `Bearer ${token}` },
         }
@@ -110,7 +111,7 @@ export default function StaffPerformancePage() {
     try {
       const token = localStorage.getItem('access_token');
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/staff/performance/leaderboard?period=${period}&sort_by=${sortBy}`,
+        `${API_URL}/staff/performance/leaderboard?period=${period}&sort_by=${sortBy}`,
         {
           headers: { Authorization: `Bearer ${token}` },
         }
@@ -129,7 +130,7 @@ export default function StaffPerformancePage() {
     try {
       const token = localStorage.getItem('access_token');
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/staff/performance/goals`,
+        `${API_URL}/staff/performance/goals`,
         {
           headers: { Authorization: `Bearer ${token}` },
         }
@@ -150,7 +151,7 @@ export default function StaffPerformancePage() {
     try {
       const token = localStorage.getItem('access_token');
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/staff/performance/goals`,
+        `${API_URL}/staff/performance/goals`,
         {
           method: 'PUT',
           headers: {

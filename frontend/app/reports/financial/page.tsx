@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
+import { API_URL, getAuthHeaders } from '@/lib/api';
 
 interface ExpenseCategory {
   category: string;
@@ -64,8 +65,7 @@ export default function ReportsFinancialPage() {
     setLoading(true);
     try {
       const token = localStorage.getItem('access_token');
-      const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1';
-      const response = await fetch(`${API_BASE_URL}/financial/reports/financial?range=${dateRange}`, {
+      const response = await fetch(`${API_URL}/financial/reports/financial?range=${dateRange}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
 

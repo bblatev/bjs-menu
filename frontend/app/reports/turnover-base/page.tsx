@@ -1,11 +1,11 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { Button, Card, CardBody } from '@/components/ui';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1';
+import { API_URL, getAuthHeaders } from '@/lib/api';
 
 interface CategoryData {
   category: string;
@@ -56,11 +56,7 @@ export default function TurnoverBasePricesPage() {
   const [selectedCategory, setSelectedCategory] = useState<string>('');
   const [viewMode, setViewMode] = useState<'category' | 'item'>('category');
 
-  useEffect(() => {
-    loadReport();
-  }, [startDate, endDate, selectedCategory]);
-
-  const loadReport = async () => {
+  const loadReport = useCallback(async () => {
     setLoading(true);
     try {
       const token = localStorage.getItem('access_token');
@@ -82,7 +78,11 @@ export default function TurnoverBasePricesPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [startDate, endDate, selectedCategory]);
+
+  useEffect(() => {
+    loadReport();
+  }, [loadReport]);
 
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('bg-BG', {

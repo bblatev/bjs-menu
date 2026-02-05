@@ -148,8 +148,53 @@ def convert_to_simple_schema(card: GiftCardModel, db: Session) -> GiftCard:
 
 
 # ============================================================================
+# Pydantic Schemas for Programs
+# ============================================================================
+
+class GiftCardProgramCreate(BaseModel):
+    name: str
+    type: str = "standard"
+    denominations: Optional[list] = None
+    custom_amount_allowed: bool = True
+    min_amount: float = 5.00
+    max_amount: float = 500.00
+    bonus_enabled: bool = False
+    bonus_rules: Optional[dict] = None
+    expiration_months: Optional[int] = None
+
+
+# ============================================================================
 # Routes (Static routes BEFORE dynamic routes!)
 # ============================================================================
+
+@router.post("/programs")
+async def create_gift_card_program(data: GiftCardProgramCreate, db: DbSession):
+    """Create a gift card program."""
+    program = GiftCardProgram(
+        name=data.name,
+        denominations=data.denominations or [25, 50, 75, 100],
+        custom_amount_allowed=data.custom_amount_allowed,
+        min_amount=Decimal(str(data.min_amount)),
+        max_amount=Decimal(str(data.max_amount)),
+        bonus_enabled=data.bonus_enabled,
+        bonus_rules=data.bonus_rules,
+        expiration_months=data.expiration_months,
+        is_active=True,
+    )
+    db.add(program)
+    db.commit()
+    db.refresh(program)
+    return {
+        "id": program.id,
+        "name": program.name,
+        "denominations": program.denominations,
+        "custom_amount_allowed": program.custom_amount_allowed,
+        "min_amount": float(program.min_amount),
+        "max_amount": float(program.max_amount),
+        "bonus_enabled": program.bonus_enabled,
+        "is_active": program.is_active,
+    }
+
 
 @router.get("/stats/summary")
 async def get_gift_card_stats(db: DbSession):

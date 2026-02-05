@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { API_URL, getAuthHeaders } from '@/lib/api';
 
 interface MenuItem {
   id: number;
@@ -24,8 +25,6 @@ interface Table {
   status: string;
 }
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1';
-
 export default function NewOrderPage() {
   const router = useRouter();
   const [tables, setTables] = useState<Table[]>([]);
@@ -38,23 +37,10 @@ export default function NewOrderPage() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Get auth token from localStorage
-  const getAuthToken = () => {
-    if (typeof window !== 'undefined') {
-      return localStorage.getItem('access_token') || '';
-    }
-    return '';
-  };
 
   useEffect(() => {
     const fetchData = async () => {
-      const token = getAuthToken();
-      const headers: HeadersInit = {
-        'Content-Type': 'application/json',
-      };
-      if (token) {
-        headers['Authorization'] = `Bearer ${token}`;
-      }
+      const headers = getAuthHeaders();
 
       try {
         // Fetch real data from API
@@ -139,13 +125,7 @@ export default function NewOrderPage() {
     if (!selectedTable || orderItems.length === 0) return;
 
     setSubmitting(true);
-    const token = getAuthToken();
-    const headers: HeadersInit = {
-      'Content-Type': 'application/json',
-    };
-    if (token) {
-      headers['Authorization'] = `Bearer ${token}`;
-    }
+    const headers = getAuthHeaders();
 
     try {
       // Create order via API

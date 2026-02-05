@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
+import { API_URL } from '@/lib/api';
 
 interface DailySale {
   date: string;
@@ -65,7 +66,7 @@ export default function ReportsSalesPage() {
     setLoading(true);
     try {
       const token = localStorage.getItem('access_token');
-      let url = `${process.env.NEXT_PUBLIC_API_URL}/reports/sales?range=${dateRange}`;
+      let url = `${API_URL}/reports/sales?range=${dateRange}`;
 
       if (startDate && endDate) {
         url += `&start_date=${startDate}&end_date=${endDate}`;

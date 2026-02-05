@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Link from 'next/link';
+import { API_URL } from '@/lib/api';
 
 interface BankAccount {
   id: number;
@@ -58,7 +59,7 @@ export default function BankReconciliationPage() {
   const loadBankAccounts = async () => {
     try {
       const token = localStorage.getItem('access_token');
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/financial/bank-accounts`, {
+      const response = await fetch(`${API_URL}/financial/bank-accounts`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (response.ok) {
@@ -79,7 +80,7 @@ export default function BankReconciliationPage() {
     if (!selectedAccount || !formData.statement_balance) return;
     try {
       const token = localStorage.getItem('access_token');
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/financial/bank-reconciliation`, {
+      const response = await fetch(`${API_URL}/financial/bank-reconciliation`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -105,7 +106,7 @@ export default function BankReconciliationPage() {
     if (!reconciliation) return;
     try {
       const token = localStorage.getItem('access_token');
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/financial/bank-reconciliation/${reconciliation.id}/match`, {
+      const response = await fetch(`${API_URL}/financial/bank-reconciliation/${reconciliation.id}/match`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -129,7 +130,7 @@ export default function BankReconciliationPage() {
     if (!reconciliation) return;
     try {
       const token = localStorage.getItem('access_token');
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/financial/bank-reconciliation/${reconciliation.id}/complete`, {
+      const response = await fetch(`${API_URL}/financial/bank-reconciliation/${reconciliation.id}/complete`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -148,7 +149,7 @@ export default function BankReconciliationPage() {
   const loadReconciliation = async (id: number) => {
     try {
       const token = localStorage.getItem('access_token');
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/financial/bank-reconciliation/${id}`, {
+      const response = await fetch(`${API_URL}/financial/bank-reconciliation/${id}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (response.ok) {

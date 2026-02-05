@@ -25,6 +25,7 @@ class IoTMonitoringService:
         min_threshold: Optional[float] = None,
         max_threshold: Optional[float] = None,
         maintenance_interval_days: Optional[int] = None,
+        is_active: bool = True,
     ) -> EquipmentSensor:
         """Register a new sensor."""
         sensor = EquipmentSensor(
@@ -36,7 +37,7 @@ class IoTMonitoringService:
             min_threshold=min_threshold,
             max_threshold=max_threshold,
             maintenance_interval_days=maintenance_interval_days,
-            is_active=True,
+            is_active=is_active,
         )
         self.db.add(sensor)
         self.db.commit()

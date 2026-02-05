@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+import { API_URL, getAuthHeaders } from '@/lib/api';
 
 interface Table {
   id: number;
@@ -52,12 +52,10 @@ export default function SubtablesPage() {
     loadData();
   }, []);
 
-  const getToken = () => localStorage.getItem("access_token");
 
   const loadData = async () => {
     try {
-      const token = getToken();
-      const headers = { Authorization: `Bearer ${token}` };
+      const headers = getAuthHeaders();
 
       const [tablesRes, staffRes] = await Promise.all([
         fetch(`${API_URL}/tables/`, { headers }),
@@ -99,15 +97,11 @@ export default function SubtablesPage() {
 
   const createSubtable = async () => {
     if (!selectedTable || !newSubtableName) return;
-    const token = getToken();
 
     try {
       const response = await fetch(`${API_URL}/tables/${selectedTable.id}/subtables`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
+        headers: getAuthHeaders(),
         body: JSON.stringify({
           name: newSubtableName,
           seats: newSubtableSeats,
@@ -130,15 +124,11 @@ export default function SubtablesPage() {
 
   const autoCreateSubtables = async () => {
     if (!selectedTable) return;
-    const token = getToken();
 
     try {
       const response = await fetch(`${API_URL}/tables/${selectedTable.id}/subtables/auto-create`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
+        headers: getAuthHeaders(),
         body: JSON.stringify({
           count: autoCreateCount,
           naming: autoCreateNaming,
@@ -159,15 +149,11 @@ export default function SubtablesPage() {
   };
 
   const occupySubtable = async (subtableId: number, guests: number) => {
-    const token = getToken();
 
     try {
       await fetch(`${API_URL}/subtables/${subtableId}/occupy`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
+        headers: getAuthHeaders(),
         body: JSON.stringify({ guests }),
       });
       loadData();
@@ -177,12 +163,11 @@ export default function SubtablesPage() {
   };
 
   const clearSubtable = async (subtableId: number) => {
-    const token = getToken();
 
     try {
       await fetch(`${API_URL}/subtables/${subtableId}/clear`, {
         method: "POST",
-        headers: { Authorization: `Bearer ${token}` },
+        headers: getAuthHeaders(),
       });
       loadData();
     } catch (error) {
@@ -192,12 +177,11 @@ export default function SubtablesPage() {
 
   const deleteSubtable = async (subtableId: number) => {
     if (!confirm("Delete this subtable?")) return;
-    const token = getToken();
 
     try {
       await fetch(`${API_URL}/subtables/${subtableId}`, {
         method: "DELETE",
-        headers: { Authorization: `Bearer ${token}` },
+        headers: getAuthHeaders(),
       });
       loadData();
     } catch (error) {
@@ -207,12 +191,11 @@ export default function SubtablesPage() {
 
   const mergeSubtables = async (tableId: number) => {
     if (!confirm("Merge all subtables back into the main table? This will delete all subtables.")) return;
-    const token = getToken();
 
     try {
       const response = await fetch(`${API_URL}/tables/${tableId}/subtables/merge`, {
         method: "POST",
-        headers: { Authorization: `Bearer ${token}` },
+        headers: getAuthHeaders(),
       });
 
       if (response.ok) {

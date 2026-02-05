@@ -78,12 +78,14 @@ export default function PriceListsPage() {
   const notify = (msg: string) => { setToast(msg); setTimeout(() => setToast(""), 3000); };
 
   const loadPriceLists = useCallback(async () => {
-    const res = await fetch(`${API()}/price-lists`, { headers: headers() });
+    const h = { Authorization: `Bearer ${token()}`, "Content-Type": "application/json" };
+    const res = await fetch(`${API()}/price-lists`, { headers: h });
     if (res.ok) setPriceLists(await res.json());
   }, []);
 
   const loadProducts = useCallback(async () => {
-    const res = await fetch(`${API()}/waiter/menu/quick`, { headers: headers() });
+    const h = { Authorization: `Bearer ${token()}`, "Content-Type": "application/json" };
+    const res = await fetch(`${API()}/waiter/menu/quick`, { headers: h });
     if (res.ok) setProducts(await res.json());
   }, []);
 
@@ -100,6 +102,7 @@ export default function PriceListsPage() {
     if (selectedPriceList) {
       loadProductPrices(selectedPriceList.id);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedPriceList]);
 
   const resetForm = () => {

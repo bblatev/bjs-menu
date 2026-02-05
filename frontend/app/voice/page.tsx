@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
+import { API_URL } from "@/lib/api";
 
 interface VoiceCommand {
   id: number;
@@ -192,7 +193,7 @@ export default function VoiceAssistantPage() {
     try {
       const token = localStorage.getItem("access_token");
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1'}/voice/command`,
+        `${API_URL}/voice/command`,
         {
           method: "POST",
           headers: {

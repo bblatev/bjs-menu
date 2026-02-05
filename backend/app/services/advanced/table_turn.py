@@ -21,12 +21,13 @@ class TableTurnService:
         location_id: int,
         table_id: int,
         party_size: int,
+        seated_at: Optional[datetime] = None,
     ) -> TableTurnMetric:
         """Start tracking a new table turn."""
         metric = TableTurnMetric(
             location_id=location_id,
             table_id=table_id,
-            seated_at=datetime.utcnow(),
+            seated_at=seated_at or datetime.utcnow(),
             party_size=party_size,
         )
         self.db.add(metric)

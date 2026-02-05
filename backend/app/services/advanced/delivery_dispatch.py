@@ -27,6 +27,7 @@ class DeliveryDispatchService:
         merchant_id: Optional[str] = None,
         commission_percent: Optional[float] = None,
         priority_rank: int = 1,
+        is_active: bool = True,
     ) -> DeliveryProvider:
         """Create a delivery provider configuration."""
         provider = DeliveryProvider(
@@ -39,7 +40,7 @@ class DeliveryDispatchService:
             per_mile_fee=per_mile_fee,
             commission_percent=commission_percent,
             priority_rank=priority_rank,
-            is_active=True,
+            is_active=is_active,
         )
         self.db.add(provider)
         self.db.commit()

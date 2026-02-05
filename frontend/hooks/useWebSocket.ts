@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, useCallback } from 'react';
+import { WS_URL } from '@/lib/api';
 
 // WebSocket event types
 export enum EventType {
@@ -91,13 +92,8 @@ export function useWebSocket(options: UseWebSocketOptions): UseWebSocketReturn {
   const [messages, setMessages] = useState<WebSocketMessage[]>([]);
 
   const getWebSocketUrl = useCallback(() => {
-    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    // Remove protocol and any /api/v1 suffix from the URL
-    const host = process.env.NEXT_PUBLIC_API_URL
-      ?.replace(/^https?:\/\//, '')
-      ?.replace(/\/api\/v1\/?$/, '') || 'localhost:8000';
     const channelParam = channels.join(',');
-    return `${protocol}//${host}/api/v1/ws/venue/${venueId}?channels=${channelParam}`;
+    return `${WS_URL}/api/v1/ws/venue/${venueId}?channels=${channelParam}`;
   }, [venueId, channels]);
 
   const startPingInterval = useCallback(() => {

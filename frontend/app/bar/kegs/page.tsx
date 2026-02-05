@@ -50,6 +50,7 @@ export default function KegsPage() {
 
   useEffect(() => {
     loadKegs();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filterStatus]);
 
   const getAuthHeaders = () => {

@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { API_URL } from '@/lib/api';
 
 interface StockItem {
   id: number;
@@ -106,7 +107,7 @@ export default function StockPage() {
     try {
       const token = localStorage.getItem("access_token");
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/stock/categories`,
+        `${API_URL}/stock/categories`,
         {
           headers: { Authorization: `Bearer ${token}` },
         }
@@ -129,7 +130,7 @@ export default function StockPage() {
   const loadStock = async () => {
     try {
       const token = localStorage.getItem("access_token");
-      let url = `${process.env.NEXT_PUBLIC_API_URL}/stock/`;
+      let url = `${API_URL}/stock/`;
       const params = new URLSearchParams();
       if (searchTerm) params.append("search", searchTerm);
       if (filterLowStock) params.append("low_stock_only", "true");
@@ -157,7 +158,7 @@ export default function StockPage() {
     try {
       const token = localStorage.getItem("access_token");
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/stock/movements/`,
+        `${API_URL}/stock/movements/`,
         {
           headers: { Authorization: `Bearer ${token}` },
         }
@@ -187,7 +188,7 @@ export default function StockPage() {
     try {
       const token = localStorage.getItem("access_token");
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/suppliers/`,
+        `${API_URL}/suppliers/`,
         {
           headers: { Authorization: `Bearer ${token}` },
         }
@@ -216,7 +217,7 @@ export default function StockPage() {
     try {
       const token = localStorage.getItem("access_token");
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/stock/alerts/`,
+        `${API_URL}/stock/alerts/`,
         {
           headers: { Authorization: `Bearer ${token}` },
         }
@@ -247,7 +248,7 @@ export default function StockPage() {
 
     try {
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/stock/`,
+        `${API_URL}/stock/`,
         {
           method: "POST",
           headers: {
@@ -274,7 +275,7 @@ export default function StockPage() {
 
     try {
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/stock/movements/`,
+        `${API_URL}/stock/movements/`,
         {
           method: "POST",
           headers: {
@@ -341,7 +342,7 @@ export default function StockPage() {
       }
 
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/stock/import`,
+        `${API_URL}/stock/import`,
         {
           method: "POST",
           headers: {
@@ -369,7 +370,7 @@ export default function StockPage() {
 
     try {
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/stock/export`,
+        `${API_URL}/stock/export`,
         {
           headers: { Authorization: `Bearer ${token}` },
         }

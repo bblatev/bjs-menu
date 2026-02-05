@@ -2,8 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
-
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1';
+import { API_URL, getAuthHeaders } from '@/lib/api';
 
 interface BarTab {
   id: number;
@@ -69,11 +68,10 @@ export default function BarTabsPage() {
     setLoading(true);
     setError(null);
     try {
-      const token = localStorage.getItem('token') || localStorage.getItem('auth_token') || localStorage.getItem('access_token');
-      const headers: HeadersInit = token ? { Authorization: `Bearer ${token}` } : {};
+      const headers = getAuthHeaders();
 
       // Build query params based on filter
-      let endpoint = `${API_BASE_URL}/pos/bar-tabs`;
+      let endpoint = `${API_URL}/pos/bar-tabs`;
       if (filter !== 'all') {
         const statusMap: Record<string, string> = {
           'open': 'open',
@@ -100,10 +98,9 @@ export default function BarTabsPage() {
 
   const loadStats = useCallback(async () => {
     try {
-      const token = localStorage.getItem('token') || localStorage.getItem('auth_token') || localStorage.getItem('access_token');
-      const headers: HeadersInit = token ? { Authorization: `Bearer ${token}` } : {};
+      const headers = getAuthHeaders();
 
-      const response = await fetch(`${API_BASE_URL}/tabs/stats`, { headers });
+      const response = await fetch(`${API_URL}/tabs/stats`, { headers });
       if (response.ok) {
         const data = await response.json();
         setStats(data);
@@ -120,13 +117,9 @@ export default function BarTabsPage() {
 
   const createTab = async () => {
     try {
-      const token = localStorage.getItem('access_token');
-      const response = await fetch(`${API_BASE_URL}/tabs/`, {
+      const response = await fetch(`${API_URL}/tabs/`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        },
+        headers: getAuthHeaders(),
         body: JSON.stringify({
           customer_name: newTabData.customer_name,
           customer_phone: newTabData.customer_phone || undefined,
@@ -160,13 +153,9 @@ export default function BarTabsPage() {
     if (!selectedTab) return;
 
     try {
-      const token = localStorage.getItem('access_token');
-      const response = await fetch(`${API_BASE_URL}/tabs/${selectedTab.id}/close`, {
+      const response = await fetch(`${API_URL}/tabs/${selectedTab.id}/close`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        },
+        headers: getAuthHeaders(),
         body: JSON.stringify({
           payment_method: 'card',
           tip_amount: tip,

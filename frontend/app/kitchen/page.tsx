@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
+import { API_URL, getAuthHeaders } from '@/lib/api';
 
 interface Station {
   id: string;
@@ -33,7 +34,6 @@ interface RecentTicket {
   station: string;
 }
 
-const API_URL = '/api/v1';
 
 const getStationIcon = (type: string): string => {
   switch (type) {
@@ -63,14 +63,6 @@ export default function KitchenPage() {
     rushOrders: 0,
     items86: 0,
   });
-
-  const getAuthHeaders = useCallback(() => {
-    const token = localStorage.getItem('access_token');
-    return {
-      'Authorization': `Bearer ${token}`,
-      'Content-Type': 'application/json',
-    };
-  }, []);
 
   const loadStations = useCallback(async () => {
     try {
@@ -111,7 +103,7 @@ export default function KitchenPage() {
         { id: 'EXPO-1', name: 'Expo Window', type: 'expo', icon: '📤', current_load: 0, max_capacity: 25, active_tickets: 0, overdue_tickets: 0, avg_time: 2 },
       ]);
     }
-  }, [getAuthHeaders]);
+  }, []);
 
   const loadAlerts = useCallback(async () => {
     try {
@@ -141,7 +133,7 @@ export default function KitchenPage() {
       console.error('Error loading alerts:', err);
       setAlerts([]);
     }
-  }, [getAuthHeaders]);
+  }, []);
 
   const loadRecentTickets = useCallback(async () => {
     try {
@@ -175,7 +167,7 @@ export default function KitchenPage() {
       console.error('Error loading tickets:', err);
       setRecentTickets([]);
     }
-  }, [getAuthHeaders]);
+  }, []);
 
   const loadStats = useCallback(async () => {
     try {
@@ -209,7 +201,7 @@ export default function KitchenPage() {
         items86: 0,
       });
     }
-  }, [getAuthHeaders]);
+  }, []);
 
   const mapAlertType = (alertType: string): 'rush' | 'overdue' | 'item_86' | 'vip' => {
     switch (alertType) {

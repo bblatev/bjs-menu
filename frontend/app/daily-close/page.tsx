@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { API_URL } from '@/lib/api';
 import Link from 'next/link';
 
 interface DailyReconciliation {
@@ -64,7 +65,7 @@ export default function DailyClosePage() {
     setLoading(true);
     try {
       const token = localStorage.getItem('access_token');
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/financial/daily-reconciliation/${selectedDate}`, {
+      const response = await fetch(`${API_URL}/financial/daily-reconciliation/${selectedDate}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (response.ok) {
@@ -85,7 +86,7 @@ export default function DailyClosePage() {
   const startDailyClose = async () => {
     try {
       const token = localStorage.getItem('access_token');
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/financial/daily-close?business_date=${selectedDate}`, {
+      const response = await fetch(`${API_URL}/financial/daily-close?business_date=${selectedDate}`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -108,7 +109,7 @@ export default function DailyClosePage() {
         }
       });
 
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/financial/daily-reconciliation/${reconciliation.id}/cash-count`, {
+      const response = await fetch(`${API_URL}/financial/daily-reconciliation/${reconciliation.id}/cash-count`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -131,7 +132,7 @@ export default function DailyClosePage() {
 
     try {
       const token = localStorage.getItem('access_token');
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/financial/daily-reconciliation/${reconciliation.id}/complete`, {
+      const response = await fetch(`${API_URL}/financial/daily-reconciliation/${reconciliation.id}/complete`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}` },
       });

@@ -41,7 +41,10 @@ class WasteTrackingEntry(Base, TimestampMixin):
     product_id: Mapped[Optional[int]] = mapped_column(ForeignKey("products.id"), nullable=True)
 
     # Waste details
-    category: Mapped[WasteCategory] = mapped_column(SQLEnum(WasteCategory), nullable=False)
+    category: Mapped[WasteCategory] = mapped_column(
+        SQLEnum(WasteCategory, values_callable=lambda x: [e.value for e in x]),
+        nullable=False,
+    )
     weight_kg: Mapped[Decimal] = mapped_column(Numeric(10, 3), nullable=False)
     cost_value: Mapped[Decimal] = mapped_column(Numeric(10, 2), nullable=False)
     carbon_kg: Mapped[Optional[Decimal]] = mapped_column(Numeric(10, 3), nullable=True)

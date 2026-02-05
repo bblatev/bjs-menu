@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
+import { API_URL } from '@/lib/api';
 
 interface PricingRule {
   id: number;
@@ -76,7 +77,7 @@ export default function DynamicPricingPage() {
   const loadRules = async () => {
     try {
       const token = localStorage.getItem('access_token');
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/marketing/pricing-rules`, {
+      const response = await fetch(`${API_URL}/marketing/pricing-rules`, {
         headers: {
           'Authorization': `Bearer ${token}`,
         },
@@ -130,8 +131,8 @@ export default function DynamicPricingPage() {
     try {
       const token = localStorage.getItem('access_token');
       const url = editingRule
-        ? `${process.env.NEXT_PUBLIC_API_URL}/marketing/pricing-rules/${editingRule.id}`
-        : `${process.env.NEXT_PUBLIC_API_URL}/marketing/pricing-rules`;
+        ? `${API_URL}/marketing/pricing-rules/${editingRule.id}`
+        : `${API_URL}/marketing/pricing-rules`;
 
       const response = await fetch(url, {
         method: editingRule ? 'PUT' : 'POST',
@@ -160,7 +161,7 @@ export default function DynamicPricingPage() {
     if (confirm('Delete this pricing rule?')) {
       try {
         const token = localStorage.getItem('access_token');
-        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/marketing/pricing-rules/${id}`, {
+        const response = await fetch(`${API_URL}/marketing/pricing-rules/${id}`, {
           method: 'DELETE',
           headers: {
             'Authorization': `Bearer ${token}`,
@@ -238,7 +239,7 @@ export default function DynamicPricingPage() {
   const toggleActive = async (id: number) => {
     try {
       const token = localStorage.getItem('access_token');
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/marketing/pricing-rules/${id}/toggle-active`, {
+      const response = await fetch(`${API_URL}/marketing/pricing-rules/${id}/toggle-active`, {
         method: 'PATCH',
         headers: {
           'Authorization': `Bearer ${token}`,

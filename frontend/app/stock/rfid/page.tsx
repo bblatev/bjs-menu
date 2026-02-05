@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 
 interface RFIDTag {
@@ -68,11 +68,6 @@ export default function RFIDPage() {
   const zones = ["warehouse", "kitchen", "bar", "storage", "receiving", "cold_storage"];
   const tagTypes = ["inventory", "asset", "container", "pallet", "shelf"];
 
-  useEffect(() => {
-    loadTags();
-    loadZoneSummary();
-  }, [filterZone, filterType, searchTerm]);
-
   const getAuthHeaders = () => {
     const token = localStorage.getItem("access_token");
     return {
@@ -81,7 +76,7 @@ export default function RFIDPage() {
     };
   };
 
-  const loadTags = async () => {
+  const loadTags = useCallback(async () => {
     try {
       let url = "/api/v1/inventory-hardware/rfid/tags?";
       if (filterZone !== "all") url += `zone=${filterZone}&`;
@@ -95,9 +90,9 @@ export default function RFIDPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [filterZone, filterType]);
 
-  const loadZoneSummary = async () => {
+  const loadZoneSummary = useCallback(async () => {
     try {
       const res = await fetch("/api/v1/inventory-hardware/rfid/zones/summary", {
         headers: getAuthHeaders(),
@@ -107,7 +102,12 @@ export default function RFIDPage() {
     } catch (err) {
       console.error("Failed to load zone summary:", err);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    loadTags();
+    loadZoneSummary();
+  }, [loadTags, loadZoneSummary]);
 
   const handleRegisterTag = async (e: React.FormEvent) => {
     e.preventDefault();

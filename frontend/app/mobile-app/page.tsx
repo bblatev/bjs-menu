@@ -60,33 +60,32 @@ export default function MobileAppBuilderPage() {
   const [activeTab, setActiveTab] = useState<'branding' | 'features' | 'builds' | 'analytics'>('branding');
 
   useEffect(() => {
-    loadApp();
-  }, []);
+    const loadApp = async () => {
+      try {
+        const token = localStorage.getItem('access_token');
+        const response = await fetch('/api/v1/enterprise/mobile-app', {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
 
-  const loadApp = async () => {
-    try {
-      const token = localStorage.getItem('access_token');
-      const response = await fetch('/api/v1/enterprise/mobile-app', {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        setApp(data.app);
-        setBuilds(data.builds || []);
-      } else {
-        // Mock data
+        if (response.ok) {
+          const data = await response.json();
+          setApp(data.app);
+          setBuilds(data.builds || []);
+        } else {
+          // Mock data
+          setApp(getMockApp());
+          setBuilds(getMockBuilds());
+        }
+      } catch (error) {
+        console.error('Error loading app:', error);
         setApp(getMockApp());
         setBuilds(getMockBuilds());
+      } finally {
+        setLoading(false);
       }
-    } catch (error) {
-      console.error('Error loading app:', error);
-      setApp(getMockApp());
-      setBuilds(getMockBuilds());
-    } finally {
-      setLoading(false);
-    }
-  };
+    };
+    loadApp();
+  }, []);
 
   const getMockApp = (): MobileApp => ({
     id: 1,

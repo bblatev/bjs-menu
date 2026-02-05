@@ -88,34 +88,35 @@ export default function TransactionsReportPage() {
   });
 
   useEffect(() => {
-    loadReport();
-  }, [dateFrom, dateTo, hourFrom, hourTo, paymentFilter, waiterFilter, statusFilter]);
+    const loadReport = async () => {
+      setLoading(true);
+      try {
+        const params = new URLSearchParams({
+          date_from: dateFrom,
+          date_to: dateTo,
+          hour_from: hourFrom,
+          hour_to: hourTo,
+          payment_method: paymentFilter,
+          waiter_id: waiterFilter,
+          status: statusFilter
+        });
 
-  const loadReport = async () => {
-    setLoading(true);
-    try {
-      const params = new URLSearchParams({
-        date_from: dateFrom,
-        date_to: dateTo,
-        hour_from: hourFrom,
-        hour_to: hourTo,
-        payment_method: paymentFilter,
-        waiter_id: waiterFilter,
-        status: statusFilter
-      });
-
-      const res = await fetch(`${API()}/reports/transactions?${params}`, { headers: headers() });
-      if (res.ok) {
-        setData(await res.json());
-      } else {
-        // Generate mock data for demo
+        const res = await fetch(`${API()}/reports/transactions?${params}`, { headers: headers() });
+        if (res.ok) {
+          setData(await res.json());
+        } else {
+          // Generate mock data for demo
+          setData(generateMockData());
+        }
+      } catch {
         setData(generateMockData());
       }
-    } catch {
-      setData(generateMockData());
-    }
-    setLoading(false);
-  };
+      setLoading(false);
+    };
+
+    loadReport();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dateFrom, dateTo, hourFrom, hourTo, paymentFilter, waiterFilter, statusFilter]);
 
   const generateMockData = (): TransactionReport => {
     const transactions: Transaction[] = [];

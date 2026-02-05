@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+import { API_URL, getAuthHeaders } from '@/lib/api';
 
 export default function SettingsPage() {
   const router = useRouter();
@@ -28,7 +28,7 @@ export default function SettingsPage() {
 
       const response = await fetch(
         `${API_URL}/settings/`,
-        { headers: { Authorization: `Bearer ${token}` } }
+        { headers: getAuthHeaders() }
       );
       if (response.ok) {
         const data = await response.json();
@@ -53,15 +53,11 @@ export default function SettingsPage() {
     setSuccess("");
 
     try {
-      const token = localStorage.getItem("access_token");
       const response = await fetch(
         `${API_URL}/settings/`,
         {
           method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
+          headers: getAuthHeaders(),
           body: JSON.stringify({ settings }),
         }
       );

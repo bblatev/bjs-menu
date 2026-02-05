@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { API_URL } from '@/lib/api';
 
 interface StockItem {
   id: number;
@@ -58,11 +59,9 @@ export default function StockCountsPage() {
 
   const loadCategoriesAndLocations = async () => {
     const token = localStorage.getItem('access_token');
-    const baseUrl = process.env.NEXT_PUBLIC_API_URL;
-
     try {
       // Load categories
-      const catRes = await fetch(`${baseUrl}/stock/categories`, {
+      const catRes = await fetch(`${API_URL}/stock/categories`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       if (catRes.ok) {
@@ -74,7 +73,7 @@ export default function StockCountsPage() {
       }
 
       // Load locations/warehouses
-      const locRes = await fetch(`${baseUrl}/warehouses`, {
+      const locRes = await fetch(`${API_URL}/warehouses`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       if (locRes.ok) {
@@ -93,10 +92,8 @@ export default function StockCountsPage() {
 
   const loadCounts = async () => {
     const token = localStorage.getItem('access_token');
-    const baseUrl = process.env.NEXT_PUBLIC_API_URL;
-
     try {
-      const res = await fetch(`${baseUrl}/stock/counts`, {
+      const res = await fetch(`${API_URL}/stock/counts`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       if (res.ok) {
@@ -110,10 +107,8 @@ export default function StockCountsPage() {
 
   const loadCountItems = async (countId: number) => {
     const token = localStorage.getItem('access_token');
-    const baseUrl = process.env.NEXT_PUBLIC_API_URL;
-
     try {
-      const res = await fetch(`${baseUrl}/stock/counts/${countId}`, {
+      const res = await fetch(`${API_URL}/stock/counts/${countId}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       if (res.ok) {
@@ -140,15 +135,13 @@ export default function StockCountsPage() {
 
   const handleStartCount = async () => {
     const token = localStorage.getItem('access_token');
-    const baseUrl = process.env.NEXT_PUBLIC_API_URL;
-
     try {
       const params = new URLSearchParams({
         count_type: newCount.type,
       });
       if (newCount.location) params.append('location', newCount.location);
 
-      const res = await fetch(`${baseUrl}/stock/counts?${params.toString()}`, {
+      const res = await fetch(`${API_URL}/stock/counts?${params.toString()}`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}` }
       });
@@ -188,10 +181,8 @@ export default function StockCountsPage() {
     if (!activeCount) return;
 
     const token = localStorage.getItem('access_token');
-    const baseUrl = process.env.NEXT_PUBLIC_API_URL;
-
     try {
-      const res = await fetch(`${baseUrl}/stock/counts/${activeCount.id}/items/${itemId}?counted_quantity=${countedQty}`, {
+      const res = await fetch(`${API_URL}/stock/counts/${activeCount.id}/items/${itemId}?counted_quantity=${countedQty}`, {
         method: 'PUT',
         headers: { Authorization: `Bearer ${token}` }
       });
@@ -220,10 +211,8 @@ export default function StockCountsPage() {
     if (!activeCount) return;
 
     const token = localStorage.getItem('access_token');
-    const baseUrl = process.env.NEXT_PUBLIC_API_URL;
-
     try {
-      const res = await fetch(`${baseUrl}/stock/counts/${activeCount.id}/complete`, {
+      const res = await fetch(`${API_URL}/stock/counts/${activeCount.id}/complete`, {
         method: 'PUT',
         headers: { Authorization: `Bearer ${token}` }
       });
@@ -243,10 +232,8 @@ export default function StockCountsPage() {
 
   const handleApproveCount = async (countId: number) => {
     const token = localStorage.getItem('access_token');
-    const baseUrl = process.env.NEXT_PUBLIC_API_URL;
-
     try {
-      const res = await fetch(`${baseUrl}/stock/counts/${countId}/approve?apply_adjustments=true`, {
+      const res = await fetch(`${API_URL}/stock/counts/${countId}/approve?apply_adjustments=true`, {
         method: 'PUT',
         headers: { Authorization: `Bearer ${token}` }
       });

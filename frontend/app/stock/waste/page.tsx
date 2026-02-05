@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { API_URL } from '@/lib/api';
 
 interface WasteRecord {
   id: number;
@@ -74,11 +75,9 @@ export default function WasteManagementPage() {
 
   const loadData = async () => {
     const token = localStorage.getItem('access_token');
-    const baseUrl = process.env.NEXT_PUBLIC_API_URL;
-
     try {
       // Load waste records
-      const recordsRes = await fetch(`${baseUrl}/stock/waste/records`, {
+      const recordsRes = await fetch(`${API_URL}/stock/waste/records`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       if (recordsRes.ok) {
@@ -87,7 +86,7 @@ export default function WasteManagementPage() {
       }
 
       // Load waste stats
-      const statsRes = await fetch(`${baseUrl}/stock/waste/stats`, {
+      const statsRes = await fetch(`${API_URL}/stock/waste/stats`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       if (statsRes.ok) {
@@ -103,7 +102,7 @@ export default function WasteManagementPage() {
       }
 
       // Load stock items for the dropdown
-      const stockRes = await fetch(`${baseUrl}/stock`, {
+      const stockRes = await fetch(`${API_URL}/stock`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       if (stockRes.ok) {
@@ -118,7 +117,7 @@ export default function WasteManagementPage() {
       }
 
       // Load waste insights
-      const insightsRes = await fetch(`${baseUrl}/stock/waste/insights`, {
+      const insightsRes = await fetch(`${API_URL}/stock/waste/insights`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       if (insightsRes.ok) {
@@ -145,8 +144,6 @@ export default function WasteManagementPage() {
     }
 
     const token = localStorage.getItem('access_token');
-    const baseUrl = process.env.NEXT_PUBLIC_API_URL;
-
     try {
       const params = new URLSearchParams({
         stock_item_id: selectedStockItemId.toString(),
@@ -157,7 +154,7 @@ export default function WasteManagementPage() {
       if (newRecord.notes) params.append('notes', newRecord.notes);
       if (newRecord.batch_number) params.append('batch_number', newRecord.batch_number);
 
-      const res = await fetch(`${baseUrl}/stock/waste/records?${params.toString()}`, {
+      const res = await fetch(`${API_URL}/stock/waste/records?${params.toString()}`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}` }
       });

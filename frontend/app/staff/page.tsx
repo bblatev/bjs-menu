@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
+import { API_URL } from '@/lib/api';
 
 interface StaffUser {
   id: number;
@@ -71,7 +72,7 @@ export default function StaffManagementPage() {
   const loadStaff = async () => {
     try {
       const token = localStorage.getItem("access_token");
-      let url = `${process.env.NEXT_PUBLIC_API_URL}/staff`;
+      let url = `${API_URL}/staff`;
 
       const params = new URLSearchParams();
       if (filterRole !== "all") params.append("role", filterRole);
@@ -99,7 +100,7 @@ export default function StaffManagementPage() {
     try {
       const token = localStorage.getItem("access_token");
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/tables/`,
+        `${API_URL}/tables/`,
         {
           headers: { Authorization: `Bearer ${token}` },
         }
@@ -119,7 +120,7 @@ export default function StaffManagementPage() {
       const token = localStorage.getItem("access_token");
       // Try the areas endpoint, fall back to extracting from tables
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/tables/areas`,
+        `${API_URL}/tables/areas`,
         {
           headers: { Authorization: `Bearer ${token}` },
         }
@@ -131,7 +132,7 @@ export default function StaffManagementPage() {
       } else {
         // Fallback: extract unique areas from tables data
         const tablesResponse = await fetch(
-          `${process.env.NEXT_PUBLIC_API_URL}/tables/`,
+          `${API_URL}/tables/`,
           {
             headers: { Authorization: `Bearer ${token}` },
           }
@@ -151,7 +152,7 @@ export default function StaffManagementPage() {
     try {
       const token = localStorage.getItem("access_token");
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/tables/assignments/?staff_user_id=${staffId}`,
+        `${API_URL}/tables/assignments/?staff_user_id=${staffId}`,
         {
           headers: { Authorization: `Bearer ${token}` },
         }
@@ -184,7 +185,7 @@ export default function StaffManagementPage() {
 
     try {
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/tables/assignments/bulk`,
+        `${API_URL}/tables/assignments/bulk`,
         {
           method: "POST",
           headers: {
@@ -250,7 +251,7 @@ export default function StaffManagementPage() {
       if (editingStaff) {
         // Update existing staff (name and role only)
         const response = await fetch(
-          `${process.env.NEXT_PUBLIC_API_URL}/staff/${editingStaff.id}`,
+          `${API_URL}/staff/${editingStaff.id}`,
           {
             method: "PUT",
             headers: {
@@ -279,7 +280,7 @@ export default function StaffManagementPage() {
         }
 
         const response = await fetch(
-          `${process.env.NEXT_PUBLIC_API_URL}/staff`,
+          `${API_URL}/staff`,
           {
             method: "POST",
             headers: {
@@ -324,7 +325,7 @@ export default function StaffManagementPage() {
 
     try {
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/staff/${id}/${endpoint}`,
+        `${API_URL}/staff/${id}/${endpoint}`,
         {
           method: "PATCH",
           headers: { Authorization: `Bearer ${token}` },
@@ -346,7 +347,7 @@ export default function StaffManagementPage() {
 
     try {
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/staff/${id}`,
+        `${API_URL}/staff/${id}`,
         {
           method: "DELETE",
           headers: { Authorization: `Bearer ${token}` },
@@ -389,7 +390,7 @@ export default function StaffManagementPage() {
 
     try {
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/staff/${pinStaff.id}/pin`,
+        `${API_URL}/staff/${pinStaff.id}/pin`,
         {
           method: "PATCH",
           headers: {
@@ -422,7 +423,7 @@ export default function StaffManagementPage() {
 
     try {
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/staff/${staffUser.id}/pin`,
+        `${API_URL}/staff/${staffUser.id}/pin`,
         {
           method: "DELETE",
           headers: { Authorization: `Bearer ${token}` },

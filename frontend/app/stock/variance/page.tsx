@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1';
+import { API_URL, getAuthHeaders } from '@/lib/api';
 
 interface VarianceRecord {
   id: number;
@@ -52,25 +52,6 @@ const ROOT_CAUSES = {
   unknown: { label: 'Unknown', color: 'bg-gray-500', icon: '❓' },
 };
 
-const DEMO_RECORDS: VarianceRecord[] = [
-  { id: 1, item_name: 'Chicken Breast', sku: 'MEAT-001', category: 'Meat', expected_quantity: 50, actual_quantity: 42, variance_quantity: -8, variance_percentage: -16.0, variance_cost: -68.00, unit: 'kg', root_cause: 'Over portioning in kitchen', root_cause_category: 'over_portion', date: '2024-12-28', count_id: 101, investigated: true, resolution: 'Updated portion guides', investigated_by: 'Manager' },
-  { id: 2, item_name: 'Premium Vodka', sku: 'LIQ-001', category: 'Spirits', expected_quantity: 12, actual_quantity: 10, variance_quantity: -2, variance_percentage: -16.7, variance_cost: -56.00, unit: 'bottles', root_cause: 'Suspected theft', root_cause_category: 'theft', date: '2024-12-28', count_id: 101, investigated: true, resolution: 'Installed bar camera', investigated_by: 'Manager' },
-  { id: 3, item_name: 'Fresh Tomatoes', sku: 'VEG-001', category: 'Produce', expected_quantity: 30, actual_quantity: 24, variance_quantity: -6, variance_percentage: -20.0, variance_cost: -19.20, unit: 'kg', root_cause: 'Spoilage - not rotated', root_cause_category: 'waste', date: '2024-12-28', count_id: 101, investigated: true, resolution: 'FIFO training conducted', investigated_by: 'Chef' },
-  { id: 4, item_name: 'Olive Oil', sku: 'OIL-001', category: 'Dry Goods', expected_quantity: 20, actual_quantity: 22, variance_quantity: 2, variance_percentage: 10.0, variance_cost: 24.00, unit: 'L', root_cause: 'Receiving error - extra received', root_cause_category: 'data_error', date: '2024-12-27', count_id: 100, investigated: true, resolution: 'System adjusted', investigated_by: 'Admin' },
-  { id: 5, item_name: 'Salmon Fillet', sku: 'FISH-001', category: 'Seafood', expected_quantity: 15, actual_quantity: 11, variance_quantity: -4, variance_percentage: -26.7, variance_cost: -88.00, unit: 'kg', root_cause: '', root_cause_category: 'unknown', date: '2024-12-28', count_id: 101, investigated: false, resolution: '', investigated_by: '' },
-  { id: 6, item_name: 'Mozzarella Cheese', sku: 'DAIRY-001', category: 'Dairy', expected_quantity: 18, actual_quantity: 15, variance_quantity: -3, variance_percentage: -16.7, variance_cost: -45.00, unit: 'kg', root_cause: 'Supplier shorted delivery', root_cause_category: 'supplier', date: '2024-12-27', count_id: 100, investigated: true, resolution: 'Credit received', investigated_by: 'Manager' },
-  { id: 7, item_name: 'Draft Beer', sku: 'BEV-001', category: 'Beverages', expected_quantity: 100, actual_quantity: 85, variance_quantity: -15, variance_percentage: -15.0, variance_cost: -18.00, unit: 'L', root_cause: '', root_cause_category: 'unknown', date: '2024-12-28', count_id: 101, investigated: false, resolution: '', investigated_by: '' },
-  { id: 8, item_name: 'Ground Coffee', sku: 'BEV-002', category: 'Beverages', expected_quantity: 10, actual_quantity: 9.5, variance_quantity: -0.5, variance_percentage: -5.0, variance_cost: -12.50, unit: 'kg', root_cause: 'Over-dosing espresso', root_cause_category: 'over_portion', date: '2024-12-28', count_id: 101, investigated: true, resolution: 'Grinder calibrated', investigated_by: 'Barista Lead' },
-];
-
-const DEMO_TREND: TrendData[] = [
-  { period: 'Week 48', variance_cost: -450, variance_percentage: -2.8 },
-  { period: 'Week 49', variance_cost: -380, variance_percentage: -2.4 },
-  { period: 'Week 50', variance_cost: -520, variance_percentage: -3.2 },
-  { period: 'Week 51', variance_cost: -290, variance_percentage: -1.8 },
-  { period: 'Week 52', variance_cost: -282.70, variance_percentage: -1.9 },
-];
-
 export default function VarianceAnalysisPage() {
   const [records, setRecords] = useState<VarianceRecord[]>([]);
   const [stats, setStats] = useState<VarianceStats | null>(null);
@@ -82,41 +63,28 @@ export default function VarianceAnalysisPage() {
   const [selectedRecord, setSelectedRecord] = useState<VarianceRecord | null>(null);
   const [showInvestigateModal, setShowInvestigateModal] = useState(false);
 
-  const getAuthToken = () => {
-    if (typeof window !== 'undefined') {
-      return localStorage.getItem('token') || localStorage.getItem('auth_token') || localStorage.getItem('access_token') || '';
-    }
-    return '';
-  };
 
   const fetchData = useCallback(async () => {
     setLoading(true);
     try {
-      const token = getAuthToken();
       const response = await fetch(`${API_URL}/stock/variance/analysis?period=${period}`, {
-        headers: { 'Authorization': `Bearer ${token}` },
+        headers: getAuthHeaders(),
       });
 
       if (response.ok) {
         const data = await response.json();
-        if (data.records && data.records.length > 0) {
-          setRecords(data.records);
+        setRecords(data.records || []);
+        setTrends(data.trends || []);
+        if (data.stats) {
           setStats(data.stats);
-          setTrends(data.trends || DEMO_TREND);
         } else {
-          setRecords(DEMO_RECORDS);
-          calculateStats(DEMO_RECORDS);
-          setTrends(DEMO_TREND);
+          calculateStats(data.records || []);
         }
       } else {
-        setRecords(DEMO_RECORDS);
-        calculateStats(DEMO_RECORDS);
-        setTrends(DEMO_TREND);
+        console.error('Failed to load variance data:', response.status);
       }
-    } catch {
-      setRecords(DEMO_RECORDS);
-      calculateStats(DEMO_RECORDS);
-      setTrends(DEMO_TREND);
+    } catch (err) {
+      console.error('Failed to fetch variance data:', err);
     } finally {
       setLoading(false);
     }

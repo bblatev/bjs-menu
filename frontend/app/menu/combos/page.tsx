@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
+import { API_URL } from '@/lib/api';
 
 interface MultiLang {
   bg: string;
@@ -93,8 +94,8 @@ export default function MenuCombosPage() {
       const headers = { 'Authorization': `Bearer ${token}` };
 
       const [combosRes, itemsRes] = await Promise.all([
-        fetch(`${process.env.NEXT_PUBLIC_API_URL}/menu-admin/combos`, { headers }),
-        fetch(`${process.env.NEXT_PUBLIC_API_URL}/menu-admin/items`, { headers }),
+        fetch(`${API_URL}/menu-admin/combos`, { headers }),
+        fetch(`${API_URL}/menu-admin/items`, { headers }),
       ]);
 
       if (combosRes.ok) {
@@ -157,8 +158,8 @@ export default function MenuCombosPage() {
     try {
       const token = localStorage.getItem('access_token');
       const url = editingCombo
-        ? `${process.env.NEXT_PUBLIC_API_URL}/menu-admin/combos/${editingCombo.id}`
-        : `${process.env.NEXT_PUBLIC_API_URL}/menu-admin/combos`;
+        ? `${API_URL}/menu-admin/combos/${editingCombo.id}`
+        : `${API_URL}/menu-admin/combos`;
 
       const response = await fetch(url, {
         method: editingCombo ? 'PUT' : 'POST',
@@ -188,7 +189,7 @@ export default function MenuCombosPage() {
 
     try {
       const token = localStorage.getItem('access_token');
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/menu-admin/combos/${id}`, {
+      const response = await fetch(`${API_URL}/menu-admin/combos/${id}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -306,7 +307,7 @@ export default function MenuCombosPage() {
   const toggleAvailable = async (id: number) => {
     try {
       const token = localStorage.getItem('access_token');
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/menu-admin/combos/${id}/toggle-available`, {
+      const response = await fetch(`${API_URL}/menu-admin/combos/${id}/toggle-available`, {
         method: 'PATCH',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -326,7 +327,7 @@ export default function MenuCombosPage() {
   const toggleFeatured = async (id: number) => {
     try {
       const token = localStorage.getItem('access_token');
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/menu-admin/combos/${id}/toggle-featured`, {
+      const response = await fetch(`${API_URL}/menu-admin/combos/${id}/toggle-featured`, {
         method: 'PATCH',
         headers: {
           'Authorization': `Bearer ${token}`,

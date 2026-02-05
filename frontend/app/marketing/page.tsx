@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
+import { API_URL } from "@/lib/api";
 
 // Types
 interface Campaign {
@@ -114,10 +115,10 @@ export default function MarketingPage() {
       };
 
       const [campaignsRes, promotionsRes, segmentsRes, statsRes] = await Promise.all([
-        fetch(`${process.env.NEXT_PUBLIC_API_URL}/marketing/campaigns?limit=10`, { headers }),
-        fetch(`${process.env.NEXT_PUBLIC_API_URL}/marketing/promotions?limit=10`, { headers }),
-        fetch(`${process.env.NEXT_PUBLIC_API_URL}/marketing/segments`, { headers }),
-        fetch(`${process.env.NEXT_PUBLIC_API_URL}/marketing/stats`, { headers }),
+        fetch(`${API_URL}/marketing/campaigns?limit=10`, { headers }),
+        fetch(`${API_URL}/marketing/promotions?limit=10`, { headers }),
+        fetch(`${API_URL}/marketing/segments`, { headers }),
+        fetch(`${API_URL}/marketing/stats`, { headers }),
       ]);
 
       if (campaignsRes.ok) {

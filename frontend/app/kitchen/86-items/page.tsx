@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { API_URL } from '@/lib/api';
 
 interface Item86 {
   id: number;
@@ -47,10 +48,9 @@ export default function Items86Page() {
     const loadData = async () => {
       try {
         const token = localStorage.getItem('access_token');
-        const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1';
 
         // Load 86'd items
-        const items86Response = await fetch(`${apiUrl}/kitchen/86/list`, {
+        const items86Response = await fetch(`${API_URL}/kitchen/86/list`, {
           headers: { 'Authorization': `Bearer ${token}` },
         });
         if (items86Response.ok) {
@@ -69,7 +69,7 @@ export default function Items86Page() {
         }
 
         // Load menu categories
-        const categoriesResponse = await fetch(`${apiUrl}/menu/categories`, {
+        const categoriesResponse = await fetch(`${API_URL}/menu/categories`, {
           headers: { 'Authorization': `Bearer ${token}` },
         });
         if (categoriesResponse.ok) {
@@ -81,7 +81,7 @@ export default function Items86Page() {
         }
 
         // Load menu items
-        const itemsResponse = await fetch(`${apiUrl}/menu/items`, {
+        const itemsResponse = await fetch(`${API_URL}/menu/items`, {
           headers: { 'Authorization': `Bearer ${token}` },
         });
         if (itemsResponse.ok) {
@@ -104,9 +104,8 @@ export default function Items86Page() {
   const handleUn86 = async (itemId: number) => {
     try {
       const token = localStorage.getItem('access_token');
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1';
 
-      const response = await fetch(`${apiUrl}/kitchen/86/${itemId}`, {
+      const response = await fetch(`${API_URL}/kitchen/86/${itemId}`, {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${token}` },
       });
@@ -137,9 +136,8 @@ export default function Items86Page() {
 
     try {
       const token = localStorage.getItem('access_token');
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1';
 
-      const response = await fetch(`${apiUrl}/kitchen/86`, {
+      const response = await fetch(`${API_URL}/kitchen/86`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,

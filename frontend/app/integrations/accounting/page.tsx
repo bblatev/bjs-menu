@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import AdminLayout from '@/components/AdminLayout';
+import { API_URL, getAuthHeaders } from '@/lib/api';
 
 interface Integration {
   type: string;
@@ -18,7 +19,6 @@ interface ConnectedIntegration {
   class: string;
 }
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1';
 
 export default function AccountingIntegrationsPage() {
   const [available, setAvailable] = useState<Integration[]>([]);
@@ -34,9 +34,9 @@ export default function AccountingIntegrationsPage() {
     const token = localStorage.getItem('access_token');
     try {
       const [availRes, connRes] = await Promise.all([
-        fetch(`\${API_URL}/integrations/accounting/available`),
-        fetch(`\${API_URL}/integrations/accounting/status`, {
-          headers: { 'Authorization': `Bearer \${token}` }
+        fetch(`${API_URL}/integrations/accounting/available`),
+        fetch(`${API_URL}/integrations/accounting/status`, {
+          headers: { 'Authorization': `Bearer ${token}` }
         })
       ]);
       
@@ -60,10 +60,10 @@ export default function AccountingIntegrationsPage() {
     const token = localStorage.getItem('access_token');
     
     try {
-      const res = await fetch(`\${API_URL}/integrations/accounting/connect`, {
+      const res = await fetch(`${API_URL}/integrations/accounting/connect`, {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer \${token}`,
+          'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
@@ -90,9 +90,9 @@ export default function AccountingIntegrationsPage() {
   const disconnectIntegration = async (type: string) => {
     const token = localStorage.getItem('access_token');
     try {
-      await fetch(`\${API_URL}/integrations/accounting/\${type}`, {
+      await fetch(`${API_URL}/integrations/accounting/${type}`, {
         method: 'DELETE',
-        headers: { 'Authorization': `Bearer \${token}` }
+        headers: { 'Authorization': `Bearer ${token}` }
       });
       await fetchData();
     } catch {
@@ -132,7 +132,7 @@ export default function AccountingIntegrationsPage() {
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: idx * 0.1 }}
-                  className={`bg-white rounded-xl shadow-sm border p-6 \${connected ? 'border-green-300 bg-green-50' : ''}`}
+                  className={`bg-white rounded-xl shadow-sm border p-6 ${connected ? 'border-green-300 bg-green-50' : ''}`}
                 >
                   <div className="flex items-start justify-between">
                     <div className="flex items-center gap-4">

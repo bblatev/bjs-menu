@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { API_URL } from '@/lib/api';
 
 interface KitchenMetrics {
   avgPrepTime: number;
@@ -70,7 +71,7 @@ export default function KitchenReportsPage() {
     setLoading(true);
     try {
       const token = localStorage.getItem('access_token');
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/reports/kitchen?range=${dateRange}`, {
+      const response = await fetch(`${API_URL}/reports/kitchen?range=${dateRange}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
 

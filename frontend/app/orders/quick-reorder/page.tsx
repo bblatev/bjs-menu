@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+import { API_URL, getAuthHeaders } from '@/lib/api';
 
 interface OrderItem {
   product_id: number;
@@ -73,14 +73,11 @@ export default function QuickReorderPage() {
     loadData();
   }, []);
 
-  const getToken = () => localStorage.getItem("access_token");
-  const getStaffId = () => localStorage.getItem("staff_id") || "1";
 
   const loadData = async () => {
     try {
-      const token = getToken();
-      const staffId = getStaffId();
-      const headers = { Authorization: `Bearer ${token}` };
+      const staffId = localStorage.getItem("staff_id") || "1";
+      const headers = getAuthHeaders();
 
       const [ordersRes, productsRes, tablesRes, recentItemsRes, mostUsedRes] =
         await Promise.all([
@@ -162,8 +159,6 @@ export default function QuickReorderPage() {
     }
 
     setSubmitting(true);
-    const token = getToken();
-
     try {
       const payload = {
         table_id: selectedTable,
@@ -180,10 +175,7 @@ export default function QuickReorderPage() {
 
       const response = await fetch(`${API_URL}/orders/`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
+        headers: getAuthHeaders(),
         body: JSON.stringify(payload),
       });
 

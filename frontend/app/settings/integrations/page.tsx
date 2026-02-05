@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { Button, Input, Card, CardBody, Badge } from '@/components/ui';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1';
+import { API_URL, getAuthHeaders } from '@/lib/api';
 
 interface Integration {
   id: string;

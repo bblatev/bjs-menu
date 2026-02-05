@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
+import { API_URL } from "@/lib/api";
 
 interface AnalyticsData {
   summary: {
@@ -35,7 +36,7 @@ export default function AnalyticsPage() {
     setLoading(true);
     try {
       const token = localStorage.getItem("access_token");
-      let url = `${process.env.NEXT_PUBLIC_API_URL}/analytics/dashboard?range=${dateRange}`;
+      let url = `${API_URL}/analytics/dashboard?range=${dateRange}`;
 
       if (dateRange === "custom" && startDate && endDate) {
         url += `&start_date=${startDate}&end_date=${endDate}`;

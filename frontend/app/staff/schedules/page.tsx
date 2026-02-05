@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { API_URL } from '@/lib/api';
 
 interface StaffMember {
   id: number;
@@ -111,7 +112,7 @@ export default function StaffSchedulesPage() {
     try {
       const token = localStorage.getItem('access_token');
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/staff/schedules/staff`,
+        `${API_URL}/staff/schedules/staff`,
         {
           headers: { Authorization: `Bearer ${token}` },
         }
@@ -135,7 +136,7 @@ export default function StaffSchedulesPage() {
       const endDate = formatDateKey(endDateObj);
 
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/staff/shifts?start_date=${startDate}&end_date=${endDate}`,
+        `${API_URL}/staff/shifts?start_date=${startDate}&end_date=${endDate}`,
         {
           headers: { Authorization: `Bearer ${token}` },
         }
@@ -159,7 +160,7 @@ export default function StaffSchedulesPage() {
       const endDate = formatDateKey(endDateObj);
 
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/staff/time-off?start_date=${startDate}&end_date=${endDate}`,
+        `${API_URL}/staff/time-off?start_date=${startDate}&end_date=${endDate}`,
         {
           headers: { Authorization: `Bearer ${token}` },
         }
@@ -235,8 +236,8 @@ export default function StaffSchedulesPage() {
     try {
       const token = localStorage.getItem('access_token');
       const url = editingShift
-        ? `${process.env.NEXT_PUBLIC_API_URL}/staff/shifts/${editingShift.id}`
-        : `${process.env.NEXT_PUBLIC_API_URL}/staff/shifts`;
+        ? `${API_URL}/staff/shifts/${editingShift.id}`
+        : `${API_URL}/staff/shifts`;
 
       const response = await fetch(url, {
         method: editingShift ? 'PUT' : 'POST',
@@ -266,7 +267,7 @@ export default function StaffSchedulesPage() {
     try {
       const token = localStorage.getItem('access_token');
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/staff/shifts/${shiftId}`,
+        `${API_URL}/staff/shifts/${shiftId}`,
         {
           method: 'DELETE',
           headers: { Authorization: `Bearer ${token}` },
@@ -292,7 +293,7 @@ export default function StaffSchedulesPage() {
       const startDate = formatDateKey(selectedWeek);
 
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/staff/shifts/copy-week`,
+        `${API_URL}/staff/shifts/copy-week`,
         {
           method: 'POST',
           headers: {
@@ -325,7 +326,7 @@ export default function StaffSchedulesPage() {
       const endDate = formatDateKey(endDateObj);
 
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/staff/shifts/publish`,
+        `${API_URL}/staff/shifts/publish`,
         {
           method: 'POST',
           headers: {

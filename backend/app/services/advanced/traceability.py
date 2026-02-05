@@ -34,6 +34,7 @@ class TraceabilityService:
         self,
         product_id: int,
         batch_id: Optional[int] = None,
+        trace_id: Optional[str] = None,
         farm_name: Optional[str] = None,
         farm_location: Optional[str] = None,
         harvest_date: Optional[date] = None,
@@ -45,7 +46,8 @@ class TraceabilityService:
         certifications: Optional[List[str]] = None,
     ) -> SupplyChainTrace:
         """Create a supply chain trace record."""
-        trace_id = self._generate_trace_id()
+        if not trace_id:
+            trace_id = self._generate_trace_id()
 
         # Generate blockchain hash
         trace_data = {

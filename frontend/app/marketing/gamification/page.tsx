@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
+import { API_URL } from '@/lib/api';
 
 interface Badge {
   id: string;
@@ -105,10 +106,10 @@ export default function MarketingGamificationPage() {
       };
 
       const [badgesRes, challengesRes, leaderboardRes, achievementsRes] = await Promise.all([
-        fetch(`${process.env.NEXT_PUBLIC_API_URL}/gamification/badges`, { headers }),
-        fetch(`${process.env.NEXT_PUBLIC_API_URL}/gamification/challenges`, { headers }),
-        fetch(`${process.env.NEXT_PUBLIC_API_URL}/gamification/leaderboard`, { headers }),
-        fetch(`${process.env.NEXT_PUBLIC_API_URL}/gamification/achievements/recent`, { headers }),
+        fetch(`${API_URL}/gamification/badges`, { headers }),
+        fetch(`${API_URL}/gamification/challenges`, { headers }),
+        fetch(`${API_URL}/gamification/leaderboard`, { headers }),
+        fetch(`${API_URL}/gamification/achievements/recent`, { headers }),
       ]);
 
       if (badgesRes.ok) {
@@ -177,7 +178,7 @@ export default function MarketingGamificationPage() {
   const handleCreateBadge = async () => {
     try {
       const token = localStorage.getItem('access_token');
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/gamification/badges`, {
+      const response = await fetch(`${API_URL}/gamification/badges`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -214,7 +215,7 @@ export default function MarketingGamificationPage() {
   const handleCreateChallenge = async () => {
     try {
       const token = localStorage.getItem('access_token');
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/gamification/challenges`, {
+      const response = await fetch(`${API_URL}/gamification/challenges`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -254,7 +255,7 @@ export default function MarketingGamificationPage() {
     if (confirm('Are you sure you want to delete this badge?')) {
       try {
         const token = localStorage.getItem('access_token');
-        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/gamification/badges/${id}`, {
+        const response = await fetch(`${API_URL}/gamification/badges/${id}`, {
           method: 'DELETE',
           headers: {
             'Authorization': `Bearer ${token}`,
@@ -277,7 +278,7 @@ export default function MarketingGamificationPage() {
     if (confirm('Are you sure you want to delete this challenge?')) {
       try {
         const token = localStorage.getItem('access_token');
-        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/gamification/challenges/${id}`, {
+        const response = await fetch(`${API_URL}/gamification/challenges/${id}`, {
           method: 'DELETE',
           headers: {
             'Authorization': `Bearer ${token}`,
@@ -299,7 +300,7 @@ export default function MarketingGamificationPage() {
   const toggleBadgeActive = async (id: string) => {
     try {
       const token = localStorage.getItem('access_token');
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/gamification/badges/${id}/toggle-active`, {
+      const response = await fetch(`${API_URL}/gamification/badges/${id}/toggle-active`, {
         method: 'PATCH',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -320,7 +321,7 @@ export default function MarketingGamificationPage() {
   const toggleChallengeActive = async (id: string) => {
     try {
       const token = localStorage.getItem('access_token');
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/gamification/challenges/${id}/toggle-active`, {
+      const response = await fetch(`${API_URL}/gamification/challenges/${id}/toggle-active`, {
         method: 'PATCH',
         headers: {
           'Authorization': `Bearer ${token}`,

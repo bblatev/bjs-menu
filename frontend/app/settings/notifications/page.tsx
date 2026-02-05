@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import AdminLayout from '@/components/AdminLayout';
+import { API_URL, getAuthHeaders } from '@/lib/api';
 
 interface AlertConfig {
   type: string;
@@ -21,8 +22,6 @@ interface NotificationPreferences {
     end: string;
   };
 }
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1';
 
 export default function NotificationSettingsPage() {
   const [alerts, setAlerts] = useState<AlertConfig[]>([]);

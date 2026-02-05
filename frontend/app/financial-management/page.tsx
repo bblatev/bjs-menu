@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1';
+import { API_URL, getAuthHeaders } from '@/lib/api';
 
 // ============ INTERFACES ============
 
@@ -208,10 +208,7 @@ export default function FinancialManagementPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const getAuthHeaders = (): HeadersInit => {
-    const token = localStorage.getItem('access_token');
-    return token ? { Authorization: `Bearer ${token}` } : {};
-  };
+
 
   const handleApiResponse = async (response: Response, fallbackError: string) => {
     if (response.status === 401 || response.status === 403) {
@@ -223,32 +220,32 @@ export default function FinancialManagementPage() {
   };
 
   const fetchAccounts = useCallback(async () => {
-    const response = await fetch(`${API_BASE_URL}/financial/accounts/`, { headers: getAuthHeaders() });
+    const response = await fetch(`${API_URL}/financial/accounts/`, { headers: getAuthHeaders() });
     const data = await handleApiResponse(response, 'Failed to fetch accounts');
     setAccounts(Array.isArray(data) ? data : data.accounts || []);
   }, []);
 
   const fetchTransactions = useCallback(async () => {
-    const response = await fetch(`${API_BASE_URL}/financial/transactions/`, { headers: getAuthHeaders() });
+    const response = await fetch(`${API_URL}/financial/transactions/`, { headers: getAuthHeaders() });
     const data = await handleApiResponse(response, 'Failed to fetch transactions');
     setTransactions(Array.isArray(data) ? data : data.transactions || []);
   }, []);
 
   const fetchInvoices = useCallback(async () => {
-    const response = await fetch(`${API_BASE_URL}/invoices/`, { headers: getAuthHeaders() });
+    const response = await fetch(`${API_URL}/invoices/`, { headers: getAuthHeaders() });
     const data = await handleApiResponse(response, 'Failed to fetch invoices');
     setInvoices(Array.isArray(data) ? data : data.items || data.invoices || []);
   }, []);
 
   const fetchVendors = useCallback(async () => {
-    const response = await fetch(`${API_BASE_URL}/suppliers/`, { headers: getAuthHeaders() });
+    const response = await fetch(`${API_URL}/suppliers/`, { headers: getAuthHeaders() });
     const data = await handleApiResponse(response, 'Failed to fetch vendors');
     setVendors(Array.isArray(data) ? data : data.suppliers || []);
   }, []);
 
   const fetchBudgets = useCallback(async () => {
     try {
-      const response = await fetch(`${API_BASE_URL}/financial/budgets/`, { headers: getAuthHeaders() });
+      const response = await fetch(`${API_URL}/financial/budgets/`, { headers: getAuthHeaders() });
       if (response.ok) {
         const data = await response.json();
         setBudgets(Array.isArray(data) ? data : data.budgets || []);
@@ -260,7 +257,7 @@ export default function FinancialManagementPage() {
 
   const fetchFinancialAlerts = useCallback(async () => {
     try {
-      const response = await fetch(`${API_BASE_URL}/financial/financial-alerts/`, { headers: getAuthHeaders() });
+      const response = await fetch(`${API_URL}/financial/financial-alerts/`, { headers: getAuthHeaders() });
       if (response.ok) {
         const data = await response.json();
         setAlerts(Array.isArray(data) ? data : data.alerts || []);
@@ -272,7 +269,7 @@ export default function FinancialManagementPage() {
 
   const fetchTaxConfigs = useCallback(async () => {
     try {
-      const response = await fetch(`${API_BASE_URL}/settings/tax/`, { headers: getAuthHeaders() });
+      const response = await fetch(`${API_URL}/settings/tax/`, { headers: getAuthHeaders() });
       if (response.ok) {
         const data = await response.json();
         setTaxConfigs(Array.isArray(data) ? data : data.configs || []);

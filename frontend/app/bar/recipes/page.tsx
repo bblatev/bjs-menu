@@ -2,8 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1';
+import { API_URL, getAuthHeaders } from '@/lib/api';
 
 interface Ingredient {
   id: number;
@@ -75,14 +74,6 @@ export default function BarRecipesPage() {
     preparation: [''],
   });
 
-  // Get auth token from localStorage
-  const getAuthToken = () => {
-    if (typeof window !== 'undefined') {
-      return localStorage.getItem('token') || localStorage.getItem('auth_token') || localStorage.getItem('access_token') || '';
-    }
-    return '';
-  };
-
   // Default recipes for fallback
   const defaultRecipes: Recipe[] = [
     {
@@ -132,11 +123,7 @@ export default function BarRecipesPage() {
   useEffect(() => {
     const fetchRecipes = async () => {
       setLoading(true);
-      const token = getAuthToken();
-      const headers: HeadersInit = { 'Content-Type': 'application/json' };
-      if (token) {
-        headers['Authorization'] = `Bearer ${token}`;
-      }
+      const headers = getAuthHeaders();
 
       try {
         const response = await fetch(
@@ -174,16 +161,12 @@ export default function BarRecipesPage() {
       return;
     }
 
-    const token = getAuthToken();
     const totalCost = newRecipe.ingredients.reduce((sum, ing) => sum + (ing.cost || 0), 0);
 
     try {
       const response = await fetch(`${API_URL}/bar/recipes`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
-        },
+        headers: getAuthHeaders(),
         body: JSON.stringify({
           name: newRecipe.name,
           category: newRecipe.category,
@@ -215,7 +198,7 @@ export default function BarRecipesPage() {
         // Refresh recipes
         const refreshResponse = await fetch(
           `${API_URL}/bar/recipes?category=${selectedCategory !== 'all' ? selectedCategory : ''}&search=${searchQuery}&sort_by=${sortBy}`,
-          { headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` } }
+          { headers: getAuthHeaders() }
         );
         if (refreshResponse.ok) {
           const data = await refreshResponse.json();

@@ -690,6 +690,7 @@ export default function WaiterTerminal() {
                       )}
                       {item.image ? (
                         <div className="w-full h-24 bg-gray-100 relative">
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
                           <img
                             src={item.image}
                             alt={item.name}

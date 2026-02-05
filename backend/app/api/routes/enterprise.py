@@ -160,8 +160,7 @@ INTEGRATIONS_MARKETPLACE = [
     {"id": "stripe", "name": "Stripe", "category": "payments", "description": "Payment processing", "icon": "stripe"},
 ]
 
-# Mobile config stored in database would be overkill - keep simple dict
-_mobile_config = {
+_DEFAULT_MOBILE_CONFIG = {
     "app_name": "BJ's Bar & Grill",
     "bundle_id": "com.bjsbar.app",
     "version": "1.0.0",
@@ -169,12 +168,35 @@ _mobile_config = {
     "theme_colors": {"primary": "#e68a00", "secondary": "#0066e6"},
 }
 
-# Throttle status is runtime state, not persisted
-_throttle_status = {
+_DEFAULT_THROTTLE_STATUS = {
     "is_throttling": False,
     "current_orders_per_hour": 0,
     "snoozed_until": None,
 }
+
+
+def _load_config(db, store_id: str, defaults: dict) -> dict:
+    """Load a config dict from the integrations table."""
+    from app.models.hardware import Integration
+    rec = db.query(Integration).filter(Integration.integration_id == store_id).first()
+    if rec and rec.config and isinstance(rec.config, dict):
+        return rec.config
+    return defaults.copy()
+
+
+def _save_config(db, store_id: str, data: dict, name: str = ""):
+    """Save a config dict to the integrations table."""
+    from app.models.hardware import Integration
+    rec = db.query(Integration).filter(Integration.integration_id == store_id).first()
+    if not rec:
+        rec = Integration(
+            integration_id=store_id, name=name or store_id,
+            category="enterprise", status="active", config=data,
+        )
+        db.add(rec)
+    else:
+        rec.config = data
+    db.commit()
 
 
 # ==================== MULTI-LOCATION ====================
@@ -332,13 +354,14 @@ def get_throttle_status(db: DbSession, location_id: Optional[int] = None):
     rule = db.query(ThrottleRuleModel).filter(ThrottleRuleModel.active == True).order_by(ThrottleRuleModel.priority.desc()).first()
     max_orders = rule.max_orders_per_hour if rule else 60
 
+    ts = _load_config(db, "enterprise_throttle", _DEFAULT_THROTTLE_STATUS)
     return ThrottleStatus(
-        is_throttling=_throttle_status["is_throttling"],
-        current_orders_per_hour=_throttle_status["current_orders_per_hour"],
+        is_throttling=ts.get("is_throttling", False),
+        current_orders_per_hour=ts.get("current_orders_per_hour", 0),
         max_orders_per_hour=max_orders,
         queue_length=0,
         estimated_wait_minutes=0,
-        snoozed_until=_throttle_status.get("snoozed_until"),
+        snoozed_until=ts.get("snoozed_until"),
     )
 
 
@@ -435,15 +458,20 @@ def snooze_throttling(
     minutes: int = 30,
 ):
     """Temporarily disable throttling."""
-    _throttle_status["snoozed_until"] = datetime.utcnow() + timedelta(minutes=minutes)
-    _throttle_status["is_throttling"] = False
-    return {"status": "snoozed", "until": _throttle_status["snoozed_until"]}
+    ts = _load_config(db, "enterprise_throttle", _DEFAULT_THROTTLE_STATUS)
+    snoozed_until = (datetime.utcnow() + timedelta(minutes=minutes)).isoformat()
+    ts["snoozed_until"] = snoozed_until
+    ts["is_throttling"] = False
+    _save_config(db, "enterprise_throttle", ts, "Throttle Status")
+    return {"status": "snoozed", "until": snoozed_until}
 
 
 @router.post("/throttling/resume")
 def resume_throttling(db: DbSession):
     """Resume throttling after snooze."""
-    _throttle_status["snoozed_until"] = None
+    ts = _load_config(db, "enterprise_throttle", _DEFAULT_THROTTLE_STATUS)
+    ts["snoozed_until"] = None
+    _save_config(db, "enterprise_throttle", ts, "Throttle Status")
     return {"status": "resumed"}
 
 
@@ -558,44 +586,22 @@ def get_hotel_guests(
 
 @router.post("/hotel-pms/sync-guests")
 def sync_hotel_guests(db: DbSession):
-    """Sync guests from hotel PMS."""
-    # Clear existing guests and add sample data
-    db.query(HotelGuestModel).delete()
+    """Sync guests from hotel PMS.
 
-    sample_guests = [
-        HotelGuestModel(
-            room_number="101",
-            guest_name="John Smith",
-            check_in=datetime.utcnow(),
-            check_out=datetime.utcnow() + timedelta(days=3),
-            vip_status="gold",
-        ),
-        HotelGuestModel(
-            room_number="205",
-            guest_name="Jane Doe",
-            check_in=datetime.utcnow(),
-            check_out=datetime.utcnow() + timedelta(days=2),
-        ),
-        HotelGuestModel(
-            room_number="302",
-            guest_name="Bob Wilson",
-            check_in=datetime.utcnow(),
-            check_out=datetime.utcnow() + timedelta(days=5),
-            vip_status="platinum",
-        ),
-    ]
-
-    for guest in sample_guests:
-        db.add(guest)
-
-    # Update last sync on hotel PMS integration
+    In production, this would call the actual PMS API to fetch current guests.
+    Currently returns the existing guest count since no PMS is connected.
+    """
     integration = db.query(IntegrationModel).filter(IntegrationModel.category == "hotel-pms").first()
-    if integration and integration.config:
-        integration.config["last_sync"] = datetime.utcnow().isoformat()
 
+    if not integration or not integration.config or not integration.config.get("connected"):
+        raise HTTPException(status_code=400, detail="Hotel PMS not connected. Configure PMS integration first.")
+
+    # Update last sync timestamp
+    integration.config = {**integration.config, "last_sync": datetime.utcnow().isoformat()}
     db.commit()
 
-    return {"status": "synced", "guests_count": len(sample_guests)}
+    guest_count = db.query(HotelGuestModel).count()
+    return {"status": "synced", "guests_count": guest_count}
 
 
 @router.post("/hotel-pms/charges")
@@ -700,7 +706,7 @@ def add_to_sync_queue(
 @router.get("/mobile-app")
 def get_mobile_app_config(db: DbSession):
     """Get mobile app configuration."""
-    return _mobile_config
+    return _load_config(db, "enterprise_mobile_app", _DEFAULT_MOBILE_CONFIG)
 
 
 @router.put("/mobile-app")
@@ -709,9 +715,9 @@ def update_mobile_app_config(
     config: MobileAppConfig,
 ):
     """Update mobile app configuration."""
-    global _mobile_config
-    _mobile_config = config.model_dump()
-    return _mobile_config
+    data = config.model_dump()
+    _save_config(db, "enterprise_mobile_app", data, "Mobile App Config")
+    return data
 
 
 @router.post("/mobile-app/build")
@@ -720,6 +726,7 @@ def trigger_mobile_build(
     platform: str = "both",  # ios, android, both
 ):
     """Trigger a new mobile app build."""
+    mc = _load_config(db, "enterprise_mobile_app", _DEFAULT_MOBILE_CONFIG)
     builds = []
     platforms = ["ios", "android"] if platform == "both" else [platform]
 
@@ -727,7 +734,7 @@ def trigger_mobile_build(
         build = {
             "build_id": f"BUILD-{p.upper()}-{datetime.utcnow().strftime('%Y%m%d%H%M%S')}",
             "platform": p,
-            "version": _mobile_config["version"],
+            "version": mc.get("version", "1.0.0"),
             "status": "building",
             "download_url": None,
             "created_at": datetime.utcnow(),

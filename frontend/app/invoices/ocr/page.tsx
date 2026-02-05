@@ -46,6 +46,7 @@ export default function InvoiceOCRPage() {
 
   useEffect(() => {
     loadJobs();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const loadJobs = async () => {

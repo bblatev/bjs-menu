@@ -2,8 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { Order, OrderItem, Table, Staff, OrderStats } from '../types';
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1';
+import { API_URL, getAuthHeaders } from '@/lib/api';
 
 interface UseOrdersReturn {
   orders: Order[];
@@ -19,22 +18,6 @@ interface UseOrdersReturn {
   refundOrder: (orderId: string, amount: number, reason: string) => Promise<boolean>;
   setPriority: (orderId: string, priority: Order['priority']) => Promise<void>;
   reprintOrder: (orderId: string, station: string) => Promise<void>;
-}
-
-function getAuthToken(): string {
-  if (typeof window !== 'undefined') {
-    return localStorage.getItem('access_token') || '';
-  }
-  return '';
-}
-
-function getAuthHeaders(): HeadersInit {
-  const token = getAuthToken();
-  const headers: HeadersInit = { 'Content-Type': 'application/json' };
-  if (token) {
-    headers['Authorization'] = `Bearer ${token}`;
-  }
-  return headers;
 }
 
 export function useOrders(autoRefresh: boolean = true, refreshIntervalMs: number = 30000): UseOrdersReturn {

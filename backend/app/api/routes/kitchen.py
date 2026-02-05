@@ -1,7 +1,7 @@
 """Kitchen Display System (KDS) routes - using database models."""
 
 from typing import Optional
-from datetime import datetime
+from datetime import datetime, timezone
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
@@ -40,7 +40,7 @@ def _sync_guest_order_status(db: DbSession, kitchen_order: KitchenOrder, new_sta
         if guest_order:
             guest_order.status = guest_status
             if new_status == "ready":
-                guest_order.ready_at = datetime.utcnow()
+                guest_order.ready_at = datetime.now(timezone.utc)
 
 
 class KitchenStats(BaseModel):
@@ -146,7 +146,7 @@ def get_kitchen_queue(
     for o in orders:
         wait_time = 0
         if o.created_at:
-            wait_time = int((datetime.utcnow() - o.created_at).total_seconds() / 60)
+            wait_time = int((datetime.now(timezone.utc) - o.created_at).total_seconds() / 60)
 
         queue_orders.append({
             "id": o.id,
@@ -193,7 +193,7 @@ def get_kitchen_tickets(
     for ko in db_orders:
         wait_time = 0
         if ko.created_at:
-            wait_time = int((datetime.utcnow() - ko.created_at).total_seconds() / 60)
+            wait_time = int((datetime.now(timezone.utc) - ko.created_at).total_seconds() / 60)
 
         kds_items = []
         if ko.items:
@@ -252,7 +252,7 @@ def bump_ticket(
     ticket_id: str,
 ):
     """Mark a ticket as bumped/completed."""
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
 
     # Check if it's a database ticket (prefixed with "db-")
     if ticket_id.startswith("db-"):
@@ -287,7 +287,7 @@ def start_ticket(
     ticket_id: str,
 ):
     """Mark a ticket as started/in progress."""
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
 
     # Check if it's a database ticket (prefixed with "db-")
     if ticket_id.startswith("db-"):
@@ -322,7 +322,7 @@ def recall_ticket(
     ticket_id: str,
 ):
     """Recall a bumped ticket back to the display."""
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
 
     # Check if it's a database ticket (prefixed with "db-")
     if ticket_id.startswith("db-"):
@@ -356,7 +356,7 @@ def void_ticket(
     reason: Optional[str] = None,
 ):
     """Void a ticket."""
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
 
     # Check if it's a database ticket (prefixed with "db-")
     if ticket_id.startswith("db-"):
@@ -525,7 +525,7 @@ def get_all_alerts(
     target_time = 15  # 15 minute target
     for ko in query.all():
         if ko.created_at:
-            wait_time = int((datetime.utcnow() - ko.created_at).total_seconds() / 60)
+            wait_time = int((datetime.now(timezone.utc) - ko.created_at).total_seconds() / 60)
             if wait_time > target_time:
                 alerts.append({
                     "id": ko.id,
@@ -584,7 +584,7 @@ def get_cook_time_alerts(
 
     for ko in query.all():
         if ko.created_at:
-            wait_time = int((datetime.utcnow() - ko.created_at).total_seconds() / 60)
+            wait_time = int((datetime.now(timezone.utc) - ko.created_at).total_seconds() / 60)
             if wait_time > target_time * 0.8:  # Alert at 80% of target
                 alerts.append({
                     "ticket_id": f"db-{ko.id}",
@@ -633,9 +633,9 @@ def start_order_preparation(
     kitchen_order = db.query(KitchenOrder).filter(KitchenOrder.id == order_id).first()
     if kitchen_order:
         kitchen_order.status = "cooking"
-        kitchen_order.started_at = datetime.utcnow()
+        kitchen_order.started_at = datetime.now(timezone.utc)
         db.commit()
-    return {"status": "ok", "order_id": order_id, "started_at": datetime.utcnow().isoformat()}
+    return {"status": "ok", "order_id": order_id, "started_at": datetime.now(timezone.utc).isoformat()}
 
 
 @router.post("/order/{order_id}/complete")
@@ -647,9 +647,9 @@ def complete_order(
     kitchen_order = db.query(KitchenOrder).filter(KitchenOrder.id == order_id).first()
     if kitchen_order:
         kitchen_order.status = "completed"
-        kitchen_order.completed_at = datetime.utcnow()
+        kitchen_order.completed_at = datetime.now(timezone.utc)
         db.commit()
-    return {"status": "ok", "order_id": order_id, "completed_at": datetime.utcnow().isoformat()}
+    return {"status": "ok", "order_id": order_id, "completed_at": datetime.now(timezone.utc).isoformat()}
 
 
 @router.post("/order/{order_id}/ready")
@@ -663,7 +663,7 @@ def mark_order_ready(
         kitchen_order.status = "ready"
         _sync_guest_order_status(db, kitchen_order, "ready")
         db.commit()
-    return {"status": "ok", "order_id": order_id, "ready_at": datetime.utcnow().isoformat()}
+    return {"status": "ok", "order_id": order_id, "ready_at": datetime.now(timezone.utc).isoformat()}
 
 
 @router.post("/item/{item_id}/available")
@@ -711,7 +711,7 @@ def get_pending_requests(
                 "priority": r.priority,
                 "station": r.station,
                 "created_at": r.created_at.isoformat() if r.created_at else None,
-                "wait_time_minutes": int((datetime.utcnow() - r.created_at).total_seconds() / 60) if r.created_at else 0,
+                "wait_time_minutes": int((datetime.now(timezone.utc) - r.created_at).total_seconds() / 60) if r.created_at else 0,
             }
             for r in requests
         ],
@@ -740,7 +740,7 @@ def confirm_request(
 
     kitchen_order.is_confirmed = True
     kitchen_order.confirmed_by = staff_id
-    kitchen_order.confirmed_at = datetime.utcnow()
+    kitchen_order.confirmed_at = datetime.now(timezone.utc)
     kitchen_order.status = "pending"  # Now it goes to kitchen queue
 
     db.commit()
@@ -772,7 +772,7 @@ def reject_request(
     kitchen_order.status = "cancelled"
     kitchen_order.rejection_reason = reason
     kitchen_order.confirmed_by = staff_id
-    kitchen_order.confirmed_at = datetime.utcnow()
+    kitchen_order.confirmed_at = datetime.now(timezone.utc)
 
     db.commit()
 

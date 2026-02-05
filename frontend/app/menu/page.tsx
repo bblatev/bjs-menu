@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
+import { API_URL } from "@/lib/api";
 
 interface MultiLang {
   bg: string;
@@ -128,9 +129,9 @@ export default function MenuPage() {
       const headers = { Authorization: `Bearer ${token}` };
 
       const [catsRes, itemsRes, stationsRes] = await Promise.all([
-        fetch(`${process.env.NEXT_PUBLIC_API_URL}/menu-admin/categories`, { headers }),
-        fetch(`${process.env.NEXT_PUBLIC_API_URL}/menu-admin/items`, { headers }),
-        fetch(`${process.env.NEXT_PUBLIC_API_URL}/menu-admin/stations`, { headers }),
+        fetch(`${API_URL}/menu-admin/categories`, { headers }),
+        fetch(`${API_URL}/menu-admin/items`, { headers }),
+        fetch(`${API_URL}/menu-admin/stations`, { headers }),
       ]);
 
       if (catsRes.ok) {
@@ -158,7 +159,7 @@ export default function MenuPage() {
     try {
       const token = getToken();
       const res = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/menu-admin/items/${itemId}/modifiers`,
+        `${API_URL}/menu-admin/items/${itemId}/modifiers`,
         { headers: { Authorization: `Bearer ${token}` } }
       );
       if (res.ok) {
@@ -177,7 +178,7 @@ export default function MenuPage() {
 
     try {
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/menu-admin/items`,
+        `${API_URL}/menu-admin/items`,
         {
           method: "POST",
           headers: {
@@ -216,7 +217,7 @@ export default function MenuPage() {
 
     try {
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/menu-admin/items/${editingItem.id}`,
+        `${API_URL}/menu-admin/items/${editingItem.id}`,
         {
           method: "PUT",
           headers: {
@@ -255,7 +256,7 @@ export default function MenuPage() {
 
     try {
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/menu-admin/items/${itemId}`,
+        `${API_URL}/menu-admin/items/${itemId}`,
         {
           method: "DELETE",
           headers: { Authorization: `Bearer ${token}` },
@@ -277,7 +278,7 @@ export default function MenuPage() {
 
     try {
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/menu-admin/items/${item.id}/toggle-available`,
+        `${API_URL}/menu-admin/items/${item.id}/toggle-available`,
         {
           method: "PATCH",
           headers: { Authorization: `Bearer ${token}` },
@@ -340,7 +341,7 @@ export default function MenuPage() {
 
     try {
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/menu-admin/categories`,
+        `${API_URL}/menu-admin/categories`,
         {
           method: "POST",
           headers: {
@@ -376,7 +377,7 @@ export default function MenuPage() {
 
     try {
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/menu-admin/categories/${editingCategory.id}`,
+        `${API_URL}/menu-admin/categories/${editingCategory.id}`,
         {
           method: "PUT",
           headers: {
@@ -417,7 +418,7 @@ export default function MenuPage() {
 
     try {
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/menu-admin/categories/${categoryId}`,
+        `${API_URL}/menu-admin/categories/${categoryId}`,
         {
           method: "DELETE",
           headers: { Authorization: `Bearer ${token}` },
@@ -482,7 +483,7 @@ export default function MenuPage() {
 
     try {
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/menu-admin/modifiers`,
+        `${API_URL}/menu-admin/modifiers`,
         {
           method: "POST",
           headers: {
@@ -519,7 +520,7 @@ export default function MenuPage() {
 
     try {
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/menu-admin/modifiers/${editingModifierGroup.id}`,
+        `${API_URL}/menu-admin/modifiers/${editingModifierGroup.id}`,
         {
           method: "PUT",
           headers: {
@@ -556,7 +557,7 @@ export default function MenuPage() {
 
     try {
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/menu-admin/modifiers/${groupId}`,
+        `${API_URL}/menu-admin/modifiers/${groupId}`,
         {
           method: "DELETE",
           headers: { Authorization: `Bearer ${token}` },
@@ -610,7 +611,7 @@ export default function MenuPage() {
 
     try {
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/menu-admin/modifiers/${targetGroupId}/options`,
+        `${API_URL}/menu-admin/modifiers/${targetGroupId}/options`,
         {
           method: "POST",
           headers: {
@@ -644,7 +645,7 @@ export default function MenuPage() {
 
     try {
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/menu-admin/modifiers/options/${editingOption.id}`,
+        `${API_URL}/menu-admin/modifiers/options/${editingOption.id}`,
         {
           method: "PUT",
           headers: {
@@ -679,7 +680,7 @@ export default function MenuPage() {
 
     try {
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/menu-admin/modifiers/options/${optionId}`,
+        `${API_URL}/menu-admin/modifiers/options/${optionId}`,
         {
           method: "DELETE",
           headers: { Authorization: `Bearer ${token}` },

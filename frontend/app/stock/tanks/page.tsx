@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 
 interface Tank {
@@ -47,10 +47,6 @@ export default function TanksPage() {
 
   const productTypes = ["oil", "sauce", "syrup", "wine", "spirits", "juice", "water", "other"];
 
-  useEffect(() => {
-    loadTanks();
-  }, [filterStatus]);
-
   const getAuthHeaders = () => {
     const token = localStorage.getItem("access_token");
     return {
@@ -59,7 +55,7 @@ export default function TanksPage() {
     };
   };
 
-  const loadTanks = async () => {
+  const loadTanks = useCallback(async () => {
     try {
       let url = "/api/v1/inventory-hardware/tanks";
       if (filterStatus !== "all") url += `?status=${filterStatus}`;
@@ -73,7 +69,11 @@ export default function TanksPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [filterStatus]);
+
+  useEffect(() => {
+    loadTanks();
+  }, [loadTanks]);
 
   const handleRegisterTank = async (e: React.FormEvent) => {
     e.preventDefault();

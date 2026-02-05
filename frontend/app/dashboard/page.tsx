@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1';
+import { API_URL, getAuthHeaders } from '@/lib/api';
 
 interface DashboardStats {
   total_orders_today: number;
@@ -69,24 +69,9 @@ function DashboardContent() {
   const [reservations, setReservations] = useState<Reservation[]>([]);
   const [systemHealth, setSystemHealth] = useState<SystemHealth>({ database: true, redis: true, api: true });
 
-  // Get auth token from localStorage
-  const getAuthToken = () => {
-    if (typeof window !== 'undefined') {
-      // Try both token keys for compatibility
-      return localStorage.getItem('access_token') || localStorage.getItem('auth_token') || '';
-    }
-    return '';
-  };
-
   // Fetch all dashboard data
   const fetchDashboardData = async () => {
-    const token = getAuthToken();
-    const headers: HeadersInit = {
-      'Content-Type': 'application/json',
-    };
-    if (token) {
-      headers['Authorization'] = `Bearer ${token}`;
-    }
+    const headers = getAuthHeaders();
 
     try {
       // Fetch all data in parallel with timeout
@@ -126,21 +111,24 @@ function DashboardContent() {
       // Process orders
       if (ordersRes.status === 'fulfilled' && ordersRes.value.ok) {
         const data = await ordersRes.value.json();
-        setOrders(Array.isArray(data) ? data : []);
+        const ordersList = Array.isArray(data) ? data : (data.orders || []);
+        setOrders(ordersList);
         apiWorking = true;
       }
 
       // Process tables
       if (tablesRes.status === 'fulfilled' && tablesRes.value.ok) {
         const data = await tablesRes.value.json();
-        setTables(Array.isArray(data) ? data : []);
+        const tablesList = Array.isArray(data) ? data : (data.tables || []);
+        setTables(tablesList);
         apiWorking = true;
       }
 
       // Process reservations
       if (reservationsRes.status === 'fulfilled' && reservationsRes.value.ok) {
         const data = await reservationsRes.value.json();
-        setReservations(Array.isArray(data) ? data : []);
+        const reservationsList = Array.isArray(data) ? data : (data.reservations || data.items || []);
+        setReservations(reservationsList);
         apiWorking = true;
       }
 

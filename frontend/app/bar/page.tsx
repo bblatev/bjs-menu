@@ -2,8 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1';
+import { API_URL, getAuthHeaders, clearAuth } from '@/lib/api';
 
 interface BarStats {
   totalSales: number;
@@ -56,25 +55,12 @@ export default function BarManagementPage() {
   const [isQuickPourOpen, setIsQuickPourOpen] = useState(false);
   const [quickPour, setQuickPour] = useState({ drink_name: '', type: 'sale' as 'sale' | 'comp' | 'spillage', quantity: 1, notes: '' });
 
-  // Get auth token from localStorage
-  const getAuthToken = () => {
-    if (typeof window !== 'undefined') {
-      return localStorage.getItem('token') || localStorage.getItem('auth_token') || localStorage.getItem('access_token') || '';
-    }
-    return '';
-  };
-
   useEffect(() => {
     const fetchBarData = async () => {
       setLoading(true);
-      const token = getAuthToken();
-      const headers: HeadersInit = { 'Content-Type': 'application/json' };
-      if (token) {
-        headers['Authorization'] = `Bearer ${token}`;
-      }
+      const headers = getAuthHeaders();
 
       try {
-        // Fetch all data in parallel
         const [statsRes, drinksRes, alertsRes, activityRes] = await Promise.allSettled([
           fetch(`${API_URL}/bar/stats?period=${selectedPeriod}`, { headers }),
           fetch(`${API_URL}/bar/top-drinks?period=${selectedPeriod}`, { headers }),
@@ -96,102 +82,61 @@ export default function BarManagementPage() {
             activeRecipes: data.active_recipes || 0
           });
         } else {
-          // Fallback to default data
-          setStats({
-            totalSales: 3450.00,
-            totalCost: 862.50,
-            pourCostPercentage: 25.0,
-            avgTicket: 28.75,
-            topCocktail: 'Mojito',
-            spillageToday: 45.00,
-            lowStockItems: 4,
-            activeRecipes: 86
-          });
+          setStats(null);
         }
 
         // Process top drinks
         if (drinksRes.status === 'fulfilled' && drinksRes.value.ok) {
           const data = await drinksRes.value.json();
-          if (Array.isArray(data) && data.length > 0) {
-            setTopDrinks(data.map((d: any) => ({
-              id: d.id,
-              name: d.name,
-              category: d.category,
-              soldToday: d.sold_today,
-              revenue: d.revenue,
-              pourCost: d.pour_cost,
-              margin: d.margin
-            })));
-          } else {
-            setTopDrinks([
-              { id: 1, name: 'Mojito', category: 'Cocktail', soldToday: 42, revenue: 420.00, pourCost: 21.5, margin: 78.5 },
-              { id: 2, name: 'Margarita', category: 'Cocktail', soldToday: 38, revenue: 380.00, pourCost: 23.0, margin: 77.0 },
-              { id: 3, name: 'Long Island', category: 'Cocktail', soldToday: 28, revenue: 392.00, pourCost: 28.5, margin: 71.5 },
-            ]);
-          }
+          const items = Array.isArray(data) ? data : [];
+          setTopDrinks(items.map((d: any) => ({
+            id: d.id,
+            name: d.name,
+            category: d.category,
+            soldToday: d.sold_today,
+            revenue: d.revenue,
+            pourCost: d.pour_cost,
+            margin: d.margin
+          })));
         } else {
-          setTopDrinks([
-            { id: 1, name: 'Mojito', category: 'Cocktail', soldToday: 42, revenue: 420.00, pourCost: 21.5, margin: 78.5 },
-            { id: 2, name: 'Margarita', category: 'Cocktail', soldToday: 38, revenue: 380.00, pourCost: 23.0, margin: 77.0 },
-          ]);
+          setTopDrinks([]);
         }
 
         // Process alerts
         if (alertsRes.status === 'fulfilled' && alertsRes.value.ok) {
           const data = await alertsRes.value.json();
-          if (Array.isArray(data)) {
-            setAlerts(data.map((a: any) => ({
-              id: a.id,
-              item_name: a.item_name,
-              current_stock: a.current_stock,
-              par_level: a.par_level,
-              unit: a.unit,
-              status: a.status
-            })));
-          }
+          setAlerts((Array.isArray(data) ? data : []).map((a: any) => ({
+            id: a.id,
+            item_name: a.item_name,
+            current_stock: a.current_stock,
+            par_level: a.par_level,
+            unit: a.unit,
+            status: a.status
+          })));
         } else {
-          setAlerts([
-            { id: 1, item_name: 'Grey Goose Vodka', current_stock: 2, par_level: 6, unit: 'bottles', status: 'critical' },
-            { id: 2, item_name: 'Bacardi White Rum', current_stock: 3, par_level: 8, unit: 'bottles', status: 'low' },
-          ]);
+          setAlerts([]);
         }
 
         // Process recent activity
         if (activityRes.status === 'fulfilled' && activityRes.value.ok) {
           const data = await activityRes.value.json();
-          if (Array.isArray(data)) {
-            setRecentPours(data.map((p: any) => ({
-              id: p.id,
-              drink_name: p.drink_name,
-              bartender: p.bartender,
-              time: p.time,
-              type: p.type,
-              amount: p.amount,
-              cost: p.cost
-            })));
-          }
+          setRecentPours((Array.isArray(data) ? data : []).map((p: any) => ({
+            id: p.id,
+            drink_name: p.drink_name,
+            bartender: p.bartender,
+            time: p.time,
+            type: p.type,
+            amount: p.amount,
+            cost: p.cost
+          })));
         } else {
-          setRecentPours([
-            { id: 1, drink_name: 'Mojito', bartender: 'Alex', time: '2 min ago', type: 'sale', amount: '1x', cost: 2.15 },
-            { id: 2, drink_name: 'Beer Draft', bartender: 'Maria', time: '5 min ago', type: 'sale', amount: '2x', cost: 1.80 },
-          ]);
+          setRecentPours([]);
         }
 
         setError(null);
       } catch (err) {
         console.error('Failed to fetch bar data:', err);
-        setError('Failed to load bar data. Showing default values.');
-        // Set fallback data
-        setStats({
-          totalSales: 3450.00,
-          totalCost: 862.50,
-          pourCostPercentage: 25.0,
-          avgTicket: 28.75,
-          topCocktail: 'Mojito',
-          spillageToday: 45.00,
-          lowStockItems: 4,
-          activeRecipes: 86
-        });
+        setError('Failed to load bar data. Please check your connection.');
       } finally {
         setLoading(false);
       }
@@ -228,13 +173,9 @@ export default function BarManagementPage() {
 
   const handleQuickPour = async () => {
     try {
-      const token = getAuthToken();
       const response = await fetch(`${API_URL}/bar/spillage/records`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(token && { 'Authorization': `Bearer ${token}` }),
-        },
+        headers: getAuthHeaders(),
         body: JSON.stringify({
           item_name: quickPour.drink_name,
           quantity: quickPour.quantity,
@@ -313,9 +254,7 @@ export default function BarManagementPage() {
           </button>
           <button
             onClick={() => {
-              localStorage.removeItem('token');
-              localStorage.removeItem('auth_token');
-              localStorage.removeItem('access_token');
+              clearAuth();
               window.location.href = '/login';
             }}
             className="p-2 text-surface-500 hover:text-surface-700 hover:bg-surface-100 rounded-lg transition-colors"
@@ -475,7 +414,9 @@ export default function BarManagementPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-surface-100">
-                {topDrinks.map((drink) => (
+                {topDrinks.length === 0 ? (
+                  <tr><td colSpan={5} className="px-4 py-8 text-center text-surface-500">No drink sales data yet</td></tr>
+                ) : topDrinks.map((drink) => (
                   <tr key={drink.id} className="hover:bg-surface-50">
                     <td className="px-4 py-3">
                       <div>
@@ -521,6 +462,9 @@ export default function BarManagementPage() {
             </Link>
           </div>
           <div className="p-4 space-y-3">
+            {alerts.length === 0 && (
+              <p className="text-center text-surface-500 py-4">No inventory alerts</p>
+            )}
             {alerts.map((alert) => (
               <div
                 key={alert.id}
@@ -557,6 +501,9 @@ export default function BarManagementPage() {
           </div>
         </div>
         <div className="divide-y divide-surface-100">
+          {recentPours.length === 0 && (
+            <p className="text-center text-surface-500 py-8">No recent bar activity</p>
+          )}
           {recentPours.map((pour) => (
             <div key={pour.id} className="px-4 py-3 flex items-center justify-between hover:bg-surface-50">
               <div className="flex items-center gap-3">

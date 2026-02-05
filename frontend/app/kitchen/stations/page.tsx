@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
+import { API_URL } from '@/lib/api';
 
 interface Station {
   id: string;
@@ -54,7 +55,7 @@ export default function KitchenStationsPage() {
       setIsLoading(true);
       setError(null);
       const token = localStorage.getItem('access_token');
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1'}/kitchen/stations`, {
+      const response = await fetch(`${API_URL}/kitchen/stations`, {
         headers: {
           'Authorization': `Bearer ${token}`,
         },
@@ -116,11 +117,10 @@ export default function KitchenStationsPage() {
   const handleSave = async () => {
     try {
       const token = localStorage.getItem('access_token');
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1';
 
       if (editingStation) {
         // Update existing station
-        const response = await fetch(`${apiUrl}/kitchen/stations/${editingStation.id}`, {
+        const response = await fetch(`${API_URL}/kitchen/stations/${editingStation.id}`, {
           method: 'PUT',
           headers: {
             'Content-Type': 'application/json',
@@ -139,7 +139,7 @@ export default function KitchenStationsPage() {
         ));
       } else {
         // Create new station
-        const response = await fetch(`${apiUrl}/kitchen/stations`, {
+        const response = await fetch(`${API_URL}/kitchen/stations`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -169,9 +169,8 @@ export default function KitchenStationsPage() {
     if (confirm('Are you sure you want to delete this station?')) {
       try {
         const token = localStorage.getItem('access_token');
-        const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1';
-
-        const response = await fetch(`${apiUrl}/kitchen/stations/${stationId}`, {
+  
+        const response = await fetch(`${API_URL}/kitchen/stations/${stationId}`, {
           method: 'DELETE',
           headers: {
             'Authorization': `Bearer ${token}`,
@@ -196,9 +195,8 @@ export default function KitchenStationsPage() {
       if (!station) return;
 
       const token = localStorage.getItem('access_token');
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1';
 
-      const response = await fetch(`${apiUrl}/kitchen/stations/${stationId}`, {
+      const response = await fetch(`${API_URL}/kitchen/stations/${stationId}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',

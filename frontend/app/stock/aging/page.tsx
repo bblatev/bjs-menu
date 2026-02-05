@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1';
+import { API_URL, getAuthHeaders } from '@/lib/api';
 
 interface AgingItem {
   id: number;
@@ -44,25 +44,6 @@ interface AgingBucket {
   percentage: number;
 }
 
-const DEMO_ITEMS: AgingItem[] = [
-  { id: 1, name: 'Fresh Salmon', sku: 'FISH-001', category: 'Seafood', batch_number: 'B-2024-1225', received_date: '2024-12-25', expiry_date: '2024-12-30', days_in_stock: 4, days_until_expiry: 1, quantity: 8, unit: 'kg', cost_per_unit: 22.00, total_value: 176.00, turnover_rate: 0.8, avg_days_to_sell: 5, aging_bucket: '0-7', risk_level: 'critical', location: 'Cold Storage' },
-  { id: 2, name: 'Heavy Cream', sku: 'DAIRY-002', category: 'Dairy', batch_number: 'B-2024-1220', received_date: '2024-12-20', expiry_date: '2025-01-03', days_in_stock: 9, days_until_expiry: 5, quantity: 12, unit: 'L', cost_per_unit: 4.50, total_value: 54.00, turnover_rate: 1.2, avg_days_to_sell: 4, aging_bucket: '8-14', risk_level: 'high', location: 'Cold Storage' },
-  { id: 3, name: 'Fresh Herbs Mix', sku: 'VEG-010', category: 'Produce', batch_number: 'B-2024-1227', received_date: '2024-12-27', expiry_date: '2025-01-01', days_in_stock: 2, days_until_expiry: 3, quantity: 5, unit: 'kg', cost_per_unit: 15.00, total_value: 75.00, turnover_rate: 1.5, avg_days_to_sell: 3, aging_bucket: '0-7', risk_level: 'high', location: 'Prep Area' },
-  { id: 4, name: 'Mozzarella Cheese', sku: 'DAIRY-001', category: 'Dairy', batch_number: 'B-2024-1218', received_date: '2024-12-18', expiry_date: '2025-01-10', days_in_stock: 11, days_until_expiry: 12, quantity: 15, unit: 'kg', cost_per_unit: 15.00, total_value: 225.00, turnover_rate: 0.9, avg_days_to_sell: 7, aging_bucket: '8-14', risk_level: 'medium', location: 'Cold Storage' },
-  { id: 5, name: 'Olive Oil (Premium)', sku: 'OIL-002', category: 'Dry Goods', batch_number: 'B-2024-1101', received_date: '2024-11-01', expiry_date: '2025-11-01', days_in_stock: 58, days_until_expiry: 307, quantity: 24, unit: 'L', cost_per_unit: 18.00, total_value: 432.00, turnover_rate: 0.3, avg_days_to_sell: 45, aging_bucket: '31-60', risk_level: 'low', location: 'Dry Storage' },
-  { id: 6, name: 'Truffle Oil', sku: 'OIL-005', category: 'Specialty', batch_number: 'B-2024-0915', received_date: '2024-09-15', expiry_date: '2025-03-15', days_in_stock: 105, days_until_expiry: 76, quantity: 6, unit: 'bottles', cost_per_unit: 45.00, total_value: 270.00, turnover_rate: 0.1, avg_days_to_sell: 90, aging_bucket: '60+', risk_level: 'medium', location: 'Dry Storage' },
-  { id: 7, name: 'Ground Beef', sku: 'MEAT-002', category: 'Meat', batch_number: 'B-2024-1226', received_date: '2024-12-26', expiry_date: '2024-12-31', days_in_stock: 3, days_until_expiry: 2, quantity: 18, unit: 'kg', cost_per_unit: 9.80, total_value: 176.40, turnover_rate: 1.8, avg_days_to_sell: 2, aging_bucket: '0-7', risk_level: 'high', location: 'Cold Storage' },
-  { id: 8, name: 'Canned Tomatoes', sku: 'CAN-001', category: 'Dry Goods', batch_number: 'B-2024-0801', received_date: '2024-08-01', expiry_date: '2026-08-01', days_in_stock: 150, days_until_expiry: 580, quantity: 48, unit: 'cans', cost_per_unit: 2.50, total_value: 120.00, turnover_rate: 0.2, avg_days_to_sell: 60, aging_bucket: '60+', risk_level: 'low', location: 'Dry Storage' },
-];
-
-const DEMO_BUCKETS: AgingBucket[] = [
-  { bucket: '0-7 days', count: 3, value: 427.40, percentage: 28.5 },
-  { bucket: '8-14 days', count: 2, value: 279.00, percentage: 18.6 },
-  { bucket: '15-30 days', count: 0, value: 0, percentage: 0 },
-  { bucket: '31-60 days', count: 1, value: 432.00, percentage: 28.8 },
-  { bucket: '60+ days', count: 2, value: 390.00, percentage: 26.0 },
-];
-
 export default function StockAgingPage() {
   const [items, setItems] = useState<AgingItem[]>([]);
   const [stats, setStats] = useState<AgingStats | null>(null);
@@ -72,41 +53,28 @@ export default function StockAgingPage() {
   const [riskFilter, setRiskFilter] = useState('all');
   const [sortBy, setSortBy] = useState<'days_in_stock' | 'days_until_expiry' | 'total_value' | 'turnover_rate'>('days_until_expiry');
 
-  const getAuthToken = () => {
-    if (typeof window !== 'undefined') {
-      return localStorage.getItem('token') || localStorage.getItem('auth_token') || localStorage.getItem('access_token') || '';
-    }
-    return '';
-  };
 
   const fetchData = useCallback(async () => {
     setLoading(true);
     try {
-      const token = getAuthToken();
       const response = await fetch(`${API_URL}/stock/aging`, {
-        headers: { 'Authorization': `Bearer ${token}` },
+        headers: getAuthHeaders(),
       });
 
       if (response.ok) {
         const data = await response.json();
-        if (data.items && data.items.length > 0) {
-          setItems(data.items);
+        setItems(data.items || []);
+        setBuckets(data.buckets || []);
+        if (data.stats) {
           setStats(data.stats);
-          setBuckets(data.buckets || DEMO_BUCKETS);
         } else {
-          setItems(DEMO_ITEMS);
-          calculateStats(DEMO_ITEMS);
-          setBuckets(DEMO_BUCKETS);
+          calculateStats(data.items || []);
         }
       } else {
-        setItems(DEMO_ITEMS);
-        calculateStats(DEMO_ITEMS);
-        setBuckets(DEMO_BUCKETS);
+        console.error('Failed to load aging data:', response.status);
       }
-    } catch {
-      setItems(DEMO_ITEMS);
-      calculateStats(DEMO_ITEMS);
-      setBuckets(DEMO_BUCKETS);
+    } catch (err) {
+      console.error('Failed to fetch aging data:', err);
     } finally {
       setLoading(false);
     }

@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import Link from 'next/link';
+import { API_URL, getAuthHeaders } from '@/lib/api';
 
 // Types
 interface ReportTab {
@@ -54,8 +55,6 @@ export default function ComprehensiveReportsPage() {
   const [loading, setLoading] = useState(false);
   const [kpis, setKpis] = useState<DashboardKPIs | null>(null);
   const [reportData, setReportData] = useState<any>(null);
-
-  const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1';
 
   const tabs: ReportTab[] = [
     { key: 'kpis', label: 'Dashboard KPIs', icon: '📊', endpoint: '/api/v1/analytics/dashboard/kpis' },

@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1';
+import { API_URL, getAuthHeaders } from '@/lib/api';
 
 interface Invoice {
   id: number;
@@ -80,19 +80,11 @@ export default function InvoicesPage() {
   const [statsError, setStatsError] = useState<string | null>(null);
   const [suppliersError, setSuppliersError] = useState<string | null>(null);
 
-  const getAuthHeaders = () => {
-    const token = typeof window !== 'undefined' ? localStorage.getItem('access_token') : null;
-    return {
-      'Content-Type': 'application/json',
-      ...(token && { 'Authorization': `Bearer ${token}` })
-    };
-  };
-
   const fetchInvoices = useCallback(async () => {
     setIsLoadingInvoices(true);
     setInvoicesError(null);
     try {
-      const response = await fetch(`${API_BASE_URL}/invoices/`, {
+      const response = await fetch(`${API_URL}/invoices/`, {
         headers: getAuthHeaders()
       });
       if (!response.ok) {
@@ -113,7 +105,7 @@ export default function InvoicesPage() {
     setIsLoadingStats(true);
     setStatsError(null);
     try {
-      const response = await fetch(`${API_BASE_URL}/invoices/stats`, {
+      const response = await fetch(`${API_URL}/invoices/stats`, {
         headers: getAuthHeaders()
       });
       if (!response.ok) {
@@ -134,7 +126,7 @@ export default function InvoicesPage() {
     setIsLoadingSuppliers(true);
     setSuppliersError(null);
     try {
-      const response = await fetch(`${API_BASE_URL}/suppliers/`, {
+      const response = await fetch(`${API_URL}/suppliers/`, {
         headers: getAuthHeaders()
       });
       if (!response.ok) {

@@ -41,6 +41,63 @@ def _utc_now() -> datetime:
     return datetime.now(timezone.utc)
 
 
+# ============ KPI Helpers ============
+
+def _compute_table_turns_kpi(db, today_start, yesterday_start, location_id):
+    """Compute table turns KPI from completed orders."""
+    from app.models.restaurant import Table as TableModel
+    table_count = db.query(func.count(TableModel.id))
+    if location_id:
+        table_count = table_count.filter(TableModel.location_id == location_id)
+    table_count = table_count.scalar() or 1
+
+    today_completed = db.query(func.count(GuestOrder.id)).filter(
+        GuestOrder.created_at >= today_start,
+        GuestOrder.status.in_(["served", "completed", "closed"]),
+    )
+    if location_id:
+        today_completed = today_completed.filter(GuestOrder.location_id == location_id)
+    today_turns = round((today_completed.scalar() or 0) / table_count, 1)
+
+    yesterday_completed = db.query(func.count(GuestOrder.id)).filter(
+        GuestOrder.created_at >= yesterday_start,
+        GuestOrder.created_at < today_start,
+        GuestOrder.status.in_(["served", "completed", "closed"]),
+    )
+    if location_id:
+        yesterday_completed = yesterday_completed.filter(GuestOrder.location_id == location_id)
+    yesterday_turns = round((yesterday_completed.scalar() or 0) / table_count, 1)
+
+    change = round(today_turns - yesterday_turns, 1) if yesterday_turns else 0
+    return {"name": "Table Turns", "value": today_turns, "change": change, "trend": "up" if change >= 0 else "down", "unit": "ratio"}
+
+
+def _compute_food_cost_kpi(db, today_start, yesterday_start, location_id):
+    """Compute food cost % from orders with base_price data."""
+    from app.models.restaurant import MenuItem as MenuItemModel
+    orders = db.query(GuestOrder).filter(GuestOrder.created_at >= today_start)
+    if location_id:
+        orders = orders.filter(GuestOrder.location_id == location_id)
+    orders = orders.all()
+
+    total_revenue = 0
+    total_cost = 0
+    for o in orders:
+        if o.items:
+            for item in o.items:
+                qty = item.get("quantity", 1)
+                price = item.get("price", 0)
+                total_revenue += price * qty
+                mid = item.get("menu_item_id") or item.get("id")
+                if mid:
+                    mi = db.query(MenuItemModel.base_price).filter(MenuItemModel.id == mid).first()
+                    if mi and mi.base_price:
+                        total_cost += float(mi.base_price) * qty
+
+    food_cost_pct = round(total_cost / total_revenue * 100, 1) if total_revenue > 0 else 0
+    return {"name": "Food Cost %", "value": food_cost_pct, "change": 0, "trend": "stable", "unit": "percentage"}
+
+
 # Dashboard
 
 @router.get("/dashboard")
@@ -138,7 +195,7 @@ def get_dashboard_stats(
         "total_revenue_today": round(total_revenue, 2),
         "active_orders": active_orders,
         "pending_calls": 0,
-        "average_rating": 4.5,
+        "average_rating": 0.0,
         "top_items": top_items,
         "orders_by_hour": orders_by_hour
     }
@@ -193,11 +250,8 @@ def get_dashboard_kpis(
             {"name": "Revenue Today", "value": round(today_revenue, 2), "change": revenue_change, "trend": "up" if revenue_change >= 0 else "down", "unit": "currency"},
             {"name": "Orders Today", "value": today_count, "change": order_change, "trend": "up" if order_change >= 0 else "down", "unit": "count"},
             {"name": "Avg Ticket", "value": round(today_avg_ticket, 2), "change": ticket_change, "trend": "up" if ticket_change >= 0 else "down", "unit": "currency"},
-            {"name": "Table Turns", "value": 2.4, "change": -5.0, "trend": "down", "unit": "ratio"},
-            {"name": "Labor Cost %", "value": 24.5, "change": -1.2, "trend": "up", "unit": "percentage"},
-            {"name": "Food Cost %", "value": 29.8, "change": 0.5, "trend": "down", "unit": "percentage"},
-            {"name": "Guest Satisfaction", "value": 4.7, "change": 2.0, "trend": "up", "unit": "rating"},
-            {"name": "Wait Time", "value": 12, "change": -15.0, "trend": "up", "unit": "minutes"},
+            _compute_table_turns_kpi(db, today_start, yesterday_start, location_id),
+            _compute_food_cost_kpi(db, today_start, yesterday_start, location_id),
         ],
         "comparison_period": "vs yesterday",
         "generated_at": datetime.utcnow().isoformat(),

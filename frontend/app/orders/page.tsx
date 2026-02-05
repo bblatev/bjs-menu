@@ -4,7 +4,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Link from 'next/link';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1';
+import { API_URL, getAuthHeaders } from '@/lib/api';
 
 // ============ INTERFACES ============
 
@@ -137,23 +137,9 @@ export default function OrdersPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [autoRefresh]);
 
-  // Get auth token from localStorage
-  const getAuthToken = () => {
-    if (typeof window !== 'undefined') {
-      return localStorage.getItem('access_token') || '';
-    }
-    return '';
-  };
-
   const loadData = async () => {
     setLoading(true);
-    const token = getAuthToken();
-    const headers: HeadersInit = {
-      'Content-Type': 'application/json',
-    };
-    if (token) {
-      headers['Authorization'] = `Bearer ${token}`;
-    }
+    const headers = getAuthHeaders();
 
     try {
       // Fetch all data in parallel
@@ -288,13 +274,7 @@ export default function OrdersPage() {
   // ============ HANDLERS ============
 
   const handleUpdateOrderStatus = async (orderId: string, newStatus: Order['status']) => {
-    const token = getAuthToken();
-    const headers: HeadersInit = {
-      'Content-Type': 'application/json',
-    };
-    if (token) {
-      headers['Authorization'] = `Bearer ${token}`;
-    }
+    const headers = getAuthHeaders();
 
     try {
       const response = await fetch(`${API_URL}/orders/${orderId}/status`, {
@@ -328,13 +308,7 @@ export default function OrdersPage() {
   };
 
   const handleUpdateItemStatus = async (orderId: string, itemId: string, newStatus: OrderItem['status']) => {
-    const token = getAuthToken();
-    const headers: HeadersInit = {
-      'Content-Type': 'application/json',
-    };
-    if (token) {
-      headers['Authorization'] = `Bearer ${token}`;
-    }
+    const headers = getAuthHeaders();
 
     try {
       await fetch(`${API_URL}/orders/${orderId}/items/${itemId}/status`, {
@@ -367,9 +341,7 @@ export default function OrdersPage() {
 
   const handleVoidOrder = async () => {
     if (!selectedOrder || !voidReason) return;
-    const token = getAuthToken();
-    const headers: HeadersInit = { 'Content-Type': 'application/json' };
-    if (token) headers['Authorization'] = `Bearer ${token}`;
+    const headers = getAuthHeaders();
 
     try {
       const response = await fetch(`${API_URL}/orders/${selectedOrder.id}/void`, {
@@ -393,9 +365,7 @@ export default function OrdersPage() {
     const reason = prompt('Причина за анулиране на артикула:');
     if (!reason) return;
 
-    const token = getAuthToken();
-    const headers: HeadersInit = { 'Content-Type': 'application/json' };
-    if (token) headers['Authorization'] = `Bearer ${token}`;
+    const headers = getAuthHeaders();
 
     try {
       const response = await fetch(`${API_URL}/orders/${selectedOrder.id}/items/${itemId}/void`, {
@@ -423,9 +393,7 @@ export default function OrdersPage() {
 
   const handleRefundOrder = async () => {
     if (!selectedOrder || !refundAmount || !refundReason) return;
-    const token = getAuthToken();
-    const headers: HeadersInit = { 'Content-Type': 'application/json' };
-    if (token) headers['Authorization'] = `Bearer ${token}`;
+    const headers = getAuthHeaders();
 
     try {
       const response = await fetch(`${API_URL}/orders/${selectedOrder.id}/refund`, {
@@ -450,9 +418,7 @@ export default function OrdersPage() {
 
   const handleReprintOrder = async (station: string = 'kitchen') => {
     if (!selectedOrder) return;
-    const token = getAuthToken();
-    const headers: HeadersInit = { 'Content-Type': 'application/json' };
-    if (token) headers['Authorization'] = `Bearer ${token}`;
+    const headers = getAuthHeaders();
 
     try {
       await fetch(`${API_URL}/orders/${selectedOrder.id}/reprint`, {
@@ -468,9 +434,7 @@ export default function OrdersPage() {
 
   const handleSetPriority = async (priority: 'rush' | 'high' | 'normal') => {
     if (!selectedOrder) return;
-    const token = getAuthToken();
-    const headers: HeadersInit = { 'Content-Type': 'application/json' };
-    if (token) headers['Authorization'] = `Bearer ${token}`;
+    const headers = getAuthHeaders();
 
     const endpoint = priority === 'rush'
       ? `${API_URL}/kitchen/rush/${selectedOrder.id}`

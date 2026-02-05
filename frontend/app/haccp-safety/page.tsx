@@ -1,7 +1,7 @@
 'use client';
 import React, { useState, useEffect, useCallback } from 'react';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1';
+import { API_URL, getAuthHeaders } from '@/lib/api';
 
 interface CriticalControlPoint {
   id: string;
@@ -52,34 +52,6 @@ interface Inspection {
   status: 'scheduled' | 'in_progress' | 'completed' | 'follow_up_required';
 }
 
-// Demo data for fallback
-const DEMO_CCPS: CriticalControlPoint[] = [
-  { id: '1', name: 'Хладилник 1', location: 'Кухня', hazardType: 'biological', criticalLimitMin: 0, criticalLimitMax: 5, unit: '°C', monitoringFrequency: '4 часа', lastReading: { value: 3.2, time: '14:30', recordedBy: 'Иван П.' }, status: 'ok' },
-  { id: '2', name: 'Фризер 1', location: 'Склад', hazardType: 'biological', criticalLimitMin: -25, criticalLimitMax: -18, unit: '°C', monitoringFrequency: '4 часа', lastReading: { value: -20, time: '14:30', recordedBy: 'Иван П.' }, status: 'ok' },
-  { id: '3', name: 'Готварска печка', location: 'Кухня', hazardType: 'biological', criticalLimitMin: 74, unit: '°C', monitoringFrequency: 'Всяка партида', lastReading: { value: 76, time: '13:45', recordedBy: 'Мария С.' }, status: 'ok' },
-  { id: '4', name: 'Витрина десерти', location: 'Бар', hazardType: 'biological', criticalLimitMin: 2, criticalLimitMax: 8, unit: '°C', monitoringFrequency: '4 часа', lastReading: { value: 9.5, time: '14:00', recordedBy: 'Петър К.' }, status: 'warning' },
-  { id: '5', name: 'Зона за миене', location: 'Кухня', hazardType: 'chemical', criticalLimitMin: 50, unit: 'ppm', monitoringFrequency: 'Дневно', lastReading: { value: 55, time: '08:00', recordedBy: 'Иван П.' }, status: 'ok' },
-];
-
-const DEMO_TEMP_LOGS: TemperatureLog[] = [
-  { id: '1', ccpId: '1', ccpName: 'Хладилник 1', zone: 'Кухня', temperature: 3.2, recordedAt: '2025-12-24 14:30', recordedBy: 'Иван П.', status: 'ok' },
-  { id: '2', ccpId: '4', ccpName: 'Витрина десерти', zone: 'Бар', temperature: 9.5, recordedAt: '2025-12-24 14:00', recordedBy: 'Петър К.', status: 'warning', correctiveAction: 'Понижена температура' },
-  { id: '3', ccpId: '2', ccpName: 'Фризер 1', zone: 'Склад', temperature: -20, recordedAt: '2025-12-24 14:30', recordedBy: 'Иван П.', status: 'ok' },
-];
-
-const DEMO_BATCHES: FoodBatch[] = [
-  { id: '1', itemName: 'Пилешко филе', batchNumber: 'PF-2024-1220', supplier: 'Агро БГ', receivedDate: '2025-12-20', expiryDate: '2025-12-27', quantity: 15, unit: 'кг', storageLocation: 'Хладилник 1', allergens: [], status: 'active' },
-  { id: '2', itemName: 'Сметана 35%', batchNumber: 'SM-2024-1218', supplier: 'Млечни продукти ООД', receivedDate: '2025-12-18', expiryDate: '2025-12-25', quantity: 10, unit: 'л', storageLocation: 'Хладилник 2', allergens: ['Мляко'], status: 'active' },
-  { id: '3', itemName: 'Скариди', batchNumber: 'SK-2024-1222', supplier: 'Морски дарове', receivedDate: '2025-12-22', expiryDate: '2025-12-29', quantity: 8, unit: 'кг', storageLocation: 'Фризер 1', allergens: ['Ракообразни'], status: 'active' },
-  { id: '4', itemName: 'Брашно тип 500', batchNumber: 'BR-2024-1210', supplier: 'Мелница АД', receivedDate: '2025-12-10', expiryDate: '2026-06-10', quantity: 25, unit: 'кг', storageLocation: 'Склад сухи', allergens: ['Глутен'], status: 'active' },
-];
-
-const DEMO_INSPECTIONS: Inspection[] = [
-  { id: '1', type: 'internal', inspector: 'Мария Стоянова', date: '2025-12-20', score: 95, findings: [{ category: 'Хигиена', issue: 'Мръсни вентилационни решетки', severity: 'low' }], status: 'completed' },
-  { id: '2', type: 'regulatory', inspector: 'БАБХ', date: '2025-12-15', score: 92, findings: [], status: 'completed' },
-  { id: '3', type: 'external', inspector: 'ISO Сертификация', date: '2025-12-28', findings: [], status: 'scheduled' },
-];
-
 export default function HACCPFoodSafetyPage() {
   const [activeTab, setActiveTab] = useState<'dashboard' | 'ccp' | 'temperature' | 'batches' | 'inspections' | 'checklists'>('dashboard');
   const [isLoading, setIsLoading] = useState(true);
@@ -93,40 +65,21 @@ export default function HACCPFoodSafetyPage() {
   const fetchHACCPData = useCallback(async () => {
     setIsLoading(true);
     try {
-      const token = localStorage.getItem('access_token');
       const response = await fetch(`${API_URL}/haccp/dashboard`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
+        headers: getAuthHeaders(),
       });
 
       if (response.ok) {
         const data = await response.json();
-        if (data) {
-          setCcps(data.ccps || DEMO_CCPS);
-          setTempLogs(data.temperature_logs || DEMO_TEMP_LOGS);
-          setBatches(data.batches || DEMO_BATCHES);
-          setInspections(data.inspections || DEMO_INSPECTIONS);
-        } else {
-          setCcps(DEMO_CCPS);
-          setTempLogs(DEMO_TEMP_LOGS);
-          setBatches(DEMO_BATCHES);
-          setInspections(DEMO_INSPECTIONS);
-        }
+        setCcps(data.ccps || []);
+        setTempLogs(data.temperature_logs || []);
+        setBatches(data.batches || []);
+        setInspections(data.inspections || []);
       } else {
-        console.warn('API returned error, using demo data');
-        setCcps(DEMO_CCPS);
-        setTempLogs(DEMO_TEMP_LOGS);
-        setBatches(DEMO_BATCHES);
-        setInspections(DEMO_INSPECTIONS);
+        console.error('Failed to load HACCP data:', response.status);
       }
     } catch (err) {
-      console.warn('Failed to fetch from API, using demo data:', err);
-      setCcps(DEMO_CCPS);
-      setTempLogs(DEMO_TEMP_LOGS);
-      setBatches(DEMO_BATCHES);
-      setInspections(DEMO_INSPECTIONS);
+      console.error('Error fetching HACCP data:', err);
     } finally {
       setIsLoading(false);
     }

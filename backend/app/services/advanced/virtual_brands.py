@@ -27,6 +27,7 @@ class VirtualBrandsService:
         cuisine_type: Optional[str] = None,
         menu_ids: Optional[List[int]] = None,
         operating_hours: Optional[Dict[str, Any]] = None,
+        is_active: bool = True,
     ) -> VirtualBrand:
         """Create a new virtual brand."""
         brand = VirtualBrand(
@@ -39,7 +40,7 @@ class VirtualBrandsService:
             menu_ids=menu_ids,
             delivery_platforms=delivery_platforms,
             operating_hours=operating_hours,
-            is_active=True,
+            is_active=is_active,
         )
         self.db.add(brand)
         self.db.commit()

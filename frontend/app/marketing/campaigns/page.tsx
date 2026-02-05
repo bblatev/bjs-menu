@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
+import { API_URL } from '@/lib/api';
 
 interface Campaign {
   id: string;
@@ -68,7 +69,7 @@ export default function MarketingCampaignsPage() {
   const loadCampaigns = async () => {
     try {
       const token = localStorage.getItem('access_token');
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/marketing/campaigns`, {
+      const response = await fetch(`${API_URL}/marketing/campaigns`, {
         headers: {
           'Authorization': `Bearer ${token}`,
         },
@@ -88,7 +89,7 @@ export default function MarketingCampaignsPage() {
   const loadSegments = async () => {
     try {
       const token = localStorage.getItem('access_token');
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/marketing/segments`, {
+      const response = await fetch(`${API_URL}/marketing/segments`, {
         headers: {
           'Authorization': `Bearer ${token}`,
         },
@@ -113,7 +114,7 @@ export default function MarketingCampaignsPage() {
   const handleCreate = async () => {
     try {
       const token = localStorage.getItem('access_token');
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/marketing/campaigns`, {
+      const response = await fetch(`${API_URL}/marketing/campaigns`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -142,7 +143,7 @@ export default function MarketingCampaignsPage() {
     if (!editingCampaign) return;
     try {
       const token = localStorage.getItem('access_token');
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/marketing/campaigns/${editingCampaign.id}`, {
+      const response = await fetch(`${API_URL}/marketing/campaigns/${editingCampaign.id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -168,7 +169,7 @@ export default function MarketingCampaignsPage() {
     if (confirm('Are you sure you want to delete this campaign?')) {
       try {
         const token = localStorage.getItem('access_token');
-        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/marketing/campaigns/${id}`, {
+        const response = await fetch(`${API_URL}/marketing/campaigns/${id}`, {
           method: 'DELETE',
           headers: {
             'Authorization': `Bearer ${token}`,
@@ -194,7 +195,7 @@ export default function MarketingCampaignsPage() {
       const campaign = campaigns.find(c => c.id === id);
       const newStatus = campaign?.status === 'paused' ? 'active' : 'paused';
 
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/marketing/campaigns/${id}/status`, {
+      const response = await fetch(`${API_URL}/marketing/campaigns/${id}/status`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',

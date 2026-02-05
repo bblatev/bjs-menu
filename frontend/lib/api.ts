@@ -53,3 +53,73 @@ export const wsEndpoint = (path: string): string => {
   const cleanPath = path.startsWith('/') ? path : `/${path}`;
   return `${WS_URL}${cleanPath}`;
 };
+
+// API error class
+export class ApiError extends Error {
+  status: number;
+  data: any;
+
+  constructor(message: string, status: number, data?: any) {
+    super(message);
+    this.name = 'ApiError';
+    this.status = status;
+    this.data = data;
+  }
+}
+
+/**
+ * Centralized fetch wrapper with auth headers and error handling.
+ * Throws ApiError on non-ok responses — callers should catch and handle.
+ * No fallback data — pages should show error/empty states on failure.
+ */
+export async function apiFetch<T = any>(
+  path: string,
+  options: RequestInit = {}
+): Promise<T> {
+  const url = path.startsWith('http') ? path : `${API_URL}${path.startsWith('/') ? path : `/${path}`}`;
+
+  const headers = {
+    ...getAuthHeaders(),
+    ...(options.headers as Record<string, string> || {}),
+  };
+
+  // Don't set Content-Type for FormData (browser sets boundary automatically)
+  if (options.body instanceof FormData) {
+    delete headers['Content-Type'];
+  }
+
+  const res = await fetch(url, { ...options, headers });
+
+  if (!res.ok) {
+    let data: any;
+    try { data = await res.json(); } catch { data = null; }
+    throw new ApiError(
+      data?.detail || data?.message || `Request failed: ${res.status}`,
+      res.status,
+      data
+    );
+  }
+
+  // Handle 204 No Content
+  if (res.status === 204) return undefined as T;
+
+  return res.json();
+}
+
+// Convenience methods
+export const api = {
+  get: <T = any>(path: string, opts?: RequestInit) =>
+    apiFetch<T>(path, { ...opts, method: 'GET' }),
+
+  post: <T = any>(path: string, body?: any, opts?: RequestInit) =>
+    apiFetch<T>(path, { ...opts, method: 'POST', body: body instanceof FormData ? body : JSON.stringify(body) }),
+
+  put: <T = any>(path: string, body?: any, opts?: RequestInit) =>
+    apiFetch<T>(path, { ...opts, method: 'PUT', body: body instanceof FormData ? body : JSON.stringify(body) }),
+
+  patch: <T = any>(path: string, body?: any, opts?: RequestInit) =>
+    apiFetch<T>(path, { ...opts, method: 'PATCH', body: body instanceof FormData ? body : JSON.stringify(body) }),
+
+  del: <T = any>(path: string, opts?: RequestInit) =>
+    apiFetch<T>(path, { ...opts, method: 'DELETE' }),
+};

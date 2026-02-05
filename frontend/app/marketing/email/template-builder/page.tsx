@@ -6,7 +6,7 @@ import Link from 'next/link';
 import { PageLoading } from '@/components/ui/LoadingSpinner';
 import { ErrorAlert } from '@/components/ui/ErrorAlert';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1';
+import { API_URL, getAuthHeaders } from '@/lib/api';
 
 interface TemplateBlock {
   block_id: string;
@@ -68,7 +68,26 @@ export default function TemplateBuilderPage() {
   }, []);
 
   useEffect(() => {
+    const generatePreview = async () => {
+      if (!template.template_id && template.blocks.length === 0) {
+        setPreviewHtml('<div style="padding: 40px; text-align: center; color: #666;">Add blocks to see preview</div>');
+        return;
+      }
+
+      // Generate simple preview HTML
+      let html = `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; background: white; padding: 20px;">
+      `;
+
+      for (const block of template.blocks.sort((a, b) => a.order - b.order)) {
+        html += renderBlockHtml(block);
+      }
+
+      html += '</div>';
+      setPreviewHtml(html);
+    };
     generatePreview();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [template.blocks]);
 
   const loadTemplates = async () => {
@@ -86,25 +105,6 @@ export default function TemplateBuilderPage() {
     } finally {
       setLoading(false);
     }
-  };
-
-  const generatePreview = async () => {
-    if (!template.template_id && template.blocks.length === 0) {
-      setPreviewHtml('<div style="padding: 40px; text-align: center; color: #666;">Add blocks to see preview</div>');
-      return;
-    }
-
-    // Generate simple preview HTML
-    let html = `
-      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; background: white; padding: 20px;">
-    `;
-
-    for (const block of template.blocks.sort((a, b) => a.order - b.order)) {
-      html += renderBlockHtml(block);
-    }
-
-    html += '</div>';
-    setPreviewHtml(html);
   };
 
   const renderBlockHtml = (block: TemplateBlock): string => {

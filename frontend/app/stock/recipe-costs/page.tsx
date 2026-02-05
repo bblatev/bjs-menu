@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import AdminLayout from '@/components/AdminLayout';
+import { getAuthHeaders } from '@/lib/api';
 
 interface Ingredient {
   id: number;
@@ -55,12 +56,6 @@ export default function RecipeCostsPage() {
   const [showUnprofitableOnly, setShowUnprofitableOnly] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
 
-  const getAuthToken = () => {
-    if (typeof window !== 'undefined') {
-      return localStorage.getItem('token') || localStorage.getItem('auth_token') || localStorage.getItem('access_token') || '';
-    }
-    return '';
-  };
 
   useEffect(() => {
     fetchRecipeData();
@@ -70,8 +65,7 @@ export default function RecipeCostsPage() {
   const fetchRecipeData = async () => {
     setLoading(true);
     try {
-      const token = getAuthToken();
-      const headers = { 'Authorization': `Bearer ${token}` };
+      const headers = getAuthHeaders();
 
       try {
         const [recipesRes, statsRes] = await Promise.all([

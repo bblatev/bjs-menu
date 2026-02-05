@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
+import { API_URL, getAuthHeaders } from '@/lib/api';
 
 interface PMSConnection {
   id: number;
@@ -72,74 +73,45 @@ export default function HotelPMSPage() {
 
   const loadData = async () => {
     try {
-      const token = localStorage.getItem('access_token');
+      const headers = getAuthHeaders();
 
       // Load connection
-      const connRes = await fetch('/api/v1/enterprise/hotel-pms/connection', {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
+      const connRes = await fetch(`${API_URL}/enterprise/hotel-pms/connection`, { headers });
       if (connRes.ok) {
         const data = await connRes.json();
         setConnection(data);
       }
 
       // Load guests
-      const guestsRes = await fetch('/api/v1/enterprise/hotel-pms/guests', {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
+      const guestsRes = await fetch(`${API_URL}/enterprise/hotel-pms/guests`, { headers });
       if (guestsRes.ok) {
         const data = await guestsRes.json();
         setGuests(data);
-      } else {
-        setGuests(getMockGuests());
       }
 
       // Load charges
-      const chargesRes = await fetch('/api/v1/enterprise/hotel-pms/charges', {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
+      const chargesRes = await fetch(`${API_URL}/enterprise/hotel-pms/charges`, { headers });
       if (chargesRes.ok) {
         const data = await chargesRes.json();
         setCharges(data);
-      } else {
-        setCharges(getMockCharges());
       }
     } catch (error) {
-      console.error('Error loading data:', error);
-      setGuests(getMockGuests());
-      setCharges(getMockCharges());
+      console.error('Error loading hotel PMS data:', error);
     } finally {
       setLoading(false);
     }
   };
 
-  const getMockGuests = (): HotelGuest[] => [
-    { id: 1, external_guest_id: 'G001', first_name: 'John', last_name: 'Smith', room_number: '305', check_in_date: '2024-12-28', check_out_date: '2025-01-02', vip_status: 'Gold', fb_credit_balance: 150.00, total_charges: 245.50 },
-    { id: 2, external_guest_id: 'G002', first_name: 'Maria', last_name: 'Garcia', room_number: '412', check_in_date: '2024-12-27', check_out_date: '2024-12-31', fb_credit_balance: 0, total_charges: 89.00 },
-    { id: 3, external_guest_id: 'G003', first_name: 'David', last_name: 'Chen', room_number: '518', check_in_date: '2024-12-29', check_out_date: '2025-01-05', vip_status: 'Platinum', fb_credit_balance: 500.00, total_charges: 0 },
-  ];
-
-  const getMockCharges = (): RoomCharge[] => [
-    { id: 1, guest_name: 'John Smith', room_number: '305', amount: 85.50, description: 'Dinner - Restaurant', status: 'posted', created_at: '2024-12-28T19:30:00' },
-    { id: 2, guest_name: 'John Smith', room_number: '305', amount: 45.00, description: 'Bar Tab', status: 'posted', created_at: '2024-12-28T22:15:00' },
-    { id: 3, guest_name: 'Maria Garcia', room_number: '412', amount: 89.00, description: 'Room Service', status: 'pending', created_at: '2024-12-29T08:00:00' },
-  ];
-
   const handleConnect = async () => {
     if (!selectedProvider) return;
 
     try {
-      const token = localStorage.getItem('access_token');
-      const response = await fetch('/api/v1/enterprise/hotel-pms/connect', {
+      const response = await fetch(`${API_URL}/enterprise/hotel-pms/connect`, {
         method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
+        headers: getAuthHeaders(),
         body: JSON.stringify({
           provider: selectedProvider,
           config: {
-            // TODO: Replace with form inputs
             api_key: '',
             property_id: ''
           }
@@ -150,22 +122,7 @@ export default function HotelPMSPage() {
         const data = await response.json();
         setConnection(data);
       } else {
-        // Demo mode
-        const provider = PMS_PROVIDERS.find(p => p.id === selectedProvider);
-        setConnection({
-          id: 1,
-          provider: selectedProvider,
-          provider_name: provider?.name || selectedProvider,
-          property_name: 'Demo Hotel',
-          status: 'connected',
-          last_sync: new Date().toISOString(),
-          settings: {
-            auto_sync_guests: true,
-            allow_room_charges: true,
-            sync_fb_credits: true,
-            sync_packages: true,
-          }
-        });
+        console.error('Failed to connect PMS:', response.status);
       }
 
       setShowConnectModal(false);
@@ -179,31 +136,26 @@ export default function HotelPMSPage() {
     if (!confirm('Are you sure you want to disconnect from the PMS?')) return;
 
     try {
-      const token = localStorage.getItem('access_token');
-      await fetch('/api/v1/enterprise/hotel-pms/disconnect', {
+      await fetch(`${API_URL}/enterprise/hotel-pms/disconnect`, {
         method: 'POST',
-        headers: { 'Authorization': `Bearer ${token}` }
+        headers: getAuthHeaders(),
       });
       setConnection(null);
     } catch (error) {
       console.error('Error disconnecting:', error);
-      setConnection(null);
     }
   };
 
   const handleSync = async () => {
     setSyncing(true);
     try {
-      const token = localStorage.getItem('access_token');
-      await fetch('/api/v1/enterprise/hotel-pms/sync-guests', {
+      await fetch(`${API_URL}/enterprise/hotel-pms/sync-guests`, {
         method: 'POST',
-        headers: { 'Authorization': `Bearer ${token}` }
+        headers: getAuthHeaders(),
       });
       await loadData();
-      alert('Sync completed successfully!');
     } catch (error) {
       console.error('Error syncing:', error);
-      alert('Sync completed (demo mode)');
     } finally {
       setSyncing(false);
     }
@@ -213,13 +165,9 @@ export default function HotelPMSPage() {
     if (!newCharge.guest_id || !newCharge.amount) return;
 
     try {
-      const token = localStorage.getItem('access_token');
-      await fetch('/api/v1/enterprise/hotel-pms/charges', {
+      const response = await fetch(`${API_URL}/enterprise/hotel-pms/charges`, {
         method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
+        headers: getAuthHeaders(),
         body: JSON.stringify({
           guest_id: parseInt(newCharge.guest_id),
           amount: parseFloat(newCharge.amount),
@@ -227,18 +175,9 @@ export default function HotelPMSPage() {
         })
       });
 
-      // Demo mode - add to local state
-      const guest = guests.find(g => g.id === parseInt(newCharge.guest_id));
-      if (guest) {
-        setCharges(prev => [{
-          id: Date.now(),
-          guest_name: `${guest.first_name} ${guest.last_name}`,
-          room_number: guest.room_number,
-          amount: parseFloat(newCharge.amount),
-          description: newCharge.description,
-          status: 'pending',
-          created_at: new Date().toISOString(),
-        }, ...prev]);
+      if (response.ok) {
+        const data = await response.json();
+        setCharges(prev => [data, ...prev]);
       }
 
       setShowChargeModal(false);

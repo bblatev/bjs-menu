@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
+import { API_URL } from '@/lib/api';
 
 interface NutritionInfo {
   calories: number;
@@ -91,7 +92,7 @@ export default function AllergensNutritionPage() {
   const loadItems = async () => {
     try {
       const token = localStorage.getItem('access_token');
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/menu-admin/items-with-allergens`, {
+      const response = await fetch(`${API_URL}/menu-admin/items-with-allergens`, {
         headers: {
           'Authorization': `Bearer ${token}`,
         },
@@ -132,7 +133,7 @@ export default function AllergensNutritionPage() {
 
     try {
       const token = localStorage.getItem('access_token');
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/menu-admin/items/${editingItem.id}/allergens-nutrition`, {
+      const response = await fetch(`${API_URL}/menu-admin/items/${editingItem.id}/allergens-nutrition`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',

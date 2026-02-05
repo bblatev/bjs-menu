@@ -224,8 +224,10 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
       const hasActivePage = group.items.some(item =>
         pathname === item.href || pathname?.startsWith(item.href + '/')
       );
-      if (hasActivePage && !expandedGroups.includes(group.name)) {
-        setExpandedGroups(prev => [...prev, group.name]);
+      if (hasActivePage) {
+        setExpandedGroups(prev =>
+          prev.includes(group.name) ? prev : [...prev, group.name]
+        );
       }
     });
   }, [pathname]);

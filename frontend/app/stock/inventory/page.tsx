@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { API_URL } from '@/lib/api';
 
 interface Warehouse {
   id: number;
@@ -59,9 +60,6 @@ interface StockAdjustment {
 }
 
 type TabType = "overview" | "warehouses" | "batches" | "transfers" | "adjustments" | "expiring" | "valuation";
-
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1";
-
 export default function StockInventoryPage() {
   const [activeTab, setActiveTab] = useState<TabType>("overview");
   const [loading, setLoading] = useState(true);
@@ -125,7 +123,7 @@ export default function StockInventoryPage() {
 
     try {
       // Fetch warehouses
-      const warehousesRes = await fetch(`${API_BASE}/warehouses`, { headers });
+      const warehousesRes = await fetch(`${API_URL}/warehouses`, { headers });
       if (warehousesRes.ok) {
         const data = await warehousesRes.json();
         setWarehouses(data);
@@ -133,19 +131,19 @@ export default function StockInventoryPage() {
       }
 
       // Fetch stock items
-      const stockRes = await fetch(`${API_BASE}/stock`, { headers });
+      const stockRes = await fetch(`${API_URL}/stock`, { headers });
       if (stockRes.ok) setStockItems(await stockRes.json());
 
       // Fetch batches
-      const batchesRes = await fetch(`${API_BASE}/stock/batches`, { headers });
+      const batchesRes = await fetch(`${API_URL}/stock/batches`, { headers });
       if (batchesRes.ok) setBatches(await batchesRes.json());
 
       // Fetch transfers
-      const transfersRes = await fetch(`${API_BASE}/warehouses/transfers`, { headers });
+      const transfersRes = await fetch(`${API_URL}/warehouses/transfers`, { headers });
       if (transfersRes.ok) setTransfers(await transfersRes.json());
 
       // Fetch adjustments
-      const adjustmentsRes = await fetch(`${API_BASE}/stock/adjustments`, { headers });
+      const adjustmentsRes = await fetch(`${API_URL}/stock/adjustments`, { headers });
       if (adjustmentsRes.ok) setAdjustments(await adjustmentsRes.json());
 
     } catch (error) {
@@ -158,7 +156,7 @@ export default function StockInventoryPage() {
   const fetchExpiringItems = async () => {
     try {
       const token = localStorage.getItem("access_token");
-      const res = await fetch(`${API_BASE}/stock/expiring?days=30`, {
+      const res = await fetch(`${API_URL}/stock/expiring?days=30`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       if (res.ok) setExpiringItems(await res.json());
@@ -170,7 +168,7 @@ export default function StockInventoryPage() {
   const fetchValuation = async () => {
     try {
       const token = localStorage.getItem("access_token");
-      const res = await fetch(`${API_BASE}/stock/valuation`, {
+      const res = await fetch(`${API_URL}/stock/valuation`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       if (res.ok) setValuation(await res.json());
@@ -183,7 +181,7 @@ export default function StockInventoryPage() {
     setSaving(true);
     try {
       const token = localStorage.getItem("access_token");
-      const res = await fetch(`${API_BASE}/warehouses`, {
+      const res = await fetch(`${API_URL}/warehouses`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -211,7 +209,7 @@ export default function StockInventoryPage() {
     setSaving(true);
     try {
       const token = localStorage.getItem("access_token");
-      const res = await fetch(`${API_BASE}/warehouses/transfers`, {
+      const res = await fetch(`${API_URL}/warehouses/transfers`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -234,7 +232,7 @@ export default function StockInventoryPage() {
     if (!confirm("Mark this transfer as completed?")) return;
     try {
       const token = localStorage.getItem("access_token");
-      await fetch(`${API_BASE}/warehouses/transfers/${transferId}/complete`, {
+      await fetch(`${API_URL}/warehouses/transfers/${transferId}/complete`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
@@ -250,7 +248,7 @@ export default function StockInventoryPage() {
   const handleApproveAdjustment = async (adjustmentId: number) => {
     try {
       const token = localStorage.getItem("access_token");
-      await fetch(`${API_BASE}/stock/adjustments/${adjustmentId}/approve`, {
+      await fetch(`${API_URL}/stock/adjustments/${adjustmentId}/approve`, {
         method: "PUT",
         headers: { Authorization: `Bearer ${token}` }
       });

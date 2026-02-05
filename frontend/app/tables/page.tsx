@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { API_URL, getAuthHeaders } from '@/lib/api';
 
 interface Table {
   id: number;
@@ -35,7 +36,6 @@ const statusConfig = {
   merged: { label: 'Обединена', color: 'border-accent-300 bg-accent-50', text: 'text-accent-700', icon: '🔗' },
 };
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1';
 
 export default function TablesPage() {
   const [tables, setTables] = useState<Table[]>([]);

@@ -3,9 +3,7 @@
 import { useEffect, useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL;
-const WS_URL = process.env.NEXT_PUBLIC_WS_URL;
+import { API_URL, WS_URL } from '@/lib/api';
 
 interface WaiterCall {
   id: number;
@@ -252,7 +250,7 @@ export default function WaiterCallsPage() {
 
   const connectWebSocket = () => {
     try {
-      const socket = new WebSocket(`${WS_URL || 'ws://localhost:8000'}/ws/waiter-calls`);
+      const socket = new WebSocket(`${WS_URL}/ws/waiter-calls`);
 
       socket.onopen = () => { /* WebSocket connected */ };
       socket.onmessage = (event) => {

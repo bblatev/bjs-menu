@@ -28,6 +28,7 @@ class CrossSellService:
         trigger_cart_minimum: Optional[Decimal] = None,
         recommendation_message: Optional[str] = None,
         priority: int = 1,
+        is_active: bool = True,
     ) -> CrossSellRule:
         """Create a cross-sell rule."""
         rule = CrossSellRule(
@@ -41,7 +42,7 @@ class CrossSellService:
             recommendation_message=recommendation_message,
             display_position=display_position,
             priority=priority,
-            is_active=True,
+            is_active=is_active,
         )
         self.db.add(rule)
         self.db.commit()

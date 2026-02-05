@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1';
+import { API_URL, getAuthHeaders } from '@/lib/api';
 
 interface ParLevelItem {
   id: number;
@@ -35,17 +35,6 @@ interface ParLevelStats {
   avg_stock_days: number;
 }
 
-const DEMO_ITEMS: ParLevelItem[] = [
-  { id: 1, name: 'Chicken Breast', sku: 'MEAT-001', category: 'Meat', current_stock: 15, par_level: 50, reorder_point: 20, reorder_quantity: 40, unit: 'kg', avg_daily_usage: 8.5, lead_time_days: 2, safety_stock: 10, status: 'reorder', supplier_name: 'Fresh Meats Ltd', last_order_date: '2024-12-25', cost_per_unit: 8.50, auto_reorder: true },
-  { id: 2, name: 'Salmon Fillet', sku: 'FISH-001', category: 'Seafood', current_stock: 5, par_level: 25, reorder_point: 10, reorder_quantity: 20, unit: 'kg', avg_daily_usage: 4.2, lead_time_days: 1, safety_stock: 5, status: 'critical', supplier_name: 'Ocean Fresh', last_order_date: '2024-12-26', cost_per_unit: 22.00, auto_reorder: true },
-  { id: 3, name: 'Olive Oil', sku: 'OIL-001', category: 'Dry Goods', current_stock: 45, par_level: 30, reorder_point: 15, reorder_quantity: 24, unit: 'L', avg_daily_usage: 2.1, lead_time_days: 5, safety_stock: 8, status: 'overstock', supplier_name: 'Mediterranean Imports', last_order_date: '2024-12-20', cost_per_unit: 12.00, auto_reorder: false },
-  { id: 4, name: 'Fresh Tomatoes', sku: 'VEG-001', category: 'Produce', current_stock: 28, par_level: 40, reorder_point: 15, reorder_quantity: 30, unit: 'kg', avg_daily_usage: 6.0, lead_time_days: 1, safety_stock: 5, status: 'ok', supplier_name: 'Local Farms', last_order_date: '2024-12-27', cost_per_unit: 3.20, auto_reorder: true },
-  { id: 5, name: 'Mozzarella Cheese', sku: 'DAIRY-001', category: 'Dairy', current_stock: 8, par_level: 20, reorder_point: 8, reorder_quantity: 15, unit: 'kg', avg_daily_usage: 3.5, lead_time_days: 2, safety_stock: 4, status: 'reorder', supplier_name: 'Italian Dairy Co', last_order_date: '2024-12-24', cost_per_unit: 15.00, auto_reorder: true },
-  { id: 6, name: 'Flour (All Purpose)', sku: 'DRY-001', category: 'Dry Goods', current_stock: 75, par_level: 100, reorder_point: 40, reorder_quantity: 50, unit: 'kg', avg_daily_usage: 5.0, lead_time_days: 3, safety_stock: 15, status: 'ok', supplier_name: 'Bakers Supply', last_order_date: '2024-12-22', cost_per_unit: 1.20, auto_reorder: false },
-  { id: 7, name: 'Heavy Cream', sku: 'DAIRY-002', category: 'Dairy', current_stock: 3, par_level: 15, reorder_point: 6, reorder_quantity: 12, unit: 'L', avg_daily_usage: 2.8, lead_time_days: 1, safety_stock: 3, status: 'critical', supplier_name: 'Fresh Dairy', last_order_date: '2024-12-26', cost_per_unit: 4.50, auto_reorder: true },
-  { id: 8, name: 'Ground Beef', sku: 'MEAT-002', category: 'Meat', current_stock: 22, par_level: 35, reorder_point: 15, reorder_quantity: 25, unit: 'kg', avg_daily_usage: 4.5, lead_time_days: 2, safety_stock: 8, status: 'ok', supplier_name: 'Fresh Meats Ltd', last_order_date: '2024-12-25', cost_per_unit: 9.80, auto_reorder: true },
-];
-
 export default function ParLevelsPage() {
   const [items, setItems] = useState<ParLevelItem[]>([]);
   const [stats, setStats] = useState<ParLevelStats | null>(null);
@@ -57,37 +46,27 @@ export default function ParLevelsPage() {
   const [selectedItem, setSelectedItem] = useState<ParLevelItem | null>(null);
   const [showAutoReorderModal, setShowAutoReorderModal] = useState(false);
 
-  const getAuthToken = () => {
-    if (typeof window !== 'undefined') {
-      return localStorage.getItem('token') || localStorage.getItem('auth_token') || localStorage.getItem('access_token') || '';
-    }
-    return '';
-  };
 
   const fetchData = useCallback(async () => {
     setLoading(true);
     try {
-      const token = getAuthToken();
       const response = await fetch(`${API_URL}/stock/par-levels`, {
-        headers: { 'Authorization': `Bearer ${token}` },
+        headers: getAuthHeaders(),
       });
 
       if (response.ok) {
         const data = await response.json();
-        if (data.items && data.items.length > 0) {
-          setItems(data.items);
+        setItems(data.items || []);
+        if (data.stats) {
           setStats(data.stats);
         } else {
-          setItems(DEMO_ITEMS);
-          calculateStats(DEMO_ITEMS);
+          calculateStats(data.items || []);
         }
       } else {
-        setItems(DEMO_ITEMS);
-        calculateStats(DEMO_ITEMS);
+        console.error('Failed to load par levels:', response.status);
       }
-    } catch {
-      setItems(DEMO_ITEMS);
-      calculateStats(DEMO_ITEMS);
+    } catch (err) {
+      console.error('Failed to fetch par levels:', err);
     } finally {
       setLoading(false);
     }

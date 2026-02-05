@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { API_URL, getAuthHeaders } from '@/lib/api';
 
 interface Supplier {
   id: number;
@@ -53,8 +54,6 @@ interface SupplierDocument {
 }
 
 type TabType = "list" | "contacts" | "pricelists" | "ratings" | "documents" | "compare";
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
 export default function SupplierManagementPage() {
   const [activeTab, setActiveTab] = useState<TabType>("list");
@@ -123,13 +122,11 @@ export default function SupplierManagementPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedSupplier]);
 
-  const getToken = () => localStorage.getItem("access_token");
 
   const fetchSuppliers = async () => {
     try {
-      const token = getToken();
       const res = await fetch(`${API_URL}/suppliers/`, {
-        headers: { Authorization: `Bearer ${token}` }
+        headers: getAuthHeaders()
       });
       if (res.ok) {
         const data = await res.json();
@@ -144,8 +141,7 @@ export default function SupplierManagementPage() {
   };
 
   const fetchSupplierDetails = async (supplierId: number) => {
-    const token = getToken();
-    const headers = { Authorization: `Bearer ${token}` };
+    const headers = getAuthHeaders();
 
     try {
       // Contacts
@@ -171,9 +167,8 @@ export default function SupplierManagementPage() {
 
   const fetchExpiringDocuments = async () => {
     try {
-      const token = getToken();
       const res = await fetch(`${API_URL}/v11/suppliers/expiring-documents?days=30`, {
-        headers: { Authorization: `Bearer ${token}` }
+        headers: getAuthHeaders()
       });
       if (res.ok) setExpiringDocs(await res.json());
     } catch (error) {
@@ -186,13 +181,9 @@ export default function SupplierManagementPage() {
     setSaving(true);
 
     try {
-      const token = getToken();
       const res = await fetch(`${API_URL}/v11/suppliers/contacts`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`
-        },
+        headers: getAuthHeaders(),
         body: JSON.stringify({
           supplier_id: selectedSupplier.id,
           ...contactForm
@@ -212,9 +203,8 @@ export default function SupplierManagementPage() {
 
   const fetchStockItems = async () => {
     try {
-      const token = getToken();
       const res = await fetch(`${API_URL}/stock/items`, {
-        headers: { Authorization: `Bearer ${token}` }
+        headers: getAuthHeaders()
       });
       if (res.ok) setStockItems(await res.json());
     } catch (error) {
@@ -227,13 +217,9 @@ export default function SupplierManagementPage() {
     setSaving(true);
 
     try {
-      const token = getToken();
       const res = await fetch(`${API_URL}/v11/suppliers/ratings`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`
-        },
+        headers: getAuthHeaders(),
         body: JSON.stringify({
           supplier_id: selectedSupplier.id,
           ...ratingForm
@@ -256,13 +242,9 @@ export default function SupplierManagementPage() {
     setSaving(true);
 
     try {
-      const token = getToken();
       const res = await fetch(`${API_URL}/v11/suppliers/price-lists`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`
-        },
+        headers: getAuthHeaders(),
         body: JSON.stringify({
           supplier_id: selectedSupplier.id,
           ...priceListForm,
@@ -286,13 +268,9 @@ export default function SupplierManagementPage() {
     setSaving(true);
 
     try {
-      const token = getToken();
       const res = await fetch(`${API_URL}/v11/suppliers/documents`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`
-        },
+        headers: getAuthHeaders(),
         body: JSON.stringify({
           supplier_id: selectedSupplier.id,
           ...documentForm,
@@ -315,9 +293,8 @@ export default function SupplierManagementPage() {
   const handleComparePrice = async (itemId: number) => {
     setSelectedItem(itemId);
     try {
-      const token = getToken();
       const res = await fetch(`${API_URL}/v11/suppliers/best-price/${itemId}`, {
-        headers: { Authorization: `Bearer ${token}` }
+        headers: getAuthHeaders()
       });
       if (res.ok) {
         const data = await res.json();

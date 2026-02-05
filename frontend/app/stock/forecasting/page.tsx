@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import AdminLayout from '@/components/AdminLayout';
+import { getAuthHeaders } from '@/lib/api';
 
 interface ForecastItem {
   id: number;
@@ -50,12 +51,6 @@ export default function DemandForecastingPage() {
   const [forecastHorizon, setForecastHorizon] = useState<'7d' | '30d' | '90d'>('30d');
   const [showReorderOnly, setShowReorderOnly] = useState(false);
 
-  const getAuthToken = () => {
-    if (typeof window !== 'undefined') {
-      return localStorage.getItem('token') || localStorage.getItem('auth_token') || localStorage.getItem('access_token') || '';
-    }
-    return '';
-  };
 
   useEffect(() => {
     fetchForecastData();
@@ -65,8 +60,7 @@ export default function DemandForecastingPage() {
   const fetchForecastData = async () => {
     setLoading(true);
     try {
-      const token = getAuthToken();
-      const headers = { 'Authorization': `Bearer ${token}` };
+      const headers = getAuthHeaders();
 
       // Try to fetch from API, fall back to demo data
       try {

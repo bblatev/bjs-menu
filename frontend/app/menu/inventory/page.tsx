@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { API_URL } from "@/lib/api";
 
 interface MultiLang {
   bg: string;
@@ -75,7 +76,6 @@ const ALLERGEN_TYPES = [
   "peanuts", "soy", "sesame", "celery", "mustard", "sulphites", "lupin", "molluscs"
 ];
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1";
 
 export default function MenuInventoryPage() {
   const [items, setItems] = useState<MenuItem[]>([]);
@@ -145,7 +145,7 @@ export default function MenuInventoryPage() {
   const fetchMenuItems = async () => {
     try {
       const token = localStorage.getItem("access_token");
-      const res = await fetch(`${API_BASE}/menu-admin/items`, {
+      const res = await fetch(`${API_URL}/menu-admin/items`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       if (res.ok) {
@@ -169,22 +169,22 @@ export default function MenuInventoryPage() {
     try {
       switch (activeTab) {
         case "versions":
-          const versionsRes = await fetch(`${API_BASE}/menu-admin/versions/${itemId}`, { headers });
+          const versionsRes = await fetch(`${API_URL}/menu-admin/versions/${itemId}`, { headers });
           if (versionsRes.ok) setVersions(await versionsRes.json());
           break;
 
         case "scheduling":
-          const schedulesRes = await fetch(`${API_BASE}/menu-admin/schedules?menu_item_id=${itemId}`, { headers });
+          const schedulesRes = await fetch(`${API_URL}/menu-admin/schedules?menu_item_id=${itemId}`, { headers });
           if (schedulesRes.ok) setSchedules(await schedulesRes.json());
           break;
 
         case "nutrition":
-          const nutritionRes = await fetch(`${API_BASE}/menu-admin/nutrition/${itemId}`, { headers });
+          const nutritionRes = await fetch(`${API_URL}/menu-admin/nutrition/${itemId}`, { headers });
           if (nutritionRes.ok) setNutrition(await nutritionRes.json());
           break;
 
         case "allergens":
-          const allergensRes = await fetch(`${API_BASE}/menu-admin/allergens/${itemId}`, { headers });
+          const allergensRes = await fetch(`${API_URL}/menu-admin/allergens/${itemId}`, { headers });
           if (allergensRes.ok) {
             const data = await allergensRes.json();
             setAllergens(data.allergens || []);
@@ -201,7 +201,7 @@ export default function MenuInventoryPage() {
 
     try {
       const token = localStorage.getItem("access_token");
-      const res = await fetch(`${API_BASE}/menu-admin/versions/${versionId}/restore`, {
+      const res = await fetch(`${API_URL}/menu-admin/versions/${versionId}/restore`, {
         method: "POST",
         headers: { Authorization: `Bearer ${token}` }
       });
@@ -221,7 +221,7 @@ export default function MenuInventoryPage() {
 
     try {
       const token = localStorage.getItem("access_token");
-      const res = await fetch(`${API_BASE}/menu-admin/schedules?venue_id=1`, {
+      const res = await fetch(`${API_URL}/menu-admin/schedules?venue_id=1`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -248,7 +248,7 @@ export default function MenuInventoryPage() {
 
     try {
       const token = localStorage.getItem("access_token");
-      await fetch(`${API_BASE}/menu-admin/schedules/${scheduleId}`, {
+      await fetch(`${API_URL}/menu-admin/schedules/${scheduleId}`, {
         method: "DELETE",
         headers: { Authorization: `Bearer ${token}` }
       });
@@ -264,7 +264,7 @@ export default function MenuInventoryPage() {
 
     try {
       const token = localStorage.getItem("access_token");
-      const res = await fetch(`${API_BASE}/menu-admin/nutrition`, {
+      const res = await fetch(`${API_URL}/menu-admin/nutrition`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -292,7 +292,7 @@ export default function MenuInventoryPage() {
 
     try {
       const token = localStorage.getItem("access_token");
-      const res = await fetch(`${API_BASE}/menu-admin/allergens`, {
+      const res = await fetch(`${API_URL}/menu-admin/allergens`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -317,7 +317,7 @@ export default function MenuInventoryPage() {
   const handleDeleteAllergen = async (allergenId: number) => {
     try {
       const token = localStorage.getItem("access_token");
-      await fetch(`${API_BASE}/menu-admin/allergens/${allergenId}`, {
+      await fetch(`${API_URL}/menu-admin/allergens/${allergenId}`, {
         method: "DELETE",
         headers: { Authorization: `Bearer ${token}` }
       });
@@ -336,7 +336,7 @@ export default function MenuInventoryPage() {
 
     try {
       const token = localStorage.getItem("access_token");
-      const res = await fetch(`${API_BASE}/menu-admin/bulk-price-update?venue_id=1`, {
+      const res = await fetch(`${API_URL}/menu-admin/bulk-price-update?venue_id=1`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1';
+import { API_URL, getAuthHeaders } from '@/lib/api';
 
 interface TaxFiling {
   id: number;
@@ -63,69 +63,6 @@ const STATUS_COLORS = {
   overdue: 'bg-error-100 text-error-700 border-error-300',
 };
 
-// Demo data for fallback
-const DEMO_FILINGS: TaxFiling[] = [
-  {
-    id: 1, period: 'December 2024', type: 'vat', status: 'draft',
-    gross_sales: 45000, taxable_amount: 37500, tax_rate: 20,
-    tax_collected: 7500, tax_due: 7500, deductions: 1200, net_tax: 6300,
-    due_date: '2025-01-14'
-  },
-  {
-    id: 2, period: 'November 2024', type: 'vat', status: 'filed',
-    gross_sales: 42000, taxable_amount: 35000, tax_rate: 20,
-    tax_collected: 7000, tax_due: 7000, deductions: 1100, net_tax: 5900,
-    due_date: '2024-12-14', filed_date: '2024-12-10', reference_number: 'VAT-2024-11-001'
-  },
-  {
-    id: 3, period: 'October 2024', type: 'vat', status: 'paid',
-    gross_sales: 48000, taxable_amount: 40000, tax_rate: 20,
-    tax_collected: 8000, tax_due: 8000, deductions: 1500, net_tax: 6500,
-    due_date: '2024-11-14', filed_date: '2024-11-08', paid_date: '2024-11-10', reference_number: 'VAT-2024-10-001'
-  },
-  {
-    id: 4, period: 'Q4 2024', type: 'payroll', status: 'pending',
-    gross_sales: 0, taxable_amount: 28500, tax_rate: 10,
-    tax_collected: 0, tax_due: 2850, deductions: 0, net_tax: 2850,
-    due_date: '2025-01-20'
-  },
-  {
-    id: 5, period: 'Q4 2024', type: 'income', status: 'draft',
-    gross_sales: 135000, taxable_amount: 45000, tax_rate: 10,
-    tax_collected: 0, tax_due: 4500, deductions: 8500, net_tax: 3650,
-    due_date: '2025-01-31'
-  },
-  {
-    id: 6, period: '2024 Annual', type: 'property', status: 'paid',
-    gross_sales: 0, taxable_amount: 250000, tax_rate: 0.3,
-    tax_collected: 0, tax_due: 750, deductions: 0, net_tax: 750,
-    due_date: '2024-06-30', filed_date: '2024-06-15', paid_date: '2024-06-20', reference_number: 'PROP-2024-001'
-  },
-];
-
-const DEMO_CATEGORIES: TaxCategory[] = [
-  { category: 'Food & Beverages', sales: 85000, tax_rate: 20, tax_amount: 17000 },
-  { category: 'Alcohol Sales', sales: 35000, tax_rate: 20, tax_amount: 7000 },
-  { category: 'Takeaway Orders', sales: 8000, tax_rate: 9, tax_amount: 720 },
-  { category: 'Delivery Services', sales: 5000, tax_rate: 9, tax_amount: 450 },
-  { category: 'Catering', sales: 12000, tax_rate: 20, tax_amount: 2400 },
-  { category: 'Tax Exempt', sales: 3000, tax_rate: 0, tax_amount: 0 },
-];
-
-const DEMO_DEADLINES: UpcomingDeadline[] = [
-  { id: 1, title: 'VAT Return - December 2024', type: 'vat', due_date: '2025-01-14', amount: 6300, status: 'due_soon' },
-  { id: 2, title: 'Payroll Tax - Q4 2024', type: 'payroll', due_date: '2025-01-20', amount: 2850, status: 'upcoming' },
-  { id: 3, title: 'Income Tax Advance - Q4', type: 'income', due_date: '2025-01-31', amount: 3650, status: 'upcoming' },
-  { id: 4, title: 'Annual VAT Reconciliation', type: 'vat', due_date: '2025-03-31', status: 'upcoming' },
-];
-
-const DEMO_DOCUMENTS: TaxDocument[] = [
-  { id: 1, name: 'VAT Return November 2024.pdf', type: 'vat', period: 'November 2024', uploaded_at: '2024-12-10', file_size: '245 KB' },
-  { id: 2, name: 'VAT Return October 2024.pdf', type: 'vat', period: 'October 2024', uploaded_at: '2024-11-08', file_size: '238 KB' },
-  { id: 3, name: 'Payroll Summary Q3 2024.pdf', type: 'payroll', period: 'Q3 2024', uploaded_at: '2024-10-15', file_size: '412 KB' },
-  { id: 4, name: 'Property Tax Receipt 2024.pdf', type: 'property', period: '2024', uploaded_at: '2024-06-20', file_size: '156 KB' },
-];
-
 export default function TaxCenterPage() {
   const [year, setYear] = useState(2025);
   const [quarter, setQuarter] = useState<'all' | 'Q1' | 'Q2' | 'Q3' | 'Q4'>('all');
@@ -141,40 +78,21 @@ export default function TaxCenterPage() {
   const fetchTaxData = useCallback(async () => {
     setIsLoading(true);
     try {
-      const token = localStorage.getItem('access_token');
       const response = await fetch(`${API_URL}/tax/filings?year=${year}`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
+        headers: getAuthHeaders(),
       });
 
       if (response.ok) {
         const data = await response.json();
-        if (data && data.filings && data.filings.length > 0) {
-          setFilings(data.filings);
-          setCategories(data.categories || DEMO_CATEGORIES);
-          setDeadlines(data.deadlines || DEMO_DEADLINES);
-          setDocuments(data.documents || DEMO_DOCUMENTS);
-        } else {
-          setFilings(DEMO_FILINGS);
-          setCategories(DEMO_CATEGORIES);
-          setDeadlines(DEMO_DEADLINES);
-          setDocuments(DEMO_DOCUMENTS);
-        }
+        setFilings(data.filings || []);
+        setCategories(data.categories || []);
+        setDeadlines(data.deadlines || []);
+        setDocuments(data.documents || []);
       } else {
-        console.warn('API returned error, using demo data');
-        setFilings(DEMO_FILINGS);
-        setCategories(DEMO_CATEGORIES);
-        setDeadlines(DEMO_DEADLINES);
-        setDocuments(DEMO_DOCUMENTS);
+        console.error('Failed to load tax data:', response.status);
       }
     } catch (err) {
-      console.warn('Failed to fetch from API, using demo data:', err);
-      setFilings(DEMO_FILINGS);
-      setCategories(DEMO_CATEGORIES);
-      setDeadlines(DEMO_DEADLINES);
-      setDocuments(DEMO_DOCUMENTS);
+      console.error('Failed to fetch tax data:', err);
     } finally {
       setIsLoading(false);
     }

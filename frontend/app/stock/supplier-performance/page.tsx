@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import AdminLayout from '@/components/AdminLayout';
+import { getAuthHeaders } from '@/lib/api';
 
 interface SupplierMetrics {
   id: number;
@@ -50,12 +51,6 @@ export default function SupplierPerformancePage() {
   const [sortBy, setSortBy] = useState<'overall_score' | 'total_value' | 'on_time_delivery_rate'>('overall_score');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
 
-  const getAuthToken = () => {
-    if (typeof window !== 'undefined') {
-      return localStorage.getItem('token') || localStorage.getItem('auth_token') || localStorage.getItem('access_token') || '';
-    }
-    return '';
-  };
 
   useEffect(() => {
     fetchSupplierData();
@@ -65,8 +60,7 @@ export default function SupplierPerformancePage() {
   const fetchSupplierData = async () => {
     setLoading(true);
     try {
-      const token = getAuthToken();
-      const headers = { 'Authorization': `Bearer ${token}` };
+      const headers = getAuthHeaders();
 
       try {
         const [suppliersRes, statsRes] = await Promise.all([

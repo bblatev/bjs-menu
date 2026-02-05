@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { API_URL, getAuthHeaders } from '@/lib/api';
 
 // Types
 interface PurchaseOrder {
@@ -147,8 +148,7 @@ interface MatchItem {
   price_variance: number;
 }
 
-// API URL
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1';
+
 
 // Status colors
 const poStatusColors: Record<string, string> = {

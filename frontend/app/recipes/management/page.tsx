@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { API_URL } from "@/lib/api";
 
 interface Recipe {
   id: number;
@@ -48,7 +49,6 @@ interface RecipeCostHistory {
 
 type TabType = "list" | "details" | "ingredients" | "costing" | "scaling" | "versions";
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
 export default function RecipeManagementPage() {
   const [activeTab, setActiveTab] = useState<TabType>("list");
@@ -100,7 +100,7 @@ export default function RecipeManagementPage() {
   const fetchRecipes = async () => {
     try {
       const token = localStorage.getItem("access_token");
-      const res = await fetch(`${API_BASE}/recipes?venue_id=1`, {
+      const res = await fetch(`${API_URL}/recipes?venue_id=1`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       if (res.ok) {
@@ -121,22 +121,22 @@ export default function RecipeManagementPage() {
 
     try {
       // Fetch full recipe with ingredients
-      const recipeRes = await fetch(`${API_BASE}/recipes/${recipeId}`, { headers });
+      const recipeRes = await fetch(`${API_URL}/recipes/${recipeId}`, { headers });
       if (recipeRes.ok) {
         const data = await recipeRes.json();
         if (data.ingredients) setIngredients(data.ingredients);
       }
 
       // Fetch versions
-      const versionsRes = await fetch(`${API_BASE}/recipes/${recipeId}/versions`, { headers });
+      const versionsRes = await fetch(`${API_URL}/recipes/${recipeId}/versions`, { headers });
       if (versionsRes.ok) setVersions(await versionsRes.json());
 
       // Fetch current cost
-      const costRes = await fetch(`${API_BASE}/recipes/${recipeId}/cost`, { headers });
+      const costRes = await fetch(`${API_URL}/recipes/${recipeId}/cost`, { headers });
       if (costRes.ok) setCurrentCost(await costRes.json());
 
       // Fetch cost history
-      const historyRes = await fetch(`${API_BASE}/recipes/${recipeId}/cost-history`, { headers });
+      const historyRes = await fetch(`${API_URL}/recipes/${recipeId}/cost-history`, { headers });
       if (historyRes.ok) setCostHistory(await historyRes.json());
 
     } catch (error) {
@@ -150,7 +150,7 @@ export default function RecipeManagementPage() {
 
     try {
       const token = localStorage.getItem("access_token");
-      const res = await fetch(`${API_BASE}/recipes/scale`, {
+      const res = await fetch(`${API_URL}/recipes/scale`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -177,7 +177,7 @@ export default function RecipeManagementPage() {
     setSaving(true);
     try {
       const token = localStorage.getItem("access_token");
-      const res = await fetch(`${API_BASE}/recipes?venue_id=1`, {
+      const res = await fetch(`${API_URL}/recipes?venue_id=1`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

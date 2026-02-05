@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import Link from 'next/link';
+import { API_URL } from '@/lib/api';
 
 interface TheftAlert {
   id: string;
@@ -41,7 +42,7 @@ export default function AnalyticsTheftPage() {
     setLoading(true);
     try {
       const token = localStorage.getItem('access_token');
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/analytics/theft`, {
+      const response = await fetch(`${API_URL}/analytics/theft`, {
         headers: { Authorization: `Bearer ${token}` },
       });
 

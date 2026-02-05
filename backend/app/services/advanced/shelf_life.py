@@ -65,6 +65,7 @@ class ShelfLifeService:
         unit_cost: Decimal,
         lot_number: Optional[str] = None,
         production_date: Optional[date] = None,
+        current_quantity: Optional[Decimal] = None,
     ) -> InventoryBatch:
         """Create a new inventory batch."""
         batch = InventoryBatch(
@@ -73,7 +74,7 @@ class ShelfLifeService:
             batch_number=batch_number,
             lot_number=lot_number,
             received_quantity=received_quantity,
-            current_quantity=received_quantity,
+            current_quantity=current_quantity if current_quantity is not None else received_quantity,
             received_date=received_date,
             production_date=production_date,
             expiration_date=expiration_date,

@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+import { API_URL, getAuthHeaders } from '@/lib/api';
 
 interface Customer {
   id: number;
@@ -53,12 +53,10 @@ export default function CustomerCreditsPage() {
     loadData();
   }, []);
 
-  const getToken = () => localStorage.getItem("access_token");
 
   const loadData = async () => {
     try {
-      const token = getToken();
-      const headers = { Authorization: `Bearer ${token}` };
+      const headers = getAuthHeaders();
 
       // Load customers
       const customersRes = await fetch(`${API_URL}/customers/`, { headers });
@@ -98,15 +96,11 @@ export default function CustomerCreditsPage() {
   };
 
   const setCreditLimitForCustomer = async (customerId: number, limit: number) => {
-    const token = getToken();
 
     try {
       const response = await fetch(`${API_URL}/customers/${customerId}/credit`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
+        headers: getAuthHeaders(),
         body: JSON.stringify({ credit_limit: limit }),
       });
 
@@ -125,17 +119,13 @@ export default function CustomerCreditsPage() {
   };
 
   const recordPayment = async (customerId: number, amount: number) => {
-    const token = getToken();
 
     try {
       const response = await fetch(
         `${API_URL}/customers/${customerId}/credit/payment`,
         {
           method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
+          headers: getAuthHeaders(),
           body: JSON.stringify({ amount }),
         }
       );
@@ -155,17 +145,13 @@ export default function CustomerCreditsPage() {
   };
 
   const chargeCredit = async (customerId: number, amount: number) => {
-    const token = getToken();
 
     try {
       const response = await fetch(
         `${API_URL}/customers/${customerId}/credit/charge`,
         {
           method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
+          headers: getAuthHeaders(),
           body: JSON.stringify({ amount }),
         }
       );
@@ -185,17 +171,13 @@ export default function CustomerCreditsPage() {
   };
 
   const toggleBlock = async (credit: CreditWithCustomer) => {
-    const token = getToken();
 
     try {
       const response = await fetch(
         `${API_URL}/customers/${credit.customer_id}/credit`,
         {
           method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
+          headers: getAuthHeaders(),
           body: JSON.stringify({
             is_blocked: !credit.is_blocked,
             block_reason: !credit.is_blocked ? "Manually blocked by manager" : null,

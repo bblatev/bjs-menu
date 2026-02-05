@@ -176,6 +176,7 @@ class LaborForecastingService:
         parameters: Dict[str, Any],
         location_id: Optional[int] = None,
         penalty_amount: Optional[Decimal] = None,
+        is_active: bool = True,
     ) -> LaborComplianceRule:
         """Create a labor compliance rule."""
         rule = LaborComplianceRule(
@@ -185,7 +186,7 @@ class LaborForecastingService:
             rule_name=rule_name,
             parameters=parameters,
             penalty_amount=penalty_amount,
-            is_active=True,
+            is_active=is_active,
         )
         self.db.add(rule)
         self.db.commit()

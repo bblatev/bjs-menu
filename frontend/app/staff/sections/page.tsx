@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { API_URL } from '@/lib/api';
 
 interface Server {
   id: number;
@@ -64,7 +65,7 @@ export default function ServerSectionsPage() {
     try {
       const token = localStorage.getItem('access_token');
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/staff/sections/servers`,
+        `${API_URL}/staff/sections/servers`,
         {
           headers: { Authorization: `Bearer ${token}` },
         }
@@ -83,7 +84,7 @@ export default function ServerSectionsPage() {
     try {
       const token = localStorage.getItem('access_token');
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/tables/sections`,
+        `${API_URL}/tables/sections`,
         {
           headers: { Authorization: `Bearer ${token}` },
         }
@@ -102,7 +103,7 @@ export default function ServerSectionsPage() {
     try {
       const token = localStorage.getItem('access_token');
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/tables/`,
+        `${API_URL}/tables/`,
         {
           headers: { Authorization: `Bearer ${token}` },
         }
@@ -125,7 +126,7 @@ export default function ServerSectionsPage() {
     try {
       const token = localStorage.getItem('access_token');
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/tables/sections/${sectionId}/assign`,
+        `${API_URL}/tables/sections/${sectionId}/assign`,
         {
           method: 'POST',
           headers: {

@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { API_URL } from "@/lib/api";
 
 // Types
 interface MultiLang {
@@ -101,7 +102,6 @@ interface DigitalBoard {
 
 type TabType = "variants" | "tags" | "combos" | "upsells" | "offers" | "86items" | "boards";
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
 export default function MenuFeaturesPage() {
   const [activeTab, setActiveTab] = useState<TabType>("variants");
@@ -172,7 +172,7 @@ export default function MenuFeaturesPage() {
   const loadMenuItems = async () => {
     try {
       const token = getToken();
-      const res = await fetch(`${API_BASE}/menu-admin/items`, {
+      const res = await fetch(`${API_URL}/menu-admin/items`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       if (res.ok) {
@@ -204,7 +204,7 @@ export default function MenuFeaturesPage() {
       switch (activeTab) {
         case "variants":
           if (selectedItem) {
-            const res = await fetch(`${API_BASE}/menu-complete/items/${selectedItem.id}/variants`, { headers });
+            const res = await fetch(`${API_URL}/menu-complete/items/${selectedItem.id}/variants`, { headers });
             if (res.ok) {
               const data = await res.json();
               setVariants(Array.isArray(data) ? data : []);
@@ -212,27 +212,27 @@ export default function MenuFeaturesPage() {
           }
           break;
         case "tags":
-          const tagsRes = await fetch(`${API_BASE}/menu-complete/tags`, { headers });
+          const tagsRes = await fetch(`${API_URL}/menu-complete/tags`, { headers });
           if (tagsRes.ok) { const d = await tagsRes.json(); setTags(Array.isArray(d) ? d : []); }
           break;
         case "combos":
-          const combosRes = await fetch(`${API_BASE}/menu-complete/combos`, { headers });
+          const combosRes = await fetch(`${API_URL}/menu-complete/combos`, { headers });
           if (combosRes.ok) { const d = await combosRes.json(); setCombos(Array.isArray(d) ? d : []); }
           break;
         case "upsells":
-          const upsellsRes = await fetch(`${API_BASE}/menu-complete/upsell-rules`, { headers });
+          const upsellsRes = await fetch(`${API_URL}/menu-complete/upsell-rules`, { headers });
           if (upsellsRes.ok) { const d = await upsellsRes.json(); setUpsells(Array.isArray(d) ? d : []); }
           break;
         case "offers":
-          const offersRes = await fetch(`${API_BASE}/menu-complete/limited-offers`, { headers });
+          const offersRes = await fetch(`${API_URL}/menu-complete/limited-offers`, { headers });
           if (offersRes.ok) { const d = await offersRes.json(); setOffers(Array.isArray(d) ? d : []); }
           break;
         case "86items":
-          const items86Res = await fetch(`${API_BASE}/menu-complete/86`, { headers });
+          const items86Res = await fetch(`${API_URL}/menu-complete/86`, { headers });
           if (items86Res.ok) { const d = await items86Res.json(); setItems86(Array.isArray(d) ? d : []); }
           break;
         case "boards":
-          const boardsRes = await fetch(`${API_BASE}/menu-complete/digital-boards`, { headers });
+          const boardsRes = await fetch(`${API_URL}/menu-complete/digital-boards`, { headers });
           if (boardsRes.ok) { const d = await boardsRes.json(); setBoards(Array.isArray(d) ? d : []); }
           break;
       }
@@ -247,7 +247,7 @@ export default function MenuFeaturesPage() {
     const token = getToken();
 
     try {
-      const res = await fetch(`${API_BASE}/menu-complete/items/${selectedItem.id}/variants`, {
+      const res = await fetch(`${API_URL}/menu-complete/items/${selectedItem.id}/variants`, {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
         body: JSON.stringify({
@@ -272,7 +272,7 @@ export default function MenuFeaturesPage() {
     const token = getToken();
 
     try {
-      const res = await fetch(`${API_BASE}/menu-complete/tags`, {
+      const res = await fetch(`${API_URL}/menu-complete/tags`, {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
         body: JSON.stringify({
@@ -295,7 +295,7 @@ export default function MenuFeaturesPage() {
     const token = getToken();
 
     try {
-      const res = await fetch(`${API_BASE}/menu-complete/combos`, {
+      const res = await fetch(`${API_URL}/menu-complete/combos`, {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
         body: JSON.stringify({
@@ -321,7 +321,7 @@ export default function MenuFeaturesPage() {
     const token = getToken();
 
     try {
-      const res = await fetch(`${API_BASE}/menu-complete/upsell-rules`, {
+      const res = await fetch(`${API_URL}/menu-complete/upsell-rules`, {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
         body: JSON.stringify({
@@ -347,7 +347,7 @@ export default function MenuFeaturesPage() {
     const token = getToken();
 
     try {
-      const res = await fetch(`${API_BASE}/menu-complete/limited-offers`, {
+      const res = await fetch(`${API_URL}/menu-complete/limited-offers`, {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
         body: JSON.stringify({
@@ -375,7 +375,7 @@ export default function MenuFeaturesPage() {
     const token = getToken();
 
     try {
-      const res = await fetch(`${API_BASE}/menu-complete/86`, {
+      const res = await fetch(`${API_URL}/menu-complete/86`, {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
         body: JSON.stringify({
@@ -400,7 +400,7 @@ export default function MenuFeaturesPage() {
     const token = getToken();
 
     try {
-      await fetch(`${API_BASE}/menu-complete/86/${id}`, {
+      await fetch(`${API_URL}/menu-complete/86/${id}`, {
         method: "DELETE",
         headers: { Authorization: `Bearer ${token}` }
       });
@@ -414,7 +414,7 @@ export default function MenuFeaturesPage() {
     const token = getToken();
 
     try {
-      const res = await fetch(`${API_BASE}/menu-complete/digital-boards`, {
+      const res = await fetch(`${API_URL}/menu-complete/digital-boards`, {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
         body: JSON.stringify({

@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import AdminLayout from '@/components/AdminLayout';
+import { API_URL, getAuthHeaders } from '@/lib/api';
 
 interface ForecastItem {
   item_id: number;
@@ -35,7 +36,6 @@ interface DashboardData {
   key_insights: string[];
 }
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1';
 
 export default function ForecastingPage() {
   const [dashboardData, setDashboardData] = useState<DashboardData | null>(null);
@@ -45,41 +45,40 @@ export default function ForecastingPage() {
   const [method, setMethod] = useState('ensemble');
 
   useEffect(() => {
+    const fetchData = async () => {
+      setLoading(true);
+      const token = localStorage.getItem('access_token');
+
+      try {
+        // Use existing analytics dashboard endpoint
+        const dashRes = await fetch(`${API_URL}/analytics/dashboard`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (dashRes.ok) setDashboardData(await dashRes.json());
+
+        // Use daily metrics for forecast data
+        const forecastRes = await fetch(
+          `${API_URL}/analytics/daily-metrics/?days=${forecastDays}`,
+          { headers: { 'Authorization': `Bearer ${token}` } }
+        );
+        if (forecastRes.ok) {
+          const data = await forecastRes.json();
+          // Transform daily metrics to forecast format
+          setForecasts(data.metrics?.map((m: Record<string, unknown>) => ({
+            date: m.date,
+            predicted_revenue: m.revenue || 0,
+            predicted_orders: m.order_count || 0,
+            confidence: 0.85
+          })) || []);
+        }
+      } catch (error) {
+        console.error('Error:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
     fetchData();
   }, [forecastDays, method]);
-
-  const fetchData = async () => {
-    setLoading(true);
-    const token = localStorage.getItem('access_token');
-
-    try {
-      // Use existing analytics dashboard endpoint
-      const dashRes = await fetch(`${API_URL}/analytics/dashboard`, {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      if (dashRes.ok) setDashboardData(await dashRes.json());
-
-      // Use daily metrics for forecast data
-      const forecastRes = await fetch(
-        `${API_URL}/analytics/daily-metrics/?days=${forecastDays}`,
-        { headers: { 'Authorization': `Bearer ${token}` } }
-      );
-      if (forecastRes.ok) {
-        const data = await forecastRes.json();
-        // Transform daily metrics to forecast format
-        setForecasts(data.metrics?.map((m: Record<string, unknown>) => ({
-          date: m.date,
-          predicted_revenue: m.revenue || 0,
-          predicted_orders: m.order_count || 0,
-          confidence: 0.85
-        })) || []);
-      }
-    } catch (error) {
-      console.error('Error:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const getTrendColor = (trend: string) => {
     switch (trend) {

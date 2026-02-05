@@ -24,6 +24,7 @@ class TipPoolingService:
         distribution_rules: Dict[str, Any],
         exclude_management: bool = True,
         minimum_hours_to_participate: Optional[float] = None,
+        is_active: bool = True,
     ) -> TipPoolConfiguration:
         """Create a tip pool configuration."""
         config = TipPoolConfiguration(
@@ -33,7 +34,7 @@ class TipPoolingService:
             distribution_rules=distribution_rules,
             exclude_management=exclude_management,
             minimum_hours_to_participate=minimum_hours_to_participate,
-            is_active=True,
+            is_active=is_active,
         )
         self.db.add(config)
         self.db.commit()

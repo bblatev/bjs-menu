@@ -144,12 +144,22 @@ def _get_table_by_token(db: DbSession, token: str) -> dict:
             "area": db_table.area or "Main Floor",
         }
 
-    # Accept any token for demo purposes - create a virtual table
+    # Accept any token - create a real table entry
+    new_table = Table(
+        number=token.upper()[:8],
+        capacity=4,
+        status="available",
+        area="Main Floor",
+        token=token,
+    )
+    db.add(new_table)
+    db.commit()
+    db.refresh(new_table)
     return {
-        "id": hash(token) % 1000 + 100,
-        "number": token.upper()[:8],
-        "capacity": 4,
-        "status": "available",
+        "id": new_table.id,
+        "number": new_table.number,
+        "capacity": new_table.capacity,
+        "status": new_table.status,
         "area": "Main Floor",
     }
 
@@ -553,17 +563,19 @@ def place_guest_order(
     db.commit()
 
     # Deduct stock for ordered items
+    order_id = db_order.id
     try:
         stock_service = StockDeductionService(db)
         stock_result = stock_service.deduct_for_order(
             order_items=validated_items,
             location_id=db_order.location_id or 1,
             reference_type="guest_order",
-            reference_id=db_order.id,
+            reference_id=order_id,
         )
-        logger.info(f"Stock deduction for guest order {db_order.id}: {stock_result['total_ingredients_deducted']} ingredients")
+        logger.info(f"Stock deduction for guest order {order_id}: {stock_result['total_ingredients_deducted']} ingredients")
     except Exception as e:
-        logger.warning(f"Stock deduction failed for guest order {db_order.id}: {e}")
+        db.rollback()
+        logger.warning(f"Stock deduction failed for guest order {order_id}: {e}")
 
     return GuestOrderResponse(
         order_id=db_order.id,

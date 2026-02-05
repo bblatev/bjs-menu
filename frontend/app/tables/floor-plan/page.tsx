@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef, useCallback } from 'react';
+import { API_URL, getAuthHeaders } from '@/lib/api';
 
 // ============================================================================
 // Types
@@ -58,7 +59,6 @@ const shapeIcons = {
   circle: '○',
 };
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1';
 
 // ============================================================================
 // Component

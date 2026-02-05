@@ -2,8 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1';
+import { API_URL, getAuthHeaders } from '@/lib/api';
 
 interface PourCostItem {
   id: number;
@@ -40,78 +39,6 @@ const CATEGORIES = [
   { value: 'non_alcoholic', label: 'Non-Alcoholic', icon: '🥤', target: 18 },
 ];
 
-// Demo data for fallback
-const DEMO_ITEMS: PourCostItem[] = [
-  {
-    id: 1, name: 'Grey Goose Vodka', category: 'spirits', size: '750ml', bottle_cost: 28.00,
-    pour_size: '30ml', pours_per_bottle: 25, cost_per_pour: 1.12, sell_price: 8.00,
-    pour_cost_percentage: 14.0, ideal_pour_cost: 18, variance: -4.0, sold_today: 18, revenue_today: 144.00
-  },
-  {
-    id: 2, name: 'Bacardi White Rum', category: 'spirits', size: '750ml', bottle_cost: 16.00,
-    pour_size: '30ml', pours_per_bottle: 25, cost_per_pour: 0.64, sell_price: 6.00,
-    pour_cost_percentage: 10.7, ideal_pour_cost: 15, variance: -4.3, sold_today: 35, revenue_today: 210.00
-  },
-  {
-    id: 3, name: 'Hendricks Gin', category: 'spirits', size: '750ml', bottle_cost: 32.00,
-    pour_size: '30ml', pours_per_bottle: 25, cost_per_pour: 1.28, sell_price: 9.00,
-    pour_cost_percentage: 14.2, ideal_pour_cost: 18, variance: -3.8, sold_today: 22, revenue_today: 198.00
-  },
-  {
-    id: 4, name: 'Jack Daniels', category: 'spirits', size: '1L', bottle_cost: 28.00,
-    pour_size: '30ml', pours_per_bottle: 33, cost_per_pour: 0.85, sell_price: 7.00,
-    pour_cost_percentage: 12.1, ideal_pour_cost: 15, variance: -2.9, sold_today: 28, revenue_today: 196.00
-  },
-  {
-    id: 5, name: 'Heineken Draft', category: 'beer', size: '50L Keg', bottle_cost: 120.00,
-    pour_size: '500ml', pours_per_bottle: 100, cost_per_pour: 1.20, sell_price: 5.00,
-    pour_cost_percentage: 24.0, ideal_pour_cost: 20, variance: 4.0, sold_today: 85, revenue_today: 425.00
-  },
-  {
-    id: 6, name: 'Corona Extra', category: 'beer', size: '24 bottles', bottle_cost: 32.00,
-    pour_size: '330ml', pours_per_bottle: 24, cost_per_pour: 1.33, sell_price: 5.50,
-    pour_cost_percentage: 24.2, ideal_pour_cost: 22, variance: 2.2, sold_today: 42, revenue_today: 231.00
-  },
-  {
-    id: 7, name: 'House Red Wine', category: 'wine', size: '750ml', bottle_cost: 8.00,
-    pour_size: '150ml', pours_per_bottle: 5, cost_per_pour: 1.60, sell_price: 7.00,
-    pour_cost_percentage: 22.9, ideal_pour_cost: 28, variance: -5.1, sold_today: 15, revenue_today: 105.00
-  },
-  {
-    id: 8, name: 'Premium Prosecco', category: 'wine', size: '750ml', bottle_cost: 12.00,
-    pour_size: '150ml', pours_per_bottle: 5, cost_per_pour: 2.40, sell_price: 9.00,
-    pour_cost_percentage: 26.7, ideal_pour_cost: 30, variance: -3.3, sold_today: 18, revenue_today: 162.00
-  },
-  {
-    id: 9, name: 'Mojito', category: 'cocktails', size: 'recipe', bottle_cost: 0,
-    pour_size: 'single', pours_per_bottle: 1, cost_per_pour: 2.15, sell_price: 10.00,
-    pour_cost_percentage: 21.5, ideal_pour_cost: 25, variance: -3.5, sold_today: 42, revenue_today: 420.00
-  },
-  {
-    id: 10, name: 'Margarita', category: 'cocktails', size: 'recipe', bottle_cost: 0,
-    pour_size: 'single', pours_per_bottle: 1, cost_per_pour: 2.30, sell_price: 10.00,
-    pour_cost_percentage: 23.0, ideal_pour_cost: 25, variance: -2.0, sold_today: 38, revenue_today: 380.00
-  },
-  {
-    id: 11, name: 'Long Island Iced Tea', category: 'cocktails', size: 'recipe', bottle_cost: 0,
-    pour_size: 'single', pours_per_bottle: 1, cost_per_pour: 3.99, sell_price: 14.00,
-    pour_cost_percentage: 28.5, ideal_pour_cost: 25, variance: 3.5, sold_today: 28, revenue_today: 392.00
-  },
-  {
-    id: 12, name: 'Fresh Orange Juice', category: 'non_alcoholic', size: '1L', bottle_cost: 3.50,
-    pour_size: '300ml', pours_per_bottle: 3, cost_per_pour: 1.17, sell_price: 4.50,
-    pour_cost_percentage: 26.0, ideal_pour_cost: 20, variance: 6.0, sold_today: 24, revenue_today: 108.00
-  },
-];
-
-const DEMO_SUMMARIES: CategorySummary[] = [
-  { category: 'Spirits', items: 4, avgPourCost: 12.8, targetPourCost: 16.5, variance: -3.7, revenue: 748.00, profit: 652.40 },
-  { category: 'Beer', items: 2, avgPourCost: 24.1, targetPourCost: 21.0, variance: 3.1, revenue: 656.00, profit: 498.00 },
-  { category: 'Wine', items: 2, avgPourCost: 24.8, targetPourCost: 29.0, variance: -4.2, revenue: 267.00, profit: 200.80 },
-  { category: 'Cocktails', items: 3, avgPourCost: 24.3, targetPourCost: 25.0, variance: -0.7, revenue: 1192.00, profit: 902.52 },
-  { category: 'Non-Alcoholic', items: 1, avgPourCost: 26.0, targetPourCost: 20.0, variance: 6.0, revenue: 108.00, profit: 79.92 },
-];
-
 export default function PourCostsPage() {
   const [items, setItems] = useState<PourCostItem[]>([]);
   const [categorySummaries, setCategorySummaries] = useState<CategorySummary[]>([]);
@@ -135,32 +62,20 @@ export default function PourCostsPage() {
   const fetchPourCosts = useCallback(async () => {
     setIsLoading(true);
     try {
-      const token = localStorage.getItem('token') || localStorage.getItem('auth_token') || localStorage.getItem('access_token');
+      const headers = getAuthHeaders();
       const response = await fetch(`${API_URL}/bar/pour-costs/summary`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
+        headers,
       });
 
       if (response.ok) {
         const data = await response.json();
-        if (data && data.items && data.items.length > 0) {
-          setItems(data.items);
-          setCategorySummaries(data.summaries || DEMO_SUMMARIES);
-        } else {
-          setItems(DEMO_ITEMS);
-          setCategorySummaries(DEMO_SUMMARIES);
-        }
+        setItems(data.items || []);
+        setCategorySummaries(data.summaries || []);
       } else {
-        console.warn('API returned error, using demo data');
-        setItems(DEMO_ITEMS);
-        setCategorySummaries(DEMO_SUMMARIES);
+        console.error('Failed to load pour costs:', response.status);
       }
     } catch (err) {
-      console.warn('Failed to fetch from API, using demo data:', err);
-      setItems(DEMO_ITEMS);
-      setCategorySummaries(DEMO_SUMMARIES);
+      console.error('Failed to fetch pour costs:', err);
     } finally {
       setIsLoading(false);
     }

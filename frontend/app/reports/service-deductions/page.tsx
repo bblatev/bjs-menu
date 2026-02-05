@@ -1,11 +1,11 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { Button, Card, CardBody, Badge } from '@/components/ui';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1';
+import { API_URL, getAuthHeaders } from '@/lib/api';
 
 interface StaffReport {
   staff_id: number;
@@ -51,11 +51,7 @@ export default function ServiceDeductionsPage() {
   const [endDate, setEndDate] = useState(() => new Date().toISOString().split('T')[0]);
   const [selectedStaff, setSelectedStaff] = useState<number | null>(null);
 
-  useEffect(() => {
-    loadReport();
-  }, [startDate, endDate]);
-
-  const loadReport = async () => {
+  const loadReport = useCallback(async () => {
     setLoading(true);
     try {
       const token = localStorage.getItem('access_token');
@@ -77,7 +73,11 @@ export default function ServiceDeductionsPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [startDate, endDate, selectedStaff]);
+
+  useEffect(() => {
+    loadReport();
+  }, [loadReport]);
 
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('bg-BG', {

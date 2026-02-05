@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { API_URL } from '@/lib/api';
 
 interface TipPool {
   id: number;
@@ -92,7 +93,7 @@ export default function TipsManagerPage() {
     try {
       const token = localStorage.getItem('access_token');
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/tips/pools?range=${dateRange}`,
+        `${API_URL}/tips/pools?range=${dateRange}`,
         {
           headers: { Authorization: `Bearer ${token}` },
         }
@@ -113,7 +114,7 @@ export default function TipsManagerPage() {
     try {
       const token = localStorage.getItem('access_token');
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/tips/stats?range=${dateRange}`,
+        `${API_URL}/tips/stats?range=${dateRange}`,
         {
           headers: { Authorization: `Bearer ${token}` },
         }
@@ -132,7 +133,7 @@ export default function TipsManagerPage() {
     try {
       const token = localStorage.getItem('access_token');
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/tips/earnings?range=${dateRange}`,
+        `${API_URL}/tips/earnings?range=${dateRange}`,
         {
           headers: { Authorization: `Bearer ${token}` },
         }
@@ -168,7 +169,7 @@ export default function TipsManagerPage() {
     try {
       const token = localStorage.getItem('access_token');
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/tips/pools`,
+        `${API_URL}/tips/pools`,
         {
           method: 'POST',
           headers: {

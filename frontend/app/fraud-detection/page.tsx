@@ -2,8 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1';
+import { API_URL, getAuthHeaders, isAuthenticated } from '@/lib/api';
 
 interface FraudAlert {
   id: string;
@@ -111,53 +110,9 @@ export default function FraudDetectionPage() {
   const [caseForm, setCaseForm] = useState({ title: '', notes: '' });
 
   const [error, setError] = useState<string | null>(null);
-  const [isDemoMode, setIsDemoMode] = useState(false);
-
-  // Demo data for unauthenticated state
-  const demoAlerts: FraudAlert[] = [
-    { id: 'ALT001', staff_id: 3, staff_name: 'Георги Иванов', alert_type: 'Unusual Void Pattern', severity: 'high', description: '15 анулирания за последния час, средно 2 на ден', amount: 450, created_at: '2025-12-28T14:30:00Z', acknowledged: false, evidence: [{ type: 'pos_log', timestamp: '2025-12-28T14:30:00Z', description: '15 void transactions' }] },
-    { id: 'ALT002', staff_id: 5, staff_name: 'Мария Петрова', alert_type: 'Cash Drawer Discrepancy', severity: 'medium', description: 'Разлика от 85лв в касата при затваряне', amount: 85, created_at: '2025-12-28T12:00:00Z', acknowledged: false, evidence: [{ type: 'receipt', timestamp: '2025-12-28T12:00:00Z', description: 'Cash count mismatch' }] },
-    { id: 'ALT003', staff_id: 3, staff_name: 'Георги Иванов', alert_type: 'Discount Abuse', severity: 'critical', description: 'Прекомерни отстъпки - 35% от поръчките с отстъпка', amount: 1250, created_at: '2025-12-27T18:45:00Z', acknowledged: true, acknowledged_by: 'Иван Мениджър', acknowledged_at: '2025-12-27T19:00:00Z', evidence: [{ type: 'transaction', timestamp: '2025-12-27T18:45:00Z', description: 'High discount rate' }] },
-  ];
-
-  const demoCases: FraudCase[] = [
-    { id: 'CASE001', title: 'Систематични анулирания - Георги Иванов', staff_id: 3, staff_name: 'Георги Иванов', status: 'investigating', severity: 'high', total_amount: 2450, alerts_count: 8, created_at: '2025-12-20T10:00:00Z', updated_at: '2025-12-28T14:30:00Z', assigned_to: 'Иван Мениджър', notes: [{ id: 'N1', author: 'Иван Мениджър', content: 'Започнато разследване, преглед на видео записи', created_at: '2025-12-20T10:30:00Z' }] },
-    { id: 'CASE002', title: 'Липси в касата - Бар смяна', staff_id: 0, staff_name: 'Бар екип', status: 'open', severity: 'medium', total_amount: 520, alerts_count: 3, created_at: '2025-12-25T09:00:00Z', updated_at: '2025-12-27T12:00:00Z', notes: [] },
-  ];
-
-  const demoStaffRisks: StaffRisk[] = [
-    { id: 3, name: 'Георги Иванов', position: 'Сервитьор', risk_score: 78, risk_level: 'critical', alerts_count: 12, cases_count: 2, total_flagged_amount: 3200, last_alert: '2025-12-28T14:30:00Z', risk_factors: ['Високи анулирания', 'Чести отстъпки', 'Касови разлики'], trend: 'increasing' },
-    { id: 5, name: 'Мария Петрова', position: 'Барман', risk_score: 45, risk_level: 'medium', alerts_count: 4, cases_count: 1, total_flagged_amount: 520, last_alert: '2025-12-28T12:00:00Z', risk_factors: ['Касови разлики'], trend: 'stable' },
-    { id: 7, name: 'Петър Димитров', position: 'Сервитьор', risk_score: 22, risk_level: 'low', alerts_count: 1, cases_count: 0, total_flagged_amount: 50, risk_factors: [], trend: 'decreasing' },
-  ];
-
-  const demoPatterns: FraudPattern[] = [
-    { id: 'PAT001', name: 'Void After Payment', description: 'Анулиране на артикули след приключване на плащане', frequency: 23, total_amount: 1850, staff_involved: 2, last_occurrence: '2025-12-28T13:00:00Z', detection_rate: 95, examples: ['Поръчка #1234 - анулиран десерт след кеш плащане'] },
-    { id: 'PAT002', name: 'Sweet-hearting', description: 'Не регистриране на продукти за познати клиенти', frequency: 8, total_amount: 680, staff_involved: 1, last_occurrence: '2025-12-26T20:00:00Z', detection_rate: 72, examples: ['Видео анализ показва нерегистрирани напитки'] },
-  ];
-
-  const demoRules: AlertRule[] = [
-    { id: 'R001', name: 'High Void Rate', description: 'Тригерира при повече от 5 анулирания за час', type: 'void_pattern', threshold: 5, severity: 'high', enabled: true, triggers_count: 45 },
-    { id: 'R002', name: 'Cash Discrepancy', description: 'Тригерира при разлика над 50лв в касата', type: 'cash_variance', threshold: 50, severity: 'medium', enabled: true, triggers_count: 12 },
-    { id: 'R003', name: 'Excessive Discounts', description: 'Тригерира при над 20% поръчки с отстъпка', type: 'discount_abuse', threshold: 20, severity: 'high', enabled: true, triggers_count: 8 },
-  ];
-
-  const loadDemoData = useCallback(() => {
-    setAlerts(demoAlerts);
-    setCases(demoCases);
-    setStaffRisks(demoStaffRisks);
-    setPatterns(demoPatterns);
-    setRules(demoRules);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  const getAuthHeaders = (): HeadersInit => {
-    const token = localStorage.getItem('access_token');
-    return token ? { Authorization: `Bearer ${token}` } : {};
-  };
 
   const fetchAlerts = useCallback(async () => {
-    const response = await fetch(`${API_BASE_URL}/risk-alerts/alerts`, { headers: getAuthHeaders() });
+    const response = await fetch(`${API_URL}/risk-alerts/alerts`, { headers: getAuthHeaders() });
     if (response.status === 401 || response.status === 403) throw new Error('AUTH_ERROR');
     if (!response.ok) throw new Error('Failed to fetch alerts');
     const data = await response.json();
@@ -165,7 +120,7 @@ export default function FraudDetectionPage() {
   }, []);
 
   const fetchRiskScores = useCallback(async () => {
-    const response = await fetch(`${API_BASE_URL}/risk-alerts/scores`, { headers: getAuthHeaders() });
+    const response = await fetch(`${API_URL}/risk-alerts/scores`, { headers: getAuthHeaders() });
     if (response.status === 401 || response.status === 403) throw new Error('AUTH_ERROR');
     if (!response.ok) throw new Error('Failed to fetch risk scores');
     const data = await response.json();
@@ -186,7 +141,7 @@ export default function FraudDetectionPage() {
 
   const fetchPatterns = useCallback(async () => {
     try {
-      const response = await fetch(`${API_BASE_URL}/risk-alerts/patterns`, { headers: getAuthHeaders() });
+      const response = await fetch(`${API_URL}/risk-alerts/patterns`, { headers: getAuthHeaders() });
       if (response.ok) {
         const data = await response.json();
         setPatterns(Array.isArray(data) ? data : data.patterns || []);
@@ -198,7 +153,7 @@ export default function FraudDetectionPage() {
 
   const fetchDashboard = useCallback(async () => {
     try {
-      const response = await fetch(`${API_BASE_URL}/risk-alerts/dashboard`, { headers: getAuthHeaders() });
+      const response = await fetch(`${API_URL}/risk-alerts/dashboard`, { headers: getAuthHeaders() });
       if (response.ok) {
         const data = await response.json();
         if (data.cases) setCases(data.cases);
@@ -212,12 +167,9 @@ export default function FraudDetectionPage() {
   const loadData = useCallback(async () => {
     setLoading(true);
     setError(null);
-    setIsDemoMode(false);
 
-    const token = localStorage.getItem('access_token');
-    if (!token) {
-      loadDemoData();
-      setIsDemoMode(true);
+    if (!isAuthenticated()) {
+      setError('Please log in to access fraud detection.');
       setLoading(false);
       return;
     }
@@ -231,8 +183,7 @@ export default function FraudDetectionPage() {
       ]);
     } catch (err) {
       if (err instanceof Error && err.message === 'AUTH_ERROR') {
-        loadDemoData();
-        setIsDemoMode(true);
+        setError('Authentication required. Please log in.');
       } else {
         const message = err instanceof Error ? err.message : 'Failed to load fraud detection data';
         setError(message);
@@ -240,7 +191,7 @@ export default function FraudDetectionPage() {
     } finally {
       setLoading(false);
     }
-  }, [fetchAlerts, fetchRiskScores, fetchPatterns, fetchDashboard, loadDemoData]);
+  }, [fetchAlerts, fetchRiskScores, fetchPatterns, fetchDashboard]);
 
   useEffect(() => {
     loadData();
@@ -298,13 +249,9 @@ export default function FraudDetectionPage() {
 
   const acknowledgeAlert = async (alertId: string) => {
     try {
-      const token = localStorage.getItem('access_token');
-      const response = await fetch(`${API_BASE_URL}/risk-alerts/alerts/${alertId}/acknowledge`, {
+      const response = await fetch(`${API_URL}/risk-alerts/alerts/${alertId}/acknowledge`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        },
+        headers: getAuthHeaders(),
       });
       if (!response.ok) throw new Error('Failed to acknowledge alert');
 
@@ -433,18 +380,19 @@ export default function FraudDetectionPage() {
           </div>
         </div>
 
-        {/* Demo Mode Banner */}
-        {isDemoMode && (
+        {/* Error Banner */}
+        {error && (
           <div className="mb-6 bg-amber-50 border border-amber-200 rounded-xl p-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <span className="text-2xl">🔓</span>
+                <span className="text-2xl">&#x26A0;</span>
                 <div>
-                  <div className="text-amber-800 font-medium">Demo Mode - Showing sample data</div>
-                  <div className="text-amber-600 text-sm">Log in to view real fraud detection data</div>
+                  <div className="text-amber-800 font-medium">{error}</div>
                 </div>
               </div>
-              <a href="/login" className="px-4 py-2 bg-amber-600 text-white rounded-lg hover:bg-amber-700">Login</a>
+              {!isAuthenticated() && (
+                <a href="/login" className="px-4 py-2 bg-amber-600 text-white rounded-lg hover:bg-amber-700">Login</a>
+              )}
             </div>
           </div>
         )}

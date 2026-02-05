@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+import { API_URL, getAuthHeaders } from '@/lib/api';
 
 interface ManagerAlert {
   id: number;
@@ -66,13 +66,11 @@ export default function ManagerAlertsPage() {
     loadAlerts();
   }, []);
 
-  const getToken = () => localStorage.getItem("access_token");
 
   const loadAlerts = async () => {
     try {
-      const token = getToken();
       const response = await fetch(`${API_URL}/manager-alerts?active_only=false`, {
-        headers: { Authorization: `Bearer ${token}` },
+        headers: getAuthHeaders(),
       });
 
       if (response.ok) {
@@ -88,7 +86,6 @@ export default function ManagerAlertsPage() {
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
-    const token = getToken();
 
     try {
       const payload = {
@@ -112,10 +109,7 @@ export default function ManagerAlertsPage() {
 
       const response = await fetch(`${API_URL}/manager-alerts`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
+        headers: getAuthHeaders(),
         body: JSON.stringify(payload),
       });
 
@@ -135,7 +129,6 @@ export default function ManagerAlertsPage() {
   const handleUpdate = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingAlert) return;
-    const token = getToken();
 
     try {
       const payload = {
@@ -159,10 +152,7 @@ export default function ManagerAlertsPage() {
 
       const response = await fetch(`${API_URL}/manager-alerts/${editingAlert.id}`, {
         method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
+        headers: getAuthHeaders(),
         body: JSON.stringify(payload),
       });
 
@@ -182,12 +172,11 @@ export default function ManagerAlertsPage() {
 
   const handleDelete = async (alertId: number) => {
     if (!confirm("Are you sure you want to delete this alert?")) return;
-    const token = getToken();
 
     try {
       const response = await fetch(`${API_URL}/manager-alerts/${alertId}`, {
         method: "DELETE",
-        headers: { Authorization: `Bearer ${token}` },
+        headers: getAuthHeaders(),
       });
 
       if (response.ok) {
@@ -201,15 +190,11 @@ export default function ManagerAlertsPage() {
   };
 
   const toggleActive = async (alert: ManagerAlert) => {
-    const token = getToken();
 
     try {
       const response = await fetch(`${API_URL}/manager-alerts/${alert.id}`, {
         method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
+        headers: getAuthHeaders(),
         body: JSON.stringify({ is_active: !alert.is_active }),
       });
 
@@ -223,15 +208,11 @@ export default function ManagerAlertsPage() {
 
   const testAlert = async (alertItem: ManagerAlert) => {
     setTestingAlert(alertItem.id);
-    const token = getToken();
 
     try {
       const response = await fetch(`${API_URL}/manager-alerts/trigger`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
+        headers: getAuthHeaders(),
         body: JSON.stringify({
           alert_type: alertItem.alert_type,
           value: alertItem.threshold_value ? alertItem.threshold_value + 1 : 100,

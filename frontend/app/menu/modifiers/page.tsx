@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
+import { API_URL } from '@/lib/api';
 
 interface MultiLang {
   bg: string;
@@ -95,7 +96,7 @@ export default function MenuModifiersPage() {
   const loadModifiers = async () => {
     try {
       const token = localStorage.getItem('access_token');
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/menu-admin/modifier-groups`, {
+      const response = await fetch(`${API_URL}/menu-admin/modifier-groups`, {
         headers: {
           'Authorization': `Bearer ${token}`,
         },
@@ -143,8 +144,8 @@ export default function MenuModifiersPage() {
     try {
       const token = localStorage.getItem('access_token');
       const url = editingGroup
-        ? `${process.env.NEXT_PUBLIC_API_URL}/menu-admin/modifier-groups/${editingGroup.id}`
-        : `${process.env.NEXT_PUBLIC_API_URL}/menu-admin/modifier-groups`;
+        ? `${API_URL}/menu-admin/modifier-groups/${editingGroup.id}`
+        : `${API_URL}/menu-admin/modifier-groups`;
 
       const response = await fetch(url, {
         method: editingGroup ? 'PUT' : 'POST',
@@ -184,8 +185,8 @@ export default function MenuModifiersPage() {
     try {
       const token = localStorage.getItem('access_token');
       const url = editingOption
-        ? `${process.env.NEXT_PUBLIC_API_URL}/menu-admin/modifier-options/${editingOption.id}`
-        : `${process.env.NEXT_PUBLIC_API_URL}/menu-admin/modifier-groups/${selectedGroupId}/options`;
+        ? `${API_URL}/menu-admin/modifier-options/${editingOption.id}`
+        : `${API_URL}/menu-admin/modifier-groups/${selectedGroupId}/options`;
 
       const response = await fetch(url, {
         method: editingOption ? 'PUT' : 'POST',
@@ -215,7 +216,7 @@ export default function MenuModifiersPage() {
 
     try {
       const token = localStorage.getItem('access_token');
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/menu-admin/modifier-groups/${groupId}`, {
+      const response = await fetch(`${API_URL}/menu-admin/modifier-groups/${groupId}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -238,7 +239,7 @@ export default function MenuModifiersPage() {
 
     try {
       const token = localStorage.getItem('access_token');
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/menu-admin/modifier-options/${optionId}`, {
+      const response = await fetch(`${API_URL}/menu-admin/modifier-options/${optionId}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -331,7 +332,7 @@ export default function MenuModifiersPage() {
   const toggleGroupActive = async (groupId: number) => {
     try {
       const token = localStorage.getItem('access_token');
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/menu-admin/modifier-groups/${groupId}/toggle-active`, {
+      const response = await fetch(`${API_URL}/menu-admin/modifier-groups/${groupId}/toggle-active`, {
         method: 'PATCH',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -351,7 +352,7 @@ export default function MenuModifiersPage() {
   const toggleOptionAvailable = async (groupId: number, optionId: number) => {
     try {
       const token = localStorage.getItem('access_token');
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/menu-admin/modifier-options/${optionId}/toggle-available`, {
+      const response = await fetch(`${API_URL}/menu-admin/modifier-options/${optionId}/toggle-available`, {
         method: 'PATCH',
         headers: {
           'Authorization': `Bearer ${token}`,

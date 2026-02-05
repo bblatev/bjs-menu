@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import Link from 'next/link';
+import { API_URL } from '@/lib/api';
 
 interface Camera {
   id: string;
@@ -52,7 +53,7 @@ export default function AnalyticsVideoPage() {
     setLoading(true);
     try {
       const token = localStorage.getItem('access_token');
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/analytics/video`, {
+      const response = await fetch(`${API_URL}/analytics/video`, {
         headers: { Authorization: `Bearer ${token}` },
       });
 

@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Link from 'next/link';
+import { API_URL } from '@/lib/api';
 
 interface Account {
   id: number;
@@ -47,7 +48,7 @@ export default function ChartOfAccountsPage() {
   const loadAccounts = async () => {
     try {
       const token = localStorage.getItem('access_token');
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/financial/chart-of-accounts`, {
+      const response = await fetch(`${API_URL}/financial/chart-of-accounts`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (response.ok) {
@@ -64,7 +65,7 @@ export default function ChartOfAccountsPage() {
   const handleCreate = async () => {
     try {
       const token = localStorage.getItem('access_token');
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/financial/chart-of-accounts`, {
+      const response = await fetch(`${API_URL}/financial/chart-of-accounts`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

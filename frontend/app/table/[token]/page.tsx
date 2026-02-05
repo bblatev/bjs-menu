@@ -2,8 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useParams } from 'next/navigation';
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1';
+import { API_URL } from '@/lib/api';
 
 interface MenuItem {
   id: number;
@@ -152,81 +151,11 @@ export default function TableOrderPage() {
 
         setCategories(cats);
       } else {
-        // Menu endpoint failed, try demo mode with mock data
-        const tableNumber = token.replace('table', '').replace('-token', '') || token;
-        setTableInfo({ id: parseInt(tableNumber) || 1, number: tableNumber, seats: 4 });
-
-        // Set demo menu data
-        const demoCategories: Category[] = [
-          {
-            id: 1,
-            name: 'Starters',
-            items: [
-              { id: 1, name: 'Shopska Salad', description: 'Fresh Bulgarian salad with tomatoes, cucumbers, peppers, and feta cheese', price: 8.50, available: true, category: 'Starters' },
-              { id: 2, name: 'Tarator', description: 'Cold yogurt soup with cucumbers and walnuts', price: 6.00, available: true, category: 'Starters' },
-              { id: 3, name: 'Kyufte', description: 'Grilled Bulgarian meatballs', price: 9.00, available: true, category: 'Starters' },
-            ],
-          },
-          {
-            id: 2,
-            name: 'Main Courses',
-            items: [
-              { id: 4, name: 'Kavarma', description: 'Traditional Bulgarian pork stew with vegetables', price: 16.00, available: true, category: 'Main Courses' },
-              { id: 5, name: 'Grilled Trout', description: 'Fresh mountain trout with herbs and lemon', price: 18.00, available: true, category: 'Main Courses' },
-              { id: 6, name: 'Kebapche Plate', description: 'Grilled minced meat rolls with fries and salad', price: 14.00, available: true, category: 'Main Courses' },
-            ],
-          },
-          {
-            id: 3,
-            name: 'Drinks',
-            items: [
-              { id: 7, name: 'Rakia', description: 'Traditional Bulgarian fruit brandy (50ml)', price: 5.00, available: true, category: 'Drinks' },
-              { id: 8, name: 'Bulgarian Wine', description: 'Local red or white wine (glass)', price: 6.00, available: true, category: 'Drinks' },
-              { id: 9, name: 'Ayran', description: 'Refreshing yogurt drink', price: 3.00, available: true, category: 'Drinks' },
-              { id: 10, name: 'Coffee', description: 'Espresso or Turkish coffee', price: 3.50, available: true, category: 'Drinks' },
-            ],
-          },
-          {
-            id: 4,
-            name: 'Desserts',
-            items: [
-              { id: 11, name: 'Baklava', description: 'Sweet pastry with nuts and honey syrup', price: 6.50, available: true, category: 'Desserts' },
-              { id: 12, name: 'Homemade Ice Cream', description: 'Local dairy ice cream with fruit', price: 5.00, available: true, category: 'Desserts' },
-            ],
-          },
-        ];
-
-        setCategories(demoCategories);
+        setError('Menu is currently unavailable. Please ask your server for assistance.');
       }
     } catch (err) {
       console.error('Error loading data:', err);
-      // On error, still show demo menu
-      setTableInfo({ id: 1, number: token, seats: 4 });
-
-      const demoCategories: Category[] = [
-        {
-          id: 1,
-          name: 'Starters',
-          items: [
-            { id: 1, name: 'Shopska Salad', description: 'Fresh Bulgarian salad', price: 8.50, available: true, category: 'Starters' },
-          ],
-        },
-        {
-          id: 2,
-          name: 'Main Courses',
-          items: [
-            { id: 4, name: 'Kavarma', description: 'Traditional Bulgarian stew', price: 16.00, available: true, category: 'Main Courses' },
-          ],
-        },
-        {
-          id: 3,
-          name: 'Drinks',
-          items: [
-            { id: 7, name: 'Rakia', description: 'Bulgarian fruit brandy', price: 5.00, available: true, category: 'Drinks' },
-          ],
-        },
-      ];
-      setCategories(demoCategories);
+      setError('Unable to load menu. Please check your connection or ask your server for assistance.');
     } finally {
       setLoading(false);
     }

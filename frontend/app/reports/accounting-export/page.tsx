@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { Button, Card, CardBody } from '@/components/ui';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1';
+import { API_URL, getAuthHeaders } from '@/lib/api';
 
 interface PreviewEntry {
   document_number: string;
@@ -45,31 +45,30 @@ export default function AccountingExportPage() {
   const [vatMonth, setVatMonth] = useState(() => new Date().getMonth() + 1);
   const [vatYear, setVatYear] = useState(() => new Date().getFullYear());
 
-  const loadPreview = async () => {
-    if (exportType === 'vat') return;
-
-    setLoading(true);
-    try {
-      const token = localStorage.getItem('access_token');
-      const response = await fetch(
-        `${API_URL}/accounting-export/sales-journal/preview?start_date=${startDate}&end_date=${endDate}&limit=5`,
-        {
-          headers: { Authorization: `Bearer ${token}` },
-        }
-      );
-
-      if (response.ok) {
-        const data = await response.json();
-        setPreview(data);
-      }
-    } catch (err) {
-      console.error('Error loading preview:', err);
-    } finally {
-      setLoading(false);
-    }
-  };
-
   useEffect(() => {
+    const loadPreview = async () => {
+      if (exportType === 'vat') return;
+
+      setLoading(true);
+      try {
+        const token = localStorage.getItem('access_token');
+        const response = await fetch(
+          `${API_URL}/accounting-export/sales-journal/preview?start_date=${startDate}&end_date=${endDate}&limit=5`,
+          {
+            headers: { Authorization: `Bearer ${token}` },
+          }
+        );
+
+        if (response.ok) {
+          const data = await response.json();
+          setPreview(data);
+        }
+      } catch (err) {
+        console.error('Error loading preview:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
     loadPreview();
   }, [startDate, endDate, exportType]);
 

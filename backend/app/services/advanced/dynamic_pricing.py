@@ -29,6 +29,7 @@ class DynamicPricingService:
         max_adjustment_percent: Optional[float] = None,
         item_ids: Optional[List[int]] = None,
         category_ids: Optional[List[int]] = None,
+        is_active: bool = True,
     ) -> DynamicPricingRule:
         """Create a dynamic pricing rule."""
         rule = DynamicPricingRule(
@@ -42,7 +43,7 @@ class DynamicPricingService:
             applies_to=applies_to,
             item_ids=item_ids,
             category_ids=category_ids,
-            is_active=True,
+            is_active=is_active,
         )
         self.db.add(rule)
         self.db.commit()

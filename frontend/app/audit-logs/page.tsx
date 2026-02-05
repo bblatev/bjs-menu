@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
+import { API_URL, getAuthHeaders } from '@/lib/api';
 
 interface AuditLog {
   id: number;
@@ -45,7 +46,6 @@ export default function AuditLogsPage() {
   const [availableActions, setAvailableActions] = useState<string[]>([]);
   const [availableEntityTypes, setAvailableEntityTypes] = useState<string[]>([]);
 
-  const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1';
 
   // Get token from localStorage on mount
   useEffect(() => {

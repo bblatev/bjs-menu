@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
+import { API_URL } from '@/lib/api';
 
 interface DaypartSchedule {
   id: number;
@@ -81,7 +82,7 @@ export default function MenuSchedulingPage() {
   const loadData = async () => {
     try {
       const token = localStorage.getItem('access_token');
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/menu-admin/dayparts`, {
+      const response = await fetch(`${API_URL}/menu-admin/dayparts`, {
         headers: {
           'Authorization': `Bearer ${token}`,
         },
@@ -117,8 +118,8 @@ export default function MenuSchedulingPage() {
     try {
       const token = localStorage.getItem('access_token');
       const url = editingDaypart
-        ? `${process.env.NEXT_PUBLIC_API_URL}/menu-admin/dayparts/${editingDaypart.id}`
-        : `${process.env.NEXT_PUBLIC_API_URL}/menu-admin/dayparts`;
+        ? `${API_URL}/menu-admin/dayparts/${editingDaypart.id}`
+        : `${API_URL}/menu-admin/dayparts`;
 
       const response = await fetch(url, {
         method: editingDaypart ? 'PUT' : 'POST',
@@ -148,7 +149,7 @@ export default function MenuSchedulingPage() {
 
     try {
       const token = localStorage.getItem('access_token');
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/menu-admin/dayparts/${id}`, {
+      const response = await fetch(`${API_URL}/menu-admin/dayparts/${id}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -215,7 +216,7 @@ export default function MenuSchedulingPage() {
   const toggleActive = async (id: number) => {
     try {
       const token = localStorage.getItem('access_token');
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/menu-admin/dayparts/${id}/toggle-active`, {
+      const response = await fetch(`${API_URL}/menu-admin/dayparts/${id}/toggle-active`, {
         method: 'PATCH',
         headers: {
           'Authorization': `Bearer ${token}`,

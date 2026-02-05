@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
+import { API_URL } from '@/lib/api';
 
 interface Promotion {
   id: string;
@@ -82,7 +83,7 @@ export default function MarketingPromotionsPage() {
   const loadPromotions = async () => {
     try {
       const token = localStorage.getItem('access_token');
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/marketing/promotions`, {
+      const response = await fetch(`${API_URL}/marketing/promotions`, {
         headers: {
           'Authorization': `Bearer ${token}`,
         },
@@ -102,7 +103,7 @@ export default function MarketingPromotionsPage() {
   const loadCategories = async () => {
     try {
       const token = localStorage.getItem('access_token');
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/menu-admin/categories`, {
+      const response = await fetch(`${API_URL}/menu-admin/categories`, {
         headers: {
           'Authorization': `Bearer ${token}`,
         },
@@ -125,7 +126,7 @@ export default function MarketingPromotionsPage() {
   const handleCreate = async () => {
     try {
       const token = localStorage.getItem('access_token');
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/marketing/promotions`, {
+      const response = await fetch(`${API_URL}/marketing/promotions`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -154,7 +155,7 @@ export default function MarketingPromotionsPage() {
     if (!editingPromo) return;
     try {
       const token = localStorage.getItem('access_token');
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/marketing/promotions/${editingPromo.id}`, {
+      const response = await fetch(`${API_URL}/marketing/promotions/${editingPromo.id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -180,7 +181,7 @@ export default function MarketingPromotionsPage() {
     if (confirm('Are you sure you want to delete this promotion?')) {
       try {
         const token = localStorage.getItem('access_token');
-        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/marketing/promotions/${id}`, {
+        const response = await fetch(`${API_URL}/marketing/promotions/${id}`, {
           method: 'DELETE',
           headers: {
             'Authorization': `Bearer ${token}`,
@@ -202,7 +203,7 @@ export default function MarketingPromotionsPage() {
   const toggleActive = async (id: string) => {
     try {
       const token = localStorage.getItem('access_token');
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/marketing/promotions/${id}/toggle-active`, {
+      const response = await fetch(`${API_URL}/marketing/promotions/${id}/toggle-active`, {
         method: 'PATCH',
         headers: {
           'Authorization': `Bearer ${token}`,

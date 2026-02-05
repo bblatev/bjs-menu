@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
+import { API_URL } from '@/lib/api';
 
 interface MultiLang {
   bg: string;
@@ -128,7 +129,7 @@ export default function MenuCategoriesPage() {
   const loadCategories = async () => {
     try {
       const token = localStorage.getItem('access_token');
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/menu-admin/categories`, {
+      const response = await fetch(`${API_URL}/menu-admin/categories`, {
         headers: {
           'Authorization': `Bearer ${token}`,
         },
@@ -172,8 +173,8 @@ export default function MenuCategoriesPage() {
     try {
       const token = localStorage.getItem('access_token');
       const url = editingCategory
-        ? `${process.env.NEXT_PUBLIC_API_URL}/menu-admin/categories/${editingCategory.id}`
-        : `${process.env.NEXT_PUBLIC_API_URL}/menu-admin/categories`;
+        ? `${API_URL}/menu-admin/categories/${editingCategory.id}`
+        : `${API_URL}/menu-admin/categories`;
 
       const response = await fetch(url, {
         method: editingCategory ? 'PUT' : 'POST',
@@ -208,7 +209,7 @@ export default function MenuCategoriesPage() {
 
     try {
       const token = localStorage.getItem('access_token');
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/menu-admin/categories/${id}`, {
+      const response = await fetch(`${API_URL}/menu-admin/categories/${id}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -278,7 +279,7 @@ export default function MenuCategoriesPage() {
   const toggleActive = async (id: number) => {
     try {
       const token = localStorage.getItem('access_token');
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/menu-admin/categories/${id}/toggle-active`, {
+      const response = await fetch(`${API_URL}/menu-admin/categories/${id}/toggle-active`, {
         method: 'PATCH',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -329,7 +330,7 @@ export default function MenuCategoriesPage() {
         sort_order: index + 1,
       }));
 
-      await fetch(`${process.env.NEXT_PUBLIC_API_URL}/menu-admin/categories/reorder`, {
+      await fetch(`${API_URL}/menu-admin/categories/reorder`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',

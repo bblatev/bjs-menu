@@ -4,7 +4,7 @@ import React, { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+import { API_URL, getAuthHeaders } from '@/lib/api';
 
 // Types
 interface Warehouse {
@@ -156,15 +156,13 @@ export default function WarehousesPage() {
     activities: null,
   });
 
-  const getToken = () => localStorage.getItem("access_token");
 
   const fetchWarehouses = useCallback(async () => {
     setLoading((prev) => ({ ...prev, warehouses: true }));
     setError((prev) => ({ ...prev, warehouses: null }));
     try {
-      const token = getToken();
       const response = await fetch(`${API_URL}/warehouses/`, {
-        headers: { Authorization: `Bearer ${token}` },
+        headers: getAuthHeaders(),
       });
       if (!response.ok) {
         throw new Error(`Failed to fetch warehouses: ${response.status}`);
@@ -186,14 +184,13 @@ export default function WarehousesPage() {
     setLoading((prev) => ({ ...prev, stockLevels: true }));
     setError((prev) => ({ ...prev, stockLevels: null }));
     try {
-      const token = getToken();
       const params = new URLSearchParams();
       if (warehouseId && warehouseId !== "all") {
         params.append("warehouse_id", warehouseId);
       }
       const url = `${API_URL}/warehouses/stock-levels/${params.toString() ? `?${params.toString()}` : ""}`;
       const response = await fetch(url, {
-        headers: { Authorization: `Bearer ${token}` },
+        headers: getAuthHeaders(),
       });
       if (!response.ok) {
         throw new Error(`Failed to fetch stock levels: ${response.status}`);
@@ -215,9 +212,8 @@ export default function WarehousesPage() {
     setLoading((prev) => ({ ...prev, transfers: true }));
     setError((prev) => ({ ...prev, transfers: null }));
     try {
-      const token = getToken();
       const response = await fetch(`${API_URL}/warehouses/transfers/`, {
-        headers: { Authorization: `Bearer ${token}` },
+        headers: getAuthHeaders(),
       });
       if (!response.ok) {
         throw new Error(`Failed to fetch transfers: ${response.status}`);
@@ -239,9 +235,8 @@ export default function WarehousesPage() {
     setLoading((prev) => ({ ...prev, activities: true }));
     setError((prev) => ({ ...prev, activities: null }));
     try {
-      const token = getToken();
       const response = await fetch(`${API_URL}/warehouses/activities/`, {
-        headers: { Authorization: `Bearer ${token}` },
+        headers: getAuthHeaders(),
       });
       if (!response.ok) {
         throw new Error(`Failed to fetch activities: ${response.status}`);

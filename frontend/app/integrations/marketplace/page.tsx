@@ -53,6 +53,7 @@ export default function IntegrationMarketplacePage() {
 
   useEffect(() => {
     loadData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const loadData = async () => {
@@ -287,6 +288,7 @@ export default function IntegrationMarketplacePage() {
                   <div className="flex items-center gap-3">
                     <div className="w-12 h-12 rounded-xl bg-surface-100 flex items-center justify-center text-2xl">
                       {integration.logo_url ? (
+                        /* eslint-disable-next-line @next/next/no-img-element */
                         <img src={integration.logo_url} alt={integration.name} className="w-8 h-8" />
                       ) : (
                         getIntegrationIcon(integration.category)

@@ -6,7 +6,7 @@ import Link from 'next/link';
 import { PageLoading } from '@/components/ui/LoadingSpinner';
 import { ErrorAlert } from '@/components/ui/ErrorAlert';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1';
+import { API_URL, getAuthHeaders } from '@/lib/api';
 
 interface DataSource {
   id: string;
@@ -98,29 +98,29 @@ export default function ReportBuilderPage() {
   const [draggedColumn, setDraggedColumn] = useState<string | null>(null);
 
   useEffect(() => {
+    const loadDataSources = async () => {
+      setInitialLoading(true);
+      setError(null);
+      try {
+        const res = await fetch(`${API_URL}/custom-reports/data-sources`);
+        if (res.ok) {
+          const data = await res.json();
+          setDataSources(data);
+          if (data.length > 0 && !report.data_source_id) {
+            setReport({ ...report, data_source_id: data[0].id });
+          }
+        }
+      } catch (err) {
+        console.error('Error loading data sources:', err);
+        setError('Failed to load data sources. Please try again.');
+      } finally {
+        setInitialLoading(false);
+      }
+    };
     loadDataSources();
     loadSavedReports();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-
-  const loadDataSources = async () => {
-    setInitialLoading(true);
-    setError(null);
-    try {
-      const res = await fetch(`${API_URL}/custom-reports/data-sources`);
-      if (res.ok) {
-        const data = await res.json();
-        setDataSources(data);
-        if (data.length > 0 && !report.data_source_id) {
-          setReport({ ...report, data_source_id: data[0].id });
-        }
-      }
-    } catch (err) {
-      console.error('Error loading data sources:', err);
-      setError('Failed to load data sources. Please try again.');
-    } finally {
-      setInitialLoading(false);
-    }
-  };
 
   const loadSavedReports = async () => {
     try {

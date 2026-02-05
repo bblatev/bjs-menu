@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { API_URL } from '@/lib/api';
 
 interface Warehouse {
   id: number;
@@ -70,11 +71,9 @@ export default function StockTransfersPage() {
 
   const loadData = async () => {
     const token = localStorage.getItem('access_token');
-    const baseUrl = process.env.NEXT_PUBLIC_API_URL;
-
     try {
       // Load warehouses
-      const warehouseRes = await fetch(`${baseUrl}/warehouses`, {
+      const warehouseRes = await fetch(`${API_URL}/warehouses`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       if (warehouseRes.ok) {
@@ -88,7 +87,7 @@ export default function StockTransfersPage() {
       }
 
       // Load stock items
-      const stockRes = await fetch(`${baseUrl}/stock`, {
+      const stockRes = await fetch(`${API_URL}/stock`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       if (stockRes.ok) {
@@ -103,7 +102,7 @@ export default function StockTransfersPage() {
       }
 
       // Load transfers
-      const transferRes = await fetch(`${baseUrl}/warehouses/transfers`, {
+      const transferRes = await fetch(`${API_URL}/warehouses/transfers`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       if (transferRes.ok) {
@@ -169,12 +168,10 @@ export default function StockTransfersPage() {
     }
 
     const token = localStorage.getItem('access_token');
-    const baseUrl = process.env.NEXT_PUBLIC_API_URL;
-
     try {
       // Create a transfer for each item (backend handles single items)
       for (const item of newTransfer.items) {
-        const res = await fetch(`${baseUrl}/warehouses/transfers`, {
+        const res = await fetch(`${API_URL}/warehouses/transfers`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -205,16 +202,14 @@ export default function StockTransfersPage() {
 
   const handleUpdateStatus = async (transferId: number, newStatus: Transfer['status']) => {
     const token = localStorage.getItem('access_token');
-    const baseUrl = process.env.NEXT_PUBLIC_API_URL;
-
     try {
       let endpoint = '';
       if (newStatus === 'in_transit') {
-        endpoint = `${baseUrl}/warehouses/transfers/${transferId}/start`;
+        endpoint = `${API_URL}/warehouses/transfers/${transferId}/start`;
       } else if (newStatus === 'received') {
-        endpoint = `${baseUrl}/warehouses/transfers/${transferId}/complete`;
+        endpoint = `${API_URL}/warehouses/transfers/${transferId}/complete`;
       } else if (newStatus === 'cancelled') {
-        endpoint = `${baseUrl}/warehouses/transfers/${transferId}/cancel`;
+        endpoint = `${API_URL}/warehouses/transfers/${transferId}/cancel`;
       }
 
       if (endpoint) {

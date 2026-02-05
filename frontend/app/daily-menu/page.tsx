@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
+import { API_URL } from "@/lib/api";
 
 interface DailyMenuItem {
   product_id: number;
@@ -66,6 +67,7 @@ export default function DailyMenuPage() {
 
   useEffect(() => {
     loadData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const getToken = () => localStorage.getItem("access_token");
@@ -83,10 +85,10 @@ export default function DailyMenuPage() {
 
       const [menusRes, productsRes] = await Promise.all([
         fetch(
-          `${process.env.NEXT_PUBLIC_API_URL}/daily-menu?start_date=${startDate.toISOString().split("T")[0]}&end_date=${endDate.toISOString().split("T")[0]}`,
+          `${API_URL}/daily-menu?start_date=${startDate.toISOString().split("T")[0]}&end_date=${endDate.toISOString().split("T")[0]}`,
           { headers }
         ),
-        fetch(`${process.env.NEXT_PUBLIC_API_URL}/menu-admin/items`, { headers }),
+        fetch(`${API_URL}/menu-admin/items`, { headers }),
       ]);
 
       if (menusRes.ok) {
@@ -122,7 +124,7 @@ export default function DailyMenuPage() {
       };
 
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/daily-menu`,
+        `${API_URL}/daily-menu`,
         {
           method: "POST",
           headers: {
@@ -164,7 +166,7 @@ export default function DailyMenuPage() {
       };
 
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/daily-menu/${editingMenu.id}`,
+        `${API_URL}/daily-menu/${editingMenu.id}`,
         {
           method: "PUT",
           headers: {
@@ -195,7 +197,7 @@ export default function DailyMenuPage() {
 
     try {
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/daily-menu/${menuId}`,
+        `${API_URL}/daily-menu/${menuId}`,
         {
           method: "DELETE",
           headers: { Authorization: `Bearer ${token}` },
@@ -217,7 +219,7 @@ export default function DailyMenuPage() {
 
     try {
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/daily-menu/${menu.id}`,
+        `${API_URL}/daily-menu/${menu.id}`,
         {
           method: "PUT",
           headers: {

@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import Link from 'next/link';
+import { API_URL, getAuthHeaders } from '@/lib/api';
 
 interface SalesReportItem {
   date: string;
@@ -89,8 +90,6 @@ export default function ReportsPage() {
   const [dateTo, setDateTo] = useState<string>(new Date().toISOString().split('T')[0]);
   const [hourFrom, setHourFrom] = useState<string>('00');
   const [hourTo, setHourTo] = useState<string>('23');
-
-  const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1';
 
   const fetchSalesReport = async () => {
     if (!token) return;

@@ -2,8 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1';
+import { API_URL, getAuthHeaders } from '@/lib/api';
 
 interface LiquorItem {
   id: number;
@@ -52,80 +51,6 @@ const CATEGORIES = [
 
 const LOCATIONS = ['Main Bar', 'Back Bar', 'Service Bar', 'Storage Room', 'Wine Cellar'];
 
-// Demo data for when API is unavailable
-const DEMO_ITEMS: LiquorItem[] = [
-  {
-    id: 1, name: 'Grey Goose Vodka', brand: 'Grey Goose', category: 'vodka', sku: 'VOD-001',
-    size: '750ml', full_bottles: 2, partial_bottles: 1, partial_percentage: 35,
-    total_volume_ml: 1762, par_level: 6, reorder_point: 3, cost_per_bottle: 28.00,
-    total_value: 67.80, last_count_date: '2024-12-24', counted_by: 'Alex',
-    variance_from_expected: -0.5, location: 'Main Bar', supplier: 'Premium Spirits Co'
-  },
-  {
-    id: 2, name: 'Bacardi White Rum', brand: 'Bacardi', category: 'rum', sku: 'RUM-001',
-    size: '750ml', full_bottles: 3, partial_bottles: 1, partial_percentage: 60,
-    total_volume_ml: 2700, par_level: 8, reorder_point: 4, cost_per_bottle: 16.00,
-    total_value: 57.60, last_count_date: '2024-12-24', counted_by: 'Maria',
-    variance_from_expected: 0.2, location: 'Main Bar', supplier: 'Bacardi Ltd'
-  },
-  {
-    id: 3, name: 'Hendricks Gin', brand: 'Hendricks', category: 'gin', sku: 'GIN-001',
-    size: '750ml', full_bottles: 4, partial_bottles: 1, partial_percentage: 20,
-    total_volume_ml: 3150, par_level: 6, reorder_point: 3, cost_per_bottle: 32.00,
-    total_value: 134.40, last_count_date: '2024-12-24', counted_by: 'Alex',
-    variance_from_expected: 0, location: 'Back Bar', supplier: 'Premium Spirits Co'
-  },
-  {
-    id: 4, name: 'Jack Daniels', brand: 'Jack Daniels', category: 'whiskey', sku: 'WHI-001',
-    size: '1L', full_bottles: 3, partial_bottles: 1, partial_percentage: 75,
-    total_volume_ml: 3750, par_level: 5, reorder_point: 2, cost_per_bottle: 28.00,
-    total_value: 105.00, last_count_date: '2024-12-23', counted_by: 'Jordan',
-    variance_from_expected: -0.3, location: 'Main Bar', supplier: 'Brown-Forman'
-  },
-  {
-    id: 5, name: 'Patron Silver', brand: 'Patron', category: 'tequila', sku: 'TEQ-001',
-    size: '750ml', full_bottles: 5, partial_bottles: 0, partial_percentage: 0,
-    total_volume_ml: 3750, par_level: 4, reorder_point: 2, cost_per_bottle: 42.00,
-    total_value: 210.00, last_count_date: '2024-12-24', counted_by: 'Alex',
-    variance_from_expected: 0.1, location: 'Back Bar', supplier: 'Patron Spirits'
-  },
-  {
-    id: 6, name: 'Triple Sec', brand: 'DeKuyper', category: 'liqueur', sku: 'LIQ-001',
-    size: '750ml', full_bottles: 6, partial_bottles: 1, partial_percentage: 80,
-    total_volume_ml: 5100, par_level: 4, reorder_point: 2, cost_per_bottle: 8.00,
-    total_value: 54.40, last_count_date: '2024-12-23', counted_by: 'Maria',
-    variance_from_expected: 0, location: 'Main Bar', supplier: 'DeKuyper'
-  },
-  {
-    id: 7, name: 'House Red Wine', brand: 'Casa Nova', category: 'wine', sku: 'WIN-001',
-    size: '750ml', full_bottles: 12, partial_bottles: 2, partial_percentage: 50,
-    total_volume_ml: 9750, par_level: 24, reorder_point: 12, cost_per_bottle: 8.00,
-    total_value: 104.00, last_count_date: '2024-12-24', counted_by: 'Jordan',
-    variance_from_expected: -1.5, location: 'Wine Cellar', supplier: 'Wine Imports Inc'
-  },
-  {
-    id: 8, name: 'Prosecco', brand: 'La Marca', category: 'wine', sku: 'WIN-002',
-    size: '750ml', full_bottles: 8, partial_bottles: 0, partial_percentage: 0,
-    total_volume_ml: 6000, par_level: 12, reorder_point: 6, cost_per_bottle: 12.00,
-    total_value: 96.00, last_count_date: '2024-12-23', counted_by: 'Alex',
-    variance_from_expected: 0, location: 'Wine Cellar', supplier: 'Wine Imports Inc'
-  },
-  {
-    id: 9, name: 'Fresh Lime Juice', brand: 'House Made', category: 'mixers', sku: 'MIX-001',
-    size: '1L', full_bottles: 2, partial_bottles: 1, partial_percentage: 40,
-    total_volume_ml: 2400, par_level: 5, reorder_point: 3, cost_per_bottle: 4.00,
-    total_value: 9.60, last_count_date: '2024-12-24', counted_by: 'Maria',
-    variance_from_expected: 0, location: 'Main Bar', supplier: 'In-House'
-  },
-  {
-    id: 10, name: 'Simple Syrup', brand: 'House Made', category: 'mixers', sku: 'MIX-002',
-    size: '1L', full_bottles: 4, partial_bottles: 1, partial_percentage: 60,
-    total_volume_ml: 4600, par_level: 4, reorder_point: 2, cost_per_bottle: 2.00,
-    total_value: 9.20, last_count_date: '2024-12-24', counted_by: 'Maria',
-    variance_from_expected: 0.3, location: 'Main Bar', supplier: 'In-House'
-  },
-];
-
 export default function BarInventoryPage() {
   const [items, setItems] = useState<LiquorItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -149,12 +74,9 @@ export default function BarInventoryPage() {
     setIsLoading(true);
     setError(null);
     try {
-      const token = localStorage.getItem('token') || localStorage.getItem('auth_token') || localStorage.getItem('access_token');
+      const headers = getAuthHeaders();
       const response = await fetch(`${API_URL}/bar/inventory-alerts`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
+        headers,
       });
 
       if (response.ok) {
@@ -182,18 +104,12 @@ export default function BarInventoryPage() {
             location: item.location || 'Main Bar',
             supplier: item.supplier || 'Unknown',
           })));
-        } else {
-          // Use demo data if API returns empty
-          setItems(DEMO_ITEMS);
         }
       } else {
-        // Use demo data if API fails
-        console.warn('API returned error, using demo data');
-        setItems(DEMO_ITEMS);
+        console.error('Failed to load bar inventory:', response.status);
       }
     } catch (err) {
-      console.warn('Failed to fetch from API, using demo data:', err);
-      setItems(DEMO_ITEMS);
+      console.error('Failed to fetch bar inventory:', err);
     } finally {
       setIsLoading(false);
     }
@@ -271,14 +187,10 @@ export default function BarInventoryPage() {
   };
 
   const handleAddItem = async () => {
-    const token = localStorage.getItem('access_token');
     try {
       const response = await fetch(`${API_URL}/stock/`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(token && { 'Authorization': `Bearer ${token}` }),
-        },
+        headers: getAuthHeaders(),
         body: JSON.stringify({
           name: newItem.name,
           sku: `BAR-${Date.now()}`,

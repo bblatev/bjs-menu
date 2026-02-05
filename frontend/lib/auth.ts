@@ -1,14 +1,7 @@
 // Auth utilities for the admin web application
+// Core API config (API_URL, getAuthHeaders, etc.) lives in @/lib/api
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
-
-/**
- * Get the authentication token from localStorage
- */
-export function getAuthToken(): string {
-  if (typeof window === 'undefined') return '';
-  return localStorage.getItem('access_token') || '';
-}
+import { API_URL } from '@/lib/api';
 
 /**
  * Get the venue ID from localStorage or return default
@@ -31,47 +24,12 @@ export function setVenueId(venueId: number): void {
 }
 
 /**
- * Check if user is authenticated
- */
-export function isAuthenticated(): boolean {
-  return !!getAuthToken();
-}
-
-/**
- * Clear all auth data (logout)
- */
-export function clearAuth(): void {
-  if (typeof window !== 'undefined') {
-    localStorage.removeItem('access_token');
-    localStorage.removeItem('refresh_token');
-    localStorage.removeItem('venue_id');
-  }
-}
-
-/**
- * Get auth headers for API requests
- */
-export function getAuthHeaders(): HeadersInit {
-  const token = getAuthToken();
-  const headers: HeadersInit = {
-    'Content-Type': 'application/json',
-  };
-  if (token) {
-    headers['Authorization'] = `Bearer ${token}`;
-  }
-  return headers;
-}
-
-/**
  * Build API URL with venue ID
  */
 export function buildVenueApiUrl(path: string): string {
   const venueId = getVenueId();
-  // Replace {venueId} placeholder if present
   if (path.includes('{venueId}')) {
     return `${API_URL}${path.replace('{venueId}', String(venueId))}`;
   }
   return `${API_URL}${path}`;
 }
-
-export { API_URL };
