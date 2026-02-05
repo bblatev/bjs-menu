@@ -542,3 +542,205 @@ async def get_purchase_order(po_id: str):
         if po.id == po_id:
             return po
     raise HTTPException(status_code=404, detail="Purchase order not found")
+
+
+# ==================== DATABASE-BACKED ENDPOINTS ====================
+# These endpoints use actual database models and update real inventory
+
+from decimal import Decimal
+from app.db.session import DbSession
+from app.models.order import PurchaseOrder as PurchaseOrderModel, PurchaseOrderLine, POStatus
+from app.models.stock import StockOnHand, StockMovement, MovementReason
+from app.models.product import Product
+
+
+class ReceiveGoodsRequest(BaseModel):
+    """Request to receive goods from a PO."""
+    received_quantities: Optional[dict] = None  # {line_id: qty_received}
+    notes: Optional[str] = None
+
+
+class ReceiveGoodsResponse(BaseModel):
+    """Response after receiving goods."""
+    status: str
+    po_id: int
+    stock_added: int
+    movements_created: int
+    items_received: List[dict]
+
+
+@router.post("/db/{po_id}/receive", response_model=ReceiveGoodsResponse)
+def receive_purchase_order(
+    db: DbSession,
+    po_id: int,
+    request: ReceiveGoodsRequest = None,
+):
+    """
+    Receive goods from a purchase order (DATABASE-BACKED).
+
+    This endpoint:
+    1. Updates PurchaseOrder status to RECEIVED
+    2. Creates StockMovement records (reason=PURCHASE) for each line
+    3. Updates StockOnHand for each product at the PO location
+
+    Use this for actual inventory management.
+    """
+    # Get the purchase order
+    po = db.query(PurchaseOrderModel).filter(PurchaseOrderModel.id == po_id).first()
+    if not po:
+        raise HTTPException(status_code=404, detail="Purchase order not found")
+
+    if po.status == POStatus.RECEIVED:
+        raise HTTPException(status_code=400, detail="Purchase order already received")
+
+    if po.status == POStatus.CANCELLED:
+        raise HTTPException(status_code=400, detail="Cannot receive cancelled purchase order")
+
+    # Get all PO lines
+    lines = db.query(PurchaseOrderLine).filter(PurchaseOrderLine.po_id == po_id).all()
+    if not lines:
+        raise HTTPException(status_code=400, detail="Purchase order has no items")
+
+    items_received = []
+    movements_created = 0
+
+    for line in lines:
+        # Determine quantity to receive (use request override or full qty)
+        qty_to_receive = line.qty
+        if request and request.received_quantities:
+            qty_to_receive = Decimal(str(request.received_quantities.get(str(line.id), line.qty)))
+
+        if qty_to_receive <= 0:
+            continue
+
+        # Get or create StockOnHand record
+        stock = db.query(StockOnHand).filter(
+            StockOnHand.product_id == line.product_id,
+            StockOnHand.location_id == po.location_id
+        ).first()
+
+        if not stock:
+            stock = StockOnHand(
+                product_id=line.product_id,
+                location_id=po.location_id,
+                qty=Decimal("0")
+            )
+            db.add(stock)
+            db.flush()
+
+        # Update stock quantity (ADD inventory)
+        old_qty = stock.qty
+        stock.qty += qty_to_receive
+
+        # Create stock movement record
+        product = db.query(Product).filter(Product.id == line.product_id).first()
+        movement = StockMovement(
+            product_id=line.product_id,
+            location_id=po.location_id,
+            qty_delta=qty_to_receive,  # Positive for receiving goods
+            reason=MovementReason.PURCHASE.value,
+            ref_type="purchase_order",
+            ref_id=po_id,
+            notes=f"Received from PO #{po_id}: {product.name if product else 'Unknown'} x{qty_to_receive}"
+        )
+        db.add(movement)
+        movements_created += 1
+
+        items_received.append({
+            "product_id": line.product_id,
+            "product_name": product.name if product else "Unknown",
+            "qty_received": float(qty_to_receive),
+            "old_stock": float(old_qty),
+            "new_stock": float(stock.qty),
+            "unit": product.unit if product else "pcs"
+        })
+
+    # Update PO status
+    po.status = POStatus.RECEIVED
+    po.received_at = datetime.utcnow()
+    if request and request.notes:
+        po.notes = (po.notes or "") + f"\nReceived: {request.notes}"
+
+    db.commit()
+
+    return ReceiveGoodsResponse(
+        status="received",
+        po_id=po_id,
+        stock_added=len(items_received),
+        movements_created=movements_created,
+        items_received=items_received
+    )
+
+
+@router.get("/db/list")
+def list_db_purchase_orders(
+    db: DbSession,
+    status: Optional[str] = None,
+    supplier_id: Optional[int] = None,
+    limit: int = 100,
+):
+    """List purchase orders from database (not mock data)."""
+    query = db.query(PurchaseOrderModel)
+
+    if status:
+        query = query.filter(PurchaseOrderModel.status == status)
+    if supplier_id:
+        query = query.filter(PurchaseOrderModel.supplier_id == supplier_id)
+
+    pos = query.order_by(PurchaseOrderModel.created_at.desc()).limit(limit).all()
+
+    result = []
+    for po in pos:
+        lines = db.query(PurchaseOrderLine).filter(PurchaseOrderLine.po_id == po.id).all()
+        total = sum(float(line.qty * (line.unit_cost or 0)) for line in lines)
+
+        result.append({
+            "id": po.id,
+            "supplier_id": po.supplier_id,
+            "location_id": po.location_id,
+            "status": po.status.value if po.status else "draft",
+            "created_at": po.created_at.isoformat() if po.created_at else None,
+            "sent_at": po.sent_at.isoformat() if po.sent_at else None,
+            "received_at": po.received_at.isoformat() if po.received_at else None,
+            "notes": po.notes,
+            "total_amount": total,
+            "line_count": len(lines)
+        })
+
+    return {"purchase_orders": result, "total": len(result)}
+
+
+@router.get("/db/{po_id}")
+def get_db_purchase_order(db: DbSession, po_id: int):
+    """Get a specific purchase order from database."""
+    po = db.query(PurchaseOrderModel).filter(PurchaseOrderModel.id == po_id).first()
+    if not po:
+        raise HTTPException(status_code=404, detail="Purchase order not found")
+
+    lines = db.query(PurchaseOrderLine).filter(PurchaseOrderLine.po_id == po.id).all()
+
+    line_data = []
+    for line in lines:
+        product = db.query(Product).filter(Product.id == line.product_id).first()
+        line_data.append({
+            "id": line.id,
+            "product_id": line.product_id,
+            "product_name": product.name if product else "Unknown",
+            "qty": float(line.qty),
+            "unit": product.unit if product else "pcs",
+            "unit_cost": float(line.unit_cost) if line.unit_cost else 0,
+            "total": float(line.qty * (line.unit_cost or 0))
+        })
+
+    return {
+        "id": po.id,
+        "supplier_id": po.supplier_id,
+        "location_id": po.location_id,
+        "status": po.status.value if po.status else "draft",
+        "created_at": po.created_at.isoformat() if po.created_at else None,
+        "sent_at": po.sent_at.isoformat() if po.sent_at else None,
+        "received_at": po.received_at.isoformat() if po.received_at else None,
+        "notes": po.notes,
+        "lines": line_data,
+        "total_amount": sum(l["total"] for l in line_data)
+    }

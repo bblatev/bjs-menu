@@ -694,16 +694,42 @@ def void_order(
     order_id: int,
     request: VoidOrderRequest,
 ):
-    """Void/cancel an order."""
+    """Void/cancel an order and return stock to inventory."""
     order = db.query(GuestOrderModel).filter(GuestOrderModel.id == order_id).first()
     if not order:
         raise HTTPException(status_code=404, detail="Order not found")
+
+    # Only refund stock if order wasn't already cancelled
+    stock_refund_result = None
+    if order.status != "cancelled":
+        # Build order items from the order's items list
+        order_items = []
+        for item in (order.items or []):
+            if item.get("status") != "cancelled":  # Don't refund already cancelled items
+                order_items.append({
+                    "menu_item_id": item.get("menu_item_id"),
+                    "quantity": item.get("quantity", 1)
+                })
+
+        if order_items:
+            stock_service = StockDeductionService(db)
+            stock_refund_result = stock_service.refund_for_order(
+                order_items=order_items,
+                location_id=1,  # TODO: Get from order.location_id
+                reference_type="void_order",
+                reference_id=order_id
+            )
 
     order.status = "cancelled"
     order.notes = f"Voided: {request.reason}" + (f" | {order.notes}" if order.notes else "")
     db.commit()
 
-    return {"status": "ok", "order_id": order_id, "new_status": "cancelled"}
+    return {
+        "status": "ok",
+        "order_id": order_id,
+        "new_status": "cancelled",
+        "stock_returned": stock_refund_result.get("success", False) if stock_refund_result else False
+    }
 
 
 @router.post("/orders/{order_id}/items/{item_id}/void")
@@ -713,7 +739,7 @@ def void_order_item(
     item_id: str,
     request: VoidItemRequest,
 ):
-    """Void/cancel a specific item from an order."""
+    """Void/cancel a specific item from an order and return its stock."""
     order = db.query(GuestOrderModel).filter(GuestOrderModel.id == order_id).first()
     if not order:
         raise HTTPException(status_code=404, detail="Order not found")
@@ -721,10 +747,14 @@ def void_order_item(
     # Update items list - mark the item as cancelled
     items = order.items or []
     item_found = False
+    item_to_refund = None
     new_total = Decimal("0")
 
     for item in items:
         if str(item.get("id")) == str(item_id):
+            # Only refund if not already cancelled
+            if item.get("status") != "cancelled":
+                item_to_refund = item
             item["status"] = "cancelled"
             item_found = True
         elif item.get("status") != "cancelled":
@@ -732,6 +762,20 @@ def void_order_item(
 
     if not item_found:
         raise HTTPException(status_code=404, detail="Item not found in order")
+
+    # Return stock for the voided item
+    stock_refund_result = None
+    if item_to_refund:
+        stock_service = StockDeductionService(db)
+        stock_refund_result = stock_service.refund_for_order(
+            order_items=[{
+                "menu_item_id": item_to_refund.get("menu_item_id"),
+                "quantity": item_to_refund.get("quantity", 1)
+            }],
+            location_id=1,  # TODO: Get from order.location_id
+            reference_type="void_item",
+            reference_id=order_id
+        )
 
     order.items = items
     order.subtotal = new_total
@@ -744,7 +788,8 @@ def void_order_item(
         "status": "ok",
         "order_id": order_id,
         "item_id": item_id,
-        "new_order_total": float(order.total)
+        "new_order_total": float(order.total),
+        "stock_returned": stock_refund_result.get("success", False) if stock_refund_result else False
     }
 
 
@@ -754,17 +799,43 @@ def cancel_order(
     order_id: int,
     reason: str = Query(None),
 ):
-    """Cancel an order (alternative to void)."""
+    """Cancel an order and return stock to inventory."""
     order = db.query(GuestOrderModel).filter(GuestOrderModel.id == order_id).first()
     if not order:
         raise HTTPException(status_code=404, detail="Order not found")
+
+    # Only refund stock if order wasn't already cancelled
+    stock_refund_result = None
+    if order.status != "cancelled":
+        # Build order items from the order's items list
+        order_items = []
+        for item in (order.items or []):
+            if item.get("status") != "cancelled":
+                order_items.append({
+                    "menu_item_id": item.get("menu_item_id"),
+                    "quantity": item.get("quantity", 1)
+                })
+
+        if order_items:
+            stock_service = StockDeductionService(db)
+            stock_refund_result = stock_service.refund_for_order(
+                order_items=order_items,
+                location_id=1,
+                reference_type="cancel_order",
+                reference_id=order_id
+            )
 
     order.status = "cancelled"
     if reason:
         order.notes = f"Cancelled: {reason}" + (f" | {order.notes}" if order.notes else "")
     db.commit()
 
-    return {"status": "ok", "order_id": order_id, "new_status": "cancelled"}
+    return {
+        "status": "ok",
+        "order_id": order_id,
+        "new_status": "cancelled",
+        "stock_returned": stock_refund_result.get("success", False) if stock_refund_result else False
+    }
 
 
 @router.delete("/orders/{order_id}")
@@ -772,15 +843,39 @@ def delete_order(
     db: DbSession,
     order_id: int,
 ):
-    """Delete an order (soft delete by setting status to cancelled)."""
+    """Delete an order (soft delete by setting status to cancelled) and return stock."""
     order = db.query(GuestOrderModel).filter(GuestOrderModel.id == order_id).first()
     if not order:
         raise HTTPException(status_code=404, detail="Order not found")
 
+    # Only refund stock if order wasn't already cancelled
+    stock_refund_result = None
+    if order.status != "cancelled":
+        order_items = []
+        for item in (order.items or []):
+            if item.get("status") != "cancelled":
+                order_items.append({
+                    "menu_item_id": item.get("menu_item_id"),
+                    "quantity": item.get("quantity", 1)
+                })
+
+        if order_items:
+            stock_service = StockDeductionService(db)
+            stock_refund_result = stock_service.refund_for_order(
+                order_items=order_items,
+                location_id=1,
+                reference_type="delete_order",
+                reference_id=order_id
+            )
+
     order.status = "cancelled"
     db.commit()
 
-    return {"status": "deleted", "order_id": order_id}
+    return {
+        "status": "deleted",
+        "order_id": order_id,
+        "stock_returned": stock_refund_result.get("success", False) if stock_refund_result else False
+    }
 
 
 @router.get("/orders")

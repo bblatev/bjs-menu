@@ -503,10 +503,22 @@ def apply_discount(db: DbSession, check_id: int, request: DiscountRequest):
 
 @router.post("/items/{item_id}/void")
 def void_item(db: DbSession, item_id: int, request: VoidRequest):
-    """Void an item from check."""
+    """Void an item from check and return stock to inventory."""
     item = db.query(CheckItem).filter(CheckItem.id == item_id).first()
     if not item:
         raise HTTPException(status_code=404, detail="Item not found")
+
+    # Only refund stock if item wasn't already voided
+    stock_refund_result = None
+    if item.status != "voided":
+        # Return stock to inventory
+        stock_service = StockDeductionService(db)
+        stock_refund_result = stock_service.refund_for_order(
+            order_items=[{"menu_item_id": item.menu_item_id, "quantity": item.quantity}],
+            location_id=1,  # TODO: Get from check.location_id
+            reference_type="void_item",
+            reference_id=item_id
+        )
 
     item.status = "voided"
     item.voided_at = datetime.now(timezone.utc)
@@ -517,7 +529,11 @@ def void_item(db: DbSession, item_id: int, request: VoidRequest):
     if check:
         recalculate_check(check, db)
 
-    return {"status": "ok", "voided": True}
+    return {
+        "status": "ok",
+        "voided": True,
+        "stock_returned": stock_refund_result.get("success", False) if stock_refund_result else False
+    }
 
 
 @router.post("/checks/{check_id}/split-even")
