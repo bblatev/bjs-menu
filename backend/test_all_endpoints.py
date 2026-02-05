@@ -9,7 +9,7 @@ import time
 import sys
 from datetime import datetime, timedelta
 
-BASE = "http://localhost:8000/api/v1"
+BASE = "http://localhost:8001/api/v1"
 
 # Get token
 resp = requests.post(f"{BASE}/auth/login", json={"email": "test@example.com", "password": "test123"})
