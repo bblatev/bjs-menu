@@ -663,46 +663,47 @@ class RefundRequest(BaseModel):
 
 
 @router.get("/{venue_id}/platforms")
-def get_platforms(venue_id: int):
-    """Get connected platforms for a venue."""
-    # Return mock platforms - in production this would come from database
-    return {
-        "platforms": [
-            {
-                "id": "google",
-                "name": "Google Reserve",
-                "enabled": False,
-                "status": "disconnected",
-                "icon": "google",
-            },
-            {
-                "id": "opentable",
-                "name": "OpenTable",
-                "enabled": False,
-                "status": "disconnected",
-                "icon": "opentable",
-            },
-            {
-                "id": "resy",
-                "name": "Resy",
-                "enabled": False,
-                "status": "disconnected",
-                "icon": "resy",
-            },
-            {
-                "id": "website",
-                "name": "Website Widget",
-                "enabled": True,
-                "status": "connected",
-                "icon": "web",
-            },
-        ]
-    }
+def get_platforms(db: DbSession, venue_id: int):
+    """Get connected platforms for a venue from integrations table."""
+    from app.models.hardware import Integration
+    KNOWN_PLATFORMS = [
+        {"id": "google", "name": "Google Reserve", "icon": "google"},
+        {"id": "opentable", "name": "OpenTable", "icon": "opentable"},
+        {"id": "resy", "name": "Resy", "icon": "resy"},
+        {"id": "website", "name": "Website Widget", "icon": "web"},
+    ]
+    platforms = []
+    for p in KNOWN_PLATFORMS:
+        integration = db.query(Integration).filter(
+            Integration.integration_id == f"reservation_{p['id']}"
+        ).first()
+        platforms.append({
+            **p,
+            "enabled": integration.status == "connected" if integration else (p["id"] == "website"),
+            "status": integration.status if integration else ("connected" if p["id"] == "website" else "disconnected"),
+        })
+    return {"platforms": platforms}
 
 
 @router.post("/{venue_id}/platforms")
-def configure_platform(venue_id: int, config: PlatformConfig):
-    """Configure a platform integration."""
+def configure_platform(db: DbSession, venue_id: int, config: PlatformConfig):
+    """Configure a platform integration and persist to database."""
+    from app.models.hardware import Integration
+    integration_id = f"reservation_{config.platform_name.lower().replace(' ', '_')}"
+    integration = db.query(Integration).filter(Integration.integration_id == integration_id).first()
+    if not integration:
+        integration = Integration(
+            integration_id=integration_id,
+            name=config.platform_name,
+            category="reservations",
+            status="connected",
+        )
+        db.add(integration)
+    else:
+        integration.status = "connected"
+        integration.connected_at = datetime.utcnow()
+    integration.config = {"api_key": config.api_key} if hasattr(config, "api_key") else {}
+    db.commit()
     return {
         "success": True,
         "platform": config.platform_name,

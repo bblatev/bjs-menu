@@ -303,35 +303,57 @@ async def get_availability_feed(
     end_hour: int = 22,
     slot_duration: int = 90,
     max_party: int = 8,
+    max_concurrent: int = 8,
 ):
     """
-    Generate availability feed for Google.
+    Generate availability feed for Google based on actual reservation data.
 
-    This generates a sample availability feed for testing.
-    In production, this should query your actual availability.
+    Queries existing reservations to calculate real available spots per time slot.
     """
     service = get_google_reserve_service()
     if not service:
         raise HTTPException(status_code=503, detail="Google Reserve not configured")
 
-    slots = []
-    today = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
+    # Query existing reservations to compute availability
+    from app.db.session import SessionLocal
+    from app.models.reservations import Reservation, ReservationStatus
+    db = SessionLocal()
+    try:
+        today = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
+        end_date = today + timedelta(days=days_ahead)
+        existing = db.query(Reservation).filter(
+            Reservation.date >= today.date(),
+            Reservation.date <= end_date.date(),
+            Reservation.status.in_([ReservationStatus.CONFIRMED, ReservationStatus.PENDING]),
+        ).all()
 
-    for day in range(days_ahead):
-        current_date = today + timedelta(days=day)
+        # Build a dict of reservation counts per (date, hour)
+        reservation_counts: dict = {}
+        for r in existing:
+            if r.time:
+                key = (r.date, r.time.hour, 0 if r.time.minute < 30 else 30)
+                reservation_counts[key] = reservation_counts.get(key, 0) + 1
 
-        for hour in range(start_hour, end_hour):
-            for minute in [0, 30]:
-                slot_start = current_date.replace(hour=hour, minute=minute)
-                slot_end = slot_start + timedelta(minutes=slot_duration)
+        slots = []
+        for day in range(days_ahead):
+            current_date = today + timedelta(days=day)
+            for hour in range(start_hour, end_hour):
+                for minute in [0, 30]:
+                    slot_start = current_date.replace(hour=hour, minute=minute)
+                    slot_end = slot_start + timedelta(minutes=slot_duration)
+                    key = (current_date.date(), hour, minute)
+                    booked = reservation_counts.get(key, 0)
+                    available = max(0, max_concurrent - booked)
 
-                slots.append(TimeSlot(
-                    start_time=slot_start,
-                    end_time=slot_end,
-                    max_party_size=max_party,
-                    available_spots=5,  # Mock available spots
-                    duration_minutes=slot_duration,
-                ))
+                    slots.append(TimeSlot(
+                        start_time=slot_start,
+                        end_time=slot_end,
+                        max_party_size=max_party,
+                        available_spots=available,
+                        duration_minutes=slot_duration,
+                    ))
+    finally:
+        db.close()
 
     return service.generate_availability_feed(slots)
 

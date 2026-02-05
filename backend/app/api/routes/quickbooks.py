@@ -579,23 +579,63 @@ async def get_balance_sheet(
 # ============================================================================
 
 @router.post("/sync/daily-sales", response_model=SyncResponse)
-async def sync_daily_sales(request: DailySalesSyncRequest):
+async def sync_daily_sales(db: DbSession, request: DailySalesSyncRequest):
     """
     Sync daily sales from BJS Menu to QuickBooks.
 
-    This would typically be called at end of day or scheduled.
+    Fetches completed, paid orders in the date range and creates sales receipts in QBO.
     """
     qbo = get_quickbooks_service()
     if not qbo:
         raise HTTPException(status_code=503, detail="QuickBooks not configured")
 
-    # TODO: Fetch sales from database between start_date and end_date
-    # For now, return a placeholder response
+    from app.models.restaurant import GuestOrder
+    from sqlalchemy import and_
+
+    start = datetime.strptime(request.start_date, "%Y-%m-%d")
+    end = datetime.strptime(request.end_date, "%Y-%m-%d").replace(hour=23, minute=59, second=59)
+
+    orders = db.query(GuestOrder).filter(
+        and_(
+            GuestOrder.payment_status == "paid",
+            GuestOrder.created_at >= start,
+            GuestOrder.created_at <= end,
+        )
+    ).all()
+
+    synced = 0
+    errors = []
+    for order in orders:
+        items = order.items or []
+        line_items = []
+        for item in items:
+            if isinstance(item, dict):
+                line_items.append({
+                    "description": item.get("name", "Item"),
+                    "amount": float(item.get("price", 0)) * item.get("quantity", 1),
+                    "quantity": item.get("quantity", 1),
+                })
+        if not line_items:
+            continue
+        try:
+            result = await qbo.create_sales_receipt(
+                line_items=line_items,
+                payment_method=order.payment_method or "Card",
+                txn_date=order.created_at.strftime("%Y-%m-%d") if order.created_at else None,
+                memo=f"BJS Order #{order.id}",
+                order_id=str(order.id),
+            )
+            if result.get("success"):
+                synced += 1
+            else:
+                errors.append(f"Order {order.id}: {result.get('error', 'unknown')}")
+        except Exception as e:
+            errors.append(f"Order {order.id}: {str(e)}")
 
     return SyncResponse(
-        success=True,
-        synced_count=0,
-        error_count=0,
-        errors=[],
+        success=len(errors) == 0,
+        synced_count=synced,
+        error_count=len(errors),
+        errors=errors[:20],
         last_sync=datetime.utcnow(),
     )

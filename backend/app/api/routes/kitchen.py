@@ -820,22 +820,21 @@ def get_workflow_settings(
     db: DbSession,
     location_id: Optional[int] = None,
 ):
-    """
-    Get current workflow mode settings.
-    """
-    # In production, this would come from a settings table
-    return {
-        "default_workflow_mode": "order",  # or "request"
-        "require_confirmation_for": [
-            "high_value_orders",  # Orders above certain amount
-            "large_party",        # Tables with many guests
-            "special_items",      # Items marked as requiring confirmation
-        ],
+    """Get current workflow mode settings from database."""
+    from app.models.hardware import Integration
+    SETTINGS_ID = "kitchen_workflow"
+    DEFAULT_SETTINGS = {
+        "default_workflow_mode": "order",
+        "require_confirmation_for": ["high_value_orders", "large_party", "special_items"],
         "confirmation_timeout_minutes": 5,
         "auto_reject_on_timeout": False,
         "notify_on_new_request": True,
-        "request_mode_stations": [],  # Specific stations requiring request mode
+        "request_mode_stations": [],
     }
+    integration = db.query(Integration).filter(Integration.integration_id == SETTINGS_ID).first()
+    if integration and integration.config:
+        return {**DEFAULT_SETTINGS, **integration.config}
+    return DEFAULT_SETTINGS
 
 
 @router.put("/workflow/settings")
@@ -844,14 +843,30 @@ def update_workflow_settings(
     default_mode: Optional[str] = None,
     confirmation_timeout: Optional[int] = None,
 ):
-    """
-    Update workflow mode settings.
-    """
-    # In production, this would save to a settings table
+    """Update workflow mode settings and persist to database."""
+    from app.models.hardware import Integration
+    SETTINGS_ID = "kitchen_workflow"
+    integration = db.query(Integration).filter(Integration.integration_id == SETTINGS_ID).first()
+    if not integration:
+        integration = Integration(
+            integration_id=SETTINGS_ID,
+            name="Kitchen Workflow Settings",
+            category="kitchen",
+            status="active",
+            config={},
+        )
+        db.add(integration)
+    config = integration.config or {}
+    if default_mode is not None:
+        config["default_workflow_mode"] = default_mode
+    if confirmation_timeout is not None:
+        config["confirmation_timeout_minutes"] = confirmation_timeout
+    integration.config = config
+    db.commit()
     return {
         "status": "updated",
-        "default_workflow_mode": default_mode or "order",
-        "confirmation_timeout_minutes": confirmation_timeout or 5,
+        "default_workflow_mode": config.get("default_workflow_mode", "order"),
+        "confirmation_timeout_minutes": config.get("confirmation_timeout_minutes", 5),
     }
 
 

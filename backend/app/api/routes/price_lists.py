@@ -805,32 +805,74 @@ def record_customer_payment(db: DbSession, customer_id: int, data: dict = Body(.
 @router.get("/orders/{order_id}/items")
 def get_order_items_for_reorder(db: DbSession, order_id: int):
     """Get items from a previous order for quick reorder."""
-    # This would connect to the actual orders system
-    # Returning mock data for now
-    return {
-        "order_id": order_id,
-        "items": [
-            {"product_id": 1, "quantity": 2, "modifiers": []},
-            {"product_id": 5, "quantity": 1, "modifiers": [{"id": 3, "name": "Extra cheese"}]},
-        ]
-    }
+    from app.models.restaurant import GuestOrder
+    order = db.query(GuestOrder).filter(GuestOrder.id == order_id).first()
+    if not order:
+        raise HTTPException(status_code=404, detail="Order not found")
+    items = []
+    for item in (order.items or []):
+        if isinstance(item, dict):
+            items.append({
+                "product_id": item.get("menu_item_id"),
+                "name": item.get("name", ""),
+                "quantity": item.get("quantity", 1),
+                "price": item.get("price", 0),
+                "modifiers": item.get("modifiers", []),
+            })
+    return {"order_id": order_id, "items": items}
 
 
 @router.post("/orders/reorder/{order_id}")
 def reorder_previous_order(db: DbSession, order_id: int, data: dict = Body(...)):
-    """Create a new order based on a previous order."""
-    table_id = data.get("table_id")
+    """Create a new order based on a previous order, applying current prices."""
+    from app.models.restaurant import GuestOrder, MenuItem
+    from decimal import Decimal
 
-    # In production, would:
-    # 1. Fetch original order items
-    # 2. Create new order with same items
-    # 3. Apply current prices
+    original = db.query(GuestOrder).filter(GuestOrder.id == order_id).first()
+    if not original:
+        raise HTTPException(status_code=404, detail="Original order not found")
+
+    # Build new items with current prices
+    new_items = []
+    subtotal = Decimal("0")
+    for item in (original.items or []):
+        if isinstance(item, dict):
+            menu_item_id = item.get("menu_item_id")
+            qty = item.get("quantity", 1)
+            # Get current price from menu
+            current_price = Decimal(str(item.get("price", 0)))
+            if menu_item_id:
+                mi = db.query(MenuItem).filter(MenuItem.id == menu_item_id).first()
+                if mi:
+                    current_price = mi.price
+            new_items.append({
+                **item,
+                "price": float(current_price),
+            })
+            subtotal += current_price * qty
+
+    tax = subtotal * Decimal("0.1")
+    new_order = GuestOrder(
+        table_id=data.get("table_id") or original.table_id,
+        table_token=original.table_token,
+        table_number=original.table_number,
+        order_type=original.order_type or "dine-in",
+        items=new_items,
+        subtotal=subtotal,
+        tax=tax,
+        total=subtotal + tax,
+        location_id=original.location_id,
+    )
+    db.add(new_order)
+    db.commit()
+    db.refresh(new_order)
 
     return {
         "status": "success",
-        "message": "Reorder functionality - would create new order based on order #{order_id}",
+        "message": f"Reorder created from order #{order_id}",
         "original_order_id": order_id,
-        "new_order_id": None,  # Would return actual new order ID
+        "new_order_id": new_order.id,
+        "total": float(new_order.total),
     }
 
 

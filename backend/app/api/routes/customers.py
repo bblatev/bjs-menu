@@ -346,27 +346,40 @@ def delete_customer(db: DbSession, customer_id: int):
 # ============== Customer Orders ==============
 
 @router.get("/customers/{customer_id}/orders")
-def get_customer_orders(db: DbSession, customer_id: int):
-    """Get order history for a customer."""
+def get_customer_orders(db: DbSession, customer_id: int, limit: int = Query(20, le=100)):
+    """Get order history for a customer from guest orders."""
+    from app.models.restaurant import GuestOrder
     customer = db.query(Customer).filter(Customer.id == customer_id).first()
     if not customer:
         raise HTTPException(status_code=404, detail="Customer not found")
 
-    # For demo, return mock order data
-    # In production, would join with orders table
-    import random
-    orders = []
-    for i in range(min(customer.total_orders, 10)):
-        order_date = datetime.utcnow() - timedelta(days=i * 7)
-        orders.append({
-            "id": 1000 + i,
-            "order_number": f"ORD-{1000 + i}",
-            "total": round(random.uniform(30, 120), 2),
-            "status": "completed",
-            "created_at": order_date.isoformat(),
-        })
+    # Query orders by customer phone or name
+    query = db.query(GuestOrder)
+    filters = []
+    if customer.phone:
+        filters.append(GuestOrder.customer_phone == customer.phone)
+    if customer.email:
+        filters.append(GuestOrder.customer_name == customer.name)
+    if filters:
+        query = query.filter(or_(*filters))
+    else:
+        return {"orders": []}
 
-    return {"orders": orders}
+    orders = query.order_by(GuestOrder.created_at.desc()).limit(limit).all()
+    return {
+        "orders": [
+            {
+                "id": o.id,
+                "order_number": f"ORD-{o.id}",
+                "total": float(o.total or 0),
+                "status": o.status,
+                "payment_status": o.payment_status,
+                "order_type": o.order_type,
+                "created_at": o.created_at.isoformat() if o.created_at else None,
+            }
+            for o in orders
+        ]
+    }
 
 
 # ============== CRM Features ==============
