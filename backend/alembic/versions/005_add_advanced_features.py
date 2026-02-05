@@ -35,6 +35,7 @@ from typing import Sequence, Union
 
 from alembic import op
 import sqlalchemy as sa
+from sqlalchemy.dialects.postgresql import ENUM as pgEnum
 
 # revision identifiers, used by Alembic.
 revision: str = "005"
@@ -44,17 +45,33 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
-    # Create waste_category enum
-    waste_category = sa.Enum(
+    # Create enum types using raw SQL with IF NOT EXISTS equivalent for PostgreSQL
+    # PostgreSQL doesn't have "CREATE TYPE IF NOT EXISTS", so we use a DO block
+    op.execute("""
+        DO $$ BEGIN
+            CREATE TYPE waste_category AS ENUM ('overproduction', 'spoilage', 'plate_waste', 'prep_waste', 'expired', 'damaged', 'other');
+        EXCEPTION
+            WHEN duplicate_object THEN NULL;
+        END $$;
+    """)
+
+    op.execute("""
+        DO $$ BEGIN
+            CREATE TYPE sentiment_type AS ENUM ('positive', 'neutral', 'negative');
+        EXCEPTION
+            WHEN duplicate_object THEN NULL;
+        END $$;
+    """)
+
+    # Use PostgreSQL-specific ENUM with create_type=False since we created them above via raw SQL
+    waste_category = pgEnum(
         'overproduction', 'spoilage', 'plate_waste', 'prep_waste',
         'expired', 'damaged', 'other',
-        name='waste_category'
+        name='waste_category',
+        create_type=False
     )
-    waste_category.create(op.get_bind(), checkfirst=True)
 
-    # Create sentiment enum
-    sentiment = sa.Enum('positive', 'neutral', 'negative', name='sentiment_type')
-    sentiment.create(op.get_bind(), checkfirst=True)
+    sentiment = pgEnum('positive', 'neutral', 'negative', name='sentiment_type', create_type=False)
 
     # 1. Waste Tracking
     op.create_table(

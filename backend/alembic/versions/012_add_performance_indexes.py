@@ -52,8 +52,8 @@ def upgrade() -> None:
     op.create_index('ix_guest_orders_created_at', 'guest_orders', ['created_at'], if_not_exists=True)
 
     # Staff users - role and active status filtering
-    op.create_index('ix_staff_users_role', 'staff_users', ['role'], if_not_exists=True)
-    op.create_index('ix_staff_users_is_active', 'staff_users', ['is_active'], if_not_exists=True)
+    op.create_index('ix_users_role', 'users', ['role'], if_not_exists=True)
+    op.create_index('ix_users_is_active', 'users', ['is_active'], if_not_exists=True)
 
     # Customers - segment and common filters
     op.create_index('ix_customers_segment', 'customers', ['segment'], if_not_exists=True)
@@ -76,8 +76,8 @@ def downgrade() -> None:
     op.drop_index('ix_inventory_sessions_status', table_name='inventory_sessions')
     op.drop_index('ix_customers_created_at', table_name='customers')
     op.drop_index('ix_customers_segment', table_name='customers')
-    op.drop_index('ix_staff_users_is_active', table_name='staff_users')
-    op.drop_index('ix_staff_users_role', table_name='staff_users')
+    op.drop_index('ix_users_is_active', table_name='users')
+    op.drop_index('ix_users_role', table_name='users')
     op.drop_index('ix_guest_orders_created_at', table_name='guest_orders')
     op.drop_index('ix_guest_orders_location_id', table_name='guest_orders')
     op.drop_index('ix_guest_orders_table_id', table_name='guest_orders')

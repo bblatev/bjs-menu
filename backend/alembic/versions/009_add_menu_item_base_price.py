@@ -17,9 +17,10 @@ depends_on = None
 
 
 def upgrade() -> None:
-    # Add base_price column to menu_items for cost/base price tracking
-    op.add_column('menu_items', sa.Column('base_price', sa.Numeric(10, 2), nullable=True))
+    # base_price is now included in the initial migration (001)
+    pass
 
 
 def downgrade() -> None:
-    op.drop_column('menu_items', 'base_price')
+    # No-op - base_price is part of initial migration
+    pass

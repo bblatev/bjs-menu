@@ -216,8 +216,176 @@ def upgrade() -> None:
         sa.Column("unit", sa.String(20), default="pcs", nullable=False),
     )
 
+    # ========== CORE POS TABLES ==========
+
+    # Tables table (restaurant tables)
+    op.create_table(
+        "tables",
+        sa.Column("id", sa.Integer(), primary_key=True),
+        sa.Column("number", sa.String(50), nullable=False),
+        sa.Column("capacity", sa.Integer(), default=4),
+        sa.Column("status", sa.String(20), default="available"),
+        sa.Column("area", sa.String(50), nullable=True),
+        sa.Column("location_id", sa.Integer(), sa.ForeignKey("locations.id"), nullable=True, index=True),
+        sa.Column("token", sa.String(100), nullable=True, unique=True),
+        sa.Column("pos_table_id", sa.String(50), nullable=True),
+        sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.func.now()),
+        sa.Column("updated_at", sa.DateTime(timezone=True), server_default=sa.func.now(), onupdate=sa.func.now()),
+    )
+
+    # Menu items table
+    op.create_table(
+        "menu_items",
+        sa.Column("id", sa.Integer(), primary_key=True),
+        sa.Column("name", sa.String(200), nullable=False, index=True),
+        sa.Column("description", sa.Text(), nullable=True),
+        sa.Column("price", sa.Numeric(10, 2), nullable=False),
+        sa.Column("base_price", sa.Numeric(10, 2), nullable=True),
+        sa.Column("category", sa.String(100), nullable=False),
+        sa.Column("image_url", sa.String(500), nullable=True),
+        sa.Column("available", sa.Boolean(), default=True),
+        sa.Column("prep_time_minutes", sa.Integer(), nullable=True),
+        sa.Column("station", sa.String(50), nullable=True),
+        sa.Column("allergens", sa.JSON(), nullable=True),
+        sa.Column("modifiers", sa.JSON(), nullable=True),
+        sa.Column("location_id", sa.Integer(), sa.ForeignKey("locations.id"), nullable=True, index=True),
+        sa.Column("pos_item_id", sa.String(50), nullable=True),
+        sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.func.now()),
+        sa.Column("updated_at", sa.DateTime(timezone=True), server_default=sa.func.now(), onupdate=sa.func.now()),
+    )
+
+    # Checks table (bills)
+    op.create_table(
+        "checks",
+        sa.Column("id", sa.Integer(), primary_key=True),
+        sa.Column("table_id", sa.Integer(), sa.ForeignKey("tables.id"), nullable=True, index=True),
+        sa.Column("server_id", sa.Integer(), sa.ForeignKey("users.id"), nullable=True, index=True),
+        sa.Column("location_id", sa.Integer(), sa.ForeignKey("locations.id"), nullable=True, index=True),
+        sa.Column("guest_count", sa.Integer(), default=1),
+        sa.Column("status", sa.String(20), default="open"),
+        sa.Column("subtotal", sa.Numeric(10, 2), default=0),
+        sa.Column("tax", sa.Numeric(10, 2), default=0),
+        sa.Column("discount", sa.Numeric(10, 2), default=0),
+        sa.Column("total", sa.Numeric(10, 2), default=0),
+        sa.Column("balance_due", sa.Numeric(10, 2), default=0),
+        sa.Column("notes", sa.Text(), nullable=True),
+        sa.Column("opened_at", sa.DateTime(timezone=True), server_default=sa.func.now()),
+        sa.Column("closed_at", sa.DateTime(timezone=True), nullable=True),
+    )
+
+    # Check items table
+    op.create_table(
+        "check_items",
+        sa.Column("id", sa.Integer(), primary_key=True),
+        sa.Column("check_id", sa.Integer(), sa.ForeignKey("checks.id", ondelete="CASCADE"), nullable=False, index=True),
+        sa.Column("menu_item_id", sa.Integer(), nullable=True),
+        sa.Column("name", sa.String(200), nullable=False),
+        sa.Column("quantity", sa.Integer(), default=1),
+        sa.Column("price", sa.Numeric(10, 2), nullable=False),
+        sa.Column("total", sa.Numeric(10, 2), nullable=False),
+        sa.Column("seat_number", sa.Integer(), nullable=True),
+        sa.Column("course", sa.String(20), nullable=True),
+        sa.Column("status", sa.String(20), default="ordered"),
+        sa.Column("notes", sa.Text(), nullable=True),
+        sa.Column("modifiers", sa.JSON(), nullable=True),
+        sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.func.now()),
+        sa.Column("fired_at", sa.DateTime(timezone=True), nullable=True),
+        sa.Column("served_at", sa.DateTime(timezone=True), nullable=True),
+        sa.Column("voided_at", sa.DateTime(timezone=True), nullable=True),
+        sa.Column("void_reason", sa.String(200), nullable=True),
+    )
+
+    # Check payments table
+    op.create_table(
+        "check_payments",
+        sa.Column("id", sa.Integer(), primary_key=True),
+        sa.Column("check_id", sa.Integer(), sa.ForeignKey("checks.id", ondelete="CASCADE"), nullable=False, index=True),
+        sa.Column("payment_type", sa.String(50), nullable=False),
+        sa.Column("amount", sa.Numeric(10, 2), nullable=False),
+        sa.Column("tip", sa.Numeric(10, 2), default=0),
+        sa.Column("card_last_four", sa.String(4), nullable=True),
+        sa.Column("authorization_code", sa.String(50), nullable=True),
+        sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.func.now()),
+    )
+
+    # Kitchen orders table
+    op.create_table(
+        "kitchen_orders",
+        sa.Column("id", sa.Integer(), primary_key=True),
+        sa.Column("check_id", sa.Integer(), sa.ForeignKey("checks.id"), nullable=True, index=True),
+        sa.Column("table_number", sa.String(50), nullable=True),
+        sa.Column("status", sa.String(20), default="pending"),
+        sa.Column("priority", sa.Integer(), default=0),
+        sa.Column("station", sa.String(50), nullable=True),
+        sa.Column("course", sa.String(20), nullable=True),
+        sa.Column("workflow_mode", sa.String(20), default="order"),
+        sa.Column("is_confirmed", sa.Boolean(), default=True),
+        sa.Column("confirmed_by", sa.Integer(), nullable=True),
+        sa.Column("confirmed_at", sa.DateTime(timezone=True), nullable=True),
+        sa.Column("rejection_reason", sa.String(200), nullable=True),
+        sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.func.now()),
+        sa.Column("started_at", sa.DateTime(timezone=True), nullable=True),
+        sa.Column("completed_at", sa.DateTime(timezone=True), nullable=True),
+        sa.Column("items", sa.JSON(), nullable=True),
+        sa.Column("notes", sa.Text(), nullable=True),
+        sa.Column("location_id", sa.Integer(), sa.ForeignKey("locations.id"), nullable=True, index=True),
+    )
+
+    # Guest orders table
+    op.create_table(
+        "guest_orders",
+        sa.Column("id", sa.Integer(), primary_key=True),
+        sa.Column("table_id", sa.Integer(), sa.ForeignKey("tables.id"), nullable=True, index=True),
+        sa.Column("table_token", sa.String(100), nullable=True),
+        sa.Column("table_number", sa.String(50), nullable=True),
+        sa.Column("status", sa.String(20), default="received"),
+        sa.Column("order_type", sa.String(20), default="dine-in"),
+        sa.Column("subtotal", sa.Numeric(10, 2), default=0),
+        sa.Column("tax", sa.Numeric(10, 2), default=0),
+        sa.Column("total", sa.Numeric(10, 2), default=0),
+        sa.Column("items", sa.JSON(), nullable=True),
+        sa.Column("notes", sa.Text(), nullable=True),
+        sa.Column("customer_name", sa.String(100), nullable=True),
+        sa.Column("customer_phone", sa.String(20), nullable=True),
+        sa.Column("location_id", sa.Integer(), sa.ForeignKey("locations.id"), nullable=True, index=True),
+        sa.Column("payment_status", sa.String(20), default="unpaid"),
+        sa.Column("payment_method", sa.String(20), nullable=True),
+        sa.Column("tip_amount", sa.Numeric(10, 2), default=0),
+        sa.Column("paid_at", sa.DateTime(timezone=True), nullable=True),
+        sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.func.now()),
+        sa.Column("confirmed_at", sa.DateTime(timezone=True), nullable=True),
+        sa.Column("ready_at", sa.DateTime(timezone=True), nullable=True),
+        sa.Column("completed_at", sa.DateTime(timezone=True), nullable=True),
+    )
+
+    # Customers table
+    op.create_table(
+        "customers",
+        sa.Column("id", sa.Integer(), primary_key=True),
+        sa.Column("name", sa.String(200), nullable=True),
+        sa.Column("email", sa.String(255), nullable=True, unique=True, index=True),
+        sa.Column("phone", sa.String(50), nullable=True),
+        sa.Column("segment", sa.String(50), nullable=True),
+        sa.Column("total_visits", sa.Integer(), default=0),
+        sa.Column("total_spend", sa.Numeric(12, 2), default=0),
+        sa.Column("notes", sa.Text(), nullable=True),
+        sa.Column("location_id", sa.Integer(), sa.ForeignKey("locations.id"), nullable=True, index=True),
+        sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.func.now()),
+        sa.Column("updated_at", sa.DateTime(timezone=True), server_default=sa.func.now(), onupdate=sa.func.now()),
+    )
+
 
 def downgrade() -> None:
+    # Drop POS tables first
+    op.drop_table("customers")
+    op.drop_table("guest_orders")
+    op.drop_table("kitchen_orders")
+    op.drop_table("check_payments")
+    op.drop_table("check_items")
+    op.drop_table("checks")
+    op.drop_table("menu_items")
+    op.drop_table("tables")
+    # Original tables
     op.drop_table("recipe_lines")
     op.drop_table("recipes")
     op.drop_table("pos_sales_lines")

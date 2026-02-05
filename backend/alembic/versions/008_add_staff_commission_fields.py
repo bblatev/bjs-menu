@@ -18,12 +18,12 @@ depends_on = None
 
 def upgrade() -> None:
     # Add commission and service fee tracking to staff
-    op.add_column('staff_users', sa.Column('commission_percentage', sa.Float(), nullable=False, server_default='0.0'))
-    op.add_column('staff_users', sa.Column('service_fee_percentage', sa.Float(), nullable=False, server_default='0.0'))
-    op.add_column('staff_users', sa.Column('auto_logout_after_close', sa.Boolean(), nullable=False, server_default='false'))
+    op.add_column('users', sa.Column('commission_percentage', sa.Float(), nullable=False, server_default='0.0'))
+    op.add_column('users', sa.Column('service_fee_percentage', sa.Float(), nullable=False, server_default='0.0'))
+    op.add_column('users', sa.Column('auto_logout_after_close', sa.Boolean(), nullable=False, server_default='false'))
 
 
 def downgrade() -> None:
-    op.drop_column('staff_users', 'auto_logout_after_close')
-    op.drop_column('staff_users', 'service_fee_percentage')
-    op.drop_column('staff_users', 'commission_percentage')
+    op.drop_column('users', 'auto_logout_after_close')
+    op.drop_column('users', 'service_fee_percentage')
+    op.drop_column('users', 'commission_percentage')

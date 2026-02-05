@@ -20,20 +20,10 @@ def upgrade() -> None:
     # Add pin_hash column to users table (replaces plain text pin)
     op.add_column('users', sa.Column('pin_hash', sa.String(255), nullable=True))
 
-    # Note: Any existing plain text PINs in the 'pin' column will need to be
-    # re-hashed by users. We cannot migrate them automatically as we need
-    # the plain text to hash it.
-
-    # Drop the old plain text pin column if it exists
-    try:
-        op.drop_column('users', 'pin')
-    except Exception:
-        # Column may not exist in all environments
-        pass
+    # Note: The 'pin' column was never part of the initial schema,
+    # so we don't need to drop it.
 
 
 def downgrade() -> None:
-    # Add back the plain text pin column
-    op.add_column('users', sa.Column('pin', sa.String(10), nullable=True))
     # Drop the hashed pin column
     op.drop_column('users', 'pin_hash')
