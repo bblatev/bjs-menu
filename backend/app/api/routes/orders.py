@@ -267,17 +267,161 @@ def update_order_status(
     current_user: RequireManager,
     new_status: POStatus = Query(...),
 ):
-    """Update purchase order status."""
+    """Update purchase order status. When marking as RECEIVED, stock is added automatically."""
+    from app.services.stock_deduction_service import StockDeductionService
+
     order = db.query(PurchaseOrder).filter(PurchaseOrder.id == order_id).first()
     if not order:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Order not found")
 
     order.status = new_status
+    stock_result = None
+
     if new_status == POStatus.SENT:
         order.sent_at = datetime.utcnow()
     elif new_status == POStatus.RECEIVED:
         order.received_at = datetime.utcnow()
 
+        # Add stock for all PO lines
+        stock_service = StockDeductionService(db)
+        po_lines = [
+            {
+                "product_id": line.product_id,
+                "received_qty": float(line.qty),
+                "unit_cost": float(line.unit_cost) if line.unit_cost else None,
+            }
+            for line in order.lines
+        ]
+        stock_result = stock_service.receive_purchase_order(
+            po_lines=po_lines,
+            location_id=order.location_id,
+            po_id=order.id,
+            created_by=current_user.user_id,
+        )
+
     db.commit()
     db.refresh(order)
-    return order
+
+    result = {
+        "id": order.id,
+        "status": order.status.value,
+        "received_at": order.received_at.isoformat() if order.received_at else None,
+    }
+    if stock_result:
+        result["stock_additions"] = stock_result
+
+    return result
+
+
+# ==================== PARTIAL RECEIVING ====================
+
+from pydantic import BaseModel as PydanticBaseModel
+
+
+class ReceivingLineItem(PydanticBaseModel):
+    product_id: int
+    received_qty: float
+    unit_cost: Optional[float] = None
+    notes: Optional[str] = None
+    batch_number: Optional[str] = None
+    expiration_date: Optional[str] = None
+
+
+class ReceivingRequest(PydanticBaseModel):
+    lines: List[ReceivingLineItem]
+    notes: Optional[str] = None
+
+
+@router.post("/{order_id}/receive")
+def receive_order(
+    order_id: int,
+    request: ReceivingRequest,
+    db: DbSession,
+    current_user: RequireManager,
+):
+    """
+    Receive goods from a purchase order (supports partial receiving).
+
+    For each line:
+    - Creates StockMovement(reason=PURCHASE)
+    - Updates StockOnHand
+    - Optionally creates InventoryBatch for shelf-life tracking
+    - Updates product cost price
+
+    Supports partial receiving: you can receive some items now and more later.
+    """
+    from app.services.stock_deduction_service import StockDeductionService
+    from app.models.stock import StockMovement, MovementReason, StockOnHand
+
+    order = db.query(PurchaseOrder).filter(PurchaseOrder.id == order_id).first()
+    if not order:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Order not found")
+
+    if order.status == POStatus.CANCELLED:
+        raise HTTPException(status_code=400, detail="Cannot receive a cancelled order")
+
+    stock_service = StockDeductionService(db)
+    po_lines = [
+        {
+            "product_id": line.product_id,
+            "received_qty": line.received_qty,
+            "unit_cost": line.unit_cost,
+        }
+        for line in request.lines
+    ]
+    stock_result = stock_service.receive_purchase_order(
+        po_lines=po_lines,
+        location_id=order.location_id,
+        po_id=order.id,
+        created_by=current_user.user_id,
+    )
+
+    # Create inventory batches if expiration dates provided
+    batches_created = []
+    for line in request.lines:
+        if line.batch_number or line.expiration_date:
+            try:
+                from app.models.advanced_features import InventoryBatch
+                from datetime import date as date_type
+
+                exp_date = None
+                if line.expiration_date:
+                    exp_date = datetime.strptime(line.expiration_date, "%Y-%m-%d").date()
+
+                batch = InventoryBatch(
+                    product_id=line.product_id,
+                    location_id=order.location_id,
+                    batch_number=line.batch_number or f"PO{order.id}-{line.product_id}",
+                    received_quantity=Decimal(str(line.received_qty)),
+                    current_quantity=Decimal(str(line.received_qty)),
+                    received_date=datetime.utcnow().date(),
+                    expiration_date=exp_date,
+                    unit_cost=Decimal(str(line.unit_cost)) if line.unit_cost else None,
+                    is_expired=exp_date < datetime.utcnow().date() if exp_date else False,
+                )
+                db.add(batch)
+                batches_created.append({
+                    "product_id": line.product_id,
+                    "batch_number": batch.batch_number,
+                    "expiration_date": line.expiration_date,
+                })
+            except Exception:
+                pass  # Batch creation is optional
+
+    # Update PO status to RECEIVED if not already
+    if order.status != POStatus.RECEIVED:
+        order.status = POStatus.RECEIVED
+        order.received_at = datetime.utcnow()
+
+    if request.notes:
+        order.notes = (order.notes or "") + f"\nReceived: {request.notes}"
+
+    db.commit()
+    db.refresh(order)
+
+    return {
+        "status": "received",
+        "po_id": order.id,
+        "stock_result": stock_result,
+        "batches_created": batches_created,
+    }

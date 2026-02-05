@@ -30,7 +30,7 @@ class WasteTrackingService:
         reason: Optional[str] = None,
         recorded_by_id: Optional[int] = None,
     ) -> WasteTrackingEntry:
-        """Create a new waste tracking entry."""
+        """Create a new waste tracking entry and deduct from stock."""
         # Calculate carbon if not provided (avg 2.5 kg CO2 per kg food waste)
         if carbon_kg is None:
             carbon_kg = weight_kg * Decimal("2.5")
@@ -49,8 +49,32 @@ class WasteTrackingService:
             recorded_by_id=recorded_by_id,
         )
         self.db.add(entry)
+        self.db.flush()  # Get the entry ID before committing
+
+        # Deduct from stock if a product is specified
+        stock_result = None
+        if product_id:
+            try:
+                from app.services.stock_deduction_service import StockDeductionService
+                stock_service = StockDeductionService(self.db)
+                stock_result = stock_service.deduct_for_waste(
+                    product_id=product_id,
+                    quantity=weight_kg,
+                    unit="kg",
+                    location_id=location_id,
+                    waste_entry_id=entry.id,
+                    reason=f"Waste ({category.value}): {reason or 'No reason specified'}",
+                    created_by=recorded_by_id,
+                )
+            except Exception as e:
+                import logging
+                logging.getLogger(__name__).warning(f"Stock deduction for waste failed: {e}")
+
         self.db.commit()
         self.db.refresh(entry)
+
+        # Attach stock result to entry for API response
+        entry._stock_result = stock_result
         return entry
 
     def get_entries(

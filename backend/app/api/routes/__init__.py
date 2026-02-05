@@ -16,7 +16,8 @@ from app.api.routes import (
     payments, quickbooks, printers,
     google_reserve, training, scheduled_reports, email_campaigns,
     opentable, birthday_rewards, kds_localization,
-    mobile_wallet, custom_reports, card_terminals
+    mobile_wallet, custom_reports, card_terminals,
+    stock_management, stock
 )
 
 api_router = APIRouter()
@@ -184,3 +185,9 @@ api_router.include_router(custom_reports.router, prefix="/custom-reports", tags=
 
 # EMV Card Terminals
 api_router.include_router(card_terminals.router, prefix="/card-terminals", tags=["card-terminals", "emv", "stripe-terminal"])
+
+# Stock Management (transfers, adjustments, shrinkage, AI scanner, cost tracking)
+api_router.include_router(stock_management.router, prefix="/stock-management", tags=["stock-management", "transfers", "shrinkage", "ai-scanner", "cost-tracking"])
+
+# Stock routes (frontend-facing /stock/* endpoints)
+api_router.include_router(stock.router, prefix="/stock", tags=["stock", "inventory"])
