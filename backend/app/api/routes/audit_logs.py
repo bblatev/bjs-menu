@@ -1,8 +1,14 @@
 """Audit logs API routes."""
 
+from datetime import datetime, timedelta
 from typing import List, Optional
+
 from fastapi import APIRouter, Query
 from pydantic import BaseModel
+from sqlalchemy import func
+
+from app.db.session import DbSession
+from app.models.operations import AuditLogEntry
 
 router = APIRouter()
 
@@ -29,43 +35,120 @@ class AuditSummary(BaseModel):
     security_events: int
 
 
+def _row_to_audit_log(entry: AuditLogEntry) -> AuditLog:
+    """Convert a database AuditLogEntry to the AuditLog response schema."""
+    details_dict = entry.details or {}
+    return AuditLog(
+        id=str(entry.id),
+        timestamp=entry.created_at.isoformat() + "Z" if entry.created_at else "",
+        user_id=str(entry.user_id) if entry.user_id is not None else "",
+        user_name=entry.user_name or "",
+        action=entry.action or "",
+        entity_type=entry.entity_type or "",
+        entity_id=entry.entity_id or "",
+        entity_name=details_dict.get("entity_name", "") if isinstance(details_dict, dict) else "",
+        old_value=details_dict.get("old_value") if isinstance(details_dict, dict) else None,
+        new_value=details_dict.get("new_value") if isinstance(details_dict, dict) else None,
+        ip_address=entry.ip_address or "",
+        details=details_dict.get("description") if isinstance(details_dict, dict) else (str(details_dict) if details_dict else None),
+    )
+
+
 @router.get("/")
 async def get_audit_logs(
+    db: DbSession,
     action: str = Query(None),
     entity_type: str = Query(None),
     user_id: str = Query(None),
     start_date: str = Query(None),
     end_date: str = Query(None),
-    limit: int = Query(100)
+    limit: int = Query(100),
 ):
     """Get audit logs with filters."""
-    return [
-        AuditLog(id="1", timestamp="2026-02-01T17:45:00Z", user_id="1", user_name="Admin", action="update", entity_type="product", entity_id="5", entity_name="Margherita Pizza", old_value="12.99", new_value="14.99", ip_address="192.168.1.100", details="Price update"),
-        AuditLog(id="2", timestamp="2026-02-01T17:30:00Z", user_id="2", user_name="Manager", action="create", entity_type="order", entity_id="1234", entity_name="Order #1234", ip_address="192.168.1.101"),
-        AuditLog(id="3", timestamp="2026-02-01T17:15:00Z", user_id="1", user_name="Admin", action="delete", entity_type="product", entity_id="99", entity_name="Old Item", ip_address="192.168.1.100"),
-        AuditLog(id="4", timestamp="2026-02-01T17:00:00Z", user_id="3", user_name="Staff", action="login", entity_type="session", entity_id="sess-123", entity_name="Login", ip_address="192.168.1.102"),
-        AuditLog(id="5", timestamp="2026-02-01T16:45:00Z", user_id="2", user_name="Manager", action="void", entity_type="order_item", entity_id="item-456", entity_name="Beer Draft", ip_address="192.168.1.101", details="Customer complaint"),
-    ]
+    query = db.query(AuditLogEntry)
+
+    if action:
+        query = query.filter(AuditLogEntry.action == action)
+    if entity_type:
+        query = query.filter(AuditLogEntry.entity_type == entity_type)
+    if user_id:
+        query = query.filter(AuditLogEntry.user_id == int(user_id))
+    if start_date:
+        query = query.filter(AuditLogEntry.created_at >= datetime.fromisoformat(start_date))
+    if end_date:
+        query = query.filter(AuditLogEntry.created_at <= datetime.fromisoformat(end_date))
+
+    entries = query.order_by(AuditLogEntry.created_at.desc()).limit(limit).all()
+    return [_row_to_audit_log(e) for e in entries]
 
 
 @router.get("/summary")
-async def get_audit_summary(period: str = Query("today")):
+async def get_audit_summary(db: DbSession, period: str = Query("today")):
     """Get audit summary for a period."""
+    base_query = db.query(AuditLogEntry)
+
+    now = datetime.utcnow()
+    start = None
+    if period == "today":
+        start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+    elif period == "week":
+        start = (now - timedelta(days=7)).replace(hour=0, minute=0, second=0, microsecond=0)
+    elif period == "month":
+        start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+
+    if start is not None:
+        base_query = base_query.filter(AuditLogEntry.created_at >= start)
+
+    total_actions = base_query.count()
+
+    active_query = db.query(func.count(func.distinct(AuditLogEntry.user_id)))
+    if start is not None:
+        active_query = active_query.filter(AuditLogEntry.created_at >= start)
+    users_active = active_query.scalar() or 0
+
+    # Most common action
+    most_common_row = (
+        base_query
+        .with_entities(AuditLogEntry.action, func.count(AuditLogEntry.id).label("cnt"))
+        .group_by(AuditLogEntry.action)
+        .order_by(func.count(AuditLogEntry.id).desc())
+        .first()
+    )
+    most_common_action = most_common_row[0] if most_common_row else "none"
+
+    # Security events: login, logout, and failed auth-related actions
+    security_actions = ["login", "logout", "failed_login", "password_change", "role_change"]
+    security_events = base_query.filter(AuditLogEntry.action.in_(security_actions)).count()
+
     return AuditSummary(
-        total_actions=245,
-        users_active=8,
-        most_common_action="create",
-        security_events=2
+        total_actions=total_actions,
+        users_active=users_active,
+        most_common_action=most_common_action,
+        security_events=security_events,
     )
 
 
 @router.get("/actions")
-async def get_action_types():
+async def get_action_types(db: DbSession):
     """Get available action types."""
-    return ["create", "update", "delete", "login", "logout", "void", "refund", "approve", "reject", "export"]
+    rows = (
+        db.query(AuditLogEntry.action)
+        .distinct()
+        .order_by(AuditLogEntry.action)
+        .all()
+    )
+    actions = [r[0] for r in rows if r[0]]
+    return actions if actions else ["create", "update", "delete", "login", "logout", "void", "refund", "approve", "reject", "export"]
 
 
 @router.get("/entity-types")
-async def get_entity_types():
+async def get_entity_types(db: DbSession):
     """Get available entity types."""
-    return ["product", "order", "order_item", "customer", "staff", "inventory", "payment", "session", "settings", "report"]
+    rows = (
+        db.query(AuditLogEntry.entity_type)
+        .distinct()
+        .order_by(AuditLogEntry.entity_type)
+        .all()
+    )
+    types = [r[0] for r in rows if r[0]]
+    return types if types else ["product", "order", "order_item", "customer", "staff", "inventory", "payment", "session", "settings", "report"]

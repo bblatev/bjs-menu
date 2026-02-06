@@ -1,8 +1,14 @@
 """Referral program API routes."""
 
+from datetime import datetime
 from typing import List, Optional
-from fastapi import APIRouter
+
+from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
+from sqlalchemy import func
+
+from app.db.session import DbSession
+from app.models.operations import ReferralProgram, ReferralRecord
 
 router = APIRouter()
 
@@ -48,67 +54,265 @@ class ReferralSettings(BaseModel):
 
 
 @router.get("/programs")
-async def get_referral_programs():
+def get_referral_programs(db: DbSession):
     """Get referral programs."""
-    return {"programs": [], "total": 0}
+    programs = db.query(ReferralProgram).all()
+    result = []
+    for p in programs:
+        result.append({
+            "id": str(p.id),
+            "name": p.name,
+            "reward_type": p.reward_type,
+            "reward_value": float(p.reward_value) if p.reward_value else 0.0,
+            "referee_reward_value": float(p.referee_reward_value) if p.referee_reward_value else 0.0,
+            "active": p.active,
+            "created_at": p.created_at.isoformat() if p.created_at else None,
+        })
+    return {"programs": result, "total": len(result)}
 
 
 @router.get("/")
-async def get_referrals():
+def get_referrals(db: DbSession):
     """Get all referrals."""
-    return [
-        Referral(id="1", referrer_id="1", referrer_name="John Smith", referee_name="Mike Brown", referee_email="mike@email.com", status="completed", reward_amount=20.00, created_at="2026-01-15", completed_at="2026-01-20"),
-        Referral(id="2", referrer_id="1", referrer_name="John Smith", referee_name="Sarah Lee", referee_email="sarah@email.com", status="pending", reward_amount=20.00, created_at="2026-01-28"),
-        Referral(id="3", referrer_id="2", referrer_name="Jane Doe", referee_name="Tom Wilson", referee_email="tom@email.com", status="completed", reward_amount=25.00, created_at="2026-01-10", completed_at="2026-01-18"),
-    ]
+    records = (
+        db.query(ReferralRecord)
+        .order_by(ReferralRecord.created_at.desc())
+        .all()
+    )
+    result = []
+    for r in records:
+        # Look up the program to get the reward value
+        reward_amount = 0.0
+        if r.program_id:
+            program = db.query(ReferralProgram).filter(ReferralProgram.id == r.program_id).first()
+            if program and program.reward_value:
+                reward_amount = float(program.reward_value)
+
+        result.append(Referral(
+            id=str(r.id),
+            referrer_id=str(r.id),
+            referrer_name=r.referrer_name or "",
+            referee_name=r.referee_name or "",
+            referee_email=r.referee_email or "",
+            status=r.status or "pending",
+            reward_amount=reward_amount,
+            created_at=r.created_at.isoformat() if r.created_at else "",
+            completed_at=r.completed_at.isoformat() if r.completed_at else None,
+        ))
+    return result
 
 
 @router.get("/referrers")
-async def get_referrers():
+def get_referrers(db: DbSession):
     """Get all referrers."""
-    return [
-        Referrer(id="1", name="John Smith", email="john@email.com", total_referrals=5, successful_referrals=3, total_earned=60.00, pending_rewards=20.00),
-        Referrer(id="2", name="Jane Doe", email="jane@email.com", total_referrals=8, successful_referrals=6, total_earned=150.00, pending_rewards=0.00),
-        Referrer(id="3", name="Mike Johnson", email="mike.j@email.com", total_referrals=2, successful_referrals=1, total_earned=20.00, pending_rewards=20.00),
-    ]
+    # Aggregate referral records by referrer_email to build referrer summaries
+    referrer_rows = (
+        db.query(
+            ReferralRecord.referrer_name,
+            ReferralRecord.referrer_email,
+            func.count(ReferralRecord.id).label("total_referrals"),
+            func.count(
+                func.nullif(ReferralRecord.status != "completed", True)
+            ).label("successful_referrals"),
+        )
+        .group_by(ReferralRecord.referrer_email, ReferralRecord.referrer_name)
+        .all()
+    )
+
+    result = []
+    for idx, row in enumerate(referrer_rows, start=1):
+        referrer_email = row.referrer_email or ""
+        referrer_name = row.referrer_name or ""
+
+        # Calculate earnings from completed referrals for this referrer
+        completed_records = (
+            db.query(ReferralRecord)
+            .filter(
+                ReferralRecord.referrer_email == referrer_email,
+                ReferralRecord.status == "completed",
+                ReferralRecord.reward_claimed == True,
+            )
+            .all()
+        )
+        total_earned = 0.0
+        for rec in completed_records:
+            if rec.program_id:
+                prog = db.query(ReferralProgram).filter(ReferralProgram.id == rec.program_id).first()
+                if prog and prog.reward_value:
+                    total_earned += float(prog.reward_value)
+
+        # Pending rewards: completed but not yet claimed
+        pending_records = (
+            db.query(ReferralRecord)
+            .filter(
+                ReferralRecord.referrer_email == referrer_email,
+                ReferralRecord.status == "completed",
+                ReferralRecord.reward_claimed == False,
+            )
+            .all()
+        )
+        pending_rewards = 0.0
+        for rec in pending_records:
+            if rec.program_id:
+                prog = db.query(ReferralProgram).filter(ReferralProgram.id == rec.program_id).first()
+                if prog and prog.reward_value:
+                    pending_rewards += float(prog.reward_value)
+
+        result.append(Referrer(
+            id=str(idx),
+            name=referrer_name,
+            email=referrer_email,
+            total_referrals=row.total_referrals,
+            successful_referrals=row.successful_referrals,
+            total_earned=total_earned,
+            pending_rewards=pending_rewards,
+        ))
+    return result
 
 
 @router.get("/campaigns")
-async def get_referral_campaigns():
+def get_referral_campaigns(db: DbSession):
     """Get referral campaigns."""
-    return [
-        ReferralCampaign(id="1", name="Standard Referral", referrer_reward=20.00, referee_reward=15.00, min_spend=50.00, active=True),
-        ReferralCampaign(id="2", name="Summer Special", referrer_reward=30.00, referee_reward=25.00, min_spend=75.00, expires_at="2026-08-31", active=True),
-    ]
+    programs = db.query(ReferralProgram).all()
+    result = []
+    for p in programs:
+        result.append(ReferralCampaign(
+            id=str(p.id),
+            name=p.name or "",
+            referrer_reward=float(p.reward_value) if p.reward_value else 0.0,
+            referee_reward=float(p.referee_reward_value) if p.referee_reward_value else 0.0,
+            min_spend=0.0,
+            expires_at=None,
+            active=p.active if p.active is not None else True,
+        ))
+    return result
 
 
 @router.get("/settings")
-async def get_referral_settings():
+def get_referral_settings(db: DbSession):
     """Get referral program settings."""
+    # Derive defaults from the first active program, or use sensible defaults
+    default_program = (
+        db.query(ReferralProgram)
+        .filter(ReferralProgram.active == True)
+        .first()
+    )
+    if default_program:
+        default_referrer_reward = float(default_program.reward_value) if default_program.reward_value else 0.0
+        default_referee_reward = float(default_program.referee_reward_value) if default_program.referee_reward_value else 0.0
+    else:
+        default_referrer_reward = 0.0
+        default_referee_reward = 0.0
+
+    total_referrers = (
+        db.query(func.count(func.distinct(ReferralRecord.referrer_email)))
+        .scalar() or 0
+    )
+
     return ReferralSettings(
-        default_referrer_reward=20.00,
-        default_referee_reward=15.00,
-        min_spend_required=50.00,
+        default_referrer_reward=default_referrer_reward,
+        default_referee_reward=default_referee_reward,
+        min_spend_required=0.0,
         reward_expiry_days=90,
-        max_referrals_per_customer=10
+        max_referrals_per_customer=10,
     )
 
 
 @router.post("/bulk-send")
-async def send_bulk_invites(emails: List[str]):
+def send_bulk_invites(emails: List[str], db: DbSession):
     """Send bulk referral invites."""
-    return {"success": True, "sent_count": len(emails)}
+    # Get the default active program
+    program = (
+        db.query(ReferralProgram)
+        .filter(ReferralProgram.active == True)
+        .first()
+    )
+
+    created_count = 0
+    for email in emails:
+        record = ReferralRecord(
+            referee_email=email,
+            status="pending",
+            reward_claimed=False,
+            program_id=program.id if program else None,
+            created_at=datetime.utcnow(),
+        )
+        db.add(record)
+        created_count += 1
+
+    db.commit()
+    return {"success": True, "sent_count": created_count}
 
 
 @router.get("/stats")
-async def get_referral_stats():
+def get_referral_stats(db: DbSession):
     """Get referral program statistics."""
+    total_referrals = (
+        db.query(func.count(ReferralRecord.id)).scalar() or 0
+    )
+    successful_referrals = (
+        db.query(func.count(ReferralRecord.id))
+        .filter(ReferralRecord.status == "completed")
+        .scalar() or 0
+    )
+    pending_referrals = (
+        db.query(func.count(ReferralRecord.id))
+        .filter(ReferralRecord.status == "pending")
+        .scalar() or 0
+    )
+
+    # Calculate total rewards given from completed + claimed referrals
+    claimed_records = (
+        db.query(ReferralRecord)
+        .filter(
+            ReferralRecord.status == "completed",
+            ReferralRecord.reward_claimed == True,
+        )
+        .all()
+    )
+    total_rewards_given = 0.0
+    for rec in claimed_records:
+        if rec.program_id:
+            prog = db.query(ReferralProgram).filter(ReferralProgram.id == rec.program_id).first()
+            if prog and prog.reward_value:
+                total_rewards_given += float(prog.reward_value)
+
+    avg_reward_value = 0.0
+    if claimed_records:
+        avg_reward_value = round(total_rewards_given / len(claimed_records), 2)
+
+    conversion_rate = 0.0
+    if total_referrals > 0:
+        conversion_rate = round((successful_referrals / total_referrals) * 100, 1)
+
+    # Top referrers by successful referral count
+    top_referrer_rows = (
+        db.query(
+            ReferralRecord.referrer_name,
+            ReferralRecord.referrer_email,
+            func.count(ReferralRecord.id).label("count"),
+        )
+        .filter(ReferralRecord.status == "completed")
+        .group_by(ReferralRecord.referrer_email, ReferralRecord.referrer_name)
+        .order_by(func.count(ReferralRecord.id).desc())
+        .limit(10)
+        .all()
+    )
+    top_referrers = [
+        {
+            "name": row.referrer_name or "",
+            "email": row.referrer_email or "",
+            "successful_referrals": row.count,
+        }
+        for row in top_referrer_rows
+    ]
+
     return {
-        "total_referrals": 45,
-        "successful_referrals": 32,
-        "pending_referrals": 8,
-        "total_rewards_given": 960.00,
-        "avg_reward_value": 30.00,
-        "conversion_rate": 71.1,
-        "top_referrers": [],
+        "total_referrals": total_referrals,
+        "successful_referrals": successful_referrals,
+        "pending_referrals": pending_referrals,
+        "total_rewards_given": total_rewards_given,
+        "avg_reward_value": avg_reward_value,
+        "conversion_rate": conversion_rate,
+        "top_referrers": top_referrers,
     }

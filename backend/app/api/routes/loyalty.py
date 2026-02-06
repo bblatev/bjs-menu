@@ -1,16 +1,42 @@
 """Loyalty program API routes (gift cards at /gift-cards)."""
 
 from typing import List, Optional
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, Query, HTTPException
 from pydantic import BaseModel
+from sqlalchemy import func
+
+from app.db.session import DbSession
+from app.models.marketing import LoyaltyProgram, CustomerLoyalty
+from app.models.customer import Customer
 
 router = APIRouter()
 
 
 @router.get("/program")
-async def get_loyalty_program():
+def get_loyalty_program(db: DbSession):
     """Get loyalty program details."""
-    return {"name": "Loyalty Program", "points_per_dollar": 1, "tiers": [], "active_members": 0}
+    program = db.query(LoyaltyProgram).filter(
+        LoyaltyProgram.is_active == True  # noqa: E712
+    ).first()
+
+    if not program:
+        return {
+            "name": "Loyalty Program",
+            "points_per_dollar": 1,
+            "tiers": [],
+            "active_members": 0,
+        }
+
+    active_members = db.query(func.count(CustomerLoyalty.id)).filter(
+        CustomerLoyalty.program_id == program.id
+    ).scalar() or 0
+
+    return {
+        "name": program.name,
+        "points_per_dollar": program.points_per_dollar,
+        "tiers": program.tiers or [],
+        "active_members": active_members,
+    }
 
 
 class LoyaltyMember(BaseModel):
@@ -27,10 +53,37 @@ class LoyaltyMember(BaseModel):
 
 
 @router.get("/members")
-async def get_loyalty_members():
+def get_loyalty_members(db: DbSession):
     """Get loyalty program members."""
-    return [
-        LoyaltyMember(id="1", name="John Smith", email="john@example.com", phone="+359888123456", points=2450, tier="gold", total_spent=4850.00, visits=45, joined_date="2025-03-15", last_visit="2026-01-30"),
-        LoyaltyMember(id="2", name="Sarah Johnson", email="sarah@example.com", points=890, tier="silver", total_spent=1780.00, visits=18, joined_date="2025-08-20", last_visit="2026-01-28"),
-        LoyaltyMember(id="3", name="Mike Brown", email="mike@example.com", points=5200, tier="platinum", total_spent=10400.00, visits=85, joined_date="2024-12-01", last_visit="2026-02-01"),
-    ]
+    rows = (
+        db.query(CustomerLoyalty, Customer)
+        .join(Customer, Customer.id == CustomerLoyalty.customer_id)
+        .all()
+    )
+
+    members: List[LoyaltyMember] = []
+    for loyalty, customer in rows:
+        members.append(
+            LoyaltyMember(
+                id=str(loyalty.id),
+                name=customer.name,
+                email=customer.email or "",
+                phone=customer.phone if customer.phone else None,
+                points=loyalty.current_points or 0,
+                tier=loyalty.current_tier or "bronze",
+                total_spent=loyalty.total_spend or 0.0,
+                visits=loyalty.total_visits or 0,
+                joined_date=(
+                    loyalty.first_visit_at.strftime("%Y-%m-%d")
+                    if loyalty.first_visit_at
+                    else loyalty.created_at.strftime("%Y-%m-%d")
+                ),
+                last_visit=(
+                    loyalty.last_visit_at.strftime("%Y-%m-%d")
+                    if loyalty.last_visit_at
+                    else loyalty.created_at.strftime("%Y-%m-%d")
+                ),
+            )
+        )
+
+    return members

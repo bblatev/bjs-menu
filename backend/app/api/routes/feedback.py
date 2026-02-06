@@ -1,8 +1,14 @@
 """Feedback and reviews API routes."""
 
+from datetime import datetime, date
 from typing import List, Optional
-from fastapi import APIRouter, Query
+
+from fastapi import APIRouter, HTTPException, Query, status
 from pydantic import BaseModel
+from sqlalchemy import func
+
+from app.db.session import DbSession
+from app.models.operations import FeedbackReview
 
 router = APIRouter()
 
@@ -31,63 +37,214 @@ class FeedbackStats(BaseModel):
     avg_response_time_hours: float
 
 
+class RespondRequest(BaseModel):
+    response: str
+
+
+def _review_to_schema(r: FeedbackReview) -> Review:
+    """Convert a FeedbackReview model instance to a Review schema."""
+    return Review(
+        id=str(r.id),
+        customer_name=r.customer_name or "Guest",
+        rating=r.rating or 0,
+        comment=r.text,
+        source=r.source or "internal",
+        response=r.response,
+        responded_at=r.responded_at.isoformat() if r.responded_at else None,
+        order_id=None,
+        created_at=r.created_at.isoformat() if r.created_at else "",
+    )
+
+
 @router.get("/")
-async def get_feedback_overview():
+async def get_feedback_overview(db: DbSession):
     """Get feedback overview."""
+    total_reviews = db.query(func.count(FeedbackReview.id)).scalar() or 0
+
+    avg_rating_val = db.query(func.avg(FeedbackReview.rating)).filter(
+        FeedbackReview.rating.isnot(None)
+    ).scalar()
+    average_rating = round(float(avg_rating_val), 2) if avg_rating_val else 0.0
+
+    # Rating distribution
+    rating_dist = {}
+    for star in range(1, 6):
+        count = db.query(func.count(FeedbackReview.id)).filter(
+            FeedbackReview.rating == star
+        ).scalar() or 0
+        rating_dist[str(star)] = count
+
+    # Response rate
+    responded_count = db.query(func.count(FeedbackReview.id)).filter(
+        FeedbackReview.status == "responded"
+    ).scalar() or 0
+    response_rate = round((responded_count / total_reviews * 100), 1) if total_reviews > 0 else 0.0
+
+    # Source breakdown
+    source_rows = db.query(
+        FeedbackReview.source,
+        func.count(FeedbackReview.id).label("cnt"),
+        func.avg(FeedbackReview.rating).label("avg_r"),
+    ).group_by(FeedbackReview.source).all()
+
+    sources = [
+        {
+            "name": row.source or "internal",
+            "count": row.cnt,
+            "avg_rating": round(float(row.avg_r), 1) if row.avg_r else 0.0,
+        }
+        for row in source_rows
+    ]
+
+    # Recent reviews
+    recent = db.query(FeedbackReview).order_by(
+        FeedbackReview.created_at.desc()
+    ).limit(10).all()
+    recent_reviews = [_review_to_schema(r).model_dump() for r in recent]
+
     return {
-        "average_rating": 4.5,
-        "total_reviews": 234,
-        "recent_reviews": [],
-        "rating_distribution": {"5": 120, "4": 65, "3": 30, "2": 12, "1": 7},
-        "response_rate": 85.0,
-        "sources": [
-            {"name": "Google", "count": 120, "avg_rating": 4.6},
-            {"name": "Internal", "count": 80, "avg_rating": 4.4},
-            {"name": "TripAdvisor", "count": 34, "avg_rating": 4.3},
-        ],
+        "average_rating": average_rating,
+        "total_reviews": total_reviews,
+        "recent_reviews": recent_reviews,
+        "rating_distribution": rating_dist,
+        "response_rate": response_rate,
+        "sources": sources,
     }
 
 
 @router.get("/reviews")
 async def get_reviews(
+    db: DbSession,
     source: str = Query(None),
     rating: int = Query(None),
     start_date: str = Query(None),
-    end_date: str = Query(None)
+    end_date: str = Query(None),
 ):
     """Get customer reviews."""
-    return [
-        Review(id="1", customer_name="John D.", rating=5, comment="Excellent food and service!", source="google", created_at="2026-02-01T18:00:00Z"),
-        Review(id="2", customer_name="Sarah M.", rating=4, comment="Good food, a bit slow service", source="tripadvisor", response="Thank you for your feedback! We're working on improving our service times.", responded_at="2026-01-31T10:00:00Z", created_at="2026-01-30T20:00:00Z"),
-        Review(id="3", customer_name="Mike R.", rating=5, comment="Best cocktails in town!", source="facebook", created_at="2026-01-29T22:00:00Z"),
-        Review(id="4", customer_name="Anna K.", rating=3, comment="Food was okay, nothing special", source="google", created_at="2026-01-28T19:00:00Z"),
-        Review(id="5", customer_name="Guest", rating=5, source="internal", order_id="ORD-1234", created_at="2026-01-27T21:00:00Z"),
-    ]
+    query = db.query(FeedbackReview)
+
+    if source:
+        query = query.filter(FeedbackReview.source == source)
+    if rating is not None:
+        query = query.filter(FeedbackReview.rating == rating)
+    if start_date:
+        try:
+            sd = datetime.fromisoformat(start_date.replace("Z", "+00:00"))
+            query = query.filter(FeedbackReview.created_at >= sd)
+        except (ValueError, TypeError):
+            pass
+    if end_date:
+        try:
+            ed = datetime.fromisoformat(end_date.replace("Z", "+00:00"))
+            query = query.filter(FeedbackReview.created_at <= ed)
+        except (ValueError, TypeError):
+            pass
+
+    reviews = query.order_by(FeedbackReview.created_at.desc()).all()
+    return [_review_to_schema(r) for r in reviews]
 
 
 @router.get("/reviews/{review_id}")
-async def get_review(review_id: str):
+async def get_review(review_id: str, db: DbSession):
     """Get a specific review."""
-    return Review(id=review_id, customer_name="John D.", rating=5, comment="Excellent!", source="google", created_at="2026-02-01T18:00:00Z")
+    review = db.query(FeedbackReview).filter(
+        FeedbackReview.id == int(review_id)
+    ).first()
+
+    if not review:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Review not found",
+        )
+
+    return _review_to_schema(review)
 
 
 @router.post("/reviews/{review_id}/respond")
-async def respond_to_review(review_id: str, response: str):
+async def respond_to_review(review_id: str, body: RespondRequest, db: DbSession):
     """Respond to a review."""
+    review = db.query(FeedbackReview).filter(
+        FeedbackReview.id == int(review_id)
+    ).first()
+
+    if not review:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Review not found",
+        )
+
+    review.response = body.response
+    review.responded_at = datetime.utcnow()
+    review.status = "responded"
+    db.commit()
+
     return {"success": True}
 
 
 @router.get("/stats")
-async def get_feedback_stats(period: str = Query("month")):
+async def get_feedback_stats(db: DbSession, period: str = Query("month")):
     """Get feedback statistics."""
+    query = db.query(FeedbackReview)
+
+    # Apply period filter
+    now = datetime.utcnow()
+    if period == "week":
+        from datetime import timedelta
+        cutoff = now - timedelta(weeks=1)
+        query = query.filter(FeedbackReview.created_at >= cutoff)
+    elif period == "month":
+        from datetime import timedelta
+        cutoff = now - timedelta(days=30)
+        query = query.filter(FeedbackReview.created_at >= cutoff)
+    elif period == "year":
+        from datetime import timedelta
+        cutoff = now - timedelta(days=365)
+        query = query.filter(FeedbackReview.created_at >= cutoff)
+
+    all_reviews = query.all()
+    total = len(all_reviews)
+
+    if total == 0:
+        return FeedbackStats(
+            average_rating=0.0,
+            total_reviews=0,
+            five_star=0,
+            four_star=0,
+            three_star=0,
+            two_star=0,
+            one_star=0,
+            response_rate=0.0,
+            avg_response_time_hours=0.0,
+        )
+
+    avg_rating = sum(r.rating for r in all_reviews if r.rating) / max(
+        sum(1 for r in all_reviews if r.rating), 1
+    )
+
+    star_counts = {s: 0 for s in range(1, 6)}
+    for r in all_reviews:
+        if r.rating and 1 <= r.rating <= 5:
+            star_counts[r.rating] += 1
+
+    responded = [r for r in all_reviews if r.status == "responded"]
+    response_rate = round(len(responded) / total * 100, 1) if total > 0 else 0.0
+
+    # Average response time for reviews that have been responded to
+    response_times = []
+    for r in responded:
+        if r.responded_at and r.created_at:
+            delta = (r.responded_at - r.created_at).total_seconds() / 3600.0
+            response_times.append(delta)
+    avg_response_time = round(sum(response_times) / len(response_times), 1) if response_times else 0.0
+
     return FeedbackStats(
-        average_rating=4.3,
-        total_reviews=156,
-        five_star=78,
-        four_star=45,
-        three_star=20,
-        two_star=8,
-        one_star=5,
-        response_rate=82.5,
-        avg_response_time_hours=4.2
+        average_rating=round(avg_rating, 1),
+        total_reviews=total,
+        five_star=star_counts[5],
+        four_star=star_counts[4],
+        three_star=star_counts[3],
+        two_star=star_counts[2],
+        one_star=star_counts[1],
+        response_rate=response_rate,
+        avg_response_time_hours=avg_response_time,
     )

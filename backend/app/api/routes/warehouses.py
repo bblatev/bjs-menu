@@ -1,10 +1,19 @@
 """Warehouse management API routes."""
 
+from datetime import datetime
 from typing import List, Optional
-from fastapi import APIRouter
+
+from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel
+from sqlalchemy import or_
+
+from app.db.session import DbSession
+from app.models.operations import Warehouse as WarehouseModel, WarehouseTransfer
 
 router = APIRouter()
+
+
+# --------------- Pydantic Schemas ---------------
 
 
 class Warehouse(BaseModel):
@@ -43,6 +52,19 @@ class Transfer(BaseModel):
     completed_at: Optional[str] = None
 
 
+class TransferCreate(BaseModel):
+    from_warehouse: str
+    to_warehouse: str
+    status: str = "pending"
+    items_count: int = 0
+    total_value: float = 0.0
+    created_by: str = ""
+    product_id: Optional[int] = None
+    product_name: Optional[str] = None
+    quantity: float = 0
+    notes: Optional[str] = None
+
+
 class WarehouseActivity(BaseModel):
     id: str
     warehouse_id: str
@@ -54,58 +76,259 @@ class WarehouseActivity(BaseModel):
     timestamp: str
 
 
+# --------------- Helper Functions ---------------
+
+
+def _warehouse_type_to_code(wh: WarehouseModel) -> str:
+    """Derive a short code from warehouse name."""
+    if wh.name:
+        parts = wh.name.split()
+        return "".join(p[0].upper() for p in parts if p)
+    return ""
+
+
+def _warehouse_to_schema(wh: WarehouseModel) -> Warehouse:
+    """Convert a Warehouse DB model to the response schema."""
+    type_map = {"dry": "main", "cold": "cold_storage", "frozen": "cold_storage", "bar": "satellite"}
+    return Warehouse(
+        id=str(wh.id),
+        name=wh.name or "",
+        code=_warehouse_type_to_code(wh),
+        address=wh.address or "",
+        type=type_map.get(wh.type, wh.type or "main"),
+        capacity=wh.capacity or 0,
+        utilization_pct=0.0,
+        manager=wh.manager or "",
+        active=wh.active if wh.active is not None else True,
+    )
+
+
+def _transfer_to_schema(
+    t: WarehouseTransfer,
+    from_name: str,
+    to_name: str,
+) -> Transfer:
+    """Convert a WarehouseTransfer DB model to the response schema."""
+    return Transfer(
+        id=str(t.id),
+        from_warehouse=from_name,
+        to_warehouse=to_name,
+        status=t.status or "pending",
+        items_count=1,
+        total_value=float(t.quantity or 0),
+        created_by=t.created_by or "",
+        created_at=t.created_at.isoformat() + "Z" if t.created_at else "",
+        completed_at=(t.completed_at.isoformat() + "Z") if t.completed_at else None,
+    )
+
+
+# --------------- Endpoints ---------------
+
+
 @router.get("/")
-async def get_warehouses():
+async def get_warehouses(db: DbSession):
     """Get all warehouses."""
-    return [
-        Warehouse(id="1", name="Main Kitchen", code="MK", address="Main Building", type="main", capacity=500, utilization_pct=72.5, manager="Chef Mike"),
-        Warehouse(id="2", name="Bar Storage", code="BS", address="Bar Area", type="satellite", capacity=200, utilization_pct=85.0, manager="Bar Manager"),
-        Warehouse(id="3", name="Cold Storage", code="CS", address="Basement", type="cold_storage", capacity=300, utilization_pct=68.0, manager="Chef Mike"),
-    ]
+    warehouses = db.query(WarehouseModel).all()
+    return [_warehouse_to_schema(w) for w in warehouses]
 
 
 @router.get("/stock-levels/")
-async def get_all_stock_levels(warehouse_id: Optional[str] = None):
-    """Get stock levels for all warehouses or a specific one."""
-    return [
-        StockLevel(ingredient_id="1", ingredient_name="Tomatoes", category="Produce", quantity=25, unit="kg", par_level=30, reorder_point=10, last_count="2026-02-01", status="ok"),
-        StockLevel(ingredient_id="2", ingredient_name="Beef Ribeye", category="Meat", quantity=8, unit="kg", par_level=15, reorder_point=5, last_count="2026-02-01", status="low"),
-        StockLevel(ingredient_id="3", ingredient_name="Olive Oil", category="Pantry", quantity=12, unit="L", par_level=10, reorder_point=4, last_count="2026-02-01", status="over"),
-        StockLevel(ingredient_id="4", ingredient_name="Mozzarella", category="Dairy", quantity=5, unit="kg", par_level=8, reorder_point=3, last_count="2026-02-01", status="low"),
-        StockLevel(ingredient_id="5", ingredient_name="Flour", category="Pantry", quantity=45, unit="kg", par_level=20, reorder_point=10, last_count="2026-02-01", status="over"),
-    ]
+async def get_all_stock_levels(db: DbSession, warehouse_id: Optional[str] = None):
+    """Get stock levels for all warehouses or a specific one.
+
+    Stock levels are derived from completed transfers into/out of warehouses.
+    """
+    query = db.query(WarehouseTransfer).filter(
+        WarehouseTransfer.status == "completed"
+    )
+    if warehouse_id:
+        wh_id = int(warehouse_id)
+        query = query.filter(
+            or_(
+                WarehouseTransfer.to_warehouse_id == wh_id,
+                WarehouseTransfer.from_warehouse_id == wh_id,
+            )
+        )
+    transfers = query.all()
+
+    product_map: dict = {}
+    for t in transfers:
+        pid = str(t.product_id) if t.product_id else str(t.id)
+        if pid not in product_map:
+            product_map[pid] = {
+                "ingredient_id": pid,
+                "ingredient_name": t.product_name or f"Product {pid}",
+                "category": "General",
+                "quantity": 0.0,
+                "unit": "units",
+                "par_level": 0.0,
+                "reorder_point": 0.0,
+                "last_count": t.created_at.strftime("%Y-%m-%d") if t.created_at else "",
+            }
+        qty = float(t.quantity or 0)
+        if warehouse_id:
+            wh_id = int(warehouse_id)
+            if t.to_warehouse_id == wh_id:
+                product_map[pid]["quantity"] += qty
+            if t.from_warehouse_id == wh_id:
+                product_map[pid]["quantity"] -= qty
+        else:
+            product_map[pid]["quantity"] += qty
+        if t.created_at:
+            product_map[pid]["last_count"] = t.created_at.strftime("%Y-%m-%d")
+
+    result = []
+    for data in product_map.values():
+        q = data["quantity"]
+        par = data["par_level"]
+        reorder = data["reorder_point"]
+        if par > 0 and q < reorder:
+            status = "critical" if q <= 0 else "low"
+        elif par > 0 and q > par:
+            status = "over"
+        else:
+            status = "ok"
+        result.append(
+            StockLevel(
+                ingredient_id=data["ingredient_id"],
+                ingredient_name=data["ingredient_name"],
+                category=data["category"],
+                quantity=data["quantity"],
+                unit=data["unit"],
+                par_level=data["par_level"],
+                reorder_point=data["reorder_point"],
+                last_count=data["last_count"],
+                status=status,
+            )
+        )
+    return result
 
 
 @router.get("/stock-levels/{warehouse_id}")
-async def get_stock_levels(warehouse_id: str):
+async def get_stock_levels(warehouse_id: str, db: DbSession):
     """Get stock levels for a warehouse."""
-    return [
-        StockLevel(ingredient_id="1", ingredient_name="Tomatoes", category="Produce", quantity=25, unit="kg", par_level=30, reorder_point=10, last_count="2026-02-01", status="ok"),
-        StockLevel(ingredient_id="2", ingredient_name="Beef Ribeye", category="Meat", quantity=8, unit="kg", par_level=15, reorder_point=5, last_count="2026-02-01", status="low"),
-        StockLevel(ingredient_id="3", ingredient_name="Olive Oil", category="Pantry", quantity=12, unit="L", par_level=10, reorder_point=4, last_count="2026-02-01", status="over"),
-    ]
+    wh = db.query(WarehouseModel).filter(WarehouseModel.id == int(warehouse_id)).first()
+    if not wh:
+        raise HTTPException(status_code=404, detail="Warehouse not found")
+    return await get_all_stock_levels(db=db, warehouse_id=warehouse_id)
 
 
 @router.get("/transfers/")
-async def get_transfers():
+async def get_transfers(db: DbSession):
     """Get all transfers."""
+    transfers = db.query(WarehouseTransfer).order_by(WarehouseTransfer.created_at.desc()).all()
+
+    # Build warehouse name lookup
+    wh_ids = set()
+    for t in transfers:
+        if t.from_warehouse_id:
+            wh_ids.add(t.from_warehouse_id)
+        if t.to_warehouse_id:
+            wh_ids.add(t.to_warehouse_id)
+
+    wh_names: dict = {}
+    if wh_ids:
+        warehouses = db.query(WarehouseModel).filter(WarehouseModel.id.in_(wh_ids)).all()
+        for w in warehouses:
+            wh_names[w.id] = w.name or ""
+
     return [
-        Transfer(id="1", from_warehouse="Main Kitchen", to_warehouse="Bar Storage", status="completed", items_count=5, total_value=250.00, created_by="Manager", created_at="2026-01-30T10:00:00Z", completed_at="2026-01-30T11:00:00Z"),
-        Transfer(id="2", from_warehouse="Cold Storage", to_warehouse="Main Kitchen", status="in_transit", items_count=8, total_value=450.00, created_by="Chef Mike", created_at="2026-02-01T09:00:00Z"),
+        _transfer_to_schema(
+            t,
+            from_name=wh_names.get(t.from_warehouse_id, ""),
+            to_name=wh_names.get(t.to_warehouse_id, ""),
+        )
+        for t in transfers
     ]
 
 
 @router.post("/transfers/")
-async def create_transfer(transfer: Transfer):
+async def create_transfer(transfer: TransferCreate, db: DbSession):
     """Create a transfer."""
-    return {"success": True, "id": "new-id"}
+    # Resolve warehouse IDs from names
+    from_wh = db.query(WarehouseModel).filter(WarehouseModel.name == transfer.from_warehouse).first()
+    to_wh = db.query(WarehouseModel).filter(WarehouseModel.name == transfer.to_warehouse).first()
+
+    db_transfer = WarehouseTransfer(
+        from_warehouse_id=from_wh.id if from_wh else None,
+        to_warehouse_id=to_wh.id if to_wh else None,
+        product_id=transfer.product_id,
+        product_name=transfer.product_name or "",
+        quantity=transfer.quantity,
+        status=transfer.status,
+        notes=transfer.notes,
+        created_by=transfer.created_by,
+        created_at=datetime.utcnow(),
+    )
+    db.add(db_transfer)
+    db.commit()
+    db.refresh(db_transfer)
+    return {"success": True, "id": str(db_transfer.id)}
 
 
 @router.get("/activities/")
-async def get_activities():
-    """Get warehouse activities."""
-    return [
-        WarehouseActivity(id="1", warehouse_id="1", warehouse_name="Main Kitchen", activity_type="receive", description="Received PO-2026-004", quantity_change=150, user="Staff", timestamp="2026-02-01T10:00:00Z"),
-        WarehouseActivity(id="2", warehouse_id="2", warehouse_name="Bar Storage", activity_type="transfer_in", description="Transfer from Main Kitchen", quantity_change=25, user="Bar Staff", timestamp="2026-01-30T11:00:00Z"),
-        WarehouseActivity(id="3", warehouse_id="1", warehouse_name="Main Kitchen", activity_type="adjustment", description="Waste adjustment - spoilage", quantity_change=-5, user="Chef Mike", timestamp="2026-01-29T16:00:00Z"),
-    ]
+async def get_activities(db: DbSession):
+    """Get warehouse activities.
+
+    Activities are derived from warehouse transfers.
+    """
+    transfers = (
+        db.query(WarehouseTransfer)
+        .order_by(WarehouseTransfer.created_at.desc())
+        .limit(50)
+        .all()
+    )
+
+    # Build warehouse name lookup
+    wh_ids = set()
+    for t in transfers:
+        if t.from_warehouse_id:
+            wh_ids.add(t.from_warehouse_id)
+        if t.to_warehouse_id:
+            wh_ids.add(t.to_warehouse_id)
+
+    wh_names: dict = {}
+    if wh_ids:
+        warehouses = db.query(WarehouseModel).filter(WarehouseModel.id.in_(wh_ids)).all()
+        for w in warehouses:
+            wh_names[w.id] = w.name or ""
+
+    activities = []
+    for t in transfers:
+        from_name = wh_names.get(t.from_warehouse_id, "Unknown")
+        to_name = wh_names.get(t.to_warehouse_id, "Unknown")
+        qty = float(t.quantity or 0)
+        timestamp = t.created_at.isoformat() + "Z" if t.created_at else ""
+        product_desc = t.product_name or f"Product #{t.product_id}" if t.product_id else "items"
+
+        # Activity for the source warehouse (transfer_out)
+        if t.from_warehouse_id:
+            activities.append(
+                WarehouseActivity(
+                    id=f"{t.id}-out",
+                    warehouse_id=str(t.from_warehouse_id),
+                    warehouse_name=from_name,
+                    activity_type="transfer_out",
+                    description=f"Transfer {product_desc} to {to_name}",
+                    quantity_change=-qty,
+                    user=t.created_by or "",
+                    timestamp=timestamp,
+                )
+            )
+
+        # Activity for the destination warehouse (transfer_in)
+        if t.to_warehouse_id:
+            activities.append(
+                WarehouseActivity(
+                    id=f"{t.id}-in",
+                    warehouse_id=str(t.to_warehouse_id),
+                    warehouse_name=to_name,
+                    activity_type="transfer_in",
+                    description=f"Transfer {product_desc} from {from_name}",
+                    quantity_change=qty,
+                    user=t.created_by or "",
+                    timestamp=timestamp,
+                )
+            )
+
+    return activities

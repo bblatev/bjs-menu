@@ -1,8 +1,17 @@
 """Notifications API routes."""
 
 from typing import List, Optional, Dict
-from fastapi import APIRouter
+from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
+from sqlalchemy import select
+
+from app.db.session import DbSession
+from app.models.operations import (
+    Notification as NotificationModel,
+    NotificationPreference as NotificationPreferenceModel,
+    AlertConfig as AlertConfigModel,
+)
+from app.core.rbac import CurrentUser
 
 router = APIRouter()
 
@@ -35,62 +44,174 @@ class Notification(BaseModel):
 
 
 @router.get("/preferences")
-async def get_notification_preferences():
+async def get_notification_preferences(db: DbSession, current_user: CurrentUser):
     """Get notification preferences."""
+    stmt = select(NotificationPreferenceModel).where(
+        NotificationPreferenceModel.user_id == current_user.user_id
+    )
+    results = db.execute(stmt).scalars().all()
     return [
-        NotificationPreference(channel="email", enabled=True, categories=["orders", "inventory", "reports"]),
-        NotificationPreference(channel="sms", enabled=True, categories=["urgent", "staff"]),
-        NotificationPreference(channel="push", enabled=True, categories=["orders", "inventory"]),
-        NotificationPreference(channel="slack", enabled=False, categories=[]),
+        NotificationPreference(
+            channel=pref.channel,
+            enabled=pref.enabled,
+            categories=pref.categories or [],
+        )
+        for pref in results
     ]
 
 
 @router.put("/preferences")
-async def update_notification_preferences(preferences: List[NotificationPreference]):
+async def update_notification_preferences(
+    preferences: List[NotificationPreference],
+    db: DbSession,
+    current_user: CurrentUser,
+):
     """Update notification preferences."""
+    # Delete existing preferences for this user
+    stmt = select(NotificationPreferenceModel).where(
+        NotificationPreferenceModel.user_id == current_user.user_id
+    )
+    existing = db.execute(stmt).scalars().all()
+    for pref in existing:
+        db.delete(pref)
+
+    # Insert new preferences
+    for pref in preferences:
+        db_pref = NotificationPreferenceModel(
+            user_id=current_user.user_id,
+            channel=pref.channel,
+            enabled=pref.enabled,
+            categories=pref.categories,
+        )
+        db.add(db_pref)
+
+    db.commit()
     return {"success": True}
 
 
 @router.get("/alerts/config")
-async def get_alert_configs():
+async def get_alert_configs(db: DbSession, current_user: CurrentUser):
     """Get alert configurations."""
+    stmt = select(AlertConfigModel)
+    results = db.execute(stmt).scalars().all()
     return [
-        AlertConfig(id="1", name="Low Stock Alert", type="low_stock", enabled=True, threshold=10, channels=["email", "push"], recipients=["manager@bjsbar.com"]),
-        AlertConfig(id="2", name="High Sales Alert", type="high_sales", enabled=True, threshold=5000, channels=["email"], recipients=["owner@bjsbar.com"]),
-        AlertConfig(id="3", name="Order Delay Alert", type="order_delay", enabled=True, threshold=15, channels=["push"], recipients=["kitchen@bjsbar.com"]),
-        AlertConfig(id="4", name="Staff Clock-in Reminder", type="staff_clock", enabled=False, channels=["sms"], recipients=[]),
+        AlertConfig(
+            id=str(cfg.id),
+            name=cfg.name,
+            type=cfg.type,
+            enabled=cfg.enabled,
+            threshold=cfg.threshold,
+            channels=cfg.channels or [],
+            recipients=cfg.recipients or [],
+        )
+        for cfg in results
     ]
 
 
 @router.get("/alerts/config/{config_id}")
-async def get_alert_config(config_id: str):
+async def get_alert_config(config_id: str, db: DbSession, current_user: CurrentUser):
     """Get a specific alert configuration."""
-    return AlertConfig(id=config_id, name="Low Stock Alert", type="low_stock", enabled=True, threshold=10, channels=["email", "push"], recipients=["manager@bjsbar.com"])
+    cfg = db.get(AlertConfigModel, int(config_id))
+    if not cfg:
+        raise HTTPException(status_code=404, detail="Alert config not found")
+    return AlertConfig(
+        id=str(cfg.id),
+        name=cfg.name,
+        type=cfg.type,
+        enabled=cfg.enabled,
+        threshold=cfg.threshold,
+        channels=cfg.channels or [],
+        recipients=cfg.recipients or [],
+    )
 
 
 @router.put("/alerts/config/{config_id}")
-async def update_alert_config(config_id: str, config: AlertConfig):
+async def update_alert_config(
+    config_id: str,
+    config: AlertConfig,
+    db: DbSession,
+    current_user: CurrentUser,
+):
     """Update an alert configuration."""
+    cfg = db.get(AlertConfigModel, int(config_id))
+    if not cfg:
+        raise HTTPException(status_code=404, detail="Alert config not found")
+
+    cfg.name = config.name
+    cfg.type = config.type
+    cfg.enabled = config.enabled
+    cfg.threshold = config.threshold
+    cfg.channels = config.channels
+    cfg.recipients = config.recipients
+
+    db.commit()
+    db.refresh(cfg)
     return {"success": True}
 
 
 @router.api_route("/test/all-channels", methods=["GET", "POST"])
-async def test_all_channels():
+async def test_all_channels(db: DbSession, current_user: CurrentUser):
     """Send test notification to all channels."""
-    return {"success": True, "sent_to": ["email", "sms", "push"]}
+    # Retrieve the user's enabled channels from their preferences
+    stmt = select(NotificationPreferenceModel).where(
+        NotificationPreferenceModel.user_id == current_user.user_id,
+        NotificationPreferenceModel.enabled == True,
+    )
+    results = db.execute(stmt).scalars().all()
+    sent_to = [pref.channel for pref in results]
+
+    # Create a test notification record
+    test_notification = NotificationModel(
+        user_id=current_user.user_id,
+        title="Test Notification",
+        message="This is a test notification sent to all enabled channels.",
+        type="info",
+        category="test",
+        read=False,
+    )
+    db.add(test_notification)
+    db.commit()
+
+    return {"success": True, "sent_to": sent_to}
 
 
 @router.get("/")
-async def get_notifications():
+async def get_notifications(db: DbSession, current_user: CurrentUser):
     """Get user notifications."""
+    stmt = (
+        select(NotificationModel)
+        .where(NotificationModel.user_id == current_user.user_id)
+        .order_by(NotificationModel.created_at.desc())
+    )
+    results = db.execute(stmt).scalars().all()
     return [
-        Notification(id="1", title="Low Stock Alert", message="Vodka Premium is below reorder point", type="inventory", priority="high", read=False, created_at="2026-02-01T17:00:00Z", action_url="/stock"),
-        Notification(id="2", title="New Review", message="You received a 5-star review on Google", type="feedback", priority="low", read=True, created_at="2026-02-01T16:00:00Z", action_url="/feedback"),
-        Notification(id="3", title="Shift Reminder", message="John Doe's shift starts in 30 minutes", type="staff", priority="medium", read=False, created_at="2026-02-01T15:30:00Z"),
+        Notification(
+            id=str(n.id),
+            title=n.title,
+            message=n.message or "",
+            type=n.type or "info",
+            priority="medium",
+            read=n.read or False,
+            created_at=n.created_at.isoformat() if n.created_at else "",
+            action_url=n.action_url,
+        )
+        for n in results
     ]
 
 
 @router.post("/{notification_id}/read")
-async def mark_notification_read(notification_id: str):
+async def mark_notification_read(
+    notification_id: str,
+    db: DbSession,
+    current_user: CurrentUser,
+):
     """Mark a notification as read."""
+    notification = db.get(NotificationModel, int(notification_id))
+    if not notification:
+        raise HTTPException(status_code=404, detail="Notification not found")
+    if notification.user_id != current_user.user_id:
+        raise HTTPException(status_code=403, detail="Not authorized")
+
+    notification.read = True
+    db.commit()
     return {"success": True}

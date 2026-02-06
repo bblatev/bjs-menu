@@ -1,74 +1,256 @@
 """Gamification routes - badges, challenges, leaderboard."""
 
-from fastapi import APIRouter
+from datetime import date, datetime
+from typing import List, Optional
+
+from fastapi import APIRouter, HTTPException, Query, status
+from pydantic import BaseModel
+from sqlalchemy import func
+
+from app.db.session import DbSession
+from app.models.operations import Badge, Challenge, StaffAchievement, StaffPoints
 
 router = APIRouter()
 
 
+# ===================== Pydantic Schemas =====================
+
+class BadgeCreate(BaseModel):
+    name: str
+    description: Optional[str] = None
+    icon: Optional[str] = None
+    category: Optional[str] = None
+    criteria: Optional[dict] = None
+    points: int = 0
+    active: bool = True
+
+
+class BadgeUpdate(BaseModel):
+    name: Optional[str] = None
+    description: Optional[str] = None
+    icon: Optional[str] = None
+    category: Optional[str] = None
+    criteria: Optional[dict] = None
+    points: Optional[int] = None
+    active: Optional[bool] = None
+
+
+class ChallengeCreate(BaseModel):
+    name: str
+    description: Optional[str] = None
+    type: str = "individual"
+    target_value: Optional[float] = None
+    reward_points: int = 0
+    reward_description: Optional[str] = None
+    start_date: Optional[date] = None
+    end_date: Optional[date] = None
+    active: bool = True
+
+
+# ===================== Badge Endpoints =====================
+
 @router.get("/badges")
-async def get_badges():
+def get_badges(db: DbSession):
     """Get all badges."""
-    return [
-        {"id": "1", "name": "First Order", "description": "Complete your first order", "icon": "star", "points": 10, "active": True, "earned_count": 245},
-        {"id": "2", "name": "Speed Demon", "description": "Complete 10 orders under 5 min avg", "icon": "lightning", "points": 50, "active": True, "earned_count": 12},
-        {"id": "3", "name": "Perfect Week", "description": "No errors for 7 consecutive days", "icon": "trophy", "points": 100, "active": True, "earned_count": 5},
-        {"id": "4", "name": "Upsell King", "description": "Achieve 30% upsell rate", "icon": "crown", "points": 75, "active": True, "earned_count": 8},
-    ]
+    badges = db.query(Badge).order_by(Badge.created_at.desc()).all()
+
+    result = []
+    for b in badges:
+        # Count how many staff have earned this badge
+        earned_count = db.query(func.count(StaffAchievement.id)).filter(
+            StaffAchievement.badge_id == b.id
+        ).scalar() or 0
+
+        result.append({
+            "id": str(b.id),
+            "name": b.name,
+            "description": b.description,
+            "icon": b.icon,
+            "category": b.category,
+            "criteria": b.criteria,
+            "points": b.points,
+            "active": b.active,
+            "earned_count": earned_count,
+            "created_at": b.created_at.isoformat() if b.created_at else None,
+        })
+
+    return result
 
 
 @router.post("/badges")
-async def create_badge(data: dict):
+def create_badge(data: BadgeCreate, db: DbSession):
     """Create a badge."""
-    return {"success": True, "id": "new-id"}
+    badge = Badge(
+        name=data.name,
+        description=data.description,
+        icon=data.icon,
+        category=data.category,
+        criteria=data.criteria,
+        points=data.points,
+        active=data.active,
+    )
+    db.add(badge)
+    db.commit()
+    db.refresh(badge)
+    return {"success": True, "id": str(badge.id)}
 
 
 @router.put("/badges/{badge_id}")
-async def update_badge(badge_id: str, data: dict):
+def update_badge(badge_id: str, data: BadgeUpdate, db: DbSession):
     """Update a badge."""
+    badge = db.query(Badge).filter(Badge.id == int(badge_id)).first()
+    if not badge:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Badge not found",
+        )
+
+    update_data = data.model_dump(exclude_unset=True)
+    for field, value in update_data.items():
+        setattr(badge, field, value)
+
+    db.commit()
+    db.refresh(badge)
     return {"success": True}
 
 
 @router.post("/badges/{badge_id}/toggle-active")
-async def toggle_badge(badge_id: str):
+def toggle_badge(badge_id: str, db: DbSession):
     """Toggle badge active status."""
-    return {"success": True}
+    badge = db.query(Badge).filter(Badge.id == int(badge_id)).first()
+    if not badge:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Badge not found",
+        )
 
+    badge.active = not badge.active
+    db.commit()
+    db.refresh(badge)
+    return {"success": True, "active": badge.active}
+
+
+# ===================== Challenge Endpoints =====================
 
 @router.get("/challenges")
-async def get_challenges():
+def get_challenges(db: DbSession):
     """Get active challenges."""
-    return [
-        {"id": "1", "name": "February Sales Sprint", "description": "Highest sales this month wins", "type": "sales", "start_date": "2026-02-01", "end_date": "2026-02-28", "reward": "50 BGN bonus", "participants": 8, "status": "active"},
-        {"id": "2", "name": "Zero Waste Week", "description": "Minimize food waste", "type": "waste_reduction", "start_date": "2026-02-03", "end_date": "2026-02-09", "reward": "Day off", "participants": 12, "status": "active"},
-    ]
+    challenges = db.query(Challenge).order_by(Challenge.created_at.desc()).all()
+
+    today = date.today()
+    result = []
+    for c in challenges:
+        # Determine status based on dates and active flag
+        if not c.active:
+            c_status = "inactive"
+        elif c.end_date and c.end_date < today:
+            c_status = "completed"
+        elif c.start_date and c.start_date > today:
+            c_status = "scheduled"
+        else:
+            c_status = "active"
+
+        result.append({
+            "id": str(c.id),
+            "name": c.name,
+            "description": c.description,
+            "type": c.type,
+            "target_value": c.target_value,
+            "reward_points": c.reward_points,
+            "reward_description": c.reward_description,
+            "start_date": c.start_date.isoformat() if c.start_date else None,
+            "end_date": c.end_date.isoformat() if c.end_date else None,
+            "active": c.active,
+            "status": c_status,
+            "created_at": c.created_at.isoformat() if c.created_at else None,
+        })
+
+    return result
 
 
 @router.post("/challenges")
-async def create_challenge(data: dict):
+def create_challenge(data: ChallengeCreate, db: DbSession):
     """Create a challenge."""
-    return {"success": True, "id": "new-id"}
+    challenge = Challenge(
+        name=data.name,
+        description=data.description,
+        type=data.type,
+        target_value=data.target_value,
+        reward_points=data.reward_points,
+        reward_description=data.reward_description,
+        start_date=data.start_date,
+        end_date=data.end_date,
+        active=data.active,
+    )
+    db.add(challenge)
+    db.commit()
+    db.refresh(challenge)
+    return {"success": True, "id": str(challenge.id)}
 
 
 @router.post("/challenges/{challenge_id}/toggle-active")
-async def toggle_challenge(challenge_id: str):
+def toggle_challenge(challenge_id: str, db: DbSession):
     """Toggle challenge active status."""
-    return {"success": True}
+    challenge = db.query(Challenge).filter(
+        Challenge.id == int(challenge_id)
+    ).first()
+    if not challenge:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Challenge not found",
+        )
 
+    challenge.active = not challenge.active
+    db.commit()
+    db.refresh(challenge)
+    return {"success": True, "active": challenge.active}
+
+
+# ===================== Leaderboard Endpoint =====================
 
 @router.get("/leaderboard")
-async def get_leaderboard():
+def get_leaderboard(db: DbSession):
     """Get staff leaderboard."""
-    return [
-        {"rank": 1, "staff_id": "1", "name": "Sarah Johnson", "points": 450, "badges": 5, "streak": 12},
-        {"rank": 2, "staff_id": "2", "name": "John Smith", "points": 380, "badges": 4, "streak": 8},
-        {"rank": 3, "staff_id": "3", "name": "Mike Davis", "points": 320, "badges": 3, "streak": 5},
-    ]
+    staff_points = db.query(StaffPoints).order_by(
+        StaffPoints.total_points.desc()
+    ).all()
 
+    result = []
+    for rank, sp in enumerate(staff_points, start=1):
+        result.append({
+            "rank": rank,
+            "staff_id": str(sp.staff_id),
+            "name": sp.staff_name,
+            "points": sp.total_points,
+            "level": sp.level,
+            "badges": sp.badges_earned,
+            "challenges_completed": sp.challenges_completed,
+        })
+
+    return result
+
+
+# ===================== Achievements Endpoint =====================
 
 @router.get("/achievements/recent")
-async def get_recent_achievements():
+def get_recent_achievements(
+    db: DbSession,
+    limit: int = Query(20, le=100),
+):
     """Get recent achievements."""
+    achievements = db.query(StaffAchievement).order_by(
+        StaffAchievement.earned_at.desc()
+    ).limit(limit).all()
+
     return [
-        {"id": "1", "staff_name": "Sarah Johnson", "badge": "Speed Demon", "earned_at": "2026-02-05T14:30:00Z"},
-        {"id": "2", "staff_name": "John Smith", "badge": "Upsell King", "earned_at": "2026-02-04T18:00:00Z"},
+        {
+            "id": str(a.id),
+            "staff_id": str(a.staff_id),
+            "staff_name": a.staff_name,
+            "badge_id": str(a.badge_id) if a.badge_id else None,
+            "badge": a.badge_name,
+            "points": a.points,
+            "earned_at": a.earned_at.isoformat() if a.earned_at else None,
+        }
+        for a in achievements
     ]

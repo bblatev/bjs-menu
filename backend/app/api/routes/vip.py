@@ -1,8 +1,18 @@
 """VIP customer management API routes."""
 
+from datetime import date, datetime
 from typing import List, Optional
-from fastapi import APIRouter
+
+from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
+from sqlalchemy import desc
+
+from app.db.session import DbSession
+from app.models.operations import (
+    VIPCustomerLink,
+    VIPOccasion as VIPOccasionModel,
+    AppSetting,
+)
 
 router = APIRouter()
 
@@ -15,6 +25,7 @@ async def get_vip_tiers():
             {"id": 1, "name": "Silver", "min_spend": 0},
             {"id": 2, "name": "Gold", "min_spend": 500},
             {"id": 3, "name": "Platinum", "min_spend": 2000},
+            {"id": 4, "name": "Diamond", "min_spend": 10000},
         ]
     }
 
@@ -68,72 +79,168 @@ class VIPCustomerCreate(BaseModel):
     preferences: List[str] = []
 
 
+def _customer_to_schema(c: VIPCustomerLink) -> VIPCustomer:
+    """Convert a VIPCustomerLink model instance to VIPCustomer schema."""
+    total_spent = float(c.total_spent or 0)
+    visits = c.visits or 0
+    avg_spend = round(total_spent / visits, 2) if visits > 0 else 0.0
+    last_visit = ""
+    if c.joined_at:
+        last_visit = c.joined_at.strftime("%Y-%m-%d")
+    return VIPCustomer(
+        id=str(c.id),
+        name=c.name or "",
+        email=c.email or "",
+        phone=c.phone or "",
+        tier=c.tier or "silver",
+        total_spent=total_spent,
+        visits=visits,
+        avg_spend=avg_spend,
+        preferences=[],
+        notes=c.notes,
+        last_visit=last_visit,
+    )
+
+
+def _occasion_to_schema(o: VIPOccasionModel) -> VIPOccasion:
+    """Convert a VIPOccasionModel instance to VIPOccasion schema."""
+    occasion_date = ""
+    if o.occasion_date:
+        occasion_date = o.occasion_date.isoformat()
+    return VIPOccasion(
+        id=str(o.id),
+        customer_id=str(o.customer_id or ""),
+        customer_name=o.customer_name or "",
+        occasion_type=o.type or "",
+        date=occasion_date,
+        notes=o.notes,
+        reminder_sent=o.notification_sent or False,
+    )
+
+
 @router.get("/customers")
-async def get_vip_customers():
+async def get_vip_customers(db: DbSession):
     """Get all VIP customers."""
-    return [
-        VIPCustomer(id="1", name="Alexander Petrov", email="alex@corp.com", phone="+359888111222", tier="platinum", total_spent=15800.00, visits=120, avg_spend=131.67, preferences=["Corner booth", "Champagne"], notes="CEO of TechCorp", last_visit="2026-02-01"),
-        VIPCustomer(id="2", name="Maria Ivanova", email="maria@business.com", phone="+359888333444", tier="gold", total_spent=8500.00, visits=65, avg_spend=130.77, preferences=["Quiet table", "Red wine"], last_visit="2026-01-28"),
-        VIPCustomer(id="3", name="David Chen", email="david@invest.com", phone="+359888555666", tier="diamond", total_spent=42000.00, visits=200, avg_spend=210.00, preferences=["Private room", "Whiskey collection"], notes="Investment banker, hosts client dinners", last_visit="2026-01-30"),
-    ]
+    customers = db.query(VIPCustomerLink).order_by(desc(VIPCustomerLink.total_spent)).all()
+    return [_customer_to_schema(c) for c in customers]
 
 
 @router.post("/customers")
-async def create_vip_customer(data: VIPCustomerCreate):
+async def create_vip_customer(data: VIPCustomerCreate, db: DbSession):
     """Add a customer to VIP program."""
+    new_customer = VIPCustomerLink(
+        customer_id=data.customer_id,
+        name=f"Customer {data.customer_id}",
+        tier=data.tier,
+        notes=data.notes,
+        points=0,
+        total_spent=0,
+        visits=0,
+    )
+    db.add(new_customer)
+    db.commit()
+    db.refresh(new_customer)
     return {
         "success": True,
-        "id": str(data.customer_id),
-        "customer_id": data.customer_id,
-        "tier": data.tier,
-        "message": f"Customer {data.customer_id} added to VIP program as {data.tier}"
+        "id": str(new_customer.id),
+        "customer_id": new_customer.customer_id,
+        "tier": new_customer.tier,
+        "message": f"Customer {new_customer.customer_id} added to VIP program as {new_customer.tier}",
     }
 
 
 @router.get("/occasions")
-async def get_vip_occasions():
+async def get_vip_occasions(db: DbSession):
     """Get upcoming VIP occasions."""
-    return [
-        VIPOccasion(id="1", customer_id="1", customer_name="Alexander Petrov", occasion_type="birthday", date="2026-02-15", notes="Prefers surprise cake", reminder_sent=True),
-        VIPOccasion(id="2", customer_id="2", customer_name="Maria Ivanova", occasion_type="anniversary", date="2026-02-20", notes="Wedding anniversary - flowers requested"),
-        VIPOccasion(id="3", customer_id="3", customer_name="David Chen", occasion_type="special", date="2026-02-10", notes="Promotion celebration"),
-    ]
+    occasions = (
+        db.query(VIPOccasionModel)
+        .order_by(VIPOccasionModel.occasion_date)
+        .all()
+    )
+    return [_occasion_to_schema(o) for o in occasions]
 
 
 @router.get("/occasions/{occasion_id}")
-async def get_vip_occasion(occasion_id: str):
+async def get_vip_occasion(occasion_id: str, db: DbSession):
     """Get a specific VIP occasion."""
-    return VIPOccasion(id=occasion_id, customer_id="1", customer_name="Alexander Petrov", occasion_type="birthday", date="2026-02-15")
+    occasion = db.query(VIPOccasionModel).filter(
+        VIPOccasionModel.id == int(occasion_id)
+    ).first()
+    if not occasion:
+        raise HTTPException(status_code=404, detail="Occasion not found")
+    return _occasion_to_schema(occasion)
 
 
 @router.post("/occasions")
-async def create_vip_occasion(occasion: VIPOccasion):
+async def create_vip_occasion(occasion: VIPOccasion, db: DbSession):
     """Create a new VIP occasion."""
-    return {"success": True, "id": "new-id"}
+    # Parse the date string
+    occasion_date = date.fromisoformat(occasion.date) if occasion.date else date.today()
+    new_occasion = VIPOccasionModel(
+        customer_id=int(occasion.customer_id) if occasion.customer_id else None,
+        customer_name=occasion.customer_name,
+        type=occasion.occasion_type,
+        occasion_date=occasion_date,
+        notes=occasion.notes,
+        notification_sent=occasion.reminder_sent,
+    )
+    db.add(new_occasion)
+    db.commit()
+    db.refresh(new_occasion)
+    return {"success": True, "id": str(new_occasion.id)}
+
+
+_DEFAULT_VIP_SETTINGS = {
+    "auto_upgrade_threshold": 5000.00,
+    "birthday_discount_pct": 20,
+    "anniversary_discount_pct": 15,
+    "min_spend_for_vip": 1000.00,
+    "points_multiplier": 2.0,
+}
 
 
 @router.get("/settings")
-async def get_vip_settings():
+async def get_vip_settings(db: DbSession):
     """Get VIP program settings."""
-    return VIPSettings(
-        auto_upgrade_threshold=5000.00,
-        birthday_discount_pct=20,
-        anniversary_discount_pct=15,
-        min_spend_for_vip=1000.00,
-        points_multiplier=2.0
-    )
+    setting = db.query(AppSetting).filter(
+        AppSetting.category == "vip",
+        AppSetting.key == "program_settings",
+    ).first()
+    if setting and setting.value:
+        return VIPSettings(**setting.value)
+    return VIPSettings(**_DEFAULT_VIP_SETTINGS)
 
 
 @router.put("/settings")
-async def update_vip_settings(settings: VIPSettings):
+async def update_vip_settings(settings: VIPSettings, db: DbSession):
     """Update VIP program settings."""
+    existing = db.query(AppSetting).filter(
+        AppSetting.category == "vip",
+        AppSetting.key == "program_settings",
+    ).first()
+    settings_dict = settings.model_dump()
+    if existing:
+        existing.value = settings_dict
+        existing.updated_at = datetime.utcnow()
+    else:
+        new_setting = AppSetting(
+            category="vip",
+            key="program_settings",
+            value=settings_dict,
+        )
+        db.add(new_setting)
+    db.commit()
     return {"success": True}
 
 
 @router.get("/tier-changes")
-async def get_tier_changes():
+async def get_tier_changes(db: DbSession):
     """Get recent tier changes."""
-    return [
-        TierChange(id="1", customer_name="John Smith", from_tier="silver", to_tier="gold", reason="Spending threshold reached", date="2026-01-28"),
-        TierChange(id="2", customer_name="Sarah Johnson", from_tier="gold", to_tier="platinum", reason="Manual upgrade - loyal customer", date="2026-01-25"),
-    ]
+    # Tier changes are stored as AppSetting entries with category 'vip_tier_changes'
+    setting = db.query(AppSetting).filter(
+        AppSetting.category == "vip",
+        AppSetting.key == "tier_changes",
+    ).first()
+    if setting and setting.value:
+        return [TierChange(**tc) for tc in setting.value]
+    return []
