@@ -106,6 +106,35 @@ class CheckPayment(Base):
     check = relationship("Check", back_populates="payments")
 
 
+class MenuCategory(Base):
+    """Menu category for organizing items."""
+    __tablename__ = "menu_categories"
+
+    id = Column(Integer, primary_key=True, index=True)
+    name_bg = Column(String(200), nullable=False)
+    name_en = Column(String(200), nullable=True)
+    description_bg = Column(Text, nullable=True, default="")
+    description_en = Column(Text, nullable=True, default="")
+    icon = Column(String(10), nullable=True, default="🍽")
+    color = Column(String(20), nullable=True, default="#3B82F6")
+    image_url = Column(String(500), nullable=True)
+    sort_order = Column(Integer, default=0)
+    active = Column(Boolean, default=True)
+    parent_id = Column(Integer, ForeignKey("menu_categories.id"), nullable=True)
+    visibility = Column(String(20), default="all")
+    tax_rate = Column(Numeric(5, 2), nullable=True)
+    printer_id = Column(Integer, nullable=True)
+    display_on_kiosk = Column(Boolean, default=True)
+    display_on_app = Column(Boolean, default=True)
+    display_on_web = Column(Boolean, default=True)
+    schedule = Column(JSON, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    # Relationships
+    children = relationship("MenuCategory", backref="parent", remote_side="MenuCategory.id", lazy="select")
+
+
 class MenuItem(Base):
     """Menu item for ordering."""
     __tablename__ = "menu_items"

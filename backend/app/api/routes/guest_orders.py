@@ -10,7 +10,7 @@ from app.db.session import DbSession
 from app.models.restaurant import (
     GuestOrder as GuestOrderModel, KitchenOrder, Table, MenuItem,
     ModifierGroup, ModifierOption, MenuItemModifierGroup,
-    ComboMeal, ComboItem,
+    ComboMeal, ComboItem, MenuCategory as MenuCategoryModel,
 )
 from app.services.stock_deduction_service import StockDeductionService
 import logging
@@ -1029,25 +1029,52 @@ def admin_list_menu_items(db: DbSession, category: Optional[str] = None):
     }
 
 
+def _category_to_response(cat: MenuCategoryModel, items_count: int = 0) -> dict:
+    """Convert a MenuCategory model to the response dict expected by the frontend."""
+    return {
+        "id": cat.id,
+        "name": {"bg": cat.name_bg or "", "en": cat.name_en or ""},
+        "description": {"bg": cat.description_bg or "", "en": cat.description_en or ""},
+        "icon": cat.icon or "🍽",
+        "color": cat.color or "#3B82F6",
+        "image_url": cat.image_url,
+        "sort_order": cat.sort_order or 0,
+        "active": cat.active if cat.active is not None else True,
+        "parent_id": cat.parent_id,
+        "items_count": items_count,
+        "schedule": cat.schedule,
+        "visibility": cat.visibility or "all",
+        "tax_rate": float(cat.tax_rate) if cat.tax_rate else None,
+        "printer_id": cat.printer_id,
+        "display_on_kiosk": cat.display_on_kiosk if cat.display_on_kiosk is not None else True,
+        "display_on_app": cat.display_on_app if cat.display_on_app is not None else True,
+        "display_on_web": cat.display_on_web if cat.display_on_web is not None else True,
+    }
+
+
 @router.get("/menu-admin/categories")
 def admin_list_categories(db: DbSession):
     """List categories for admin panel (returns multilang format)."""
-    # Get distinct categories from menu items
-    items = db.query(MenuItem).all()
-    categories_set = set(i.category for i in items if i.category)
+    from sqlalchemy import func
 
-    # Return in multilang format expected by frontend
-    categories = []
-    for idx, cat_name in enumerate(sorted(categories_set)):
-        categories.append({
-            "id": idx + 1,
-            "name": {"bg": cat_name, "en": cat_name},
-            "description": {"bg": "", "en": ""},
-            "sort_order": idx,
-            "active": True,
-        })
+    cats = db.query(MenuCategoryModel).order_by(MenuCategoryModel.sort_order, MenuCategoryModel.id).all()
 
-    return categories
+    # Count items per category (match by name)
+    item_counts = {}
+    count_rows = db.query(MenuItem.category, func.count(MenuItem.id)).group_by(MenuItem.category).all()
+    for cat_name, count in count_rows:
+        if cat_name:
+            item_counts[cat_name.lower()] = count
+
+    results = []
+    for cat in cats:
+        count = item_counts.get((cat.name_bg or "").lower(), 0) + item_counts.get((cat.name_en or "").lower(), 0)
+        # Avoid double-counting when bg == en
+        if cat.name_bg and cat.name_en and cat.name_bg.lower() == cat.name_en.lower():
+            count = item_counts.get(cat.name_bg.lower(), 0)
+        results.append(_category_to_response(cat, count))
+
+    return results
 
 
 @router.get("/menu-admin/stations")
@@ -1395,59 +1422,132 @@ def admin_toggle_item_availability(db: DbSession, item_id: int):
 
 @router.post("/menu-admin/categories")
 def admin_create_category(db: DbSession, data: dict = Body(...)):
-    """Create a new category (stores as first item's category)."""
+    """Create a new category."""
     name_data = data.get("name", "")
-    # Handle both string and dict formats
     if isinstance(name_data, dict):
-        name = name_data.get("en", name_data.get("bg", ""))
+        name_bg = name_data.get("bg", "")
+        name_en = name_data.get("en", name_bg)
     else:
-        name = str(name_data)
+        name_bg = str(name_data)
+        name_en = name_bg
 
-    desc_data = data.get("description", {"bg": "", "en": ""})
+    desc_data = data.get("description", {})
     if isinstance(desc_data, str):
-        desc_data = {"bg": desc_data, "en": desc_data}
+        desc_bg = desc_data
+        desc_en = desc_data
+    else:
+        desc_bg = desc_data.get("bg", "") if isinstance(desc_data, dict) else ""
+        desc_en = desc_data.get("en", "") if isinstance(desc_data, dict) else ""
 
-    return {
-        "id": hash(name) % 10000,
-        "name": {"bg": name, "en": name},
-        "description": desc_data,
-        "sort_order": data.get("sort_order", 0),
-        "active": True
-    }
+    # Get max sort_order for new category
+    from sqlalchemy import func
+    max_order = db.query(func.max(MenuCategoryModel.sort_order)).scalar() or 0
+
+    cat = MenuCategoryModel(
+        name_bg=name_bg,
+        name_en=name_en,
+        description_bg=desc_bg,
+        description_en=desc_en,
+        icon=data.get("icon", "🍽"),
+        color=data.get("color", "#3B82F6"),
+        image_url=data.get("image_url"),
+        sort_order=data.get("sort_order", max_order + 1),
+        active=data.get("active", True),
+        parent_id=data.get("parent_id"),
+        visibility=data.get("visibility", "all"),
+        tax_rate=data.get("tax_rate"),
+        printer_id=data.get("printer_id"),
+        display_on_kiosk=data.get("display_on_kiosk", True),
+        display_on_app=data.get("display_on_app", True),
+        display_on_web=data.get("display_on_web", True),
+        schedule=data.get("schedule"),
+    )
+    db.add(cat)
+    db.commit()
+    db.refresh(cat)
+    return _category_to_response(cat)
 
 
 @router.put("/menu-admin/categories/{category_id}")
 def admin_update_category(db: DbSession, category_id: int, data: dict = Body(...)):
     """Update a category."""
-    name_data = data.get("name", "")
-    if isinstance(name_data, dict):
-        name = name_data.get("en", name_data.get("bg", ""))
-    else:
-        name = str(name_data) if name_data else ""
+    cat = db.query(MenuCategoryModel).filter(MenuCategoryModel.id == category_id).first()
+    if not cat:
+        raise HTTPException(status_code=404, detail="Category not found")
 
-    desc_data = data.get("description", {"bg": "", "en": ""})
-    if isinstance(desc_data, str):
-        desc_data = {"bg": desc_data, "en": desc_data}
+    name_data = data.get("name")
+    if name_data is not None:
+        if isinstance(name_data, dict):
+            cat.name_bg = name_data.get("bg", cat.name_bg)
+            cat.name_en = name_data.get("en", cat.name_en)
+        else:
+            cat.name_bg = str(name_data)
+            cat.name_en = str(name_data)
 
-    return {
-        "id": category_id,
-        "name": {"bg": name, "en": name},
-        "description": desc_data,
-        "sort_order": data.get("sort_order", 0),
-        "active": data.get("active", True)
-    }
+    desc_data = data.get("description")
+    if desc_data is not None:
+        if isinstance(desc_data, dict):
+            cat.description_bg = desc_data.get("bg", cat.description_bg)
+            cat.description_en = desc_data.get("en", cat.description_en)
+        else:
+            cat.description_bg = str(desc_data)
+            cat.description_en = str(desc_data)
+
+    for field in ["icon", "color", "image_url", "visibility"]:
+        if field in data:
+            setattr(cat, field, data[field])
+    for field in ["sort_order", "printer_id"]:
+        if field in data:
+            setattr(cat, field, data[field])
+    for field in ["active", "display_on_kiosk", "display_on_app", "display_on_web"]:
+        if field in data:
+            setattr(cat, field, data[field])
+    if "tax_rate" in data:
+        cat.tax_rate = data["tax_rate"]
+    if "parent_id" in data:
+        cat.parent_id = data["parent_id"]
+    if "schedule" in data:
+        cat.schedule = data["schedule"]
+
+    db.commit()
+    db.refresh(cat)
+    return _category_to_response(cat)
 
 
 @router.delete("/menu-admin/categories/{category_id}")
 def admin_delete_category(db: DbSession, category_id: int):
     """Delete a category."""
+    cat = db.query(MenuCategoryModel).filter(MenuCategoryModel.id == category_id).first()
+    if not cat:
+        raise HTTPException(status_code=404, detail="Category not found")
+
+    # Check if category has items
+    item_count = db.query(MenuItem).filter(
+        (MenuItem.category == cat.name_bg) | (MenuItem.category == cat.name_en)
+    ).count()
+    if item_count > 0:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Cannot delete category with {item_count} items. Move or delete items first."
+        )
+
+    # Delete child categories first
+    db.query(MenuCategoryModel).filter(MenuCategoryModel.parent_id == category_id).update({"parent_id": None})
+
+    db.delete(cat)
+    db.commit()
     return {"success": True}
 
 
 @router.patch("/menu-admin/categories/{category_id}/toggle-active")
 def admin_toggle_category_active(db: DbSession, category_id: int):
     """Toggle category active status."""
-    return {"id": category_id, "active": True}
+    cat = db.query(MenuCategoryModel).filter(MenuCategoryModel.id == category_id).first()
+    if not cat:
+        raise HTTPException(status_code=404, detail="Category not found")
+    cat.active = not cat.active
+    db.commit()
+    return {"id": cat.id, "active": cat.active}
 
 
 @router.get("/menu-admin/modifier-groups")
@@ -1848,6 +1948,15 @@ def admin_get_item_modifiers(db: DbSession, item_id: int):
 @router.put("/menu-admin/categories/reorder")
 def admin_reorder_categories(db: DbSession, data: dict = Body(...)):
     """Reorder categories."""
+    items = data.get("categories", [])
+    for item in items:
+        cat_id = item.get("id")
+        sort_order = item.get("sort_order")
+        if cat_id is not None and sort_order is not None:
+            cat = db.query(MenuCategoryModel).filter(MenuCategoryModel.id == cat_id).first()
+            if cat:
+                cat.sort_order = sort_order
+    db.commit()
     return {"success": True}
 
 
