@@ -4,7 +4,57 @@ from typing import List, Optional
 from fastapi import APIRouter, Query
 from pydantic import BaseModel
 
+from app.db.session import DbSession
+
 router = APIRouter()
+
+
+@router.get("/accounts/")
+def get_financial_accounts(db: DbSession):
+    """Get financial accounts."""
+    return {"accounts": [], "total": 0}
+
+
+@router.get("/transactions/")
+def get_financial_transactions(db: DbSession):
+    """Get financial transactions."""
+    return {"transactions": [], "total": 0}
+
+
+@router.get("/financial-alerts/")
+def get_financial_alerts(db: DbSession):
+    """Get financial alerts."""
+    return {"alerts": [], "total": 0}
+
+
+@router.get("/bank-accounts")
+def get_bank_accounts(db: DbSession):
+    """Get bank accounts."""
+    return {"accounts": [], "total": 0}
+
+
+@router.get("/bank-reconciliation")
+def get_bank_reconciliation(db: DbSession):
+    """Get bank reconciliation data."""
+    return {"reconciliations": [], "total": 0}
+
+
+@router.get("/reports/financial")
+def get_financial_reports(db: DbSession):
+    """Get financial reports."""
+    return {"revenue": 0, "expenses": 0, "profit": 0, "by_category": []}
+
+
+@router.get("/chart-of-accounts")
+def get_chart_of_accounts(db: DbSession):
+    """Get chart of accounts."""
+    return {"accounts": [], "total": 0}
+
+
+@router.get("/daily-close")
+def get_daily_close(db: DbSession):
+    """Get daily close sessions."""
+    return {"sessions": [], "current": None}
 
 
 class Budget(BaseModel):

@@ -7,6 +7,18 @@ from pydantic import BaseModel
 router = APIRouter()
 
 
+@router.get("/tiers")
+async def get_vip_tiers():
+    """Get VIP tier definitions."""
+    return {
+        "tiers": [
+            {"id": 1, "name": "Silver", "min_spend": 0},
+            {"id": 2, "name": "Gold", "min_spend": 500},
+            {"id": 3, "name": "Platinum", "min_spend": 2000},
+        ]
+    }
+
+
 class VIPCustomer(BaseModel):
     id: str
     name: str

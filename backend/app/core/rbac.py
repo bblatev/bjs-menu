@@ -1,7 +1,7 @@
 """Role-Based Access Control (RBAC) utilities."""
 
 from enum import Enum
-from typing import Annotated
+from typing import Annotated, Optional
 
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
@@ -9,6 +9,7 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from app.core.security import decode_access_token
 
 security = HTTPBearer()
+optional_security = HTTPBearer(auto_error=False)
 
 
 class UserRole(str, Enum):
@@ -95,3 +96,34 @@ RequireOwner = Annotated[TokenData, Depends(require_role(UserRole.OWNER))]
 RequireManager = Annotated[TokenData, Depends(require_role(UserRole.MANAGER))]
 RequireStaff = Annotated[TokenData, Depends(require_role(UserRole.STAFF))]
 CurrentUser = Annotated[TokenData, Depends(get_current_user)]
+
+
+async def get_optional_current_user(
+    credentials: Annotated[Optional[HTTPAuthorizationCredentials], Depends(optional_security)] = None,
+) -> Optional[TokenData]:
+    """Get the current user if a valid token is provided, otherwise return None."""
+    if credentials is None:
+        return None
+
+    token = credentials.credentials
+    payload = decode_access_token(token)
+
+    if payload is None:
+        return None
+
+    user_id = payload.get("sub")
+    email = payload.get("email")
+    role = payload.get("role")
+
+    if user_id is None or email is None or role is None:
+        return None
+
+    try:
+        user_role = UserRole(role)
+    except ValueError:
+        return None
+
+    return TokenData(user_id=int(user_id), email=email, role=user_role)
+
+
+OptionalCurrentUser = Annotated[Optional[TokenData], Depends(get_optional_current_user)]

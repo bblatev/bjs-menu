@@ -26,6 +26,26 @@ from app.schemas.marketing import (
 router = APIRouter()
 
 
+# ==================== STUB ENDPOINTS ====================
+
+@router.get("/promotions")
+def get_promotions(db: DbSession):
+    """Get promotions list."""
+    return {"promotions": [], "total": 0}
+
+
+@router.get("/stats")
+def get_marketing_stats(db: DbSession):
+    """Get marketing statistics."""
+    return {"total_campaigns": 0, "active": 0, "total_sent": 0, "open_rate": 0, "conversion_rate": 0}
+
+
+@router.get("/pricing-rules")
+def get_pricing_rules(db: DbSession):
+    """Get pricing rules."""
+    return {"rules": [], "total": 0}
+
+
 # Marketing Campaigns
 
 @router.get("/campaigns/", response_model=List[CampaignResponse])

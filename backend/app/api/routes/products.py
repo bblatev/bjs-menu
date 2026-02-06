@@ -10,7 +10,7 @@ from typing import Optional, List
 from fastapi import APIRouter, File, HTTPException, Query, UploadFile, status
 
 from app.core.file_utils import sanitize_filename
-from app.core.rbac import CurrentUser, RequireManager
+from app.core.rbac import CurrentUser, OptionalCurrentUser, RequireManager
 from app.db.session import DbSession
 from app.models.product import Product
 from app.models.supplier import Supplier
@@ -24,7 +24,7 @@ router = APIRouter()
 @router.get("/")
 def list_products(
     db: DbSession,
-    current_user: CurrentUser,
+    current_user: OptionalCurrentUser = None,
     active_only: bool = Query(True, description="Only show active products"),
     supplier_id: Optional[int] = Query(None, description="Filter by supplier"),
     search: Optional[str] = Query(None, description="Search by name or barcode"),

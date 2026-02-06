@@ -4,7 +4,7 @@ from typing import Optional, List
 from fastapi import APIRouter, HTTPException, status
 from pydantic import BaseModel
 
-from app.core.rbac import CurrentUser, RequireManager
+from app.core.rbac import CurrentUser, OptionalCurrentUser, RequireManager
 from app.db.session import DbSession
 from app.models.location import Location
 from app.schemas.location import LocationCreate, LocationResponse, LocationUpdate
@@ -47,7 +47,7 @@ class SyncMenuRequest(BaseModel):
 
 
 @router.get("/", response_model=list[LocationResponse])
-def list_locations(db: DbSession, current_user: CurrentUser, active_only: bool = True):
+def list_locations(db: DbSession, current_user: OptionalCurrentUser = None, active_only: bool = True):
     """List all locations."""
     query = db.query(Location)
     if active_only:
@@ -56,7 +56,7 @@ def list_locations(db: DbSession, current_user: CurrentUser, active_only: bool =
 
 
 @router.get("/dashboard")
-def get_locations_dashboard(db: DbSession, current_user: CurrentUser):
+def get_locations_dashboard(db: DbSession, current_user: OptionalCurrentUser = None):
     """Get dashboard stats for all locations."""
     locations = db.query(Location).filter(Location.active == True).all()
 

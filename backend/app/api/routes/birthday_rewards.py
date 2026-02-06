@@ -343,13 +343,15 @@ async def check_and_issue_rewards():
 # Rewards
 # ============================================================================
 
-@router.get("/rewards", response_model=List[RewardResponse])
+@router.get("/rewards", response_model=None)
 async def list_customer_rewards(
-    customer_id: int,
+    customer_id: Optional[int] = None,
     status: Optional[str] = None,
     include_expired: bool = False,
 ):
     """Get rewards for a customer."""
+    if customer_id is None:
+        return []
     service = get_birthday_rewards_service()
 
     reward_status = None

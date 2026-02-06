@@ -194,3 +194,16 @@ api_router.include_router(stock.router, prefix="/stock", tags=["stock", "invento
 
 # Inventory Complete (comprehensive inventory management for frontend)
 api_router.include_router(inventory_complete.router, prefix="/inventory-complete", tags=["inventory-complete", "stock"])
+
+# Stub routers for frontend compatibility
+_promotions_router = APIRouter()
+@_promotions_router.get("/")
+def list_promotions():
+    return {"promotions": [], "total": 0}
+api_router.include_router(_promotions_router, prefix="/promotions", tags=["promotions"])
+
+_roles_router = APIRouter()
+@_roles_router.get("/")
+def list_roles():
+    return {"roles": [{"id": 1, "name": "Admin"}, {"id": 2, "name": "Manager"}, {"id": 3, "name": "Staff"}, {"id": 4, "name": "Kitchen"}]}
+api_router.include_router(_roles_router, prefix="/roles", tags=["roles"])

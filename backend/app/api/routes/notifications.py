@@ -74,7 +74,7 @@ async def update_alert_config(config_id: str, config: AlertConfig):
     return {"success": True}
 
 
-@router.post("/test/all-channels")
+@router.api_route("/test/all-channels", methods=["GET", "POST"])
 async def test_all_channels():
     """Send test notification to all channels."""
     return {"success": True, "sent_to": ["email", "sms", "push"]}

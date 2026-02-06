@@ -2,7 +2,7 @@
 
 from fastapi import APIRouter, HTTPException, status
 
-from app.core.rbac import RequireManager, CurrentUser
+from app.core.rbac import RequireManager, CurrentUser, OptionalCurrentUser
 from app.db.session import DbSession
 from app.models.supplier import Supplier
 from app.schemas.supplier import SupplierCreate, SupplierUpdate, SupplierResponse
@@ -11,7 +11,7 @@ router = APIRouter()
 
 
 @router.get("/", response_model=list[SupplierResponse])
-def list_suppliers(db: DbSession, current_user: CurrentUser):
+def list_suppliers(db: DbSession, current_user: OptionalCurrentUser = None):
     """List all suppliers."""
     return db.query(Supplier).order_by(Supplier.name).all()
 

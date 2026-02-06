@@ -195,10 +195,14 @@ def get_scheduling_staff(db: DbSession):
 @router.get("/staff/shifts")
 def list_shifts(
     db: DbSession,
-    start_date: str = Query(...),
-    end_date: str = Query(...),
+    start_date: Optional[str] = Query(None),
+    end_date: Optional[str] = Query(None),
 ):
     """List shifts for a date range."""
+    if not start_date:
+        start_date = (datetime.now().date() - timedelta(days=30)).strftime("%Y-%m-%d")
+    if not end_date:
+        end_date = datetime.now().date().strftime("%Y-%m-%d")
     try:
         start = datetime.strptime(start_date, "%Y-%m-%d").date()
         end = datetime.strptime(end_date, "%Y-%m-%d").date()
@@ -354,10 +358,14 @@ def publish_shifts(db: DbSession, data: dict = Body(...)):
 @router.get("/staff/time-off")
 def list_time_off(
     db: DbSession,
-    start_date: str = Query(...),
-    end_date: str = Query(...),
+    start_date: Optional[str] = Query(None),
+    end_date: Optional[str] = Query(None),
 ):
     """List time off requests for a date range."""
+    if not start_date:
+        start_date = (datetime.now().date() - timedelta(days=30)).strftime("%Y-%m-%d")
+    if not end_date:
+        end_date = (datetime.now().date() + timedelta(days=60)).strftime("%Y-%m-%d")
     try:
         start = datetime.strptime(start_date, "%Y-%m-%d").date()
         end = datetime.strptime(end_date, "%Y-%m-%d").date()
@@ -492,11 +500,15 @@ def get_clock_status(db: DbSession, staff_id: Optional[int] = None):
 @router.get("/staff/time-clock/entries")
 def list_time_entries(
     db: DbSession,
-    start_date: str = Query(...),
-    end_date: str = Query(...),
+    start_date: Optional[str] = Query(None),
+    end_date: Optional[str] = Query(None),
     staff_id: Optional[int] = None,
 ):
     """List time clock entries for a date range."""
+    if not start_date:
+        start_date = (datetime.now().date() - timedelta(days=30)).strftime("%Y-%m-%d")
+    if not end_date:
+        end_date = datetime.now().date().strftime("%Y-%m-%d")
     try:
         start = datetime.strptime(start_date, "%Y-%m-%d").date()
         end = datetime.strptime(end_date, "%Y-%m-%d").date()
@@ -756,7 +768,11 @@ def get_leaderboard(
 @router.get("/staff/performance/goals")
 def get_performance_goals(db: DbSession):
     """Get performance goals."""
-    goals = db.query(PerformanceGoal).all()
+    try:
+        goals = db.query(PerformanceGoal).all()
+    except Exception:
+        db.rollback()
+        goals = []
 
     if not goals:
         # Return default goals
@@ -1259,14 +1275,18 @@ def remove_staff_pin(db: DbSession, staff_id: int):
 @router.get("/staff/reports/service-deductions")
 def get_service_deduction_report(
     db: DbSession,
-    start_date: str = Query(...),
-    end_date: str = Query(...),
+    start_date: Optional[str] = Query(None),
+    end_date: Optional[str] = Query(None),
     staff_id: Optional[int] = None,
 ):
     """
     Generate service deduction report for staff.
     Shows gross sales, commission earned, service fees, and net earnings.
     """
+    if not start_date:
+        start_date = (datetime.now().date() - timedelta(days=30)).strftime("%Y-%m-%d")
+    if not end_date:
+        end_date = datetime.now().date().strftime("%Y-%m-%d")
     try:
         start = datetime.strptime(start_date, "%Y-%m-%d").date()
         end = datetime.strptime(end_date, "%Y-%m-%d").date()

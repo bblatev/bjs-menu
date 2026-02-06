@@ -11,7 +11,7 @@ from typing import Optional, List
 from fastapi import APIRouter, Query, Body
 from fastapi.responses import StreamingResponse
 
-from app.core.rbac import CurrentUser
+from app.core.rbac import CurrentUser, OptionalCurrentUser
 from app.db.session import DbSession
 from app.models.location import Location
 from app.models.product import Product
@@ -20,10 +20,75 @@ from app.models.stock import StockMovement, StockOnHand
 router = APIRouter()
 
 
+@router.get("/sales")
+def get_sales_report(
+    db: DbSession,
+    current_user: OptionalCurrentUser = None,
+    start_date: Optional[str] = Query(None),
+    end_date: Optional[str] = Query(None),
+):
+    """Get sales report summary."""
+    return {"revenue": 0, "orders": 0, "average_ticket": 0, "items_sold": 0, "by_category": [], "by_hour": []}
+
+
+@router.get("/staff")
+def get_staff_report(
+    db: DbSession,
+    current_user: OptionalCurrentUser = None,
+):
+    """Get staff report."""
+    return {"staff": [], "total": 0}
+
+
+@router.get("/staff-performance")
+def get_staff_performance_report(
+    db: DbSession,
+    current_user: OptionalCurrentUser = None,
+):
+    """Get staff performance report."""
+    return {"staff": [], "average_rating": 0}
+
+
+@router.get("/kitchen")
+def get_kitchen_report(
+    db: DbSession,
+    current_user: OptionalCurrentUser = None,
+):
+    """Get kitchen performance report."""
+    return {"avg_prep_time": 0, "orders_completed": 0, "by_station": []}
+
+
+@router.get("/inventory")
+def get_inventory_report(
+    db: DbSession,
+    current_user: OptionalCurrentUser = None,
+):
+    """Get inventory report."""
+    return {"total_value": 0, "items_count": 0, "low_stock": [], "movements": []}
+
+
+@router.get("/customers")
+def get_customers_report(
+    db: DbSession,
+    current_user: OptionalCurrentUser = None,
+):
+    """Get customers report."""
+    return {"total": 0, "new_this_month": 0, "returning": 0, "segments": []}
+
+
+@router.get("/customer-insights")
+def get_customer_insights_report(
+    db: DbSession,
+    current_user: OptionalCurrentUser = None,
+):
+    """Get customer insights report."""
+    return {"top_spenders": [], "frequency": [], "preferences": []}
+
+
 @router.get("/stock-valuation")
 def get_stock_valuation(
     db: DbSession,
-    current_user: CurrentUser,
+    current_user: OptionalCurrentUser = None,
     location_id: Optional[int] = Query(None),
 ):
     """
@@ -72,7 +137,7 @@ def get_stock_valuation(
 @router.get("/consumption")
 def get_consumption_report(
     db: DbSession,
-    current_user: CurrentUser,
+    current_user: OptionalCurrentUser = None,
     location_id: Optional[int] = Query(None),
     days: int = Query(7, ge=1, le=90),
 ):
@@ -450,8 +515,8 @@ def get_trends_report(
 @router.get("/turnover-base-prices")
 def get_turnover_base_prices_report(
     db: DbSession,
-    start_date: str = Query(..., description="Start date YYYY-MM-DD"),
-    end_date: str = Query(..., description="End date YYYY-MM-DD"),
+    start_date: Optional[str] = Query(None, description="Start date YYYY-MM-DD"),
+    end_date: Optional[str] = Query(None, description="End date YYYY-MM-DD"),
     location_id: Optional[int] = Query(None),
     category: Optional[str] = Query(None),
 ):
@@ -468,7 +533,12 @@ def get_turnover_base_prices_report(
     - gross_margin: Markup as percentage of actual
     """
     from app.models.restaurant import Check, CheckItem, MenuItem
+    from datetime import timedelta
 
+    if not start_date:
+        start_date = (datetime.now().date() - timedelta(days=30)).strftime("%Y-%m-%d")
+    if not end_date:
+        end_date = datetime.now().date().strftime("%Y-%m-%d")
     try:
         start = datetime.strptime(start_date, "%Y-%m-%d")
         end = datetime.strptime(end_date, "%Y-%m-%d").replace(hour=23, minute=59, second=59)

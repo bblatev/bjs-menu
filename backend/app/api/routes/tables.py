@@ -179,6 +179,28 @@ def get_table_areas(
     return areas
 
 
+@router.get("/assignments")
+def get_table_assignments(
+    db: DbSession,
+    location_id: Optional[int] = None,
+):
+    """Get server-to-table assignments."""
+    _init_default_tables(db)
+    query = db.query(TableModel)
+    if location_id:
+        query = query.filter(TableModel.location_id == location_id)
+    tables = query.all()
+    assignments = []
+    for t in tables:
+        assignments.append({
+            "table_id": t.id,
+            "table_number": t.number,
+            "server_id": t.server_id if hasattr(t, 'server_id') else None,
+            "section": t.area,
+        })
+    return {"assignments": assignments, "total": len(assignments)}
+
+
 @router.get("/{table_id}")
 def get_table(
     db: DbSession,

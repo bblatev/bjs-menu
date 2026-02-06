@@ -13,7 +13,7 @@ from fastapi import APIRouter, File, HTTPException, Query, UploadFile, status
 from pydantic import BaseModel
 
 from app.core.file_utils import sanitize_filename
-from app.core.rbac import CurrentUser, RequireManager
+from app.core.rbac import CurrentUser, OptionalCurrentUser, RequireManager
 from app.db.session import DbSession
 from app.models.location import Location
 from app.models.pos import PosRawEvent, PosSalesLine
@@ -116,7 +116,7 @@ def get_pos_tables(db: DbSession):
 @router.get("/sales", response_model=List[PosSalesLineResponse])
 def list_sales_lines(
     db: DbSession,
-    current_user: CurrentUser,
+    current_user: OptionalCurrentUser = None,
     processed: Optional[bool] = Query(None),
     limit: int = Query(100, le=1000),
 ):

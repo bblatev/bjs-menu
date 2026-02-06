@@ -337,16 +337,21 @@ def get_reservation_calendar(
 @router.get("/check-availability")
 def check_availability_get(
     db: DbSession,
-    date: str = Query(...),
-    time: str = Query(...),
-    party_size: int = Query(...),
+    date: Optional[str] = Query(None),
+    time: Optional[str] = Query(None),
+    party_size: int = Query(2),
     duration: int = Query(90),
     location_id: int = Query(1),
 ):
     """Check availability via GET with query params (frontend compatible)."""
-    from datetime import datetime as dt
+    from datetime import datetime as dt, timedelta
 
     service = ReservationService(db)
+
+    if not date:
+        date = (dt.now().date() + timedelta(days=1)).strftime("%Y-%m-%d")
+    if not time:
+        time = "19:00"
 
     try:
         check_date = dt.strptime(date, "%Y-%m-%d").date()

@@ -7,6 +7,12 @@ from pydantic import BaseModel
 router = APIRouter()
 
 
+@router.get("/program")
+async def get_loyalty_program():
+    """Get loyalty program details."""
+    return {"name": "Loyalty Program", "points_per_dollar": 1, "tiers": [], "active_members": 0}
+
+
 class LoyaltyMember(BaseModel):
     id: str
     name: str

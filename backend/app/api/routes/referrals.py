@@ -47,6 +47,12 @@ class ReferralSettings(BaseModel):
     max_referrals_per_customer: int
 
 
+@router.get("/programs")
+async def get_referral_programs():
+    """Get referral programs."""
+    return {"programs": [], "total": 0}
+
+
 @router.get("/")
 async def get_referrals():
     """Get all referrals."""

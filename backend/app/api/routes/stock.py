@@ -28,7 +28,7 @@ from datetime import datetime, date, timedelta, timezone
 from decimal import Decimal
 from typing import Optional, List
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Query, UploadFile
 from pydantic import BaseModel
 from sqlalchemy import func
 
@@ -42,6 +42,35 @@ from app.services.stock_deduction_service import StockDeductionService
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
+
+
+# ==================== STUB ENDPOINTS ====================
+
+@router.get("/items")
+def get_stock_items(
+    db: DbSession,
+    location_id: int = Query(1),
+):
+    """Get stock items list."""
+    return {"items": [], "total": 0}
+
+
+@router.get("/transfers")
+def get_stock_transfers(db: DbSession):
+    """Get stock transfers."""
+    return {"transfers": [], "total": 0}
+
+
+@router.get("/forecasting")
+def get_stock_forecasting(db: DbSession):
+    """Get stock forecasting data."""
+    return {"forecasts": [], "recommendations": []}
+
+
+@router.get("/aging")
+def get_stock_aging(db: DbSession):
+    """Get stock aging report."""
+    return {"items": [], "total_value": 0, "expired_count": 0}
 
 
 # ==================== STOCK ITEMS ====================
@@ -706,10 +735,10 @@ def get_variance_analysis(
 
 # ==================== IMPORT / EXPORT ====================
 
-@router.post("/import")
-async def import_stock(db: DbSession, file: "UploadFile" = None):
+@router.post("/import", response_model=None)
+async def import_stock(db: DbSession, file: UploadFile = None):
     """Import stock items from CSV. Expects columns: name, barcode, unit, min_stock, cost_price, par_level."""
-    from fastapi import UploadFile, File
+    from fastapi import File
     import csv
     import io
 

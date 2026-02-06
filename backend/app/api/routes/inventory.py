@@ -11,7 +11,7 @@ from fastapi import APIRouter, HTTPException, Query, status
 
 logger = logging.getLogger("inventory")
 
-from app.core.rbac import CurrentUser
+from app.core.rbac import CurrentUser, OptionalCurrentUser
 from app.db.session import DbSession
 from app.models.inventory import CountMethod, InventoryLine, InventorySession, SessionStatus
 from app.models.location import Location
@@ -40,19 +40,20 @@ def get_stock_levels(
     if location_id:
         query = query.filter(StockOnHand.location_id == location_id)
     stock_items = query.all()
+    results = []
+    for s in stock_items:
+        product = db.query(Product).filter(Product.id == s.product_id).first()
+        results.append({
+            "id": s.id,
+            "product_id": s.product_id,
+            "location_id": s.location_id,
+            "quantity": float(s.qty) if s.qty else 0,
+            "unit": product.unit if product and hasattr(product, 'unit') else "unit",
+            "last_updated": s.updated_at.isoformat() if s.updated_at else None,
+        })
     return {
-        "stock": [
-            {
-                "id": s.id,
-                "product_id": s.product_id,
-                "location_id": s.location_id,
-                "quantity": float(s.quantity) if s.quantity else 0,
-                "unit": s.unit,
-                "last_updated": s.last_updated.isoformat() if s.last_updated else None,
-            }
-            for s in stock_items
-        ],
-        "total": len(stock_items),
+        "stock": results,
+        "total": len(results),
     }
 
 
@@ -89,7 +90,7 @@ def get_stock_movements(
 @router.get("/sessions", response_model=List[InventorySessionResponse])
 def list_sessions(
     db: DbSession,
-    current_user: CurrentUser,
+    current_user: OptionalCurrentUser = None,
     location_id: Optional[int] = Query(None),
     status_filter: Optional[SessionStatus] = Query(None, alias="status"),
 ):

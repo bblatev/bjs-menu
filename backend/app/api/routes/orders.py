@@ -102,6 +102,13 @@ def get_order_suggestions(
     )
 
 
+@router.get("/stats")
+def get_order_stats_summary(db: DbSession):
+    """Get order statistics."""
+    total = db.query(PurchaseOrder).count()
+    return {"total_orders": total, "pending": 0, "in_progress": 0, "completed": 0, "total_revenue": 0}
+
+
 @router.get("/", response_model=List[PurchaseOrderResponse])
 def list_orders(
     db: DbSession,

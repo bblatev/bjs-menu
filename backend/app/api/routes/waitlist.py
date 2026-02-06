@@ -146,7 +146,11 @@ def get_waitlist_stats(
     if waiting_entries:
         from datetime import datetime, timezone
         now = datetime.now(timezone.utc)
-        waits = [(now - e.added_at).total_seconds() / 60 for e in waiting_entries if e.added_at]
+        waits = []
+        for e in waiting_entries:
+            if e.added_at:
+                added = e.added_at if e.added_at.tzinfo else e.added_at.replace(tzinfo=timezone.utc)
+                waits.append((now - added).total_seconds() / 60)
         longest_wait = max(waits) if waits else 0
 
     # Parties seated today

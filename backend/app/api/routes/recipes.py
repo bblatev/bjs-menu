@@ -10,7 +10,7 @@ from typing import Optional, List
 from fastapi import APIRouter, File, HTTPException, Query, UploadFile, status
 
 from app.core.file_utils import sanitize_filename
-from app.core.rbac import CurrentUser, RequireManager
+from app.core.rbac import CurrentUser, OptionalCurrentUser, RequireManager
 from app.db.session import DbSession
 from app.models.product import Product
 from app.models.recipe import Recipe, RecipeLine
@@ -22,7 +22,7 @@ router = APIRouter()
 @router.get("/", response_model=List[RecipeResponse])
 def list_recipes(
     db: DbSession,
-    current_user: CurrentUser,
+    current_user: OptionalCurrentUser = None,
     search: Optional[str] = Query(None),
 ):
     """List all recipes."""

@@ -97,8 +97,8 @@ def download_gl_chart_of_accounts():
 @router.get("/sales-journal")
 def export_sales_journal(
     db: DbSession,
-    start_date: str = Query(..., description="Start date YYYY-MM-DD"),
-    end_date: str = Query(..., description="End date YYYY-MM-DD"),
+    start_date: Optional[str] = Query(None, description="Start date YYYY-MM-DD"),
+    end_date: Optional[str] = Query(None, description="End date YYYY-MM-DD"),
     format: str = Query("csv", description="Export format: csv, xml, json"),
     location_id: Optional[int] = Query(None),
 ):
@@ -107,6 +107,11 @@ def export_sales_journal(
 
     Exports all closed checks within the date range in AtomS3-compatible format.
     """
+    from datetime import timedelta
+    if not start_date:
+        start_date = (datetime.now().date() - timedelta(days=30)).strftime("%Y-%m-%d")
+    if not end_date:
+        end_date = datetime.now().date().strftime("%Y-%m-%d")
     try:
         start = datetime.strptime(start_date, "%Y-%m-%d").date()
         end = datetime.strptime(end_date, "%Y-%m-%d").date()
@@ -203,12 +208,17 @@ def export_sales_journal(
 @router.get("/sales-journal/preview")
 def preview_sales_journal(
     db: DbSession,
-    start_date: str = Query(...),
-    end_date: str = Query(...),
+    start_date: Optional[str] = Query(None),
+    end_date: Optional[str] = Query(None),
     location_id: Optional[int] = Query(None),
     limit: int = Query(10),
 ):
     """Preview sales journal data before export."""
+    from datetime import timedelta
+    if not start_date:
+        start_date = (datetime.now().date() - timedelta(days=30)).strftime("%Y-%m-%d")
+    if not end_date:
+        end_date = datetime.now().date().strftime("%Y-%m-%d")
     try:
         start = datetime.strptime(start_date, "%Y-%m-%d").date()
         end = datetime.strptime(end_date, "%Y-%m-%d").date()
@@ -266,8 +276,8 @@ def preview_sales_journal(
 @router.get("/purchase-journal")
 def export_purchase_journal(
     db: DbSession,
-    start_date: str = Query(...),
-    end_date: str = Query(...),
+    start_date: Optional[str] = Query(None),
+    end_date: Optional[str] = Query(None),
     format: str = Query("csv"),
     location_id: Optional[int] = Query(None),
 ):
@@ -276,6 +286,11 @@ def export_purchase_journal(
 
     Exports all invoices within the date range.
     """
+    from datetime import timedelta
+    if not start_date:
+        start_date = (datetime.now().date() - timedelta(days=30)).strftime("%Y-%m-%d")
+    if not end_date:
+        end_date = datetime.now().date().strftime("%Y-%m-%d")
     try:
         start = datetime.strptime(start_date, "%Y-%m-%d").date()
         end = datetime.strptime(end_date, "%Y-%m-%d").date()
@@ -309,7 +324,7 @@ def export_purchase_journal(
             document_date=inv.created_at.date() if inv.created_at else date.today(),
             supplier_invoice_number=inv.invoice_number or "",
             supplier_invoice_date=inv.invoice_date or date.today(),
-            supplier_name=inv.supplier_name or "Доставчик",
+            supplier_name=getattr(inv, 'supplier_name', None) or "Доставчик",
             supplier_eik=None,
             supplier_vat=None,
             description=inv.notes or f"Фактура {inv.invoice_number}",
@@ -347,8 +362,8 @@ def export_purchase_journal(
 @router.get("/vat-declaration")
 def get_vat_declaration_data(
     db: DbSession,
-    month: int = Query(..., ge=1, le=12),
-    year: int = Query(..., ge=2020, le=2100),
+    month: Optional[int] = Query(None, ge=1, le=12),
+    year: Optional[int] = Query(None, ge=2020, le=2100),
     location_id: Optional[int] = Query(None),
 ):
     """
@@ -357,6 +372,10 @@ def get_vat_declaration_data(
     Returns structured data for Bulgarian VAT declaration (справка-декларация по ЗДДС).
     """
     # Calculate date range for the month
+    if not month:
+        month = datetime.now().month
+    if not year:
+        year = datetime.now().year
     start = date(year, month, 1)
     if month == 12:
         end = date(year + 1, 1, 1)
@@ -418,7 +437,7 @@ def get_vat_declaration_data(
             document_date=inv.created_at.date() if inv.created_at else date.today(),
             supplier_invoice_number=inv.invoice_number or "",
             supplier_invoice_date=inv.invoice_date or date.today(),
-            supplier_name=inv.supplier_name or "",
+            supplier_name=getattr(inv, 'supplier_name', None) or "",
             supplier_eik=None,
             supplier_vat=None,
             description="",

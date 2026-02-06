@@ -7,6 +7,12 @@ from pydantic import BaseModel
 router = APIRouter()
 
 
+@router.get("/tax/")
+async def get_tax_settings():
+    """Get tax settings."""
+    return {"tax_rates": [], "default_rate": 0}
+
+
 class VenueSettings(BaseModel):
     name: str
     address: str
