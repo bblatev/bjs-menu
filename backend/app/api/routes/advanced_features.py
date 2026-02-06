@@ -525,7 +525,10 @@ def redeem_gift_card(
 ):
     """Redeem from a gift card."""
     service = GiftCardService(db)
-    return service.redeem(**data.model_dump())
+    try:
+        return service.redeem(**data.model_dump())
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
 
 
 # ============================================================================

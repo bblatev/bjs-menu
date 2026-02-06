@@ -68,7 +68,7 @@ export default function AutoReorderPage() {
       const token = localStorage.getItem('access_token');
 
       // Load rules
-      const rulesResponse = await fetch(`${API_URL}/inventory/auto-reorder/rules`, {
+      const rulesResponse = await fetch(`${API_URL}/inventory-complete/auto-reorder/rules`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (rulesResponse.ok) {
@@ -76,7 +76,7 @@ export default function AutoReorderPage() {
       }
 
       // Load history
-      const logsResponse = await fetch(`${API_URL}/inventory/auto-reorder/history`, {
+      const logsResponse = await fetch(`${API_URL}/inventory-complete/auto-reorder/history`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (logsResponse.ok) {
@@ -92,7 +92,7 @@ export default function AutoReorderPage() {
   const handleCreate = async () => {
     try {
       const token = localStorage.getItem('access_token');
-      const response = await fetch(`${API_URL}/inventory/auto-reorder/rules`, {
+      const response = await fetch(`${API_URL}/inventory-complete/auto-reorder/rules`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -127,7 +127,7 @@ export default function AutoReorderPage() {
   const handleToggleActive = async (ruleId: number, isActive: boolean) => {
     try {
       const token = localStorage.getItem('access_token');
-      const response = await fetch(`${API_URL}/inventory/auto-reorder/rules/${ruleId}`, {
+      const response = await fetch(`${API_URL}/inventory-complete/auto-reorder/rules/${ruleId}`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
@@ -147,7 +147,7 @@ export default function AutoReorderPage() {
     if (!confirm('Are you sure you want to delete this rule?')) return;
     try {
       const token = localStorage.getItem('access_token');
-      const response = await fetch(`${API_URL}/inventory/auto-reorder/rules/${ruleId}`, {
+      const response = await fetch(`${API_URL}/inventory-complete/auto-reorder/rules/${ruleId}`, {
         method: 'DELETE',
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -162,7 +162,7 @@ export default function AutoReorderPage() {
   const executeAutoReorder = async () => {
     try {
       const token = localStorage.getItem('access_token');
-      const response = await fetch(`${API_URL}/inventory/auto-reorder/execute`, {
+      const response = await fetch(`${API_URL}/inventory-complete/auto-reorder/execute`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}` },
       });

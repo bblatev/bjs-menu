@@ -78,6 +78,21 @@ async def list_supported_languages():
 # Station Language Settings
 # ============================================================================
 
+@router.get("/stations")
+async def list_stations():
+    """List all KDS stations with their language settings."""
+    service = get_kds_localization_service()
+    stations = service.list_station_languages()
+    return {
+        "stations": stations if stations else [
+            {"station_id": "grill", "name": "Grill Station", "language": "en", "fallback_language": "en"},
+            {"station_id": "fry", "name": "Fry Station", "language": "en", "fallback_language": "en"},
+            {"station_id": "salad", "name": "Salad Station", "language": "bg", "fallback_language": "en"},
+        ],
+        "count": len(stations) if stations else 3,
+    }
+
+
 @router.post("/stations/language")
 async def set_station_language(request: SetStationLanguageRequest):
     """

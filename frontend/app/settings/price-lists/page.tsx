@@ -78,15 +78,23 @@ export default function PriceListsPage() {
   const notify = (msg: string) => { setToast(msg); setTimeout(() => setToast(""), 3000); };
 
   const loadPriceLists = useCallback(async () => {
-    const h = { Authorization: `Bearer ${token()}`, "Content-Type": "application/json" };
-    const res = await fetch(`${API()}/price-lists`, { headers: h });
-    if (res.ok) setPriceLists(await res.json());
+    try {
+      const h = { Authorization: `Bearer ${token()}`, "Content-Type": "application/json" };
+      const res = await fetch(`${API()}/price-lists`, { headers: h });
+      if (res.ok) setPriceLists(await res.json());
+    } catch (err) {
+      console.error('Failed to load price lists:', err);
+    }
   }, []);
 
   const loadProducts = useCallback(async () => {
-    const h = { Authorization: `Bearer ${token()}`, "Content-Type": "application/json" };
-    const res = await fetch(`${API()}/waiter/menu/quick`, { headers: h });
-    if (res.ok) setProducts(await res.json());
+    try {
+      const h = { Authorization: `Bearer ${token()}`, "Content-Type": "application/json" };
+      const res = await fetch(`${API()}/waiter/menu/quick`, { headers: h });
+      if (res.ok) setProducts(await res.json());
+    } catch (err) {
+      console.error('Failed to load products:', err);
+    }
   }, []);
 
   const loadProductPrices = async (priceListId: number) => {
@@ -95,7 +103,7 @@ export default function PriceListsPage() {
   };
 
   useEffect(() => {
-    Promise.all([loadPriceLists(), loadProducts()]).then(() => setLoading(false));
+    Promise.all([loadPriceLists(), loadProducts()]).catch(err => console.error('Failed to load:', err)).finally(() => setLoading(false));
   }, [loadPriceLists, loadProducts]);
 
   useEffect(() => {

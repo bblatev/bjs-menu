@@ -84,7 +84,7 @@ export default function MobileWalletPage() {
     try {
       const [configRes, sessionsRes, statsRes] = await Promise.all([
         fetch(`${API_URL}/mobile-wallet/config`),
-        fetch(`${API_URL}/mobile-wallet/sessions?limit=20`),
+        fetch(`${API_URL}/mobile-wallet/payments?limit=20`),
         fetch(`${API_URL}/mobile-wallet/stats`),
       ]);
 

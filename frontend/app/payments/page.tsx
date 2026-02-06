@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { API_URL, getAuthHeaders } from '@/lib/api';
 
 interface PaymentMethod {
   id: string;
@@ -63,76 +64,83 @@ export default function PaymentsPage() {
   const loadData = async () => {
     setIsLoading(true);
     try {
-      // Simulated data - in production, fetch from API
-      await new Promise(resolve => setTimeout(resolve, 500));
-
-      setTransactions([
-        {
-          id: 'pi_1234567890',
-          orderId: 'ORD-001',
-          amount: 4599,
-          currency: 'usd',
-          status: 'succeeded',
-          method: 'card',
-          cardBrand: 'visa',
-          cardLast4: '4242',
-          customerEmail: 'john@example.com',
-          createdAt: new Date().toISOString(),
-          receiptUrl: 'https://pay.stripe.com/receipts/...',
-        },
-        {
-          id: 'pi_0987654321',
-          orderId: 'ORD-002',
-          amount: 2850,
-          currency: 'usd',
-          status: 'succeeded',
-          method: 'apple_pay',
-          cardBrand: 'mastercard',
-          cardLast4: '8888',
-          createdAt: new Date(Date.now() - 3600000).toISOString(),
-        },
-        {
-          id: 'pi_1122334455',
-          orderId: 'ORD-003',
-          amount: 1299,
-          currency: 'usd',
-          status: 'failed',
-          method: 'card',
-          cardBrand: 'amex',
-          cardLast4: '0005',
-          createdAt: new Date(Date.now() - 7200000).toISOString(),
-        },
-        {
-          id: 'pi_5566778899',
-          orderId: 'ORD-004',
-          amount: 6750,
-          currency: 'usd',
-          status: 'refunded',
-          method: 'google_pay',
-          cardBrand: 'visa',
-          cardLast4: '1234',
-          createdAt: new Date(Date.now() - 86400000).toISOString(),
-        },
+      const headers = getAuthHeaders();
+      const [txRes, statusRes, walletRes, walletStatsRes] = await Promise.allSettled([
+        fetch(`${API_URL}/payments/transactions`, { headers }),
+        fetch(`${API_URL}/payments/status`, { headers }),
+        fetch(`${API_URL}/mobile-wallet/config`, { headers }),
+        fetch(`${API_URL}/mobile-wallet/stats`, { headers }),
       ]);
 
-      setWalletConfig({
-        applePay: { enabled: true, merchantId: 'merchant.com.bjs.pos' },
-        googlePay: { enabled: true, merchantName: "BJ's Restaurant" },
-        link: { enabled: true },
-        supportedNetworks: ['visa', 'mastercard', 'amex', 'discover'],
-      });
+      // Load transactions from API or use defaults
+      if (txRes.status === 'fulfilled' && txRes.value.ok) {
+        const data = await txRes.value.json();
+        if (Array.isArray(data) && data.length > 0) {
+          setTransactions(data.map((t: any) => ({
+            id: t.payment_intent_id || t.id,
+            orderId: t.order_id || t.orderId || '-',
+            amount: t.amount,
+            currency: t.currency || 'usd',
+            status: t.status,
+            method: t.payment_method || t.method || 'card',
+            cardBrand: t.card_brand || t.cardBrand,
+            cardLast4: t.card_last4 || t.cardLast4,
+            customerEmail: t.customer_email || t.customerEmail,
+            createdAt: t.created_at || t.createdAt || new Date().toISOString(),
+            receiptUrl: t.receipt_url || t.receiptUrl,
+          })));
+        } else {
+          setTransactions([]);
+        }
+      } else {
+        setTransactions([]);
+      }
 
+      // Wallet config
+      if (walletRes.status === 'fulfilled' && walletRes.value.ok) {
+        const data = await walletRes.value.json();
+        setWalletConfig({
+          applePay: { enabled: data.apple_pay_enabled ?? true, merchantId: data.apple_pay_merchant_id || 'merchant.com.bjs.pos' },
+          googlePay: { enabled: data.google_pay_enabled ?? true, merchantName: data.merchant_name || "BJ's Bar" },
+          link: { enabled: data.link_enabled ?? false },
+          supportedNetworks: data.supported_networks || ['visa', 'mastercard'],
+        });
+      } else {
+        setWalletConfig({
+          applePay: { enabled: true, merchantId: 'merchant.com.bjs.pos' },
+          googlePay: { enabled: true, merchantName: "BJ's Bar" },
+          link: { enabled: false },
+          supportedNetworks: ['visa', 'mastercard', 'amex', 'discover'],
+        });
+      }
+
+      // Stats from wallet
+      if (walletStatsRes.status === 'fulfilled' && walletStatsRes.value.ok) {
+        const data = await walletStatsRes.value.json();
+        setStats({
+          totalPayments: data.total_payments || 0,
+          succeeded: data.completed || 0,
+          failed: data.failed || 0,
+          successRate: data.success_rate || 0,
+          totalAmount: (data.total_volume || 0) / 100,
+          byWalletType: {
+            apple_pay: data.apple_pay_count || 0,
+            google_pay: data.google_pay_count || 0,
+            link: data.link_count || 0,
+          },
+        });
+      } else {
+        setStats({
+          totalPayments: 0, succeeded: 0, failed: 0, successRate: 0, totalAmount: 0,
+          byWalletType: { apple_pay: 0, google_pay: 0, link: 0 },
+        });
+      }
+    } catch (err) {
+      console.error('Error loading payment data:', err);
+      setTransactions([]);
       setStats({
-        totalPayments: 156,
-        succeeded: 148,
-        failed: 8,
-        successRate: 94.87,
-        totalAmount: 12450.75,
-        byWalletType: {
-          apple_pay: 45,
-          google_pay: 32,
-          link: 12,
-        },
+        totalPayments: 0, succeeded: 0, failed: 0, successRate: 0, totalAmount: 0,
+        byWalletType: { apple_pay: 0, google_pay: 0, link: 0 },
       });
     } finally {
       setIsLoading(false);

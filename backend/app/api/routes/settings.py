@@ -7,6 +7,41 @@ from pydantic import BaseModel
 router = APIRouter()
 
 
+@router.get("/")
+async def get_all_settings():
+    """Get all settings as a combined object."""
+    return {
+        "settings": {
+            "general": {
+                "restaurant_name": "BJ's Bar & Grill",
+                "language": "bg",
+                "currency": "BGN",
+                "timezone": "Europe/Sofia",
+            },
+            "security": {
+                "require_pin": True,
+                "session_timeout": 30,
+                "max_login_attempts": 5,
+                "two_factor_enabled": False,
+                "ip_whitelist_enabled": False,
+                "password_min_length": 8,
+                "force_password_change_days": 90,
+            },
+            "notifications": {
+                "email_enabled": True,
+                "sms_enabled": False,
+                "push_enabled": True,
+            },
+        }
+    }
+
+
+@router.put("/")
+async def update_all_settings(data: dict):
+    """Update settings."""
+    return {"success": True, "settings": data}
+
+
 @router.get("/tax/")
 async def get_tax_settings():
     """Get tax settings."""
@@ -26,13 +61,13 @@ class VenueSettings(BaseModel):
 
 
 class PaymentSettings(BaseModel):
-    cash_enabled: bool
-    card_enabled: bool
-    contactless_enabled: bool
-    tips_enabled: bool
-    default_tip_percentages: List[int]
-    auto_gratuity_threshold: int
-    auto_gratuity_percentage: float
+    cash_enabled: bool = True
+    card_enabled: bool = True
+    contactless_enabled: bool = True
+    tips_enabled: bool = True
+    default_tip_percentages: List[int] = [10, 15, 20]
+    auto_gratuity_threshold: int = 6
+    auto_gratuity_percentage: float = 18.0
 
 
 class SecuritySettings(BaseModel):

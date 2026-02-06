@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import AdminLayout from '@/components/AdminLayout';
-import { getAuthHeaders } from '@/lib/api';
+import { API_URL, getAuthHeaders } from '@/lib/api';
 
 interface ForecastItem {
   id: number;
@@ -65,8 +65,8 @@ export default function DemandForecastingPage() {
       // Try to fetch from API, fall back to demo data
       try {
         const [itemsRes, statsRes] = await Promise.all([
-          fetch(`/api/v1/stock/forecasting?horizon=${forecastHorizon}`, { headers }),
-          fetch('/api/v1/stock/forecasting/stats', { headers })
+          fetch(`${API_URL}/stock/forecasting?horizon=${forecastHorizon}`, { headers }),
+          fetch(`${API_URL}/stock/forecasting/stats`, { headers })
         ]);
 
         if (itemsRes.ok && statsRes.ok) {

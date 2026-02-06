@@ -1,5 +1,6 @@
 """Waitlist management routes - direct access to waitlist endpoints."""
 
+from datetime import datetime, timezone
 from typing import Optional
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
@@ -242,8 +243,6 @@ def send_notification(
     entry_id: int,
 ):
     """Send table ready notification."""
-    from datetime import datetime
-
     entry = db.query(Waitlist).filter(Waitlist.id == entry_id).first()
     if not entry:
         raise HTTPException(status_code=404, detail="Waitlist entry not found")
@@ -268,8 +267,6 @@ def seat_guest(
     table_id: Optional[int] = None,
 ):
     """Mark guest as seated."""
-    from datetime import datetime
-
     entry = db.query(Waitlist).filter(Waitlist.id == entry_id).first()
     if not entry:
         raise HTTPException(status_code=404, detail="Waitlist entry not found")
@@ -279,7 +276,8 @@ def seat_guest(
     entry.seated_at = now
 
     if entry.added_at:
-        entry.actual_wait_minutes = int((now - entry.added_at).total_seconds() / 60)
+        added = entry.added_at.replace(tzinfo=timezone.utc) if entry.added_at.tzinfo is None else entry.added_at
+        entry.actual_wait_minutes = int((now - added).total_seconds() / 60)
 
     if table_id:
         entry.table_ids = [table_id]
@@ -301,8 +299,6 @@ def cancel_waitlist_entry(
     reason: str = "cancelled",
 ):
     """Cancel/remove a waitlist entry."""
-    from datetime import datetime
-
     entry = db.query(Waitlist).filter(Waitlist.id == entry_id).first()
     if not entry:
         raise HTTPException(status_code=404, detail="Waitlist entry not found")

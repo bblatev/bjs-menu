@@ -6,7 +6,7 @@ from datetime import datetime
 from decimal import Decimal
 from typing import Optional, List, Dict
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 from app.models.order import POStatus
 
@@ -15,8 +15,18 @@ class PurchaseOrderLineCreate(BaseModel):
     """Purchase order line creation schema."""
 
     product_id: int
-    qty: Decimal = Field(gt=0)
+    qty: Optional[Decimal] = Field(default=None, gt=0)
+    quantity: Optional[Decimal] = Field(default=None, gt=0)
     unit_cost: Optional[Decimal] = None
+    unit_price: Optional[Decimal] = None
+
+    @property
+    def effective_qty(self) -> Decimal:
+        return self.qty or self.quantity or Decimal("1")
+
+    @property
+    def effective_cost(self) -> Optional[Decimal]:
+        return self.unit_cost or self.unit_price
 
 
 class PurchaseOrderLineResponse(BaseModel):
@@ -36,8 +46,18 @@ class PurchaseOrderCreate(BaseModel):
 
     supplier_id: int
     location_id: int
-    lines: List[PurchaseOrderLineCreate]
+    lines: Optional[List[PurchaseOrderLineCreate]] = None
+    items: Optional[List[PurchaseOrderLineCreate]] = None
     notes: Optional[str] = None
+
+    @model_validator(mode="after")
+    def normalize_lines(self):
+        """Accept both 'lines' and 'items' as the line items field."""
+        if not self.lines and self.items:
+            self.lines = self.items
+        if not self.lines:
+            self.lines = []
+        return self
 
 
 class PurchaseOrderResponse(BaseModel):

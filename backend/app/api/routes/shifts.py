@@ -76,3 +76,69 @@ async def update_shift(shift_id: str, shift: Shift):
 async def delete_shift(shift_id: str):
     """Delete a shift."""
     return {"success": True}
+
+
+# ==================== CATERING ====================
+
+@router.get("/catering/events")
+async def get_catering_events():
+    """Get catering events."""
+    return [
+        {"id": "1", "name": "Corporate Lunch", "date": "2026-02-15", "guest_count": 50, "status": "confirmed", "total": 2500.00, "package": "Premium Buffet", "contact": "John Smith", "phone": "+359888123456"},
+        {"id": "2", "name": "Wedding Reception", "date": "2026-03-01", "guest_count": 120, "status": "pending", "total": 8400.00, "package": "Wedding Package", "contact": "Maria Ivanova", "phone": "+359888654321"},
+        {"id": "3", "name": "Birthday Party", "date": "2026-02-20", "guest_count": 30, "status": "confirmed", "total": 1200.00, "package": "Party Package", "contact": "Peter Petrov", "phone": "+359888111222"},
+    ]
+
+
+@router.get("/catering/packages")
+async def get_catering_packages():
+    """Get catering packages."""
+    return [
+        {"id": "1", "name": "Premium Buffet", "price_per_person": 50.00, "min_guests": 20, "includes": ["appetizers", "main course", "dessert", "drinks"], "active": True},
+        {"id": "2", "name": "Wedding Package", "price_per_person": 70.00, "min_guests": 50, "includes": ["cocktail hour", "3-course meal", "wedding cake", "open bar"], "active": True},
+        {"id": "3", "name": "Party Package", "price_per_person": 40.00, "min_guests": 10, "includes": ["finger food", "drinks", "dessert"], "active": True},
+        {"id": "4", "name": "Business Lunch", "price_per_person": 25.00, "min_guests": 10, "includes": ["soup", "main course", "soft drinks"], "active": True},
+    ]
+
+
+@router.get("/catering/staff")
+async def get_catering_staff():
+    """Get staff available for catering events."""
+    return [
+        {"id": "1", "name": "Ivan Dimitrov", "role": "Chef", "available": True, "events_this_month": 3},
+        {"id": "2", "name": "Elena Georgieva", "role": "Server", "available": True, "events_this_month": 5},
+        {"id": "3", "name": "Nikolay Stoyanov", "role": "Bartender", "available": False, "events_this_month": 2},
+    ]
+
+
+# ==================== SMS MARKETING ====================
+
+@router.get("/sms/campaigns")
+async def get_sms_campaigns():
+    """Get SMS marketing campaigns."""
+    return [
+        {"id": "1", "name": "Weekend Special", "status": "active", "recipients": 450, "sent": 448, "delivered": 440, "opened": 320, "clicked": 85, "message": "This weekend only! 20% off all cocktails. Visit BJ's Bar!", "scheduled_at": "2026-02-07T10:00:00Z", "created_at": "2026-02-05T14:00:00Z"},
+        {"id": "2", "name": "Happy Hour Reminder", "status": "completed", "recipients": 380, "sent": 380, "delivered": 375, "opened": 290, "clicked": 120, "message": "Happy Hour 4-7 PM today! Half-price drinks at BJ's!", "scheduled_at": "2026-02-05T15:00:00Z", "created_at": "2026-02-05T10:00:00Z"},
+        {"id": "3", "name": "New Menu Launch", "status": "draft", "recipients": 0, "sent": 0, "delivered": 0, "opened": 0, "clicked": 0, "message": "Exciting new menu items just dropped! Come try them today.", "scheduled_at": None, "created_at": "2026-02-06T09:00:00Z"},
+    ]
+
+
+@router.get("/sms/stats")
+async def get_sms_stats():
+    """Get SMS marketing statistics."""
+    return {
+        "total_campaigns": 15,
+        "total_sent": 5200,
+        "total_delivered": 5100,
+        "delivery_rate": 98.1,
+        "avg_open_rate": 72.5,
+        "avg_click_rate": 18.3,
+        "credits_remaining": 2500,
+        "monthly_spend": 125.00,
+    }
+
+
+@router.post("/sms/campaigns/{campaign_id}/send")
+async def send_sms_campaign(campaign_id: str):
+    """Send an SMS campaign."""
+    return {"success": True, "campaign_id": campaign_id, "status": "sending"}

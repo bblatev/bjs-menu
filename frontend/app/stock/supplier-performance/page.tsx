@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import AdminLayout from '@/components/AdminLayout';
-import { getAuthHeaders } from '@/lib/api';
+import { API_URL, getAuthHeaders } from '@/lib/api';
 
 interface SupplierMetrics {
   id: number;
@@ -64,8 +64,8 @@ export default function SupplierPerformancePage() {
 
       try {
         const [suppliersRes, statsRes] = await Promise.all([
-          fetch('/api/v1/suppliers/performance', { headers }),
-          fetch('/api/v1/suppliers/performance/stats', { headers })
+          fetch(`${API_URL}/suppliers/performance`, { headers }),
+          fetch(`${API_URL}/suppliers/performance/stats`, { headers })
         ]);
 
         if (suppliersRes.ok && statsRes.ok) {

@@ -64,6 +64,18 @@ async def get_warehouses():
     ]
 
 
+@router.get("/stock-levels/")
+async def get_all_stock_levels(warehouse_id: Optional[str] = None):
+    """Get stock levels for all warehouses or a specific one."""
+    return [
+        StockLevel(ingredient_id="1", ingredient_name="Tomatoes", category="Produce", quantity=25, unit="kg", par_level=30, reorder_point=10, last_count="2026-02-01", status="ok"),
+        StockLevel(ingredient_id="2", ingredient_name="Beef Ribeye", category="Meat", quantity=8, unit="kg", par_level=15, reorder_point=5, last_count="2026-02-01", status="low"),
+        StockLevel(ingredient_id="3", ingredient_name="Olive Oil", category="Pantry", quantity=12, unit="L", par_level=10, reorder_point=4, last_count="2026-02-01", status="over"),
+        StockLevel(ingredient_id="4", ingredient_name="Mozzarella", category="Dairy", quantity=5, unit="kg", par_level=8, reorder_point=3, last_count="2026-02-01", status="low"),
+        StockLevel(ingredient_id="5", ingredient_name="Flour", category="Pantry", quantity=45, unit="kg", par_level=20, reorder_point=10, last_count="2026-02-01", status="over"),
+    ]
+
+
 @router.get("/stock-levels/{warehouse_id}")
 async def get_stock_levels(warehouse_id: str):
     """Get stock levels for a warehouse."""

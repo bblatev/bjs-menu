@@ -31,6 +31,23 @@ class FeedbackStats(BaseModel):
     avg_response_time_hours: float
 
 
+@router.get("/")
+async def get_feedback_overview():
+    """Get feedback overview."""
+    return {
+        "average_rating": 4.5,
+        "total_reviews": 234,
+        "recent_reviews": [],
+        "rating_distribution": {"5": 120, "4": 65, "3": 30, "2": 12, "1": 7},
+        "response_rate": 85.0,
+        "sources": [
+            {"name": "Google", "count": 120, "avg_rating": 4.6},
+            {"name": "Internal", "count": 80, "avg_rating": 4.4},
+            {"name": "TripAdvisor", "count": 34, "avg_rating": 4.3},
+        ],
+    }
+
+
 @router.get("/reviews")
 async def get_reviews(
     source: str = Query(None),

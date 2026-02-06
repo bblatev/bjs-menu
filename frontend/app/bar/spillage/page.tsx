@@ -91,7 +91,25 @@ export default function SpillagePage() {
       if (recordsRes.status === 'fulfilled' && recordsRes.value.ok) {
         const data = await recordsRes.value.json();
         if (Array.isArray(data)) {
-          setRecords(data);
+          // Normalize API response to match component interface
+          const reasonMap: Record<string, SpillageRecord['reason']> = {
+            'spoilage': 'spillage', 'spillage': 'spillage', 'breakage': 'breakage',
+            'over_pour': 'over_pour', 'comp': 'comp', 'expired': 'expired',
+          };
+          setRecords(data.map((r: Record<string, unknown>, idx: number) => ({
+            id: Number(r.id) || idx,
+            date: typeof r.timestamp === 'string' ? (r.timestamp as string).split('T')[0] : (r.date as string) || '',
+            item_name: (r.item_name || r.item || 'Unknown') as string,
+            item_category: (r.item_category || r.category || 'General') as string,
+            quantity: Number(r.quantity) || 0,
+            unit: (r.unit || 'pcs') as string,
+            cost: Number(r.cost) || 0,
+            reason: reasonMap[String(r.reason).toLowerCase()] || 'other',
+            bartender_id: Number(r.bartender_id) || 0,
+            bartender_name: (r.bartender_name || r.recorded_by || 'Staff') as string,
+            notes: (r.notes || '') as string,
+            approved_by: (r.approved_by || undefined) as string | undefined,
+          })));
         }
       } else {
         // Fallback data

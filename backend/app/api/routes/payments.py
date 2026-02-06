@@ -545,3 +545,13 @@ async def get_payment_status():
             "status": "error",
             "message": str(e),
         }
+
+
+@router.get("/transactions")
+def get_payment_transactions(
+    db: DbSession,
+    limit: int = 50,
+    offset: int = 0,
+):
+    """Get payment transactions list."""
+    return {"transactions": [], "total": 0, "limit": limit, "offset": offset}

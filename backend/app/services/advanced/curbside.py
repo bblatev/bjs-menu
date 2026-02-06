@@ -47,9 +47,9 @@ class CurbsideService:
         order_id: int,
     ) -> Optional[CurbsideOrder]:
         """Get a curbside order by order ID."""
-        query = select(CurbsideOrder).where(CurbsideOrder.order_id == order_id)
+        query = select(CurbsideOrder).where(CurbsideOrder.order_id == order_id).limit(1)
         result = self.db.execute(query)
-        return result.scalar_one_or_none()
+        return result.scalars().first()
 
     def get_pending_orders(
         self,

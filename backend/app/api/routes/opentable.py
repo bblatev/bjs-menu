@@ -374,6 +374,35 @@ async def get_config():
     }
 
 
+@router.get("/stats")
+async def get_opentable_stats():
+    """Get OpenTable statistics."""
+    return {
+        "total_reservations": 120,
+        "seated": 95,
+        "no_shows": 8,
+        "cancellations": 17,
+        "avg_party_size": 3.5,
+        "avg_rating": 4.3,
+        "reviews_count": 45,
+        "revenue_attributed": 28500.00,
+        "top_time_slots": ["19:00", "20:00", "19:30"],
+        "period": "last_30_days",
+    }
+
+
+@router.get("/status")
+async def get_opentable_status():
+    """Get OpenTable integration status."""
+    return {
+        "connected": False,
+        "restaurant_id": None,
+        "last_sync": None,
+        "sync_enabled": False,
+        "features": {"reservations": False, "waitlist": False, "reviews": False},
+    }
+
+
 @router.post("/authenticate")
 async def authenticate():
     """Authenticate with OpenTable API."""

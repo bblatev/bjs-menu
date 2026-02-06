@@ -915,3 +915,25 @@ def create_kitchen_order(
         "status": kitchen_order.status,
         "created_at": kitchen_order.created_at.isoformat() if kitchen_order.created_at else None,
     }
+
+
+@router.post("/rush/{order_id}")
+def set_rush_priority(order_id: int, db: DbSession):
+    """Mark an order as rush priority."""
+    order = db.query(KitchenOrder).filter(KitchenOrder.id == order_id).first()
+    if not order:
+        raise HTTPException(status_code=404, detail="Kitchen order not found")
+    order.priority = 1  # 1 = rush
+    db.commit()
+    return {"success": True, "order_id": order_id, "priority": "rush"}
+
+
+@router.post("/vip/{order_id}")
+def set_vip_priority(order_id: int, db: DbSession):
+    """Mark an order as VIP priority."""
+    order = db.query(KitchenOrder).filter(KitchenOrder.id == order_id).first()
+    if not order:
+        raise HTTPException(status_code=404, detail="Kitchen order not found")
+    order.priority = 2  # 2 = VIP
+    db.commit()
+    return {"success": True, "order_id": order_id, "priority": "vip"}

@@ -33,8 +33,11 @@ class ReportType(str, Enum):
     DAILY_SALES = "daily_sales"
     WEEKLY_SALES = "weekly_sales"
     MONTHLY_SALES = "monthly_sales"
+    SALES = "sales"
     INVENTORY_STATUS = "inventory_status"
+    INVENTORY = "inventory"
     LABOR_SUMMARY = "labor_summary"
+    LABOR = "labor"
     MENU_PERFORMANCE = "menu_performance"
     CUSTOMER_INSIGHTS = "customer_insights"
     FINANCIAL_SUMMARY = "financial_summary"
@@ -217,7 +220,7 @@ class ScheduledReportsService:
     def _calculate_next_run(self, schedule: ReportSchedule) -> datetime:
         """Calculate the next run time for a schedule."""
         now = datetime.now(timezone.utc)
-        run_time = datetime.combine(now.date(), schedule.time_of_day)
+        run_time = datetime.combine(now.date(), schedule.time_of_day, tzinfo=timezone.utc)
 
         if schedule.frequency == ReportFrequency.DAILY:
             if run_time <= now:
@@ -230,7 +233,8 @@ class ScheduledReportsService:
                 days_ahead += 7
             run_time = datetime.combine(
                 now.date() + timedelta(days=days_ahead),
-                schedule.time_of_day
+                schedule.time_of_day,
+                tzinfo=timezone.utc
             )
 
         elif schedule.frequency == ReportFrequency.MONTHLY:
@@ -242,11 +246,12 @@ class ScheduledReportsService:
                     next_month = datetime(now.year + 1, 1, target_day)
                 else:
                     next_month = datetime(now.year, now.month + 1, target_day)
-                run_time = datetime.combine(next_month.date(), schedule.time_of_day)
+                run_time = datetime.combine(next_month.date(), schedule.time_of_day, tzinfo=timezone.utc)
             else:
                 run_time = datetime.combine(
                     datetime(now.year, now.month, target_day).date(),
-                    schedule.time_of_day
+                    schedule.time_of_day,
+                    tzinfo=timezone.utc
                 )
 
         return run_time

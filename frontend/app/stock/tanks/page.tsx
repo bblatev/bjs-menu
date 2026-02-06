@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { API_URL, getAuthHeaders } from "@/lib/api";
 
 interface Tank {
   tank_id: string;
@@ -47,17 +48,9 @@ export default function TanksPage() {
 
   const productTypes = ["oil", "sauce", "syrup", "wine", "spirits", "juice", "water", "other"];
 
-  const getAuthHeaders = () => {
-    const token = localStorage.getItem("access_token");
-    return {
-      Authorization: `Bearer ${token}`,
-      "Content-Type": "application/json",
-    };
-  };
-
   const loadTanks = useCallback(async () => {
     try {
-      let url = "/api/v1/inventory-hardware/tanks";
+      let url = `${API_URL}/inventory-hardware/tanks`;
       if (filterStatus !== "all") url += `?status=${filterStatus}`;
 
       const res = await fetch(url, { headers: getAuthHeaders() });
@@ -78,7 +71,7 @@ export default function TanksPage() {
   const handleRegisterTank = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const res = await fetch("/api/v1/inventory-hardware/tanks", {
+      const res = await fetch(`${API_URL}/inventory-hardware/tanks`, {
         method: "POST",
         headers: getAuthHeaders(),
         body: JSON.stringify(form),
@@ -104,7 +97,7 @@ export default function TanksPage() {
   const handleUpdateLevel = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const res = await fetch("/api/v1/inventory-hardware/tanks/level", {
+      const res = await fetch(`${API_URL}/inventory-hardware/tanks/level`, {
         method: "PUT",
         headers: getAuthHeaders(),
         body: JSON.stringify(updateForm),

@@ -507,14 +507,18 @@ def record_item_use(db: DbSession, staff_id: int, product_id: int):
         db.commit()
         return {"status": "updated", "use_count": existing.use_count}
 
-    item = OperatorRecentItem(
-        staff_id=staff_id,
-        product_id=product_id,
-        last_used=datetime.now(timezone.utc),
-        use_count=1,
-    )
-    db.add(item)
-    db.commit()
+    try:
+        item = OperatorRecentItem(
+            staff_id=staff_id,
+            product_id=product_id,
+            last_used=datetime.now(timezone.utc),
+            use_count=1,
+        )
+        db.add(item)
+        db.commit()
+    except Exception:
+        db.rollback()
+        raise HTTPException(status_code=404, detail="Staff or product not found")
 
     return {"status": "created", "use_count": 1}
 

@@ -126,14 +126,22 @@ export default function WaiterTerminal() {
 
   // API calls
   const loadTables = useCallback(async () => {
-    const res = await fetch(`${API()}/waiter/floor-plan`, { headers: { Authorization: `Bearer ${token()}` } });
-    if (res.status === 401) { window.location.href = "/waiter/login"; return; }
-    if (res.ok) setTables(await res.json());
+    try {
+      const res = await fetch(`${API()}/waiter/floor-plan`, { headers: { Authorization: `Bearer ${token()}` } });
+      if (res.status === 401) { window.location.href = "/waiter/login"; return; }
+      if (res.ok) setTables(await res.json());
+    } catch (err) {
+      console.error('loadTables failed:', err);
+    }
   }, []);
 
   const loadMenu = useCallback(async () => {
-    const res = await fetch(`${API()}/waiter/menu/quick`, { headers: { Authorization: `Bearer ${token()}` } });
-    if (res.ok) setMenu(await res.json());
+    try {
+      const res = await fetch(`${API()}/waiter/menu/quick`, { headers: { Authorization: `Bearer ${token()}` } });
+      if (res.ok) setMenu(await res.json());
+    } catch (err) {
+      console.error('loadMenu failed:', err);
+    }
   }, []);
 
   const loadCheck = async (checkId: number) => {
@@ -147,7 +155,7 @@ export default function WaiterTerminal() {
 
   useEffect(() => {
     if (!localStorage.getItem("access_token")) { window.location.href = "/waiter/login"; return; }
-    Promise.all([loadTables(), loadMenu()]).then(() => setLoading(false));
+    Promise.all([loadTables(), loadMenu()]).catch(err => console.error('Failed to load:', err)).finally(() => setLoading(false));
     const i = setInterval(loadTables, 30000);
     return () => clearInterval(i);
   }, [loadTables, loadMenu]);

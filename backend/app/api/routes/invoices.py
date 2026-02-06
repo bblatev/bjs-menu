@@ -277,7 +277,7 @@ async def process_invoice_url(
 def approve_invoice(
     db: DbSession,
     invoice_id: int,
-    approver_id: int = Query(...),
+    approver_id: int = Query(default=1),
     notes: Optional[str] = None,
 ):
     """Approve an invoice."""
@@ -294,7 +294,7 @@ def approve_invoice(
 def reject_invoice(
     db: DbSession,
     invoice_id: int,
-    approver_id: int = Query(...),
+    approver_id: int = Query(default=1),
     notes: Optional[str] = None,
 ):
     """Reject an invoice."""
@@ -344,6 +344,9 @@ def list_gl_codes(db: DbSession):
 @router.post("/gl-codes/", response_model=GLCodeResponse)
 def create_gl_code(db: DbSession, gl_code: GLCodeCreate):
     """Create a new GL code."""
+    existing = db.query(GLCode).filter(GLCode.code == gl_code.code).first()
+    if existing:
+        raise HTTPException(status_code=409, detail=f"GL code '{gl_code.code}' already exists")
     db_gl = GLCode(**gl_code.model_dump())
     db.add(db_gl)
     db.commit()

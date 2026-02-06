@@ -75,7 +75,7 @@ export default function BarInventoryPage() {
     setError(null);
     try {
       const headers = getAuthHeaders();
-      const response = await fetch(`${API_URL}/bar/inventory-alerts`, {
+      const response = await fetch(`${API_URL}/bar/inventory`, {
         headers,
       });
 
@@ -96,8 +96,8 @@ export default function BarInventoryPage() {
             total_volume_ml: (Number(item.current_stock) || 0) * 750,
             par_level: Number(item.par_level) || 6,
             reorder_point: Math.floor((Number(item.par_level) || 6) / 2),
-            cost_per_bottle: Number(item.cost) || 20,
-            total_value: (Number(item.current_stock) || 0) * (Number(item.cost) || 20),
+            cost_per_bottle: Number(item.cost_per_unit) || Number(item.cost) || 20,
+            total_value: (Number(item.current_stock) || 0) * (Number(item.cost_per_unit) || Number(item.cost) || 20),
             last_count_date: new Date().toISOString().split('T')[0],
             counted_by: 'System',
             variance_from_expected: 0,

@@ -155,9 +155,9 @@ export default function BenchmarkingPage() {
       try {
         // Fetch all data in parallel
         const [summaryRes, peersRes, recommendationsRes] = await Promise.allSettled([
-          fetch(`${API_URL}/api/v5/benchmarking/summary?period=${period}`, { headers }),
-          fetch(`${API_URL}/api/v5/benchmarking/peers`, { headers }),
-          fetch(`${API_URL}/api/v5/benchmarking/recommendations`, { headers })
+          fetch(`${API_URL}/benchmarking/summary?period=${period}`, { headers }),
+          fetch(`${API_URL}/benchmarking/peers`, { headers }),
+          fetch(`${API_URL}/benchmarking/recommendations`, { headers })
         ]);
 
         // Process summary/metrics

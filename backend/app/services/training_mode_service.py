@@ -6,7 +6,7 @@ and are clearly marked as training data.
 """
 
 import logging
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Optional, Dict, Any, List
 from dataclasses import dataclass, field
 from enum import Enum
@@ -26,7 +26,7 @@ class TrainingSession:
     session_id: str
     user_id: int
     terminal_id: Optional[str] = None
-    started_at: datetime = field(default_factory=datetime.utcnow)
+    started_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
     ended_at: Optional[datetime] = None
     orders_created: int = 0
     payments_processed: int = 0
@@ -314,8 +314,7 @@ class TrainingModeService:
 
     def cleanup_old_sessions(self, hours: int = 24):
         """Clean up training sessions older than specified hours."""
-        cutoff = datetime.now(timezone.utc)
-        cutoff = cutoff.replace(hour=cutoff.hour - hours)
+        cutoff = datetime.now(timezone.utc) - timedelta(hours=hours)
 
         removed_sessions = []
         removed_orders = []

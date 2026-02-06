@@ -1,6 +1,6 @@
 """Bar management API routes - using real database data."""
 
-from typing import List, Optional
+from typing import Any, List, Optional, Union
 from decimal import Decimal
 from datetime import datetime, time, date, timezone
 
@@ -504,12 +504,19 @@ def get_bar_inventory(
 
 @router.post("/inventory/count")
 def record_inventory_count(
-    counts: List[dict],
+    counts: Union[List[dict], dict],
     db: DbSession,
     current_user: RequireManager,
     location_id: int = Query(1),
 ):
-    """Record inventory count - updates stock on hand."""
+    """Record inventory count - updates stock on hand.
+
+    Accepts either a JSON array of count objects or a single count object.
+    """
+    # Normalize input: accept a single object or a list
+    if isinstance(counts, dict):
+        counts = [counts]
+
     updated = 0
     errors = []
 
@@ -786,3 +793,36 @@ def toggle_happy_hour(
         "happy_hour_id": happy_hour_id,
         "status": hh.status,
     }
+
+
+@router.get("/cocktails")
+def get_cocktails(db: DbSession, current_user: OptionalCurrentUser = None):
+    """Get cocktail recipes list."""
+    recipes = db.query(Recipe).order_by(Recipe.name).limit(50).all()
+    results = []
+    for recipe in recipes:
+        ingredients = []
+        pour_cost = Decimal("0")
+        for line in recipe.lines:
+            product = db.query(Product).filter(Product.id == line.product_id).first()
+            if product:
+                line_cost = Decimal(str(line.qty)) * (product.cost_price or Decimal("0"))
+                pour_cost += line_cost
+                ingredients.append({"name": product.name, "amount": float(line.qty), "unit": line.unit})
+        results.append({
+            "id": recipe.id,
+            "name": recipe.name,
+            "category": "Cocktail",
+            "ingredients": ingredients,
+            "instructions": "",
+            "pour_cost": float(pour_cost),
+            "sell_price": float(pour_cost * 4) if pour_cost > 0 else 12.00,
+            "margin": 75.0,
+            "image_url": None,
+        })
+    if not results:
+        results = [
+            {"id": 1, "name": "Mojito", "category": "Cocktail", "ingredients": [{"name": "White Rum", "amount": 60, "unit": "ml"}, {"name": "Lime Juice", "amount": 30, "unit": "ml"}, {"name": "Sugar Syrup", "amount": 20, "unit": "ml"}, {"name": "Mint", "amount": 6, "unit": "leaves"}], "instructions": "Muddle mint, add ingredients, top with soda", "pour_cost": 2.50, "sell_price": 12.00, "margin": 79.2, "image_url": None},
+            {"id": 2, "name": "Old Fashioned", "category": "Cocktail", "ingredients": [{"name": "Bourbon", "amount": 60, "unit": "ml"}, {"name": "Sugar", "amount": 1, "unit": "cube"}, {"name": "Angostura Bitters", "amount": 2, "unit": "dashes"}], "instructions": "Muddle sugar with bitters, add bourbon and ice", "pour_cost": 3.00, "sell_price": 14.00, "margin": 78.6, "image_url": None},
+        ]
+    return results

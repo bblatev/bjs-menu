@@ -124,6 +124,19 @@ def get_rfm_dashboard(db: DbSession):
     return {"segments": [], "total_customers": 0, "at_risk": 0}
 
 
+@router.get("/forecasting")
+def get_forecasting_analytics(db: DbSession):
+    """Get sales forecasting analytics."""
+    return {
+        "daily_forecast": [],
+        "weekly_forecast": [],
+        "accuracy": 0,
+        "model": "seasonal_arima",
+        "last_trained": None,
+        "recommendations": [],
+    }
+
+
 # Dashboard
 
 @router.get("/dashboard")
@@ -530,15 +543,22 @@ def calculate_daily_metrics(
     location_id: Optional[int] = None,
 ):
     """Calculate daily metrics for a specific date."""
-    service = DailyMetricsService(db)
+    try:
+        service = DailyMetricsService(db)
 
-    if not target_date:
-        target_date = date.today() - timedelta(days=1)
+        if not target_date:
+            target_date = date.today() - timedelta(days=1)
 
-    # Convert date to datetime for the service method
-    target_datetime = datetime.combine(target_date, datetime.min.time())
-    result = service.calculate_daily_metrics(target_datetime, location_id)
-    return {"status": "ok", "date": str(target_date), "metrics_id": result.id}
+        # Convert date to datetime for the service method
+        target_datetime = datetime.combine(target_date, datetime.min.time())
+        result = service.calculate_daily_metrics(target_datetime, location_id)
+        return {"status": "ok", "date": str(target_date), "metrics_id": result.id}
+    except Exception as e:
+        db.rollback()
+        error_msg = str(e)
+        if "daily_metrics" in error_msg and "does not exist" in error_msg:
+            raise HTTPException(status_code=503, detail="Daily metrics table not yet created. Run database migrations first.")
+        raise HTTPException(status_code=500, detail=f"Failed to calculate metrics: {error_msg}")
 
 
 @router.get("/metrics-trend/{metric_name}", response_model=MetricsTrend)

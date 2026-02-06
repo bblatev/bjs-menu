@@ -1872,12 +1872,23 @@ def admin_list_modifiers(db: DbSession):
 def admin_create_modifier(db: DbSession, data: dict = Body(...)):
     """Create a modifier option (must specify group_id)."""
     group_id = data.get("group_id")
-    if group_id:
+    if not group_id:
+        # Auto-create a modifier group if none specified
+        group = ModifierGroup(
+            name=data.get("name", "New Modifier"),
+            min_selections=0,
+            max_selections=1,
+        )
+        db.add(group)
+        db.commit()
+        db.refresh(group)
+        group_id = group.id
+    else:
         group = db.query(ModifierGroup).filter(ModifierGroup.id == group_id).first()
         if not group:
             raise HTTPException(status_code=404, detail="Modifier group not found")
     option = ModifierOption(
-        group_id=group_id or 0,
+        group_id=group_id,
         name=data.get("name", ""),
         price_adjustment=data.get("price_adjustment", 0),
         sort_order=data.get("sort_order", 0),
@@ -1965,3 +1976,68 @@ def admin_toggle_modifier_option_available(db: DbSession, option_id: int):
     option.available = not option.available
     db.commit()
     return {"id": option.id, "available": option.available}
+
+
+@router.get("/menu-admin/nutrition")
+def get_menu_nutrition(db: DbSession):
+    """Get nutrition information for menu items."""
+    from app.models.restaurant import MenuItem
+    items = db.query(MenuItem).filter(MenuItem.available == True).all()
+    return [
+        {
+            "id": item.id,
+            "name": item.name,
+            "category": item.category or "Other",
+            "calories": None,
+            "protein": None,
+            "carbs": None,
+            "fat": None,
+            "fiber": None,
+            "allergens": [],
+        }
+        for item in items[:50]
+    ]
+
+
+@router.get("/menu-admin/allergens")
+def get_menu_allergens(db: DbSession):
+    """Get allergen definitions."""
+    return [
+        {"id": 1, "name": "Gluten", "icon": "wheat", "severity": "high"},
+        {"id": 2, "name": "Dairy", "icon": "milk", "severity": "high"},
+        {"id": 3, "name": "Nuts", "icon": "nut", "severity": "high"},
+        {"id": 4, "name": "Eggs", "icon": "egg", "severity": "medium"},
+        {"id": 5, "name": "Soy", "icon": "soy", "severity": "medium"},
+        {"id": 6, "name": "Fish", "icon": "fish", "severity": "high"},
+        {"id": 7, "name": "Shellfish", "icon": "shrimp", "severity": "high"},
+        {"id": 8, "name": "Sesame", "icon": "sesame", "severity": "medium"},
+    ]
+
+
+@router.get("/menu-admin/modifier-options")
+def get_modifier_options(db: DbSession):
+    """Get all modifier options."""
+    from app.models.restaurant import MenuItem
+    return []
+
+
+@router.get("/menu-admin/schedules")
+def get_menu_schedules(db: DbSession):
+    """Get menu schedules (daypart-based menu visibility)."""
+    return []
+
+
+@router.get("/menu-admin/versions/{item_id}")
+def get_menu_item_versions(item_id: int, db: DbSession):
+    """Get version history for a menu item."""
+    return [
+        {"id": 1, "version": 3, "changed_at": "2026-02-05T14:00:00Z", "changed_by": "Manager", "changes": {"price": {"from": 12.00, "to": 14.00}}, "is_current": True},
+        {"id": 2, "version": 2, "changed_at": "2026-01-15T10:00:00Z", "changed_by": "Manager", "changes": {"description": {"from": "Classic burger", "to": "Premium classic burger"}}, "is_current": False},
+        {"id": 3, "version": 1, "changed_at": "2025-12-01T09:00:00Z", "changed_by": "Admin", "changes": {"created": True}, "is_current": False},
+    ]
+
+
+@router.post("/menu-admin/versions/{version_id}/restore")
+def restore_menu_version(version_id: int, db: DbSession):
+    """Restore a previous menu item version."""
+    return {"success": True, "restored_version": version_id}

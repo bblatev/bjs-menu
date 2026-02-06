@@ -86,7 +86,20 @@ export default function BarTabsPage() {
         throw new Error(`Failed to fetch tabs: ${response.status}`);
       }
       const data = await response.json();
-      setTabs(Array.isArray(data) ? data : data.tabs || []);
+      const rawTabs = Array.isArray(data) ? data : data.tabs || [];
+      // Normalize API response to match component interface
+      setTabs(rawTabs.map((tab: Record<string, unknown>) => ({
+        ...tab,
+        tab_number: tab.tab_number || `TAB-${tab.id}`,
+        bartender_id: tab.bartender_id || 0,
+        bartender_name: tab.bartender_name || 'Staff',
+        opened_at: tab.opened_at || (typeof tab.created_at === 'string' ? (tab.created_at as string).split('T')[1]?.substring(0, 5) : ''),
+        closed_at: tab.closed_at || null,
+        customer_phone: tab.customer_phone || '',
+        card_last_four: tab.card_last_four || '',
+        items: Array.isArray(tab.items) ? tab.items : [],
+        notes: tab.notes || '',
+      })));
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to fetch tabs';
       setError(message);
@@ -100,7 +113,7 @@ export default function BarTabsPage() {
     try {
       const headers = getAuthHeaders();
 
-      const response = await fetch(`${API_URL}/tabs/stats`, { headers });
+      const response = await fetch(`${API_URL}/bar/stats`, { headers });
       if (response.ok) {
         const data = await response.json();
         setStats(data);
@@ -117,7 +130,7 @@ export default function BarTabsPage() {
 
   const createTab = async () => {
     try {
-      const response = await fetch(`${API_URL}/tabs/`, {
+      const response = await fetch(`${API_URL}/bar/tabs`, {
         method: 'POST',
         headers: getAuthHeaders(),
         body: JSON.stringify({
@@ -153,7 +166,7 @@ export default function BarTabsPage() {
     if (!selectedTab) return;
 
     try {
-      const response = await fetch(`${API_URL}/tabs/${selectedTab.id}/close`, {
+      const response = await fetch(`${API_URL}/bar/tabs/${selectedTab.id}/close`, {
         method: 'POST',
         headers: getAuthHeaders(),
         body: JSON.stringify({
@@ -187,14 +200,21 @@ export default function BarTabsPage() {
   };
 
   const formatDuration = (openedAt: string) => {
-    const [hours, minutes] = openedAt.split(':').map(Number);
-    const opened = new Date();
-    opened.setHours(hours, minutes, 0);
-    const now = new Date();
-    const diffMs = now.getTime() - opened.getTime();
-    const diffMins = Math.floor(diffMs / 60000);
-    if (diffMins < 60) return `${diffMins}m`;
-    return `${Math.floor(diffMins / 60)}h ${diffMins % 60}m`;
+    if (!openedAt) return '—';
+    try {
+      const [hours, minutes] = openedAt.split(':').map(Number);
+      if (isNaN(hours) || isNaN(minutes)) return '—';
+      const opened = new Date();
+      opened.setHours(hours, minutes, 0);
+      const now = new Date();
+      const diffMs = now.getTime() - opened.getTime();
+      const diffMins = Math.floor(diffMs / 60000);
+      if (diffMins < 0) return '0m';
+      if (diffMins < 60) return `${diffMins}m`;
+      return `${Math.floor(diffMins / 60)}h ${diffMins % 60}m`;
+    } catch {
+      return '—';
+    }
   };
 
   if (loading) {

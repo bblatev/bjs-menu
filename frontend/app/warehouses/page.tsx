@@ -256,10 +256,21 @@ export default function WarehousesPage() {
 
   // Initial data fetch
   useEffect(() => {
-    fetchWarehouses();
-    fetchStockLevels();
-    fetchTransfers();
-    fetchActivities();
+    const loadAll = async () => {
+      try {
+        await Promise.all([fetchWarehouses(), fetchStockLevels(), fetchTransfers(), fetchActivities()]);
+      } catch (err) {
+        console.error('Failed to load warehouse data:', err);
+      } finally {
+        setLoading((prev) => ({
+          warehouses: false,
+          stockLevels: false,
+          transfers: false,
+          activities: false,
+        }));
+      }
+    };
+    loadAll();
   }, [fetchWarehouses, fetchStockLevels, fetchTransfers, fetchActivities]);
 
   // Refetch stock levels when filter changes

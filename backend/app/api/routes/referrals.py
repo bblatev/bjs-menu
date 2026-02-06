@@ -98,3 +98,17 @@ async def get_referral_settings():
 async def send_bulk_invites(emails: List[str]):
     """Send bulk referral invites."""
     return {"success": True, "sent_count": len(emails)}
+
+
+@router.get("/stats")
+async def get_referral_stats():
+    """Get referral program statistics."""
+    return {
+        "total_referrals": 45,
+        "successful_referrals": 32,
+        "pending_referrals": 8,
+        "total_rewards_given": 960.00,
+        "avg_reward_value": 30.00,
+        "conversion_rate": 71.1,
+        "top_referrers": [],
+    }

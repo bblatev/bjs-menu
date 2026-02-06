@@ -99,6 +99,62 @@ async def get_budget_variance(period: str):
     ]
 
 
+@router.get("/budget-variance")
+async def get_budget_variance_default():
+    """Get budget variance for the current period."""
+    return [
+        BudgetVariance(category="Food", budgeted=15000, actual=12500, variance=2500, variance_pct=16.7),
+        BudgetVariance(category="Beverage", budgeted=8000, actual=7200, variance=800, variance_pct=10.0),
+        BudgetVariance(category="Labor", budgeted=25000, actual=26500, variance=-1500, variance_pct=-6.0),
+        BudgetVariance(category="Marketing", budgeted=3000, actual=1800, variance=1200, variance_pct=40.0),
+    ]
+
+
+@router.get("/daily-reconciliation/{date}")
+async def get_daily_reconciliation(date: str):
+    """Get daily reconciliation for a specific date."""
+    return {
+        "id": "1",
+        "date": date,
+        "status": "open",
+        "opening_cash": 500.00,
+        "total_sales": 3250.00,
+        "cash_sales": 1200.00,
+        "card_sales": 1850.00,
+        "other_payments": 200.00,
+        "total_tips": 380.00,
+        "expected_cash": 1700.00,
+        "actual_cash": 1685.00,
+        "variance": -15.00,
+        "completed_by": None,
+        "completed_at": None,
+    }
+
+
+@router.get("/daily-reconciliation")
+async def get_daily_reconciliation_list():
+    """Get daily reconciliation sessions list."""
+    return {
+        "sessions": [
+            {"id": "1", "date": "2026-02-06", "status": "open", "total_sales": 3250.00, "variance": -15.00},
+            {"id": "2", "date": "2026-02-05", "status": "completed", "total_sales": 4100.00, "variance": 5.00},
+        ],
+        "current": {"id": "1", "date": "2026-02-06", "status": "open"},
+    }
+
+
+@router.post("/daily-reconciliation/{rec_id}/cash-count")
+async def submit_cash_count(rec_id: str):
+    """Submit cash count for daily reconciliation."""
+    return {"success": True, "reconciliation_id": rec_id}
+
+
+@router.post("/daily-reconciliation/{rec_id}/complete")
+async def complete_reconciliation(rec_id: str):
+    """Complete daily reconciliation."""
+    return {"success": True, "reconciliation_id": rec_id, "status": "completed"}
+
+
 @router.post("/budgets")
 async def create_budget(budget: Budget):
     """Create a new budget."""

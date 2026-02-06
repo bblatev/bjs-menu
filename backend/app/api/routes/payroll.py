@@ -63,3 +63,15 @@ async def approve_all_payroll():
 async def mark_as_paid(entry_id: str):
     """Mark a payroll entry as paid."""
     return {"success": True}
+
+
+@router.get("/runs")
+async def get_payroll_runs():
+    """Get payroll runs."""
+    return []
+
+
+@router.get("/employees")
+async def get_payroll_employees():
+    """Get payroll employees."""
+    return []

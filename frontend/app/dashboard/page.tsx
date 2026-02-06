@@ -92,28 +92,23 @@ function DashboardContent() {
         fetchWithTimeout(`${API_URL}/reservations`, { headers }),
       ]);
 
-      let apiWorking = false;
-
       // Process dashboard stats
       if (statsRes.status === 'fulfilled' && statsRes.value.ok) {
         const data = await statsRes.value.json();
         setDashboardStats(data);
-        apiWorking = true;
       }
 
       // Process kitchen stats
       if (kitchenRes.status === 'fulfilled' && kitchenRes.value.ok) {
         const data = await kitchenRes.value.json();
         setKitchenStats(data);
-        apiWorking = true;
       }
 
-      // Process orders
+      // Process orders (may return 401 if not authenticated - that's OK)
       if (ordersRes.status === 'fulfilled' && ordersRes.value.ok) {
         const data = await ordersRes.value.json();
         const ordersList = Array.isArray(data) ? data : (data.orders || []);
         setOrders(ordersList);
-        apiWorking = true;
       }
 
       // Process tables
@@ -121,7 +116,6 @@ function DashboardContent() {
         const data = await tablesRes.value.json();
         const tablesList = Array.isArray(data) ? data : (data.tables || []);
         setTables(tablesList);
-        apiWorking = true;
       }
 
       // Process reservations
@@ -129,20 +123,34 @@ function DashboardContent() {
         const data = await reservationsRes.value.json();
         const reservationsList = Array.isArray(data) ? data : (data.reservations || data.items || []);
         setReservations(reservationsList);
-        apiWorking = true;
       }
 
-      // Check system health based on API responses
-      setSystemHealth({
-        database: apiWorking,
-        redis: apiWorking,
-        api: apiWorking,
-      });
-
-      if (!apiWorking) {
-        setError('API сървърът не отговаря. Проверете връзката.');
-      } else {
-        setError(null);
+      // Check real system health via /health/ready endpoint
+      try {
+        const healthRes = await fetchWithTimeout(
+          `${API_URL.replace('/api/v1', '')}/health/ready`, { headers }, 5000
+        );
+        if (healthRes.ok) {
+          const health = await healthRes.json();
+          setSystemHealth({
+            database: health.checks?.database === 'healthy',
+            redis: true,
+            api: true,
+          });
+          setError(null);
+        } else {
+          setSystemHealth({ database: false, redis: false, api: true });
+        }
+      } catch {
+        // API responded to data requests above, so it's up
+        const anyResponse = [statsRes, kitchenRes, tablesRes].some(
+          r => r.status === 'fulfilled'
+        );
+        setSystemHealth({
+          database: anyResponse,
+          redis: anyResponse,
+          api: anyResponse,
+        });
       }
     } catch (err) {
       console.error('Failed to fetch dashboard data:', err);

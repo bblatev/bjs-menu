@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { API_URL, getAuthHeaders } from '@/lib/api';
 
 interface Keg {
   keg_id: string;
@@ -53,17 +54,9 @@ export default function KegsPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filterStatus]);
 
-  const getAuthHeaders = () => {
-    const token = localStorage.getItem("access_token");
-    return {
-      Authorization: `Bearer ${token}`,
-      "Content-Type": "application/json",
-    };
-  };
-
   const loadKegs = async () => {
     try {
-      let url = "/api/v1/inventory-hardware/kegs";
+      let url = `${API_URL}/inventory-hardware/kegs`;
       if (filterStatus !== "all") url += `?status=${filterStatus}`;
 
       const res = await fetch(url, { headers: getAuthHeaders() });
@@ -80,7 +73,7 @@ export default function KegsPage() {
   const handleRegisterKeg = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const res = await fetch("/api/v1/inventory-hardware/kegs", {
+      const res = await fetch(`${API_URL}/inventory-hardware/kegs`, {
         method: "POST",
         headers: getAuthHeaders(),
         body: JSON.stringify(form),
@@ -99,7 +92,7 @@ export default function KegsPage() {
   const handleTapKeg = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const res = await fetch("/api/v1/inventory-hardware/kegs/tap", {
+      const res = await fetch(`${API_URL}/inventory-hardware/kegs/tap`, {
         method: "POST",
         headers: getAuthHeaders(),
         body: JSON.stringify(tapForm),

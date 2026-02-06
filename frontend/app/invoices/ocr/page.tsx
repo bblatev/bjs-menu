@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
+import { API_URL, getAuthHeaders } from '@/lib/api';
 
 interface OCRJob {
   id: number;
@@ -51,9 +52,8 @@ export default function InvoiceOCRPage() {
 
   const loadJobs = async () => {
     try {
-      const token = localStorage.getItem('access_token');
-      const response = await fetch('/api/v1/enterprise/invoice-ocr/jobs', {
-        headers: { 'Authorization': `Bearer ${token}` }
+      const response = await fetch(`${API_URL}/enterprise/invoice-ocr/jobs`, {
+        headers: getAuthHeaders()
       });
 
       if (response.ok) {
@@ -156,13 +156,12 @@ export default function InvoiceOCRPage() {
 
     for (const file of files) {
       try {
-        const token = localStorage.getItem('access_token');
         const formData = new FormData();
         formData.append('file', file);
 
-        const response = await fetch('/api/v1/enterprise/invoice-ocr/upload', {
+        const response = await fetch(`${API_URL}/enterprise/invoice-ocr/upload`, {
           method: 'POST',
-          headers: { 'Authorization': `Bearer ${token}` },
+          headers: { 'Authorization': getAuthHeaders()['Authorization'] },
           body: formData
         });
 
@@ -194,10 +193,9 @@ export default function InvoiceOCRPage() {
 
   const handleApprove = async (job: OCRJob) => {
     try {
-      const token = localStorage.getItem('access_token');
-      const response = await fetch(`/api/v1/enterprise/invoice-ocr/jobs/${job.id}/approve`, {
+      const response = await fetch(`${API_URL}/enterprise/invoice-ocr/jobs/${job.id}/approve`, {
         method: 'POST',
-        headers: { 'Authorization': `Bearer ${token}` }
+        headers: getAuthHeaders()
       });
 
       if (response.ok) {
@@ -218,10 +216,9 @@ export default function InvoiceOCRPage() {
 
   const handleReject = async (job: OCRJob) => {
     try {
-      const token = localStorage.getItem('access_token');
-      await fetch(`/api/v1/enterprise/invoice-ocr/jobs/${job.id}/reject`, {
+      await fetch(`${API_URL}/enterprise/invoice-ocr/jobs/${job.id}/reject`, {
         method: 'POST',
-        headers: { 'Authorization': `Bearer ${token}` }
+        headers: getAuthHeaders()
       });
       setJobs(prev => prev.map(j => j.id === job.id ? { ...j, status: 'rejected' } : j));
       setSelectedJob(null);

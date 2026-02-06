@@ -149,6 +149,16 @@ class DigitalBoard(BaseModel):
     is_active: bool = True
 
 
+# ============ ITEMS ============
+
+@router.get("/items")
+def get_menu_complete_items(db: DbSession):
+    """Get all menu items with complete details."""
+    from app.models.restaurant import MenuItem
+    items = db.query(MenuItem).filter(MenuItem.available == True).all()
+    return [{"id": i.id, "name": i.name, "price": float(i.price) if i.price else 0, "category": i.category, "available": i.available} for i in items]
+
+
 # ============ TAGS ============
 
 @router.get("/tags", response_model=List[MenuTag])

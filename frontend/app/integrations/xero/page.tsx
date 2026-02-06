@@ -1,8 +1,9 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import Link from 'next/link';
+import { API_URL, getAuthHeaders } from '@/lib/api';
 
 interface SyncLog {
   id: number;
@@ -14,11 +15,21 @@ interface SyncLog {
   error_message?: string;
 }
 
+interface AccountMapping {
+  id: number;
+  local_category: string;
+  xero_account_code: string;
+  xero_account_name: string | null;
+  sync_direction: string;
+  is_active: boolean;
+}
+
 export default function XeroIntegrationPage() {
   const [isConnected, setIsConnected] = useState(false);
   const [organizationName, setOrganizationName] = useState('');
   const [lastSyncTime, setLastSyncTime] = useState<string | null>(null);
   const [syncLogs, setSyncLogs] = useState<SyncLog[]>([]);
+  const [mappings, setMappings] = useState<AccountMapping[]>([]);
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
   const [activeTab, setActiveTab] = useState<'overview' | 'mappings' | 'logs'>('overview');
@@ -31,41 +42,103 @@ export default function XeroIntegrationPage() {
     sync_frequency: 'daily',
   });
 
-  useEffect(() => {
-    loadIntegrationData();
-  }, []);
-
-  const loadIntegrationData = async () => {
+  const loadIntegrationData = useCallback(async () => {
+    const headers = getAuthHeaders();
     try {
-      // Mock data
-      setIsConnected(false);
-      setSyncLogs([]);
+      const [statusRes, logsRes, mappingsRes] = await Promise.all([
+        fetch(`${API_URL}/xero/status`, { headers }),
+        fetch(`${API_URL}/xero/sync-logs`, { headers }),
+        fetch(`${API_URL}/xero/mappings`, { headers }),
+      ]);
+
+      const status = await statusRes.json();
+      setIsConnected(status.connected || false);
+      setOrganizationName(status.organization_name || '');
+      setLastSyncTime(status.last_sync || null);
+      if (status.sync_enabled !== undefined) {
+        setSettings(prev => ({ ...prev, auto_sync_enabled: status.sync_enabled }));
+      }
+
+      const logs = await logsRes.json();
+      setSyncLogs(Array.isArray(logs) ? logs : []);
+
+      const maps = await mappingsRes.json();
+      setMappings(Array.isArray(maps) ? maps : []);
     } catch (error) {
       console.error('Error loading integration data:', error);
     } finally {
       setLoading(false);
     }
+  }, []);
+
+  useEffect(() => {
+    loadIntegrationData();
+  }, [loadIntegrationData]);
+
+  const handleConnect = async () => {
+    const headers = getAuthHeaders();
+    try {
+      const res = await fetch(`${API_URL}/xero/connect`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ redirect_uri: `${window.location.origin}/integrations/xero/callback` }),
+      });
+      const data = await res.json();
+      if (data.auth_url) {
+        window.open(data.auth_url, '_blank');
+      }
+    } catch (error) {
+      console.error('Connect error:', error);
+    }
   };
 
-  const handleConnect = () => {
-    window.open('https://login.xero.com/identity/connect/authorize', '_blank');
-  };
-
-  const handleDisconnect = () => {
-    if (confirm('Are you sure you want to disconnect Xero?')) {
+  const handleDisconnect = async () => {
+    if (!confirm('Are you sure you want to disconnect Xero?')) return;
+    const headers = getAuthHeaders();
+    try {
+      await fetch(`${API_URL}/xero/disconnect`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ confirm: true }),
+      });
       setIsConnected(false);
       setOrganizationName('');
+      loadIntegrationData();
+    } catch (error) {
+      console.error('Disconnect error:', error);
     }
   };
 
   const handleSync = async (syncType: string) => {
     setSyncing(true);
+    const headers = getAuthHeaders();
     try {
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      alert(`${syncType} sync completed!`);
-      loadIntegrationData();
+      const res = await fetch(`${API_URL}/xero/sync`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ sync_type: syncType.toLowerCase() }),
+      });
+      const data = await res.json();
+      if (data.status === 'success') {
+        loadIntegrationData();
+      }
+    } catch (error) {
+      console.error('Sync error:', error);
     } finally {
       setSyncing(false);
+    }
+  };
+
+  const saveSettings = async () => {
+    const headers = getAuthHeaders();
+    try {
+      await fetch(`${API_URL}/xero/settings`, {
+        method: 'PUT',
+        headers,
+        body: JSON.stringify(settings),
+      });
+    } catch (error) {
+      console.error('Settings save error:', error);
     }
   };
 
@@ -89,7 +162,7 @@ export default function XeroIntegrationPage() {
           </Link>
           <div className="flex items-center gap-3">
             <div className="w-12 h-12 rounded-xl bg-blue-100 flex items-center justify-center">
-              <span className="text-2xl">🔵</span>
+              <span className="text-2xl">X</span>
             </div>
             <div>
               <h1 className="text-2xl font-display font-bold text-surface-900">Xero Integration</h1>
@@ -99,7 +172,7 @@ export default function XeroIntegrationPage() {
         </div>
         {isConnected && (
           <button
-            onClick={() => handleSync('Full')}
+            onClick={() => handleSync('all')}
             disabled={syncing}
             className="px-4 py-2 bg-amber-500 text-gray-900 rounded-lg hover:bg-amber-600 transition-colors flex items-center gap-2 disabled:opacity-50"
           >
@@ -126,6 +199,9 @@ export default function XeroIntegrationPage() {
               {isConnected && organizationName && (
                 <div className="text-sm text-surface-600">{organizationName}</div>
               )}
+              {lastSyncTime && (
+                <div className="text-xs text-surface-400 mt-1">Last sync: {new Date(lastSyncTime).toLocaleString()}</div>
+              )}
             </div>
           </div>
           {isConnected ? (
@@ -149,10 +225,10 @@ export default function XeroIntegrationPage() {
       {/* Tabs */}
       <div className="border-b border-surface-200">
         <div className="flex gap-4">
-          {['overview', 'mappings', 'logs'].map((tab) => (
+          {(['overview', 'mappings', 'logs'] as const).map((tab) => (
             <button
               key={tab}
-              onClick={() => setActiveTab(tab as any)}
+              onClick={() => setActiveTab(tab)}
               className={`px-4 py-2 border-b-2 -mb-px transition-colors ${
                 activeTab === tab
                   ? 'border-amber-500 text-amber-600'
@@ -165,12 +241,15 @@ export default function XeroIntegrationPage() {
         </div>
       </div>
 
-      {/* Content */}
+      {/* Overview Tab */}
       {activeTab === 'overview' && (
         <div className="space-y-6">
           <div className="bg-white rounded-xl border border-surface-200 overflow-hidden">
-            <div className="p-4 border-b border-surface-100">
+            <div className="p-4 border-b border-surface-100 flex items-center justify-between">
               <h3 className="font-semibold text-surface-900">Sync Settings</h3>
+              <button onClick={saveSettings} className="px-3 py-1.5 text-sm bg-amber-500 text-white rounded-lg hover:bg-amber-600">
+                Save Settings
+              </button>
             </div>
             <div className="p-6 space-y-4">
               <div className="grid grid-cols-2 gap-4">
@@ -194,15 +273,35 @@ export default function XeroIntegrationPage() {
                   </label>
                 ))}
               </div>
+              <div className="flex items-center gap-4 pt-2">
+                <label className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    checked={settings.auto_sync_enabled}
+                    onChange={(e) => setSettings({ ...settings, auto_sync_enabled: e.target.checked })}
+                    className="w-5 h-5 rounded text-amber-500"
+                  />
+                  <span className="text-sm font-medium text-surface-900">Auto-sync</span>
+                </label>
+                <select
+                  value={settings.sync_frequency}
+                  onChange={(e) => setSettings({ ...settings, sync_frequency: e.target.value })}
+                  className="px-3 py-1.5 border border-surface-200 rounded-lg text-sm"
+                >
+                  <option value="hourly">Hourly</option>
+                  <option value="daily">Daily</option>
+                  <option value="weekly">Weekly</option>
+                </select>
+              </div>
             </div>
           </div>
 
           <div className="grid grid-cols-4 gap-4">
             {[
-              { label: 'Sync Invoices', icon: '📄', action: () => handleSync('Invoices') },
-              { label: 'Sync Bills', icon: '📋', action: () => handleSync('Bills') },
-              { label: 'Sync Bank', icon: '🏦', action: () => handleSync('Bank') },
-              { label: 'Test Connection', icon: '🔌', action: () => alert('Connection OK!') },
+              { label: 'Sync Invoices', icon: 'INV', action: () => handleSync('invoices') },
+              { label: 'Sync Bills', icon: 'BIL', action: () => handleSync('bills') },
+              { label: 'Sync Contacts', icon: 'CON', action: () => handleSync('contacts') },
+              { label: 'Sync All', icon: 'ALL', action: () => handleSync('all') },
             ].map((item, index) => (
               <motion.button
                 key={item.label}
@@ -213,27 +312,109 @@ export default function XeroIntegrationPage() {
                 disabled={!isConnected || syncing}
                 className="p-4 bg-white rounded-xl border border-surface-200 hover:border-amber-300 hover:shadow-md transition-all disabled:opacity-50"
               >
-                <div className="text-3xl mb-2">{item.icon}</div>
-                <div className="font-medium text-surface-900">{item.label}</div>
+                <div className="text-xl font-bold mb-2 text-amber-600">{item.icon}</div>
+                <div className="font-medium text-surface-900 text-sm">{item.label}</div>
               </motion.button>
             ))}
           </div>
         </div>
       )}
 
+      {/* Mappings Tab */}
       {activeTab === 'mappings' && (
-        <div className="bg-white rounded-xl p-12 border border-surface-200 text-center">
-          <div className="text-6xl mb-4">🔗</div>
-          <h3 className="text-xl font-bold text-surface-900 mb-2">No Mappings Yet</h3>
-          <p className="text-surface-500">Connect to Xero first to configure account mappings</p>
+        <div className="space-y-4">
+          {mappings.length === 0 ? (
+            <div className="bg-white rounded-xl p-12 border border-surface-200 text-center">
+              <div className="text-4xl mb-4">&#128279;</div>
+              <h3 className="text-xl font-bold text-surface-900 mb-2">No Mappings Yet</h3>
+              <p className="text-surface-500">Connect to Xero first to configure account mappings</p>
+            </div>
+          ) : (
+            <div className="bg-white rounded-xl border border-surface-200 overflow-hidden">
+              <div className="p-4 border-b border-surface-100">
+                <h3 className="font-semibold text-surface-900">Account Mappings ({mappings.length})</h3>
+              </div>
+              <table className="w-full text-sm">
+                <thead className="bg-surface-50">
+                  <tr>
+                    <th className="text-left px-4 py-3 font-medium text-surface-600">Local Category</th>
+                    <th className="text-left px-4 py-3 font-medium text-surface-600">Xero Account</th>
+                    <th className="text-left px-4 py-3 font-medium text-surface-600">Account Name</th>
+                    <th className="text-center px-4 py-3 font-medium text-surface-600">Direction</th>
+                    <th className="text-center px-4 py-3 font-medium text-surface-600">Active</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-surface-100">
+                  {mappings.map((m) => (
+                    <tr key={m.id} className="hover:bg-surface-50">
+                      <td className="px-4 py-3 font-medium text-surface-900">{m.local_category}</td>
+                      <td className="px-4 py-3 font-mono text-surface-600">{m.xero_account_code}</td>
+                      <td className="px-4 py-3 text-surface-600">{m.xero_account_name || '-'}</td>
+                      <td className="px-4 py-3 text-center">
+                        <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${
+                          m.sync_direction === 'both' ? 'bg-blue-100 text-blue-800' : 'bg-green-100 text-green-800'
+                        }`}>
+                          {m.sync_direction}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 text-center">
+                        <span className={`w-2 h-2 rounded-full inline-block ${m.is_active ? 'bg-green-500' : 'bg-gray-300'}`}></span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </div>
       )}
 
+      {/* Logs Tab */}
       {activeTab === 'logs' && (
-        <div className="bg-white rounded-xl p-12 border border-surface-200 text-center">
-          <div className="text-6xl mb-4">📊</div>
-          <h3 className="text-xl font-bold text-surface-900 mb-2">No Sync History</h3>
-          <p className="text-surface-500">Sync history will appear here after your first sync</p>
+        <div className="space-y-4">
+          {syncLogs.length === 0 ? (
+            <div className="bg-white rounded-xl p-12 border border-surface-200 text-center">
+              <div className="text-4xl mb-4">&#128202;</div>
+              <h3 className="text-xl font-bold text-surface-900 mb-2">No Sync History</h3>
+              <p className="text-surface-500">Sync history will appear here after your first sync</p>
+            </div>
+          ) : (
+            <div className="bg-white rounded-xl border border-surface-200 overflow-hidden">
+              <div className="p-4 border-b border-surface-100">
+                <h3 className="font-semibold text-surface-900">Sync History ({syncLogs.length})</h3>
+              </div>
+              <table className="w-full text-sm">
+                <thead className="bg-surface-50">
+                  <tr>
+                    <th className="text-left px-4 py-3 font-medium text-surface-600">Type</th>
+                    <th className="text-center px-4 py-3 font-medium text-surface-600">Status</th>
+                    <th className="text-right px-4 py-3 font-medium text-surface-600">Records</th>
+                    <th className="text-right px-4 py-3 font-medium text-surface-600">Started</th>
+                    <th className="text-right px-4 py-3 font-medium text-surface-600">Completed</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-surface-100">
+                  {syncLogs.map((log) => (
+                    <tr key={log.id} className="hover:bg-surface-50">
+                      <td className="px-4 py-3 font-medium text-surface-900 capitalize">{log.sync_type}</td>
+                      <td className="px-4 py-3 text-center">
+                        <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${
+                          log.status === 'success' ? 'bg-green-100 text-green-800' :
+                          log.status === 'partial' ? 'bg-amber-100 text-amber-800' :
+                          'bg-red-100 text-red-800'
+                        }`}>
+                          {log.status}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 text-right font-mono">{log.records_synced}</td>
+                      <td className="px-4 py-3 text-right text-xs text-surface-500">{new Date(log.started_at).toLocaleString()}</td>
+                      <td className="px-4 py-3 text-right text-xs text-surface-500">{log.completed_at ? new Date(log.completed_at).toLocaleString() : '-'}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </div>
       )}
     </div>

@@ -67,7 +67,7 @@ export default function FeedbackPage() {
       if (sourceFilter !== 'all') params.append('source', sourceFilter);
       if (period !== 'all') params.append('period', period);
 
-      const response = await fetch(`${API_URL}/v5/feedback/reviews?${params}`, {
+      const response = await fetch(`${API_URL}/feedback/reviews?${params}`, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',
@@ -94,7 +94,7 @@ export default function FeedbackPage() {
       const params = new URLSearchParams();
       if (period !== 'all') params.append('period', period);
 
-      const response = await fetch(`${API_URL}/v5/feedback/stats?${params}`, {
+      const response = await fetch(`${API_URL}/feedback/stats?${params}`, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',
@@ -117,7 +117,7 @@ export default function FeedbackPage() {
     if (!selectedReview || !responseText.trim()) return;
     try {
       const token = localStorage.getItem('access_token');
-      const response = await fetch(`${API_URL}/v5/feedback/reviews/${selectedReview.id}/respond`, {
+      const response = await fetch(`${API_URL}/feedback/reviews/${selectedReview.id}/respond`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -141,7 +141,7 @@ export default function FeedbackPage() {
   const updateStatus = async (reviewId: number, newStatus: Review['status']) => {
     try {
       const token = localStorage.getItem('access_token');
-      const response = await fetch(`${API_URL}/v5/feedback/reviews/${reviewId}/status`, {
+      const response = await fetch(`${API_URL}/feedback/reviews/${reviewId}/status`, {
         method: 'PATCH',
         headers: {
           'Authorization': `Bearer ${token}`,

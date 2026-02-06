@@ -104,8 +104,13 @@ export default function StaffSchedulesPage() {
 
   const loadData = async () => {
     setLoading(true);
-    await Promise.all([loadStaff(), loadShifts(), loadTimeOffs()]);
-    setLoading(false);
+    try {
+      await Promise.all([loadStaff(), loadShifts(), loadTimeOffs()]);
+    } catch (err) {
+      console.error('Failed to load schedule data:', err);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const loadStaff = async () => {

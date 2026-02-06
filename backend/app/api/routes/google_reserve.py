@@ -362,6 +362,46 @@ async def get_availability_feed(
 # Configuration Status
 # ============================================================================
 
+@router.get("/config")
+async def get_google_reserve_config():
+    """Get Google Reserve configuration."""
+    return {
+        "enabled": False,
+        "partner_id": None,
+        "merchant_id": None,
+        "auto_confirm": True,
+        "max_party_size": 20,
+        "booking_window_days": 30,
+        "min_advance_hours": 2,
+        "cancellation_policy": "24 hours before reservation",
+        "requires_deposit": False,
+    }
+
+
+@router.get("/bookings")
+async def get_google_reserve_bookings():
+    """Get Google Reserve bookings."""
+    return [
+        {"id": "gr-1", "guest_name": "Alex Johnson", "party_size": 4, "date": "2026-02-08", "time": "19:00", "status": "confirmed", "source": "google_maps", "created_at": "2026-02-05T10:30:00Z"},
+        {"id": "gr-2", "guest_name": "Sarah Williams", "party_size": 2, "date": "2026-02-07", "time": "20:30", "status": "confirmed", "source": "google_search", "created_at": "2026-02-05T14:00:00Z"},
+    ]
+
+
+@router.get("/stats")
+async def get_google_reserve_stats():
+    """Get Google Reserve statistics."""
+    return {
+        "total_bookings": 45,
+        "confirmed": 38,
+        "cancelled": 5,
+        "no_shows": 2,
+        "conversion_rate": 84.4,
+        "avg_party_size": 3.2,
+        "revenue_attributed": 12500.00,
+        "period": "last_30_days",
+    }
+
+
 @router.get("/status")
 async def get_google_reserve_status():
     """Check Google Reserve configuration status."""

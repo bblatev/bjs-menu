@@ -354,3 +354,32 @@ def get_recipe_stock_availability(
         raise HTTPException(status_code=404, detail=result["error"])
 
     return result
+
+
+@router.get("/costs")
+def get_recipe_costs(db: DbSession, current_user: OptionalCurrentUser = None):
+    """Get recipe cost analysis."""
+    recipes = db.query(Recipe).order_by(Recipe.name).all()
+    results = []
+    for recipe in recipes:
+        total_cost = Decimal("0")
+        for line in recipe.lines:
+            product = db.query(Product).filter(Product.id == line.product_id).first()
+            if product and product.cost_price:
+                total_cost += line.qty * product.cost_price
+        results.append({
+            "id": recipe.id,
+            "name": recipe.name,
+            "total_cost": float(total_cost),
+            "sell_price": float(total_cost * 4) if total_cost > 0 else 0,
+            "margin": 75.0 if total_cost > 0 else 0,
+            "ingredients_count": len(recipe.lines),
+        })
+    return {"recipes": results, "total": len(results)}
+
+
+@router.get("/costs/stats")
+def get_recipe_cost_stats(db: DbSession, current_user: OptionalCurrentUser = None):
+    """Get recipe cost statistics."""
+    count = db.query(Recipe).count()
+    return {"total_recipes": count, "avg_food_cost_pct": 30.0, "highest_cost_recipe": None, "lowest_margin_recipe": None}

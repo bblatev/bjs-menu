@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { API_URL, getAuthHeaders } from '@/lib/api';
 
 interface RFIDTag {
   id: number;
@@ -68,17 +69,9 @@ export default function RFIDPage() {
   const zones = ["warehouse", "kitchen", "bar", "storage", "receiving", "cold_storage"];
   const tagTypes = ["inventory", "asset", "container", "pallet", "shelf"];
 
-  const getAuthHeaders = () => {
-    const token = localStorage.getItem("access_token");
-    return {
-      Authorization: `Bearer ${token}`,
-      "Content-Type": "application/json",
-    };
-  };
-
   const loadTags = useCallback(async () => {
     try {
-      let url = "/api/v1/inventory-hardware/rfid/tags?";
+      let url = `${API_URL}/inventory-hardware/rfid/tags?`;
       if (filterZone !== "all") url += `zone=${filterZone}&`;
       if (filterType !== "all") url += `tag_type=${filterType}&`;
 
@@ -94,7 +87,7 @@ export default function RFIDPage() {
 
   const loadZoneSummary = useCallback(async () => {
     try {
-      const res = await fetch("/api/v1/inventory-hardware/rfid/zones/summary", {
+      const res = await fetch(`${API_URL}/inventory-hardware/rfid/zones/summary`, {
         headers: getAuthHeaders(),
       });
       const data = await res.json();
@@ -112,7 +105,7 @@ export default function RFIDPage() {
   const handleRegisterTag = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const res = await fetch("/api/v1/inventory-hardware/rfid/tags", {
+      const res = await fetch(`${API_URL}/inventory-hardware/rfid/tags`, {
         method: "POST",
         headers: getAuthHeaders(),
         body: JSON.stringify(form),
@@ -141,7 +134,7 @@ export default function RFIDPage() {
   const handleScan = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const res = await fetch("/api/v1/inventory-hardware/rfid/scan", {
+      const res = await fetch(`${API_URL}/inventory-hardware/rfid/scan`, {
         method: "POST",
         headers: getAuthHeaders(),
         body: JSON.stringify({
@@ -167,7 +160,7 @@ export default function RFIDPage() {
 
   const startInventoryCount = async (countType: string, zone?: string) => {
     try {
-      const res = await fetch("/api/v1/inventory-hardware/rfid/inventory-count/start", {
+      const res = await fetch(`${API_URL}/inventory-hardware/rfid/inventory-count/start`, {
         method: "POST",
         headers: getAuthHeaders(),
         body: JSON.stringify({ count_type: countType, zone }),
@@ -185,7 +178,7 @@ export default function RFIDPage() {
 
   const updateTagStatus = async (tagId: string, status: string) => {
     try {
-      await fetch("/api/v1/inventory-hardware/rfid/tags/status", {
+      await fetch(`${API_URL}/inventory-hardware/rfid/tags/status`, {
         method: "PATCH",
         headers: getAuthHeaders(),
         body: JSON.stringify({ tag_id: tagId, new_status: status }),

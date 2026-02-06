@@ -57,8 +57,13 @@ export default function ServerSectionsPage() {
 
   const loadData = async () => {
     setLoading(true);
-    await Promise.all([loadServers(), loadSections(), loadTables()]);
-    setLoading(false);
+    try {
+      await Promise.all([loadServers(), loadSections(), loadTables()]);
+    } catch (err) {
+      console.error('Failed to load sections data:', err);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const loadServers = async () => {

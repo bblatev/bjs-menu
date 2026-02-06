@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
+import { API_URL, getAuthHeaders } from '@/lib/api';
 
 interface MobileApp {
   id: number;
@@ -62,9 +63,8 @@ export default function MobileAppBuilderPage() {
   useEffect(() => {
     const loadApp = async () => {
       try {
-        const token = localStorage.getItem('access_token');
-        const response = await fetch('/api/v1/enterprise/mobile-app', {
-          headers: { 'Authorization': `Bearer ${token}` }
+        const response = await fetch(`${API_URL}/enterprise/mobile-app`, {
+          headers: getAuthHeaders()
         });
 
         if (response.ok) {
@@ -125,13 +125,9 @@ export default function MobileAppBuilderPage() {
     setSaving(true);
 
     try {
-      const token = localStorage.getItem('access_token');
-      await fetch('/api/v1/enterprise/mobile-app', {
+      await fetch(`${API_URL}/enterprise/mobile-app`, {
         method: 'PUT',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
+        headers: getAuthHeaders(),
         body: JSON.stringify(app)
       });
       alert('App configuration saved!');
@@ -147,13 +143,9 @@ export default function MobileAppBuilderPage() {
     setBuilding(true);
 
     try {
-      const token = localStorage.getItem('access_token');
-      const response = await fetch('/api/v1/enterprise/mobile-app/build', {
+      const response = await fetch(`${API_URL}/enterprise/mobile-app/build`, {
         method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
+        headers: getAuthHeaders(),
         body: JSON.stringify({ platform })
       });
 

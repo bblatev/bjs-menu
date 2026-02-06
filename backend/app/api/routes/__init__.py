@@ -17,7 +17,11 @@ from app.api.routes import (
     google_reserve, training, scheduled_reports, email_campaigns,
     opentable, birthday_rewards, kds_localization,
     mobile_wallet, custom_reports, card_terminals,
-    stock_management, stock, inventory_complete
+    stock_management, stock, inventory_complete,
+    inventory_intelligence, xero,
+    risk_alerts, roles, voice,
+    kitchen_display, kitchen_alerts, promotions, gamification,
+    fiscal_printers, pos_fiscal_bridge, suppliers_v11, cloud_kitchen,
 )
 
 api_router = APIRouter()
@@ -50,10 +54,8 @@ api_router.include_router(waitlist_router.router, prefix="/waitlist", tags=["wai
 # Advanced competitor features (25 feature areas)
 api_router.include_router(advanced_features.router, tags=["advanced-features"])
 
-# Kitchen and Tables (multiple prefixes for frontend compatibility)
+# Kitchen and Tables
 api_router.include_router(kitchen.router, prefix="/kitchen", tags=["kitchen", "kds"])
-api_router.include_router(kitchen.router, prefix="/kitchen-display", tags=["kitchen-display"])
-api_router.include_router(kitchen.router, prefix="/kitchen-alerts", tags=["kitchen-alerts"])
 api_router.include_router(tables.router, prefix="/tables", tags=["tables", "floor-plan"])
 
 # Waiter Terminal
@@ -195,15 +197,44 @@ api_router.include_router(stock.router, prefix="/stock", tags=["stock", "invento
 # Inventory Complete (comprehensive inventory management for frontend)
 api_router.include_router(inventory_complete.router, prefix="/inventory-complete", tags=["inventory-complete", "stock"])
 
-# Stub routers for frontend compatibility
-_promotions_router = APIRouter()
-@_promotions_router.get("/")
-def list_promotions():
-    return {"promotions": [], "total": 0}
-api_router.include_router(_promotions_router, prefix="/promotions", tags=["promotions"])
+# Inventory Intelligence (ABC Analysis, Turnover, Dead Stock, COGS, Food Cost Variance, EOQ, Snapshots, Cycle Counts)
+api_router.include_router(inventory_intelligence.router, prefix="/inventory-intelligence", tags=["inventory-intelligence", "abc-analysis", "turnover", "cogs", "eoq"])
 
-_roles_router = APIRouter()
-@_roles_router.get("/")
-def list_roles():
-    return {"roles": [{"id": 1, "name": "Admin"}, {"id": 2, "name": "Manager"}, {"id": 3, "name": "Staff"}, {"id": 4, "name": "Kitchen"}]}
-api_router.include_router(_roles_router, prefix="/roles", tags=["roles"])
+# Xero Accounting Integration
+api_router.include_router(xero.router, prefix="/xero", tags=["xero", "accounting", "integration"])
+
+# Risk Alerts / Fraud Detection
+api_router.include_router(risk_alerts.router, prefix="/risk-alerts", tags=["risk-alerts", "fraud-detection"])
+
+# Roles Management
+api_router.include_router(roles.router, prefix="/roles", tags=["roles", "permissions"])
+
+# Voice Assistant
+api_router.include_router(voice.router, prefix="/voice", tags=["voice", "assistant"])
+
+# Kitchen Display (separate from main kitchen routes)
+api_router.include_router(kitchen_display.router, prefix="/kitchen-display", tags=["kitchen-display", "kds"])
+
+# Kitchen Alerts
+api_router.include_router(kitchen_alerts.router, prefix="/kitchen-alerts", tags=["kitchen-alerts"])
+
+# Promotions
+api_router.include_router(promotions.router, prefix="/promotions", tags=["promotions"])
+
+# Gamification
+api_router.include_router(gamification.router, prefix="/gamification", tags=["gamification", "badges", "challenges"])
+
+# Fiscal Printers
+api_router.include_router(fiscal_printers.router, prefix="/fiscal-printers", tags=["fiscal-printers", "nra"])
+
+# POS Fiscal Bridge
+api_router.include_router(pos_fiscal_bridge.router, prefix="/pos-fiscal-bridge", tags=["pos-fiscal-bridge", "fiscal"])
+
+# Supplier Management v11
+api_router.include_router(suppliers_v11.router, prefix="/v11/suppliers", tags=["suppliers", "v11"])
+
+# Cloud Kitchen / Delivery v6
+api_router.include_router(cloud_kitchen.router, prefix="/v6", tags=["cloud-kitchen", "delivery", "drive-thru"])
+
+# Multi-location v3.1 (reuse locations router)
+api_router.include_router(locations.router, prefix="/v3.1/locations", tags=["locations", "multi-location", "v3.1"])

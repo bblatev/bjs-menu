@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import AdminLayout from '@/components/AdminLayout';
-import { getAuthHeaders } from '@/lib/api';
+import { API_URL, getAuthHeaders } from '@/lib/api';
 
 interface Ingredient {
   id: number;
@@ -69,8 +69,8 @@ export default function RecipeCostsPage() {
 
       try {
         const [recipesRes, statsRes] = await Promise.all([
-          fetch('/api/v1/recipes/costs', { headers }),
-          fetch('/api/v1/recipes/costs/stats', { headers })
+          fetch(`${API_URL}/recipes/costs`, { headers }),
+          fetch(`${API_URL}/recipes/costs/stats`, { headers })
         ]);
 
         if (recipesRes.ok && statsRes.ok) {

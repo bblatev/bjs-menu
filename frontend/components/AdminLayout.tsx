@@ -75,6 +75,7 @@ const navigationGroups = [
       { name: 'Aging Report', href: '/stock/aging', icon: '📅' },
       { name: 'Recipe Costs', href: '/stock/recipe-costs', icon: '💰' },
       { name: 'Supplier Performance', href: '/stock/supplier-performance', icon: '⭐' },
+      { name: 'Inventory Intelligence', href: '/stock/intelligence', icon: '🧠' },
       { name: 'Warehouses', href: '/warehouses', icon: '🏭' },
     ]
   },
@@ -186,6 +187,7 @@ const navigationGroups = [
       { name: 'Google Reserve', href: '/integrations/google-reserve', icon: '📍' },
       { name: 'Accounting', href: '/integrations/accounting', icon: '📊' },
       { name: 'QuickBooks', href: '/integrations/quickbooks', icon: '📗' },
+      { name: 'Xero', href: '/integrations/xero', icon: '🔵' },
       { name: 'Delivery Platforms', href: '/delivery-aggregators', icon: '🚴' },
       { name: 'Hotel PMS', href: '/hotel-pms', icon: '🏨' },
       { name: 'Voice Assistant', href: '/voice', icon: '🎤' },

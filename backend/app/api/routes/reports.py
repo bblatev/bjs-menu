@@ -510,6 +510,43 @@ def get_trends_report(
     }
 
 
+@router.get("/stock")
+def get_stock_report(
+    db: DbSession,
+    current_user: OptionalCurrentUser = None,
+    location_id: Optional[int] = Query(None),
+):
+    """Get stock report."""
+    return {"total_items": 0, "total_value": 0, "low_stock_count": 0, "out_of_stock_count": 0, "by_category": [], "generated_at": datetime.now(timezone.utc).isoformat()}
+
+
+@router.get("/financial")
+def get_financial_report(
+    db: DbSession,
+    current_user: OptionalCurrentUser = None,
+    start_date: Optional[str] = Query(None),
+    end_date: Optional[str] = Query(None),
+):
+    """Get financial report."""
+    return {
+        "revenue": 0, "expenses": 0, "profit": 0, "food_cost_pct": 30.0,
+        "labor_cost_pct": 25.0, "prime_cost_pct": 55.0,
+        "by_category": [], "generated_at": datetime.now(timezone.utc).isoformat(),
+    }
+
+
+@router.get("/transactions")
+def get_transactions_report(
+    db: DbSession,
+    current_user: OptionalCurrentUser = None,
+    start_date: Optional[str] = Query(None),
+    end_date: Optional[str] = Query(None),
+    limit: int = Query(50),
+):
+    """Get transactions report."""
+    return {"transactions": [], "total": 0, "generated_at": datetime.now(timezone.utc).isoformat()}
+
+
 # ==================== TURNOVER AT BASE PRICES ====================
 
 @router.get("/turnover-base-prices")

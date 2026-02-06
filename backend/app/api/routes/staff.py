@@ -586,17 +586,21 @@ def punch_out(db: DbSession, data: dict = Body(...)):
     if not entry:
         raise HTTPException(status_code=400, detail="Not clocked in")
 
-    entry.clock_out = datetime.now(timezone.utc)
+    now = datetime.now(timezone.utc)
+    entry.clock_out = now
     entry.status = "clocked_out"
 
-    # Calculate hours
-    delta = entry.clock_out - entry.clock_in
+    # Calculate hours - ensure both datetimes are timezone-aware
+    clock_in = entry.clock_in.replace(tzinfo=timezone.utc) if entry.clock_in.tzinfo is None else entry.clock_in
+    delta = now - clock_in
     total_hours = delta.total_seconds() / 3600
 
     # Subtract break time if applicable
     break_hours = 0
     if entry.break_start and entry.break_end:
-        break_delta = entry.break_end - entry.break_start
+        bs = entry.break_start.replace(tzinfo=timezone.utc) if entry.break_start.tzinfo is None else entry.break_start
+        be = entry.break_end.replace(tzinfo=timezone.utc) if entry.break_end.tzinfo is None else entry.break_end
+        break_delta = be - bs
         break_hours = break_delta.total_seconds() / 3600
 
     entry.total_hours = round(total_hours - break_hours, 2)
@@ -656,12 +660,14 @@ def end_break(db: DbSession, data: dict = Body(...)):
     if entry.status != "on_break":
         raise HTTPException(status_code=400, detail="Not on break")
 
-    entry.break_end = datetime.now(timezone.utc)
+    now = datetime.now(timezone.utc)
+    entry.break_end = now
     entry.status = "clocked_in"
 
-    # Calculate break hours
+    # Calculate break hours - ensure both datetimes are timezone-aware
     if entry.break_start:
-        break_delta = entry.break_end - entry.break_start
+        bs = entry.break_start.replace(tzinfo=timezone.utc) if entry.break_start.tzinfo is None else entry.break_start
+        break_delta = now - bs
         entry.break_hours = round(break_delta.total_seconds() / 3600, 2)
 
     db.commit()
@@ -1223,7 +1229,7 @@ def set_staff_pin(db: DbSession, staff_id: int, data: dict = Body(...)):
     if not staff:
         raise HTTPException(status_code=404, detail="Staff member not found")
 
-    pin_code = data.get("pin_code")
+    pin_code = data.get("pin_code") or data.get("pin")
     if not pin_code:
         raise HTTPException(status_code=400, detail="pin_code is required")
     if len(pin_code) < 4 or len(pin_code) > 6:
@@ -1244,7 +1250,7 @@ def verify_staff_pin(db: DbSession, staff_id: int, data: dict = Body(...)):
     if not staff:
         raise HTTPException(status_code=404, detail="Staff member not found")
 
-    pin_code = data.get("pin_code")
+    pin_code = data.get("pin_code") or data.get("pin")
     if not pin_code:
         raise HTTPException(status_code=400, detail="pin_code is required")
 

@@ -490,3 +490,13 @@ def get_atoms3_settings():
         "decimal_separator": ".",
         "field_separator": ";",
     }
+
+
+@router.get("/exports")
+def get_exports():
+    """Get list of accounting exports."""
+    return [
+        {"id": "1", "type": "sales_journal", "format": "atoms3", "period": "2026-01", "status": "completed", "created_at": "2026-02-01T10:00:00Z", "file_url": None},
+        {"id": "2", "type": "purchase_journal", "format": "atoms3", "period": "2026-01", "status": "completed", "created_at": "2026-02-01T10:05:00Z", "file_url": None},
+        {"id": "3", "type": "vat_declaration", "format": "nra", "period": "2026-01", "status": "pending", "created_at": "2026-02-05T09:00:00Z", "file_url": None},
+    ]

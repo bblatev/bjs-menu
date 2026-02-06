@@ -201,6 +201,21 @@ async def list_payments(
 # Configuration
 # ============================================================================
 
+@router.get("/config")
+async def get_default_configuration():
+    """Get default wallet configuration."""
+    return {
+        "venue_id": 0,
+        "apple_pay_enabled": True,
+        "google_pay_enabled": True,
+        "link_enabled": False,
+        "merchant_name": "BJ's Bar & Grill",
+        "merchant_country": "BG",
+        "merchant_currency": "BGN",
+        "supported_networks": ["visa", "mastercard"],
+    }
+
+
 @router.get("/config/{venue_id}")
 async def get_configuration(venue_id: int):
     """Get wallet configuration for a venue."""
@@ -218,6 +233,12 @@ async def get_configuration(venue_id: int):
         "merchant_currency": config.merchant_currency,
         "supported_networks": config.supported_networks,
     }
+
+
+@router.put("/config")
+async def update_default_configuration(request: UpdateConfigRequest):
+    """Update default wallet configuration (venue_id=0)."""
+    return await update_configuration(0, request)
 
 
 @router.put("/config/{venue_id}")

@@ -51,3 +51,9 @@ def update_supplier(
     db.commit()
     db.refresh(supplier)
     return supplier
+
+
+@router.get("/performance/stats")
+def get_supplier_performance_stats(db: DbSession, current_user: OptionalCurrentUser = None):
+    """Get supplier performance statistics."""
+    return {"total_suppliers": 0, "avg_lead_time": 0, "avg_fill_rate": 0, "on_time_delivery_pct": 0}

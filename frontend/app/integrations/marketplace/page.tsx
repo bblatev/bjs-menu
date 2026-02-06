@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import Link from 'next/link';
+import { API_URL, getAuthHeaders } from '@/lib/api';
 
 interface Integration {
   id: string;
@@ -58,11 +59,9 @@ export default function IntegrationMarketplacePage() {
 
   const loadData = async () => {
     try {
-      const token = localStorage.getItem('access_token');
-
       // Load all integrations
-      const integrationsRes = await fetch('/api/v1/enterprise/integrations/marketplace', {
-        headers: { 'Authorization': `Bearer ${token}` }
+      const integrationsRes = await fetch(`${API_URL}/enterprise/integrations/marketplace`, {
+        headers: getAuthHeaders()
       });
       if (integrationsRes.ok) {
         const data = await integrationsRes.json();
@@ -73,8 +72,8 @@ export default function IntegrationMarketplacePage() {
       }
 
       // Load connected integrations
-      const connectedRes = await fetch('/api/v1/enterprise/integrations/connected', {
-        headers: { 'Authorization': `Bearer ${token}` }
+      const connectedRes = await fetch(`${API_URL}/enterprise/integrations/connected`, {
+        headers: getAuthHeaders()
       });
       if (connectedRes.ok) {
         const data = await connectedRes.json();
@@ -106,13 +105,9 @@ export default function IntegrationMarketplacePage() {
   const handleConnect = async (integration: Integration) => {
     setConnecting(true);
     try {
-      const token = localStorage.getItem('access_token');
-      const response = await fetch(`/api/v1/enterprise/integrations/${integration.id}/connect`, {
+      const response = await fetch(`${API_URL}/enterprise/integrations/${integration.id}/connect`, {
         method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
+        headers: getAuthHeaders(),
         body: JSON.stringify({ config: {} })
       });
 
@@ -142,10 +137,9 @@ export default function IntegrationMarketplacePage() {
     if (!confirm('Are you sure you want to disconnect this integration?')) return;
 
     try {
-      const token = localStorage.getItem('access_token');
-      await fetch(`/api/v1/enterprise/integrations/connections/${connectionId}`, {
+      await fetch(`${API_URL}/enterprise/integrations/connections/${connectionId}`, {
         method: 'DELETE',
-        headers: { 'Authorization': `Bearer ${token}` }
+        headers: getAuthHeaders()
       });
       setConnectedIntegrations(prev => prev.filter(c => c.id !== connectionId));
     } catch (error) {

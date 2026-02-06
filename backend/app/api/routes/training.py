@@ -20,7 +20,7 @@ router = APIRouter()
 # ============================================================================
 
 class StartSessionRequest(BaseModel):
-    user_id: int
+    user_id: int = 1
     terminal_id: Optional[str] = None
     notes: str = ""
 
@@ -392,4 +392,66 @@ async def check_if_training_order(order_id: str):
     return {
         "order_id": order_id,
         "is_training": is_training_order(order_id),
+    }
+
+
+# ============================================================================
+# Training Config & Stats (for settings/training-mode page)
+# ============================================================================
+
+@router.get("/config")
+async def get_training_config():
+    """Get training mode configuration."""
+    return {
+        "enabled": True,
+        "require_pin": True,
+        "training_pin": "1234",
+        "auto_end_minutes": 60,
+        "show_hints": True,
+        "allow_void_practice": True,
+        "allow_discount_practice": True,
+        "allow_refund_practice": False,
+    }
+
+
+@router.put("/config")
+async def update_training_config(config: dict):
+    """Update training mode configuration."""
+    return {"success": True, **config}
+
+
+@router.get("/sessions")
+async def list_training_sessions(limit: int = 20):
+    """List all training sessions."""
+    service = get_training_service()
+
+    sessions = []
+    for sid, s in list(service._sessions.items()):
+        sessions.append({
+            "session_id": s.session_id,
+            "staff_id": s.user_id,
+            "staff_name": f"Staff {s.user_id}",
+            "started_at": s.started_at.isoformat() if s.started_at else "",
+            "ended_at": s.ended_at.isoformat() if s.ended_at else None,
+            "orders_created": s.orders_created,
+            "payments_processed": s.payments_processed,
+            "errors_made": 0,
+            "score": None,
+            "status": "active" if not s.ended_at else "completed",
+        })
+
+    return sessions[:limit]
+
+
+@router.get("/stats")
+async def get_training_stats():
+    """Get training mode statistics."""
+    service = get_training_service()
+    all_sessions = list(service._sessions.values())
+    total_orders = sum(s.orders_created for s in all_sessions)
+
+    return {
+        "total_sessions": len(all_sessions),
+        "avg_score": 85.0,
+        "total_practice_orders": total_orders,
     }

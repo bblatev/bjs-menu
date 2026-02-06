@@ -4,7 +4,7 @@ from datetime import datetime, timezone
 from decimal import Decimal
 from typing import List, Optional
 from fastapi import APIRouter, HTTPException, Query
-from pydantic import BaseModel
+from pydantic import BaseModel, model_validator
 
 from app.db.session import DbSession
 from app.models.order import PurchaseOrder as PurchaseOrderModel, PurchaseOrderLine, POStatus
@@ -48,8 +48,18 @@ class PurchaseOrderResponse(BaseModel):
 class CreatePORequest(BaseModel):
     supplier_id: int
     location_id: int
-    items: List[dict]  # [{"product_id": 1, "qty": 10, "unit_cost": 3.50}]
+    items: Optional[List[dict]] = None  # [{"product_id": 1, "qty": 10, "unit_cost": 3.50}]
+    lines: Optional[List[dict]] = None  # Alias for items
     notes: Optional[str] = None
+
+    @model_validator(mode="after")
+    def normalize_items(self):
+        """Accept both 'items' and 'lines' as the line items field."""
+        if not self.items and self.lines:
+            self.items = self.lines
+        if not self.items:
+            self.items = []
+        return self
 
 
 class ReceiveGoodsRequest(BaseModel):
@@ -150,8 +160,8 @@ def create_purchase_order(db: DbSession, request: CreatePORequest):
         line = PurchaseOrderLine(
             po_id=po.id,
             product_id=item["product_id"],
-            qty=Decimal(str(item.get("qty", 0))),
-            unit_cost=Decimal(str(item.get("unit_cost", 0))) if item.get("unit_cost") else None,
+            qty=Decimal(str(item.get("qty") or item.get("quantity", 0))),
+            unit_cost=Decimal(str(item.get("unit_cost") or item.get("unit_price", 0))) if (item.get("unit_cost") or item.get("unit_price")) else None,
         )
         db.add(line)
 

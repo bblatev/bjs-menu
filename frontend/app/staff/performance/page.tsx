@@ -77,8 +77,13 @@ export default function StaffPerformancePage() {
 
   const loadPerformanceData = async () => {
     setLoading(true);
-    await Promise.all([loadStaff(), loadLeaderboard(), loadGoals()]);
-    setLoading(false);
+    try {
+      await Promise.all([loadStaff(), loadLeaderboard(), loadGoals()]);
+    } catch (err) {
+      console.error('Failed to load performance data:', err);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const loadStaff = async () => {
