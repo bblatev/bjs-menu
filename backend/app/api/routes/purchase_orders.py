@@ -231,7 +231,7 @@ def get_grns(db: DbSession):
             "supplier_name": supplier.name if supplier else "Unknown",
             "warehouse_id": str(po.location_id),
             "received_date": po.received_at.strftime("%Y-%m-%d") if po.received_at else None,
-            "received_by": "Staff",
+            "received_by": None,
             "status": "accepted",
             "items": items,
             "notes": po.notes,

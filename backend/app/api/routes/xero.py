@@ -127,10 +127,10 @@ def connect_xero(db: DbSession, data: XeroConnectRequest):
                     (:org, :tenant, :access, :refresh, :expires, :connected, true, false)
             """),
             {
-                "org": "Connected Xero Organization",
-                "tenant": "xero-tenant-stub",
+                "org": "",
+                "tenant": "",
                 "access": data.authorization_code,
-                "refresh": "refresh-token-stub",
+                "refresh": "",
                 "expires": now,
                 "connected": now,
             }

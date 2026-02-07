@@ -7,6 +7,7 @@ from pydantic import BaseModel
 
 from app.db.session import DbSession
 from app.models.restaurant import GuestOrder, Check, CheckItem, KitchenOrder, MenuItem
+from app.models.operations import AppSetting
 from app.services.printer_service import (
     get_printer_manager,
     PrinterConfig,
@@ -411,8 +412,15 @@ async def print_order_receipt(
                     modifiers=item.get("modifiers", []) if isinstance(item.get("modifiers"), list) else [],
                 ))
 
+    # Get venue name from settings
+    venue_setting = db.query(AppSetting).filter(
+        AppSetting.category == "venue",
+        AppSetting.key == "name",
+    ).first()
+    venue_name = venue_setting.value if venue_setting and venue_setting.value else ""
+
     receipt = Receipt(
-        venue_name="BJ's Restaurant",
+        venue_name=venue_name,
         order_number=str(order.id),
         table_number=order.table_number or "",
         order_type=order.order_type or "dine-in",

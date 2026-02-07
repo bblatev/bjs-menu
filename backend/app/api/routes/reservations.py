@@ -957,32 +957,7 @@ def process_refund(
 def get_webhook_logs(venue_id: int, limit: int = Query(50)):
     """Get webhook logs for a venue."""
     return {
-        "logs": [
-            {
-                "id": 1,
-                "timestamp": "2026-02-05T10:30:00Z",
-                "platform": "Google Reserve",
-                "event": "reservation.created",
-                "status": "success",
-                "payload_preview": '{"guest": "John D.", "party_size": 4}',
-            },
-            {
-                "id": 2,
-                "timestamp": "2026-02-05T09:15:00Z",
-                "platform": "OpenTable",
-                "event": "reservation.modified",
-                "status": "success",
-                "payload_preview": '{"guest": "Jane S.", "time_changed": true}',
-            },
-            {
-                "id": 3,
-                "timestamp": "2026-02-04T18:00:00Z",
-                "platform": "Website Widget",
-                "event": "reservation.cancelled",
-                "status": "failed",
-                "payload_preview": '{"error": "Invalid webhook signature"}',
-            },
-        ],
-        "total": 3,
+        "logs": [],
+        "total": 0,
         "has_more": False,
     }

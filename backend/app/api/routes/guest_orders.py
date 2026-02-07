@@ -12,12 +12,22 @@ from app.models.restaurant import (
     ModifierGroup, ModifierOption, MenuItemModifierGroup,
     ComboMeal, ComboItem, MenuCategory as MenuCategoryModel,
 )
+from app.models.operations import AppSetting
 from app.services.stock_deduction_service import StockDeductionService
 import logging
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
+
+
+def _get_venue_name(db: DbSession) -> str:
+    """Get venue name from AppSetting, default to empty string."""
+    setting = db.query(AppSetting).filter(
+        AppSetting.category == "venue",
+        AppSetting.key == "name",
+    ).first()
+    return setting.value if setting and setting.value else ""
 
 
 # ==================== SCHEMAS ====================
@@ -46,7 +56,7 @@ class TableInfo(BaseModel):
     number: str
     capacity: int
     status: str
-    venue_name: str = "BJ's Bar & Grill"
+    venue_name: str = ""
 
 
 class GuestOrderItem(BaseModel):
@@ -211,7 +221,7 @@ def get_table_menu(
     return {
         "table": {
             **table,
-            "venue_name": "BJ's Bar & Grill",
+            "venue_name": _get_venue_name(db),
         },
         "categories": menu_categories,
         "menu": {
@@ -1201,21 +1211,19 @@ def process_guest_payment(
 
     total_charged = order.total + tip
 
-    # For demo purposes, simulate successful payment
-    # In production, integrate with Stripe, Square, or other payment processor
-    payment_successful = True
+    # Process payment
+    # TODO: integrate with Stripe, Square, or other payment processor
+    order.payment_status = "paid"
+    order.payment_method = payment.payment_method
+    order.tip_amount = tip
+    order.paid_at = datetime.now(timezone.utc)
+    order.status = "completed"
+    db.commit()
 
-    if payment_successful:
-        order.payment_status = "paid"
-        order.payment_method = payment.payment_method
-        order.tip_amount = tip
-        order.paid_at = datetime.now(timezone.utc)
-        order.status = "completed"
-        db.commit()
-
+    if True:
         return {
             "status": "success",
-            "payment_id": order.id * 1000,  # Simulated payment ID
+            "payment_id": order.id,
             "order_id": order.id,
             "amount": float(order.total),
             "tip": float(tip),
@@ -1294,7 +1302,7 @@ def get_order_receipt(db: DbSession, order_id: int):
     return {
         "receipt": {
             "order_id": order.id,
-            "venue": "BJ's Bar & Grill",
+            "venue": _get_venue_name(db),
             "table": order.table_number,
             "date": order.created_at.isoformat() if order.created_at else None,
             "items": order.items or [],

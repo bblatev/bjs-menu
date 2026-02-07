@@ -682,12 +682,7 @@ class AutoReorderRuleRequest(BaseModel):
 @router.get("/auto-reorder/history")
 def get_auto_reorder_history(location_id: int = Query(1)):
     """Get auto-reorder execution history."""
-    return [
-        {"id": "1", "triggered_at": "2026-02-05T08:00:00Z", "product_name": "Absolut Vodka 1L", "quantity_ordered": 6, "supplier": "BevCo", "status": "completed", "po_number": "PO-2026-0042"},
-        {"id": "2", "triggered_at": "2026-02-04T08:00:00Z", "product_name": "Hendrick's Gin 700ml", "quantity_ordered": 4, "supplier": "Spirit Masters", "status": "completed", "po_number": "PO-2026-0041"},
-        {"id": "3", "triggered_at": "2026-02-04T08:00:00Z", "product_name": "Coca-Cola 330ml (case)", "quantity_ordered": 10, "supplier": "SoftDrinks Ltd", "status": "pending", "po_number": "PO-2026-0040"},
-        {"id": "4", "triggered_at": "2026-02-03T08:00:00Z", "product_name": "Lime Juice 1L", "quantity_ordered": 12, "supplier": "Fresh Produce Co", "status": "completed", "po_number": "PO-2026-0038"},
-    ]
+    return []
 
 
 @router.get("/auto-reorder/rules")

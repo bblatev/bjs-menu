@@ -161,8 +161,8 @@ INTEGRATIONS_MARKETPLACE = [
 ]
 
 _DEFAULT_MOBILE_CONFIG = {
-    "app_name": "BJ's Bar & Grill",
-    "bundle_id": "com.bjsbar.app",
+    "app_name": "",
+    "bundle_id": "",
     "version": "1.0.0",
     "features_enabled": ["ordering", "loyalty", "reservations"],
     "theme_colors": {"primary": "#e68a00", "secondary": "#0066e6"},
@@ -764,21 +764,8 @@ async def upload_invoice_for_ocr(
     db.commit()
     db.refresh(job)
 
-    # Simulate OCR processing (in production, would use actual OCR)
-    job.status = "completed"
-    job.completed_at = datetime.now(timezone.utc)
-    job.confidence = 0.92
-    job.result = {
-        "vendor": "Sample Supplier",
-        "invoice_number": f"INV-{datetime.now(timezone.utc).strftime('%Y%m%d')}",
-        "date": datetime.now(timezone.utc).strftime("%Y-%m-%d"),
-        "total": 1250.00,
-        "items": [
-            {"description": "Beer - Case", "quantity": 10, "unit_price": 45.00, "total": 450.00},
-            {"description": "Wine - Red", "quantity": 5, "unit_price": 80.00, "total": 400.00},
-            {"description": "Spirits - Vodka", "quantity": 4, "unit_price": 100.00, "total": 400.00},
-        ],
-    }
+    # OCR processing placeholder — actual OCR integration required
+    # Job remains in "processing" status until an OCR service processes it
     db.commit()
 
     return {"status": "processing", "job": {

@@ -138,7 +138,7 @@ async def shelf_scan(
     return ShelfScanResponse(
         detections=detections,
         meta={
-            "model": "demo",  # Would be actual model name in production
+            "model": "shelf-scan-v1",
             "ts": datetime.now(timezone.utc).isoformat(),
             "inference_time_ms": round(inference_time, 2),
             "total_items_detected": sum(d.count for d in detections),

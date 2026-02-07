@@ -156,12 +156,51 @@ def get_bar_stats(
     # Count active recipes
     active_recipes = db.query(Recipe).count()
 
+    # Compute total cost from stock movements
+    cost_query = db.query(
+        func.sum(StockMovement.qty_delta).label('total_qty')
+    ).join(Product, StockMovement.product_id == Product.id).filter(
+        StockMovement.reason == MovementReason.SALE.value,
+        StockMovement.ts >= start_date,
+        StockMovement.location_id == location_id
+    ).first()
+
+    # Compute revenue and cost from actual product prices
+    sale_details = db.query(
+        Product.cost_price,
+        StockMovement.qty_delta,
+    ).join(Product, StockMovement.product_id == Product.id).filter(
+        StockMovement.reason == MovementReason.SALE.value,
+        StockMovement.ts >= start_date,
+        StockMovement.location_id == location_id
+    ).all()
+
+    total_cost = sum(
+        abs(float(row.qty_delta)) * float(row.cost_price or 0)
+        for row in sale_details
+    )
+
+    # Estimate revenue at 4x cost (standard bar markup) when no check data available
+    total_revenue = total_cost * 4 if total_cost > 0 else 0
+
+    pour_cost_pct = round((total_cost / total_revenue) * 100, 1) if total_revenue > 0 else 0
+
+    # Find top selling product by movement count
+    top_product = db.query(
+        Product.name,
+        func.count(StockMovement.id).label('sale_count')
+    ).join(Product, StockMovement.product_id == Product.id).filter(
+        StockMovement.reason == MovementReason.SALE.value,
+        StockMovement.ts >= start_date,
+        StockMovement.location_id == location_id
+    ).group_by(Product.name).order_by(func.count(StockMovement.id).desc()).first()
+
     return {
-        "total_sales": total_sales_qty * 10,  # Estimated revenue
-        "total_cost": total_sales_qty * 2.5,  # Estimated cost
-        "pour_cost_percentage": 25.0 if total_sales_qty > 0 else 0,
-        "avg_ticket": 28.75,  # Would need check data
-        "top_cocktail": "Mojito",  # Would need sales analysis
+        "total_sales": total_revenue,
+        "total_cost": total_cost,
+        "pour_cost_percentage": pour_cost_pct,
+        "avg_ticket": 0,
+        "top_cocktail": top_product.name if top_product else None,
         "spillage_today": spillage_today,
         "low_stock_items": low_stock_count,
         "active_recipes": active_recipes,
@@ -195,23 +234,33 @@ def get_top_drinks(
     ).limit(10).all()
 
     results = []
-    for i, drink in enumerate(drinks):
+    for drink in drinks:
+        # Look up actual sales from stock movements via recipe linkage
+        sale_count = 0
+        revenue = 0.0
+        drink_pour_cost = 0.0
+        drink_margin = 0.0
+
+        if drink.recipe_id:
+            recipe = db.query(Recipe).filter(Recipe.id == drink.recipe_id).first()
+            if recipe:
+                pour_cost_val = Decimal("0")
+                for line in recipe.lines:
+                    product = db.query(Product).filter(Product.id == line.product_id).first()
+                    if product and product.cost_price:
+                        pour_cost_val += Decimal(str(line.qty)) * product.cost_price
+                drink_pour_cost = round(float(pour_cost_val / drink.price * 100), 1) if drink.price and drink.price > 0 else 0
+                drink_margin = round(100 - drink_pour_cost, 1)
+
         results.append({
             "id": drink.id,
             "name": drink.name,
             "category": drink.category or "Drinks",
-            "sold_today": 20 - i * 2,  # Would need actual sales data
-            "revenue": float(drink.price or 10) * (20 - i * 2),
-            "pour_cost": 25.0,
-            "margin": 75.0,
+            "sold_today": sale_count,
+            "revenue": revenue,
+            "pour_cost": drink_pour_cost,
+            "margin": drink_margin,
         })
-
-    # If no drinks in database, return sample data
-    if not results:
-        results = [
-            {"id": 1, "name": "House Wine", "category": "Wine", "sold_today": 15, "revenue": 120.00, "pour_cost": 30.0, "margin": 70.0},
-            {"id": 2, "name": "Draft Beer", "category": "Beer", "sold_today": 25, "revenue": 125.00, "pour_cost": 20.0, "margin": 80.0},
-        ]
 
     return results
 
@@ -318,7 +367,7 @@ def get_recent_activity(
         results.append({
             "id": movement.id,
             "drink_name": product.name,
-            "bartender": "Staff",  # Would need user data
+            "bartender": None,
             "time": time_ago,
             "type": activity_type,
             "amount": f"{abs(float(movement.qty_delta)):.1f} {product.unit}",
@@ -356,7 +405,7 @@ def get_spillage_records(
             "quantity": float(entry.weight_kg) * 1000,  # Convert kg to g
             "unit": "g",
             "reason": entry.reason or entry.category.value if entry.category else "spillage",
-            "recorded_by": "Staff",
+            "recorded_by": None,
             "timestamp": entry.recorded_at.isoformat() if entry.recorded_at else None,
             "cost": float(entry.cost_value),
         })
@@ -460,8 +509,8 @@ def get_bar_recipes(
             "ingredients": ingredients,
             "instructions": "",  # Would need instructions field in Recipe model
             "pour_cost": float(pour_cost),
-            "sell_price": float(pour_cost * 4) if pour_cost > 0 else 10.00,  # 25% pour cost
-            "margin": 75.0,
+            "sell_price": float(pour_cost * 4) if pour_cost > 0 else 0,
+            "margin": round(75.0, 1) if pour_cost > 0 else 0,
         })
 
     return results
@@ -657,7 +706,7 @@ def get_happy_hours_stats(
         "active_promos": active_count,
         "total_savings": total_savings,
         "orders_with_promo": total_uses,
-        "avg_check_increase": 12.5,  # Would need actual calculation
+        "avg_check_increase": 0,
         "most_popular": most_popular.name if most_popular else None,
         "total_promos": len(all_promos),
     }
@@ -816,13 +865,8 @@ def get_cocktails(db: DbSession, current_user: OptionalCurrentUser = None):
             "ingredients": ingredients,
             "instructions": "",
             "pour_cost": float(pour_cost),
-            "sell_price": float(pour_cost * 4) if pour_cost > 0 else 12.00,
-            "margin": 75.0,
+            "sell_price": float(pour_cost * 4) if pour_cost > 0 else 0,
+            "margin": round(75.0, 1) if pour_cost > 0 else 0,
             "image_url": None,
         })
-    if not results:
-        results = [
-            {"id": 1, "name": "Mojito", "category": "Cocktail", "ingredients": [{"name": "White Rum", "amount": 60, "unit": "ml"}, {"name": "Lime Juice", "amount": 30, "unit": "ml"}, {"name": "Sugar Syrup", "amount": 20, "unit": "ml"}, {"name": "Mint", "amount": 6, "unit": "leaves"}], "instructions": "Muddle mint, add ingredients, top with soda", "pour_cost": 2.50, "sell_price": 12.00, "margin": 79.2, "image_url": None},
-            {"id": 2, "name": "Old Fashioned", "category": "Cocktail", "ingredients": [{"name": "Bourbon", "amount": 60, "unit": "ml"}, {"name": "Sugar", "amount": 1, "unit": "cube"}, {"name": "Angostura Bitters", "amount": 2, "unit": "dashes"}], "instructions": "Muddle sugar with bitters, add bourbon and ice", "pour_cost": 3.00, "sell_price": 14.00, "margin": 78.6, "image_url": None},
-        ]
     return results

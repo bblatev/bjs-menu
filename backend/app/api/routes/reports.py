@@ -325,26 +325,16 @@ def get_food_costs_report(
             "end": end_date or datetime.now(timezone.utc).strftime("%Y-%m-%d"),
         },
         "summary": {
-            "total_sales": 125000.00,
-            "total_food_cost": 37500.00,
-            "food_cost_percentage": 30.0,
-            "target_percentage": 28.0,
-            "variance": 2.0,
-            "theoretical_cost": 35000.00,
-            "actual_vs_theoretical": 2500.00,
+            "total_sales": 0,
+            "total_food_cost": 0,
+            "food_cost_percentage": 0,
+            "target_percentage": 0,
+            "variance": 0,
+            "theoretical_cost": 0,
+            "actual_vs_theoretical": 0,
         },
-        "by_category": [
-            {"category": "Appetizers", "sales": 18750.00, "cost": 5250.00, "percentage": 28.0},
-            {"category": "Main Courses", "sales": 62500.00, "cost": 18750.00, "percentage": 30.0},
-            {"category": "Pizza", "sales": 25000.00, "cost": 7500.00, "percentage": 30.0},
-            {"category": "Desserts", "sales": 12500.00, "cost": 4375.00, "percentage": 35.0},
-            {"category": "Drinks", "sales": 6250.00, "cost": 1625.00, "percentage": 26.0},
-        ],
-        "top_variances": [
-            {"item": "BBQ Ribs", "expected_cost": 8.50, "actual_cost": 10.20, "variance": 1.70, "variance_pct": 20.0},
-            {"item": "Fish & Chips", "expected_cost": 5.50, "actual_cost": 6.38, "variance": 0.88, "variance_pct": 16.0},
-            {"item": "Steak Frites", "expected_cost": 12.00, "actual_cost": 13.20, "variance": 1.20, "variance_pct": 10.0},
-        ],
+        "by_category": [],
+        "top_variances": [],
         "generated_at": datetime.now(timezone.utc).isoformat(),
     }
 
@@ -365,21 +355,16 @@ def get_labor_costs_report(
             "end": end_date or datetime.now(timezone.utc).strftime("%Y-%m-%d"),
         },
         "summary": {
-            "total_sales": 125000.00,
-            "total_labor_cost": 31250.00,
-            "labor_cost_percentage": 25.0,
-            "target_percentage": 24.0,
-            "total_hours": 2500,
-            "average_hourly_rate": 12.50,
-            "overtime_hours": 120,
-            "overtime_cost": 2250.00,
+            "total_sales": 0,
+            "total_labor_cost": 0,
+            "labor_cost_percentage": 0,
+            "target_percentage": 0,
+            "total_hours": 0,
+            "average_hourly_rate": 0,
+            "overtime_hours": 0,
+            "overtime_cost": 0,
         },
-        "by_department": [
-            {"department": "Kitchen", "hours": 1200, "cost": 15600.00, "percentage": 49.9},
-            {"department": "Service", "hours": 900, "cost": 10800.00, "percentage": 34.6},
-            {"department": "Bar", "hours": 300, "cost": 3900.00, "percentage": 12.5},
-            {"department": "Management", "hours": 100, "cost": 950.00, "percentage": 3.0},
-        ],
+        "by_department": [],
         "generated_at": datetime.now(timezone.utc).isoformat(),
     }
 
@@ -401,25 +386,17 @@ def get_detailed_sales_report(
             "end": end_date or datetime.now(timezone.utc).strftime("%Y-%m-%d"),
         },
         "summary": {
-            "total_sales": 125000.00,
-            "total_orders": 2500,
-            "average_order_value": 50.00,
-            "total_guests": 6250,
-            "average_per_guest": 20.00,
-            "tips": 18750.00,
-            "discounts": 3125.00,
-            "net_sales": 121250.00,
+            "total_sales": 0,
+            "total_orders": 0,
+            "average_order_value": 0,
+            "total_guests": 0,
+            "average_per_guest": 0,
+            "tips": 0,
+            "discounts": 0,
+            "net_sales": 0,
         },
-        "by_category": [
-            {"category": "Food", "sales": 93750.00, "percentage": 75.0, "orders": 2000},
-            {"category": "Beverages", "sales": 18750.00, "percentage": 15.0, "orders": 1500},
-            {"category": "Alcohol", "sales": 12500.00, "percentage": 10.0, "orders": 800},
-        ],
-        "top_items": [
-            {"name": "Classic Burger", "quantity": 450, "sales": 7200.00},
-            {"name": "BBQ Ribs", "quantity": 280, "sales": 7000.00},
-            {"name": "Chicken Wings", "quantity": 520, "sales": 6760.00},
-        ],
+        "by_category": [],
+        "top_items": [],
         "generated_at": datetime.now(timezone.utc).isoformat(),
     }
 
@@ -433,11 +410,7 @@ def get_server_performance_report(
     Get server/staff performance report.
     """
     return {
-        "servers": [
-            {"id": 1, "name": "John Smith", "sales": 28500.00, "orders": 380, "avg_ticket": 75.00, "tips": 4275.00, "rating": 4.8},
-            {"id": 2, "name": "Sarah Johnson", "sales": 25200.00, "orders": 350, "avg_ticket": 72.00, "tips": 4032.00, "rating": 4.9},
-            {"id": 3, "name": "Mike Davis", "sales": 22100.00, "orders": 340, "avg_ticket": 65.00, "tips": 3315.00, "rating": 4.6},
-        ],
+        "servers": [],
         "generated_at": datetime.now(timezone.utc).isoformat(),
     }
 
@@ -452,15 +425,12 @@ def get_voids_comps_report(
     """
     return {
         "summary": {
-            "total_voids": 1875.00,
-            "void_percentage": 1.5,
-            "total_comps": 2500.00,
-            "comp_percentage": 2.0,
+            "total_voids": 0,
+            "void_percentage": 0,
+            "total_comps": 0,
+            "comp_percentage": 0,
         },
-        "voids": [
-            {"reason": "Customer changed mind", "count": 45, "amount": 675.00},
-            {"reason": "Wrong item sent", "count": 32, "amount": 480.00},
-        ],
+        "voids": [],
         "generated_at": datetime.now(timezone.utc).isoformat(),
     }
 
@@ -474,13 +444,9 @@ def get_product_mix_report(
     Get product mix analysis report.
     """
     return {
-        "total_items_sold": 8500,
-        "total_revenue": 125000.00,
-        "categories": [
-            {"name": "Appetizers", "items_sold": 1700, "revenue": 18750.00, "percentage": 15.0},
-            {"name": "Main Courses", "items_sold": 3400, "revenue": 62500.00, "percentage": 50.0},
-            {"name": "Pizza", "items_sold": 1275, "revenue": 25000.00, "percentage": 20.0},
-        ],
+        "total_items_sold": 0,
+        "total_revenue": 0,
+        "categories": [],
         "generated_at": datetime.now(timezone.utc).isoformat(),
     }
 
@@ -496,15 +462,11 @@ def get_trends_report(
     """
     return {
         "period": period,
-        "sales_trend": [
-            {"date": "2024-01-01", "sales": 4200.00, "orders": 85},
-            {"date": "2024-01-02", "sales": 3800.00, "orders": 78},
-            {"date": "2024-01-03", "sales": 4500.00, "orders": 92},
-        ],
+        "sales_trend": [],
         "comparison": {
-            "current_period_sales": 37200.00,
-            "previous_period_sales": 34500.00,
-            "change_percentage": 7.8,
+            "current_period_sales": 0,
+            "previous_period_sales": 0,
+            "change_percentage": 0,
         },
         "generated_at": datetime.now(timezone.utc).isoformat(),
     }
@@ -529,8 +491,8 @@ def get_financial_report(
 ):
     """Get financial report."""
     return {
-        "revenue": 0, "expenses": 0, "profit": 0, "food_cost_pct": 30.0,
-        "labor_cost_pct": 25.0, "prime_cost_pct": 55.0,
+        "revenue": 0, "expenses": 0, "profit": 0, "food_cost_pct": 0,
+        "labor_cost_pct": 0, "prime_cost_pct": 0,
         "by_category": [], "generated_at": datetime.now(timezone.utc).isoformat(),
     }
 

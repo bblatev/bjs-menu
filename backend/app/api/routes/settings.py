@@ -111,7 +111,7 @@ def _get_all_for_category(db: DbSession, category: str) -> Dict[str, Any]:
 async def get_all_settings(db: DbSession):
     """Get all settings as a combined object."""
     general = _get_all_for_category(db, "general") or {
-        "restaurant_name": "BJ's Bar & Grill",
+        "restaurant_name": "",
         "language": "bg",
         "currency": "BGN",
         "timezone": "Europe/Sofia",
@@ -164,14 +164,14 @@ async def get_venue_settings(db: DbSession):
     if stored and isinstance(stored, dict):
         return VenueSettings(**stored)
     return VenueSettings(
-        name="BJ's Bar & Grill",
-        address="123 Main Street, Sofia",
-        phone="+359 888 123 456",
-        email="info@bjsbar.com",
+        name="",
+        address="",
+        phone="",
+        email="",
         timezone="Europe/Sofia",
         currency="BGN",
         tax_rate=20.0,
-        service_charge=10.0,
+        service_charge=0,
     )
 
 
@@ -263,11 +263,11 @@ async def get_fiscal_settings(db: DbSession):
     if stored and isinstance(stored, dict):
         return FiscalSettings(**stored)
     return FiscalSettings(
-        fiscal_enabled=True,
-        fiscal_device_id="FP-001",
-        tax_number="BG123456789",
-        company_name="BJ's Bar Ltd",
-        company_address="123 Main Street, Sofia, Bulgaria",
+        fiscal_enabled=False,
+        fiscal_device_id=None,
+        tax_number="",
+        company_name="",
+        company_address="",
     )
 
 

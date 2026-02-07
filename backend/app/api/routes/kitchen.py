@@ -43,6 +43,26 @@ def _sync_guest_order_status(db: DbSession, kitchen_order: KitchenOrder, new_sta
                 guest_order.ready_at = datetime.now(timezone.utc)
 
 
+def _compute_avg_cook_time(db: DbSession, location_id: Optional[int] = None) -> float:
+    """Compute average cook time in minutes from completed kitchen orders."""
+    query = db.query(KitchenOrder).filter(
+        KitchenOrder.status == "completed",
+        KitchenOrder.started_at.isnot(None),
+        KitchenOrder.completed_at.isnot(None),
+    )
+    if location_id:
+        query = query.filter(KitchenOrder.location_id == location_id)
+    completed = query.all()
+    if not completed:
+        return 0
+    total_minutes = sum(
+        (o.completed_at - o.started_at).total_seconds() / 60
+        for o in completed
+        if o.completed_at and o.started_at
+    )
+    return round(total_minutes / len(completed), 1)
+
+
 class KitchenStats(BaseModel):
     """Kitchen statistics response."""
     active_alerts: int = 0
@@ -83,14 +103,14 @@ def get_kitchen_stats(
     return {
         "total_tickets": total_count,
         "active_tickets": active_count,
-        "avg_cook_time_minutes": 12.5,
+        "avg_cook_time_minutes": _compute_avg_cook_time(db, location_id),
         "bumped_today": status_counts["completed"],
         "active_alerts": 0,
         "orders_by_status": status_counts,
         "items_86_count": items_86_count,
         "rush_orders_today": db.query(KitchenOrder).filter(KitchenOrder.priority >= 1).count(),
         "vip_orders_today": db.query(KitchenOrder).filter(KitchenOrder.priority >= 2).count(),
-        "avg_prep_time_minutes": 12.5,
+        "avg_prep_time_minutes": _compute_avg_cook_time(db, location_id),
         "orders_completed_today": status_counts["completed"],
     }
 
@@ -165,7 +185,7 @@ def get_kitchen_queue(
     return {
         "orders": queue_orders,
         "total_in_queue": len(orders),
-        "avg_wait_time_minutes": 10
+        "avg_wait_time_minutes": round(sum(q["wait_time_minutes"] for q in queue_orders) / len(queue_orders), 1) if queue_orders else 0
     }
 
 

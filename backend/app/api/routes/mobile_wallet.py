@@ -209,7 +209,7 @@ async def get_default_configuration():
         "apple_pay_enabled": True,
         "google_pay_enabled": True,
         "link_enabled": False,
-        "merchant_name": "BJ's Bar & Grill",
+        "merchant_name": "",
         "merchant_country": "BG",
         "merchant_currency": "BGN",
         "supported_networks": ["visa", "mastercard"],
