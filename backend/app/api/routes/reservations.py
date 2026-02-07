@@ -887,47 +887,46 @@ def auto_assign_tables(
 
 
 @router.get("/{venue_id}/cancellation-policy")
-def get_cancellation_policies(venue_id: int):
+def get_cancellation_policies(db: DbSession, venue_id: int):
     """Get cancellation policies for a venue."""
-    return {
-        "policies": [
-            {
-                "id": 1,
-                "name": "Standard",
-                "hours_before": 24,
-                "refund_percentage": 100.0,
-                "description": "Full refund if cancelled 24+ hours before reservation",
-            },
-            {
-                "id": 2,
-                "name": "Same Day",
-                "hours_before": 4,
-                "refund_percentage": 50.0,
-                "description": "50% refund if cancelled 4+ hours before reservation",
-            },
-            {
-                "id": 3,
-                "name": "No Show",
-                "hours_before": 0,
-                "refund_percentage": 0.0,
-                "description": "No refund for no-shows or last-minute cancellations",
-            },
-        ]
-    }
+    from app.models.operations import AppSetting
+    setting = db.query(AppSetting).filter(
+        AppSetting.category == "cancellation_policies",
+        AppSetting.key == "default",
+    ).first()
+    policies = setting.value if setting and isinstance(setting.value, list) else []
+    return {"policies": policies}
 
 
 @router.post("/{venue_id}/cancellation-policy")
-def create_cancellation_policy(venue_id: int, policy: CancellationPolicy):
+def create_cancellation_policy(db: DbSession, venue_id: int, policy: CancellationPolicy):
     """Create a cancellation policy."""
+    from app.models.operations import AppSetting
+    setting = db.query(AppSetting).filter(
+        AppSetting.category == "cancellation_policies",
+        AppSetting.key == "default",
+    ).first()
+    policies = []
+    if setting and isinstance(setting.value, list):
+        policies = list(setting.value)
+    next_id = max((p.get("id", 0) for p in policies), default=0) + 1
+    new_policy = {
+        "id": next_id,
+        "name": policy.name,
+        "hours_before": policy.hours_before,
+        "refund_percentage": policy.refund_percentage,
+        "description": policy.description,
+    }
+    policies.append(new_policy)
+    if setting:
+        setting.value = policies
+    else:
+        setting = AppSetting(category="cancellation_policies", key="default", value=policies)
+        db.add(setting)
+    db.commit()
     return {
         "success": True,
-        "policy": {
-            "id": 4,
-            "name": policy.name,
-            "hours_before": policy.hours_before,
-            "refund_percentage": policy.refund_percentage,
-            "description": policy.description,
-        },
+        "policy": new_policy,
         "message": f"Policy '{policy.name}' created successfully"
     }
 

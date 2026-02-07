@@ -837,15 +837,31 @@ def get_batches_for_item(item_id: int, db: DbSession, location_id: int = Query(1
 @router.post("/batches")
 def create_batch(request: BatchCreateRequest, db: DbSession):
     """Record a new batch."""
+    from app.models.advanced_features import InventoryBatch
+    today = date.today()
+    exp = date.fromisoformat(request.expiry_date) if request.expiry_date else today + timedelta(days=365)
+    batch = InventoryBatch(
+        product_id=request.stock_item_id,
+        location_id=1,
+        batch_number=request.batch_number,
+        received_quantity=request.quantity,
+        current_quantity=request.quantity,
+        received_date=today,
+        expiration_date=exp,
+        unit_cost=request.cost_per_unit or 0,
+    )
+    db.add(batch)
+    db.commit()
+    db.refresh(batch)
     return {
-        "id": 1,
-        "stock_item_id": request.stock_item_id,
-        "batch_number": request.batch_number,
-        "quantity": request.quantity,
-        "received_date": datetime.now(timezone.utc).isoformat(),
-        "expiry_date": request.expiry_date,
-        "cost_per_unit": request.cost_per_unit,
-        "is_active": True,
+        "id": batch.id,
+        "stock_item_id": batch.product_id,
+        "batch_number": batch.batch_number,
+        "quantity": float(batch.current_quantity),
+        "received_date": batch.received_date.isoformat(),
+        "expiry_date": batch.expiration_date.isoformat(),
+        "cost_per_unit": float(batch.unit_cost),
+        "is_active": not batch.is_expired,
     }
 
 
@@ -888,13 +904,24 @@ def get_shrinkage_records(db: DbSession, location_id: int = Query(1), days: int 
 @router.post("/shrinkage/record")
 def record_shrinkage(request: ShrinkageRecordRequest, db: DbSession):
     """Record a shrinkage event."""
+    movement = StockMovement(
+        product_id=request.stock_item_id,
+        location_id=1,
+        qty_delta=-abs(request.quantity),
+        reason=request.reason if request.reason in ("waste", "spoilage", "theft", "damage", "shrinkage") else "shrinkage",
+        notes=request.notes,
+        ts=datetime.now(timezone.utc),
+    )
+    db.add(movement)
+    db.commit()
+    db.refresh(movement)
     return {
-        "id": 1,
-        "stock_item_id": request.stock_item_id,
+        "id": movement.id,
+        "stock_item_id": movement.product_id,
         "quantity": request.quantity,
-        "reason": request.reason,
-        "notes": request.notes,
-        "recorded_at": datetime.now(timezone.utc).isoformat(),
+        "reason": movement.reason,
+        "notes": movement.notes,
+        "recorded_at": movement.ts.isoformat() if movement.ts else datetime.now(timezone.utc).isoformat(),
     }
 
 
@@ -910,24 +937,14 @@ class CycleCountScheduleRequest(BaseModel):
 @router.get("/cycle-counts/schedules")
 def get_cycle_count_schedules(db: DbSession):
     """Get cycle count schedules."""
-    return [
-        {
-            "id": 1,
-            "name": "Weekly Bar Count",
-            "count_type": "category",
-            "frequency_days": 7,
-            "next_count_date": (date.today() + timedelta(days=3)).isoformat(),
-            "is_active": True,
-        },
-        {
-            "id": 2,
-            "name": "Monthly Full Count",
-            "count_type": "full",
-            "frequency_days": 30,
-            "next_count_date": (date.today() + timedelta(days=15)).isoformat(),
-            "is_active": True,
-        },
-    ]
+    from app.models.operations import AppSetting
+    setting = db.query(AppSetting).filter(
+        AppSetting.category == "cycle_count_schedules",
+        AppSetting.key == "default",
+    ).first()
+    if setting and isinstance(setting.value, list):
+        return setting.value
+    return []
 
 
 @router.get("/cycle-counts/tasks")
@@ -944,7 +961,7 @@ def get_cycle_count_tasks(db: DbSession):
         ).scalar() or 0
         tasks.append({
             "id": s.id,
-            "schedule_id": 1,
+            "schedule_id": None,
             "status": s.status if isinstance(s.status, str) else s.status.value,
             "started_at": s.created_at.isoformat() if hasattr(s, 'created_at') and s.created_at else None,
             "completed_at": s.committed_at.isoformat() if s.committed_at else None,
@@ -957,14 +974,31 @@ def get_cycle_count_tasks(db: DbSession):
 @router.post("/cycle-counts/schedules")
 def create_cycle_count_schedule(request: CycleCountScheduleRequest, db: DbSession):
     """Create a cycle count schedule."""
-    return {
-        "id": 3,
+    from app.models.operations import AppSetting
+    setting = db.query(AppSetting).filter(
+        AppSetting.category == "cycle_count_schedules",
+        AppSetting.key == "default",
+    ).first()
+    schedules = []
+    if setting and isinstance(setting.value, list):
+        schedules = list(setting.value)
+    next_id = max((s.get("id", 0) for s in schedules), default=0) + 1
+    new_schedule = {
+        "id": next_id,
         "name": request.name,
         "count_type": request.count_type,
         "frequency_days": request.frequency_days,
         "next_count_date": (date.today() + timedelta(days=request.frequency_days)).isoformat(),
         "is_active": request.is_active,
     }
+    schedules.append(new_schedule)
+    if setting:
+        setting.value = schedules
+    else:
+        setting = AppSetting(category="cycle_count_schedules", key="default", value=schedules)
+        db.add(setting)
+    db.commit()
+    return new_schedule
 
 
 # ==================== RECONCILIATION ====================

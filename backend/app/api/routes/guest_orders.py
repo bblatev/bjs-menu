@@ -1808,19 +1808,14 @@ def admin_toggle_combo_featured(db: DbSession, combo_id: int):
 
 
 DAYPART_STORE = "menu_dayparts"
-DAYPART_DEFAULTS = [
-    {"id": 1, "name": "Breakfast", "start_time": "06:00", "end_time": "11:00", "active": True},
-    {"id": 2, "name": "Lunch", "start_time": "11:00", "end_time": "15:00", "active": True},
-    {"id": 3, "name": "Dinner", "start_time": "17:00", "end_time": "22:00", "active": True},
-]
 
 
 def _load_dayparts(db: DbSession) -> list:
     from app.models.hardware import Integration
     rec = db.query(Integration).filter(Integration.integration_id == DAYPART_STORE).first()
     if rec and rec.config and isinstance(rec.config, dict):
-        return rec.config.get("items", DAYPART_DEFAULTS)
-    return DAYPART_DEFAULTS
+        return rec.config.get("items", [])
+    return []
 
 
 def _save_dayparts(db: DbSession, items: list):
