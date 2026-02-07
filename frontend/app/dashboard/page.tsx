@@ -190,6 +190,14 @@ function DashboardContent() {
   const avgTicket = totalOrdersToday > 0 ? todayRevenue / totalOrdersToday : 0;
   const upcomingReservations = reservations.filter(r => r.status === 'confirmed' || r.status === 'pending');
 
+  const colorClasses: Record<string, { text600: string; text700: string; from50: string; bg50: string; bg100: string }> = {
+    primary: { text600: 'text-primary-600', text700: 'text-primary-700', from50: 'from-primary-50', bg50: 'bg-primary-50', bg100: 'bg-primary-100' },
+    accent: { text600: 'text-accent-600', text700: 'text-accent-700', from50: 'from-accent-50', bg50: 'bg-accent-50', bg100: 'bg-accent-100' },
+    success: { text600: 'text-success-600', text700: 'text-success-700', from50: 'from-success-50', bg50: 'bg-success-50', bg100: 'bg-success-100' },
+    warning: { text600: 'text-warning-600', text700: 'text-warning-700', from50: 'from-warning-50', bg50: 'bg-warning-50', bg100: 'bg-warning-100' },
+    error: { text600: 'text-error-600', text700: 'text-error-700', from50: 'from-error-50', bg50: 'bg-error-50', bg100: 'bg-error-100' },
+  };
+
   const stats = [
     {
       label: "Приходи днес",
@@ -398,7 +406,7 @@ function DashboardContent() {
             <div className="flex items-start justify-between">
               <div>
                 <p className="text-xs font-semibold uppercase tracking-wider text-surface-400 mb-1">{stat.label}</p>
-                <p className={`text-2xl font-display font-bold text-${stat.color}-600`}>{stat.value}</p>
+                <p className={`text-2xl font-display font-bold ${colorClasses[stat.color]?.text600 || 'text-primary-600'}`}>{stat.value}</p>
                 {stat.subvalue && <p className="text-xs text-surface-500 mt-0.5">{stat.subvalue}</p>}
                 {stat.trend && (
                   <div className={`flex items-center gap-1 mt-2 text-xs font-medium ${stat.trend.up ? 'text-success-600' : 'text-error-600'}`}>
@@ -481,8 +489,8 @@ function DashboardContent() {
         <div className="col-span-2 grid grid-cols-2 gap-4">
           {navSections.map((section, i) => (
             <div key={i} className="bg-white rounded-2xl shadow-sm border border-surface-100 overflow-hidden animate-slide-up" style={{ animationDelay: `${i * 100}ms` }}>
-              <div className={`px-5 py-3 border-b border-surface-100 bg-gradient-to-r from-${section.color}-50 to-white`}>
-                <h3 className={`font-semibold text-${section.color}-700`}>{section.title}</h3>
+              <div className={`px-5 py-3 border-b border-surface-100 bg-gradient-to-r ${colorClasses[section.color]?.from50 || 'from-primary-50'} to-white`}>
+                <h3 className={`font-semibold ${colorClasses[section.color]?.text700 || 'text-primary-700'}`}>{section.title}</h3>
               </div>
               <div className="p-2">
                 {section.items.map((item, j) => (

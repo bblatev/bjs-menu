@@ -6,6 +6,12 @@ module.exports = {
     './app/**/*.{js,ts,jsx,tsx,mdx}',
   ],
   darkMode: ['class', '[data-theme="dark"]'],
+  safelist: [
+    // Dynamic color classes used in dashboard and other pages
+    {
+      pattern: /^(text|bg|border|from|to|via)-(primary|accent|success|warning|error|surface)-(50|100|200|300|400|500|600|700|800|900)$/,
+    },
+  ],
   theme: {
     extend: {
       colors: {
