@@ -198,9 +198,8 @@ def get_dashboard_stats(
     pos_items = pos_result.total_items or 0
     pos_qty = float(pos_result.total_qty or 0)
 
-    # Combine with POS data
+    # Combine with POS data (count only — POS model has no price column)
     total_orders += pos_items
-    total_revenue += pos_qty * 15.0  # Estimate POS revenue
 
     # Get top items from POS using database aggregation (more reliable than JSON parsing)
     pos_top_items = db.query(

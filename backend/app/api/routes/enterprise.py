@@ -163,7 +163,7 @@ INTEGRATIONS_MARKETPLACE = [
 _DEFAULT_MOBILE_CONFIG = {
     "app_name": "",
     "bundle_id": "",
-    "version": "1.0.0",
+    "version": "",
     "features_enabled": ["ordering", "loyalty", "reservations"],
     "theme_colors": {"primary": "", "secondary": ""},
 }

@@ -201,7 +201,7 @@ def get_stock_categories(db: DbSession):
     for idx, (name, count) in enumerate(sorted(category_counts.items()), start=1):
         categories.append({"id": idx, "name": name, "count": count})
     if not categories:
-        categories = [{"id": 1, "name": "All Products", "count": 0}]
+        return []
     return categories
 
 

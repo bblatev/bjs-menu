@@ -18,12 +18,12 @@ class LocationStats(BaseModel):
     today_revenue: float = 0
     today_orders: int = 0
     avg_ticket: float = 0
-    labor_cost_percent: float = 25.0
-    food_cost_percent: float = 30.0
+    labor_cost_percent: float = 0
+    food_cost_percent: float = 0
     staff_on_duty: int = 0
     active_tables: int = 0
     pending_orders: int = 0
-    rating: float = 4.5
+    rating: float = 0
     reviews_count: int = 0
 
 
@@ -32,8 +32,8 @@ class ConsolidatedStats(BaseModel):
     total_revenue: float = 0
     total_orders: int = 0
     avg_ticket: float = 0
-    avg_labor_cost: float = 25.0
-    avg_food_cost: float = 30.0
+    avg_labor_cost: float = 0
+    avg_food_cost: float = 0
     total_staff: int = 0
     locations_active: int = 0
     top_performer: str = ""
@@ -64,16 +64,6 @@ def get_locations_dashboard(db: DbSession, current_user: OptionalCurrentUser = N
     for loc in locations:
         stats.append(LocationStats(
             location_id=loc.id,
-            today_revenue=1500 + (loc.id * 500),
-            today_orders=25 + (loc.id * 5),
-            avg_ticket=45.0,
-            labor_cost_percent=24.5,
-            food_cost_percent=29.0,
-            staff_on_duty=4 + (loc.id % 3),
-            active_tables=8 + (loc.id % 5),
-            pending_orders=loc.id % 4,
-            rating=4.2 + (loc.id % 5) * 0.1,
-            reviews_count=50 + loc.id * 10
         ))
 
     return {"stats": stats}
@@ -88,19 +78,8 @@ def get_consolidated_reports(
     """Get consolidated reports across all locations."""
     locations = db.query(Location).filter(Location.active == True).all()
 
-    total_revenue = sum(1500 + (loc.id * 500) for loc in locations)
-    total_orders = sum(25 + (loc.id * 5) for loc in locations)
-
     return ConsolidatedStats(
-        total_revenue=total_revenue,
-        total_orders=total_orders,
-        avg_ticket=total_revenue / total_orders if total_orders > 0 else 0,
-        avg_labor_cost=24.5,
-        avg_food_cost=29.0,
-        total_staff=sum(4 + (loc.id % 3) for loc in locations),
         locations_active=len(locations),
-        top_performer=locations[0].name if locations else "N/A",
-        needs_attention=[]
     )
 
 

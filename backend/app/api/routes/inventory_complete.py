@@ -835,14 +835,14 @@ def get_batches_for_item(item_id: int, db: DbSession, location_id: int = Query(1
 
 
 @router.post("/batches")
-def create_batch(request: BatchCreateRequest, db: DbSession):
+def create_batch(request: BatchCreateRequest, db: DbSession, location_id: int = Query(1)):
     """Record a new batch."""
     from app.models.advanced_features import InventoryBatch
     today = date.today()
     exp = date.fromisoformat(request.expiry_date) if request.expiry_date else today + timedelta(days=365)
     batch = InventoryBatch(
         product_id=request.stock_item_id,
-        location_id=1,
+        location_id=location_id,
         batch_number=request.batch_number,
         received_quantity=request.quantity,
         current_quantity=request.quantity,
@@ -902,11 +902,11 @@ def get_shrinkage_records(db: DbSession, location_id: int = Query(1), days: int 
 
 
 @router.post("/shrinkage/record")
-def record_shrinkage(request: ShrinkageRecordRequest, db: DbSession):
+def record_shrinkage(request: ShrinkageRecordRequest, db: DbSession, location_id: int = Query(1)):
     """Record a shrinkage event."""
     movement = StockMovement(
         product_id=request.stock_item_id,
-        location_id=1,
+        location_id=location_id,
         qty_delta=-abs(request.quantity),
         reason=request.reason if request.reason in ("waste", "spoilage", "theft", "damage", "shrinkage") else "shrinkage",
         notes=request.notes,

@@ -41,17 +41,22 @@ def get_invoice_stats(db: DbSession):
         this_month_invoices = [inv for inv in all_invoices if inv.invoice_date and inv.invoice_date >= month_start]
         this_month_total = sum(inv.total_amount or 0 for inv in this_month_invoices)
 
+        pending_invoices = [inv for inv in all_invoices if inv.status and inv.status.value in ["pending", "needs_review", "processing"]]
+        pending_amount = sum(float(inv.total_amount or 0) for inv in pending_invoices)
+        overdue_invoices = [inv for inv in all_invoices if inv.due_date and inv.due_date < today and (not inv.status or inv.status.value != "paid")]
+        overdue_amount = sum(float(inv.total_amount or 0) for inv in overdue_invoices)
+
         return {
             "total_invoices": total_invoices,
             "total_amount": float(total_amount) if total_amount else 0.0,
             "pending_count": pending_count,
-            "pending_amount": float(total_amount * 0.3) if total_amount else 0.0,
+            "pending_amount": pending_amount,
             "paid_count": paid_count,
             "overdue_count": overdue_count,
-            "overdue_amount": float(total_amount * 0.1) if total_amount else 0.0,
+            "overdue_amount": overdue_amount,
             "this_month_total": float(this_month_total),
-            "avg_processing_time_days": 3.2,
-            "ocr_accuracy_rate": 94.5,
+            "avg_processing_time_days": 0,
+            "ocr_accuracy_rate": 0,
         }
     except Exception as e:
         # Return default stats if database query fails
@@ -64,8 +69,8 @@ def get_invoice_stats(db: DbSession):
             "overdue_count": 0,
             "overdue_amount": 0.0,
             "this_month_total": 0.0,
-            "avg_processing_time_days": 3.2,
-            "ocr_accuracy_rate": 94.5,
+            "avg_processing_time_days": 0,
+            "ocr_accuracy_rate": 0,
         }
 
 
