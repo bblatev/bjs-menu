@@ -8,6 +8,7 @@ import { API_URL, getAuthHeaders } from '@/lib/api';
 interface TableQR {
   id: number;
   number: string;
+  token: string;
   seats: number;
   section: string;
   qrGenerated: boolean;
@@ -57,6 +58,7 @@ export default function TablesQrPage() {
       const transformedTables: TableQR[] = tableList.map((t: any) => ({
         id: t.id,
         number: t.table_number || t.number || String(t.id),
+        token: t.token || `table${(t.table_number || t.number || String(t.id)).toLowerCase().replace(/\s+/g, '')}`,
         seats: t.capacity || t.seats || 4,
         section: t.area || t.section || 'Main',
         qrGenerated: true,
@@ -104,15 +106,17 @@ export default function TablesQrPage() {
     setSelectedTables([]);
   };
 
-  const generateQRCode = (tableNumber: string) => {
-    // Mock QR code - in production, this would use a QR library or API
-    return `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=https://restaurant.com/table/${tableNumber}`;
+  const siteUrl = typeof window !== 'undefined' ? window.location.origin : 'https://menu.bjs.bar';
+
+  const generateQRCode = (tableToken: string) => {
+    const orderUrl = `${siteUrl}/table/${tableToken}`;
+    return `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(orderUrl)}`;
   };
 
   const downloadQR = (table: TableQR, format: 'png' | 'pdf') => {
     // Mock download - in production, this would generate actual files
     const link = document.createElement('a');
-    link.href = generateQRCode(table.number);
+    link.href = generateQRCode(table.token);
     link.download = `table-${table.number}-qr.${format}`;
     document.body.appendChild(link);
     link.click();
@@ -362,7 +366,7 @@ export default function TablesQrPage() {
                 >
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
-                    src={generateQRCode(table.number)}
+                    src={generateQRCode(table.token)}
                     alt={`QR Code for Table ${table.number}`}
                     className="w-full h-auto rounded-lg"
                   />
@@ -544,7 +548,7 @@ export default function TablesQrPage() {
               <div className="bg-white border-4 border-surface-900 rounded-2xl p-6 mb-6">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
-                  src={generateQRCode(previewTable.number)}
+                  src={generateQRCode(previewTable.token)}
                   alt={`QR Code for Table ${previewTable.number}`}
                   className="w-full h-auto"
                 />
@@ -570,7 +574,7 @@ export default function TablesQrPage() {
               <div className="bg-surface-50 rounded-xl p-4 mb-6">
                 <div className="text-xs text-surface-500 mb-2">QR Code URL</div>
                 <div className="text-sm font-mono text-surface-700 bg-white px-3 py-2 rounded-lg border border-surface-200 break-all">
-                  https://restaurant.com/table/{previewTable.number}
+                  {siteUrl}/table/{previewTable.token}
                 </div>
               </div>
             </div>
@@ -623,7 +627,7 @@ export default function TablesQrPage() {
           <div key={table.id} className="page-break" style={{ pageBreakAfter: 'always', padding: '40px', textAlign: 'center' }}>
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
-              src={generateQRCode(table.number)}
+              src={generateQRCode(table.token)}
               alt={`QR Code for Table ${table.number}`}
               style={{ width: '400px', height: '400px', margin: '0 auto', display: 'block' }}
             />
