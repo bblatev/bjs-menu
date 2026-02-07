@@ -52,15 +52,6 @@ async def get_integrations(db: DbSession):
     return [_integration_to_dict(i) for i in results]
 
 
-@router.get("/{integration_id}")
-async def get_integration(integration_id: str, db: DbSession):
-    """Get a specific integration."""
-    integration = db.query(IntegrationModel).filter(IntegrationModel.id == int(integration_id)).first()
-    if not integration:
-        raise HTTPException(status_code=404, detail="Integration not found")
-    return _integration_to_dict(integration)
-
-
 @router.post("/{integration_id}/connect")
 async def connect_integration(integration_id: str, config: dict, db: DbSession):
     """Connect an integration."""
@@ -297,3 +288,16 @@ async def get_multi_location_sync_settings(db: DbSession):
         "sync_staff": False,
         "last_sync": None,
     }
+
+
+@router.get("/{integration_id}")
+async def get_integration(integration_id: str, db: DbSession):
+    """Get a specific integration by ID."""
+    try:
+        iid = int(integration_id)
+    except (ValueError, TypeError):
+        raise HTTPException(status_code=404, detail="Integration not found")
+    integration = db.query(IntegrationModel).filter(IntegrationModel.id == iid).first()
+    if not integration:
+        raise HTTPException(status_code=404, detail="Integration not found")
+    return _integration_to_dict(integration)

@@ -144,6 +144,8 @@ def get_waitlist_stats(
 
     total_waiting = len(waiting_entries)
 
+    from datetime import datetime, timezone, timedelta
+
     # Calculate average wait time
     avg_wait = 0
     if waiting_entries:
@@ -152,7 +154,6 @@ def get_waitlist_stats(
     # Current longest wait
     longest_wait = 0
     if waiting_entries:
-        from datetime import datetime, timezone
         now = datetime.now(timezone.utc)
         waits = []
         for e in waiting_entries:
@@ -162,7 +163,6 @@ def get_waitlist_stats(
         longest_wait = max(waits) if waits else 0
 
     # Parties seated today
-    from datetime import datetime, timedelta
     today_start = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
     seated_today = db.query(Waitlist).filter(
         Waitlist.location_id == location_id,

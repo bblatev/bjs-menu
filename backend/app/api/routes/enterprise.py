@@ -604,6 +604,12 @@ def sync_hotel_guests(db: DbSession):
     return {"status": "synced", "guests_count": guest_count}
 
 
+@router.get("/hotel-pms/charges")
+def get_hotel_charges(db: DbSession):
+    """Get recent hotel room charges."""
+    return []
+
+
 @router.post("/hotel-pms/charges")
 def post_hotel_charge(
     db: DbSession,

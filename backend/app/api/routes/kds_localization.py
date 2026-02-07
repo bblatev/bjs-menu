@@ -204,6 +204,19 @@ async def get_ui_labels_by_language(language: str):
 # Translations Management
 # ============================================================================
 
+@router.get("/translations")
+async def get_all_translations():
+    """Get all translations for all languages."""
+    service = get_kds_localization_service()
+    all_translations = {}
+    for lang in SupportedLanguage:
+        all_translations[lang.value] = service.get_all_translations(lang)
+    return {
+        "languages": [l.value for l in SupportedLanguage],
+        "translations": all_translations,
+    }
+
+
 @router.get("/translations/{language}")
 async def get_translations(language: str):
     """Get all translations for a language."""

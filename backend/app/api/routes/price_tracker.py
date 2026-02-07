@@ -120,7 +120,7 @@ async def delete_alert_rule(rule_id: str, db: DbSession):
 async def get_price_history(db: DbSession, date_range: str = Query("30d")):
     """Get price history for tracked items."""
     from app.models.product import Product
-    from app.models.invoice import Supplier
+    from app.models.supplier import Supplier
 
     # Group price history by product
     products_with_history = (
