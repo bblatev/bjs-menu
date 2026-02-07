@@ -3,10 +3,14 @@
 Allows staff to practice using the POS system without affecting real data.
 """
 
+import json
 from typing import Optional, List
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Body
 from pydantic import BaseModel
 
+from app.db.session import DbSession
+from app.models.operations import AppSetting
+from app.models.staff import StaffUser
 from app.services.training_mode_service import (
     get_training_service,
     is_training_order,
@@ -400,12 +404,20 @@ async def check_if_training_order(order_id: str):
 # ============================================================================
 
 @router.get("/config")
-async def get_training_config():
+async def get_training_config(db: DbSession):
     """Get training mode configuration."""
+    setting = db.query(AppSetting).filter(
+        AppSetting.category == "training_config",
+        AppSetting.key == "config",
+    ).first()
+
+    if setting and setting.value:
+        return json.loads(setting.value)
+
     return {
-        "enabled": True,
-        "require_pin": True,
-        "training_pin": "1234",
+        "enabled": False,
+        "require_pin": False,
+        "training_pin": None,
         "auto_end_minutes": 60,
         "show_hints": True,
         "allow_void_practice": True,
@@ -415,22 +427,48 @@ async def get_training_config():
 
 
 @router.put("/config")
-async def update_training_config(config: dict):
+async def update_training_config(db: DbSession, config: dict = Body(...)):
     """Update training mode configuration."""
+    setting = db.query(AppSetting).filter(
+        AppSetting.category == "training_config",
+        AppSetting.key == "config",
+    ).first()
+
+    if setting:
+        setting.value = json.dumps(config)
+    else:
+        setting = AppSetting(
+            category="training_config",
+            key="config",
+            value=json.dumps(config),
+        )
+        db.add(setting)
+
+    db.commit()
     return {"success": True, **config}
 
 
 @router.get("/sessions")
-async def list_training_sessions(limit: int = 20):
+async def list_training_sessions(db: DbSession, limit: int = 20):
     """List all training sessions."""
     service = get_training_service()
+
+    # Batch fetch staff names
+    all_sessions = list(service._sessions.values())
+    staff_ids = list(set(s.user_id for s in all_sessions))
+    staff_map = {}
+    if staff_ids:
+        staff_list = db.query(StaffUser.id, StaffUser.full_name).filter(
+            StaffUser.id.in_(staff_ids)
+        ).all()
+        staff_map = {s.id: s.full_name for s in staff_list}
 
     sessions = []
     for sid, s in list(service._sessions.items()):
         sessions.append({
             "session_id": s.session_id,
             "staff_id": s.user_id,
-            "staff_name": f"Staff {s.user_id}",
+            "staff_name": staff_map.get(s.user_id),
             "started_at": s.started_at.isoformat() if s.started_at else "",
             "ended_at": s.ended_at.isoformat() if s.ended_at else None,
             "orders_created": s.orders_created,
@@ -452,6 +490,6 @@ async def get_training_stats():
 
     return {
         "total_sessions": len(all_sessions),
-        "avg_score": 85.0,
+        "avg_score": 0,
         "total_practice_orders": total_orders,
     }

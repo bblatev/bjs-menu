@@ -381,5 +381,36 @@ def get_recipe_costs(db: DbSession, current_user: OptionalCurrentUser = None):
 @router.get("/costs/stats")
 def get_recipe_cost_stats(db: DbSession, current_user: OptionalCurrentUser = None):
     """Get recipe cost statistics."""
-    count = db.query(Recipe).count()
-    return {"total_recipes": count, "avg_food_cost_pct": 30.0, "highest_cost_recipe": None, "lowest_margin_recipe": None}
+    recipes = db.query(Recipe).all()
+    count = len(recipes)
+
+    if count == 0:
+        return {"total_recipes": 0, "avg_food_cost_pct": 0, "highest_cost_recipe": None, "lowest_margin_recipe": None}
+
+    # Compute actual food cost percentages from recipe data
+    costs = []
+    highest_cost = None
+    highest_cost_val = Decimal("0")
+
+    for recipe in recipes:
+        total_cost = Decimal("0")
+        for line in recipe.lines:
+            product = db.query(Product).filter(Product.id == line.product_id).first()
+            if product and product.cost_price:
+                total_cost += line.qty * product.cost_price
+        if total_cost > 0:
+            costs.append(float(total_cost))
+        if total_cost > highest_cost_val:
+            highest_cost_val = total_cost
+            highest_cost = recipe.name
+
+    avg_cost_pct = 0
+    if costs:
+        avg_cost_pct = round(sum(costs) / len(costs), 2)
+
+    return {
+        "total_recipes": count,
+        "avg_food_cost_pct": avg_cost_pct,
+        "highest_cost_recipe": highest_cost,
+        "lowest_margin_recipe": None,
+    }

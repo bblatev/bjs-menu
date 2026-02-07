@@ -1,44 +1,77 @@
 """Fiscal printer management routes."""
 
-from fastapi import APIRouter
+import json
+
+from fastapi import APIRouter, Body
+
+from app.db.session import DbSession
+from app.models.operations import AppSetting
 
 router = APIRouter()
 
 
 @router.get("/manufacturers")
-async def get_manufacturers():
+async def get_manufacturers(db: DbSession):
     """Get supported fiscal printer manufacturers."""
-    return [
-        {"id": "datecs", "name": "Datecs", "country": "BG", "models_count": 5},
-        {"id": "tremol", "name": "Tremol", "country": "BG", "models_count": 3},
-        {"id": "daisy", "name": "Daisy", "country": "BG", "models_count": 4},
-        {"id": "eltrade", "name": "Eltrade", "country": "BG", "models_count": 2},
-    ]
+    setting = db.query(AppSetting).filter(
+        AppSetting.category == "fiscal_printers",
+        AppSetting.key == "manufacturers",
+    ).first()
+
+    if setting and setting.value:
+        return json.loads(setting.value)
+
+    return []
 
 
 @router.get("/models")
-async def get_models(manufacturer: str = None):
+async def get_models(db: DbSession, manufacturer: str = None):
     """Get fiscal printer models."""
-    return [
-        {"id": "dp25", "manufacturer": "datecs", "name": "Datecs DP-25", "connection": "serial", "nra_certified": True},
-        {"id": "dp55", "manufacturer": "datecs", "name": "Datecs DP-55", "connection": "lan", "nra_certified": True},
-        {"id": "fp700", "manufacturer": "tremol", "name": "Tremol FP700", "connection": "usb", "nra_certified": True},
-        {"id": "compact_s", "manufacturer": "daisy", "name": "Daisy Compact S", "connection": "serial", "nra_certified": True},
-    ]
+    setting = db.query(AppSetting).filter(
+        AppSetting.category == "fiscal_printers",
+        AppSetting.key == "models",
+    ).first()
+
+    if setting and setting.value:
+        models = json.loads(setting.value)
+        if manufacturer:
+            models = [m for m in models if m.get("manufacturer") == manufacturer]
+        return models
+
+    return []
 
 
 @router.get("/connection-types")
-async def get_connection_types():
+async def get_connection_types(db: DbSession):
     """Get supported connection types."""
-    return [
-        {"id": "serial", "name": "Serial (COM)", "description": "RS-232 serial connection"},
-        {"id": "usb", "name": "USB", "description": "USB connection"},
-        {"id": "lan", "name": "LAN/Ethernet", "description": "Network connection"},
-        {"id": "bluetooth", "name": "Bluetooth", "description": "Wireless Bluetooth"},
-    ]
+    setting = db.query(AppSetting).filter(
+        AppSetting.category == "fiscal_printers",
+        AppSetting.key == "connection_types",
+    ).first()
+
+    if setting and setting.value:
+        return json.loads(setting.value)
+
+    return []
 
 
 @router.post("/configure")
-async def configure_printer(config: dict):
+async def configure_printer(db: DbSession, config: dict = Body(...)):
     """Configure a fiscal printer."""
+    setting = db.query(AppSetting).filter(
+        AppSetting.category == "fiscal_printers",
+        AppSetting.key == "printer_config",
+    ).first()
+
+    if setting:
+        setting.value = json.dumps(config)
+    else:
+        setting = AppSetting(
+            category="fiscal_printers",
+            key="printer_config",
+            value=json.dumps(config),
+        )
+        db.add(setting)
+
+    db.commit()
     return {"success": True, "message": "Printer configured"}

@@ -103,7 +103,18 @@ def _compute_food_cost_kpi(db, today_start, yesterday_start, location_id):
 @router.get("/labor")
 def get_labor_analytics(db: DbSession):
     """Get labor analytics."""
-    return {"total_cost": 0, "labor_percentage": 0, "by_department": [], "overtime": 0}
+    from app.models.operations import PayrollEntry, ShiftSchedule
+    # Compute from actual payroll and shift data
+    payroll = db.query(PayrollEntry).all()
+    total_cost = sum(float(p.gross_pay or 0) for p in payroll)
+    overtime = sum(float(p.overtime_hours or 0) for p in payroll)
+    # Group by role/department from shifts
+    departments = {}
+    for p in payroll:
+        dept = p.staff_name or "Unknown"
+        departments[dept] = departments.get(dept, 0) + float(p.gross_pay or 0)
+    by_department = [{"department": k, "cost": v} for k, v in departments.items()]
+    return {"total_cost": total_cost, "labor_percentage": 0, "by_department": by_department, "overtime": overtime}
 
 
 @router.get("/video")
@@ -874,15 +885,22 @@ def get_scale_session_summary(db: DbSession, session_id: int):
 @router.get("/scale-integration")
 def get_scale_integration_status(db: DbSession):
     """Get scale integration status and connected devices."""
+    from app.models.operations import AppSetting
+    setting = db.query(AppSetting).filter(
+        AppSetting.category == "scale_devices",
+        AppSetting.key == "config",
+    ).first()
+    if setting and setting.value:
+        return setting.value
     return {
-        "status": "active",
+        "status": "inactive",
         "connected_devices": [],
         "last_reading": None,
-        "supported_scales": ["Bluetooth Digital Scale", "USB Scale", "WiFi Scale"],
+        "supported_scales": [],
         "features": {
-            "auto_detect": True,
-            "batch_weighing": True,
-            "tare_support": True,
+            "auto_detect": False,
+            "batch_weighing": False,
+            "tare_support": False,
         },
     }
 

@@ -2111,16 +2111,14 @@ def get_menu_nutrition(db: DbSession):
 @router.get("/menu-admin/allergens")
 def get_menu_allergens(db: DbSession):
     """Get allergen definitions."""
-    return [
-        {"id": 1, "name": "Gluten", "icon": "wheat", "severity": "high"},
-        {"id": 2, "name": "Dairy", "icon": "milk", "severity": "high"},
-        {"id": 3, "name": "Nuts", "icon": "nut", "severity": "high"},
-        {"id": 4, "name": "Eggs", "icon": "egg", "severity": "medium"},
-        {"id": 5, "name": "Soy", "icon": "soy", "severity": "medium"},
-        {"id": 6, "name": "Fish", "icon": "fish", "severity": "high"},
-        {"id": 7, "name": "Shellfish", "icon": "shrimp", "severity": "high"},
-        {"id": 8, "name": "Sesame", "icon": "sesame", "severity": "medium"},
-    ]
+    from app.models.operations import AppSetting
+    setting = db.query(AppSetting).filter(
+        AppSetting.category == "allergens",
+        AppSetting.key == "list",
+    ).first()
+    if setting and setting.value:
+        return setting.value
+    return []
 
 
 @router.get("/menu-admin/modifier-options")
@@ -2139,11 +2137,7 @@ def get_menu_schedules(db: DbSession):
 @router.get("/menu-admin/versions/{item_id}")
 def get_menu_item_versions(item_id: int, db: DbSession):
     """Get version history for a menu item."""
-    return [
-        {"id": 1, "version": 3, "changed_at": "2026-02-05T14:00:00Z", "changed_by": "Manager", "changes": {"price": {"from": 12.00, "to": 14.00}}, "is_current": True},
-        {"id": 2, "version": 2, "changed_at": "2026-01-15T10:00:00Z", "changed_by": "Manager", "changes": {"description": {"from": "Classic burger", "to": "Premium classic burger"}}, "is_current": False},
-        {"id": 3, "version": 1, "changed_at": "2025-12-01T09:00:00Z", "changed_by": "Admin", "changes": {"created": True}, "is_current": False},
-    ]
+    return []
 
 
 @router.post("/menu-admin/versions/{version_id}/restore")

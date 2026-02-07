@@ -603,6 +603,8 @@ def get_kitchen_stations(
     location_id: Optional[int] = None,
 ):
     """Get kitchen stations."""
+    from app.models.advanced_features import KitchenStation
+
     # Count current load per station from active kitchen orders
     station_loads = {}
     query = db.query(KitchenOrder).filter(KitchenOrder.status.in_(["pending", "cooking"]))
@@ -613,14 +615,27 @@ def get_kitchen_stations(
         station_id = ko.station or "KITCHEN-1"
         station_loads[station_id] = station_loads.get(station_id, 0) + 1
 
+    # Query stations from database
+    station_query = db.query(KitchenStation)
+    if location_id:
+        station_query = station_query.filter(KitchenStation.location_id == location_id)
+    stations = station_query.order_by(KitchenStation.id).all()
+
     return [
-        {"station_id": "KITCHEN-1", "id": 1, "name": "Main Kitchen", "type": "kitchen", "categories": ["all"], "avg_cook_time": 12, "max_capacity": 20, "current_load": station_loads.get("KITCHEN-1", 0), "is_active": True, "printer_id": "KITCHEN-01", "display_order": 1},
-        {"station_id": "GRILL-1", "id": 2, "name": "Grill Station", "type": "grill", "categories": ["steaks", "burgers", "grilled_items"], "avg_cook_time": 12, "max_capacity": 20, "current_load": station_loads.get("GRILL-1", 0), "is_active": True, "printer_id": "GRILL-01", "display_order": 2},
-        {"station_id": "FRY-1", "id": 3, "name": "Fry Station", "type": "fryer", "categories": ["fried_items", "sides"], "avg_cook_time": 8, "max_capacity": 15, "current_load": station_loads.get("FRY-1", 0), "is_active": True, "printer_id": "FRY-01", "display_order": 3},
-        {"station_id": "SALAD-1", "id": 4, "name": "Salad & Cold", "type": "salad", "categories": ["salads", "appetizers"], "avg_cook_time": 5, "max_capacity": 12, "current_load": station_loads.get("SALAD-1", 0), "is_active": True, "printer_id": "SALAD-01", "display_order": 4},
-        {"station_id": "DESSERT-1", "id": 5, "name": "Dessert Station", "type": "dessert", "categories": ["desserts"], "avg_cook_time": 6, "max_capacity": 10, "current_load": station_loads.get("DESSERT-1", 0), "is_active": True, "printer_id": "DESSERT-01", "display_order": 5},
-        {"station_id": "EXPO-1", "id": 6, "name": "Expo Window", "type": "expo", "categories": [], "avg_cook_time": 2, "max_capacity": 25, "current_load": station_loads.get("EXPO-1", 0), "is_active": True, "printer_id": "EXPO-01", "display_order": 6},
-        {"station_id": "BAR-1", "id": 7, "name": "Bar", "type": "bar", "categories": ["cocktails", "beer", "wine", "spirits", "soft_drinks"], "avg_cook_time": 4, "max_capacity": 18, "current_load": station_loads.get("BAR-1", 0), "is_active": True, "printer_id": "BAR-01", "display_order": 7},
+        {
+            "station_id": f"{s.station_type.upper()}-{s.id}",
+            "id": s.id,
+            "name": s.name,
+            "type": s.station_type,
+            "categories": [],
+            "avg_cook_time": s.avg_item_time_seconds // 60 if s.avg_item_time_seconds else 0,
+            "max_capacity": s.max_concurrent_items,
+            "current_load": station_loads.get(f"{s.station_type.upper()}-{s.id}", 0),
+            "is_active": s.is_active,
+            "printer_id": None,
+            "display_order": s.id,
+        }
+        for s in stations
     ]
 
 

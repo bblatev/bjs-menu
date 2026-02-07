@@ -2,18 +2,25 @@
 
 from fastapi import APIRouter
 
+from app.db.session import DbSession
+from app.models.advanced_features import KitchenStation
+
 router = APIRouter()
 
 
 @router.get("/stations")
-async def get_display_stations():
+async def get_display_stations(db: DbSession):
     """Get KDS display stations."""
+    stations = db.query(KitchenStation).filter(KitchenStation.is_active == True).order_by(KitchenStation.id).all()
     return [
-        {"id": "grill", "name": "Grill", "active": True, "pending_tickets": 3, "avg_time": 12},
-        {"id": "fry", "name": "Fry", "active": True, "pending_tickets": 5, "avg_time": 8},
-        {"id": "salad", "name": "Salad/Cold", "active": True, "pending_tickets": 2, "avg_time": 5},
-        {"id": "dessert", "name": "Dessert", "active": False, "pending_tickets": 0, "avg_time": 0},
-        {"id": "expo", "name": "Expo", "active": True, "pending_tickets": 4, "avg_time": 3},
+        {
+            "id": s.station_type,
+            "name": s.name,
+            "active": s.is_active,
+            "pending_tickets": 0,
+            "avg_time": s.avg_item_time_seconds // 60 if s.avg_item_time_seconds else 0,
+        }
+        for s in stations
     ]
 
 

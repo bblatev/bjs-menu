@@ -4,11 +4,15 @@ These endpoints implement the Google Maps Booking API server interface.
 Google will call these endpoints to check availability and create bookings.
 """
 
+import json
 from typing import Optional, List
 from datetime import datetime, timedelta
-from fastapi import APIRouter, HTTPException, Request, Header
+from fastapi import APIRouter, HTTPException, Request, Header, Body
 from pydantic import BaseModel
 
+from app.db.session import DbSession
+from app.models.operations import AppSetting
+from app.models.reservations import Reservation, ReservationStatus, BookingSource
 from app.services.google_reserve_service import (
     get_google_reserve_service,
     BookingStatus,
@@ -363,8 +367,16 @@ async def get_availability_feed(
 # ============================================================================
 
 @router.get("/config")
-async def get_google_reserve_config():
+async def get_google_reserve_config(db: DbSession):
     """Get Google Reserve configuration."""
+    setting = db.query(AppSetting).filter(
+        AppSetting.category == "google_reserve",
+        AppSetting.key == "config",
+    ).first()
+
+    if setting and setting.value:
+        return json.loads(setting.value)
+
     return {
         "enabled": False,
         "partner_id": None,
@@ -373,31 +385,63 @@ async def get_google_reserve_config():
         "max_party_size": 20,
         "booking_window_days": 30,
         "min_advance_hours": 2,
-        "cancellation_policy": "24 hours before reservation",
+        "cancellation_policy": "",
         "requires_deposit": False,
     }
 
 
 @router.get("/bookings")
-async def get_google_reserve_bookings():
+async def get_google_reserve_bookings(db: DbSession):
     """Get Google Reserve bookings."""
+    reservations = db.query(Reservation).filter(
+        Reservation.source == BookingSource.GOOGLE,
+    ).order_by(Reservation.reservation_date.desc()).limit(50).all()
+
     return [
-        {"id": "gr-1", "guest_name": "Alex Johnson", "party_size": 4, "date": "2026-02-08", "time": "19:00", "status": "confirmed", "source": "google_maps", "created_at": "2026-02-05T10:30:00Z"},
-        {"id": "gr-2", "guest_name": "Sarah Williams", "party_size": 2, "date": "2026-02-07", "time": "20:30", "status": "confirmed", "source": "google_search", "created_at": "2026-02-05T14:00:00Z"},
+        {
+            "id": f"gr-{r.id}",
+            "guest_name": r.guest_name,
+            "party_size": r.party_size,
+            "date": r.reservation_date.strftime("%Y-%m-%d") if r.reservation_date else None,
+            "time": r.reservation_date.strftime("%H:%M") if r.reservation_date else None,
+            "status": r.status.value if hasattr(r.status, 'value') else str(r.status),
+            "source": r.source.value if hasattr(r.source, 'value') else str(r.source),
+            "created_at": r.created_at.isoformat() if r.created_at else None,
+        }
+        for r in reservations
     ]
 
 
 @router.get("/stats")
-async def get_google_reserve_stats():
+async def get_google_reserve_stats(db: DbSession):
     """Get Google Reserve statistics."""
+    from sqlalchemy import func
+
+    thirty_days_ago = datetime.now() - timedelta(days=30)
+
+    base = db.query(Reservation).filter(
+        Reservation.source == BookingSource.GOOGLE,
+        Reservation.reservation_date >= thirty_days_ago,
+    )
+
+    total = base.count()
+    confirmed = base.filter(Reservation.status == ReservationStatus.CONFIRMED).count()
+    cancelled = base.filter(Reservation.status == ReservationStatus.CANCELLED).count()
+    no_shows = base.filter(Reservation.status == ReservationStatus.NO_SHOW).count()
+
+    avg_party = db.query(func.avg(Reservation.party_size)).filter(
+        Reservation.source == BookingSource.GOOGLE,
+        Reservation.reservation_date >= thirty_days_ago,
+    ).scalar() or 0
+
     return {
-        "total_bookings": 45,
-        "confirmed": 38,
-        "cancelled": 5,
-        "no_shows": 2,
-        "conversion_rate": 84.4,
-        "avg_party_size": 3.2,
-        "revenue_attributed": 12500.00,
+        "total_bookings": total,
+        "confirmed": confirmed,
+        "cancelled": cancelled,
+        "no_shows": no_shows,
+        "conversion_rate": round((confirmed / total) * 100, 1) if total > 0 else 0,
+        "avg_party_size": round(float(avg_party), 1),
+        "revenue_attributed": 0,
         "period": "last_30_days",
     }
 
