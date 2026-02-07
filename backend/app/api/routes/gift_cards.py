@@ -196,6 +196,25 @@ async def create_gift_card_program(data: GiftCardProgramCreate, db: DbSession):
     }
 
 
+@router.get("/programs")
+async def get_gift_card_programs(db: DbSession):
+    """Get all gift card programs."""
+    programs = db.query(GiftCardProgram).order_by(GiftCardProgram.id).all()
+    return [
+        {
+            "id": p.id,
+            "name": p.name,
+            "denominations": p.denominations,
+            "custom_amount_allowed": p.custom_amount_allowed,
+            "min_amount": float(p.min_amount) if p.min_amount else 0,
+            "max_amount": float(p.max_amount) if p.max_amount else 0,
+            "bonus_enabled": p.bonus_enabled,
+            "is_active": p.is_active,
+        }
+        for p in programs
+    ]
+
+
 @router.get("/stats/summary")
 async def get_gift_card_stats(db: DbSession):
     """Get gift card statistics from database."""
@@ -308,6 +327,11 @@ async def create_gift_card(card_data: GiftCardCreate, db: DbSession):
         ).first()
         if existing:
             raise HTTPException(status_code=400, detail=f"Card number {card_number} already exists")
+
+    # Validate program exists
+    program = db.query(GiftCardProgram).filter(GiftCardProgram.id == card_data.program_id).first()
+    if not program:
+        raise HTTPException(status_code=404, detail=f"Gift card program {card_data.program_id} not found")
 
     # Calculate expiration date if expiration_months provided
     expires_at = None

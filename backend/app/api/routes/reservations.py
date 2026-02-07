@@ -441,6 +441,13 @@ async def create_reservation(
     if not res_datetime:
         raise HTTPException(status_code=400, detail="Either reservation_date or date+time is required")
 
+    # Validate location if provided
+    if reservation.location_id:
+        from app.models.location import Location
+        loc = db.query(Location).filter(Location.id == reservation.location_id).first()
+        if not loc:
+            reservation.location_id = None  # Allow creation without location FK
+
     # Build the data dict for the service
     data = {
         "guest_name": reservation.guest_name,

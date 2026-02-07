@@ -116,6 +116,19 @@ from app.models.hardware import (
     OfflineQueueItem,
     OCRJob,
 )
+from app.models.operations import (
+    AppSetting, PayrollRun, PayrollEntry, Notification,
+    NotificationPreference, AlertConfig, HACCPTemperatureLog,
+    HACCPSafetyCheck, FeedbackReview, AuditLogEntry,
+    VIPCustomerLink, VIPOccasion, Warehouse, WarehouseTransfer,
+    Promotion, Badge, Challenge, StaffAchievement, StaffPoints,
+    RiskAlert, ReferralProgram, ReferralRecord, TaxFiling,
+    Budget, DailyReconciliation, ShiftSchedule,
+)
+from app.models.restaurant import (
+    MenuCategory, ModifierGroup, ModifierOption,
+    MenuItemModifierGroup, ComboMeal, ComboItem,
+)
 from app.models.advanced_features import (
     HappyHour,
     WasteTrackingEntry,
@@ -227,4 +240,38 @@ __all__ = [
     # Bar Management
     "HappyHour",
     "WasteTrackingEntry",
+    # Operations
+    "AppSetting",
+    "PayrollRun",
+    "PayrollEntry",
+    "Notification",
+    "NotificationPreference",
+    "AlertConfig",
+    "HACCPTemperatureLog",
+    "HACCPSafetyCheck",
+    "FeedbackReview",
+    "AuditLogEntry",
+    "VIPCustomerLink",
+    "VIPOccasion",
+    "Warehouse",
+    "WarehouseTransfer",
+    "Promotion",
+    "Badge",
+    "Challenge",
+    "StaffAchievement",
+    "StaffPoints",
+    "RiskAlert",
+    "ReferralProgram",
+    "ReferralRecord",
+    "TaxFiling",
+    "Budget",
+    "DailyReconciliation",
+    "ShiftSchedule",
+    # Menu (extended)
+    "MenuCategory",
+    "ModifierGroup",
+    "ModifierOption",
+    "MenuItemModifierGroup",
+    "ComboMeal",
+    "ComboItem",
 ]

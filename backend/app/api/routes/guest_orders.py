@@ -2126,21 +2126,59 @@ def get_menu_allergens(db: DbSession):
 
 @router.get("/menu-admin/modifier-options")
 def get_modifier_options(db: DbSession):
-    """Get all modifier options."""
-    from app.models.restaurant import MenuItem
-    return []
+    """Get all modifier options from modifier tables."""
+    from app.models.restaurant import ModifierGroup, ModifierOption
+    groups = db.query(ModifierGroup).filter(ModifierGroup.active == True).order_by(ModifierGroup.sort_order).all()
+    result = []
+    for g in groups:
+        options = db.query(ModifierOption).filter(
+            ModifierOption.group_id == g.id,
+            ModifierOption.available == True,
+        ).order_by(ModifierOption.sort_order).all()
+        result.append({
+            "group_id": g.id,
+            "group_name": g.name,
+            "min_selections": g.min_selections,
+            "max_selections": g.max_selections,
+            "options": [
+                {"id": o.id, "name": o.name, "price_adjustment": float(o.price_adjustment or 0)}
+                for o in options
+            ],
+        })
+    return result
 
 
 @router.get("/menu-admin/schedules")
 def get_menu_schedules(db: DbSession):
-    """Get menu schedules (daypart-based menu visibility)."""
+    """Get menu schedules (daypart-based menu visibility) from app settings."""
+    from app.models.operations import AppSetting
+    setting = db.query(AppSetting).filter(
+        AppSetting.category == "menu_schedules",
+        AppSetting.key == "list",
+    ).first()
+    if setting and isinstance(setting.value, list):
+        return setting.value
     return []
 
 
 @router.get("/menu-admin/versions/{item_id}")
 def get_menu_item_versions(item_id: int, db: DbSession):
-    """Get version history for a menu item."""
-    return []
+    """Get version history for a menu item from audit log."""
+    from app.models.operations import AuditLogEntry
+    entries = db.query(AuditLogEntry).filter(
+        AuditLogEntry.entity_type == "menu_item",
+        AuditLogEntry.entity_id == str(item_id),
+    ).order_by(AuditLogEntry.created_at.desc()).limit(20).all()
+    return [
+        {
+            "id": e.id,
+            "action": e.action,
+            "user_name": e.user_name,
+            "details": e.details,
+            "created_at": e.created_at.isoformat() if e.created_at else None,
+        }
+        for e in entries
+    ]
 
 
 @router.post("/menu-admin/versions/{version_id}/restore")

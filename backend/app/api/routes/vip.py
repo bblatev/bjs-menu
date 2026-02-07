@@ -44,11 +44,11 @@ class VIPCustomer(BaseModel):
 
 
 class VIPOccasion(BaseModel):
-    id: str
-    customer_id: str
-    customer_name: str
-    occasion_type: str  # birthday, anniversary, special
-    date: str
+    id: Optional[str] = None
+    customer_id: str = ""
+    customer_name: str = ""
+    occasion_type: str = "birthday"  # birthday, anniversary, special
+    date: str = ""
     notes: Optional[str] = None
     reminder_sent: bool = False
 
@@ -71,9 +71,12 @@ class TierChange(BaseModel):
 
 
 class VIPCustomerCreate(BaseModel):
-    venue_id: int
-    customer_id: int
-    tier: str  # silver, gold, platinum, diamond
+    venue_id: Optional[int] = None
+    customer_id: Optional[int] = None
+    name: str = ""
+    email: Optional[str] = None
+    phone: Optional[str] = None
+    tier: str = "silver"  # silver, gold, platinum, diamond
     notes: Optional[str] = None
     preferences: List[str] = []
 
@@ -129,7 +132,9 @@ async def create_vip_customer(data: VIPCustomerCreate, db: DbSession):
     """Add a customer to VIP program."""
     new_customer = VIPCustomerLink(
         customer_id=data.customer_id,
-        name=f"Customer {data.customer_id}",
+        name=data.name or f"Customer {data.customer_id or 'New'}",
+        email=data.email,
+        phone=data.phone,
         tier=data.tier,
         notes=data.notes,
         points=0,

@@ -81,6 +81,13 @@ def add_to_waitlist(
     entry: WaitlistAdd,
 ):
     """Add a guest to the waitlist."""
+    # Validate location if provided
+    if entry.location_id:
+        from app.models.location import Location
+        loc = db.query(Location).filter(Location.id == entry.location_id).first()
+        if not loc:
+            entry.location_id = None  # Allow creation without location FK
+
     # Get next position
     max_position = db.query(Waitlist).filter(
         Waitlist.location_id == entry.location_id,

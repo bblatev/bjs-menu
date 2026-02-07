@@ -26,15 +26,15 @@ class StaffMember(BaseModel):
 
 
 class Shift(BaseModel):
-    id: str
+    id: Optional[str] = None
     staff_id: str
-    staff_name: str
-    role: str
+    staff_name: str = ""
+    role: str = ""
     date: str
     start_time: str
     end_time: str
     break_minutes: int = 0
-    status: str  # scheduled, in_progress, completed, missed
+    status: str = "scheduled"  # scheduled, in_progress, completed, missed
     actual_start: Optional[str] = None
     actual_end: Optional[str] = None
     notes: Optional[str] = None

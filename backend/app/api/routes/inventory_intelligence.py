@@ -803,6 +803,12 @@ def create_inventory_snapshot(
     data: SnapshotCreate,
 ):
     """Take a point-in-time inventory snapshot for period comparison."""
+    from fastapi import HTTPException
+    # Validate location exists
+    loc = db.query(Location).filter(Location.id == data.location_id).first()
+    if not loc:
+        raise HTTPException(status_code=404, detail=f"Location {data.location_id} not found")
+
     now = datetime.now(timezone.utc)
     name = data.name or f"Snapshot {now.strftime('%Y-%m-%d %H:%M')}"
 

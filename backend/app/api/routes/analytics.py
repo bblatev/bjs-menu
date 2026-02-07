@@ -119,27 +119,68 @@ def get_labor_analytics(db: DbSession):
 
 @router.get("/video")
 def get_video_analytics(db: DbSession):
-    """Get video analytics."""
-    return {"cameras": [], "alerts": [], "recordings": []}
+    """Get video analytics config from app settings."""
+    from app.models.operations import AppSetting
+    setting = db.query(AppSetting).filter(
+        AppSetting.category == "video_analytics",
+        AppSetting.key == "config",
+    ).first()
+    if setting and setting.value:
+        return setting.value
+    return {"cameras": [], "alerts": [], "recordings": [], "status": "not_configured"}
 
 
 @router.get("/theft")
 def get_theft_analytics(db: DbSession):
-    """Get theft analytics."""
-    return {"incidents": [], "total_loss": 0, "alerts": []}
+    """Get theft/risk analytics from risk alerts."""
+    from app.models.operations import RiskAlert
+    alerts = db.query(RiskAlert).order_by(RiskAlert.created_at.desc()).limit(50).all()
+    incidents = [
+        {
+            "id": a.id,
+            "type": a.type,
+            "severity": a.severity,
+            "title": a.title,
+            "amount": float(a.amount or 0),
+            "staff_name": a.staff_name,
+            "status": a.status,
+            "created_at": a.created_at.isoformat() if a.created_at else None,
+        }
+        for a in alerts
+    ]
+    total_loss = sum(float(a.amount or 0) for a in alerts)
+    open_alerts = [i for i in incidents if i["status"] == "open"]
+    return {"incidents": incidents, "total_loss": round(total_loss, 2), "alerts": open_alerts}
 
 
 @router.get("/rfm/dashboard")
 def get_rfm_dashboard(db: DbSession):
-    """Get RFM analysis dashboard."""
-    return {"segments": [], "total_customers": 0, "at_risk": 0}
+    """Get RFM analysis dashboard from customer data."""
+    from app.models.customer import Customer
+    customers = db.query(Customer).all()
+    total = len(customers)
+    # Simple segmentation based on available customer data
+    segments = []
+    if total > 0:
+        segments = [
+            {"name": "All Customers", "count": total, "percentage": 100},
+        ]
+    return {"segments": segments, "total_customers": total, "at_risk": 0}
 
 
 @router.get("/forecasting")
 def get_forecasting_analytics(db: DbSession):
-    """Get sales forecasting analytics."""
+    """Get sales forecasting analytics from forecast data."""
+    forecasts = db.query(SalesForecast).order_by(SalesForecast.forecast_date.desc()).limit(30).all()
+    daily_forecast = [
+        {
+            "date": f.forecast_date.isoformat() if f.forecast_date else None,
+            "predicted_revenue": float(f.forecasted_revenue or 0),
+        }
+        for f in forecasts
+    ]
     return {
-        "daily_forecast": [],
+        "daily_forecast": daily_forecast,
         "weekly_forecast": [],
         "accuracy": 0,
         "model": "seasonal_arima",

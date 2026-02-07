@@ -159,29 +159,6 @@ class PayrollService:
             "overtime_multiplier": 1.5,
         }
 
-        # Initialize with sample data
-        self._init_sample_data()
-
-    def _init_sample_data(self):
-        """Initialize sample data for demonstration."""
-        # Sample staff
-        staff_data = [
-            ("S001", "John Smith", "john@example.com", "Server", 15.00),
-            ("S002", "Maria Garcia", "maria@example.com", "Bartender", 18.00),
-            ("S003", "David Chen", "david@example.com", "Line Cook", 17.50),
-            ("S004", "Sarah Johnson", "sarah@example.com", "Host", 14.00),
-            ("S005", "Michael Brown", "michael@example.com", "Manager", 25.00),
-        ]
-
-        for sid, name, email, role, rate in staff_data:
-            self._staff[sid] = StaffMember(
-                id=sid,
-                name=name,
-                email=email,
-                role=role,
-                hourly_rate=rate,
-            )
-
     # =========================================================================
     # Staff Management
     # =========================================================================

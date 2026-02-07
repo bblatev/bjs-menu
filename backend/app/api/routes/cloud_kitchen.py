@@ -40,9 +40,21 @@ async def get_delivery_platforms(venue_id: str, db: DbSession):
 
 
 @router.get("/{venue_id}/delivery/orders")
-async def get_delivery_orders(venue_id: str):
+async def get_delivery_orders(venue_id: str, db: DbSession):
     """Get delivery orders."""
-    return []
+    from app.models.delivery import DeliveryOrder
+    orders = db.query(DeliveryOrder).order_by(DeliveryOrder.id.desc()).limit(50).all()
+    return [
+        {
+            "id": o.id,
+            "platform": o.platform.value if hasattr(o.platform, 'value') else str(o.platform),
+            "status": o.status.value if hasattr(o.status, 'value') else str(o.status),
+            "customer_name": o.customer_name,
+            "total": float(o.total or 0),
+            "created_at": o.received_at.isoformat() if o.received_at else None,
+        }
+        for o in orders
+    ]
 
 
 @router.get("/{venue_id}/delivery/zones")
@@ -52,9 +64,16 @@ async def get_delivery_zones(venue_id: str, db: DbSession):
 
 
 @router.get("/{venue_id}/delivery/drivers")
-async def get_delivery_drivers(venue_id: str):
-    """Get delivery drivers."""
-    return []
+async def get_delivery_drivers(venue_id: str, db: DbSession):
+    """Get delivery drivers from staff with driver role."""
+    from app.models.staff import StaffUser
+    drivers = db.query(StaffUser).filter(
+        StaffUser.role.in_(["driver", "delivery"]),
+    ).all()
+    return [
+        {"id": d.id, "name": d.name, "role": d.role, "status": "available"}
+        for d in drivers
+    ]
 
 
 # Drive-Thru
@@ -65,6 +84,6 @@ async def get_drive_thru_lanes(venue_id: str, db: DbSession):
 
 
 @router.get("/{venue_id}/drive-thru/vehicles")
-async def get_drive_thru_vehicles(venue_id: str):
-    """Get vehicles in drive-thru queue."""
-    return []
+async def get_drive_thru_vehicles(venue_id: str, db: DbSession):
+    """Get vehicles in drive-thru queue from app settings."""
+    return _get_setting_list(db, "drive_thru_vehicles", venue_id)

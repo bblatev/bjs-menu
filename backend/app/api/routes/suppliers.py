@@ -56,4 +56,15 @@ def update_supplier(
 @router.get("/performance/stats")
 def get_supplier_performance_stats(db: DbSession, current_user: OptionalCurrentUser = None):
     """Get supplier performance statistics."""
-    return {"total_suppliers": 0, "avg_lead_time": 0, "avg_fill_rate": 0, "on_time_delivery_pct": 0}
+    from sqlalchemy import func
+    total = db.query(func.count(Supplier.id)).scalar() or 0
+    # Count purchase orders per supplier for basic stats
+    from app.models.order import PurchaseOrder
+    total_orders = db.query(func.count(PurchaseOrder.id)).scalar() or 0
+    return {
+        "total_suppliers": total,
+        "total_orders": total_orders,
+        "avg_lead_time": 0,
+        "avg_fill_rate": 0,
+        "on_time_delivery_pct": 0,
+    }

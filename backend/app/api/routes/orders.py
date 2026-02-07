@@ -169,8 +169,8 @@ def create_order(request: PurchaseOrderCreate, db: DbSession, current_user: Requ
         line = PurchaseOrderLine(
             po_id=order.id,
             product_id=line_data.product_id,
-            qty=line_data.qty,
-            unit_cost=line_data.unit_cost or product.cost_price,
+            qty=line_data.effective_qty,
+            unit_cost=line_data.effective_cost or product.cost_price,
         )
         db.add(line)
 

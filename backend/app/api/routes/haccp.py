@@ -23,13 +23,13 @@ class HACCPDashboard(BaseModel):
 
 
 class TemperatureLog(BaseModel):
-    id: str
+    id: Optional[str] = None
     location: str
-    equipment: str
+    equipment: str = ""
     temperature: float
-    recorded_at: str
-    recorded_by: str
-    status: str  # normal, warning, critical
+    recorded_at: Optional[str] = None
+    recorded_by: str = ""
+    status: str = "normal"  # normal, warning, critical
     notes: Optional[str] = None
 
 
