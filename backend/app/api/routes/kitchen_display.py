@@ -12,13 +12,23 @@ router = APIRouter()
 @router.get("/stations")
 async def get_display_stations(db: DbSession):
     """Get KDS display stations."""
+    from sqlalchemy import func
     stations = db.query(KitchenStation).filter(KitchenStation.is_active == True).order_by(KitchenStation.id).all()
+
+    # Count pending tickets per station
+    pending_counts = dict(
+        db.query(KitchenOrder.station, func.count(KitchenOrder.id))
+        .filter(KitchenOrder.status.in_(["pending", "cooking"]))
+        .group_by(KitchenOrder.station)
+        .all()
+    )
+
     return [
         {
             "id": s.station_type,
             "name": s.name,
             "active": s.is_active,
-            "pending_tickets": 0,
+            "pending_tickets": pending_counts.get(s.station_type, 0),
             "avg_time": s.avg_item_time_seconds // 60 if s.avg_item_time_seconds else 0,
         }
         for s in stations

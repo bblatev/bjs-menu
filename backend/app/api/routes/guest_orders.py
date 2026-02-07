@@ -175,7 +175,7 @@ def _get_table_by_token(db: DbSession, token: str) -> dict:
 
 
 def _menu_item_to_dict(item: MenuItem) -> dict:
-    """Convert MenuItem model to dict for API response."""
+    """Convert MenuItem model to dict for API response (guest-facing)."""
     return {
         "id": item.id,
         "name": item.name,
@@ -183,6 +183,46 @@ def _menu_item_to_dict(item: MenuItem) -> dict:
         "price": float(item.price),
         "category": item.category,
         "image": item.image_url,
+        "available": item.available,
+        "allergens": item.allergens or [],
+        "modifiers": item.modifiers or [],
+    }
+
+
+def _menu_item_to_admin_dict(item: MenuItem, db) -> dict:
+    """Convert MenuItem model to dict for admin panel (with category_id, station_id, multilang)."""
+    # Look up category_id from MenuCategory by matching name
+    category_id = 0
+    if item.category:
+        cat = db.query(MenuCategoryModel).filter(
+            (MenuCategoryModel.name_en == item.category) |
+            (MenuCategoryModel.name_bg == item.category)
+        ).first()
+        if cat:
+            category_id = cat.id
+
+    # Look up station_id from KitchenStation by matching station type
+    from app.models.advanced_features import KitchenStation
+    station_id = 0
+    if item.station:
+        st = db.query(KitchenStation).filter(
+            (KitchenStation.station_type == item.station) |
+            (KitchenStation.name == item.station)
+        ).first()
+        if st:
+            station_id = st.id
+
+    return {
+        "id": item.id,
+        "name": {"bg": item.name or "", "en": item.name or ""},
+        "description": {"bg": item.description or "", "en": item.description or ""},
+        "price": float(item.price),
+        "category": item.category,
+        "category_id": category_id,
+        "station": item.station,
+        "station_id": station_id,
+        "image": item.image_url,
+        "sort_order": item.id,
         "available": item.available,
         "allergens": item.allergens or [],
         "modifiers": item.modifiers or [],
@@ -574,15 +614,28 @@ def place_guest_order(
     db.commit()
     db.refresh(db_order)
 
-    # Also create a KitchenOrder for KDS
-    kitchen_order = KitchenOrder(
-        table_number=table["number"],
-        status="pending",
-        items=validated_items,
-        notes=order.notes,
-        created_at=created_at,
-    )
-    db.add(kitchen_order)
+    # Also create KitchenOrder(s) for KDS — group items by station
+    station_items = {}
+    for order_item in order.items:
+        mi = db.query(MenuItem).filter(MenuItem.id == order_item.menu_item_id).first()
+        station_key = mi.station if mi and mi.station else "default"
+        station_items.setdefault(station_key, [])
+        # Find the matching validated item
+        for vi in validated_items:
+            if vi["menu_item_id"] == order_item.menu_item_id:
+                station_items[station_key].append(vi)
+                break
+
+    for station_key, items_for_station in station_items.items():
+        kitchen_order = KitchenOrder(
+            table_number=table["number"],
+            status="pending",
+            station=station_key if station_key != "default" else None,
+            items=items_for_station,
+            notes=order.notes,
+            created_at=created_at,
+        )
+        db.add(kitchen_order)
 
     # Update table status to occupied when order is placed
     db_table = db.query(Table).filter(Table.id == table["id"]).first()
@@ -1119,7 +1172,7 @@ def admin_list_menu_items(db: DbSession, category: Optional[str] = None):
 
     items = query.all()
     return {
-        "items": [_menu_item_to_dict(i) for i in items],
+        "items": [_menu_item_to_admin_dict(i, db) for i in items],
         "total": len(items)
     }
 
@@ -1130,7 +1183,7 @@ def admin_get_menu_item(db: DbSession, item_id: int):
     item = db.query(MenuItem).filter(MenuItem.id == item_id).first()
     if not item:
         raise HTTPException(status_code=404, detail="Item not found")
-    return _menu_item_to_dict(item)
+    return _menu_item_to_admin_dict(item, db)
 
 
 def _category_to_response(cat: MenuCategoryModel, items_count: int = 0) -> dict:
@@ -1184,21 +1237,18 @@ def admin_list_categories(db: DbSession):
 @router.get("/menu-admin/stations")
 def admin_list_stations(db: DbSession):
     """List kitchen stations for admin panel."""
-    # Get distinct stations from menu items
-    items = db.query(MenuItem).all()
-    stations_set = set(i.station for i in items if i.station)
+    from app.models.advanced_features import KitchenStation
+    stations = db.query(KitchenStation).order_by(KitchenStation.id).all()
 
-    # Return in multilang format expected by frontend
-    stations = []
-    for idx, station_name in enumerate(sorted(stations_set)):
-        stations.append({
-            "id": idx + 1,
-            "name": {"bg": station_name, "en": station_name},
-            "station_type": station_name,
-            "active": True,
-        })
-
-    return stations
+    return [
+        {
+            "id": s.id,
+            "name": {"bg": s.name or s.station_type or "", "en": s.name or s.station_type or ""},
+            "station_type": s.station_type or s.name or "",
+            "active": s.is_active if s.is_active is not None else True,
+        }
+        for s in stations
+    ]
 
 
 # ==================== CUSTOMER PAYMENT ENDPOINTS ====================
@@ -1459,18 +1509,35 @@ def admin_create_menu_item(db: DbSession, data: dict = Body(...)):
     desc_data = data.get("description", "")
     description = desc_data.get("en", desc_data) if isinstance(desc_data, dict) else (desc_data or "")
 
+    # Resolve category: accept category_id (number) or category (string)
+    category = data.get("category", "Uncategorized")
+    category_id = data.get("category_id")
+    if category_id:
+        cat = db.query(MenuCategoryModel).filter(MenuCategoryModel.id == int(category_id)).first()
+        if cat:
+            category = cat.name_en or cat.name_bg or category
+
+    # Resolve station: accept station_id (number) or station (string)
+    from app.models.advanced_features import KitchenStation
+    station = data.get("station")
+    station_id = data.get("station_id")
+    if station_id:
+        st = db.query(KitchenStation).filter(KitchenStation.id == int(station_id)).first()
+        if st:
+            station = st.station_type or st.name
+
     item = MenuItem(
         name=name,
-        category=data.get("category", "Uncategorized"),
+        category=category,
         price=data.get("price", 0),
-        station=data.get("station"),
+        station=station,
         description=description,
         available=data.get("available", data.get("is_available", True)),
     )
     db.add(item)
     db.commit()
     db.refresh(item)
-    return _menu_item_to_dict(item)
+    return _menu_item_to_admin_dict(item, db)
 
 
 @router.put("/menu-admin/items/{item_id}")
@@ -1479,25 +1546,39 @@ def admin_update_menu_item(db: DbSession, item_id: int, data: dict = Body(...)):
     item = db.query(MenuItem).filter(MenuItem.id == item_id).first()
     if not item:
         raise HTTPException(status_code=404, detail="Item not found")
-    
+
     if "name" in data:
         item.name = data["name"].get("en", data["name"]) if isinstance(data["name"], dict) else data["name"]
-    if "category" in data:
-        item.category = data["category"]
-    if "price" in data:
-        item.price = data["price"]
-    if "station" in data:
-        item.station = data["station"]
     if "description" in data:
         item.description = data["description"].get("en", "") if isinstance(data["description"], dict) else data["description"]
+    if "price" in data:
+        item.price = data["price"]
+
+    # Resolve category: accept category_id (number) or category (string)
+    if "category_id" in data and data["category_id"]:
+        cat = db.query(MenuCategoryModel).filter(MenuCategoryModel.id == int(data["category_id"])).first()
+        if cat:
+            item.category = cat.name_en or cat.name_bg or item.category
+    elif "category" in data:
+        item.category = data["category"]
+
+    # Resolve station: accept station_id (number) or station (string)
+    from app.models.advanced_features import KitchenStation
+    if "station_id" in data and data["station_id"]:
+        st = db.query(KitchenStation).filter(KitchenStation.id == int(data["station_id"])).first()
+        if st:
+            item.station = st.station_type or st.name
+    elif "station" in data:
+        item.station = data["station"]
+
     if "is_available" in data:
         item.available = data["is_available"]
     if "available" in data:
         item.available = data["available"]
-    
+
     db.commit()
     db.refresh(item)
-    return _menu_item_to_dict(item)
+    return _menu_item_to_admin_dict(item, db)
 
 
 @router.delete("/menu-admin/items/{item_id}")
