@@ -101,7 +101,7 @@ def get_spillage_stats(db: DbSession, current_user: OptionalCurrentUser = None):
 @router.get("/pour-costs/summary")
 def get_pour_costs_summary(db: DbSession, current_user: OptionalCurrentUser = None):
     """Get pour cost summary."""
-    return {"average_pour_cost": 0, "target_pour_cost": 0.20, "items": [], "by_category": []}
+    return {"average_pour_cost": 0, "target_pour_cost": 0, "items": [], "by_category": []}
 
 
 @router.get("/stats")

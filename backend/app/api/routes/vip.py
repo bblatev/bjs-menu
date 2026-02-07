@@ -18,16 +18,15 @@ router = APIRouter()
 
 
 @router.get("/tiers")
-async def get_vip_tiers():
+async def get_vip_tiers(db: DbSession):
     """Get VIP tier definitions."""
-    return {
-        "tiers": [
-            {"id": 1, "name": "Silver", "min_spend": 0},
-            {"id": 2, "name": "Gold", "min_spend": 500},
-            {"id": 3, "name": "Platinum", "min_spend": 2000},
-            {"id": 4, "name": "Diamond", "min_spend": 10000},
-        ]
-    }
+    setting = db.query(AppSetting).filter(
+        AppSetting.category == "vip",
+        AppSetting.key == "tiers",
+    ).first()
+    if setting and isinstance(setting.value, list):
+        return {"tiers": setting.value}
+    return {"tiers": []}
 
 
 class VIPCustomer(BaseModel):
@@ -191,11 +190,11 @@ async def create_vip_occasion(occasion: VIPOccasion, db: DbSession):
 
 
 _DEFAULT_VIP_SETTINGS = {
-    "auto_upgrade_threshold": 5000.00,
-    "birthday_discount_pct": 20,
-    "anniversary_discount_pct": 15,
-    "min_spend_for_vip": 1000.00,
-    "points_multiplier": 2.0,
+    "auto_upgrade_threshold": 0,
+    "birthday_discount_pct": 0,
+    "anniversary_discount_pct": 0,
+    "min_spend_for_vip": 0,
+    "points_multiplier": 1.0,
 }
 
 

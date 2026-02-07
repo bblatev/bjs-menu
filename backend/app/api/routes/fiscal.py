@@ -302,7 +302,7 @@ def test_device_connection(
             "success": True,
             "device": device.value,
             "message": "Virtual device connected",
-            "firmware_version": "1.0.0-virtual",
+            "firmware_version": None,
         }
 
     return {

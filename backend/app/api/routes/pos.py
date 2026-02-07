@@ -47,7 +47,7 @@ def get_pos_status(db: DbSession):
 
     return {
         "status": "connected",
-        "pos_system": "Generic POS",
+        "pos_system": None,
         "last_sync": datetime.now(timezone.utc).isoformat(),
         "total_sales_lines": total_sales,
         "unprocessed_lines": unprocessed,

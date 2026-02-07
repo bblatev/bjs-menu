@@ -643,7 +643,7 @@ def get_training_status(
 
     return {
         "status": "ready",
-        "model_version": "1.0.0",
+        "model_version": None,
         "last_trained": None,
         "total_training_images": total_images,
         "products_with_training": products_trained,

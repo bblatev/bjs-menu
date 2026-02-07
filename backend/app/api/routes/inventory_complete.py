@@ -1023,26 +1023,42 @@ class UnitConversionRequest(BaseModel):
 @router.get("/unit-conversions")
 def get_unit_conversions(db: DbSession):
     """Get unit conversion table."""
-    return [
-        {"id": 1, "from_unit": "kg", "to_unit": "g", "conversion_factor": 1000, "is_active": True},
-        {"id": 2, "from_unit": "L", "to_unit": "ml", "conversion_factor": 1000, "is_active": True},
-        {"id": 3, "from_unit": "kg", "to_unit": "lb", "conversion_factor": 2.20462, "is_active": True},
-        {"id": 4, "from_unit": "L", "to_unit": "fl oz", "conversion_factor": 33.814, "is_active": True},
-        {"id": 5, "from_unit": "bottle", "to_unit": "ml", "conversion_factor": 750, "is_active": True},
-        {"id": 6, "from_unit": "case", "to_unit": "bottle", "conversion_factor": 12, "is_active": True},
-    ]
+    from app.models.operations import AppSetting
+    setting = db.query(AppSetting).filter(
+        AppSetting.category == "unit_conversions",
+        AppSetting.key == "default",
+    ).first()
+    if setting and isinstance(setting.value, list):
+        return setting.value
+    return []
 
 
 @router.post("/unit-conversions")
 def create_unit_conversion(request: UnitConversionRequest, db: DbSession):
     """Create a unit conversion."""
-    return {
-        "id": 7,
+    from app.models.operations import AppSetting
+    import json
+    setting = db.query(AppSetting).filter(
+        AppSetting.category == "unit_conversions",
+        AppSetting.key == "default",
+    ).first()
+    conversions = setting.value if setting and isinstance(setting.value, list) else []
+    new_id = max((c.get("id", 0) for c in conversions), default=0) + 1
+    new_conversion = {
+        "id": new_id,
         "from_unit": request.from_unit,
         "to_unit": request.to_unit,
         "conversion_factor": request.conversion_factor,
         "is_active": request.is_active,
     }
+    conversions.append(new_conversion)
+    if setting:
+        setting.value = conversions
+    else:
+        setting = AppSetting(category="unit_conversions", key="default", value=conversions)
+        db.add(setting)
+    db.commit()
+    return new_conversion
 
 
 # ==================== SUPPLIER PERFORMANCE ====================
@@ -1071,9 +1087,9 @@ def get_supplier_performance(db: DbSession, location_id: int = Query(1)):
             "id": supplier.id,
             "supplier_id": supplier.id,
             "supplier_name": supplier.name,
-            "on_time_delivery_rate": 95.0 if po_count > 0 else 0,
-            "quality_rating": 4.5 if po_count > 0 else 0,
-            "average_lead_time_days": 3,
+            "on_time_delivery_rate": 0,
+            "quality_rating": 0,
+            "average_lead_time_days": 0,
             "total_orders": po_count,
             "total_value": float(po_total),
         })

@@ -378,15 +378,15 @@ async def get_config():
 async def get_opentable_stats():
     """Get OpenTable statistics."""
     return {
-        "total_reservations": 120,
-        "seated": 95,
-        "no_shows": 8,
-        "cancellations": 17,
-        "avg_party_size": 3.5,
-        "avg_rating": 4.3,
-        "reviews_count": 45,
-        "revenue_attributed": 28500.00,
-        "top_time_slots": ["19:00", "20:00", "19:30"],
+        "total_reservations": 0,
+        "seated": 0,
+        "no_shows": 0,
+        "cancellations": 0,
+        "avg_party_size": 0,
+        "avg_rating": 0,
+        "reviews_count": 0,
+        "revenue_attributed": 0,
+        "top_time_slots": [],
         "period": "last_30_days",
     }
 

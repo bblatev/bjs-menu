@@ -33,21 +33,34 @@ def _build_engineering_items(db: DbSession, days: int = 30):
 
     # Calculate metrics per item
     total_sold = sum(sold_counts.values()) if sold_counts else 1
-    result = []
+
+    # First pass: compute per-item metrics
+    item_metrics = []
     for item in items:
         price = float(item.price or 0)
         cost = float(item.base_price or 0)
         food_cost_pct = (cost / price * 100) if price > 0 else 0
         profit_margin = 100 - food_cost_pct
-
         sold = sold_counts.get(item.id, 0)
         revenue = price * sold
         profit = (price - cost) * sold
         popularity = min(100, int((sold / total_sold) * 100 * len(items))) if total_sold > 0 else 0
+        item_metrics.append({
+            "item": item, "food_cost_pct": food_cost_pct, "profit_margin": profit_margin,
+            "sold": sold, "revenue": revenue, "profit": profit, "popularity": popularity,
+            "price": price, "cost": cost,
+        })
 
-        # Assign quadrant: high profit + high popularity = star, etc.
-        avg_food_cost = 30  # industry benchmark
-        avg_popularity = 50
+    # Compute averages from actual data for quadrant classification
+    avg_food_cost = (sum(m["food_cost_pct"] for m in item_metrics) / len(item_metrics)) if item_metrics else 0
+    avg_popularity = (sum(m["popularity"] for m in item_metrics) / len(item_metrics)) if item_metrics else 0
+
+    result = []
+    for m in item_metrics:
+        item = m["item"]
+        food_cost_pct = m["food_cost_pct"]
+        popularity = m["popularity"]
+
         high_profit = food_cost_pct < avg_food_cost
         high_popularity = popularity >= avg_popularity
 
@@ -72,14 +85,14 @@ def _build_engineering_items(db: DbSession, days: int = 30):
             "id": item.id,
             "name": item.name,
             "category": item.category or "Uncategorized",
-            "price": price,
-            "food_cost": cost,
+            "price": m["price"],
+            "food_cost": m["cost"],
             "food_cost_percentage": round(food_cost_pct, 1),
-            "profit_margin": round(profit_margin, 1),
+            "profit_margin": round(m["profit_margin"], 1),
             "popularity_score": popularity,
-            "sold_count": sold,
-            "revenue": round(revenue, 2),
-            "profit": round(profit, 2),
+            "sold_count": m["sold"],
+            "revenue": round(m["revenue"], 2),
+            "profit": round(m["profit"], 2),
             "quadrant": quadrant,
             "trend": "stable",
             "recommendations": recs.get(quadrant, []),

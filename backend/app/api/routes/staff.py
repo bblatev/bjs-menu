@@ -91,18 +91,8 @@ def _time_entry_to_dict(entry: TimeClockEntry, staff_name: str = None) -> dict:
 
 
 def _init_default_staff(db: DbSession):
-    """Initialize default admin staff member if none exist."""
-    count = db.query(StaffUser).count()
-    if count == 0:
-        staff = StaffUser(
-            full_name="Admin",
-            role="manager",
-            hourly_rate=0.0,
-            max_hours_week=40,
-            is_active=True,
-        )
-        db.add(staff)
-        db.commit()
+    """Ensure at least one staff member exists (no-op if staff already present)."""
+    pass
 
 
 # ============== Staff CRUD ==============

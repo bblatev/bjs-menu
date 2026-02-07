@@ -2,27 +2,45 @@
 
 from fastapi import APIRouter
 
+from app.db.session import DbSession
+from app.models.operations import AppSetting
+
 router = APIRouter()
 
 
+def _get_bridge_config(db: DbSession) -> dict:
+    """Get fiscal bridge config from DB."""
+    row = db.query(AppSetting).filter(
+        AppSetting.category == "pos_fiscal_bridge",
+        AppSetting.key == "config",
+    ).first()
+    if row and isinstance(row.value, dict):
+        return row.value
+    return {}
+
+
 @router.get("/status")
-async def get_bridge_status():
+async def get_bridge_status(db: DbSession):
     """Get POS fiscal bridge status."""
+    config = _get_bridge_config(db)
     return {
-        "connected": True,
-        "printer_model": "Datecs DP-25",
-        "printer_status": "ready",
-        "last_receipt": "2026-02-06T17:30:00Z",
-        "daily_report_printed": False,
-        "receipts_today": 142,
-        "errors_today": 0,
+        "connected": config.get("connected", False),
+        "printer_model": config.get("printer_model", None),
+        "printer_status": config.get("printer_status", "not_configured"),
+        "last_receipt": config.get("last_receipt", None),
+        "daily_report_printed": config.get("daily_report_printed", False),
+        "receipts_today": config.get("receipts_today", 0),
+        "errors_today": config.get("errors_today", 0),
     }
 
 
 @router.post("/receipt")
-async def print_receipt(data: dict):
+async def print_receipt(data: dict, db: DbSession):
     """Print a fiscal receipt."""
-    return {"success": True, "receipt_number": "0001234"}
+    config = _get_bridge_config(db)
+    if not config.get("connected"):
+        return {"success": False, "error": "Fiscal printer not connected"}
+    return {"success": True, "receipt_number": None}
 
 
 @router.post("/drawer")
@@ -32,9 +50,12 @@ async def open_drawer():
 
 
 @router.post("/card-payment")
-async def process_card_payment(data: dict):
+async def process_card_payment(data: dict, db: DbSession):
     """Process card payment through fiscal device."""
-    return {"success": True, "transaction_id": "TXN-001"}
+    config = _get_bridge_config(db)
+    if not config.get("connected"):
+        return {"success": False, "error": "Fiscal device not connected"}
+    return {"success": True, "transaction_id": None}
 
 
 @router.post("/report")

@@ -107,7 +107,7 @@ def connect_xero(db: DbSession, data: XeroConnectRequest):
 
     if not data.authorization_code:
         # Return OAuth URL for the frontend to redirect to
-        client_id = "YOUR_XERO_CLIENT_ID"
+        client_id = ""
         scopes = "openid profile email accounting.transactions accounting.contacts accounting.settings"
         auth_url = (
             f"https://login.xero.com/identity/connect/authorize"

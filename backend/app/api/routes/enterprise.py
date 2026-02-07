@@ -165,7 +165,7 @@ _DEFAULT_MOBILE_CONFIG = {
     "bundle_id": "",
     "version": "1.0.0",
     "features_enabled": ["ordering", "loyalty", "reservations"],
-    "theme_colors": {"primary": "#e68a00", "secondary": "#0066e6"},
+    "theme_colors": {"primary": "", "secondary": ""},
 }
 
 _DEFAULT_THROTTLE_STATUS = {

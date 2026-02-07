@@ -241,7 +241,7 @@ def get_kitchen_tickets(
             "table_number": ko.table_number or "Unknown",
             "table": ko.table_number or "Unknown",
             "table_id": ko.check_id,
-            "server_name": "Server",
+            "server_name": None,
             "guest_count": 1,
             "items": kds_items,
             "item_count": len(kds_items),
