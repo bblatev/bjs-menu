@@ -228,10 +228,11 @@ class TestDeliveryEndpoints:
         assert response.status_code == 200
         assert response.json() == []
 
-    def test_create_integration(self, client: TestClient, db_session, test_location):
+    def test_create_integration(self, client: TestClient, db_session, auth_headers, test_location):
         """Test creating a delivery integration."""
         response = client.post(
             "/api/v1/delivery/integrations/",
+            headers=auth_headers,
             json={
                 "location_id": test_location.id,
                 "platform": "doordash",
@@ -258,10 +259,11 @@ class TestDeliveryEndpoints:
         response = client.get("/api/v1/delivery/orders/9999")
         assert response.status_code == 404
 
-    def test_reject_order_not_found(self, client: TestClient, db_session):
+    def test_reject_order_not_found(self, client: TestClient, db_session, auth_headers):
         """Test rejecting non-existent order."""
         response = client.post(
             "/api/v1/delivery/orders/9999/reject",
+            headers=auth_headers,
             json={"reason": "out_of_stock"}
         )
         assert response.status_code == 404
@@ -272,9 +274,9 @@ class TestDeliveryEndpoints:
         assert response.status_code == 200
         assert isinstance(response.json(), list)
 
-    def test_delete_integration_not_found(self, client: TestClient, db_session):
+    def test_delete_integration_not_found(self, client: TestClient, db_session, auth_headers):
         """Test deleting non-existent integration."""
-        response = client.delete("/api/v1/delivery/integrations/9999")
+        response = client.delete("/api/v1/delivery/integrations/9999", headers=auth_headers)
         assert response.status_code == 404
 
     def test_get_delivery_summary(self, client: TestClient, db_session):
@@ -287,10 +289,11 @@ class TestDeliveryEndpoints:
         response = client.get("/api/v1/delivery/reports/performance/invalid_platform")
         assert response.status_code == 400
 
-    def test_handle_webhook_invalid_platform(self, client: TestClient, db_session):
+    def test_handle_webhook_invalid_platform(self, client: TestClient, db_session, auth_headers):
         """Test webhook with invalid platform."""
         response = client.post(
             "/api/v1/delivery/webhook/invalid",
+            headers=auth_headers,
             json={"event_type": "order.created", "data": {}}
         )
         assert response.status_code == 400
@@ -338,9 +341,9 @@ class TestAnalyticsEndpoints:
         )
         assert response.status_code == 200
 
-    def test_calculate_daily_metrics(self, client: TestClient, db_session):
+    def test_calculate_daily_metrics(self, client: TestClient, db_session, auth_headers):
         """Test calculating daily metrics."""
-        response = client.post("/api/v1/analytics/daily-metrics/calculate")
+        response = client.post("/api/v1/analytics/daily-metrics/calculate", headers=auth_headers)
         assert response.status_code == 200
 
     def test_get_metric_trend(self, client: TestClient, db_session):
@@ -351,10 +354,11 @@ class TestAnalyticsEndpoints:
         assert "metric_name" in data
         assert "trend" in data
 
-    def test_chat_query(self, client: TestClient, db_session):
+    def test_chat_query(self, client: TestClient, db_session, auth_headers):
         """Test conversational AI query."""
         response = client.post(
             "/api/v1/analytics/chat/",
+            headers=auth_headers,
             json={"query": "What were yesterday's sales?"}
         )
         assert response.status_code == 200
@@ -364,10 +368,11 @@ class TestAnalyticsEndpoints:
         response = client.get("/api/v1/analytics/chat/history/test-conversation-id")
         assert response.status_code in [200, 404]
 
-    def test_submit_query_feedback(self, client: TestClient, db_session):
+    def test_submit_query_feedback(self, client: TestClient, db_session, auth_headers):
         """Test submitting query feedback."""
         response = client.post(
             "/api/v1/analytics/chat/feedback",
+            headers=auth_headers,
             json={"query_id": "test-query-id", "was_helpful": True}
         )
         assert response.status_code in [200, 404, 422]
@@ -395,10 +400,11 @@ class TestBottleWeightEndpoints:
         assert response.status_code == 200
         assert response.json() == []
 
-    def test_create_bottle_weight(self, client: TestClient, db_session, test_product):
+    def test_create_bottle_weight(self, client: TestClient, db_session, auth_headers, test_product):
         """Test creating a bottle weight entry."""
         response = client.post(
             "/api/v1/analytics/bottle-weights/",
+            headers=auth_headers,
             json={
                 "product_id": test_product.id,
                 "full_weight": 1200.0,
@@ -425,10 +431,11 @@ class TestBottleWeightEndpoints:
 class TestScaleEndpoints:
     """Test scale integration endpoints."""
 
-    def test_process_scale_reading(self, client: TestClient, db_session, test_product):
+    def test_process_scale_reading(self, client: TestClient, db_session, auth_headers, test_product):
         """Test processing a scale reading."""
         response = client.post(
             "/api/v1/analytics/scale/reading",
+            headers=auth_headers,
             json={
                 "product_id": test_product.id,
                 "weight_grams": 800.0,
@@ -437,10 +444,11 @@ class TestScaleEndpoints:
         )
         assert response.status_code in [200, 400]
 
-    def test_record_visual_estimate(self, client: TestClient, db_session, test_product):
+    def test_record_visual_estimate(self, client: TestClient, db_session, auth_headers, test_product):
         """Test recording a visual estimate."""
         response = client.post(
             "/api/v1/analytics/scale/visual-estimate",
+            headers=auth_headers,
             json={
                 "product_id": test_product.id,
                 "estimated_percent": 65.0
@@ -505,7 +513,7 @@ class TestPOSToInventoryIntegration:
 class TestDeliveryOrderFlow:
     """Test delivery order lifecycle."""
 
-    def test_order_rejection_flow(self, client: TestClient, db_session, test_location):
+    def test_order_rejection_flow(self, client: TestClient, db_session, auth_headers, test_location):
         """Test order rejection flow."""
         # Create integration first (required for order)
         integration = DeliveryIntegration(
@@ -531,6 +539,7 @@ class TestDeliveryOrderFlow:
         # Reject order
         response = client.post(
             f"/api/v1/delivery/orders/{order.id}/reject",
+            headers=auth_headers,
             json={"reason": "out_of_stock"}
         )
         assert response.status_code == 200

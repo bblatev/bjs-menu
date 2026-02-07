@@ -314,21 +314,21 @@ class TestGoogleReserveService:
 class TestGapFeatureRoutes:
     """Tests for gap feature API routes."""
 
-    def test_email_campaign_endpoints(self, client):
+    def test_email_campaign_endpoints(self, client, auth_headers):
         """Test email campaign API endpoints."""
         # Get templates
         response = client.get("/api/v1/email-campaigns/templates")
         assert response.status_code == 200
 
         # Create template
-        response = client.post("/api/v1/email-campaigns/templates", json={
+        response = client.post("/api/v1/email-campaigns/templates", headers=auth_headers, json={
             "name": "Test Template",
             "subject": "Test Subject",
             "blocks": []
         })
         assert response.status_code == 200
 
-    def test_birthday_rewards_endpoints(self, client):
+    def test_birthday_rewards_endpoints(self, client, auth_headers):
         """Test birthday rewards API endpoints."""
         # Get rules - may have serialization issues with enums
         response = client.get("/api/v1/birthday-rewards/rules")
@@ -336,7 +336,7 @@ class TestGapFeatureRoutes:
         assert response.status_code in [200, 500]
 
         # Create rule - note: API may require different field names
-        response = client.post("/api/v1/birthday-rewards/rules", json={
+        response = client.post("/api/v1/birthday-rewards/rules", headers=auth_headers, json={
             "name": "Birthday Discount",
             "occasion_type": "birthday",
             "reward_type": "discount_percent",

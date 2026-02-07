@@ -60,9 +60,16 @@ def client(db_session: Session) -> Generator[TestClient, None, None]:
             pass
 
     app.dependency_overrides[get_db] = override_get_db
+    # Disable rate limiters during tests to avoid flaky failures
+    from app.core.rate_limit import limiter as global_limiter
+    from app.api.routes.auth import limiter as auth_limiter
+    global_limiter.enabled = False
+    auth_limiter.enabled = False
     # Don't raise server exceptions so we can test error status codes
     with TestClient(app, raise_server_exceptions=False) as test_client:
         yield test_client
+    global_limiter.enabled = True
+    auth_limiter.enabled = True
     app.dependency_overrides.clear()
 
 

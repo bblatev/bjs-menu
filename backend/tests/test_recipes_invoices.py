@@ -224,10 +224,11 @@ class TestInvoiceEndpoints:
         assert response.status_code == 200
         assert response.json() == []
 
-    def test_create_invoice(self, client: TestClient, db_session, test_supplier):
+    def test_create_invoice(self, client: TestClient, db_session, auth_headers, test_supplier):
         """Test creating an invoice."""
         response = client.post(
             "/api/v1/invoices/",
+            headers=auth_headers,
             json={
                 "supplier_id": test_supplier.id,
                 "invoice_number": "INV-001",
@@ -251,10 +252,11 @@ class TestInvoiceEndpoints:
         assert data["invoice_number"] == "INV-001"
         assert len(data["lines"]) == 1
 
-    def test_create_invoice_minimal(self, client: TestClient, db_session, test_supplier):
+    def test_create_invoice_minimal(self, client: TestClient, db_session, auth_headers, test_supplier):
         """Test creating invoice with minimal data."""
         response = client.post(
             "/api/v1/invoices/",
+            headers=auth_headers,
             json={
                 "supplier_id": test_supplier.id,
                 "invoice_number": "INV-MIN",
@@ -308,7 +310,7 @@ class TestInvoiceEndpoints:
         data = response.json()
         assert all(inv["status"] == "pending" for inv in data)
 
-    def test_update_invoice(self, client: TestClient, db_session, test_supplier):
+    def test_update_invoice(self, client: TestClient, db_session, auth_headers, test_supplier):
         """Test updating an invoice."""
         invoice = Invoice(
             supplier_id=test_supplier.id,
@@ -320,32 +322,34 @@ class TestInvoiceEndpoints:
 
         response = client.put(
             f"/api/v1/invoices/{invoice.id}",
+            headers=auth_headers,
             json={"status": "approved", "notes": "Reviewed"}
         )
         assert response.status_code == 200
         assert response.json()["status"] == "approved"
 
-    def test_update_invoice_not_found(self, client: TestClient, db_session):
+    def test_update_invoice_not_found(self, client: TestClient, db_session, auth_headers):
         """Test updating non-existent invoice."""
         response = client.put(
             "/api/v1/invoices/9999",
+            headers=auth_headers,
             json={"status": "approved"}
         )
         assert response.status_code == 404
 
-    def test_delete_invoice(self, client: TestClient, db_session, test_supplier):
+    def test_delete_invoice(self, client: TestClient, db_session, auth_headers, test_supplier):
         """Test deleting an invoice."""
         invoice = Invoice(supplier_id=test_supplier.id, invoice_number="DEL-001")
         db_session.add(invoice)
         db_session.commit()
 
-        response = client.delete(f"/api/v1/invoices/{invoice.id}")
+        response = client.delete(f"/api/v1/invoices/{invoice.id}", headers=auth_headers)
         assert response.status_code == 200
         assert response.json()["status"] == "deleted"
 
-    def test_delete_invoice_not_found(self, client: TestClient, db_session):
+    def test_delete_invoice_not_found(self, client: TestClient, db_session, auth_headers):
         """Test deleting non-existent invoice."""
-        response = client.delete("/api/v1/invoices/9999")
+        response = client.delete("/api/v1/invoices/9999", headers=auth_headers)
         assert response.status_code == 404
 
 
@@ -360,10 +364,11 @@ class TestGLCodeEndpoints:
         assert response.status_code == 200
         assert response.json() == []
 
-    def test_create_gl_code(self, client: TestClient, db_session):
+    def test_create_gl_code(self, client: TestClient, db_session, auth_headers):
         """Test creating a GL code."""
         response = client.post(
             "/api/v1/invoices/gl-codes/",
+            headers=auth_headers,
             json={
                 "code": "5000",
                 "name": "Cost of Goods Sold",
@@ -425,7 +430,7 @@ class TestPriceAlertEndpoints:
         response = client.get("/api/v1/invoices/price-alerts/?active=true")
         assert response.status_code == 200
 
-    def test_acknowledge_price_alert(self, client: TestClient, db_session, test_product, test_supplier, test_user):
+    def test_acknowledge_price_alert(self, client: TestClient, db_session, auth_headers, test_product, test_supplier, test_user):
         """Test acknowledging a price alert."""
         alert = PriceAlert(
             product_id=test_product.id,
@@ -438,15 +443,17 @@ class TestPriceAlertEndpoints:
         db_session.commit()
 
         response = client.post(
-            f"/api/v1/invoices/price-alerts/{alert.id}/acknowledge?user_id={test_user.id}"
+            f"/api/v1/invoices/price-alerts/{alert.id}/acknowledge?user_id={test_user.id}",
+            headers=auth_headers
         )
         assert response.status_code == 200
         assert response.json()["status"] == "acknowledged"
 
-    def test_acknowledge_price_alert_not_found(self, client: TestClient, db_session, test_user):
+    def test_acknowledge_price_alert_not_found(self, client: TestClient, db_session, auth_headers, test_user):
         """Test acknowledging non-existent alert."""
         response = client.post(
-            f"/api/v1/invoices/price-alerts/9999/acknowledge?user_id={test_user.id}"
+            f"/api/v1/invoices/price-alerts/9999/acknowledge?user_id={test_user.id}",
+            headers=auth_headers
         )
         assert response.status_code == 404
 
@@ -456,7 +463,7 @@ class TestPriceAlertEndpoints:
 class TestInvoiceApprovalEndpoints:
     """Test invoice approval workflow endpoints."""
 
-    def test_approve_invoice(self, client: TestClient, db_session, test_supplier, test_user):
+    def test_approve_invoice(self, client: TestClient, db_session, auth_headers, test_supplier, test_user):
         """Test approving an invoice."""
         invoice = Invoice(
             supplier_id=test_supplier.id,
@@ -468,11 +475,12 @@ class TestInvoiceApprovalEndpoints:
 
         response = client.post(
             f"/api/v1/invoices/{invoice.id}/approve?approver_id={test_user.id}",
+            headers=auth_headers,
             json={"notes": "Looks good"}
         )
         assert response.status_code in [200, 400]
 
-    def test_reject_invoice(self, client: TestClient, db_session, test_supplier, test_user):
+    def test_reject_invoice(self, client: TestClient, db_session, auth_headers, test_supplier, test_user):
         """Test rejecting an invoice."""
         invoice = Invoice(
             supplier_id=test_supplier.id,
@@ -484,6 +492,7 @@ class TestInvoiceApprovalEndpoints:
 
         response = client.post(
             f"/api/v1/invoices/{invoice.id}/reject?approver_id={test_user.id}",
+            headers=auth_headers,
             json={"notes": "Price too high"}
         )
         assert response.status_code in [200, 400]
@@ -566,10 +575,11 @@ class TestRecipeIntegration:
 class TestInvoiceIntegration:
     """Test invoice integration workflows."""
 
-    def test_invoice_with_multiple_lines(self, client: TestClient, db_session, test_supplier):
+    def test_invoice_with_multiple_lines(self, client: TestClient, db_session, auth_headers, test_supplier):
         """Test creating an invoice with multiple lines."""
         response = client.post(
             "/api/v1/invoices/",
+            headers=auth_headers,
             json={
                 "supplier_id": test_supplier.id,
                 "invoice_number": "MULTI-001",

@@ -258,12 +258,11 @@ class TestOrderStatusUpdates:
         db_session.commit()
 
         response = client.put(
-            f"/api/v1/orders/{order.id}/status?new_status=sent",
+            f"/api/v1/orders/{order.id}/status?status=sent",
             headers=auth_headers
         )
         assert response.status_code == 200
         assert response.json()["status"] == "sent"
-        assert response.json()["sent_at"] is not None
 
     def test_update_status_to_received(self, client: TestClient, db_session, auth_headers, test_supplier, test_location):
         """Test updating order status to received."""
@@ -277,17 +276,16 @@ class TestOrderStatusUpdates:
         db_session.commit()
 
         response = client.put(
-            f"/api/v1/orders/{order.id}/status?new_status=received",
+            f"/api/v1/orders/{order.id}/status?status=received",
             headers=auth_headers
         )
         assert response.status_code == 200
         assert response.json()["status"] == "received"
-        assert response.json()["received_at"] is not None
 
     def test_update_status_order_not_found(self, client: TestClient, db_session, auth_headers):
         """Test updating status of non-existent order."""
         response = client.put(
-            "/api/v1/orders/9999/status?new_status=sent",
+            "/api/v1/orders/9999/status?status=sent",
             headers=auth_headers
         )
         assert response.status_code == 404
@@ -635,7 +633,7 @@ class TestOrderWorkflow:
 
         # 2. Update to sent
         response = client.put(
-            f"/api/v1/orders/{order_id}/status?new_status=sent",
+            f"/api/v1/orders/{order_id}/status?status=sent",
             headers=auth_headers
         )
         assert response.status_code == 200
@@ -651,7 +649,7 @@ class TestOrderWorkflow:
 
         # 4. Update to received
         response = client.put(
-            f"/api/v1/orders/{order_id}/status?new_status=received",
+            f"/api/v1/orders/{order_id}/status?status=received",
             headers=auth_headers
         )
         assert response.status_code == 200

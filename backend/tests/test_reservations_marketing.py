@@ -104,19 +104,13 @@ class TestReservationEndpoints:
 
     def test_check_availability(self, client: TestClient, db_session, test_location):
         """Test checking availability."""
-        today = date.today().isoformat()
-        response = client.post(
-            "/api/v1/reservations/availability",
-            json={
-                "location_id": test_location.id,
-                "date": today,
-                "party_size": 4
-            }
+        tomorrow = (date.today() + timedelta(days=1)).isoformat()
+        response = client.get(
+            f"/api/v1/reservations/check-availability?location_id={test_location.id}&date={tomorrow}&party_size=4"
         )
-        # May return 500 due to service initialization
         assert response.status_code == 200
 
-    def test_update_reservation(self, client: TestClient, db_session, test_location):
+    def test_update_reservation(self, client: TestClient, db_session, auth_headers, test_location):
         """Test updating a reservation."""
         res = Reservation(
             location_id=test_location.id,
@@ -130,6 +124,7 @@ class TestReservationEndpoints:
 
         response = client.put(
             f"/api/v1/reservations/{res.id}",
+            headers=auth_headers,
             json={"party_size": 4, "guest_name": "Updated Name"}
         )
         # May return 500 due to model/schema issues
@@ -137,15 +132,16 @@ class TestReservationEndpoints:
         data = response.json()
         assert data["party_size"] == 4
 
-    def test_update_reservation_not_found(self, client: TestClient, db_session):
+    def test_update_reservation_not_found(self, client: TestClient, db_session, auth_headers):
         """Test updating non-existent reservation."""
         response = client.put(
             "/api/v1/reservations/9999",
+            headers=auth_headers,
             json={"party_size": 4}
         )
         assert response.status_code == 404
 
-    def test_confirm_reservation(self, client: TestClient, db_session, test_location):
+    def test_confirm_reservation(self, client: TestClient, db_session, auth_headers, test_location):
         """Test confirming a reservation."""
         res = Reservation(
             location_id=test_location.id,
@@ -157,18 +153,18 @@ class TestReservationEndpoints:
         db_session.add(res)
         db_session.commit()
 
-        response = client.post(f"/api/v1/reservations/{res.id}/confirm")
+        response = client.post(f"/api/v1/reservations/{res.id}/confirm", headers=auth_headers)
         # May return 500 due to model/schema issues
         assert response.status_code == 200
         data = response.json()
         assert data["status"] == "confirmed"
 
-    def test_confirm_reservation_not_found(self, client: TestClient, db_session):
+    def test_confirm_reservation_not_found(self, client: TestClient, db_session, auth_headers):
         """Test confirming non-existent reservation."""
-        response = client.post("/api/v1/reservations/9999/confirm")
+        response = client.post("/api/v1/reservations/9999/confirm", headers=auth_headers)
         assert response.status_code == 404
 
-    def test_complete_reservation(self, client: TestClient, db_session, test_location):
+    def test_complete_reservation(self, client: TestClient, db_session, auth_headers, test_location):
         """Test completing a reservation."""
         res = Reservation(
             location_id=test_location.id,
@@ -180,13 +176,13 @@ class TestReservationEndpoints:
         db_session.add(res)
         db_session.commit()
 
-        response = client.post(f"/api/v1/reservations/{res.id}/complete")
+        response = client.post(f"/api/v1/reservations/{res.id}/complete", headers=auth_headers)
         # May return 500 due to model/schema issues
         assert response.status_code == 200
         data = response.json()
         assert data["status"] == "completed"
 
-    def test_mark_no_show(self, client: TestClient, db_session, test_location):
+    def test_mark_no_show(self, client: TestClient, db_session, auth_headers, test_location):
         """Test marking reservation as no-show."""
         res = Reservation(
             location_id=test_location.id,
@@ -198,7 +194,7 @@ class TestReservationEndpoints:
         db_session.add(res)
         db_session.commit()
 
-        response = client.post(f"/api/v1/reservations/{res.id}/no-show")
+        response = client.post(f"/api/v1/reservations/{res.id}/no-show", headers=auth_headers)
         # May return 500 due to model/schema issues
         assert response.status_code == 200
         data = response.json()
@@ -255,7 +251,7 @@ class TestWaitlistEndpoints:
         data = response.json()
         assert data["guest_name"] == "Test Waiter"
 
-    def test_update_waitlist_entry(self, client: TestClient, db_session, test_location):
+    def test_update_waitlist_entry(self, client: TestClient, db_session, auth_headers, test_location):
         """Test updating waitlist entry."""
         entry = Waitlist(
             location_id=test_location.id,
@@ -268,6 +264,7 @@ class TestWaitlistEndpoints:
 
         response = client.put(
             f"/api/v1/reservations/waitlist/{entry.id}",
+            headers=auth_headers,
             json={"party_size": 4}
         )
         # May return 500 due to model/schema issues
@@ -275,10 +272,11 @@ class TestWaitlistEndpoints:
         data = response.json()
         assert data["party_size"] == 4
 
-    def test_update_waitlist_entry_not_found(self, client: TestClient, db_session):
+    def test_update_waitlist_entry_not_found(self, client: TestClient, db_session, auth_headers):
         """Test updating non-existent waitlist entry."""
         response = client.put(
             "/api/v1/reservations/waitlist/9999",
+            headers=auth_headers,
             json={"party_size": 4}
         )
         assert response.status_code == 404
@@ -299,10 +297,11 @@ class TestReservationSettingsEndpoints:
         assert data["max_party_size"] == 20
         assert data["default_duration_minutes"] == 90
 
-    def test_create_settings(self, client: TestClient, db_session, test_location):
+    def test_create_settings(self, client: TestClient, db_session, auth_headers, test_location):
         """Test creating reservation settings."""
         response = client.post(
             "/api/v1/reservations/settings/",
+            headers=auth_headers,
             json={
                 "location_id": test_location.id,
                 "max_party_size": 10,
@@ -332,10 +331,11 @@ class TestGuestHistoryEndpoints:
         assert response.status_code == 200
         assert response.json() == []
 
-    def test_update_guest_notes_creates_new(self, client: TestClient, db_session):
+    def test_update_guest_notes_creates_new(self, client: TestClient, db_session, auth_headers):
         """Test updating notes for new guest creates record."""
         response = client.put(
             "/api/v1/reservations/guests/12345/notes",
+            headers=auth_headers,
             json={"dietary_restrictions": "Vegetarian", "preferences": "Window seat"}
         )
         # May return 500 due to schema validation
@@ -406,10 +406,11 @@ class TestMarketingCampaignEndpoints:
         assert response.status_code == 200
         assert response.json()["name"] == "Test Campaign"
 
-    def test_create_campaign(self, client: TestClient, db_session):
+    def test_create_campaign(self, client: TestClient, db_session, auth_headers):
         """Test creating a campaign."""
         response = client.post(
             "/api/v1/marketing/campaigns/",
+            headers=auth_headers,
             json={
                 "name": "New Campaign",
                 "campaign_type": "email",
@@ -420,7 +421,7 @@ class TestMarketingCampaignEndpoints:
         # May return 500 due to schema validation
         assert response.status_code in [200, 422]
 
-    def test_update_campaign(self, client: TestClient, db_session):
+    def test_update_campaign(self, client: TestClient, db_session, auth_headers):
         """Test updating a campaign."""
         campaign = MarketingCampaign(
             name="Original",
@@ -433,6 +434,7 @@ class TestMarketingCampaignEndpoints:
 
         response = client.put(
             f"/api/v1/marketing/campaigns/{campaign.id}",
+            headers=auth_headers,
             json={"name": "Updated Campaign"}
         )
         # May return 500 due to model/schema issues
@@ -440,10 +442,11 @@ class TestMarketingCampaignEndpoints:
         data = response.json()
         assert data["name"] == "Updated Campaign"
 
-    def test_update_campaign_not_found(self, client: TestClient, db_session):
+    def test_update_campaign_not_found(self, client: TestClient, db_session, auth_headers):
         """Test updating non-existent campaign."""
         response = client.put(
             "/api/v1/marketing/campaigns/9999",
+            headers=auth_headers,
             json={"name": "Updated"}
         )
         assert response.status_code == 404
@@ -508,7 +511,7 @@ class TestSegmentEndpoints:
         assert response.status_code == 200
         assert response.json()["name"] == "Test Segment"
 
-    def test_update_segment(self, client: TestClient, db_session):
+    def test_update_segment(self, client: TestClient, db_session, auth_headers):
         """Test updating a segment."""
         segment = CustomerSegment(
             name="Original",
@@ -520,14 +523,16 @@ class TestSegmentEndpoints:
 
         response = client.put(
             f"/api/v1/marketing/segments/{segment.id}",
+            headers=auth_headers,
             json={"name": "Updated Segment"}
         )
         assert response.status_code == 200
 
-    def test_update_segment_not_found(self, client: TestClient, db_session):
+    def test_update_segment_not_found(self, client: TestClient, db_session, auth_headers):
         """Test updating non-existent segment."""
         response = client.put(
             "/api/v1/marketing/segments/9999",
+            headers=auth_headers,
             json={"name": "Updated"}
         )
         assert response.status_code == 404
@@ -558,10 +563,11 @@ class TestTriggerEndpoints:
         # May return 500 due to model/schema issues
         assert response.status_code == 200
 
-    def test_update_trigger_not_found(self, client: TestClient, db_session):
+    def test_update_trigger_not_found(self, client: TestClient, db_session, auth_headers):
         """Test updating non-existent trigger."""
         response = client.put(
             "/api/v1/marketing/triggers/9999",
+            headers=auth_headers,
             json={"name": "Updated"}
         )
         assert response.status_code == 404
@@ -625,7 +631,7 @@ class TestLoyaltyEndpoints:
 class TestRecommendationEndpoints:
     """Test menu recommendation endpoints."""
 
-    def test_mark_recommendation_presented(self, client: TestClient, db_session, test_product):
+    def test_mark_recommendation_presented(self, client: TestClient, db_session, auth_headers, test_product):
         """Test marking recommendation as presented."""
         rec = MenuRecommendation(
             customer_id=1,
@@ -634,12 +640,12 @@ class TestRecommendationEndpoints:
         db_session.add(rec)
         db_session.commit()
 
-        response = client.post(f"/api/v1/marketing/recommendations/{rec.id}/presented")
+        response = client.post(f"/api/v1/marketing/recommendations/{rec.id}/presented", headers=auth_headers)
         # May return 500 due to model issues
         assert response.status_code == 200
         assert response.json()["status"] == "ok"
 
-    def test_mark_recommendation_purchased(self, client: TestClient, db_session, test_product):
+    def test_mark_recommendation_purchased(self, client: TestClient, db_session, auth_headers, test_product):
         """Test marking recommendation as purchased."""
         rec = MenuRecommendation(
             customer_id=1,
@@ -648,7 +654,7 @@ class TestRecommendationEndpoints:
         db_session.add(rec)
         db_session.commit()
 
-        response = client.post(f"/api/v1/marketing/recommendations/{rec.id}/purchased")
+        response = client.post(f"/api/v1/marketing/recommendations/{rec.id}/purchased", headers=auth_headers)
         # May return 500 due to model issues
         assert response.status_code == 200
         assert response.json()["status"] == "ok"
@@ -659,7 +665,7 @@ class TestRecommendationEndpoints:
 class TestReservationWorkflow:
     """Test complete reservation workflow."""
 
-    def test_reservation_lifecycle(self, client: TestClient, db_session, test_location):
+    def test_reservation_lifecycle(self, client: TestClient, db_session, auth_headers, test_location):
         """Test full reservation lifecycle: create -> confirm -> seat -> complete."""
         # Create reservation
         res = Reservation(
@@ -673,16 +679,16 @@ class TestReservationWorkflow:
         db_session.commit()
 
         # Confirm
-        response = client.post(f"/api/v1/reservations/{res.id}/confirm")
+        response = client.post(f"/api/v1/reservations/{res.id}/confirm", headers=auth_headers)
         # May return 500 due to model/schema issues
         assert response.status_code == 200
 
         # Seat (may fail due to service requirements)
-        response = client.post(f"/api/v1/reservations/{res.id}/seat")
+        response = client.post(f"/api/v1/reservations/{res.id}/seat", headers=auth_headers)
         assert response.status_code in [200, 400]
 
         # Complete
-        response = client.post(f"/api/v1/reservations/{res.id}/complete")
+        response = client.post(f"/api/v1/reservations/{res.id}/complete", headers=auth_headers)
         assert response.status_code == 200
 
 
