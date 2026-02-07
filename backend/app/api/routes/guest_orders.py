@@ -1570,6 +1570,21 @@ def admin_create_category(db: DbSession, data: dict = Body(...)):
     return _category_to_response(cat)
 
 
+@router.put("/menu-admin/categories/reorder")
+def admin_reorder_categories(db: DbSession, data: dict = Body(...)):
+    """Reorder categories."""
+    items = data.get("categories", [])
+    for item in items:
+        cat_id = item.get("id")
+        sort_order = item.get("sort_order")
+        if cat_id is not None and sort_order is not None:
+            cat = db.query(MenuCategoryModel).filter(MenuCategoryModel.id == cat_id).first()
+            if cat:
+                cat.sort_order = sort_order
+    db.commit()
+    return {"success": True}
+
+
 @router.put("/menu-admin/categories/{category_id}")
 def admin_update_category(db: DbSession, category_id: int, data: dict = Body(...)):
     """Update a category."""
@@ -2040,21 +2055,6 @@ def admin_get_item_modifiers(db: DbSession, item_id: int):
                 ],
             })
     return result
-
-
-@router.put("/menu-admin/categories/reorder")
-def admin_reorder_categories(db: DbSession, data: dict = Body(...)):
-    """Reorder categories."""
-    items = data.get("categories", [])
-    for item in items:
-        cat_id = item.get("id")
-        sort_order = item.get("sort_order")
-        if cat_id is not None and sort_order is not None:
-            cat = db.query(MenuCategoryModel).filter(MenuCategoryModel.id == cat_id).first()
-            if cat:
-                cat.sort_order = sort_order
-    db.commit()
-    return {"success": True}
 
 
 @router.get("/menu-admin/modifiers")

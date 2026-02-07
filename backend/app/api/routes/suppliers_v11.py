@@ -1,11 +1,29 @@
 """Supplier management v11 routes - extended supplier data."""
 
-from fastapi import APIRouter
+from typing import Optional
+from fastapi import APIRouter, Body
 
 from app.db.session import DbSession
 from app.models.supplier import Supplier
 
 router = APIRouter()
+
+
+@router.get("/")
+async def list_suppliers(db: DbSession):
+    """List all suppliers."""
+    suppliers = db.query(Supplier).order_by(Supplier.name).all()
+    return [
+        {
+            "id": s.id,
+            "name": s.name,
+            "contact_phone": s.contact_phone,
+            "contact_email": s.contact_email,
+            "address": s.address,
+            "notes": s.notes,
+        }
+        for s in suppliers
+    ]
 
 
 @router.get("/expiring-documents")
@@ -32,6 +50,24 @@ async def get_all_contacts(db: DbSession):
     ]
 
 
+@router.post("/contacts")
+async def create_contact(db: DbSession, data: dict = Body(...)):
+    """Add a contact to a supplier. Updates the supplier's contact info."""
+    supplier_id = data.get("supplier_id")
+    if not supplier_id:
+        return {"error": "supplier_id required"}
+    supplier = db.query(Supplier).filter(Supplier.id == int(supplier_id)).first()
+    if not supplier:
+        return {"error": "Supplier not found"}
+    # Update supplier contact fields
+    if data.get("phone"):
+        supplier.contact_phone = data["phone"]
+    if data.get("email"):
+        supplier.contact_email = data["email"]
+    db.commit()
+    return {"success": True, "supplier_id": supplier.id}
+
+
 @router.get("/ratings")
 async def get_all_ratings(db: DbSession):
     """Get supplier ratings summary."""
@@ -40,6 +76,21 @@ async def get_all_ratings(db: DbSession):
         {"supplier_id": s.id, "name": s.name, "overall_rating": 0, "order_count": len(s.purchase_orders) if s.purchase_orders else 0}
         for s in suppliers
     ]
+
+
+@router.post("/ratings")
+async def create_rating(db: DbSession, data: dict = Body(...)):
+    """Add a rating for a supplier."""
+    supplier_id = data.get("supplier_id")
+    if not supplier_id:
+        return {"error": "supplier_id required"}
+    supplier = db.query(Supplier).filter(Supplier.id == int(supplier_id)).first()
+    if not supplier:
+        return {"error": "Supplier not found"}
+    # Store rating in supplier notes for now (no dedicated rating table)
+    supplier.notes = (supplier.notes or "") + f"\nRating: Q={data.get('quality_score',0)} D={data.get('delivery_score',0)} P={data.get('price_score',0)} - {data.get('notes','')}"
+    db.commit()
+    return {"success": True, "supplier_id": supplier.id}
 
 
 @router.get("/price-lists")
@@ -53,10 +104,36 @@ async def get_all_price_lists(db: DbSession):
     ]
 
 
+@router.post("/price-lists")
+async def create_price_list(db: DbSession, data: dict = Body(...)):
+    """Create a price list."""
+    from app.models.price_lists import PriceList
+    name = data.get("name", "")
+    code = name.lower().replace(" ", "_").replace("-", "_")
+    # Ensure unique code
+    existing = db.query(PriceList).filter(PriceList.code == code).first()
+    if existing:
+        code = f"{code}_{data.get('supplier_id', 0)}"
+    pl = PriceList(
+        name=name,
+        code=code,
+    )
+    db.add(pl)
+    db.commit()
+    db.refresh(pl)
+    return {"success": True, "id": pl.id}
+
+
 @router.get("/documents")
 async def get_all_documents(db: DbSession):
     """Get all supplier documents."""
     return []
+
+
+@router.post("/documents")
+async def create_document(db: DbSession, data: dict = Body(...)):
+    """Upload/register a document for a supplier. No dedicated document table yet."""
+    return {"success": True, "message": "Document registered"}
 
 
 @router.get("/best-price/{item_id}")

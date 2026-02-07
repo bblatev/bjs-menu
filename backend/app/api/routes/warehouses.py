@@ -245,9 +245,21 @@ async def get_transfers(db: DbSession):
 @router.post("/transfers/")
 async def create_transfer(transfer: TransferCreate, db: DbSession):
     """Create a transfer."""
-    # Resolve warehouse IDs from names
-    from_wh = db.query(WarehouseModel).filter(WarehouseModel.name == transfer.from_warehouse).first()
-    to_wh = db.query(WarehouseModel).filter(WarehouseModel.name == transfer.to_warehouse).first()
+    # Resolve warehouse IDs from names or numeric IDs
+    from_wh = None
+    to_wh = None
+    try:
+        from_wh = db.query(WarehouseModel).filter(WarehouseModel.id == int(transfer.from_warehouse)).first()
+    except (ValueError, TypeError):
+        pass
+    if not from_wh:
+        from_wh = db.query(WarehouseModel).filter(WarehouseModel.name == transfer.from_warehouse).first()
+    try:
+        to_wh = db.query(WarehouseModel).filter(WarehouseModel.id == int(transfer.to_warehouse)).first()
+    except (ValueError, TypeError):
+        pass
+    if not to_wh:
+        to_wh = db.query(WarehouseModel).filter(WarehouseModel.name == transfer.to_warehouse).first()
 
     db_transfer = WarehouseTransfer(
         from_warehouse_id=from_wh.id if from_wh else None,
@@ -264,6 +276,40 @@ async def create_transfer(transfer: TransferCreate, db: DbSession):
     db.commit()
     db.refresh(db_transfer)
     return {"success": True, "id": str(db_transfer.id)}
+
+
+@router.put("/transfers/{transfer_id}/start")
+async def start_transfer(transfer_id: int, db: DbSession):
+    """Mark a transfer as in transit."""
+    transfer = db.query(WarehouseTransfer).filter(WarehouseTransfer.id == transfer_id).first()
+    if not transfer:
+        raise HTTPException(status_code=404, detail="Transfer not found")
+    transfer.status = "in_transit"
+    db.commit()
+    return {"success": True, "id": str(transfer.id), "status": "in_transit"}
+
+
+@router.put("/transfers/{transfer_id}/complete")
+async def complete_transfer(transfer_id: int, db: DbSession):
+    """Mark a transfer as completed."""
+    transfer = db.query(WarehouseTransfer).filter(WarehouseTransfer.id == transfer_id).first()
+    if not transfer:
+        raise HTTPException(status_code=404, detail="Transfer not found")
+    transfer.status = "completed"
+    transfer.completed_at = datetime.utcnow()
+    db.commit()
+    return {"success": True, "id": str(transfer.id), "status": "completed"}
+
+
+@router.put("/transfers/{transfer_id}/cancel")
+async def cancel_transfer(transfer_id: int, db: DbSession):
+    """Cancel a transfer."""
+    transfer = db.query(WarehouseTransfer).filter(WarehouseTransfer.id == transfer_id).first()
+    if not transfer:
+        raise HTTPException(status_code=404, detail="Transfer not found")
+    transfer.status = "cancelled"
+    db.commit()
+    return {"success": True, "id": str(transfer.id), "status": "cancelled"}
 
 
 @router.get("/activities/")
