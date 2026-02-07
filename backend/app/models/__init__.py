@@ -132,6 +132,11 @@ from app.models.restaurant import (
 from app.models.advanced_features import (
     HappyHour,
     WasteTrackingEntry,
+    MenuExperiment,
+    LaborForecast,
+    ReviewSentiment,
+    WaitTimePrediction,
+    KitchenStation,
 )
 
 __all__ = [
@@ -237,9 +242,14 @@ __all__ = [
     "ManagerAlert",
     "CustomerCredit",
     "SubTable",
-    # Bar Management
+    # Bar Management & Advanced Features
     "HappyHour",
     "WasteTrackingEntry",
+    "MenuExperiment",
+    "LaborForecast",
+    "ReviewSentiment",
+    "WaitTimePrediction",
+    "KitchenStation",
     # Operations
     "AppSetting",
     "PayrollRun",

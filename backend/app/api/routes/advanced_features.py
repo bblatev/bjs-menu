@@ -341,7 +341,12 @@ def analyze_experiment(
 ):
     """Analyze experiment results."""
     service = MenuExperimentsService(db)
-    return service.analyze_experiment(experiment_id)
+    try:
+        return service.analyze_experiment(experiment_id)
+    except (ValueError, Exception) as e:
+        if "not found" in str(e).lower():
+            raise HTTPException(status_code=404, detail=str(e))
+        raise
 
 
 # ============================================================================
@@ -474,7 +479,12 @@ def suggest_response(
 ):
     """Generate AI response suggestion."""
     service = SentimentAnalysisService(db)
-    return service.generate_response(review_id)
+    try:
+        return service.generate_response(review_id)
+    except (ValueError, Exception) as e:
+        if "not found" in str(e).lower():
+            raise HTTPException(status_code=404, detail=str(e))
+        raise
 
 
 # ============================================================================

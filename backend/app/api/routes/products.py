@@ -1,13 +1,13 @@
 """Product routes."""
 
-from __future__ import annotations
-
 import csv
 import io
 from decimal import Decimal
 from typing import Optional, List
 
-from fastapi import APIRouter, File, HTTPException, Query, UploadFile, status
+from fastapi import APIRouter, File, HTTPException, Query, Request, UploadFile, status
+
+from app.core.rate_limit import limiter
 
 from app.core.file_utils import sanitize_filename
 from app.core.rbac import CurrentUser, OptionalCurrentUser, RequireManager
@@ -121,7 +121,9 @@ def update_product(
 
 
 @router.post("/import")
+@limiter.limit("5/minute")
 def import_products(
+    request: Request,
     file: UploadFile = File(...),
     db: DbSession = None,
     current_user: RequireManager = None,
@@ -139,8 +141,13 @@ def import_products(
             detail="File must be a CSV",
         )
 
-    content = file.file.read().decode("utf-8")
-    reader = csv.DictReader(io.StringIO(content))
+    content = file.file.read()
+    if len(content) > 10 * 1024 * 1024:  # 10MB limit
+        raise HTTPException(
+            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+            detail="File too large. Maximum size is 10MB",
+        )
+    reader = csv.DictReader(io.StringIO(content.decode("utf-8")))
 
     created = 0
     updated = 0

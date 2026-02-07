@@ -6,9 +6,10 @@ from decimal import Decimal
 from typing import Optional, List
 
 from sqlalchemy import Boolean, ForeignKey, Integer, Numeric, String
-from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy.orm import Mapped, mapped_column, relationship, validates
 
 from app.db.base import Base, TimestampMixin
+from app.models.validators import non_negative, positive
 
 
 class Product(Base, TimestampMixin):
@@ -32,6 +33,14 @@ class Product(Base, TimestampMixin):
     sku: Mapped[Optional[str]] = mapped_column(String(50), nullable=True, index=True)
     ai_label: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)  # Label for AI detection
     active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+
+    @validates('pack_size', 'lead_time_days')
+    def _validate_positive(self, key, value):
+        return positive(key, value)
+
+    @validates('min_stock', 'target_stock', 'cost_price')
+    def _validate_non_negative(self, key, value):
+        return non_negative(key, value)
 
     # Relationships
     supplier: Mapped[Optional["Supplier"]] = relationship("Supplier", back_populates="products")

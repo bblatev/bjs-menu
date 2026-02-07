@@ -3,8 +3,10 @@
 from typing import List, Optional
 from datetime import datetime, date, timedelta, timezone
 from fastapi import APIRouter, HTTPException, Body, Query
-from pydantic import BaseModel
-from sqlalchemy import func, or_
+from pydantic import BaseModel, field_validator
+
+from app.core.sanitize import sanitize_text
+from sqlalchemy import func, or_, String
 
 from app.db.session import DbSession
 from app.models.customer import Customer
@@ -28,6 +30,11 @@ class CustomerCreate(BaseModel):
     acquisition_source: Optional[str] = "direct"
     communication_preference: Optional[str] = "email"
 
+    @field_validator("name", "notes", "preferences", mode="before")
+    @classmethod
+    def _sanitize(cls, v):
+        return sanitize_text(v)
+
 
 class CustomerUpdate(BaseModel):
     name: Optional[str] = None
@@ -42,6 +49,11 @@ class CustomerUpdate(BaseModel):
     anniversary: Optional[str] = None
     acquisition_source: Optional[str] = None
     communication_preference: Optional[str] = None
+
+    @field_validator("name", "notes", "preferences", mode="before")
+    @classmethod
+    def _sanitize(cls, v):
+        return sanitize_text(v)
 
 
 # ============== Helper Functions ==============
@@ -112,8 +124,7 @@ def list_customers(
 
     # Tag filter
     if tag:
-        # JSON contains check varies by database - this works for SQLite
-        query = query.filter(Customer.tags.contains(tag))
+        query = query.filter(Customer.tags.cast(String).like(f"%{tag}%"))
 
     # Segment filter
     if segment:
@@ -363,7 +374,7 @@ def get_customer_stats(db: DbSession):
     avg_order = db.query(func.avg(Customer.average_order)).scalar() or 0
     avg_frequency = db.query(func.avg(Customer.visit_frequency)).scalar() or 0
 
-    vip_count = db.query(Customer).filter(Customer.tags.contains("VIP")).count()
+    vip_count = db.query(Customer).filter(Customer.tags.cast(String).like("%VIP%")).count()
     champions_count = db.query(Customer).filter(Customer.segment == "Champions").count()
     at_risk_count = db.query(Customer).filter(
         or_(Customer.segment == "At Risk", Customer.segment == "Lost")

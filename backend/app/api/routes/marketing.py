@@ -29,21 +29,73 @@ router = APIRouter()
 # ==================== STUB ENDPOINTS ====================
 
 @router.get("/promotions")
-def get_promotions(db: DbSession):
+def get_promotions(db: DbSession, active_only: bool = False):
     """Get promotions list."""
-    return {"promotions": [], "total": 0}
+    from app.models.operations import Promotion
+    query = db.query(Promotion)
+    if active_only:
+        query = query.filter(Promotion.active == True)
+    promos = query.order_by(Promotion.created_at.desc()).all()
+    items = [
+        {
+            "id": p.id,
+            "name": p.name,
+            "description": p.description,
+            "type": p.type,
+            "value": float(p.value) if p.value else None,
+            "code": p.code,
+            "start_date": p.start_date.isoformat() if p.start_date else None,
+            "end_date": p.end_date.isoformat() if p.end_date else None,
+            "active": p.active,
+            "usage_count": p.usage_count,
+            "usage_limit": p.usage_limit,
+        }
+        for p in promos
+    ]
+    return {"promotions": items, "total": len(items)}
 
 
 @router.get("/stats")
 def get_marketing_stats(db: DbSession):
     """Get marketing statistics."""
-    return {"total_campaigns": 0, "active": 0, "total_sent": 0, "open_rate": 0, "conversion_rate": 0}
+    from sqlalchemy import func as sqlfunc
+    total = db.query(sqlfunc.count(MarketingCampaign.id)).scalar() or 0
+    active = db.query(sqlfunc.count(MarketingCampaign.id)).filter(
+        MarketingCampaign.status == "active"
+    ).scalar() or 0
+    total_sent = db.query(sqlfunc.sum(MarketingCampaign.total_sent)).scalar() or 0
+    total_opened = db.query(sqlfunc.sum(MarketingCampaign.total_opened)).scalar() or 0
+    open_rate = round((total_opened / total_sent * 100), 1) if total_sent > 0 else 0
+    total_revenue = db.query(sqlfunc.sum(MarketingCampaign.total_revenue)).scalar() or 0
+    return {
+        "total_campaigns": total,
+        "active": active,
+        "total_sent": int(total_sent),
+        "open_rate": open_rate,
+        "conversion_rate": 0,
+        "total_revenue": float(total_revenue),
+    }
 
 
 @router.get("/pricing-rules")
 def get_pricing_rules(db: DbSession):
     """Get pricing rules."""
-    return {"rules": [], "total": 0}
+    from app.models.advanced_features import DynamicPricingRule
+    rules = db.query(DynamicPricingRule).order_by(DynamicPricingRule.id).all()
+    items = [
+        {
+            "id": r.id,
+            "name": r.name,
+            "trigger_type": r.trigger_type,
+            "trigger_conditions": r.trigger_conditions,
+            "adjustment_type": r.adjustment_type,
+            "adjustment_value": float(r.adjustment_value),
+            "applies_to": r.applies_to,
+            "is_active": r.is_active,
+        }
+        for r in rules
+    ]
+    return {"rules": items, "total": len(items)}
 
 
 # Marketing Campaigns

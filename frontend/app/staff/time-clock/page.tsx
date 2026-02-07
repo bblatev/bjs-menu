@@ -74,14 +74,22 @@ export default function TimeClockPage() {
         setEntries(await entriesResponse.json());
       }
 
-      // Mock staff list - would come from API
-      setStaff([
-        { id: 1, name: 'John Smith', role: 'Server', department: 'Front of House', hourly_rate: 12, status: 'clocked_in' },
-        { id: 2, name: 'Maria Petrova', role: 'Chef', department: 'Kitchen', hourly_rate: 18, status: 'on_break' },
-        { id: 3, name: 'Peter Ivanov', role: 'Bartender', department: 'Bar', hourly_rate: 14, status: 'clocked_in' },
-        { id: 4, name: 'Elena Georgieva', role: 'Host', department: 'Front of House', hourly_rate: 11, status: 'off' },
-        { id: 5, name: 'Dimitar Kolev', role: 'Line Cook', department: 'Kitchen', hourly_rate: 15, status: 'clocked_out' },
-      ]);
+      // Load staff from API
+      const staffResponse = await fetch(`${API_URL}/staff`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (staffResponse.ok) {
+        const staffData = await staffResponse.json();
+        const staffList = (staffData.items || staffData || []).map((s: Record<string, unknown>) => ({
+          id: s.id,
+          name: s.full_name || s.name || 'Unknown',
+          role: s.role || 'Staff',
+          department: s.department || '',
+          hourly_rate: s.hourly_rate || 0,
+          status: s.is_clocked_in ? 'clocked_in' : 'off',
+        }));
+        setStaff(staffList);
+      }
     } catch (error) {
       console.error('Error loading data:', error);
     } finally {

@@ -27,8 +27,20 @@ def get_sales_report(
     start_date: Optional[str] = Query(None),
     end_date: Optional[str] = Query(None),
 ):
-    """Get sales report summary."""
-    return {"revenue": 0, "orders": 0, "average_ticket": 0, "items_sold": 0, "by_category": [], "by_hour": []}
+    """Get sales report from daily metrics."""
+    from sqlalchemy import func
+    from app.models.analytics import DailyMetrics
+
+    query = db.query(DailyMetrics)
+    if start_date:
+        query = query.filter(DailyMetrics.date >= start_date)
+    if end_date:
+        query = query.filter(DailyMetrics.date <= end_date)
+    metrics = query.order_by(DailyMetrics.date.desc()).limit(30).all()
+    revenue = sum(float(m.total_revenue or 0) for m in metrics)
+    orders = sum(int(m.total_orders or 0) for m in metrics)
+    avg_ticket = round(revenue / orders, 2) if orders > 0 else 0
+    return {"revenue": round(revenue, 2), "orders": orders, "average_ticket": avg_ticket, "items_sold": 0, "by_category": [], "by_hour": []}
 
 
 @router.get("/staff")
@@ -36,8 +48,13 @@ def get_staff_report(
     db: DbSession,
     current_user: OptionalCurrentUser = None,
 ):
-    """Get staff report."""
-    return {"staff": [], "total": 0}
+    """Get staff report from staff_users table."""
+    from app.models.staff import StaffUser
+    staff = db.query(StaffUser).order_by(StaffUser.full_name).all()
+    return {
+        "staff": [{"id": s.id, "name": s.full_name, "role": s.role, "active": s.is_active} for s in staff],
+        "total": len(staff),
+    }
 
 
 @router.get("/staff-performance")
@@ -46,7 +63,12 @@ def get_staff_performance_report(
     current_user: OptionalCurrentUser = None,
 ):
     """Get staff performance report."""
-    return {"staff": [], "average_rating": 0}
+    from app.models.staff import StaffUser
+    staff = db.query(StaffUser).order_by(StaffUser.full_name).all()
+    return {
+        "staff": [{"id": s.id, "name": s.full_name, "role": s.role} for s in staff],
+        "average_rating": 0,
+    }
 
 
 @router.get("/kitchen")
@@ -54,8 +76,21 @@ def get_kitchen_report(
     db: DbSession,
     current_user: OptionalCurrentUser = None,
 ):
-    """Get kitchen performance report."""
-    return {"avg_prep_time": 0, "orders_completed": 0, "by_station": []}
+    """Get kitchen performance report from kitchen orders."""
+    from sqlalchemy import func
+    from app.models.restaurant import KitchenOrder
+    completed = db.query(func.count(KitchenOrder.id)).filter(KitchenOrder.status == "completed").scalar() or 0
+    by_station = dict(
+        db.query(KitchenOrder.station, func.count(KitchenOrder.id))
+        .filter(KitchenOrder.status == "completed")
+        .group_by(KitchenOrder.station)
+        .all()
+    )
+    return {
+        "avg_prep_time": 0,
+        "orders_completed": completed,
+        "by_station": [{"station": s, "count": c} for s, c in by_station.items()],
+    }
 
 
 @router.get("/inventory")
@@ -63,8 +98,17 @@ def get_inventory_report(
     db: DbSession,
     current_user: OptionalCurrentUser = None,
 ):
-    """Get inventory report."""
-    return {"total_value": 0, "items_count": 0, "low_stock": [], "movements": []}
+    """Get inventory report from stock and products."""
+    from sqlalchemy import func
+
+    items_count = db.query(func.count(Product.id)).scalar() or 0
+    stock_rows = db.query(StockOnHand).all()
+    total_value = sum(float(s.qty or 0) for s in stock_rows)
+    low_stock = [
+        {"product_id": s.product_id, "qty": float(s.qty or 0), "location_id": s.location_id}
+        for s in stock_rows if (s.qty or 0) < 5 and (s.qty or 0) > 0
+    ]
+    return {"total_value": round(total_value, 2), "items_count": items_count, "low_stock": low_stock[:20], "movements": []}
 
 
 @router.get("/customers")
@@ -72,8 +116,11 @@ def get_customers_report(
     db: DbSession,
     current_user: OptionalCurrentUser = None,
 ):
-    """Get customers report."""
-    return {"total": 0, "new_this_month": 0, "returning": 0, "segments": []}
+    """Get customers report from customer table."""
+    from sqlalchemy import func
+    from app.models.customer import Customer
+    total = db.query(func.count(Customer.id)).scalar() or 0
+    return {"total": total, "new_this_month": 0, "returning": 0, "segments": []}
 
 
 @router.get("/customer-insights")
@@ -81,8 +128,14 @@ def get_customer_insights_report(
     db: DbSession,
     current_user: OptionalCurrentUser = None,
 ):
-    """Get customer insights report."""
-    return {"top_spenders": [], "frequency": [], "preferences": []}
+    """Get customer insights from customer table."""
+    from app.models.customer import Customer
+    customers = db.query(Customer).order_by(Customer.total_spent.desc()).limit(20).all()
+    top_spenders = [
+        {"id": c.id, "name": c.name, "total_spent": float(c.total_spent or 0), "visit_count": c.visit_count or 0}
+        for c in customers if (c.total_spent or 0) > 0
+    ]
+    return {"top_spenders": top_spenders, "frequency": [], "preferences": []}
 
 
 @router.get("/stock-valuation")

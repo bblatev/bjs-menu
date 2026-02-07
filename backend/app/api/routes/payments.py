@@ -6,6 +6,7 @@ from datetime import datetime, timezone
 from typing import Optional, List, Dict
 from fastapi import APIRouter, HTTPException, Request, Header
 from pydantic import BaseModel
+from app.core.rate_limit import limiter
 
 from app.db.session import DbSession
 from app.models.restaurant import GuestOrder
@@ -93,12 +94,15 @@ class PaymentMethodResponse(BaseModel):
 # ============================================================================
 
 @router.post("/intents", response_model=PaymentIntentResponse)
-async def create_payment_intent(request: CreatePaymentIntentRequest):
+@limiter.limit("5/minute")
+async def create_payment_intent(request: Request, body: CreatePaymentIntentRequest = None):
     """
     Create a payment intent for processing a payment.
 
     The client_secret returned should be used with Stripe.js on the frontend
     to complete the payment.
+
+    Rate limited to 5 requests per minute per IP.
     """
     stripe = get_stripe_service()
     if not stripe:
@@ -108,20 +112,20 @@ async def create_payment_intent(request: CreatePaymentIntentRequest):
         )
 
     metadata = {}
-    if request.order_id:
-        metadata["order_id"] = request.order_id
-    if request.table_number:
-        metadata["table_number"] = request.table_number
+    if body.order_id:
+        metadata["order_id"] = body.order_id
+    if body.table_number:
+        metadata["table_number"] = body.table_number
 
     result = await stripe.create_payment_intent(
-        amount=request.amount,
-        currency=request.currency,
-        customer_id=request.customer_id,
-        description=request.description,
+        amount=body.amount,
+        currency=body.currency,
+        customer_id=body.customer_id,
+        description=body.description,
         metadata=metadata if metadata else None,
-        payment_method_types=request.payment_method_types,
-        capture_method=request.capture_method,
-        receipt_email=request.receipt_email,
+        payment_method_types=body.payment_method_types,
+        capture_method=body.capture_method,
+        receipt_email=body.receipt_email,
     )
 
     return PaymentIntentResponse(
@@ -155,7 +159,8 @@ async def get_payment_intent(payment_intent_id: str):
 
 
 @router.post("/intents/{payment_intent_id}/capture", response_model=PaymentIntentResponse)
-async def capture_payment_intent(payment_intent_id: str, request: CapturePaymentRequest):
+@limiter.limit("5/minute")
+async def capture_payment_intent(request: Request, payment_intent_id: str, body: CapturePaymentRequest = None):
     """
     Capture a previously authorized payment.
 
@@ -167,7 +172,7 @@ async def capture_payment_intent(payment_intent_id: str, request: CapturePayment
 
     result = await stripe.capture_payment_intent(
         payment_intent_id=payment_intent_id,
-        amount_to_capture=request.amount_to_capture,
+        amount_to_capture=body.amount_to_capture if body else None,
     )
 
     return PaymentIntentResponse(
@@ -181,7 +186,9 @@ async def capture_payment_intent(payment_intent_id: str, request: CapturePayment
 
 
 @router.post("/intents/{payment_intent_id}/cancel", response_model=PaymentIntentResponse)
+@limiter.limit("5/minute")
 async def cancel_payment_intent(
+    request: Request,
     payment_intent_id: str,
     reason: Optional[str] = None,
 ):
@@ -208,7 +215,8 @@ async def cancel_payment_intent(
 # ============================================================================
 
 @router.post("/intents/{payment_intent_id}/refund", response_model=RefundResponse)
-async def refund_payment(payment_intent_id: str, request: RefundRequest):
+@limiter.limit("5/minute")
+async def refund_payment(request: Request, payment_intent_id: str, body: RefundRequest = None):
     """
     Create a refund for a payment.
 
@@ -220,8 +228,8 @@ async def refund_payment(payment_intent_id: str, request: RefundRequest):
 
     result = await stripe.create_refund(
         payment_intent_id=payment_intent_id,
-        amount=request.amount,
-        reason=request.reason,
+        amount=body.amount if body else None,
+        reason=body.reason if body else None,
     )
 
     return RefundResponse(
@@ -238,20 +246,21 @@ async def refund_payment(payment_intent_id: str, request: RefundRequest):
 # ============================================================================
 
 @router.post("/customers", response_model=CustomerResponse)
-async def create_customer(request: CreateCustomerRequest):
+@limiter.limit("10/minute")
+async def create_customer(request: Request, body: CreateCustomerRequest = None):
     """Create a Stripe customer for saving payment methods."""
     stripe = get_stripe_service()
     if not stripe:
         raise HTTPException(status_code=503, detail="Stripe not configured")
 
     metadata = {}
-    if request.customer_id:
-        metadata["internal_customer_id"] = request.customer_id
+    if body.customer_id:
+        metadata["internal_customer_id"] = body.customer_id
 
     result = await stripe.create_customer(
-        email=request.email,
-        name=request.name,
-        phone=request.phone,
+        email=body.email,
+        name=body.name,
+        phone=body.phone,
         metadata=metadata if metadata else None,
     )
 
@@ -553,5 +562,25 @@ def get_payment_transactions(
     limit: int = 50,
     offset: int = 0,
 ):
-    """Get payment transactions list."""
-    return {"transactions": [], "total": 0, "limit": limit, "offset": offset}
+    """Get payment transactions from check_payments table."""
+    from sqlalchemy import func
+    from app.models.restaurant import CheckPayment
+
+    total = db.query(func.count(CheckPayment.id)).scalar() or 0
+    payments = db.query(CheckPayment).order_by(
+        CheckPayment.created_at.desc()
+    ).offset(offset).limit(limit).all()
+
+    transactions = [
+        {
+            "id": p.id,
+            "check_id": p.check_id,
+            "type": p.payment_type,
+            "amount": float(p.amount or 0),
+            "tip": float(p.tip or 0),
+            "card_last_four": p.card_last_four,
+            "created_at": p.created_at.isoformat() if p.created_at else None,
+        }
+        for p in payments
+    ]
+    return {"transactions": transactions, "total": total, "limit": limit, "offset": offset}

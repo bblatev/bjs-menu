@@ -1,7 +1,5 @@
 """POS integration routes - using database for bar tabs."""
 
-from __future__ import annotations
-
 import csv
 import io
 from datetime import datetime, timezone

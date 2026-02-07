@@ -21,7 +21,7 @@ from app.api.routes import (
     inventory_intelligence, xero,
     risk_alerts, roles, voice,
     kitchen_display, kitchen_alerts, promotions, gamification,
-    fiscal_printers, pos_fiscal_bridge, suppliers_v11, cloud_kitchen,
+    fiscal_printers, pos_fiscal_bridge, cloud_kitchen,
 )
 
 api_router = APIRouter()
@@ -233,8 +233,8 @@ api_router.include_router(fiscal_printers.router, prefix="/fiscal-printers", tag
 # POS Fiscal Bridge
 api_router.include_router(pos_fiscal_bridge.router, prefix="/pos-fiscal-bridge", tags=["pos-fiscal-bridge", "fiscal"])
 
-# Supplier Management v11
-api_router.include_router(suppliers_v11.router, prefix="/v11/suppliers", tags=["suppliers", "v11"])
+# Supplier Management v11 (backward compat - same consolidated router)
+api_router.include_router(suppliers.router, prefix="/v11/suppliers", tags=["suppliers", "v11"])
 
 # Cloud Kitchen / Delivery v6
 api_router.include_router(cloud_kitchen.router, prefix="/v6", tags=["cloud-kitchen", "delivery", "drive-thru"])

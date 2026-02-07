@@ -6,9 +6,10 @@ from typing import Optional
 from enum import Enum
 
 from sqlalchemy import Boolean, String, Integer, Float, Date, Time, DateTime, Text, ForeignKey, JSON
-from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy.orm import Mapped, mapped_column, relationship, validates
 
 from app.db.base import Base, TimestampMixin
+from app.models.validators import non_negative, positive, percentage
 
 
 class StaffRole(str, Enum):
@@ -101,6 +102,18 @@ class StaffUser(Base, TimestampMixin):
     time_clock_entries = relationship("TimeClockEntry", back_populates="staff")
     table_assignments = relationship("TableAssignment", back_populates="staff")
 
+    @validates('hourly_rate')
+    def _validate_hourly_rate(self, key, value):
+        return positive(key, value)
+
+    @validates('max_hours_week')
+    def _validate_max_hours(self, key, value):
+        return positive(key, value)
+
+    @validates('commission_percentage', 'service_fee_percentage')
+    def _validate_percentage(self, key, value):
+        return percentage(key, value)
+
 
 class Shift(Base, TimestampMixin):
     """Shift schedule model."""
@@ -117,6 +130,10 @@ class Shift(Base, TimestampMixin):
     status: Mapped[str] = mapped_column(String(50), default="scheduled", nullable=False)
     position: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
     notes: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+
+    @validates('break_minutes')
+    def _validate_break_minutes(self, key, value):
+        return non_negative(key, value)
     is_published: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     location_id: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
 

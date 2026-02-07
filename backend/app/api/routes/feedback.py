@@ -4,7 +4,9 @@ from datetime import datetime, date
 from typing import List, Optional
 
 from fastapi import APIRouter, HTTPException, Query, status
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
+
+from app.core.sanitize import sanitize_text
 from sqlalchemy import func
 
 from app.db.session import DbSession
@@ -39,6 +41,11 @@ class FeedbackStats(BaseModel):
 
 class RespondRequest(BaseModel):
     response: str
+
+    @field_validator("response", mode="before")
+    @classmethod
+    def _sanitize(cls, v):
+        return sanitize_text(v)
 
 
 def _review_to_schema(r: FeedbackReview) -> Review:

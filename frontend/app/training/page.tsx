@@ -35,6 +35,8 @@ interface SessionStats {
   orders: TrainingOrder[];
 }
 
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1';
+
 export default function TrainingModePage() {
   const [isTrainingActive, setIsTrainingActive] = useState(false);
   const [currentSession, setCurrentSession] = useState<TrainingSession | null>(null);
@@ -76,22 +78,17 @@ export default function TrainingModePage() {
   const loadData = async () => {
     setIsLoading(true);
     try {
-      // Simulated data - in production, fetch from API
-      await new Promise(resolve => setTimeout(resolve, 500));
-
-      setActiveSessions([
-        {
-          sessionId: 'TS-20240204120000-3',
-          userId: 3,
-          userName: 'New Staff',
-          startedAt: new Date(Date.now() - 1800000).toISOString(),
-          ordersCreated: 5,
-          paymentsProcessed: 3,
-          totalSales: 125.50,
-          averageTicket: 25.10,
-          durationMinutes: 30,
-        },
-      ]);
+      // Load active training sessions from API
+      const token = localStorage.getItem('access_token');
+      const res = await fetch(`${API_URL}/training/sessions/active`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setActiveSessions(Array.isArray(data) ? data : data.sessions || []);
+      } else {
+        setActiveSessions([]);
+      }
     } finally {
       setIsLoading(false);
     }
@@ -100,20 +97,38 @@ export default function TrainingModePage() {
   const startTrainingSession = async () => {
     setIsLoading(true);
     try {
-      await new Promise(resolve => setTimeout(resolve, 500));
-
-      const newSession: TrainingSession = {
-        sessionId: `TS-${Date.now()}-${selectedUser}`,
-        userId: selectedUser,
-        userName: users.find(u => u.id === selectedUser)?.name,
-        startedAt: new Date().toISOString(),
-        ordersCreated: 0,
-        paymentsProcessed: 0,
-        totalSales: 0,
-        averageTicket: 0,
-      };
-
-      setCurrentSession(newSession);
+      const token = localStorage.getItem('access_token');
+      const res = await fetch(`${API_URL}/training/sessions/start`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ user_id: selectedUser }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        const newSession: TrainingSession = {
+          sessionId: data.session_id || `TS-${Date.now()}-${selectedUser}`,
+          userId: selectedUser,
+          userName: users.find(u => u.id === selectedUser)?.name,
+          startedAt: data.started_at || new Date().toISOString(),
+          ordersCreated: 0,
+          paymentsProcessed: 0,
+          totalSales: 0,
+          averageTicket: 0,
+        };
+        setCurrentSession(newSession);
+      } else {
+        const newSession: TrainingSession = {
+          sessionId: `TS-${Date.now()}-${selectedUser}`,
+          userId: selectedUser,
+          userName: users.find(u => u.id === selectedUser)?.name,
+          startedAt: new Date().toISOString(),
+          ordersCreated: 0,
+          paymentsProcessed: 0,
+          totalSales: 0,
+          averageTicket: 0,
+        };
+        setCurrentSession(newSession);
+      }
       setIsTrainingActive(true);
       setPracticeMode('menu');
       setPracticeCart([]);
@@ -127,9 +142,13 @@ export default function TrainingModePage() {
 
     setIsLoading(true);
     try {
-      await new Promise(resolve => setTimeout(resolve, 500));
+      const token = localStorage.getItem('access_token');
+      await fetch(`${API_URL}/training/sessions/end`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ session_id: currentSession.sessionId }),
+      }).catch(() => {});
 
-      // Calculate final stats
       const stats: SessionStats = {
         sessionId: currentSession.sessionId,
         ordersCreated: currentSession.ordersCreated,

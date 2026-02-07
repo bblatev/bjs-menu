@@ -145,19 +145,19 @@ export default function SupplierManagementPage() {
 
     try {
       // Contacts
-      const contactsRes = await fetch(`${API_URL}/v11/suppliers/${supplierId}/contacts`, { headers });
+      const contactsRes = await fetch(`${API_URL}/suppliers/${supplierId}/contacts`, { headers });
       if (contactsRes.ok) setContacts(await contactsRes.json());
 
       // Price Lists
-      const priceListsRes = await fetch(`${API_URL}/v11/suppliers/${supplierId}/price-lists`, { headers });
+      const priceListsRes = await fetch(`${API_URL}/suppliers/${supplierId}/price-lists`, { headers });
       if (priceListsRes.ok) setPriceLists(await priceListsRes.json());
 
       // Ratings
-      const ratingsRes = await fetch(`${API_URL}/v11/suppliers/${supplierId}/ratings`, { headers });
+      const ratingsRes = await fetch(`${API_URL}/suppliers/${supplierId}/ratings`, { headers });
       if (ratingsRes.ok) setRatings(await ratingsRes.json());
 
       // Documents
-      const docsRes = await fetch(`${API_URL}/v11/suppliers/${supplierId}/documents`, { headers });
+      const docsRes = await fetch(`${API_URL}/suppliers/${supplierId}/documents`, { headers });
       if (docsRes.ok) setDocuments(await docsRes.json());
 
     } catch (error) {
@@ -167,7 +167,7 @@ export default function SupplierManagementPage() {
 
   const fetchExpiringDocuments = async () => {
     try {
-      const res = await fetch(`${API_URL}/v11/suppliers/expiring-documents?days=30`, {
+      const res = await fetch(`${API_URL}/suppliers/expiring-documents?days=30`, {
         headers: getAuthHeaders()
       });
       if (res.ok) setExpiringDocs(await res.json());
@@ -181,7 +181,7 @@ export default function SupplierManagementPage() {
     setSaving(true);
 
     try {
-      const res = await fetch(`${API_URL}/v11/suppliers/contacts`, {
+      const res = await fetch(`${API_URL}/suppliers/contacts`, {
         method: "POST",
         headers: getAuthHeaders(),
         body: JSON.stringify({
@@ -217,7 +217,7 @@ export default function SupplierManagementPage() {
     setSaving(true);
 
     try {
-      const res = await fetch(`${API_URL}/v11/suppliers/ratings`, {
+      const res = await fetch(`${API_URL}/suppliers/ratings`, {
         method: "POST",
         headers: getAuthHeaders(),
         body: JSON.stringify({
@@ -242,7 +242,7 @@ export default function SupplierManagementPage() {
     setSaving(true);
 
     try {
-      const res = await fetch(`${API_URL}/v11/suppliers/price-lists`, {
+      const res = await fetch(`${API_URL}/suppliers/price-lists`, {
         method: "POST",
         headers: getAuthHeaders(),
         body: JSON.stringify({
@@ -268,7 +268,7 @@ export default function SupplierManagementPage() {
     setSaving(true);
 
     try {
-      const res = await fetch(`${API_URL}/v11/suppliers/documents`, {
+      const res = await fetch(`${API_URL}/suppliers/documents`, {
         method: "POST",
         headers: getAuthHeaders(),
         body: JSON.stringify({
@@ -293,7 +293,7 @@ export default function SupplierManagementPage() {
   const handleComparePrice = async (itemId: number) => {
     setSelectedItem(itemId);
     try {
-      const res = await fetch(`${API_URL}/v11/suppliers/best-price/${itemId}`, {
+      const res = await fetch(`${API_URL}/suppliers/best-price/${itemId}`, {
         headers: getAuthHeaders()
       });
       if (res.ok) {

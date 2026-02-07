@@ -680,9 +680,27 @@ class AutoReorderRuleRequest(BaseModel):
 
 
 @router.get("/auto-reorder/history")
-def get_auto_reorder_history(location_id: int = Query(1)):
-    """Get auto-reorder execution history."""
-    return []
+def get_auto_reorder_history(db: DbSession, location_id: int = Query(1)):
+    """Get auto-reorder execution history from purchase orders triggered by low stock."""
+    orders = db.query(PurchaseOrder).filter(
+        PurchaseOrder.notes.like("%auto%reorder%"),
+    ).order_by(PurchaseOrder.id.desc()).limit(50).all()
+    if not orders:
+        # Fall back to recent POs that might be reorder-related
+        orders = db.query(PurchaseOrder).order_by(PurchaseOrder.id.desc()).limit(20).all()
+    history = []
+    for o in orders:
+        lines = db.query(PurchaseOrderLine).filter(PurchaseOrderLine.po_id == o.id).all()
+        history.append({
+            "id": o.id,
+            "supplier_id": o.supplier_id,
+            "status": o.status.value if hasattr(o.status, 'value') else str(o.status),
+            "created_at": o.created_at.isoformat() if hasattr(o, 'created_at') and o.created_at else None,
+            "items_count": len(lines),
+            "total_value": sum(float((l.qty or 0) * (l.unit_cost or 0)) for l in lines),
+            "notes": o.notes,
+        })
+    return history
 
 
 @router.get("/auto-reorder/rules")

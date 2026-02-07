@@ -93,6 +93,19 @@ export async function apiFetch<T = any>(
   if (!res.ok) {
     let data: any;
     try { data = await res.json(); } catch { data = null; }
+
+    // Auto-redirect to login on 401 Unauthorized
+    if (res.status === 401 && typeof window !== 'undefined') {
+      clearAuth();
+      const currentPath = window.location.pathname;
+      // Don't redirect if already on login page or guest-facing pages
+      if (!currentPath.startsWith('/login') && !currentPath.startsWith('/table/') && !currentPath.startsWith('/guest')) {
+        window.location.href = `/login?redirect=${encodeURIComponent(currentPath)}`;
+        // Return a never-resolving promise to prevent further processing
+        return new Promise<never>(() => {});
+      }
+    }
+
     throw new ApiError(
       data?.detail || data?.message || `Request failed: ${res.status}`,
       res.status,

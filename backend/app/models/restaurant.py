@@ -4,9 +4,10 @@ from datetime import datetime
 from decimal import Decimal
 from typing import Optional, List
 from sqlalchemy import Column, Integer, String, DateTime, Numeric, Boolean, ForeignKey, Text, JSON
-from sqlalchemy.orm import relationship
+from sqlalchemy.orm import relationship, validates
 
 from app.db.base import Base
+from app.models.validators import non_negative, positive
 
 
 class Table(Base):
@@ -55,6 +56,14 @@ class Check(Base):
     items = relationship("CheckItem", back_populates="check", cascade="all, delete-orphan")
     payments = relationship("CheckPayment", back_populates="check", cascade="all, delete-orphan")
 
+    @validates('subtotal', 'tax', 'discount', 'total', 'balance_due')
+    def _validate_amounts(self, key, value):
+        return non_negative(key, value)
+
+    @validates('guest_count')
+    def _validate_guest_count(self, key, value):
+        return positive(key, value)
+
 
 class CheckItem(Base):
     """Item on a check."""
@@ -85,6 +94,14 @@ class CheckItem(Base):
     # Relationships
     check = relationship("Check", back_populates="items")
 
+    @validates('quantity')
+    def _validate_quantity(self, key, value):
+        return positive(key, value)
+
+    @validates('price', 'total')
+    def _validate_amounts(self, key, value):
+        return non_negative(key, value)
+
 
 class CheckPayment(Base):
     """Payment on a check."""
@@ -104,6 +121,14 @@ class CheckPayment(Base):
 
     # Relationships
     check = relationship("Check", back_populates="payments")
+
+    @validates('amount')
+    def _validate_amount(self, key, value):
+        return positive(key, value)
+
+    @validates('tip')
+    def _validate_tip(self, key, value):
+        return non_negative(key, value)
 
 
 class MenuCategory(Base):
@@ -165,6 +190,10 @@ class MenuItem(Base):
     # Relationships
     recipe = relationship("Recipe", foreign_keys=[recipe_id])
     modifier_group_links = relationship("MenuItemModifierGroup", back_populates="menu_item", cascade="all, delete-orphan")
+
+    @validates('price', 'base_price')
+    def _validate_price(self, key, value):
+        return non_negative(key, value)
 
 
 class ModifierGroup(Base):
@@ -314,3 +343,7 @@ class GuestOrder(Base):
     confirmed_at = Column(DateTime, nullable=True)
     ready_at = Column(DateTime, nullable=True)
     completed_at = Column(DateTime, nullable=True)
+
+    @validates('subtotal', 'tax', 'total', 'tip_amount')
+    def _validate_amounts(self, key, value):
+        return non_negative(key, value)

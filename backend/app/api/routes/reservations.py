@@ -3,7 +3,9 @@
 from typing import List, Optional, Union
 from datetime import date, time, datetime, timezone
 from fastapi import APIRouter, HTTPException, Query, BackgroundTasks
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
+
+from app.core.sanitize import sanitize_text
 
 from app.db.session import DbSession
 from app.models.reservations import (
@@ -40,6 +42,11 @@ class FlexibleReservationCreate(BaseModel):
     special_requests: Optional[str] = None
     occasion: Optional[str] = None
     notes: Optional[str] = None
+
+    @field_validator("guest_name", "special_requests", "notes", "occasion", mode="before")
+    @classmethod
+    def _sanitize(cls, v):
+        return sanitize_text(v)
 
 
 # ==================== WAITLIST ROUTES (must be before /{reservation_id}) ====================

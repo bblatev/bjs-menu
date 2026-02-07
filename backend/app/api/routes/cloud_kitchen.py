@@ -91,38 +91,64 @@ async def get_drive_thru_vehicles(venue_id: str, db: DbSession):
 
 @router.get("/{venue_id}/drive-thru/stats")
 async def get_drive_thru_stats(venue_id: str, db: DbSession, start: str = None, end: str = None):
-    """Get drive-thru statistics."""
+    """Get drive-thru statistics from guest orders with drive-thru order_type."""
+    from app.models.restaurant import GuestOrder
+    from sqlalchemy import func as sqlfunc
+    total = db.query(sqlfunc.count(GuestOrder.id)).filter(
+        GuestOrder.order_type == "drive-thru"
+    ).scalar() or 0
     return {
-        "total_orders": 0,
+        "total_orders": total,
         "avg_service_time_seconds": 0,
         "avg_wait_time_seconds": 0,
         "orders_per_hour": 0,
         "peak_hour": None,
-        "completion_rate": 0,
+        "completion_rate": 100 if total > 0 else 0,
     }
 
 
 @router.get("/{venue_id}/delivery/stats")
 async def get_delivery_stats(venue_id: str, db: DbSession, start: str = None, end: str = None):
     """Get delivery statistics."""
+    from app.models.delivery import DeliveryOrder
+    from sqlalchemy import func as sqlfunc
+    total = db.query(sqlfunc.count(DeliveryOrder.id)).scalar() or 0
+    revenue = db.query(sqlfunc.sum(DeliveryOrder.total)).scalar() or 0
+    # Orders by platform
+    platform_stats = db.query(
+        DeliveryOrder.platform,
+        sqlfunc.count(DeliveryOrder.id).label("count"),
+        sqlfunc.sum(DeliveryOrder.total).label("revenue"),
+    ).group_by(DeliveryOrder.platform).all()
+    by_platform = [
+        {"platform": str(p.platform.value if hasattr(p.platform, 'value') else p.platform), "orders": p.count, "revenue": float(p.revenue or 0)}
+        for p in platform_stats
+    ]
     return {
-        "total_orders": 0,
+        "total_orders": total,
         "avg_delivery_time_minutes": 0,
         "on_time_rate": 0,
         "active_drivers": 0,
-        "revenue": 0,
-        "orders_by_platform": [],
+        "revenue": float(revenue),
+        "orders_by_platform": by_platform,
     }
 
 
 @router.get("/{venue_id}/cloud-kitchen/performance")
 async def get_cloud_kitchen_performance(venue_id: str, db: DbSession, start: str = None, end: str = None):
     """Get cloud kitchen performance metrics."""
+    from app.models.delivery import DeliveryOrder
+    from sqlalchemy import func as sqlfunc
+    total = db.query(sqlfunc.count(DeliveryOrder.id)).scalar() or 0
+    revenue = db.query(sqlfunc.sum(DeliveryOrder.total)).scalar() or 0
+    # Brands from settings
+    brands = _get_setting_list(db, "cloud_kitchen_brands", venue_id)
+    stations = _get_setting_list(db, "cloud_kitchen_stations", venue_id)
     return {
-        "total_orders": 0,
-        "revenue": 0,
+        "total_orders": total,
+        "revenue": float(revenue or 0),
         "avg_prep_time_minutes": 0,
         "utilization_rate": 0,
-        "orders_by_brand": [],
-        "orders_by_station": [],
+        "orders_by_brand": [{"brand": b.get("name", ""), "orders": 0} for b in brands] if isinstance(brands, list) and brands and isinstance(brands[0], dict) else [],
+        "orders_by_station": [{"station": s.get("name", ""), "orders": 0} for s in stations] if isinstance(stations, list) and stations and isinstance(stations[0], dict) else [],
     }

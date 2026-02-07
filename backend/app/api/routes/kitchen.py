@@ -601,6 +601,24 @@ def get_all_alerts(
             "severity": "low",
         })
 
+    # HACCP temperature alerts
+    try:
+        from app.models.operations import HACCPTemperatureLog
+        temp_alerts = db.query(HACCPTemperatureLog).filter(
+            HACCPTemperatureLog.status.in_(["warning", "critical"]),
+        ).order_by(HACCPTemperatureLog.recorded_at.desc()).limit(20).all()
+        for t in temp_alerts:
+            alerts.append({
+                "id": t.id + 40000,
+                "alert_type": "temperature",
+                "message": f"{t.location} ({t.equipment}): {t.temperature}{t.unit}",
+                "order_id": None,
+                "created_at": t.recorded_at.isoformat() if t.recorded_at else None,
+                "severity": t.status,
+            })
+    except Exception:
+        pass  # HACCP table may not exist yet
+
     return alerts
 
 

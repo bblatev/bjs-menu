@@ -115,6 +115,7 @@ export default function OrdersPage() {
   const [showNewOrderModal, setShowNewOrderModal] = useState(false);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [showSplitBillModal, setShowSplitBillModal] = useState(false);
+  const [splitWays, setSplitWays] = useState(2);
   const [showVoidModal, setShowVoidModal] = useState(false);
   const [showRefundModal, setShowRefundModal] = useState(false);
   const [voidReason, setVoidReason] = useState('');
@@ -273,14 +274,16 @@ export default function OrdersPage() {
 
   // ============ HANDLERS ============
 
-  const handleUpdateOrderStatus = async (orderId: string, newStatus: Order['status']) => {
+  const handleUpdateOrderStatus = async (orderId: string, newStatus: Order['status'], paymentMethod?: string) => {
     const headers = getAuthHeaders();
 
     try {
+      const bodyData: Record<string, string> = { status: newStatus };
+      if (paymentMethod) bodyData.payment_method = paymentMethod;
       const response = await fetch(`${API_URL}/orders/${orderId}/status`, {
         method: 'PUT',
         headers,
-        body: JSON.stringify({ status: newStatus }),
+        body: JSON.stringify(bodyData),
       });
 
       if (response.ok) {
@@ -1389,14 +1392,14 @@ export default function OrdersPage() {
 
               <div className="grid grid-cols-2 gap-4 mb-6">
                 <button
-                  onClick={() => { handleUpdateOrderStatus(selectedOrder.id, 'paid'); setShowPaymentModal(false); setSelectedOrder(null); }}
+                  onClick={() => { handleUpdateOrderStatus(selectedOrder.id, 'paid', 'cash'); setShowPaymentModal(false); setSelectedOrder(null); }}
                   className="py-6 bg-green-50 border-2 border-green-200 rounded-xl hover:border-green-400 transition-colors"
                 >
                   <span className="text-4xl block mb-2">💵</span>
                   <span className="font-medium text-green-700">В брой</span>
                 </button>
                 <button
-                  onClick={() => { handleUpdateOrderStatus(selectedOrder.id, 'paid'); setShowPaymentModal(false); setSelectedOrder(null); }}
+                  onClick={() => { handleUpdateOrderStatus(selectedOrder.id, 'paid', 'card'); setShowPaymentModal(false); setSelectedOrder(null); }}
                   className="py-6 bg-blue-50 border-2 border-blue-200 rounded-xl hover:border-blue-400 transition-colors"
                 >
                   <span className="text-4xl block mb-2">💳</span>
@@ -1406,6 +1409,97 @@ export default function OrdersPage() {
 
               <button
                 onClick={() => setShowPaymentModal(false)}
+                className="w-full py-3 bg-gray-100 text-gray-700 rounded-xl hover:bg-gray-200"
+              >
+                Отказ
+              </button>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Split Bill Modal */}
+      <AnimatePresence>
+        {showSplitBillModal && selectedOrder && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
+            onClick={() => setShowSplitBillModal(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.9, y: 20 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.9, y: 20 }}
+              className="bg-white rounded-2xl max-w-md w-full p-6"
+              onClick={e => e.stopPropagation()}
+            >
+              <h2 className="text-2xl font-bold text-gray-900 mb-6">Раздели сметка #{selectedOrder.order_number}</h2>
+
+              <div className="text-center mb-6">
+                <div className="text-3xl font-bold text-gray-900">{selectedOrder.total.toFixed(2)} лв</div>
+                <div className="text-gray-500">Общо</div>
+              </div>
+
+              <div className="mb-6">
+                <label className="block text-sm font-medium text-gray-700 mb-2">На колко части?</label>
+                <div className="flex gap-2">
+                  {[2, 3, 4, 5, 6].map(n => (
+                    <button
+                      key={n}
+                      onClick={() => setSplitWays(n)}
+                      className={`flex-1 py-3 rounded-xl font-bold text-lg transition-colors ${
+                        splitWays === n
+                          ? 'bg-blue-500 text-white'
+                          : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                      }`}
+                    >
+                      {n}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="bg-blue-50 rounded-xl p-4 mb-6">
+                <div className="text-center">
+                  <div className="text-sm text-blue-600 mb-1">Всеки плаща</div>
+                  <div className="text-3xl font-bold text-blue-700">
+                    {(selectedOrder.total / splitWays).toFixed(2)} лв
+                  </div>
+                  <div className="text-sm text-blue-500 mt-1">
+                    {splitWays} x {(selectedOrder.total / splitWays).toFixed(2)} лв = {selectedOrder.total.toFixed(2)} лв
+                  </div>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3 mb-4">
+                <button
+                  onClick={() => {
+                    handleUpdateOrderStatus(selectedOrder.id, 'paid', 'cash');
+                    setShowSplitBillModal(false);
+                    setSelectedOrder(null);
+                  }}
+                  className="py-4 bg-green-50 border-2 border-green-200 rounded-xl hover:border-green-400 transition-colors"
+                >
+                  <span className="text-2xl block mb-1">💵</span>
+                  <span className="font-medium text-green-700 text-sm">Всички в брой</span>
+                </button>
+                <button
+                  onClick={() => {
+                    handleUpdateOrderStatus(selectedOrder.id, 'paid', 'card');
+                    setShowSplitBillModal(false);
+                    setSelectedOrder(null);
+                  }}
+                  className="py-4 bg-blue-50 border-2 border-blue-200 rounded-xl hover:border-blue-400 transition-colors"
+                >
+                  <span className="text-2xl block mb-1">💳</span>
+                  <span className="font-medium text-blue-700 text-sm">Всички с карта</span>
+                </button>
+              </div>
+
+              <button
+                onClick={() => setShowSplitBillModal(false)}
                 className="w-full py-3 bg-gray-100 text-gray-700 rounded-xl hover:bg-gray-200"
               >
                 Отказ

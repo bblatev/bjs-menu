@@ -5,7 +5,7 @@ import logging
 from typing import List, Optional
 from datetime import datetime, timezone
 from decimal import Decimal
-from fastapi import APIRouter, HTTPException, Query, BackgroundTasks
+from fastapi import APIRouter, HTTPException, Query, Body, BackgroundTasks
 from pydantic import BaseModel
 
 from app.db.session import DbSession
@@ -538,19 +538,26 @@ def void_item(db: DbSession, item_id: int, request: VoidRequest):
 
 
 @router.post("/checks/{check_id}/split-even")
-def split_check_even(db: DbSession, check_id: int, num_ways: int = 2):
-    """Split check evenly."""
+def split_check_even(db: DbSession, check_id: int, data: dict = Body(None), num_ways: int = Query(None)):
+    """Split check evenly. Accepts num_ways from body or query param."""
+    ways = num_ways
+    if data and "num_ways" in data:
+        ways = int(data["num_ways"])
+    if not ways or ways < 2:
+        ways = 2
+
     check = db.query(Check).filter(Check.id == check_id).first()
     if not check:
         raise HTTPException(status_code=404, detail="Check not found")
 
-    amount_per_person = float(check.total) / num_ways
+    total = float(check.total or 0)
+    amount_per_person = round(total / ways, 2)
 
     return {
         "status": "ok",
-        "num_ways": num_ways,
+        "num_ways": ways,
         "amount_per_person": amount_per_person,
-        "total": float(check.total)
+        "total": total
     }
 
 

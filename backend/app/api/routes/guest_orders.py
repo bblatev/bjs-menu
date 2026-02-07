@@ -4,7 +4,9 @@ from datetime import datetime, timezone
 from decimal import Decimal
 from typing import List, Optional
 from fastapi import APIRouter, HTTPException, Query, Body
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
+
+from app.core.sanitize import sanitize_text
 
 from app.db.session import DbSession
 from app.models.restaurant import (
@@ -65,6 +67,18 @@ class GuestOrderItem(BaseModel):
     notes: Optional[str] = None
     modifiers: Optional[List[dict]] = None
 
+    @field_validator("quantity", mode="before")
+    @classmethod
+    def _validate_quantity(cls, v):
+        if v is not None and int(v) < 1:
+            raise ValueError("quantity must be at least 1")
+        return v
+
+    @field_validator("notes", mode="before")
+    @classmethod
+    def _sanitize(cls, v):
+        return sanitize_text(v)
+
 
 class MenuItemCreate(BaseModel):
     name: str
@@ -77,6 +91,18 @@ class MenuItemCreate(BaseModel):
     modifiers: Optional[List[dict]] = None
     prep_time_minutes: Optional[int] = None
     station: Optional[str] = None
+
+    @field_validator("price", mode="before")
+    @classmethod
+    def _validate_price(cls, v):
+        if v is not None and float(v) < 0:
+            raise ValueError("price cannot be negative")
+        return v
+
+    @field_validator("name", "description", "category", mode="before")
+    @classmethod
+    def _sanitize(cls, v):
+        return sanitize_text(v)
 
 
 class MenuItemUpdate(BaseModel):
@@ -91,10 +117,20 @@ class MenuItemUpdate(BaseModel):
     prep_time_minutes: Optional[int] = None
     station: Optional[str] = None
 
+    @field_validator("name", "description", "category", mode="before")
+    @classmethod
+    def _sanitize(cls, v):
+        return sanitize_text(v)
+
 
 class CategoryCreate(BaseModel):
     name: str
     description: Optional[str] = None
+
+    @field_validator("name", "description", mode="before")
+    @classmethod
+    def _sanitize(cls, v):
+        return sanitize_text(v)
 
 
 class TableCreate(BaseModel):
@@ -116,6 +152,20 @@ class GuestOrder(BaseModel):
     items: List[GuestOrderItem]
     notes: Optional[str] = None
     order_type: str = "dine-in"
+
+    @field_validator("items", mode="before")
+    @classmethod
+    def _validate_items(cls, v):
+        if not v or len(v) == 0:
+            raise ValueError("order must contain at least one item")
+        if len(v) > 50:
+            raise ValueError("order cannot contain more than 50 items")
+        return v
+
+    @field_validator("notes", mode="before")
+    @classmethod
+    def _sanitize(cls, v):
+        return sanitize_text(v)
 
 
 class GuestOrderResponse(BaseModel):
@@ -730,36 +780,54 @@ def get_table_orders(
 def update_order_status(
     db: DbSession,
     order_id: int,
-    status: str = Query(..., description="New status"),
+    status: str = Query(None, description="New status (query param)"),
+    data: dict = Body(None),
 ):
-    """Update order status (guest order or purchase order)."""
+    """Update order status (guest order or purchase order).
+
+    Accepts status as query param OR JSON body {"status": "...", "payment_method": "..."}.
+    """
+    # Accept status from query param or JSON body
+    new_status = status
+    payment_method = None
+    if data:
+        new_status = new_status or data.get("status")
+        payment_method = data.get("payment_method")
+    if not new_status:
+        raise HTTPException(status_code=422, detail="status is required")
+
     order = db.query(GuestOrderModel).filter(GuestOrderModel.id == order_id).first()
     if order:
-        order.status = status
+        order.status = new_status
         now = datetime.now(timezone.utc)
 
-        if status == "confirmed":
+        if new_status == "confirmed":
             order.confirmed_at = now
-        elif status == "ready":
+        elif new_status == "ready":
             order.ready_at = now
-        elif status == "completed":
+        elif new_status == "completed":
             order.completed_at = now
+        elif new_status == "paid":
+            order.payment_status = "paid"
+            order.paid_at = now
+            if payment_method:
+                order.payment_method = payment_method
 
         db.commit()
-        return {"status": "ok", "order_id": order_id, "new_status": status}
+        return {"status": "ok", "order_id": order_id, "new_status": new_status}
 
     # Fall through to purchase orders if guest order not found
-    from app.models.inventory import PurchaseOrder
+    from app.models.order import PurchaseOrder
     po = db.query(PurchaseOrder).filter(PurchaseOrder.id == order_id).first()
     if po:
-        po.status = status
-        if status == "sent":
+        po.status = new_status
+        if new_status == "sent":
             po.sent_at = datetime.now(timezone.utc)
-        elif status == "received":
+        elif new_status == "received":
             po.received_at = datetime.now(timezone.utc)
         db.commit()
         db.refresh(po)
-        return {"id": po.id, "status": po.status if isinstance(po.status, str) else po.status.value, "new_status": status}
+        return {"id": po.id, "status": po.status if isinstance(po.status, str) else po.status.value, "new_status": new_status}
 
     raise HTTPException(status_code=404, detail="Order not found")
 
@@ -768,26 +836,40 @@ def update_order_status(
 def update_guest_order_status(
     db: DbSession,
     order_id: int,
-    status: str = Query(..., description="New status"),
+    status: str = Query(None, description="New status"),
+    data: dict = Body(None),
 ):
     """Update guest order status (no auth required)."""
+    new_status = status
+    payment_method = None
+    if data:
+        new_status = new_status or data.get("status")
+        payment_method = data.get("payment_method")
+    if not new_status:
+        raise HTTPException(status_code=422, detail="status is required")
+
     order = db.query(GuestOrderModel).filter(GuestOrderModel.id == order_id).first()
     if not order:
         raise HTTPException(status_code=404, detail="Order not found")
 
-    order.status = status
+    order.status = new_status
     now = datetime.now(timezone.utc)
 
-    if status == "confirmed":
+    if new_status == "confirmed":
         order.confirmed_at = now
-    elif status == "ready":
+    elif new_status == "ready":
         order.ready_at = now
-    elif status == "completed":
+    elif new_status == "completed":
         order.completed_at = now
+    elif new_status == "paid":
+        order.payment_status = "paid"
+        order.paid_at = now
+        if payment_method:
+            order.payment_method = payment_method
 
     db.commit()
 
-    return {"status": "ok", "order_id": order_id, "new_status": status}
+    return {"status": "ok", "order_id": order_id, "new_status": new_status}
 
 
 class VoidOrderRequest(BaseModel):
@@ -1259,6 +1341,7 @@ class GuestPaymentRequest(BaseModel):
     tip_amount: Optional[float] = None
     tip_percent: Optional[int] = None
     card_token: Optional[str] = None  # For saved card payments
+    payment_intent_id: Optional[str] = None  # Stripe payment intent ID (for card payments)
 
 
 class GuestPaymentResponse(BaseModel):
@@ -1355,8 +1438,40 @@ def process_guest_payment(
 
     total_charged = order.total + tip
 
-    # Process payment
-    # TODO: integrate with Stripe, Square, or other payment processor
+    # If a Stripe payment_intent_id is provided, verify it succeeded
+    if payment.payment_intent_id and payment.payment_method == "card":
+        try:
+            from app.services.stripe_service import get_stripe_service, PaymentStatus
+            stripe = get_stripe_service()
+            if stripe:
+                result = await_stripe_check = None
+                # Synchronous call - stripe_service handles async internally
+                import asyncio
+                loop = asyncio.new_event_loop()
+                try:
+                    result = loop.run_until_complete(
+                        stripe.get_payment_intent(payment.payment_intent_id)
+                    )
+                finally:
+                    loop.close()
+
+                if not result or not result.success:
+                    raise HTTPException(
+                        status_code=402,
+                        detail=f"Payment verification failed: {result.error_message if result else 'Stripe unavailable'}",
+                    )
+                if result.status != PaymentStatus.SUCCEEDED:
+                    raise HTTPException(
+                        status_code=402,
+                        detail=f"Payment not completed. Current status: {result.status.value if result.status else 'unknown'}",
+                    )
+        except HTTPException:
+            raise
+        except Exception as e:
+            logger.warning(f"Stripe verification failed for order {order_id}: {e}")
+            # Fall through to manual recording if Stripe is not configured
+
+    # Record payment
     order.payment_status = "paid"
     order.payment_method = payment.payment_method
     order.tip_amount = tip
@@ -1364,20 +1479,17 @@ def process_guest_payment(
     order.status = "completed"
     db.commit()
 
-    if True:
-        return {
-            "status": "success",
-            "payment_id": order.id,
-            "order_id": order.id,
-            "amount": float(order.total),
-            "tip": float(tip),
-            "total_charged": float(total_charged),
-            "payment_method": payment.payment_method,
-            "receipt_url": f"/api/v1/orders/{order.id}/receipt",
-            "message": "Payment successful! Thank you for your order.",
-        }
-    else:
-        raise HTTPException(status_code=402, detail="Payment failed")
+    return {
+        "status": "success",
+        "payment_id": order.id,
+        "order_id": order.id,
+        "amount": float(order.total),
+        "tip": float(tip),
+        "total_charged": float(total_charged),
+        "payment_method": payment.payment_method,
+        "receipt_url": f"/api/v1/guest-orders/orders/{order.id}/receipt",
+        "message": "Payment successful! Thank you for your order.",
+    }
 
 
 @router.post("/orders/table/{token}/pay-all")

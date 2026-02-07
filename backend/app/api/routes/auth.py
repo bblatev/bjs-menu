@@ -3,6 +3,7 @@
 import logging
 import secrets
 import time
+from collections import defaultdict
 from fastapi import APIRouter, HTTPException, Request, status
 from pydantic import BaseModel, Field
 from slowapi import Limiter
@@ -10,12 +11,18 @@ from slowapi.util import get_remote_address
 
 logger = logging.getLogger("auth")
 
+# PIN brute-force lockout: track failed attempts per IP
+_pin_failures: dict[str, list[float]] = defaultdict(list)
+PIN_LOCKOUT_WINDOW = 300  # 5-minute window
+PIN_MAX_FAILURES = 10  # Lock after 10 failures in window
+
 from app.core.rbac import CurrentUser
 from app.core.security import create_access_token, get_password_hash, get_pin_hash, verify_password, verify_pin
 from app.db.session import DbSession
 from app.models.user import User
 from app.schemas.auth import LoginRequest, PinLoginRequest, Token
 from app.schemas.user import UserCreate, UserResponse
+from app.services.audit_service import log_login
 
 router = APIRouter()
 
@@ -34,7 +41,7 @@ MIN_AUTH_DELAY_MS = 100  # Minimum delay in milliseconds
 
 
 @router.post("/login", response_model=Token)
-@limiter.limit("10/minute")
+@limiter.limit("5/minute")
 def login(request: Request, login_request: LoginRequest, db: DbSession):
     """Authenticate user and return JWT token."""
     client_ip = request.client.host if request.client else "unknown"
@@ -42,18 +49,21 @@ def login(request: Request, login_request: LoginRequest, db: DbSession):
 
     if not user or not verify_password(login_request.password, user.password_hash):
         logger.warning(f"Failed login attempt for email: {login_request.email} from IP: {client_ip}")
+        log_login(user_id=0, email=login_request.email, ip_address=client_ip, success=False)
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid email or password",
         )
     if not user.is_active:
         logger.warning(f"Login attempt for inactive user: {login_request.email} (ID: {user.id}) from IP: {client_ip}")
+        log_login(user_id=user.id, email=login_request.email, ip_address=client_ip, success=False)
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="User account is inactive",
         )
 
     logger.info(f"Successful login: {user.email} (ID: {user.id}, role: {user.role.value}) from IP: {client_ip}")
+    log_login(user_id=user.id, email=user.email, ip_address=client_ip, success=True)
     token = create_access_token(
         data={"sub": str(user.id), "email": user.email, "role": user.role.value}
     )
@@ -61,7 +71,7 @@ def login(request: Request, login_request: LoginRequest, db: DbSession):
 
 
 @router.post("/login/pin", response_model=Token)
-@limiter.limit("10/minute")
+@limiter.limit("5/minute")
 def login_with_pin(request: Request, pin_request: PinLoginRequest, db: DbSession):
     """Authenticate user with PIN code.
 
@@ -69,6 +79,17 @@ def login_with_pin(request: Request, pin_request: PinLoginRequest, db: DbSession
     """
     start_time = time.monotonic()
     client_ip = request.client.host if request.client else "unknown"
+
+    # Check PIN brute-force lockout
+    now = time.monotonic()
+    _pin_failures[client_ip] = [t for t in _pin_failures[client_ip] if now - t < PIN_LOCKOUT_WINDOW]
+    if len(_pin_failures[client_ip]) >= PIN_MAX_FAILURES:
+        logger.warning(f"PIN login locked out for IP: {client_ip} ({len(_pin_failures[client_ip])} failures)")
+        _ensure_min_delay(start_time)
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail="Too many failed PIN attempts. Try again in 5 minutes.",
+        )
 
     # Validate PIN format (4-6 digits)
     if not pin_request.pin or not pin_request.pin.isdigit() or len(pin_request.pin) < 4 or len(pin_request.pin) > 6:
@@ -109,13 +130,18 @@ def login_with_pin(request: Request, pin_request: PinLoginRequest, db: DbSession
     _ensure_min_delay(start_time)
 
     if not user:
-        logger.warning(f"Failed PIN login attempt from IP: {client_ip}")
+        _pin_failures[client_ip].append(time.monotonic())
+        logger.warning(f"Failed PIN login attempt from IP: {client_ip} (attempt {len(_pin_failures[client_ip])})")
+        log_login(user_id=0, email="pin_login", ip_address=client_ip, success=False)
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid PIN",
         )
 
+    # Clear lockout on successful login
+    _pin_failures.pop(client_ip, None)
     logger.info(f"Successful PIN login: {user.email} (ID: {user.id}, role: {user.role.value}) from IP: {client_ip}")
+    log_login(user_id=user.id, email=user.email, ip_address=client_ip, success=True)
     token = create_access_token(
         data={"sub": str(user.id), "email": user.email, "role": user.role.value}
     )

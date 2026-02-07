@@ -4,8 +4,9 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Optional
 from sqlalchemy import Boolean, String, Integer, Float, DateTime, Text, JSON
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, validates
 from app.db.base import Base, TimestampMixin
+from app.models.validators import non_negative
 
 
 class Customer(Base, TimestampMixin):
@@ -60,3 +61,8 @@ class Customer(Base, TimestampMixin):
 
     # Location
     location_id: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+
+    @validates('total_orders', 'total_spent', 'average_order', 'visit_frequency',
+               'lifetime_value', 'rfm_recency', 'rfm_frequency', 'rfm_monetary')
+    def _validate_non_negative(self, key, value):
+        return non_negative(key, value)

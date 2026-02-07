@@ -61,3 +61,21 @@ export function TableLoading({ rows = 5 }: { rows?: number }) {
     </div>
   );
 }
+
+/** Generic skeleton block for shimmer loading placeholders. */
+export function Skeleton({ className = '' }: { className?: string }) {
+  return (
+    <div className={`animate-pulse bg-surface-200 rounded ${className}`} />
+  );
+}
+
+/** Card skeleton for dashboard-style metric cards. */
+export function CardSkeleton() {
+  return (
+    <div className="animate-pulse bg-white dark:bg-gray-800 rounded-lg p-6 shadow-sm">
+      <div className="h-4 bg-surface-200 rounded w-1/3 mb-3"></div>
+      <div className="h-8 bg-surface-200 rounded w-1/2 mb-2"></div>
+      <div className="h-3 bg-surface-200 rounded w-2/3"></div>
+    </div>
+  );
+}

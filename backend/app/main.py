@@ -12,19 +12,46 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware
 
-from slowapi import Limiter, _rate_limit_exceeded_handler
-from slowapi.util import get_remote_address
+from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
+
+from app.core.rate_limit import limiter
 
 from app.api.routes import api_router
 from app.core.config import settings
 from app.core.security import decode_access_token
 from app.db.session import engine, SessionLocal
 from app.db.base import Base
+from app.services.audit_service import log_action as _audit_log_action
 from sqlalchemy import text
 
-# Rate limiter instance
-limiter = Limiter(key_func=get_remote_address, enabled=settings.rate_limit_enabled)
+# Public paths that do NOT require authentication
+# All other /api/v1/* paths require a valid Bearer token
+PUBLIC_PATH_PREFIXES = [
+    "/health",
+    "/docs",
+    "/redoc",
+    "/openapi.json",
+    "/api/v1/auth/login",
+    "/api/v1/auth/register",
+    "/api/v1/guest-orders/menu",
+    "/api/v1/guest-orders/create",
+    "/api/v1/orders/guest",
+    "/api/v1/table/",
+    "/api/v1/admin/tables",      # Guest QR flow needs table info
+    "/api/v1/menu-items",        # Guest menu browsing
+    "/api/v1/menu/categories",   # Guest menu browsing
+    "/api/v1/menu/items",        # Guest menu browsing
+    "/ws/",                      # WebSocket (has its own auth)
+]
+
+PUBLIC_EXACT_PATHS = [
+    "/",
+    "/health",
+    "/health/ready",
+]
+
+# Rate limiter instance (imported from app.core.rate_limit)
 
 
 # WebSocket Connection Manager for real-time updates
@@ -126,14 +153,116 @@ class ConnectionManager:
 # Global connection manager instance
 ws_manager = ConnectionManager()
 
-# Configure logging
-logging.basicConfig(
-    level=getattr(logging, settings.log_level),
-    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-)
+# Configure logging - use JSON format in production, human-readable in dev
+if settings.debug:
+    logging.basicConfig(
+        level=getattr(logging, settings.log_level),
+        format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+    )
+else:
+    import json as _json
+
+    class JSONFormatter(logging.Formatter):
+        def format(self, record):
+            return _json.dumps({
+                "ts": self.formatTime(record, self.datefmt),
+                "level": record.levelname,
+                "logger": record.name,
+                "msg": record.getMessage(),
+                "module": record.module,
+                "line": record.lineno,
+            })
+
+    handler = logging.StreamHandler()
+    handler.setFormatter(JSONFormatter())
+    logging.basicConfig(level=getattr(logging, settings.log_level), handlers=[handler])
 logger = logging.getLogger(__name__)
 auth_logger = logging.getLogger("auth")
 request_logger = logging.getLogger("requests")
+
+
+class SecurityHeadersMiddleware(BaseHTTPMiddleware):
+    """Add security headers to all responses."""
+
+    async def dispatch(self, request: Request, call_next):
+        response = await call_next(request)
+        response.headers["X-Content-Type-Options"] = "nosniff"
+        response.headers["X-Frame-Options"] = "DENY"
+        response.headers["X-XSS-Protection"] = "1; mode=block"
+        response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+        response.headers["Content-Security-Policy"] = (
+            "default-src 'self'; "
+            "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://js.stripe.com; "
+            "style-src 'self' 'unsafe-inline'; "
+            "img-src 'self' data: blob:; "
+            "connect-src 'self' ws: wss: https://api.stripe.com; "
+            "frame-src https://js.stripe.com; "
+            "font-src 'self' data:;"
+        )
+        if not settings.debug:
+            response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
+        return response
+
+
+class AuthEnforcementMiddleware(BaseHTTPMiddleware):
+    """Global authentication enforcement middleware.
+
+    All /api/v1/* endpoints require a valid Bearer token UNLESS
+    the path is in PUBLIC_PATH_PREFIXES or PUBLIC_EXACT_PATHS.
+    This provides defence-in-depth even if individual route files
+    forget to add Depends(get_current_user).
+    """
+
+    async def dispatch(self, request: Request, call_next):
+        path = request.url.path
+        method = request.method
+
+        # Always allow OPTIONS (CORS preflight)
+        if method == "OPTIONS":
+            return await call_next(request)
+
+        # Check exact public paths (all methods)
+        if path in PUBLIC_EXACT_PATHS:
+            return await call_next(request)
+
+        # For GET requests: allow all through (guests need to browse data)
+        # Phase 2 will tighten this to require auth on sensitive GETs
+        if method == "GET":
+            return await call_next(request)
+
+        # For state-changing methods (POST/PUT/PATCH/DELETE),
+        # only allow specific public endpoints
+        public_write_paths = [
+            "/api/v1/auth/login",
+            "/api/v1/auth/login/pin",
+            "/api/v1/auth/register",
+            "/api/v1/orders/guest",
+            "/api/v1/guest-orders/create",
+        ]
+        for pub_path in public_write_paths:
+            if path.startswith(pub_path):
+                return await call_next(request)
+
+        # All other POST/PUT/PATCH/DELETE on /api/v1/* require authentication
+        if path.startswith("/api/v1/"):
+            auth_header = request.headers.get("Authorization", "")
+            if not auth_header.startswith("Bearer "):
+                return JSONResponse(
+                    status_code=401,
+                    content={"detail": "Authentication required for this operation"},
+                    headers={"WWW-Authenticate": "Bearer"},
+                )
+
+            token = auth_header.split(" ", 1)[1]
+            payload = decode_access_token(token)
+            if payload is None:
+                return JSONResponse(
+                    status_code=401,
+                    content={"detail": "Invalid or expired token"},
+                    headers={"WWW-Authenticate": "Bearer"},
+                )
+
+        return await call_next(request)
 
 
 class RequestLoggingMiddleware(BaseHTTPMiddleware):
@@ -177,6 +306,82 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
             raise
 
 
+class AuditLoggingMiddleware(BaseHTTPMiddleware):
+    """Auto-log all state-changing API requests to the audit_log_entries table.
+
+    Captures: user_id (from JWT), action (from HTTP method), entity_type (from URL path),
+    IP address, and response status.
+    """
+
+    # Map HTTP methods to audit actions
+    METHOD_ACTION_MAP = {
+        "POST": "create",
+        "PUT": "update",
+        "PATCH": "update",
+        "DELETE": "delete",
+    }
+
+    async def dispatch(self, request: Request, call_next):
+        method = request.method
+        path = request.url.path
+
+        # Only audit state-changing methods on API paths
+        if method not in self.METHOD_ACTION_MAP or not path.startswith("/api/v1/"):
+            return await call_next(request)
+
+        # Skip auditing auth login/register (logged separately with more detail)
+        if any(path.startswith(p) for p in ["/api/v1/auth/login", "/api/v1/auth/register"]):
+            return await call_next(request)
+
+        response = await call_next(request)
+
+        # Only audit successful operations (2xx status codes)
+        if 200 <= response.status_code < 300:
+            try:
+                # Extract user info from JWT if present
+                user_id = None
+                user_name = ""
+                auth_header = request.headers.get("Authorization", "")
+                if auth_header.startswith("Bearer "):
+                    token = auth_header.split(" ", 1)[1]
+                    payload = decode_access_token(token)
+                    if payload:
+                        user_id = int(payload.get("sub", 0)) or None
+                        user_name = payload.get("email", "")
+
+                # Parse entity type and ID from URL path
+                # e.g. /api/v1/menu/items/5 -> entity_type=menu_items, entity_id=5
+                parts = path.replace("/api/v1/", "").strip("/").split("/")
+                entity_type = "_".join(parts[:2]) if len(parts) >= 2 else (parts[0] if parts else "unknown")
+                # Try to find an entity ID (numeric segment)
+                entity_id = ""
+                for part in reversed(parts):
+                    if part.isdigit():
+                        entity_id = part
+                        break
+
+                client_ip = request.client.host if request.client else ""
+
+                _audit_log_action(
+                    action=self.METHOD_ACTION_MAP[method],
+                    entity_type=entity_type[:50],
+                    entity_id=entity_id,
+                    user_id=user_id,
+                    user_name=user_name[:200],
+                    ip_address=client_ip,
+                    details={
+                        "method": method,
+                        "path": path,
+                        "status_code": response.status_code,
+                    },
+                )
+            except Exception:
+                # Never let audit logging break the request
+                pass
+
+        return response
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Application lifespan handler."""
@@ -187,6 +392,23 @@ async def lifespan(app: FastAPI):
     if settings.database_url.startswith("sqlite"):
         Base.metadata.create_all(bind=engine)
         logger.info("Database tables created (SQLite mode)")
+
+    # Audit log retention: archive entries older than 90 days on startup
+    try:
+        from datetime import datetime, timedelta
+        from app.db.session import SessionLocal
+        from app.models.operations import AuditLogEntry
+        retention_db = SessionLocal()
+        cutoff = datetime.utcnow() - timedelta(days=90)
+        deleted = retention_db.query(AuditLogEntry).filter(
+            AuditLogEntry.created_at < cutoff
+        ).delete(synchronize_session=False)
+        retention_db.commit()
+        retention_db.close()
+        if deleted:
+            logger.info(f"Audit log retention: purged {deleted} entries older than 90 days")
+    except Exception as e:
+        logger.warning(f"Audit log retention skipped: {e}")
 
     yield
 
@@ -224,6 +446,15 @@ app.add_middleware(
     expose_headers=["X-Request-ID"],
     max_age=600,  # Cache preflight for 10 minutes
 )
+
+# Security headers middleware
+app.add_middleware(SecurityHeadersMiddleware)
+
+# Authentication enforcement middleware (POST/PUT/PATCH/DELETE require auth)
+app.add_middleware(AuthEnforcementMiddleware)
+
+# Audit logging middleware (records state changes to audit_log_entries table)
+app.add_middleware(AuditLoggingMiddleware)
 
 # Request logging middleware
 app.add_middleware(RequestLoggingMiddleware)

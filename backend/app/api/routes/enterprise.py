@@ -606,8 +606,25 @@ def sync_hotel_guests(db: DbSession):
 
 @router.get("/hotel-pms/charges")
 def get_hotel_charges(db: DbSession):
-    """Get recent hotel room charges."""
-    return []
+    """Get recent hotel room charges from guest orders linked to rooms."""
+    from app.models.restaurant import GuestOrder
+    # Find guest orders linked to hotel rooms (table_token starts with 'room-' convention)
+    orders = db.query(GuestOrder).filter(
+        GuestOrder.table_token.like("room-%"),
+    ).order_by(GuestOrder.id.desc()).limit(50).all()
+    charges = []
+    for o in orders:
+        room_number = o.table_token.replace("room-", "") if o.table_token else ""
+        charges.append({
+            "id": o.id,
+            "room_number": room_number,
+            "amount": float(o.total or 0),
+            "description": f"Restaurant order #{o.id}",
+            "order_id": o.id,
+            "created_at": o.created_at.isoformat() if o.created_at else None,
+            "status": str(o.status) if o.status else "unknown",
+        })
+    return charges
 
 
 @router.post("/hotel-pms/charges")

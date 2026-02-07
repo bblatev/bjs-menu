@@ -1,7 +1,5 @@
 """AI shelf scanning and bottle recognition routes."""
 
-from __future__ import annotations
-
 import logging
 import os
 import uuid
@@ -10,7 +8,9 @@ from decimal import Decimal
 from pathlib import Path
 from typing import Annotated, Optional, List
 
-from fastapi import APIRouter, File, Form, HTTPException, UploadFile, status
+from fastapi import APIRouter, File, Form, HTTPException, Request, UploadFile, status
+
+from app.core.rate_limit import limiter
 from sqlalchemy import func
 
 logger = logging.getLogger(__name__)
@@ -72,7 +72,9 @@ ALLOWED_IMAGE_TYPES = {"image/jpeg", "image/png", "image/webp", "image/gif"}
 
 
 @router.post("/shelf-scan", response_model=ShelfScanResponse)
+@limiter.limit("10/minute")
 async def shelf_scan(
+    request: Request,
     image: UploadFile = File(..., description="Image of shelf/fridge to scan"),
     session_id: Annotated[Optional[int], Form()] = None,
     store_photo: Annotated[bool, Form()] = False,
@@ -224,7 +226,9 @@ def review_shelf_scan(
 # ============= Bottle Training Endpoints =============
 
 @router.post("/training/upload", response_model=TrainingImageResponse)
+@limiter.limit("10/minute")
 async def upload_training_image(
+    request: Request,
     image: UploadFile = File(..., description="Image of bottle to train"),
     product_id: Annotated[int, Form()] = ...,
     db: DbSession = None,
@@ -334,7 +338,9 @@ async def upload_training_image(
 
 
 @router.post("/training/upload-batch")
+@limiter.limit("5/minute")
 async def upload_training_batch(
+    request: Request,
     images: List[UploadFile] = File(..., description="Multiple training images"),
     product_id: Annotated[int, Form()] = ...,
     db: DbSession = None,
@@ -419,7 +425,9 @@ async def upload_training_batch(
 
 
 @router.post("/training/upload-video")
+@limiter.limit("3/minute")
 async def upload_training_video(
+    request: Request,
     video: UploadFile = File(..., description="Video of product to train"),
     product_id: Annotated[int, Form()] = ...,
     frames_per_second: Annotated[float, Form()] = 3.0,
@@ -748,7 +756,9 @@ def delete_training_image(
 # ============= Bottle Recognition Endpoint =============
 
 @router.post("/recognize", response_model=RecognitionResponse)
+@limiter.limit("20/minute")
 async def recognize_bottle(
+    request: Request,
     image: UploadFile = File(..., description="Image of bottle to recognize"),
     db: DbSession = None,
 ):

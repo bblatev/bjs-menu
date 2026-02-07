@@ -3,7 +3,9 @@
 from datetime import datetime, timezone
 from typing import Optional
 from fastapi import APIRouter, HTTPException
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
+
+from app.core.sanitize import sanitize_text
 
 from app.db.session import DbSession
 from app.models.reservations import Waitlist
@@ -25,6 +27,11 @@ class WaitlistAdd(BaseModel):
     notes: Optional[str] = None
     vip: bool = False
 
+    @field_validator("guest_name", "special_requests", "notes", mode="before")
+    @classmethod
+    def _sanitize(cls, v):
+        return sanitize_text(v)
+
 
 class WaitlistUpdate(BaseModel):
     """Update waitlist entry request."""
@@ -32,6 +39,11 @@ class WaitlistUpdate(BaseModel):
     status: Optional[str] = None
     table_ids: Optional[list] = None
     notes: Optional[str] = None
+
+    @field_validator("notes", mode="before")
+    @classmethod
+    def _sanitize(cls, v):
+        return sanitize_text(v)
 
 
 @router.get("/")

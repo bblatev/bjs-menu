@@ -1,7 +1,5 @@
 """Recipe (BOM) routes."""
 
-from __future__ import annotations
-
 import csv
 import io
 
@@ -33,6 +31,66 @@ def list_recipes(
             (Recipe.name.ilike(search_term)) | (Recipe.pos_item_name.ilike(search_term))
         )
     return query.order_by(Recipe.name).all()
+
+
+@router.get("/costs")
+def get_recipe_costs(db: DbSession, current_user: OptionalCurrentUser = None):
+    """Get recipe cost analysis."""
+    recipes = db.query(Recipe).order_by(Recipe.name).all()
+    results = []
+    for recipe in recipes:
+        total_cost = Decimal("0")
+        for line in recipe.lines:
+            product = db.query(Product).filter(Product.id == line.product_id).first()
+            if product and product.cost_price:
+                total_cost += line.qty * product.cost_price
+        results.append({
+            "id": recipe.id,
+            "name": recipe.name,
+            "total_cost": float(total_cost),
+            "sell_price": float(total_cost * 4) if total_cost > 0 else 0,
+            "margin": 75.0 if total_cost > 0 else 0,
+            "ingredients_count": len(recipe.lines),
+        })
+    return {"recipes": results, "total": len(results)}
+
+
+@router.get("/costs/stats")
+def get_recipe_cost_stats(db: DbSession, current_user: OptionalCurrentUser = None):
+    """Get recipe cost statistics."""
+    recipes = db.query(Recipe).all()
+    count = len(recipes)
+
+    if count == 0:
+        return {"total_recipes": 0, "avg_food_cost_pct": 0, "highest_cost_recipe": None, "lowest_margin_recipe": None}
+
+    # Compute actual food cost percentages from recipe data
+    costs = []
+    highest_cost = None
+    highest_cost_val = Decimal("0")
+
+    for recipe in recipes:
+        total_cost = Decimal("0")
+        for line in recipe.lines:
+            product = db.query(Product).filter(Product.id == line.product_id).first()
+            if product and product.cost_price:
+                total_cost += line.qty * product.cost_price
+        if total_cost > 0:
+            costs.append(float(total_cost))
+        if total_cost > highest_cost_val:
+            highest_cost_val = total_cost
+            highest_cost = recipe.name
+
+    avg_cost_pct = 0
+    if costs:
+        avg_cost_pct = round(sum(costs) / len(costs), 2)
+
+    return {
+        "total_recipes": count,
+        "avg_food_cost_pct": avg_cost_pct,
+        "highest_cost_recipe": highest_cost,
+        "lowest_margin_recipe": None,
+    }
 
 
 @router.get("/{recipe_id}", response_model=RecipeResponse)
@@ -354,63 +412,3 @@ def get_recipe_stock_availability(
         raise HTTPException(status_code=404, detail=result["error"])
 
     return result
-
-
-@router.get("/costs")
-def get_recipe_costs(db: DbSession, current_user: OptionalCurrentUser = None):
-    """Get recipe cost analysis."""
-    recipes = db.query(Recipe).order_by(Recipe.name).all()
-    results = []
-    for recipe in recipes:
-        total_cost = Decimal("0")
-        for line in recipe.lines:
-            product = db.query(Product).filter(Product.id == line.product_id).first()
-            if product and product.cost_price:
-                total_cost += line.qty * product.cost_price
-        results.append({
-            "id": recipe.id,
-            "name": recipe.name,
-            "total_cost": float(total_cost),
-            "sell_price": float(total_cost * 4) if total_cost > 0 else 0,
-            "margin": 75.0 if total_cost > 0 else 0,
-            "ingredients_count": len(recipe.lines),
-        })
-    return {"recipes": results, "total": len(results)}
-
-
-@router.get("/costs/stats")
-def get_recipe_cost_stats(db: DbSession, current_user: OptionalCurrentUser = None):
-    """Get recipe cost statistics."""
-    recipes = db.query(Recipe).all()
-    count = len(recipes)
-
-    if count == 0:
-        return {"total_recipes": 0, "avg_food_cost_pct": 0, "highest_cost_recipe": None, "lowest_margin_recipe": None}
-
-    # Compute actual food cost percentages from recipe data
-    costs = []
-    highest_cost = None
-    highest_cost_val = Decimal("0")
-
-    for recipe in recipes:
-        total_cost = Decimal("0")
-        for line in recipe.lines:
-            product = db.query(Product).filter(Product.id == line.product_id).first()
-            if product and product.cost_price:
-                total_cost += line.qty * product.cost_price
-        if total_cost > 0:
-            costs.append(float(total_cost))
-        if total_cost > highest_cost_val:
-            highest_cost_val = total_cost
-            highest_cost = recipe.name
-
-    avg_cost_pct = 0
-    if costs:
-        avg_cost_pct = round(sum(costs) / len(costs), 2)
-
-    return {
-        "total_recipes": count,
-        "avg_food_cost_pct": avg_cost_pct,
-        "highest_cost_recipe": highest_cost,
-        "lowest_margin_recipe": None,
-    }

@@ -8,9 +8,10 @@ from enum import Enum
 from typing import Optional, List
 
 from sqlalchemy import DateTime, ForeignKey, Integer, Numeric, String, UniqueConstraint, func
-from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy.orm import Mapped, mapped_column, relationship, validates
 
 from app.db.base import Base
+from app.models.validators import non_negative
 
 
 class MovementReason(str, Enum):
@@ -52,6 +53,10 @@ class StockOnHand(Base):
     # Relationships
     product: Mapped["Product"] = relationship("Product", back_populates="stock_on_hand")
     location: Mapped["Location"] = relationship("Location", back_populates="stock_on_hand")
+
+    @validates('qty', 'reserved_qty')
+    def _validate_non_negative(self, key, value):
+        return non_negative(key, value)
 
 
 class StockMovement(Base):

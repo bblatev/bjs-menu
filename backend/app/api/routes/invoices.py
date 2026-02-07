@@ -78,7 +78,7 @@ def get_invoice_stats(db: DbSession):
 def get_invoice_suppliers(db: DbSession):
     """Get suppliers that have invoices."""
     from sqlalchemy import func
-    from app.models.stock_item import Supplier
+    from app.models.supplier import Supplier
 
     # Get suppliers with invoice counts
     supplier_stats = db.query(
