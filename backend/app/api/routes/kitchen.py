@@ -518,14 +518,29 @@ def unmark_item_86(
     return {"status": "ok", "item_id": item_id, "is_86": False}
 
 
+class Item86Request(BaseModel):
+    menu_item_id: Optional[int] = None
+    item_id: Optional[int] = None
+    reason: Optional[str] = None
+    estimated_return: Optional[str] = None
+    notes: Optional[str] = None
+    is_active: Optional[bool] = True
+
+
 @router.post("/86")
 def add_86_item(
     db: DbSession,
-    item_id: int,
+    data: Optional[Item86Request] = None,
+    item_id: Optional[int] = None,
     name: Optional[str] = None,
 ):
-    """Add item to 86 list (POST method)."""
-    return mark_item_86(db, item_id, name)
+    """Add item to 86 list (POST method). Accepts JSON body or query param."""
+    resolved_id = item_id
+    if data:
+        resolved_id = data.menu_item_id or data.item_id or item_id
+    if not resolved_id:
+        raise HTTPException(status_code=422, detail="item_id or menu_item_id required")
+    return mark_item_86(db, resolved_id, name)
 
 
 @router.get("/")
@@ -617,6 +632,23 @@ def get_cook_time_alerts(
     return alerts
 
 
+def _station_to_dict(s, load: int = 0) -> dict:
+    """Convert a KitchenStation model to frontend-expected dict."""
+    return {
+        "station_id": f"{s.station_type.upper()}-{s.id}",
+        "id": s.id,
+        "name": s.name,
+        "type": s.station_type,
+        "categories": s.equipment_ids or [],
+        "avg_cook_time": s.avg_item_time_seconds // 60 if s.avg_item_time_seconds else 0,
+        "max_capacity": s.max_concurrent_items,
+        "current_load": load,
+        "is_active": s.is_active,
+        "printer_id": None,
+        "display_order": s.id,
+    }
+
+
 @router.get("/stations")
 def get_kitchen_stations(
     db: DbSession,
@@ -642,21 +674,114 @@ def get_kitchen_stations(
     stations = station_query.order_by(KitchenStation.id).all()
 
     return [
-        {
-            "station_id": f"{s.station_type.upper()}-{s.id}",
-            "id": s.id,
-            "name": s.name,
-            "type": s.station_type,
-            "categories": [],
-            "avg_cook_time": s.avg_item_time_seconds // 60 if s.avg_item_time_seconds else 0,
-            "max_capacity": s.max_concurrent_items,
-            "current_load": station_loads.get(f"{s.station_type.upper()}-{s.id}", 0),
-            "is_active": s.is_active,
-            "printer_id": None,
-            "display_order": s.id,
-        }
+        _station_to_dict(s, station_loads.get(f"{s.station_type.upper()}-{s.id}", 0))
         for s in stations
     ]
+
+
+class StationCreate(BaseModel):
+    name: str
+    type: Optional[str] = "kitchen"
+    station_type: Optional[str] = None
+    categories: Optional[list] = []
+    avg_cook_time: Optional[int] = 10
+    max_capacity: Optional[int] = 15
+    printer_id: Optional[str] = None
+    is_active: Optional[bool] = True
+    display_order: Optional[int] = 0
+    location_id: Optional[int] = 1
+
+
+class StationUpdate(BaseModel):
+    name: Optional[str] = None
+    type: Optional[str] = None
+    station_type: Optional[str] = None
+    categories: Optional[list] = None
+    avg_cook_time: Optional[int] = None
+    max_capacity: Optional[int] = None
+    printer_id: Optional[str] = None
+    is_active: Optional[bool] = None
+
+
+@router.post("/stations")
+def create_kitchen_station(
+    db: DbSession,
+    data: StationCreate,
+):
+    """Create a new kitchen station."""
+    from app.models.advanced_features import KitchenStation
+
+    station_type = data.station_type or data.type or "kitchen"
+
+    station = KitchenStation(
+        name=data.name,
+        station_type=station_type,
+        max_concurrent_items=data.max_capacity or 15,
+        avg_item_time_seconds=(data.avg_cook_time or 10) * 60,
+        equipment_ids=data.categories or [],
+        is_active=data.is_active if data.is_active is not None else True,
+        location_id=data.location_id or 1,
+    )
+    db.add(station)
+    db.commit()
+    db.refresh(station)
+
+    return _station_to_dict(station)
+
+
+@router.put("/stations/{station_id}")
+def update_kitchen_station(
+    db: DbSession,
+    station_id: int,
+    data: StationUpdate,
+):
+    """Update an existing kitchen station."""
+    from app.models.advanced_features import KitchenStation
+
+    station = db.query(KitchenStation).filter(KitchenStation.id == station_id).first()
+    if not station:
+        raise HTTPException(status_code=404, detail="Station not found")
+
+    if data.name is not None:
+        station.name = data.name
+    if data.type is not None or data.station_type is not None:
+        station.station_type = data.station_type or data.type
+    if data.categories is not None:
+        station.equipment_ids = data.categories
+    if data.avg_cook_time is not None:
+        station.avg_item_time_seconds = data.avg_cook_time * 60
+    if data.max_capacity is not None:
+        station.max_concurrent_items = data.max_capacity
+    if data.is_active is not None:
+        station.is_active = data.is_active
+
+    db.commit()
+    db.refresh(station)
+
+    # Get current load
+    load = db.query(KitchenOrder).filter(
+        KitchenOrder.status.in_(["pending", "cooking"]),
+        KitchenOrder.station == f"{station.station_type.upper()}-{station.id}",
+    ).count()
+
+    return _station_to_dict(station, load)
+
+
+@router.delete("/stations/{station_id}")
+def delete_kitchen_station(
+    db: DbSession,
+    station_id: int,
+):
+    """Delete a kitchen station."""
+    from app.models.advanced_features import KitchenStation
+
+    station = db.query(KitchenStation).filter(KitchenStation.id == station_id).first()
+    if not station:
+        raise HTTPException(status_code=404, detail="Station not found")
+
+    db.delete(station)
+    db.commit()
+    return {"status": "ok", "deleted_id": station_id}
 
 
 @router.post("/order/{order_id}/start")
