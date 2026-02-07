@@ -158,6 +158,36 @@ def create_temperature_log(log: TemperatureLog, db: DbSession):
     return {"success": True, "id": str(db_log.id)}
 
 
+class CreateSafetyCheckRequest(BaseModel):
+    check_type: str = "general"
+    checked_by: str = ""
+    items: Optional[List[dict]] = None
+    notes: Optional[str] = None
+
+
+@router.post("/safety-checks")
+def create_safety_check(request: CreateSafetyCheckRequest, db: DbSession):
+    """Create a new HACCP safety check."""
+    notes = request.notes or ""
+    if request.items:
+        item_lines = [f"{it.get('task', '')}: {it.get('status', '')}" for it in request.items]
+        notes = "; ".join(item_lines) + (f" | {notes}" if notes else "")
+
+    check = HACCPSafetyCheck(
+        name=request.check_type,
+        category=request.check_type,
+        status="completed",
+        completed_at=datetime.utcnow(),
+        completed_by=request.checked_by,
+        due_date=datetime.utcnow(),
+        notes=notes,
+    )
+    db.add(check)
+    db.commit()
+    db.refresh(check)
+    return {"success": True, "id": str(check.id)}
+
+
 @router.get("/safety-checks")
 def get_safety_checks(db: DbSession):
     """Get safety checks."""

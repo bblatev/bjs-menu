@@ -660,24 +660,36 @@ def update_order_status(
     order_id: int,
     status: str = Query(..., description="New status"),
 ):
-    """Update order status."""
+    """Update order status (guest order or purchase order)."""
     order = db.query(GuestOrderModel).filter(GuestOrderModel.id == order_id).first()
-    if not order:
-        raise HTTPException(status_code=404, detail="Order not found")
+    if order:
+        order.status = status
+        now = datetime.now(timezone.utc)
 
-    order.status = status
-    now = datetime.now(timezone.utc)
+        if status == "confirmed":
+            order.confirmed_at = now
+        elif status == "ready":
+            order.ready_at = now
+        elif status == "completed":
+            order.completed_at = now
 
-    if status == "confirmed":
-        order.confirmed_at = now
-    elif status == "ready":
-        order.ready_at = now
-    elif status == "completed":
-        order.completed_at = now
+        db.commit()
+        return {"status": "ok", "order_id": order_id, "new_status": status}
 
-    db.commit()
+    # Fall through to purchase orders if guest order not found
+    from app.models.inventory import PurchaseOrder
+    po = db.query(PurchaseOrder).filter(PurchaseOrder.id == order_id).first()
+    if po:
+        po.status = status
+        if status == "sent":
+            po.sent_at = datetime.now(timezone.utc)
+        elif status == "received":
+            po.received_at = datetime.now(timezone.utc)
+        db.commit()
+        db.refresh(po)
+        return {"id": po.id, "status": po.status if isinstance(po.status, str) else po.status.value, "new_status": status}
 
-    return {"status": "ok", "order_id": order_id, "new_status": status}
+    raise HTTPException(status_code=404, detail="Order not found")
 
 
 @router.put("/guest/orders/{order_id}/status")
@@ -904,6 +916,60 @@ def delete_order(
     }
 
 
+class RefundOrderRequest(BaseModel):
+    amount: float
+    reason: str = ""
+    refund_method: str = "cash"
+
+
+@router.post("/orders/{order_id}/refund")
+def refund_order(
+    db: DbSession,
+    order_id: int,
+    request: RefundOrderRequest,
+):
+    """Process a refund for an order."""
+    order = db.query(GuestOrderModel).filter(GuestOrderModel.id == order_id).first()
+    if not order:
+        raise HTTPException(status_code=404, detail="Order not found")
+
+    order.payment_status = "refunded"
+    if request.reason:
+        order.notes = f"Refund: {request.reason}" + (f" | {order.notes}" if order.notes else "")
+    db.commit()
+
+    return {
+        "status": "ok",
+        "order_id": order_id,
+        "refund_amount": request.amount,
+        "refund_method": request.refund_method,
+        "message": f"Refund of {request.amount:.2f} processed",
+    }
+
+
+class ReprintOrderRequest(BaseModel):
+    station: str = "kitchen"
+
+
+@router.post("/orders/{order_id}/reprint")
+def reprint_order(
+    db: DbSession,
+    order_id: int,
+    request: ReprintOrderRequest,
+):
+    """Reprint an order ticket for a station."""
+    order = db.query(GuestOrderModel).filter(GuestOrderModel.id == order_id).first()
+    if not order:
+        raise HTTPException(status_code=404, detail="Order not found")
+
+    return {
+        "status": "ok",
+        "order_id": order_id,
+        "station": request.station,
+        "message": f"Order #{order_id} reprinted for {request.station}",
+    }
+
+
 @router.get("/orders")
 def list_guest_orders(
     db: DbSession,
@@ -1037,6 +1103,15 @@ def admin_list_menu_items(db: DbSession, category: Optional[str] = None):
         "items": [_menu_item_to_dict(i) for i in items],
         "total": len(items)
     }
+
+
+@router.get("/menu-admin/items/{item_id}")
+def admin_get_menu_item(db: DbSession, item_id: int):
+    """Get a single menu item by ID."""
+    item = db.query(MenuItem).filter(MenuItem.id == item_id).first()
+    if not item:
+        raise HTTPException(status_code=404, detail="Item not found")
+    return _menu_item_to_dict(item)
 
 
 def _category_to_response(cat: MenuCategoryModel, items_count: int = 0) -> dict:

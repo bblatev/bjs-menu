@@ -26,6 +26,10 @@ from app.api.routes import (
 
 api_router = APIRouter()
 
+# Guest/Customer Ordering - mounted BEFORE purchase orders to avoid route shadowing
+# (both define /orders/{id}/status but guest orders should take precedence)
+api_router.include_router(guest_orders.router, tags=["guest-ordering", "menu"])
+
 # Core routes
 api_router.include_router(auth.router, prefix="/auth", tags=["auth"])
 api_router.include_router(suppliers.router, prefix="/suppliers", tags=["suppliers"])
@@ -70,8 +74,7 @@ api_router.include_router(enterprise.router, prefix="/enterprise", tags=["enterp
 # Inventory Hardware (kegs, tanks, RFID)
 api_router.include_router(inventory_hardware.router, prefix="/inventory-hardware", tags=["inventory-hardware", "kegs", "tanks", "rfid"])
 
-# Guest/Customer Ordering (no auth required)
-api_router.include_router(guest_orders.router, tags=["guest-ordering", "menu"])
+# Guest/Customer Ordering - moved to top of file (before purchase orders router)
 
 # Staff Management (staff, shifts, time-clock, performance, tips)
 api_router.include_router(staff.router, tags=["staff", "schedules", "time-clock", "performance", "tips"])

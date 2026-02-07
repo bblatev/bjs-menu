@@ -53,6 +53,36 @@ class ReferralSettings(BaseModel):
     max_referrals_per_customer: int
 
 
+class CreateReferralProgramRequest(BaseModel):
+    name: str
+    referrer_reward: float = 0
+    referee_reward: float = 0
+    reward_type: str = "points"
+
+
+@router.post("/programs")
+def create_referral_program(request: CreateReferralProgramRequest, db: DbSession):
+    """Create a referral program."""
+    program = ReferralProgram(
+        name=request.name,
+        reward_type=request.reward_type,
+        reward_value=request.referrer_reward,
+        referee_reward_value=request.referee_reward,
+        active=True,
+    )
+    db.add(program)
+    db.commit()
+    db.refresh(program)
+    return {
+        "id": program.id,
+        "name": program.name,
+        "reward_type": program.reward_type,
+        "referrer_reward": float(program.reward_value) if program.reward_value else 0,
+        "referee_reward": float(program.referee_reward_value) if program.referee_reward_value else 0,
+        "active": program.active,
+    }
+
+
 @router.get("/programs")
 def get_referral_programs(db: DbSession):
     """Get referral programs."""

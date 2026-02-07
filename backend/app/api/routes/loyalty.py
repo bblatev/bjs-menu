@@ -39,6 +39,48 @@ def get_loyalty_program(db: DbSession):
     }
 
 
+class CreateLoyaltyProgramRequest(BaseModel):
+    name: str
+    points_per_dollar: float = 1.0
+    redemption_rate: float = 0.01
+    signup_bonus: int = 0
+
+
+@router.post("/program")
+def create_loyalty_program(request: CreateLoyaltyProgramRequest, db: DbSession):
+    """Create or update a loyalty program."""
+    # Check if one already exists
+    existing = db.query(LoyaltyProgram).first()
+    if existing:
+        existing.name = request.name
+        existing.points_per_dollar = request.points_per_dollar
+        existing.points_to_dollar = request.redemption_rate
+        db.commit()
+        db.refresh(existing)
+        return {
+            "id": existing.id,
+            "name": existing.name,
+            "points_per_dollar": existing.points_per_dollar,
+            "redemption_rate": existing.points_to_dollar,
+        }
+
+    program = LoyaltyProgram(
+        name=request.name,
+        points_per_dollar=request.points_per_dollar,
+        points_to_dollar=request.redemption_rate,
+        is_active=True,
+    )
+    db.add(program)
+    db.commit()
+    db.refresh(program)
+    return {
+        "id": program.id,
+        "name": program.name,
+        "points_per_dollar": program.points_per_dollar,
+        "redemption_rate": program.points_to_dollar,
+    }
+
+
 class LoyaltyMember(BaseModel):
     id: str
     name: str
