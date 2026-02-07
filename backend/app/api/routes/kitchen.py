@@ -729,16 +729,41 @@ def create_kitchen_station(
     return _station_to_dict(station)
 
 
+def _resolve_station(db, station_id: str):
+    """Resolve a station by numeric ID or station_id string like 'GRILL-1'."""
+    from app.models.advanced_features import KitchenStation
+
+    # Try numeric ID first
+    try:
+        numeric_id = int(station_id)
+        station = db.query(KitchenStation).filter(KitchenStation.id == numeric_id).first()
+        if station:
+            return station
+    except (ValueError, TypeError):
+        pass
+
+    # Try station_id format like "GRILL-1" -> extract trailing number
+    if "-" in station_id:
+        parts = station_id.rsplit("-", 1)
+        try:
+            numeric_id = int(parts[1])
+            station = db.query(KitchenStation).filter(KitchenStation.id == numeric_id).first()
+            if station:
+                return station
+        except (ValueError, IndexError):
+            pass
+
+    return None
+
+
 @router.put("/stations/{station_id}")
 def update_kitchen_station(
     db: DbSession,
-    station_id: int,
+    station_id: str,
     data: StationUpdate,
 ):
     """Update an existing kitchen station."""
-    from app.models.advanced_features import KitchenStation
-
-    station = db.query(KitchenStation).filter(KitchenStation.id == station_id).first()
+    station = _resolve_station(db, station_id)
     if not station:
         raise HTTPException(status_code=404, detail="Station not found")
 
@@ -770,18 +795,17 @@ def update_kitchen_station(
 @router.delete("/stations/{station_id}")
 def delete_kitchen_station(
     db: DbSession,
-    station_id: int,
+    station_id: str,
 ):
     """Delete a kitchen station."""
-    from app.models.advanced_features import KitchenStation
-
-    station = db.query(KitchenStation).filter(KitchenStation.id == station_id).first()
+    station = _resolve_station(db, station_id)
     if not station:
         raise HTTPException(status_code=404, detail="Station not found")
 
+    deleted_id = station.id
     db.delete(station)
     db.commit()
-    return {"status": "ok", "deleted_id": station_id}
+    return {"status": "ok", "deleted_id": deleted_id}
 
 
 @router.post("/order/{order_id}/start")
