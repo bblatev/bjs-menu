@@ -168,6 +168,25 @@ async def mark_as_paid(entry_id: str, db: DbSession):
     return {"success": True}
 
 
+@router.get("/summary")
+async def get_payroll_summary(db: DbSession):
+    """Get payroll summary statistics."""
+    total_entries = db.query(func.count(PayrollEntry.id)).scalar() or 0
+    total_gross = float(db.query(func.coalesce(func.sum(PayrollEntry.gross_pay), 0)).scalar())
+    total_net = float(db.query(func.coalesce(func.sum(PayrollEntry.net_pay), 0)).scalar())
+    total_hours = float(db.query(func.coalesce(func.sum(PayrollEntry.hours_worked), 0)).scalar())
+    total_runs = db.query(func.count(PayrollRun.id)).scalar() or 0
+
+    return {
+        "total_entries": total_entries,
+        "total_runs": total_runs,
+        "total_gross_pay": total_gross,
+        "total_net_pay": total_net,
+        "total_hours_worked": total_hours,
+        "avg_hourly_rate": round(total_gross / total_hours, 2) if total_hours > 0 else 0,
+    }
+
+
 @router.get("/runs")
 async def get_payroll_runs(db: DbSession):
     """Get payroll runs."""

@@ -21,6 +21,8 @@ STORE_LTO = "menu_limited_offers"
 STORE_86 = "menu_86_items"
 STORE_BOARDS = "menu_digital_boards"
 STORE_VARIANTS = "menu_variants"
+STORE_MOD_GROUPS = "menu_modifier_groups"
+STORE_MOD_OPTIONS = "menu_modifier_options"
 
 
 def _load(db, store_id: str) -> list:
@@ -147,6 +149,55 @@ class DigitalBoard(BaseModel):
     layout: str = "grid"
     location: Optional[str] = None
     is_active: bool = True
+
+
+class ModifierGroup(BaseModel):
+    id: Optional[int] = None
+    name: MultiLang
+    required: bool = False
+    min_selections: int = 0
+    max_selections: int = 1
+    is_active: bool = True
+
+
+class ModifierOption(BaseModel):
+    id: Optional[int] = None
+    group_id: int
+    name: MultiLang
+    price: float = 0
+    is_active: bool = True
+
+
+# ============ MODIFIER GROUPS ============
+
+@router.get("/modifier-groups")
+def get_modifier_groups(db: DbSession):
+    return _load(db, STORE_MOD_GROUPS)
+
+
+@router.post("/modifier-groups")
+def create_modifier_group(item: ModifierGroup, db: DbSession):
+    items = _load(db, STORE_MOD_GROUPS)
+    nid = _next_id(db, STORE_MOD_GROUPS)
+    item.id = nid
+    items.append(item.model_dump())
+    _save(db, STORE_MOD_GROUPS, items, "Modifier Groups")
+    return item
+
+
+@router.get("/modifier-options")
+def get_modifier_options(db: DbSession):
+    return _load(db, STORE_MOD_OPTIONS)
+
+
+@router.post("/modifier-options")
+def create_modifier_option(item: ModifierOption, db: DbSession):
+    items = _load(db, STORE_MOD_OPTIONS)
+    nid = _next_id(db, STORE_MOD_OPTIONS)
+    item.id = nid
+    items.append(item.model_dump())
+    _save(db, STORE_MOD_OPTIONS, items, "Modifier Options")
+    return item
 
 
 # ============ ITEMS ============

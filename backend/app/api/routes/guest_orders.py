@@ -265,6 +265,25 @@ def get_menu_categories(db: DbSession):
     return {"categories": categories}
 
 
+@router.get("/menu/display")
+def get_menu_display(db: DbSession):
+    """Get full menu display for guests (grouped by category)."""
+    items = db.query(MenuItem).filter(MenuItem.available == True).all()
+    categories_dict: dict = {}
+    for item in items:
+        cat = item.category or "Other"
+        if cat not in categories_dict:
+            categories_dict[cat] = []
+        categories_dict[cat].append(_menu_item_to_dict(item))
+    return {
+        "categories": [
+            {"name": cat, "items": cat_items}
+            for cat, cat_items in categories_dict.items()
+        ],
+        "total_items": len(items),
+    }
+
+
 # ==================== MENU ITEM CRUD ====================
 
 @router.post("/menu/items")

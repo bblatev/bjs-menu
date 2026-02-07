@@ -92,6 +92,11 @@ class GiftCardStats(BaseModel):
     expired_unredeemed: float
 
 
+class RedeemRequest(BaseModel):
+    amount: float
+    reference: str = ""
+
+
 class ReloadRequest(BaseModel):
     amount: float
 
@@ -455,6 +460,39 @@ async def get_card_transactions(card_id: int, db: DbSession):
         ))
 
     return result
+
+
+@router.post("/{card_id}/redeem")
+async def redeem_gift_card(card_id: int, redeem_data: RedeemRequest, db: DbSession):
+    """Redeem (spend) from a gift card."""
+    card = db.query(GiftCardModel).filter(GiftCardModel.id == card_id).first()
+    if not card:
+        raise HTTPException(status_code=404, detail=f"Gift card {card_id} not found")
+    if not card.is_active:
+        raise HTTPException(status_code=400, detail="Gift card is not active")
+    if card.current_balance < Decimal(str(redeem_data.amount)):
+        raise HTTPException(status_code=400, detail="Insufficient balance")
+
+    previous_balance = float(card.current_balance)
+    card.current_balance -= Decimal(str(redeem_data.amount))
+
+    txn = GiftCardTransactionModel(
+        gift_card_id=card.id,
+        transaction_type="redemption",
+        amount=-Decimal(str(redeem_data.amount)),
+        balance_after=card.current_balance,
+        notes=redeem_data.reference or "Redemption",
+    )
+    db.add(txn)
+    db.commit()
+
+    return {
+        "success": True,
+        "card_number": card.card_number,
+        "previous_balance": previous_balance,
+        "redeemed_amount": redeem_data.amount,
+        "new_balance": float(card.current_balance),
+    }
 
 
 @router.post("/{card_id}/cancel")
