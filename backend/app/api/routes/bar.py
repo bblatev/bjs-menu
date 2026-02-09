@@ -14,6 +14,7 @@ from app.models.product import Product
 from app.models.stock import StockOnHand, StockMovement, MovementReason
 from app.models.recipe import Recipe, RecipeLine
 from app.models.advanced_features import HappyHour, WasteTrackingEntry, WasteCategory
+from app.models.hardware import BarTab
 
 router = APIRouter()
 
@@ -81,27 +82,255 @@ class SpillageRecordCreate(BaseModel):
 # ==================== ROUTES ====================
 
 @router.get("/tabs")
-def get_bar_tabs(db: DbSession, current_user: OptionalCurrentUser = None):
-    """Get open bar tabs."""
-    return {"tabs": [], "total": 0}
+def get_bar_tabs(
+    db: DbSession,
+    current_user: OptionalCurrentUser = None,
+    status: Optional[str] = Query(None, description="Filter by status: open, closed, void"),
+    location_id: Optional[int] = Query(None),
+):
+    """Get bar tabs from database."""
+    query = db.query(BarTab)
+    if status:
+        query = query.filter(BarTab.status == status)
+    else:
+        # Default to open tabs
+        query = query.filter(BarTab.status == "open")
+    if location_id:
+        query = query.filter(BarTab.location_id == location_id)
+
+    tabs = query.order_by(BarTab.created_at.desc()).all()
+
+    tab_list = [{
+        "id": tab.id,
+        "customer_name": tab.customer_name,
+        "seat_number": tab.seat_number,
+        "card_on_file": tab.card_on_file,
+        "status": tab.status,
+        "items": tab.items or [],
+        "subtotal": float(tab.subtotal),
+        "tax": float(tab.tax),
+        "tip": float(tab.tip),
+        "total": float(tab.total),
+        "created_at": tab.created_at.isoformat() if tab.created_at else None,
+        "closed_at": tab.closed_at.isoformat() if tab.closed_at else None,
+    } for tab in tabs]
+
+    return {"tabs": tab_list, "total": len(tab_list)}
 
 
 @router.get("/spillage/variance")
-def get_spillage_variance(db: DbSession, current_user: OptionalCurrentUser = None):
-    """Get spillage variance data."""
-    return {"variances": [], "total_variance": 0}
+def get_spillage_variance(
+    db: DbSession,
+    current_user: OptionalCurrentUser = None,
+    location_id: int = Query(1),
+    period: str = Query("month"),
+):
+    """Get spillage variance data - compares expected vs actual stock usage."""
+    from datetime import timedelta
+
+    now = datetime.now(timezone.utc)
+    if period == "today":
+        start_date = now.replace(hour=0, minute=0, second=0, microsecond=0)
+    elif period == "week":
+        start_date = now - timedelta(days=7)
+    else:
+        start_date = now - timedelta(days=30)
+
+    # Get waste/spillage movements grouped by product
+    waste_data = db.query(
+        Product.id,
+        Product.name,
+        Product.unit,
+        Product.cost_price,
+        func.sum(StockMovement.qty_delta).label("waste_qty"),
+    ).join(Product, StockMovement.product_id == Product.id).filter(
+        StockMovement.reason == MovementReason.WASTE.value,
+        StockMovement.ts >= start_date,
+        StockMovement.location_id == location_id,
+    ).group_by(Product.id, Product.name, Product.unit, Product.cost_price).all()
+
+    # Get total sales movements for the same products to compute variance %
+    sale_data = {}
+    if waste_data:
+        product_ids = [row.id for row in waste_data]
+        sales = db.query(
+            StockMovement.product_id,
+            func.sum(StockMovement.qty_delta).label("sale_qty"),
+        ).filter(
+            StockMovement.reason == MovementReason.SALE.value,
+            StockMovement.ts >= start_date,
+            StockMovement.location_id == location_id,
+            StockMovement.product_id.in_(product_ids),
+        ).group_by(StockMovement.product_id).all()
+        sale_data = {s.product_id: abs(float(s.sale_qty or 0)) for s in sales}
+
+    variances = []
+    total_variance_cost = 0.0
+
+    for row in waste_data:
+        waste_qty = abs(float(row.waste_qty or 0))
+        sale_qty = sale_data.get(row.id, 0)
+        cost = float(row.cost_price or 0)
+        variance_cost = waste_qty * cost
+        total_variance_cost += variance_cost
+
+        # Variance percentage: waste as % of total usage (sales + waste)
+        total_usage = sale_qty + waste_qty
+        variance_pct = round((waste_qty / total_usage) * 100, 1) if total_usage > 0 else 0
+
+        variances.append({
+            "product_id": row.id,
+            "product_name": row.name,
+            "unit": row.unit or "pcs",
+            "waste_qty": waste_qty,
+            "sale_qty": sale_qty,
+            "variance_pct": variance_pct,
+            "variance_cost": round(variance_cost, 2),
+        })
+
+    # Sort by cost impact descending
+    variances.sort(key=lambda x: x["variance_cost"], reverse=True)
+
+    return {"variances": variances, "total_variance": round(total_variance_cost, 2)}
 
 
 @router.get("/spillage/stats")
-def get_spillage_stats(db: DbSession, current_user: OptionalCurrentUser = None):
-    """Get spillage statistics."""
-    return {"total_spillage": 0, "total_cost": 0, "incidents": 0, "by_category": []}
+def get_spillage_stats(
+    db: DbSession,
+    current_user: OptionalCurrentUser = None,
+    location_id: int = Query(1),
+    period: str = Query("month"),
+):
+    """Get spillage statistics from waste tracking entries."""
+    from datetime import timedelta
+
+    now = datetime.now(timezone.utc)
+    if period == "today":
+        start_date = now.replace(hour=0, minute=0, second=0, microsecond=0)
+    elif period == "week":
+        start_date = now - timedelta(days=7)
+    else:
+        start_date = now - timedelta(days=30)
+
+    # Aggregate totals
+    totals = db.query(
+        func.sum(WasteTrackingEntry.weight_kg).label("total_kg"),
+        func.sum(WasteTrackingEntry.cost_value).label("total_cost"),
+        func.count(WasteTrackingEntry.id).label("incidents"),
+    ).filter(
+        WasteTrackingEntry.location_id == location_id,
+        WasteTrackingEntry.recorded_at >= start_date,
+    ).first()
+
+    total_spillage = float(totals.total_kg or 0)
+    total_cost = float(totals.total_cost or 0)
+    incidents = int(totals.incidents or 0)
+
+    # Breakdown by waste category
+    by_category_rows = db.query(
+        WasteTrackingEntry.category,
+        func.sum(WasteTrackingEntry.weight_kg).label("weight"),
+        func.sum(WasteTrackingEntry.cost_value).label("cost"),
+        func.count(WasteTrackingEntry.id).label("count"),
+    ).filter(
+        WasteTrackingEntry.location_id == location_id,
+        WasteTrackingEntry.recorded_at >= start_date,
+    ).group_by(WasteTrackingEntry.category).all()
+
+    by_category = [{
+        "category": row.category.value if hasattr(row.category, 'value') else str(row.category),
+        "weight_kg": float(row.weight or 0),
+        "cost": float(row.cost or 0),
+        "count": int(row.count or 0),
+    } for row in by_category_rows]
+
+    return {
+        "total_spillage": round(total_spillage, 3),
+        "total_cost": round(total_cost, 2),
+        "incidents": incidents,
+        "by_category": by_category,
+    }
 
 
 @router.get("/pour-costs/summary")
-def get_pour_costs_summary(db: DbSession, current_user: OptionalCurrentUser = None):
-    """Get pour cost summary."""
-    return {"average_pour_cost": 0, "target_pour_cost": 0, "items": [], "by_category": []}
+def get_pour_costs_summary(
+    db: DbSession,
+    current_user: OptionalCurrentUser = None,
+    location_id: int = Query(1),
+):
+    """Get pour cost summary computed from recipes and product costs."""
+    from app.models.restaurant import MenuItem
+
+    # Get all recipes with their ingredient costs
+    recipes = db.query(Recipe).all()
+
+    items = []
+    total_pour_cost_sum = 0.0
+    count_with_cost = 0
+    category_map = {}  # category -> {total_cost, total_price, count}
+
+    for recipe in recipes:
+        pour_cost = Decimal("0")
+        for line in recipe.lines:
+            product = db.query(Product).filter(Product.id == line.product_id).first()
+            if product and product.cost_price:
+                pour_cost += Decimal(str(line.qty)) * product.cost_price
+
+        # Try to find linked menu item for sell price
+        sell_price = Decimal("0")
+        category = "Uncategorized"
+        menu_item = None
+        if recipe.pos_item_id:
+            menu_item = db.query(MenuItem).filter(MenuItem.id == int(recipe.pos_item_id)).first() if recipe.pos_item_id.isdigit() else None
+        if not menu_item:
+            menu_item = db.query(MenuItem).filter(MenuItem.recipe_id == recipe.id).first()
+        if menu_item:
+            sell_price = menu_item.price or Decimal("0")
+            category = menu_item.category or "Uncategorized"
+
+        pour_cost_pct = round(float(pour_cost / sell_price * 100), 1) if sell_price > 0 else 0
+
+        items.append({
+            "recipe_id": recipe.id,
+            "name": recipe.name,
+            "category": category,
+            "pour_cost": float(pour_cost),
+            "sell_price": float(sell_price),
+            "pour_cost_pct": pour_cost_pct,
+            "margin_pct": round(100 - pour_cost_pct, 1) if pour_cost_pct > 0 else 0,
+        })
+
+        if pour_cost_pct > 0:
+            total_pour_cost_sum += pour_cost_pct
+            count_with_cost += 1
+
+        # Aggregate by category
+        if category not in category_map:
+            category_map[category] = {"total_cost": 0.0, "total_price": 0.0, "count": 0}
+        category_map[category]["total_cost"] += float(pour_cost)
+        category_map[category]["total_price"] += float(sell_price)
+        category_map[category]["count"] += 1
+
+    avg_pour_cost = round(total_pour_cost_sum / count_with_cost, 1) if count_with_cost > 0 else 0
+    target_pour_cost = 25.0  # Industry standard target
+
+    by_category = [{
+        "category": cat,
+        "avg_pour_cost_pct": round((data["total_cost"] / data["total_price"]) * 100, 1) if data["total_price"] > 0 else 0,
+        "total_cost": round(data["total_cost"], 2),
+        "total_revenue": round(data["total_price"], 2),
+        "item_count": data["count"],
+    } for cat, data in category_map.items()]
+
+    # Sort items by pour cost descending (highest cost items first)
+    items.sort(key=lambda x: x["pour_cost_pct"], reverse=True)
+
+    return {
+        "average_pour_cost": avg_pour_cost,
+        "target_pour_cost": target_pour_cost,
+        "items": items,
+        "by_category": by_category,
+    }
 
 
 @router.get("/stats")

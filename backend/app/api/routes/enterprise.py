@@ -224,26 +224,56 @@ def get_enterprise_locations(db: DbSession):
 @router.get("/consolidated")
 def get_consolidated_report(db: DbSession):
     """Get consolidated enterprise report across all locations."""
+    from sqlalchemy import func, Numeric as SaNumeric
     from app.models.location import Location
-    from app.models.pos import PosSalesLine
+    from app.models.restaurant import Check, GuestOrder
 
     locations = db.query(Location).all()
-    total_sales = db.query(PosSalesLine).count()
+
+    # Aggregate revenue and order counts per location from checks
+    check_stats = db.query(
+        Check.location_id,
+        func.coalesce(func.sum(Check.total), 0).label("revenue"),
+        func.count(Check.id).label("order_count"),
+    ).filter(
+        Check.status != "voided",
+    ).group_by(Check.location_id).all()
+    check_map = {row.location_id: {"revenue": float(row.revenue), "orders": int(row.order_count)} for row in check_stats}
+
+    # Also aggregate from guest orders (QR ordering)
+    guest_stats = db.query(
+        GuestOrder.location_id,
+        func.coalesce(func.sum(GuestOrder.total), 0).label("revenue"),
+        func.count(GuestOrder.id).label("order_count"),
+    ).filter(
+        GuestOrder.status != "cancelled",
+    ).group_by(GuestOrder.location_id).all()
+    guest_map = {row.location_id: {"revenue": float(row.revenue), "orders": int(row.order_count)} for row in guest_stats}
+
+    total_revenue = 0.0
+    total_orders = 0
+    by_location = []
+
+    for loc in locations:
+        c = check_map.get(loc.id, {"revenue": 0.0, "orders": 0})
+        g = guest_map.get(loc.id, {"revenue": 0.0, "orders": 0})
+        loc_revenue = c["revenue"] + g["revenue"]
+        loc_orders = c["orders"] + g["orders"]
+        total_revenue += loc_revenue
+        total_orders += loc_orders
+        by_location.append({
+            "location_id": loc.id,
+            "location_name": loc.name,
+            "revenue": round(loc_revenue, 2),
+            "orders": loc_orders,
+        })
 
     return {
-        "period": "today",
+        "period": "all_time",
         "locations_count": len(locations),
-        "total_revenue": 0.0,
-        "total_orders": total_sales,
-        "by_location": [
-            {
-                "location_id": loc.id,
-                "location_name": loc.name,
-                "revenue": 0.0,
-                "orders": 0,
-            }
-            for loc in locations
-        ],
+        "total_revenue": round(total_revenue, 2),
+        "total_orders": total_orders,
+        "by_location": by_location,
     }
 
 
@@ -632,18 +662,43 @@ def post_hotel_charge(
     db: DbSession,
     charge: HotelCharge,
 ):
-    """Post a charge to a hotel guest's room."""
+    """Post a charge to a hotel guest's room.
+
+    Persists the charge as a GuestOrder linked to the room (using room-{number}
+    table_token convention) so it appears in GET /hotel-pms/charges.
+    In production with a connected PMS, would also forward to the PMS API.
+    """
+    from decimal import Decimal as D
+    from app.models.restaurant import GuestOrder
+
     guest = db.query(HotelGuestModel).filter(HotelGuestModel.id == charge.guest_id).first()
     if not guest:
         raise HTTPException(status_code=404, detail="Guest not found")
 
-    # In production, this would post to the PMS
+    # Persist as a GuestOrder with room-based table_token so GET /hotel-pms/charges picks it up
+    order = GuestOrder(
+        table_token=f"room-{charge.room_number}",
+        table_number=charge.room_number,
+        status="served",
+        order_type="dine-in",
+        subtotal=D(str(charge.amount)),
+        total=D(str(charge.amount)),
+        customer_name=guest.guest_name,
+        notes=charge.description,
+        payment_status="paid",
+        payment_method="room_charge",
+    )
+    db.add(order)
+    db.commit()
+    db.refresh(order)
+
     return {
         "status": "posted",
-        "charge_id": f"CHG-{datetime.now(timezone.utc).strftime('%Y%m%d%H%M%S')}",
+        "charge_id": order.id,
         "guest": guest.guest_name,
         "room": charge.room_number,
         "amount": charge.amount,
+        "order_id": order.id,
     }
 
 
