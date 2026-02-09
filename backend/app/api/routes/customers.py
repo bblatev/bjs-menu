@@ -109,7 +109,7 @@ def list_customers(
 ):
     """List all customers with optional filtering and pagination."""
 
-    query = db.query(Customer)
+    query = db.query(Customer).filter(Customer.not_deleted())
 
     # Search filter
     if search:
@@ -145,7 +145,7 @@ def list_customers(
 @router.get("/customers/{customer_id}")
 def get_customer(db: DbSession, customer_id: int):
     """Get a specific customer."""
-    customer = db.query(Customer).filter(Customer.id == customer_id).first()
+    customer = db.query(Customer).filter(Customer.id == customer_id, Customer.not_deleted()).first()
     if not customer:
         raise HTTPException(status_code=404, detail="Customer not found")
     return _customer_to_dict(customer)
@@ -155,7 +155,7 @@ def get_customer(db: DbSession, customer_id: int):
 def create_customer(db: DbSession, data: CustomerCreate):
     """Create a new customer."""
     # Check if phone already exists
-    existing = db.query(Customer).filter(Customer.phone == data.phone).first()
+    existing = db.query(Customer).filter(Customer.phone == data.phone, Customer.not_deleted()).first()
     if existing:
         raise HTTPException(status_code=400, detail="Customer with this phone already exists")
 
@@ -195,7 +195,7 @@ def create_customer(db: DbSession, data: CustomerCreate):
 @router.put("/customers/{customer_id}")
 def update_customer(db: DbSession, customer_id: int, data: CustomerUpdate):
     """Update a customer."""
-    customer = db.query(Customer).filter(Customer.id == customer_id).first()
+    customer = db.query(Customer).filter(Customer.id == customer_id, Customer.not_deleted()).first()
     if not customer:
         raise HTTPException(status_code=404, detail="Customer not found")
 
@@ -240,12 +240,12 @@ def update_customer(db: DbSession, customer_id: int, data: CustomerUpdate):
 
 @router.delete("/customers/{customer_id}")
 def delete_customer(db: DbSession, customer_id: int):
-    """Delete a customer."""
-    customer = db.query(Customer).filter(Customer.id == customer_id).first()
+    """Soft-delete a customer."""
+    customer = db.query(Customer).filter(Customer.id == customer_id, Customer.not_deleted()).first()
     if not customer:
         raise HTTPException(status_code=404, detail="Customer not found")
 
-    db.delete(customer)
+    customer.soft_delete()
     db.commit()
     return {"status": "deleted", "id": customer_id}
 
@@ -350,9 +350,9 @@ def get_customer_segments(db: DbSession):
     result = []
 
     for segment in segments:
-        count = db.query(Customer).filter(Customer.segment == segment).count()
+        count = db.query(Customer).filter(Customer.segment == segment, Customer.not_deleted()).count()
         total_value = db.query(func.sum(Customer.lifetime_value)).filter(
-            Customer.segment == segment
+            Customer.segment == segment, Customer.not_deleted()
         ).scalar() or 0
 
         result.append({
@@ -368,16 +368,16 @@ def get_customer_segments(db: DbSession):
 def get_customer_stats(db: DbSession):
     """Get overall customer statistics."""
 
-    total = db.query(Customer).count()
-    total_revenue = db.query(func.sum(Customer.total_spent)).scalar() or 0
-    total_clv = db.query(func.sum(Customer.lifetime_value)).scalar() or 0
-    avg_order = db.query(func.avg(Customer.average_order)).scalar() or 0
-    avg_frequency = db.query(func.avg(Customer.visit_frequency)).scalar() or 0
+    total = db.query(Customer).filter(Customer.not_deleted()).count()
+    total_revenue = db.query(func.sum(Customer.total_spent)).filter(Customer.not_deleted()).scalar() or 0
+    total_clv = db.query(func.sum(Customer.lifetime_value)).filter(Customer.not_deleted()).scalar() or 0
+    avg_order = db.query(func.avg(Customer.average_order)).filter(Customer.not_deleted()).scalar() or 0
+    avg_frequency = db.query(func.avg(Customer.visit_frequency)).filter(Customer.not_deleted()).scalar() or 0
 
-    vip_count = db.query(Customer).filter(Customer.tags.cast(String).like("%VIP%")).count()
-    champions_count = db.query(Customer).filter(Customer.segment == "Champions").count()
+    vip_count = db.query(Customer).filter(Customer.tags.cast(String).like("%VIP%"), Customer.not_deleted()).count()
+    champions_count = db.query(Customer).filter(Customer.segment == "Champions", Customer.not_deleted()).count()
     at_risk_count = db.query(Customer).filter(
-        or_(Customer.segment == "At Risk", Customer.segment == "Lost")
+        or_(Customer.segment == "At Risk", Customer.segment == "Lost"), Customer.not_deleted()
     ).count()
 
     return {

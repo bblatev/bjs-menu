@@ -6,8 +6,8 @@ from typing import Optional, List
 from sqlalchemy import Column, Integer, String, DateTime, Numeric, Boolean, ForeignKey, Text, JSON
 from sqlalchemy.orm import relationship, validates
 
-from app.db.base import Base
-from app.models.validators import non_negative, positive
+from app.db.base import Base, VersionMixin, SoftDeleteMixin
+from app.models.validators import non_negative, positive, validate_list, validate_list_of_dicts
 
 
 class Table(Base):
@@ -29,7 +29,7 @@ class Table(Base):
     checks = relationship("Check", back_populates="table")
 
 
-class Check(Base):
+class Check(Base, VersionMixin, SoftDeleteMixin):
     """Restaurant check/bill."""
     __tablename__ = "checks"
 
@@ -65,7 +65,7 @@ class Check(Base):
         return positive(key, value)
 
 
-class CheckItem(Base):
+class CheckItem(Base, VersionMixin, SoftDeleteMixin):
     """Item on a check."""
     __tablename__ = "check_items"
 
@@ -101,6 +101,10 @@ class CheckItem(Base):
     @validates('price', 'total')
     def _validate_amounts(self, key, value):
         return non_negative(key, value)
+
+    @validates('modifiers')
+    def _validate_modifiers(self, key, value):
+        return validate_list_of_dicts(key, value)
 
 
 class CheckPayment(Base):
@@ -160,7 +164,7 @@ class MenuCategory(Base):
     children = relationship("MenuCategory", backref="parent", remote_side="MenuCategory.id", lazy="select")
 
 
-class MenuItem(Base):
+class MenuItem(Base, SoftDeleteMixin):
     """Menu item for ordering."""
     __tablename__ = "menu_items"
 
@@ -194,6 +198,14 @@ class MenuItem(Base):
     @validates('price', 'base_price')
     def _validate_price(self, key, value):
         return non_negative(key, value)
+
+    @validates('allergens')
+    def _validate_allergens(self, key, value):
+        return validate_list(key, value)
+
+    @validates('modifiers')
+    def _validate_modifiers(self, key, value):
+        return validate_list_of_dicts(key, value)
 
 
 class ModifierGroup(Base):
@@ -274,7 +286,7 @@ class ComboItem(Base):
     combo = relationship("ComboMeal", back_populates="items")
 
 
-class KitchenOrder(Base):
+class KitchenOrder(Base, VersionMixin):
     """Kitchen order/ticket."""
     __tablename__ = "kitchen_orders"
 
@@ -303,6 +315,10 @@ class KitchenOrder(Base):
     notes = Column(Text, nullable=True)
 
     location_id = Column(Integer, ForeignKey("locations.id"), nullable=True)
+
+    @validates('items')
+    def _validate_items(self, key, value):
+        return validate_list_of_dicts(key, value)
 
 
 # Note: KitchenStation model is defined in advanced_features.py
@@ -347,3 +363,7 @@ class GuestOrder(Base):
     @validates('subtotal', 'tax', 'total', 'tip_amount')
     def _validate_amounts(self, key, value):
         return non_negative(key, value)
+
+    @validates('items')
+    def _validate_items(self, key, value):
+        return validate_list_of_dicts(key, value)

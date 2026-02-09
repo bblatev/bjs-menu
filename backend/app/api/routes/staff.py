@@ -108,7 +108,7 @@ def list_staff(
     """List all staff members with pagination."""
     _init_default_staff(db)
 
-    query = db.query(StaffUser)
+    query = db.query(StaffUser).filter(StaffUser.not_deleted())
 
     if role and role != "all":
         query = query.filter(StaffUser.role == role)
@@ -1164,25 +1164,13 @@ def update_staff(db: DbSession, staff_id: int, data: StaffUpdate):
 
 @router.delete("/staff/{staff_id}")
 def delete_staff(db: DbSession, staff_id: int):
-    """Delete a staff member."""
-    staff = db.query(StaffUser).filter(StaffUser.id == staff_id).first()
+    """Soft-delete a staff member."""
+    staff = db.query(StaffUser).filter(StaffUser.id == staff_id, StaffUser.not_deleted()).first()
     if not staff:
         raise HTTPException(status_code=404, detail="Staff member not found")
 
-    # Delete related table assignments first
-    db.query(TableAssignment).filter(TableAssignment.staff_id == staff_id).delete()
-
-    # Delete related time clock entries
-    db.query(TimeClockEntry).filter(TimeClockEntry.staff_id == staff_id).delete()
-
-    # Delete related shifts
-    db.query(Shift).filter(Shift.staff_id == staff_id).delete()
-
-    # Delete related time off requests
-    db.query(TimeOffRequest).filter(TimeOffRequest.staff_id == staff_id).delete()
-
-    # Now delete the staff member
-    db.delete(staff)
+    staff.soft_delete()
+    staff.is_active = False
     db.commit()
     return {"status": "deleted", "id": staff_id}
 

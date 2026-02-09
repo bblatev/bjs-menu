@@ -1,9 +1,11 @@
 """Kitchen Display System (KDS) routes - using database models."""
 
+from datetime import timedelta
 from typing import Optional
 from datetime import datetime, timezone
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
+from sqlalchemy import func
 
 from app.db.session import DbSession
 from app.models.restaurant import KitchenOrder, GuestOrder, MenuItem, Table, Check
@@ -1146,3 +1148,120 @@ def set_vip_priority(order_id: int, db: DbSession):
     order.priority = 2  # 2 = VIP
     db.commit()
     return {"success": True, "order_id": order_id, "priority": "vip"}
+
+
+# ==================== DISPLAY (merged from kitchen_display.py) ====================
+
+@router.get("/display/stations")
+async def get_display_stations(db: DbSession):
+    """Get KDS display stations."""
+    from app.models.advanced_features import KitchenStation
+    stations = db.query(KitchenStation).filter(KitchenStation.is_active == True).order_by(KitchenStation.id).all()
+
+    # Count pending tickets per station
+    pending_counts = dict(
+        db.query(KitchenOrder.station, func.count(KitchenOrder.id))
+        .filter(KitchenOrder.status.in_(["pending", "cooking"]))
+        .group_by(KitchenOrder.station)
+        .all()
+    )
+
+    return [
+        {
+            "id": s.station_type,
+            "name": s.name,
+            "active": s.is_active,
+            "pending_tickets": pending_counts.get(s.station_type, 0),
+            "avg_time": s.avg_item_time_seconds // 60 if s.avg_item_time_seconds else 0,
+        }
+        for s in stations
+    ]
+
+
+@router.get("/display/tickets")
+async def get_display_tickets(db: DbSession, station: str = None):
+    """Get KDS display tickets."""
+    query = db.query(KitchenOrder).filter(
+        KitchenOrder.status.in_(["pending", "cooking"])
+    )
+    if station:
+        query = query.filter(KitchenOrder.station == station)
+    orders = query.order_by(KitchenOrder.priority.desc(), KitchenOrder.created_at).all()
+    return [
+        {
+            "id": o.id,
+            "table_number": o.table_number,
+            "station": o.station,
+            "status": o.status,
+            "priority": o.priority,
+            "items": o.items or [],
+            "notes": o.notes,
+            "created_at": o.created_at.isoformat() if o.created_at else None,
+            "started_at": o.started_at.isoformat() if o.started_at else None,
+        }
+        for o in orders
+    ]
+
+
+# ==================== ALERTS (merged from kitchen_alerts.py) ====================
+
+@router.get("/alerts/summary")
+async def get_kitchen_alerts_summary(db: DbSession):
+    """Get kitchen alerts (overdue orders, temp warnings)."""
+    from app.models.operations import HACCPTemperatureLog
+    alerts = []
+    # Overdue orders: pending for more than 15 minutes
+    cutoff = datetime.now(timezone.utc) - timedelta(minutes=15)
+    overdue = db.query(KitchenOrder).filter(
+        KitchenOrder.status.in_(["pending", "cooking"]),
+        KitchenOrder.created_at < cutoff,
+    ).all()
+    for o in overdue:
+        alerts.append({
+            "id": f"order-{o.id}",
+            "type": "overdue_order",
+            "severity": "warning",
+            "message": f"Order #{o.id} (table {o.table_number}) has been {o.status} for over 15 min",
+            "created_at": o.created_at.isoformat() if o.created_at else None,
+        })
+    # Temperature alerts
+    temp_alerts = db.query(HACCPTemperatureLog).filter(
+        HACCPTemperatureLog.status.in_(["warning", "critical"]),
+    ).order_by(HACCPTemperatureLog.recorded_at.desc()).limit(20).all()
+    for t in temp_alerts:
+        alerts.append({
+            "id": f"temp-{t.id}",
+            "type": "temperature",
+            "severity": t.status,
+            "message": f"{t.location} ({t.equipment}): {t.temperature}{t.unit}",
+            "created_at": t.recorded_at.isoformat() if t.recorded_at else None,
+        })
+    return alerts
+
+
+@router.get("/alerts/statistics")
+async def get_kitchen_alert_stats(db: DbSession):
+    """Get kitchen alert statistics."""
+    from app.models.operations import HACCPTemperatureLog
+    cutoff = datetime.now(timezone.utc) - timedelta(minutes=15)
+    overdue_count = db.query(func.count(KitchenOrder.id)).filter(
+        KitchenOrder.status.in_(["pending", "cooking"]),
+        KitchenOrder.created_at < cutoff,
+    ).scalar() or 0
+    critical_temps = db.query(func.count(HACCPTemperatureLog.id)).filter(
+        HACCPTemperatureLog.status == "critical",
+    ).scalar() or 0
+    warning_temps = db.query(func.count(HACCPTemperatureLog.id)).filter(
+        HACCPTemperatureLog.status == "warning",
+    ).scalar() or 0
+    today_start = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
+    resolved_today = db.query(func.count(KitchenOrder.id)).filter(
+        KitchenOrder.status.in_(["completed", "ready"]),
+        KitchenOrder.completed_at >= today_start,
+    ).scalar() or 0
+    return {
+        "total_alerts": overdue_count + critical_temps + warning_temps,
+        "critical": critical_temps,
+        "warnings": overdue_count + warning_temps,
+        "resolved_today": resolved_today,
+    }

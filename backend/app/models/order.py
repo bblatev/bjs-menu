@@ -10,7 +10,7 @@ from typing import Optional, List
 from sqlalchemy import DateTime, Enum as SQLEnum, ForeignKey, Numeric, String, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from app.db.base import Base
+from app.db.base import Base, VersionMixin, SoftDeleteMixin
 
 
 class POStatus(str, Enum):
@@ -22,7 +22,7 @@ class POStatus(str, Enum):
     CANCELLED = "cancelled"
 
 
-class PurchaseOrder(Base):
+class PurchaseOrder(Base, VersionMixin, SoftDeleteMixin):
     """A purchase order to a supplier."""
 
     __tablename__ = "purchase_orders"
