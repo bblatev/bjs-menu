@@ -475,6 +475,7 @@ def get_expo_tickets(
     return expo_tickets
 
 
+@router.get("/86")
 @router.get("/86/list")
 def get_86_items(
     db: DbSession,

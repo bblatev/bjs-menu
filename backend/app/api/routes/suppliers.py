@@ -22,6 +22,24 @@ def list_suppliers(db: DbSession, current_user: OptionalCurrentUser = None):
     return db.query(Supplier).order_by(Supplier.name).all()
 
 
+@router.get("/performance")
+def get_supplier_performance(db: DbSession, current_user: OptionalCurrentUser = None):
+    """Get supplier performance metrics list."""
+    suppliers = db.query(Supplier).order_by(Supplier.name).all()
+    return [
+        {
+            "id": s.id,
+            "supplier_name": s.name,
+            "on_time_pct": 0,
+            "fill_rate_pct": 0,
+            "avg_lead_days": 0,
+            "total_orders": 0,
+            "quality_score": 0,
+        }
+        for s in suppliers
+    ]
+
+
 @router.get("/performance/stats")
 def get_supplier_performance_stats(db: DbSession, current_user: OptionalCurrentUser = None):
     """Get supplier performance statistics."""

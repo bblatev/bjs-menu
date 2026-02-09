@@ -2473,3 +2473,22 @@ def get_menu_item_versions(item_id: int, db: DbSession):
 def restore_menu_version(version_id: int, db: DbSession):
     """Restore a previous menu item version."""
     return {"success": True, "restored_version": version_id}
+
+
+@router.post("/menu-admin/bulk-price-update")
+def bulk_price_update(request_data: dict, db: DbSession, venue_id: int = 1):
+    """Bulk update menu item prices."""
+    item_ids = request_data.get("item_ids", [])
+    adjustment_type = request_data.get("adjustment_type", "percentage")  # percentage or fixed
+    adjustment_value = float(request_data.get("adjustment_value", 0))
+
+    updated = 0
+    for item in db.query(MenuItem).filter(MenuItem.id.in_(item_ids)).all():
+        if adjustment_type == "percentage":
+            item.price = round(item.price * (1 + adjustment_value / 100), 2)
+        else:
+            item.price = round(item.price + adjustment_value, 2)
+        updated += 1
+
+    db.commit()
+    return {"success": True, "updated_count": updated}
