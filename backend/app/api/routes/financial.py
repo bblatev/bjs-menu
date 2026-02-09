@@ -1,5 +1,6 @@
 """Financial and budgets API routes."""
 
+from datetime import datetime
 from typing import List, Optional
 from fastapi import APIRouter, Query
 from pydantic import BaseModel
@@ -299,6 +300,39 @@ async def complete_reconciliation(rec_id: str, db: DbSession):
     rec.completed_at = datetime.now(timezone.utc)
     db.commit()
     return {"success": True, "reconciliation_id": rec_id, "status": "completed"}
+
+
+@router.post("/accounts/")
+async def create_financial_account(data: dict, db: DbSession):
+    """Create a financial account (GL code)."""
+    code = data.get("code", "")
+    name = data.get("name", "")
+    if not code or not name:
+        from fastapi import HTTPException
+        raise HTTPException(status_code=422, detail="code and name are required")
+    existing = db.query(GLCode).filter(GLCode.code == code).first()
+    if existing:
+        return {"id": existing.id, "code": existing.code, "name": existing.name, "type": existing.category}
+    gl = GLCode(code=code, name=name, category=data.get("type", "expense"), is_active=True)
+    db.add(gl)
+    db.commit()
+    db.refresh(gl)
+    return {"id": gl.id, "code": gl.code, "name": gl.name, "type": gl.category}
+
+
+@router.post("/transactions/")
+async def create_financial_transaction(data: dict, db: DbSession):
+    """Create a financial transaction (invoice record)."""
+    inv = Invoice(
+        supplier_id=data.get("account_id", data.get("supplier_id", 1)),
+        invoice_number=f"TXN-{datetime.now().strftime('%Y%m%d%H%M%S')}",
+        total_amount=data.get("amount", 0),
+        status="pending",
+    )
+    db.add(inv)
+    db.commit()
+    db.refresh(inv)
+    return {"id": inv.id, "type": data.get("type", "credit"), "amount": float(inv.total_amount or 0)}
 
 
 @router.post("/budgets")

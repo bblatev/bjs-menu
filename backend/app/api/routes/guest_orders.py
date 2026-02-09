@@ -2021,9 +2021,13 @@ def admin_list_combos(db: DbSession):
 @router.post("/menu-admin/combos")
 def admin_create_combo(db: DbSession, data: dict = Body(...)):
     """Create a combo meal."""
+    raw_name = data.get("name", "")
+    combo_name = raw_name.get("en", "") or raw_name.get("bg", "") if isinstance(raw_name, dict) else str(raw_name)
+    raw_desc = data.get("description")
+    combo_desc = raw_desc.get("en", "") or raw_desc.get("bg", "") if isinstance(raw_desc, dict) else raw_desc
     combo = ComboMeal(
-        name=data.get("name", ""),
-        description=data.get("description"),
+        name=combo_name,
+        description=combo_desc,
         price=data.get("price", 0),
         image_url=data.get("image_url"),
         category=data.get("category"),
@@ -2056,7 +2060,10 @@ def admin_update_combo(db: DbSession, combo_id: int, data: dict = Body(...)):
         raise HTTPException(status_code=404, detail="Combo meal not found")
     for key in ("name", "description", "price", "image_url", "category", "available", "featured"):
         if key in data:
-            setattr(combo, key, data[key])
+            val = data[key]
+            if key in ("name", "description") and isinstance(val, dict):
+                val = val.get("en", "") or val.get("bg", "") or ""
+            setattr(combo, key, val)
     # Replace items if provided
     if "items" in data:
         for ci in combo.items:
@@ -2484,10 +2491,11 @@ def bulk_price_update(request_data: dict, db: DbSession, venue_id: int = 1):
 
     updated = 0
     for item in db.query(MenuItem).filter(MenuItem.id.in_(item_ids)).all():
+        current_price = float(item.price or 0)
         if adjustment_type == "percentage":
-            item.price = round(item.price * (1 + adjustment_value / 100), 2)
+            item.price = round(current_price * (1 + adjustment_value / 100), 2)
         else:
-            item.price = round(item.price + adjustment_value, 2)
+            item.price = round(current_price + adjustment_value, 2)
         updated += 1
 
     db.commit()

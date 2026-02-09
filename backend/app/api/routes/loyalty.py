@@ -94,6 +94,33 @@ class LoyaltyMember(BaseModel):
     last_visit: str
 
 
+@router.post("/members")
+def add_loyalty_member(data: dict, db: DbSession):
+    """Add a customer to the loyalty program."""
+    customer_id = data.get("customer_id")
+    if not customer_id:
+        raise HTTPException(status_code=422, detail="customer_id is required")
+    # Find or create program
+    program = db.query(LoyaltyProgram).first()
+    if not program:
+        program = LoyaltyProgram(name="Default", points_per_dollar=1, is_active=True)
+        db.add(program)
+        db.flush()
+    existing = db.query(CustomerLoyalty).filter(CustomerLoyalty.customer_id == int(customer_id)).first()
+    if existing:
+        return {"id": existing.id, "customer_id": int(customer_id), "points": existing.current_points}
+    member = CustomerLoyalty(
+        customer_id=int(customer_id),
+        program_id=program.id,
+        current_points=data.get("points", 0),
+        current_tier="bronze",
+    )
+    db.add(member)
+    db.commit()
+    db.refresh(member)
+    return {"id": member.id, "customer_id": int(customer_id), "points": member.current_points}
+
+
 @router.get("/members")
 def get_loyalty_members(db: DbSession):
     """Get loyalty program members."""

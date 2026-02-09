@@ -125,6 +125,23 @@ def _transfer_to_schema(
 # --------------- Endpoints ---------------
 
 
+@router.post("/")
+async def create_warehouse(data: dict, db: DbSession):
+    """Create a new warehouse."""
+    wh = WarehouseModel(
+        name=data.get("name", ""),
+        address=data.get("address", ""),
+        type=data.get("type", "dry"),
+        capacity=data.get("capacity", 0),
+        manager=data.get("manager", ""),
+        active=True,
+    )
+    db.add(wh)
+    db.commit()
+    db.refresh(wh)
+    return _warehouse_to_schema(wh)
+
+
 @router.get("/")
 async def get_warehouses(db: DbSession):
     """Get all warehouses."""

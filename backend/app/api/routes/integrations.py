@@ -1,5 +1,6 @@
 """Integrations API routes."""
 
+from datetime import datetime, timezone
 from typing import List, Optional
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
@@ -242,6 +243,33 @@ async def get_api_keys(db: DbSession):
     if setting and setting.value:
         return setting.value
     return []
+
+
+@router.post("/api-keys")
+async def create_api_key(data: dict, db: DbSession):
+    """Create an API key."""
+    import secrets
+    setting = db.query(AppSetting).filter(
+        AppSetting.category == "api_keys",
+        AppSetting.key == "list",
+    ).first()
+    keys = setting.value if setting and setting.value else []
+    new_key = {
+        "id": str(len(keys) + 1),
+        "name": data.get("name", "API Key"),
+        "key": f"bjs_{secrets.token_hex(16)}",
+        "permissions": data.get("permissions", ["read"]),
+        "created_at": datetime.now(timezone.utc).isoformat() if 'datetime' in dir() else None,
+        "active": True,
+    }
+    keys.append(new_key)
+    if setting:
+        setting.value = keys
+    else:
+        setting = AppSetting(category="api_keys", key="list", value=keys)
+        db.add(setting)
+    db.commit()
+    return {"id": new_key["id"], "name": new_key["name"], "key": new_key["key"]}
 
 
 @router.get("/accounting/available")

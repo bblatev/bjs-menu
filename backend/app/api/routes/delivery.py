@@ -47,6 +47,35 @@ def get_delivery_status(db: DbSession):
 
 # Integrations
 
+@router.post("/orders/")
+def create_delivery_order(db: DbSession, data: dict = None):
+    """Create a delivery order."""
+    from fastapi import Body
+    if data is None:
+        data = {}
+    import time as _time
+    integration_id = data.get("integration_id")
+    if not integration_id:
+        first_int = db.query(DeliveryIntegration).first()
+        integration_id = first_int.id if first_int else None
+    if not integration_id:
+        from fastapi import HTTPException as HE
+        raise HE(status_code=400, detail="No delivery integration configured")
+    order = DeliveryOrder(
+        platform=DeliveryPlatform.UBER_EATS,
+        platform_order_id=f"local-{int(_time.time())}",
+        customer_name=data.get("customer_name", "Guest"),
+        customer_phone=data.get("phone", ""),
+        total=data.get("total", 0),
+        status=DeliveryOrderStatus.RECEIVED,
+        integration_id=integration_id,
+    )
+    db.add(order)
+    db.commit()
+    db.refresh(order)
+    return {"id": order.id, "status": "pending", "customer_name": order.customer_name}
+
+
 @router.get("/integrations/", response_model=List[DeliveryIntegrationResponse])
 def list_integrations(
     db: DbSession,

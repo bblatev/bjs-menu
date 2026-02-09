@@ -101,6 +101,26 @@ def get_referral_programs(db: DbSession):
     return {"programs": result, "total": len(result)}
 
 
+@router.post("/")
+def create_referral(data: dict, db: DbSession):
+    """Create a single referral."""
+    program = db.query(ReferralProgram).filter(ReferralProgram.active == True).first()
+    record = ReferralRecord(
+        referrer_name=data.get("referrer_name", ""),
+        referrer_email=data.get("referrer_email", ""),
+        referee_name=data.get("referee_name", ""),
+        referee_email=data.get("referee_email", data.get("referee_phone", "")),
+        status="pending",
+        reward_claimed=False,
+        program_id=program.id if program else None,
+        created_at=datetime.utcnow(),
+    )
+    db.add(record)
+    db.commit()
+    db.refresh(record)
+    return {"id": record.id, "status": "pending", "referee_name": record.referee_name}
+
+
 @router.get("/")
 def get_referrals(db: DbSession):
     """Get all referrals."""

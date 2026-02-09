@@ -89,6 +89,41 @@ async def update_notification_preferences(
     return {"success": True}
 
 
+@router.put("/alerts/config")
+async def update_all_alert_config(data: dict, db: DbSession, current_user: CurrentUser):
+    """Update overall alert configuration."""
+    configs = db.query(AlertConfigModel).all()
+    if not configs:
+        # Create a default config
+        cfg = AlertConfigModel(
+            name="Default",
+            type="general",
+            enabled=data.get("email_enabled", True),
+            channels=["email"] if data.get("email_enabled") else [],
+        )
+        db.add(cfg)
+        db.commit()
+        db.refresh(cfg)
+        return {"success": True, "id": cfg.id}
+    for cfg in configs:
+        if "email_enabled" in data:
+            channels = cfg.channels or []
+            if data["email_enabled"] and "email" not in channels:
+                channels.append("email")
+            elif not data["email_enabled"] and "email" in channels:
+                channels.remove("email")
+            cfg.channels = channels
+        if "sms_enabled" in data:
+            channels = cfg.channels or []
+            if data["sms_enabled"] and "sms" not in channels:
+                channels.append("sms")
+            elif not data["sms_enabled"] and "sms" in channels:
+                channels.remove("sms")
+            cfg.channels = channels
+    db.commit()
+    return {"success": True}
+
+
 @router.get("/alerts/config")
 async def get_alert_configs(db: DbSession, current_user: CurrentUser):
     """Get alert configurations."""

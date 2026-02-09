@@ -116,6 +116,49 @@ class PrintResult(BaseModel):
 # Printer Management
 # ============================================================================
 
+@router.post("/")
+async def create_printer(config: PrinterConfigRequest):
+    """Create a new printer configuration."""
+    manager = get_printer_manager()
+    import time
+    printer_id = f"printer_{int(time.time())}"
+
+    try:
+        printer_type = PrinterType(config.printer_type.lower())
+    except ValueError:
+        printer_type = PrinterType.GENERIC
+
+    try:
+        connection_type = ConnectionType(config.connection_type.lower())
+    except ValueError:
+        connection_type = ConnectionType.NETWORK
+
+    printer_config = PrinterConfig(
+        name=config.name,
+        printer_type=printer_type,
+        connection_type=connection_type,
+        ip_address=config.ip_address,
+        port=config.port,
+        paper_width=config.paper_width,
+        chars_per_line=config.chars_per_line,
+        auto_cut=config.auto_cut,
+        beep_on_print=config.beep_on_print,
+        open_drawer=config.open_drawer,
+        charset=config.charset,
+    )
+    manager.add_printer(printer_id, printer_config)
+
+    return PrinterResponse(
+        id=printer_id,
+        name=config.name,
+        type=config.printer_type,
+        connection=config.connection_type,
+        ip_address=config.ip_address,
+        port=config.port,
+        status="configured",
+    )
+
+
 @router.get("/", response_model=List[PrinterResponse])
 async def list_printers():
     """List all configured printers."""

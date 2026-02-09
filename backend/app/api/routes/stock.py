@@ -546,6 +546,62 @@ def get_adjustments(
     ]
 
 
+@router.post("/adjustments")
+def create_adjustment(
+    db: DbSession,
+    data: dict = None,
+):
+    """Create a stock adjustment."""
+    from fastapi import Body
+    if data is None:
+        data = {}
+    product_id = data.get("product_id")
+    location_id = data.get("location_id", 1)
+    qty_delta = Decimal(str(data.get("quantity_delta", data.get("qty_delta", 0))))
+    reason = data.get("reason", "correction")
+    notes = data.get("notes", "")
+
+    if not product_id:
+        raise HTTPException(status_code=422, detail="product_id is required")
+
+    # Create stock movement
+    movement = StockMovement(
+        product_id=int(product_id),
+        location_id=int(location_id),
+        qty_delta=qty_delta,
+        reason=MovementReason.ADJUSTMENT.value,
+        notes=notes,
+    )
+    db.add(movement)
+
+    # Update stock on hand
+    stock = db.query(StockOnHand).filter(
+        StockOnHand.product_id == int(product_id),
+        StockOnHand.location_id == int(location_id),
+    ).first()
+    if stock:
+        stock.qty += qty_delta
+    else:
+        stock = StockOnHand(
+            product_id=int(product_id),
+            location_id=int(location_id),
+            qty=max(qty_delta, Decimal("0")),
+        )
+        db.add(stock)
+
+    db.commit()
+    db.refresh(movement)
+    return {
+        "id": movement.id,
+        "product_id": movement.product_id,
+        "location_id": movement.location_id,
+        "qty_delta": float(movement.qty_delta),
+        "reason": reason,
+        "notes": notes,
+        "status": "approved",
+    }
+
+
 @router.put("/adjustments/{adjustment_id}/approve")
 def approve_adjustment(db: DbSession, adjustment_id: int):
     """Approve a stock adjustment."""

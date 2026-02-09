@@ -413,6 +413,7 @@ def get_throttle_rules(db: DbSession, location_id: Optional[int] = None):
     return {"rules": rule_list}
 
 
+@router.post("/throttling/rules")
 @router.post("/throttling/rules/")
 def create_throttle_rule(
     db: DbSession,

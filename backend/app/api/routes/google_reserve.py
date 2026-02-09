@@ -390,6 +390,36 @@ async def get_google_reserve_config(db: DbSession):
     }
 
 
+@router.post("/bookings")
+async def create_google_reserve_booking(data: dict, db: DbSession):
+    """Create a Google Reserve booking."""
+    from datetime import datetime as dt
+    date_str = data.get("date", "2026-03-20")
+    time_str = data.get("time", "19:00")
+    try:
+        reservation_date = dt.strptime(f"{date_str} {time_str}", "%Y-%m-%d %H:%M")
+    except (ValueError, TypeError):
+        reservation_date = dt.utcnow()
+    reservation = Reservation(
+        guest_name=data.get("guest_name", "Google Guest"),
+        guest_phone=data.get("phone", ""),
+        party_size=data.get("party_size", 2),
+        reservation_date=reservation_date,
+        status=ReservationStatus.CONFIRMED,
+        source=BookingSource.GOOGLE,
+    )
+    db.add(reservation)
+    db.commit()
+    db.refresh(reservation)
+    return {
+        "id": f"gr-{reservation.id}",
+        "guest_name": reservation.guest_name,
+        "party_size": reservation.party_size,
+        "status": "confirmed",
+        "source": "google",
+    }
+
+
 @router.get("/bookings")
 async def get_google_reserve_bookings(db: DbSession):
     """Get Google Reserve bookings."""

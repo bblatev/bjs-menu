@@ -699,6 +699,44 @@ def create_spillage_record(
 
 # ==================== RECIPES (using real Recipe model) ====================
 
+@router.post("/recipes")
+def create_bar_recipe(
+    db: DbSession,
+    data: dict = None,
+    current_user: OptionalCurrentUser = None,
+):
+    """Create a bar recipe."""
+    from fastapi import Body
+    if data is None:
+        data = {}
+    name = data.get("name", "Untitled Recipe")
+    recipe = Recipe(name=name)
+    db.add(recipe)
+    db.flush()
+
+    for ing in data.get("ingredients", []):
+        product_name = ing.get("name", "")
+        product = db.query(Product).filter(Product.name.ilike(f"%{product_name}%")).first() if product_name else None
+        if product:
+            line = RecipeLine(
+                recipe_id=recipe.id,
+                product_id=product.id,
+                qty=Decimal(str(ing.get("quantity", ing.get("amount", 1)))),
+                unit=ing.get("unit", product.unit or "ml"),
+            )
+            db.add(line)
+
+    db.commit()
+    db.refresh(recipe)
+    return {
+        "id": recipe.id,
+        "name": recipe.name,
+        "category": data.get("category", "Recipe"),
+        "ingredients": data.get("ingredients", []),
+        "instructions": data.get("instructions", ""),
+    }
+
+
 @router.get("/recipes")
 def get_bar_recipes(
     db: DbSession,

@@ -26,6 +26,30 @@ async def get_cloud_kitchen_brands(venue_id: str, db: DbSession):
     return _get_setting_list(db, "cloud_kitchen_brands", venue_id)
 
 
+@router.post("/{venue_id}/cloud-kitchen/brands")
+async def create_cloud_kitchen_brand(venue_id: str, data: dict, db: DbSession):
+    """Create a virtual brand for cloud kitchen."""
+    row = db.query(AppSetting).filter(
+        AppSetting.category == "cloud_kitchen_brands",
+        AppSetting.key == venue_id,
+    ).first()
+    brands = row.value if row and isinstance(row.value, list) else []
+    new_brand = {
+        "id": len(brands) + 1,
+        "name": data.get("name", ""),
+        "cuisine": data.get("cuisine", ""),
+        "active": True,
+    }
+    brands.append(new_brand)
+    if row:
+        row.value = brands
+    else:
+        row = AppSetting(category="cloud_kitchen_brands", key=venue_id, value=brands)
+        db.add(row)
+    db.commit()
+    return new_brand
+
+
 @router.get("/{venue_id}/cloud-kitchen/stations")
 async def get_cloud_kitchen_stations(venue_id: str, db: DbSession):
     """Get cloud kitchen stations."""

@@ -471,6 +471,27 @@ def receive_purchase_order(
     )
 
 
+@router.put("/{po_id}")
+def update_purchase_order(db: DbSession, po_id: int, data: dict = None):
+    """Update a purchase order."""
+    from fastapi import Body
+    po = db.query(PurchaseOrderModel).filter(PurchaseOrderModel.id == po_id).first()
+    if not po:
+        raise HTTPException(status_code=404, detail="Purchase order not found")
+    if data is None:
+        data = {}
+    if "status" in data:
+        try:
+            po.status = POStatus(data["status"])
+        except ValueError:
+            pass
+    if "notes" in data:
+        po.notes = data["notes"]
+    db.commit()
+    db.refresh(po)
+    return _po_to_response(po, db)
+
+
 @router.get("/{po_id}")
 def get_purchase_order(db: DbSession, po_id: int):
     """Get a specific purchase order."""

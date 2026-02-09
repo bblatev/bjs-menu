@@ -98,6 +98,48 @@ def get_pricing_rules(db: DbSession):
     return {"rules": items, "total": len(items)}
 
 
+@router.post("/pricing-rules")
+def create_pricing_rule(db: DbSession, data: dict = None):
+    """Create a dynamic pricing rule."""
+    from fastapi import Body
+    from app.models.advanced_features import DynamicPricingRule
+    if data is None:
+        data = {}
+    rule = DynamicPricingRule(
+        name=data.get("name", ""),
+        trigger_type=data.get("type", data.get("trigger_type", "manual")),
+        trigger_conditions=data.get("trigger_conditions", {}),
+        adjustment_type=data.get("adjustment_type", "percentage"),
+        adjustment_value=data.get("value", data.get("adjustment_value", 0)),
+        applies_to=data.get("applies_to", "all"),
+        is_active=True,
+    )
+    db.add(rule)
+    db.commit()
+    db.refresh(rule)
+    return {"id": rule.id, "name": rule.name, "is_active": rule.is_active}
+
+
+@router.post("/promotions/")
+def create_marketing_promotion(db: DbSession, data: dict = None):
+    """Create a promotion via marketing route."""
+    from fastapi import Body
+    from app.models.operations import Promotion
+    if data is None:
+        data = {}
+    promo = Promotion(
+        name=data.get("name", ""),
+        description=data.get("description", ""),
+        type=data.get("type", "percentage"),
+        value=data.get("value", 0),
+        active=data.get("status", "active") == "active",
+    )
+    db.add(promo)
+    db.commit()
+    db.refresh(promo)
+    return {"id": promo.id, "name": promo.name, "active": promo.active}
+
+
 # Marketing Campaigns
 
 @router.get("/campaigns/", response_model=List[CampaignResponse])

@@ -119,6 +119,23 @@ async def get_feedback_overview(db: DbSession):
     }
 
 
+@router.post("/reviews")
+async def create_review(data: dict, db: DbSession):
+    """Create a customer review."""
+    review = FeedbackReview(
+        customer_name=data.get("customer_name", "Guest"),
+        rating=data.get("rating", 5),
+        text=data.get("comment", data.get("text", "")),
+        source=data.get("source", "internal"),
+        status="new",
+        created_at=datetime.utcnow(),
+    )
+    db.add(review)
+    db.commit()
+    db.refresh(review)
+    return {"id": review.id, "customer_name": review.customer_name, "rating": review.rating}
+
+
 @router.get("/reviews")
 async def get_reviews(
     db: DbSession,
