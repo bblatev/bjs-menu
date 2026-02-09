@@ -781,53 +781,54 @@ def update_order_status(
     db: DbSession,
     order_id: int,
     status: str = Query(None, description="New status (query param)"),
+    new_status: str = Query(None, alias="new_status", description="Alias for status"),
     data: dict = Body(None),
 ):
     """Update order status (guest order or purchase order).
 
-    Accepts status as query param OR JSON body {"status": "...", "payment_method": "..."}.
+    Accepts status as query param (?status= or ?new_status=) OR JSON body {"status": "..."}.
     """
-    # Accept status from query param or JSON body
-    new_status = status
+    # Accept status from query param (either name) or JSON body
+    resolved_status = status or new_status
     payment_method = None
     if data:
-        new_status = new_status or data.get("status")
+        resolved_status = resolved_status or data.get("status") or data.get("new_status")
         payment_method = data.get("payment_method")
-    if not new_status:
+    if not resolved_status:
         raise HTTPException(status_code=422, detail="status is required")
 
     order = db.query(GuestOrderModel).filter(GuestOrderModel.id == order_id).first()
     if order:
-        order.status = new_status
+        order.status = resolved_status
         now = datetime.now(timezone.utc)
 
-        if new_status == "confirmed":
+        if resolved_status == "confirmed":
             order.confirmed_at = now
-        elif new_status == "ready":
+        elif resolved_status == "ready":
             order.ready_at = now
-        elif new_status == "completed":
+        elif resolved_status == "completed":
             order.completed_at = now
-        elif new_status == "paid":
+        elif resolved_status == "paid":
             order.payment_status = "paid"
             order.paid_at = now
             if payment_method:
                 order.payment_method = payment_method
 
         db.commit()
-        return {"status": "ok", "order_id": order_id, "new_status": new_status}
+        return {"status": "ok", "order_id": order_id, "new_status": resolved_status}
 
     # Fall through to purchase orders if guest order not found
     from app.models.order import PurchaseOrder
     po = db.query(PurchaseOrder).filter(PurchaseOrder.id == order_id).first()
     if po:
-        po.status = new_status
-        if new_status == "sent":
+        po.status = resolved_status
+        if resolved_status == "sent":
             po.sent_at = datetime.now(timezone.utc)
-        elif new_status == "received":
+        elif resolved_status == "received":
             po.received_at = datetime.now(timezone.utc)
         db.commit()
         db.refresh(po)
-        return {"id": po.id, "status": po.status if isinstance(po.status, str) else po.status.value, "new_status": new_status}
+        return {"id": po.id, "status": po.status if isinstance(po.status, str) else po.status.value, "new_status": resolved_status}
 
     raise HTTPException(status_code=404, detail="Order not found")
 
