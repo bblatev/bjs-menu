@@ -35,15 +35,26 @@ def get_sync_changes(
     """Get pending sync changes for mobile offline mode."""
     from app.models.restaurant import MenuItem, Table
 
-    # Return summary of changes
+    # Apply since-filter when a timestamp is provided
+    product_q = db.query(Product)
+    menu_q = db.query(MenuItem)
+    table_q = db.query(Table)
+    supplier_q = db.query(Supplier)
+
+    if since:
+        product_q = product_q.filter(Product.updated_at > since)
+        menu_q = menu_q.filter(MenuItem.updated_at > since)
+        table_q = table_q.filter(Table.updated_at > since)
+        supplier_q = supplier_q.filter(Supplier.updated_at > since)
+
     return {
         "has_changes": True,
         "last_sync": datetime.now(timezone.utc).isoformat(),
         "changes": {
-            "products": db.query(Product).count(),
-            "menu_items": db.query(MenuItem).count(),
-            "tables": db.query(Table).count(),
-            "suppliers": db.query(Supplier).count(),
+            "products": product_q.count(),
+            "menu_items": menu_q.count(),
+            "tables": table_q.count(),
+            "suppliers": supplier_q.count(),
         },
         "pending_uploads": 0,
     }
@@ -61,9 +72,10 @@ def sync_pull(
     Returns products, suppliers, locations, and stock levels
     that have been updated since the given timestamp.
     """
-    # Get updated products
+    # Get updated products (filter by updated_at via TimestampMixin)
     products_query = db.query(Product)
-    # Note: Product model doesn't have updated_at, so we return all active products
+    if since:
+        products_query = products_query.filter(Product.updated_at > since)
     products = [
         SyncProductData(
             id=p.id,
@@ -76,35 +88,37 @@ def sync_pull(
             target_stock=p.target_stock,
             ai_label=p.ai_label,
             active=p.active,
-            updated_at=None,
+            updated_at=p.updated_at if hasattr(p, 'updated_at') else None,
         )
         for p in products_query.all()
     ]
 
-    # Get updated suppliers
+    # Get updated suppliers (filter by updated_at via TimestampMixin)
     suppliers_query = db.query(Supplier)
-    # Note: Supplier model doesn't have updated_at, so we return all suppliers
+    if since:
+        suppliers_query = suppliers_query.filter(Supplier.updated_at > since)
     suppliers = [
         SyncSupplierData(
             id=s.id,
             name=s.name,
             contact_phone=s.contact_phone,
             contact_email=s.contact_email,
-            updated_at=None,
+            updated_at=s.updated_at if hasattr(s, 'updated_at') else None,
         )
         for s in suppliers_query.all()
     ]
 
-    # Get updated locations
+    # Get updated locations (filter by updated_at via TimestampMixin)
     locations_query = db.query(Location)
-    # Note: Location model doesn't have updated_at, so we return all locations
+    if since:
+        locations_query = locations_query.filter(Location.updated_at > since)
     locations = [
         SyncLocationData(
             id=l.id,
             name=l.name,
             is_default=l.is_default,
             active=l.active,
-            updated_at=None,
+            updated_at=l.updated_at if hasattr(l, 'updated_at') else None,
         )
         for l in locations_query.all()
     ]
@@ -143,6 +157,7 @@ def sync_push(
 
     Accepts sessions with their lines created offline.
     Returns ID mappings for local IDs to server IDs.
+    Detects conflicts when a session with the same location + started_at already exists.
     """
     sessions_created = 0
     lines_created = 0
@@ -150,9 +165,21 @@ def sync_push(
     id_mappings = {}
 
     for session_data in request.sessions:
-        # Check for duplicate by local_id (idempotency)
-        # In a real implementation, you might store local_id on the server
-        # For now, we just create new sessions
+        # Conflict detection: check for duplicate by location_id + started_at
+        existing = db.query(InventorySession).filter(
+            InventorySession.location_id == session_data.location_id,
+            InventorySession.started_at == session_data.started_at,
+        ).first()
+
+        if existing:
+            conflicts.append({
+                "local_id": session_data.local_id,
+                "server_id": existing.id,
+                "reason": "duplicate_session",
+                "message": f"Session already exists for location {session_data.location_id} at {session_data.started_at}",
+            })
+            id_mappings[session_data.local_id] = existing.id
+            continue
 
         session = InventorySession(
             location_id=session_data.location_id,

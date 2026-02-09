@@ -293,7 +293,7 @@ def get_table_menu(
     table = _get_table_by_token(db, token)
 
     # Get menu items from database
-    menu_items = db.query(MenuItem).filter(MenuItem.available == True).all()
+    menu_items = db.query(MenuItem).filter(MenuItem.available == True, MenuItem.not_deleted()).all()
 
     # Group menu items by category
     categories = {}
@@ -328,7 +328,7 @@ def get_menu_items(
     available_only: bool = True,
 ):
     """Get all menu items, optionally filtered by category."""
-    query = db.query(MenuItem)
+    query = db.query(MenuItem).filter(MenuItem.not_deleted())
     if category:
         query = query.filter(MenuItem.category == category)
     if available_only:
@@ -341,7 +341,7 @@ def get_menu_items(
 @router.get("/menu/items/{item_id}")
 def get_menu_item(db: DbSession, item_id: int):
     """Get a specific menu item."""
-    item = db.query(MenuItem).filter(MenuItem.id == item_id).first()
+    item = db.query(MenuItem).filter(MenuItem.id == item_id, MenuItem.not_deleted()).first()
     if not item:
         raise HTTPException(status_code=404, detail="Menu item not found")
     return _menu_item_to_dict(item)
@@ -350,7 +350,7 @@ def get_menu_item(db: DbSession, item_id: int):
 @router.get("/menu/categories")
 def get_menu_categories(db: DbSession):
     """Get all menu categories."""
-    items = db.query(MenuItem).filter(MenuItem.available == True).all()
+    items = db.query(MenuItem).filter(MenuItem.available == True, MenuItem.not_deleted()).all()
     categories = list(set(item.category for item in items))
     return {"categories": categories}
 
@@ -358,7 +358,7 @@ def get_menu_categories(db: DbSession):
 @router.get("/menu/display")
 def get_menu_display(db: DbSession):
     """Get full menu display for guests (grouped by category)."""
-    items = db.query(MenuItem).filter(MenuItem.available == True).all()
+    items = db.query(MenuItem).filter(MenuItem.available == True, MenuItem.not_deleted()).all()
     categories_dict: dict = {}
     for item in items:
         cat = item.category or "Other"
@@ -438,12 +438,12 @@ def update_menu_item(db: DbSession, item_id: int, item: MenuItemUpdate):
 
 @router.delete("/menu/items/{item_id}")
 def delete_menu_item(db: DbSession, item_id: int):
-    """Delete a menu item."""
-    db_item = db.query(MenuItem).filter(MenuItem.id == item_id).first()
+    """Soft-delete a menu item."""
+    db_item = db.query(MenuItem).filter(MenuItem.id == item_id, MenuItem.not_deleted()).first()
     if not db_item:
         raise HTTPException(status_code=404, detail="Menu item not found")
 
-    db.delete(db_item)
+    db_item.soft_delete()
     db.commit()
     return {"status": "deleted", "item_id": item_id}
 
@@ -491,7 +491,7 @@ def delete_category(db: DbSession, name: str, delete_items: bool = False):
 
     if delete_items:
         for item in items:
-            db.delete(item)
+            item.soft_delete()
         db.commit()
         return {"status": "deleted", "category": name, "items_deleted": len(items)}
     else:
@@ -1249,7 +1249,7 @@ def get_guest_order_stats(db: DbSession):
 @router.get("/menu-admin/items")
 def admin_list_menu_items(db: DbSession, category: Optional[str] = None):
     """List menu items for admin panel."""
-    query = db.query(MenuItem)
+    query = db.query(MenuItem).filter(MenuItem.not_deleted())
     if category:
         query = query.filter(MenuItem.category == category)
 
@@ -1263,7 +1263,7 @@ def admin_list_menu_items(db: DbSession, category: Optional[str] = None):
 @router.get("/menu-admin/items/{item_id}")
 def admin_get_menu_item(db: DbSession, item_id: int):
     """Get a single menu item by ID."""
-    item = db.query(MenuItem).filter(MenuItem.id == item_id).first()
+    item = db.query(MenuItem).filter(MenuItem.id == item_id, MenuItem.not_deleted()).first()
     if not item:
         raise HTTPException(status_code=404, detail="Item not found")
     return _menu_item_to_admin_dict(item, db)
@@ -1696,11 +1696,11 @@ def admin_update_menu_item(db: DbSession, item_id: int, data: dict = Body(...)):
 
 @router.delete("/menu-admin/items/{item_id}")
 def admin_delete_menu_item(db: DbSession, item_id: int):
-    """Delete a menu item."""
-    item = db.query(MenuItem).filter(MenuItem.id == item_id).first()
+    """Soft-delete a menu item."""
+    item = db.query(MenuItem).filter(MenuItem.id == item_id, MenuItem.not_deleted()).first()
     if not item:
         raise HTTPException(status_code=404, detail="Item not found")
-    db.delete(item)
+    item.soft_delete()
     db.commit()
     return {"success": True}
 

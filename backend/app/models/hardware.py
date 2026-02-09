@@ -5,7 +5,10 @@ from datetime import datetime
 from typing import Optional
 from sqlalchemy import Boolean, String, Integer, Float, DateTime, Text, JSON
 from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import validates
+
 from app.db.base import Base, TimestampMixin
+from app.models.validators import validate_list_of_dicts
 
 
 class Keg(Base, TimestampMixin):
@@ -93,6 +96,10 @@ class BarTab(Base, TimestampMixin):
     total: Mapped[float] = mapped_column(Float, default=0, nullable=False)
     closed_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
     location_id: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+
+    @validates('items')
+    def _validate_items(self, key, value):
+        return validate_list_of_dicts(key, value)
 
 
 class WaiterCall(Base, TimestampMixin):

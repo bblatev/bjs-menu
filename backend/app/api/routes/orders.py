@@ -105,7 +105,7 @@ def get_order_suggestions(
 @router.get("/stats")
 def get_order_stats_summary(db: DbSession):
     """Get order statistics."""
-    total = db.query(PurchaseOrder).count()
+    total = db.query(PurchaseOrder).filter(PurchaseOrder.not_deleted()).count()
     return {"total_orders": total, "pending": 0, "in_progress": 0, "completed": 0, "total_revenue": 0}
 
 
@@ -117,7 +117,7 @@ def list_orders(
     status_filter: Optional[POStatus] = Query(None, alias="status"),
 ):
     """List purchase orders with optional filters."""
-    query = db.query(PurchaseOrder)
+    query = db.query(PurchaseOrder).filter(PurchaseOrder.not_deleted())
     if supplier_id:
         query = query.filter(PurchaseOrder.supplier_id == supplier_id)
     if status_filter:
@@ -128,7 +128,7 @@ def list_orders(
 @router.get("/{order_id}", response_model=PurchaseOrderResponse)
 def get_order(order_id: int, db: DbSession, current_user: CurrentUser):
     """Get a specific purchase order."""
-    order = db.query(PurchaseOrder).filter(PurchaseOrder.id == order_id).first()
+    order = db.query(PurchaseOrder).filter(PurchaseOrder.id == order_id, PurchaseOrder.not_deleted()).first()
     if not order:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Order not found")
     return order

@@ -10,7 +10,7 @@ from typing import Optional, List
 from sqlalchemy import DateTime, ForeignKey, Integer, Numeric, String, UniqueConstraint, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship, validates
 
-from app.db.base import Base
+from app.db.base import Base, VersionMixin
 from app.models.validators import non_negative
 
 
@@ -29,7 +29,7 @@ class MovementReason(str, Enum):
     RESERVATION_RELEASE = "reservation_release"  # Reserved stock released (order cancelled/fulfilled)
 
 
-class StockOnHand(Base):
+class StockOnHand(Base, VersionMixin):
     """Current stock level per product per location."""
 
     __tablename__ = "stock_on_hand"

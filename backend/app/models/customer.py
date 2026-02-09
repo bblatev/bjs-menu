@@ -5,11 +5,11 @@ from datetime import datetime
 from typing import Optional
 from sqlalchemy import Boolean, String, Integer, Float, DateTime, Text, JSON
 from sqlalchemy.orm import Mapped, mapped_column, validates
-from app.db.base import Base, TimestampMixin
+from app.db.base import Base, TimestampMixin, SoftDeleteMixin
 from app.models.validators import non_negative
 
 
-class Customer(Base, TimestampMixin):
+class Customer(Base, TimestampMixin, SoftDeleteMixin):
     """Customer model for CRM."""
 
     __tablename__ = "customers"

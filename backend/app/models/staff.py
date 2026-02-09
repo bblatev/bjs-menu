@@ -8,7 +8,7 @@ from enum import Enum
 from sqlalchemy import Boolean, String, Integer, Float, Date, Time, DateTime, Text, ForeignKey, JSON
 from sqlalchemy.orm import Mapped, mapped_column, relationship, validates
 
-from app.db.base import Base, TimestampMixin
+from app.db.base import Base, TimestampMixin, SoftDeleteMixin
 from app.models.validators import non_negative, positive, percentage
 
 
@@ -76,7 +76,7 @@ class TipPoolStatus(str, Enum):
     PAID = "paid"
 
 
-class StaffUser(Base, TimestampMixin):
+class StaffUser(Base, TimestampMixin, SoftDeleteMixin):
     """Staff member model."""
 
     __tablename__ = "staff_users"

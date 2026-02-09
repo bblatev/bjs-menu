@@ -11,9 +11,10 @@ from sqlalchemy import (
     Boolean, ForeignKey, Integer, Numeric, String, Text, DateTime, Date, Time,
     JSON, Float, Enum as SQLEnum
 )
-from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy.orm import Mapped, mapped_column, relationship, validates
 
-from app.db.base import Base, TimestampMixin
+from app.db.base import Base, TimestampMixin, VersionMixin
+from app.models.validators import validate_list
 
 
 # ============================================================================
@@ -513,7 +514,7 @@ class GiftCardProgram(Base, TimestampMixin):
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
 
 
-class GiftCard(Base, TimestampMixin):
+class GiftCard(Base, TimestampMixin, VersionMixin):
     """Individual gift card."""
 
     __tablename__ = "gift_cards"
@@ -1412,3 +1413,7 @@ class HappyHour(Base, TimestampMixin):
     # Analytics
     times_used: Mapped[int] = mapped_column(Integer, default=0)
     total_discount_given: Mapped[Decimal] = mapped_column(Numeric(12, 2), default=0)
+
+    @validates('days', 'category_ids', 'item_ids')
+    def _validate_list_fields(self, key, value):
+        return validate_list(key, value)

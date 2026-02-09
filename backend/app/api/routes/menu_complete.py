@@ -151,7 +151,7 @@ class DigitalBoard(BaseModel):
     is_active: bool = True
 
 
-class ModifierGroup(BaseModel):
+class ModifierGroupSchema(BaseModel):
     id: Optional[int] = None
     name: MultiLang
     required: bool = False
@@ -160,7 +160,7 @@ class ModifierGroup(BaseModel):
     is_active: bool = True
 
 
-class ModifierOption(BaseModel):
+class ModifierOptionSchema(BaseModel):
     id: Optional[int] = None
     group_id: int
     name: MultiLang
@@ -168,36 +168,86 @@ class ModifierOption(BaseModel):
     is_active: bool = True
 
 
-# ============ MODIFIER GROUPS ============
+# ============ MODIFIER GROUPS (DB-backed) ============
 
 @router.get("/modifier-groups")
 def get_modifier_groups(db: DbSession):
-    return _load(db, STORE_MOD_GROUPS)
+    """List all modifier groups from the database."""
+    from app.models.restaurant import ModifierGroup as ModifierGroupModel
+    groups = db.query(ModifierGroupModel).filter(ModifierGroupModel.active == True).order_by(ModifierGroupModel.sort_order).all()
+    return [
+        {
+            "id": g.id,
+            "name": {"bg": g.name, "en": g.name},
+            "required": g.min_selections > 0,
+            "min_selections": g.min_selections,
+            "max_selections": g.max_selections,
+            "is_active": g.active,
+        }
+        for g in groups
+    ]
 
 
 @router.post("/modifier-groups")
-def create_modifier_group(item: ModifierGroup, db: DbSession):
-    items = _load(db, STORE_MOD_GROUPS)
-    nid = _next_id(db, STORE_MOD_GROUPS)
-    item.id = nid
-    items.append(item.model_dump())
-    _save(db, STORE_MOD_GROUPS, items, "Modifier Groups")
-    return item
+def create_modifier_group(item: ModifierGroupSchema, db: DbSession):
+    """Create a modifier group in the database."""
+    from app.models.restaurant import ModifierGroup as ModifierGroupModel
+    group = ModifierGroupModel(
+        name=item.name.en or item.name.bg,
+        min_selections=item.min_selections,
+        max_selections=item.max_selections,
+        active=item.is_active,
+    )
+    db.add(group)
+    db.commit()
+    db.refresh(group)
+    return {
+        "id": group.id,
+        "name": item.name.model_dump(),
+        "required": item.required,
+        "min_selections": group.min_selections,
+        "max_selections": group.max_selections,
+        "is_active": group.active,
+    }
 
 
 @router.get("/modifier-options")
 def get_modifier_options(db: DbSession):
-    return _load(db, STORE_MOD_OPTIONS)
+    """List all modifier options from the database."""
+    from app.models.restaurant import ModifierOption as ModifierOptionModel
+    options = db.query(ModifierOptionModel).filter(ModifierOptionModel.available == True).order_by(ModifierOptionModel.sort_order).all()
+    return [
+        {
+            "id": o.id,
+            "group_id": o.group_id,
+            "name": {"bg": o.name, "en": o.name},
+            "price": float(o.price_adjustment),
+            "is_active": o.available,
+        }
+        for o in options
+    ]
 
 
 @router.post("/modifier-options")
-def create_modifier_option(item: ModifierOption, db: DbSession):
-    items = _load(db, STORE_MOD_OPTIONS)
-    nid = _next_id(db, STORE_MOD_OPTIONS)
-    item.id = nid
-    items.append(item.model_dump())
-    _save(db, STORE_MOD_OPTIONS, items, "Modifier Options")
-    return item
+def create_modifier_option(item: ModifierOptionSchema, db: DbSession):
+    """Create a modifier option in the database."""
+    from app.models.restaurant import ModifierOption as ModifierOptionModel
+    option = ModifierOptionModel(
+        group_id=item.group_id,
+        name=item.name.en or item.name.bg,
+        price_adjustment=item.price,
+        available=item.is_active,
+    )
+    db.add(option)
+    db.commit()
+    db.refresh(option)
+    return {
+        "id": option.id,
+        "group_id": option.group_id,
+        "name": item.name.model_dump(),
+        "price": float(option.price_adjustment),
+        "is_active": option.available,
+    }
 
 
 # ============ ITEMS ============
