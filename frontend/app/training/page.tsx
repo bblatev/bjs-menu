@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { API_URL } from '@/lib/api';
 
 interface TrainingSession {
   sessionId: string;
@@ -34,8 +35,6 @@ interface SessionStats {
   durationMinutes: number;
   orders: TrainingOrder[];
 }
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1';
 
 export default function TrainingModePage() {
   const [isTrainingActive, setIsTrainingActive] = useState(false);

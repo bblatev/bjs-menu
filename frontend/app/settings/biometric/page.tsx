@@ -57,6 +57,8 @@ interface AccessStats {
   by_auth_method: Record<string, number>;
 }
 
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || "/api/v1";
+
 export default function BiometricSettingsPage() {
   const [activeTab, setActiveTab] = useState<"device" | "enroll" | "logs" | "schedule">("device");
   const [deviceStatus, setDeviceStatus] = useState<DeviceStatus | null>(null);
@@ -74,7 +76,7 @@ export default function BiometricSettingsPage() {
   // Fetch device status
   const fetchDeviceStatus = async () => {
     try {
-      const res = await fetch("/api/biometric/device/status");
+      const res = await fetch(`${API_BASE}/biometric/device/status`);
       if (res.ok) {
         const data = await res.json();
         setDeviceStatus(data);
@@ -87,7 +89,7 @@ export default function BiometricSettingsPage() {
   // Fetch device types
   const fetchDeviceTypes = async () => {
     try {
-      const res = await fetch("/api/biometric/device/types");
+      const res = await fetch(`${API_BASE}/biometric/device/types`);
       if (res.ok) {
         const data = await res.json();
         setDeviceTypes(data.device_types || []);
@@ -100,7 +102,7 @@ export default function BiometricSettingsPage() {
   // Fetch access log
   const fetchAccessLog = async () => {
     try {
-      const res = await fetch("/api/biometric/access-log?limit=50");
+      const res = await fetch(`${API_BASE}/biometric/access-log?limit=50`);
       if (res.ok) {
         const data = await res.json();
         setAccessLog(data.entries || []);
@@ -113,7 +115,7 @@ export default function BiometricSettingsPage() {
   // Fetch access stats
   const fetchAccessStats = async () => {
     try {
-      const res = await fetch("/api/biometric/access-log/stats?days=7");
+      const res = await fetch(`${API_BASE}/biometric/access-log/stats?days=7`);
       if (res.ok) {
         const data = await res.json();
         setAccessStats(data);
@@ -127,7 +129,7 @@ export default function BiometricSettingsPage() {
   const configureDevice = async () => {
     setLoading(true);
     try {
-      const res = await fetch("/api/biometric/device/configure", {
+      const res = await fetch(`${API_BASE}/biometric/device/configure`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ device_type: selectedDeviceType }),
@@ -150,7 +152,7 @@ export default function BiometricSettingsPage() {
     if (!staffId) return;
     setLoading(true);
     try {
-      const res = await fetch(`/api/biometric/staff/${staffId}/credentials`);
+      const res = await fetch(`${API_BASE}/biometric/staff/${staffId}/credentials`);
       if (res.ok) {
         const data = await res.json();
         setStaffCredentials(data);
@@ -169,7 +171,7 @@ export default function BiometricSettingsPage() {
     if (!staffId) return;
     setLoading(true);
     try {
-      const res = await fetch("/api/biometric/fingerprint/enroll", {
+      const res = await fetch(`${API_BASE}/biometric/fingerprint/enroll`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -195,7 +197,7 @@ export default function BiometricSettingsPage() {
     if (!staffId || !cardNumber) return;
     setLoading(true);
     try {
-      const res = await fetch("/api/biometric/card/register", {
+      const res = await fetch(`${API_BASE}/biometric/card/register`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -224,8 +226,8 @@ export default function BiometricSettingsPage() {
     setLoading(true);
     try {
       const endpoint = type === "fingerprint"
-        ? `/api/biometric/fingerprint/${credentialId}`
-        : `/api/biometric/card/${credentialId}`;
+        ? `${API_BASE}/biometric/fingerprint/${credentialId}`
+        : `${API_BASE}/biometric/card/${credentialId}`;
       const res = await fetch(endpoint, { method: "DELETE" });
       if (res.ok) {
         setMessage({ type: "success", text: "Идентификаторът е деактивиран / Credential revoked" });

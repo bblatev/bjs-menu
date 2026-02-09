@@ -121,7 +121,8 @@ def table_to_response(table: Table, db: DbSession) -> dict:
 
     time_seated = None
     if active_check and active_check.opened_at:
-        time_seated = int((datetime.now(timezone.utc) - active_check.opened_at).total_seconds() / 60)
+        opened = active_check.opened_at.replace(tzinfo=timezone.utc) if active_check.opened_at.tzinfo is None else active_check.opened_at
+        time_seated = int((datetime.now(timezone.utc) - opened).total_seconds() / 60)
 
     return {
         "table_id": table.id,

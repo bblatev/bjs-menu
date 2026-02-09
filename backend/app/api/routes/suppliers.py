@@ -188,10 +188,17 @@ def create_price_list(db: DbSession, data: dict = Body(...)):
     """Create a price list."""
     from app.models.price_lists import PriceList
     name = data.get("name", "")
+    if not name:
+        raise HTTPException(status_code=422, detail="name is required")
     code = name.lower().replace(" ", "_").replace("-", "_")
     existing = db.query(PriceList).filter(PriceList.code == code).first()
     if existing:
         code = f"{code}_{data.get('supplier_id', 0)}"
+    # Still check uniqueness after adding supplier_id suffix
+    existing2 = db.query(PriceList).filter(PriceList.code == code).first()
+    if existing2:
+        import time
+        code = f"{code}_{int(time.time())}"
     pl = PriceList(name=name, code=code)
     db.add(pl)
     db.commit()

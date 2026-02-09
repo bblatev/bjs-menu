@@ -121,11 +121,12 @@ def get_shift(shift_id: str, db: DbSession):
 @router.post("/shifts")
 def create_shift(shift: Shift, db: DbSession):
     """Create a new shift."""
+    shift_date = date_type.fromisoformat(shift.date) if isinstance(shift.date, str) else shift.date
     row = ShiftSchedule(
         staff_id=int(shift.staff_id),
         staff_name=shift.staff_name,
         role=shift.role,
-        date=shift.date,
+        date=shift_date,
         start_time=shift.start_time,
         end_time=shift.end_time,
         break_minutes=shift.break_minutes,
@@ -148,7 +149,7 @@ def update_shift(shift_id: str, shift: Shift, db: DbSession):
     row.staff_id = int(shift.staff_id)
     row.staff_name = shift.staff_name
     row.role = shift.role
-    row.date = shift.date
+    row.date = date_type.fromisoformat(shift.date) if isinstance(shift.date, str) else shift.date
     row.start_time = shift.start_time
     row.end_time = shift.end_time
     row.break_minutes = shift.break_minutes

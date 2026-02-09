@@ -60,7 +60,7 @@ interface TransactionReport {
   waiter_breakdown: WaiterSales[];
 }
 
-const API = () => typeof window !== 'undefined' ? `http://${window.location.hostname}:8000/api/v1` : '';
+const API = () => process.env.NEXT_PUBLIC_API_URL || '/api/v1';
 
 export default function TransactionsReportPage() {
   const [loading, setLoading] = useState(true);

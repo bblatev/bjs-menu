@@ -11,6 +11,13 @@ from app.models.restaurant import KitchenOrder, GuestOrder, MenuItem, Table, Che
 router = APIRouter()
 
 
+def _utc_aware(dt):
+    """Make a datetime UTC-aware if it's naive (SQLite returns naive datetimes)."""
+    if dt is None:
+        return None
+    return dt.replace(tzinfo=timezone.utc) if dt.tzinfo is None else dt
+
+
 def _sync_guest_order_status(db: DbSession, kitchen_order: KitchenOrder, new_status: str):
     """
     Sync the guest order status when kitchen order status changes.
@@ -166,7 +173,7 @@ def get_kitchen_queue(
     for o in orders:
         wait_time = 0
         if o.created_at:
-            wait_time = int((datetime.now(timezone.utc) - o.created_at).total_seconds() / 60)
+            wait_time = int((datetime.now(timezone.utc) - _utc_aware(o.created_at)).total_seconds() / 60)
 
         queue_orders.append({
             "id": o.id,
@@ -213,7 +220,7 @@ def get_kitchen_tickets(
     for ko in db_orders:
         wait_time = 0
         if ko.created_at:
-            wait_time = int((datetime.now(timezone.utc) - ko.created_at).total_seconds() / 60)
+            wait_time = int((datetime.now(timezone.utc) - _utc_aware(ko.created_at)).total_seconds() / 60)
 
         kds_items = []
         if ko.items:
@@ -560,7 +567,7 @@ def get_all_alerts(
     target_time = 15  # 15 minute target
     for ko in query.all():
         if ko.created_at:
-            wait_time = int((datetime.now(timezone.utc) - ko.created_at).total_seconds() / 60)
+            wait_time = int((datetime.now(timezone.utc) - _utc_aware(ko.created_at)).total_seconds() / 60)
             if wait_time > target_time:
                 alerts.append({
                     "id": ko.id,
@@ -637,7 +644,7 @@ def get_cook_time_alerts(
 
     for ko in query.all():
         if ko.created_at:
-            wait_time = int((datetime.now(timezone.utc) - ko.created_at).total_seconds() / 60)
+            wait_time = int((datetime.now(timezone.utc) - _utc_aware(ko.created_at)).total_seconds() / 60)
             if wait_time > target_time * 0.8:  # Alert at 80% of target
                 alerts.append({
                     "ticket_id": f"db-{ko.id}",
@@ -913,7 +920,7 @@ def get_pending_requests(
                 "priority": r.priority,
                 "station": r.station,
                 "created_at": r.created_at.isoformat() if r.created_at else None,
-                "wait_time_minutes": int((datetime.now(timezone.utc) - r.created_at).total_seconds() / 60) if r.created_at else 0,
+                "wait_time_minutes": int((datetime.now(timezone.utc) - _utc_aware(r.created_at)).total_seconds() / 60) if r.created_at else 0,
             }
             for r in requests
         ],

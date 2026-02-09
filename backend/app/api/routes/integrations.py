@@ -56,7 +56,11 @@ async def get_integrations(db: DbSession):
 async def connect_integration(integration_id: str, config: dict, db: DbSession):
     """Connect an integration."""
     from datetime import datetime, timezone
-    integration = db.query(IntegrationModel).filter(IntegrationModel.id == int(integration_id)).first()
+    try:
+        iid = int(integration_id)
+    except (ValueError, TypeError):
+        raise HTTPException(status_code=404, detail="Integration not found")
+    integration = db.query(IntegrationModel).filter(IntegrationModel.id == iid).first()
     if not integration:
         raise HTTPException(status_code=404, detail="Integration not found")
     integration.status = "connected"
@@ -69,7 +73,11 @@ async def connect_integration(integration_id: str, config: dict, db: DbSession):
 @router.post("/{integration_id}/disconnect")
 async def disconnect_integration(integration_id: str, db: DbSession):
     """Disconnect an integration."""
-    integration = db.query(IntegrationModel).filter(IntegrationModel.id == int(integration_id)).first()
+    try:
+        iid = int(integration_id)
+    except (ValueError, TypeError):
+        raise HTTPException(status_code=404, detail="Integration not found")
+    integration = db.query(IntegrationModel).filter(IntegrationModel.id == iid).first()
     if not integration:
         raise HTTPException(status_code=404, detail="Integration not found")
     integration.status = "disconnected"
@@ -81,7 +89,11 @@ async def disconnect_integration(integration_id: str, db: DbSession):
 async def sync_integration(integration_id: str, db: DbSession):
     """Trigger a sync for an integration."""
     from datetime import datetime, timezone
-    integration = db.query(IntegrationModel).filter(IntegrationModel.id == int(integration_id)).first()
+    try:
+        iid = int(integration_id)
+    except (ValueError, TypeError):
+        raise HTTPException(status_code=404, detail="Integration not found")
+    integration = db.query(IntegrationModel).filter(IntegrationModel.id == iid).first()
     if not integration:
         raise HTTPException(status_code=404, detail="Integration not found")
     integration.connected_at = datetime.now(timezone.utc)

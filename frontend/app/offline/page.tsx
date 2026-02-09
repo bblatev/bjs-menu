@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import axios from 'axios';
+import { API_URL } from '@/lib/api';
 
 interface OfflineStatus {
   is_online: boolean;
@@ -33,7 +34,7 @@ export default function OfflinePOSPage() {
 
   const fetchStatus = async () => {
     try {
-      const response = await axios.get('/api/v1/enterprise/offline/connectivity');
+      const response = await axios.get(`${API_URL}/enterprise/offline/connectivity`);
       setStatus(response.data);
     } catch (error) {
       console.error('Failed to fetch offline status:', error);
@@ -42,7 +43,7 @@ export default function OfflinePOSPage() {
 
   const fetchPendingOrders = async () => {
     try {
-      const response = await axios.get('/api/v1/enterprise/offline/sync-queue');
+      const response = await axios.get(`${API_URL}/enterprise/offline/sync-queue`);
       setPendingOrders(response.data.orders || []);
     } catch (error) {
       console.error('Failed to fetch pending orders:', error);
@@ -52,7 +53,7 @@ export default function OfflinePOSPage() {
   const handleSync = async () => {
     setSyncing(true);
     try {
-      await axios.post('/api/v1/enterprise/offline/sync');
+      await axios.post(`${API_URL}/enterprise/offline/sync`);
       await fetchStatus();
       await fetchPendingOrders();
     } catch (error) {

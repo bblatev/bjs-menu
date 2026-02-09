@@ -853,8 +853,11 @@ def create_inventory_snapshot(
     )
     db.commit()
 
-    # Get the ID
-    result = db.execute(text("SELECT lastval()")).scalar()
+    # Get the ID (use last_insert_rowid for SQLite, lastval for PostgreSQL)
+    try:
+        result = db.execute(text("SELECT last_insert_rowid()")).scalar()
+    except Exception:
+        result = db.execute(text("SELECT lastval()")).scalar()
 
     return SnapshotResponse(
         id=result,
@@ -882,7 +885,7 @@ def list_snapshots(
     return [
         SnapshotResponse(
             id=r.id, location_id=r.location_id, name=r.name,
-            created_at=r.created_at.isoformat() if r.created_at else "",
+            created_at=str(r.created_at) if r.created_at else "",
             total_items=r.total_items or 0,
             total_value=float(r.total_value or 0),
             notes=r.notes,
@@ -960,7 +963,12 @@ def compare_snapshots(
                 "value_diff": round(b["value"] - a["value"], 2),
             })
 
-    period_days = abs((row_b.created_at - row_a.created_at).days) if row_a.created_at and row_b.created_at else 0
+    if row_a.created_at and row_b.created_at:
+        _a_dt = row_a.created_at.replace(tzinfo=timezone.utc) if row_a.created_at.tzinfo is None else row_a.created_at
+        _b_dt = row_b.created_at.replace(tzinfo=timezone.utc) if row_b.created_at.tzinfo is None else row_b.created_at
+        period_days = abs((_b_dt - _a_dt).days)
+    else:
+        period_days = 0
     val_change = total_val_b - total_val_a
     val_change_pct = ((val_change / total_val_a) * 100) if total_val_a > 0 else 0
 

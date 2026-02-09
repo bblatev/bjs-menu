@@ -268,9 +268,12 @@ class TrainingModeService:
 
         duration = None
         if session.ended_at:
-            duration = (session.ended_at - session.started_at).total_seconds() / 60
+            ended = session.ended_at.replace(tzinfo=timezone.utc) if session.ended_at.tzinfo is None else session.ended_at
+            started = session.started_at.replace(tzinfo=timezone.utc) if session.started_at.tzinfo is None else session.started_at
+            duration = (ended - started).total_seconds() / 60
         elif session.started_at:
-            duration = (datetime.now(timezone.utc) - session.started_at).total_seconds() / 60
+            started = session.started_at.replace(tzinfo=timezone.utc) if session.started_at.tzinfo is None else session.started_at
+            duration = (datetime.now(timezone.utc) - started).total_seconds() / 60
 
         return {
             "session_id": session_id,

@@ -1,6 +1,6 @@
 """Feedback and reviews API routes."""
 
-from datetime import datetime, date
+from datetime import datetime, date, timezone
 from typing import List, Optional
 
 from fastapi import APIRouter, HTTPException, Query, status
@@ -240,7 +240,9 @@ async def get_feedback_stats(db: DbSession, period: str = Query("month")):
     response_times = []
     for r in responded:
         if r.responded_at and r.created_at:
-            delta = (r.responded_at - r.created_at).total_seconds() / 3600.0
+            responded_at = r.responded_at.replace(tzinfo=timezone.utc) if r.responded_at.tzinfo is None else r.responded_at
+            created_at = r.created_at.replace(tzinfo=timezone.utc) if r.created_at.tzinfo is None else r.created_at
+            delta = (responded_at - created_at).total_seconds() / 3600.0
             response_times.append(delta)
     avg_response_time = round(sum(response_times) / len(response_times), 1) if response_times else 0.0
 

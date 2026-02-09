@@ -663,7 +663,8 @@ class WaitlistService:
 
         # Calculate actual wait time
         if entry.added_at:
-            wait_delta = datetime.now(timezone.utc) - entry.added_at
+            added = entry.added_at.replace(tzinfo=timezone.utc) if entry.added_at.tzinfo is None else entry.added_at
+            wait_delta = datetime.now(timezone.utc) - added
             entry.actual_wait_minutes = int(wait_delta.total_seconds() / 60)
 
         # Update positions for remaining entries
@@ -691,7 +692,8 @@ class WaitlistService:
 
         # Calculate actual wait time
         if entry.added_at:
-            wait_delta = datetime.now(timezone.utc) - entry.added_at
+            added = entry.added_at.replace(tzinfo=timezone.utc) if entry.added_at.tzinfo is None else entry.added_at
+            wait_delta = datetime.now(timezone.utc) - added
             entry.actual_wait_minutes = int(wait_delta.total_seconds() / 60)
 
         # Update positions for remaining entries
@@ -772,7 +774,8 @@ class WaitlistService:
         longest_entry = min(entries, key=lambda x: x.added_at) if entries else None
         longest_wait = 0
         if longest_entry and longest_entry.added_at:
-            longest_wait = int((datetime.now(timezone.utc) - longest_entry.added_at).total_seconds() / 60)
+            added_at = longest_entry.added_at.replace(tzinfo=timezone.utc) if longest_entry.added_at.tzinfo is None else longest_entry.added_at
+            longest_wait = int((datetime.now(timezone.utc) - added_at).total_seconds() / 60)
 
         return {
             "total_waiting": total_waiting,

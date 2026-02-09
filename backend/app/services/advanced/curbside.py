@@ -142,7 +142,7 @@ class CurbsideService:
         avg_wait = None
         if arrived:
             total_wait = sum(
-                (datetime.now(timezone.utc) - o.customer_arrived_at).total_seconds() / 60
+                (datetime.now(timezone.utc) - (o.customer_arrived_at.replace(tzinfo=timezone.utc) if o.customer_arrived_at.tzinfo is None else o.customer_arrived_at)).total_seconds() / 60
                 for o in arrived
             )
             avg_wait = total_wait / len(arrived)
@@ -160,7 +160,7 @@ class CurbsideService:
                     "vehicle_color": o.vehicle_color,
                     "parking_spot": o.parking_spot,
                     "arrived_at": o.customer_arrived_at.isoformat() if o.customer_arrived_at else None,
-                    "wait_minutes": int((datetime.now(timezone.utc) - o.customer_arrived_at).total_seconds() / 60)
+                    "wait_minutes": int((datetime.now(timezone.utc) - (o.customer_arrived_at.replace(tzinfo=timezone.utc) if o.customer_arrived_at.tzinfo is None else o.customer_arrived_at)).total_seconds() / 60)
                         if o.customer_arrived_at else None,
                 }
                 for o in arrived

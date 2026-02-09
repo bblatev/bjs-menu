@@ -170,7 +170,7 @@ def get_waitlist_stats(
         waits = []
         for e in waiting_entries:
             if e.added_at:
-                added = e.added_at if e.added_at.tzinfo else e.added_at.replace(tzinfo=timezone.utc)
+                added = e.added_at.replace(tzinfo=timezone.utc) if e.added_at.tzinfo is None else e.added_at
                 waits.append((now - added).total_seconds() / 60)
         longest_wait = max(waits) if waits else 0
 
