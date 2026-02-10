@@ -237,6 +237,7 @@ class AuthEnforcementMiddleware(BaseHTTPMiddleware):
                 "/api/v1/tables",
                 "/api/v1/reservations/availability",
                 "/api/v1/locations",
+                "/api/v1/orders/table/",
             ]
             for prefix in public_get_prefixes:
                 if path.startswith(prefix):
@@ -269,6 +270,8 @@ class AuthEnforcementMiddleware(BaseHTTPMiddleware):
             "/api/v1/auth/register",
             "/api/v1/orders/guest",
             "/api/v1/guest-orders/create",
+            "/api/v1/orders/table/",
+            "/api/v1/waiter/calls",
         ]
         for pub_path in public_write_paths:
             if path.startswith(pub_path):

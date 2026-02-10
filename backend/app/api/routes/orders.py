@@ -125,6 +125,29 @@ def list_orders(
     return query.order_by(PurchaseOrder.created_at.desc()).all()
 
 
+# Guest table ordering routes - must be defined BEFORE /{order_id} catch-all
+# to prevent the path parameter from intercepting /table/{token} requests
+@router.get("/table/{token}")
+def get_table_orders_proxy(token: str, db: DbSession, status_filter: Optional[str] = Query(None, alias="status"), limit: int = 20):
+    """Proxy to guest orders - get orders for a table (no auth required)."""
+    from app.api.routes.guest_orders import get_table_orders
+    return get_table_orders(db=db, token=token, status=status_filter, limit=limit)
+
+
+@router.get("/table/{token}/payment-summary")
+def get_table_payment_summary_proxy(token: str, db: DbSession):
+    """Proxy to guest orders - get payment summary (no auth required)."""
+    from app.api.routes.guest_orders import get_table_payment_summary
+    return get_table_payment_summary(db=db, token=token)
+
+
+@router.post("/table/{token}/pay-all")
+def pay_all_table_orders_proxy(token: str, db: DbSession, payment_method: str = Query("card"), tip_percent: Optional[int] = Query(None), tip_amount: Optional[float] = Query(None)):
+    """Proxy to guest orders - pay all table orders (no auth required)."""
+    from app.api.routes.guest_orders import pay_all_table_orders
+    return pay_all_table_orders(db=db, token=token, payment_method=payment_method, tip_percent=tip_percent, tip_amount=tip_amount)
+
+
 @router.get("/{order_id}", response_model=PurchaseOrderResponse)
 def get_order(order_id: int, db: DbSession, current_user: CurrentUser):
     """Get a specific purchase order."""
