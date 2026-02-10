@@ -1,6 +1,6 @@
 """VIP customer management API routes."""
 
-from datetime import date, datetime
+from datetime import date, datetime, timezone
 from typing import List, Optional
 
 from fastapi import APIRouter, HTTPException
@@ -225,7 +225,7 @@ async def update_vip_settings(settings: VIPSettings, db: DbSession):
     settings_dict = settings.model_dump()
     if existing:
         existing.value = settings_dict
-        existing.updated_at = datetime.utcnow()
+        existing.updated_at = datetime.now(timezone.utc)
     else:
         new_setting = AppSetting(
             category="vip",

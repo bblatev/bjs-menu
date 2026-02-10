@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from decimal import Decimal
-from datetime import datetime, date, time
+from datetime import datetime, date, time, timezone
 from typing import Optional, List, Dict, Any
 from enum import Enum
 
@@ -61,7 +61,7 @@ class WasteTrackingEntry(Base, TimestampMixin):
     shift: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
     reason: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     recorded_by_id: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
-    recorded_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    recorded_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc))
 
 
 class WasteForecast(Base, TimestampMixin):
@@ -225,13 +225,13 @@ class GuestWifiSession(Base, TimestampMixin):
     consent_timestamp: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
 
     # Session tracking
-    connected_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    connected_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc))
     disconnected_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
     session_duration_minutes: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
 
     # Visit tracking
     visit_count: Mapped[int] = mapped_column(Integer, default=1)
-    last_visit: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    last_visit: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc))
 
 
 # ============================================================================
@@ -431,7 +431,7 @@ class DeliveryDispatch(Base, TimestampMixin):
     # {"doordash": {"fee": 5.99, "eta": 25}, "uber": {"fee": 6.49, "eta": 20}}
 
     # Tracking
-    dispatched_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    dispatched_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc))
     driver_assigned_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
     picked_up_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
     delivered_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
@@ -674,7 +674,7 @@ class CrossSellImpression(Base, TimestampMixin):
     rule_id: Mapped[int] = mapped_column(ForeignKey("cross_sell_rules.id"), nullable=False)
     order_id: Mapped[int] = mapped_column(Integer, nullable=False)
 
-    shown_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    shown_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc))
     converted: Mapped[bool] = mapped_column(Boolean, default=False)
     converted_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
 
@@ -717,7 +717,7 @@ class CustomerJourneyEvent(Base, TimestampMixin):
     device_type: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
     browser: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
 
-    timestamp: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    timestamp: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc))
 
 
 class CustomerJourneyFunnel(Base, TimestampMixin):
@@ -926,7 +926,7 @@ class StationLoadMetric(Base, TimestampMixin):
     id: Mapped[int] = mapped_column(primary_key=True)
     station_id: Mapped[int] = mapped_column(ForeignKey("kitchen_stations.id"), nullable=False)
 
-    timestamp: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    timestamp: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc))
 
     # Current load
     items_in_queue: Mapped[int] = mapped_column(Integer, default=0)
@@ -966,7 +966,7 @@ class WaitTimePrediction(Base, TimestampMixin):
     actual_wait_minutes: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
     prediction_error: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
 
-    predicted_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    predicted_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc))
     order_completed_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
 
 
@@ -1134,7 +1134,7 @@ class SensorReading(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     sensor_id: Mapped[int] = mapped_column(ForeignKey("equipment_sensors.id"), nullable=False, index=True)
 
-    timestamp: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, index=True)
+    timestamp: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc), index=True)
     value: Mapped[float] = mapped_column(Float, nullable=False)
     unit: Mapped[str] = mapped_column(String(20), nullable=False)
 

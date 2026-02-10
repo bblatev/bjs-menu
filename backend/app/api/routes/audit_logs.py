@@ -1,6 +1,6 @@
 """Audit logs API routes."""
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import List, Optional
 
 from fastapi import APIRouter, Query
@@ -87,7 +87,7 @@ async def get_audit_summary(db: DbSession, period: str = Query("today")):
     """Get audit summary for a period."""
     base_query = db.query(AuditLogEntry)
 
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
     start = None
     if period == "today":
         start = now.replace(hour=0, minute=0, second=0, microsecond=0)

@@ -61,7 +61,9 @@ export default function DriveThruPage() {
   // Fetch lanes configuration
   const fetchLanes = useCallback(async () => {
     try {
-      const response = await fetch(`${API_URL}/v6/${getVenueId()}/drive-thru/lanes`);
+      const response = await fetch(`${API_URL}/v6/${getVenueId()}/drive-thru/lanes`, {
+        headers: getAuthHeaders(),
+      });
       if (response.ok) {
         const data = await response.json();
         const lanesData = (data.lanes || []).map((l: any) => ({
@@ -93,7 +95,9 @@ export default function DriveThruPage() {
   // Fetch active vehicles in queue
   const fetchVehicles = useCallback(async () => {
     try {
-      const response = await fetch(`${API_URL}/v6/${getVenueId()}/drive-thru/vehicles`);
+      const response = await fetch(`${API_URL}/v6/${getVenueId()}/drive-thru/vehicles`, {
+        headers: getAuthHeaders(),
+      });
       if (response.ok) {
         const data = await response.json();
         const vehiclesData = (data.vehicles || []).map((v: any) => ({

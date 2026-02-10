@@ -1,6 +1,6 @@
 """Marketing Automation models - SpotOn style."""
 
-from datetime import datetime
+from datetime import datetime, timezone
 from enum import Enum
 from typing import Optional, List
 from sqlalchemy import Column, Integer, String, Float, DateTime, Text, Boolean, ForeignKey, Enum as SQLEnum, JSON
@@ -87,8 +87,8 @@ class MarketingCampaign(Base):
     roi = Column(Float, nullable=True)
 
     created_by = Column(Integer, ForeignKey("users.id"), nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
 
     # Relationships
     recipients = relationship("CampaignRecipient", back_populates="campaign", cascade="all, delete-orphan")
@@ -146,7 +146,7 @@ class CustomerSegment(Base):
     is_dynamic = Column(Boolean, default=True)  # Auto-update membership
     is_active = Column(Boolean, default=True)
 
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
 
 class AutomatedTrigger(Base):
@@ -175,7 +175,7 @@ class AutomatedTrigger(Base):
     total_triggered = Column(Integer, default=0)
     total_converted = Column(Integer, default=0)
 
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
 
 class MenuRecommendation(Base):
@@ -200,7 +200,7 @@ class MenuRecommendation(Base):
     items_ordered = Column(JSON, nullable=True)  # Product IDs actually ordered
     conversion_rate = Column(Float, nullable=True)
 
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
 
 class LoyaltyProgram(Base):
@@ -224,7 +224,7 @@ class LoyaltyProgram(Base):
     # [{"name": "Bronze", "min_points": 0}, {"name": "Silver", "min_points": 500}]
 
     is_active = Column(Boolean, default=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
 
 class CustomerLoyalty(Base):
@@ -258,5 +258,5 @@ class CustomerLoyalty(Base):
     dietary_preferences = Column(JSON, nullable=True)
     communication_preferences = Column(JSON, nullable=True)  # email, sms, push
 
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))

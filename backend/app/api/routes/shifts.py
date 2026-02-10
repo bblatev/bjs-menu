@@ -193,7 +193,7 @@ def _get_json_setting(db: DbSession, category: str, key: str):
 
 def _upsert_json_setting(db: DbSession, category: str, key: str, value):
     """Insert or update a JSON setting."""
-    from datetime import datetime as _dt
+    from datetime import datetime as _dt, timezone
 
     row = (
         db.query(AppSetting)
@@ -202,7 +202,7 @@ def _upsert_json_setting(db: DbSession, category: str, key: str, value):
     )
     if row:
         row.value = value
-        row.updated_at = _dt.utcnow()
+        row.updated_at = _dt.now(timezone.utc)
     else:
         row = AppSetting(category=category, key=key, value=value)
         db.add(row)

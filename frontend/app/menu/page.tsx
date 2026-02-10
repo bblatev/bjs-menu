@@ -645,7 +645,7 @@ export default function MenuPage() {
 
     try {
       const response = await fetch(
-        `${API_URL}/menu-admin/modifiers/options/${editingOption.id}`,
+        `${API_URL}/menu-admin/modifier-options/${editingOption.id}`,
         {
           method: "PUT",
           headers: {
@@ -680,7 +680,7 @@ export default function MenuPage() {
 
     try {
       const response = await fetch(
-        `${API_URL}/menu-admin/modifiers/options/${optionId}`,
+        `${API_URL}/menu-admin/modifier-options/${optionId}`,
         {
           method: "DELETE",
           headers: { Authorization: `Bearer ${token}` },

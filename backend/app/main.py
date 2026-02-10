@@ -225,9 +225,40 @@ class AuthEnforcementMiddleware(BaseHTTPMiddleware):
         if path in PUBLIC_EXACT_PATHS:
             return await call_next(request)
 
-        # For GET requests: allow all through (guests need to browse data)
-        # Phase 2 will tighten this to require auth on sensitive GETs
+        # For GET requests: allow public browsing endpoints through,
+        # require auth for sensitive data endpoints
         if method == "GET":
+            # Public GET paths that guests/anonymous users can access
+            public_get_prefixes = [
+                "/api/v1/guest-orders",
+                "/api/v1/menu/",
+                "/api/v1/menu-complete",
+                "/api/v1/menu-items",
+                "/api/v1/tables",
+                "/api/v1/reservations/availability",
+                "/api/v1/locations",
+            ]
+            for prefix in public_get_prefixes:
+                if path.startswith(prefix):
+                    return await call_next(request)
+
+            # All other GET endpoints require authentication
+            if path.startswith("/api/v1/"):
+                auth_header = request.headers.get("Authorization", "")
+                if not auth_header.startswith("Bearer "):
+                    return JSONResponse(
+                        status_code=401,
+                        content={"detail": "Authentication required"},
+                        headers={"WWW-Authenticate": "Bearer"},
+                    )
+                token = auth_header.split(" ", 1)[1]
+                payload = decode_access_token(token)
+                if payload is None:
+                    return JSONResponse(
+                        status_code=401,
+                        content={"detail": "Invalid or expired token"},
+                        headers={"WWW-Authenticate": "Bearer"},
+                    )
             return await call_next(request)
 
         # For state-changing methods (POST/PUT/PATCH/DELETE),
@@ -395,11 +426,11 @@ async def lifespan(app: FastAPI):
 
     # Audit log retention: archive entries older than 90 days on startup
     try:
-        from datetime import datetime, timedelta
+        from datetime import datetime, timedelta, timezone
         from app.db.session import SessionLocal
         from app.models.operations import AuditLogEntry
         retention_db = SessionLocal()
-        cutoff = datetime.utcnow() - timedelta(days=90)
+        cutoff = datetime.now(timezone.utc) - timedelta(days=90)
         deleted = retention_db.query(AuditLogEntry).filter(
             AuditLogEntry.created_at < cutoff
         ).delete(synchronize_session=False)

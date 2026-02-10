@@ -1,6 +1,6 @@
 """Advanced Analytics models - Lightspeed/SpotOn style."""
 
-from datetime import datetime
+from datetime import datetime, timezone
 from enum import Enum
 from typing import Optional, List
 from sqlalchemy import Column, Integer, String, Float, DateTime, Text, Boolean, ForeignKey, Enum as SQLEnum, JSON
@@ -52,7 +52,7 @@ class MenuAnalysis(Base):
     sales_trend = Column(String(20), nullable=True)  # up, down, stable
     sales_trend_percent = Column(Float, nullable=True)
 
-    calculated_at = Column(DateTime, default=datetime.utcnow)
+    calculated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
 
 class ServerPerformance(Base):
@@ -100,7 +100,7 @@ class ServerPerformance(Base):
     coaching_notes = Column(JSON, nullable=True)
     # ["Improve dessert suggestions", "Strong appetizer sales"]
 
-    calculated_at = Column(DateTime, default=datetime.utcnow)
+    calculated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
 
 class SalesForecast(Base):
@@ -131,7 +131,7 @@ class SalesForecast(Base):
     actual_revenue = Column(Float, nullable=True)
     forecast_accuracy = Column(Float, nullable=True)  # % accuracy
 
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
 
 class DailyMetrics(Base):
@@ -187,7 +187,7 @@ class DailyMetrics(Base):
     vs_last_month = Column(Float, nullable=True)
     vs_last_year = Column(Float, nullable=True)
 
-    calculated_at = Column(DateTime, default=datetime.utcnow)
+    calculated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
 
 class ConversationalQuery(Base):
@@ -217,7 +217,7 @@ class ConversationalQuery(Base):
     processing_time_ms = Column(Integer, nullable=True)
     was_helpful = Column(Boolean, nullable=True)  # User feedback
 
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
 
 class Benchmark(Base):
@@ -259,7 +259,7 @@ class Benchmark(Base):
     improvement_areas = Column(JSON, nullable=True)
     # ["labor_efficiency", "avg_ticket"]
 
-    calculated_at = Column(DateTime, default=datetime.utcnow)
+    calculated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
 
 class BottleWeight(Base):
@@ -291,8 +291,8 @@ class BottleWeight(Base):
     # Source
     source = Column(String(100), nullable=True)  # manual, crowdsourced, imported
 
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
 
 
 class ScaleReading(Base):
@@ -316,4 +316,4 @@ class ScaleReading(Base):
     scale_device_id = Column(String(100), nullable=True)
     scale_device_name = Column(String(200), nullable=True)
 
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))

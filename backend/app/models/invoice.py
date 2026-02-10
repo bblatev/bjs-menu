@@ -1,6 +1,6 @@
 """Invoice and AP Automation models - Toast xtraCHEF style."""
 
-from datetime import datetime
+from datetime import datetime, timezone
 from enum import Enum
 from typing import Optional, List
 from sqlalchemy import Column, Integer, String, Float, DateTime, Text, Boolean, ForeignKey, Enum as SQLEnum, JSON
@@ -65,8 +65,8 @@ class Invoice(Base):
 
     # Metadata
     notes = Column(Text, nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
 
     # Relationships
     supplier = relationship("Supplier", backref="invoices")
@@ -116,7 +116,7 @@ class PriceHistory(Base):
 
     price = Column(Float, nullable=False)
     unit_of_measure = Column(String(50), nullable=True)
-    recorded_at = Column(DateTime, default=datetime.utcnow)
+    recorded_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
     source_invoice_id = Column(Integer, ForeignKey("invoices.id"), nullable=True)
 
     # Relationships
@@ -143,7 +143,7 @@ class PriceAlert(Base):
     last_triggered_at = Column(DateTime, nullable=True)
     trigger_count = Column(Integer, default=0)
 
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
     # Relationships
     product = relationship("Product", backref="price_alerts")
@@ -164,7 +164,7 @@ class GLCode(Base):
     # Auto-assignment rules
     auto_assign_keywords = Column(JSON, nullable=True)  # ["vodka", "whiskey"] -> this GL code
 
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
 
 class APApprovalWorkflow(Base):
@@ -187,4 +187,4 @@ class APApprovalWorkflow(Base):
     auto_approve_below_amount = Column(Float, nullable=True)
 
     is_active = Column(Boolean, default=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))

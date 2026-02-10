@@ -3,7 +3,6 @@
 import logging
 import secrets
 import time
-from collections import defaultdict
 from fastapi import APIRouter, HTTPException, Request, status
 from pydantic import BaseModel, Field
 from slowapi import Limiter
@@ -12,9 +11,66 @@ from slowapi.util import get_remote_address
 logger = logging.getLogger("auth")
 
 # PIN brute-force lockout: track failed attempts per IP
-_pin_failures: dict[str, list[float]] = defaultdict(list)
+# Uses database-backed storage so lockout persists across restarts
 PIN_LOCKOUT_WINDOW = 300  # 5-minute window
 PIN_MAX_FAILURES = 10  # Lock after 10 failures in window
+
+
+def _get_pin_failures(db, client_ip: str) -> int:
+    """Get count of recent PIN failures for an IP from the database."""
+    from app.models.operations import AppSetting
+    from datetime import datetime, timezone, timedelta
+    cutoff = datetime.now(timezone.utc) - timedelta(seconds=PIN_LOCKOUT_WINDOW)
+    cutoff_ts = cutoff.timestamp()
+    key = f"pin_lockout:{client_ip}"
+    record = db.query(AppSetting).filter(
+        AppSetting.category == "security", AppSetting.key == key
+    ).first()
+    if not record or not record.value:
+        return 0
+    try:
+        data = record.value if isinstance(record.value, dict) else {}
+        failures = [t for t in data.get("timestamps", []) if t > cutoff_ts]
+        return len(failures)
+    except (TypeError, AttributeError):
+        return 0
+
+
+def _record_pin_failure(db, client_ip: str):
+    """Record a PIN failure for an IP in the database."""
+    from app.models.operations import AppSetting
+    from datetime import datetime, timezone, timedelta
+    key = f"pin_lockout:{client_ip}"
+    now_ts = datetime.now(timezone.utc).timestamp()
+    cutoff_ts = (datetime.now(timezone.utc) - timedelta(seconds=PIN_LOCKOUT_WINDOW)).timestamp()
+    record = db.query(AppSetting).filter(
+        AppSetting.category == "security", AppSetting.key == key
+    ).first()
+    if record:
+        try:
+            data = record.value if isinstance(record.value, dict) else {}
+            timestamps = [t for t in data.get("timestamps", []) if t > cutoff_ts]
+        except (TypeError, AttributeError):
+            timestamps = []
+        timestamps.append(now_ts)
+        record.value = {"timestamps": timestamps}
+    else:
+        record = AppSetting(
+            category="security", key=key, value={"timestamps": [now_ts]}
+        )
+        db.add(record)
+    db.commit()
+
+
+def _clear_pin_failures(db, client_ip: str):
+    """Clear PIN failures for an IP on successful login."""
+    from app.models.operations import AppSetting
+    key = f"pin_lockout:{client_ip}"
+    db.query(AppSetting).filter(
+        AppSetting.category == "security", AppSetting.key == key
+    ).delete()
+    db.commit()
+
 
 from app.core.rbac import CurrentUser
 from app.core.security import create_access_token, get_password_hash, get_pin_hash, verify_password, verify_pin
@@ -80,11 +136,10 @@ def login_with_pin(request: Request, pin_request: PinLoginRequest, db: DbSession
     start_time = time.monotonic()
     client_ip = request.client.host if request.client else "unknown"
 
-    # Check PIN brute-force lockout
-    now = time.monotonic()
-    _pin_failures[client_ip] = [t for t in _pin_failures[client_ip] if now - t < PIN_LOCKOUT_WINDOW]
-    if len(_pin_failures[client_ip]) >= PIN_MAX_FAILURES:
-        logger.warning(f"PIN login locked out for IP: {client_ip} ({len(_pin_failures[client_ip])} failures)")
+    # Check PIN brute-force lockout (database-backed, persists across restarts)
+    failure_count = _get_pin_failures(db, client_ip)
+    if failure_count >= PIN_MAX_FAILURES:
+        logger.warning(f"PIN login locked out for IP: {client_ip} ({failure_count} failures)")
         _ensure_min_delay(start_time)
         raise HTTPException(
             status_code=status.HTTP_429_TOO_MANY_REQUESTS,
@@ -130,8 +185,9 @@ def login_with_pin(request: Request, pin_request: PinLoginRequest, db: DbSession
     _ensure_min_delay(start_time)
 
     if not user:
-        _pin_failures[client_ip].append(time.monotonic())
-        logger.warning(f"Failed PIN login attempt from IP: {client_ip} (attempt {len(_pin_failures[client_ip])})")
+        _record_pin_failure(db, client_ip)
+        updated_count = _get_pin_failures(db, client_ip)
+        logger.warning(f"Failed PIN login attempt from IP: {client_ip} (attempt {updated_count})")
         log_login(user_id=0, email="pin_login", ip_address=client_ip, success=False)
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -139,7 +195,7 @@ def login_with_pin(request: Request, pin_request: PinLoginRequest, db: DbSession
         )
 
     # Clear lockout on successful login
-    _pin_failures.pop(client_ip, None)
+    _clear_pin_failures(db, client_ip)
     logger.info(f"Successful PIN login: {user.email} (ID: {user.id}, role: {user.role.value}) from IP: {client_ip}")
     log_login(user_id=user.id, email=user.email, ip_address=client_ip, success=True)
     token = create_access_token(

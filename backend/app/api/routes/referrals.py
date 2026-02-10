@@ -1,6 +1,6 @@
 """Referral program API routes."""
 
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import List, Optional
 
 from fastapi import APIRouter, HTTPException
@@ -8,7 +8,7 @@ from pydantic import BaseModel
 from sqlalchemy import func
 
 from app.db.session import DbSession
-from app.models.operations import ReferralProgram, ReferralRecord
+from app.models.operations import AppSetting, ReferralProgram, ReferralRecord
 
 router = APIRouter()
 
@@ -113,7 +113,7 @@ def create_referral(data: dict, db: DbSession):
         status="pending",
         reward_claimed=False,
         program_id=program.id if program else None,
-        created_at=datetime.utcnow(),
+        created_at=datetime.now(timezone.utc),
     )
     db.add(record)
     db.commit()
@@ -268,6 +268,31 @@ def get_referral_settings(db: DbSession):
     )
 
 
+@router.put("/settings")
+def update_referral_settings(data: ReferralSettings, db: DbSession):
+    """Save referral program settings."""
+    setting = db.query(AppSetting).filter(
+        AppSetting.category == "referrals",
+        AppSetting.key == "settings",
+    ).first()
+
+    settings_value = data.model_dump()
+
+    if setting:
+        setting.value = settings_value
+    else:
+        setting = AppSetting(
+            category="referrals",
+            key="settings",
+            value=settings_value,
+        )
+        db.add(setting)
+
+    db.commit()
+    db.refresh(setting)
+    return settings_value
+
+
 @router.post("/bulk-send")
 def send_bulk_invites(emails: List[str], db: DbSession):
     """Send bulk referral invites."""
@@ -285,7 +310,7 @@ def send_bulk_invites(emails: List[str], db: DbSession):
             status="pending",
             reward_claimed=False,
             program_id=program.id if program else None,
-            created_at=datetime.utcnow(),
+            created_at=datetime.now(timezone.utc),
         )
         db.add(record)
         created_count += 1

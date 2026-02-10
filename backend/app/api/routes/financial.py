@@ -2,8 +2,8 @@
 
 from datetime import datetime
 from typing import List, Optional
-from fastapi import APIRouter, Query
-from pydantic import BaseModel
+from fastapi import APIRouter, HTTPException, Query
+from pydantic import BaseModel, Field
 from sqlalchemy import func
 
 from app.db.session import DbSession
@@ -252,7 +252,7 @@ async def get_daily_reconciliation(date: str, db: DbSession):
     try:
         target_date = dt.strptime(date, "%Y-%m-%d").date()
     except ValueError:
-        return {}
+        raise HTTPException(status_code=400, detail=f"Invalid date format: {date}. Expected YYYY-MM-DD.")
     rec = db.query(ReconciliationModel).filter(ReconciliationModel.date == target_date).first()
     if not rec:
         return {}
@@ -302,18 +302,19 @@ async def complete_reconciliation(rec_id: str, db: DbSession):
     return {"success": True, "reconciliation_id": rec_id, "status": "completed"}
 
 
+class CreateFinancialAccountRequest(BaseModel):
+    code: str = Field(..., min_length=1)
+    name: str = Field(..., min_length=1)
+    type: str = Field(default="expense")
+
+
 @router.post("/accounts/")
-async def create_financial_account(data: dict, db: DbSession):
+async def create_financial_account(data: CreateFinancialAccountRequest, db: DbSession):
     """Create a financial account (GL code)."""
-    code = data.get("code", "")
-    name = data.get("name", "")
-    if not code or not name:
-        from fastapi import HTTPException
-        raise HTTPException(status_code=422, detail="code and name are required")
-    existing = db.query(GLCode).filter(GLCode.code == code).first()
+    existing = db.query(GLCode).filter(GLCode.code == data.code).first()
     if existing:
         return {"id": existing.id, "code": existing.code, "name": existing.name, "type": existing.category}
-    gl = GLCode(code=code, name=name, category=data.get("type", "expense"), is_active=True)
+    gl = GLCode(code=data.code, name=data.name, category=data.type, is_active=True)
     db.add(gl)
     db.commit()
     db.refresh(gl)

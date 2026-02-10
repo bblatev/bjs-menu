@@ -1,6 +1,6 @@
 """Supplier routes - consolidated from suppliers.py + suppliers_v11.py."""
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Optional
 
 from fastapi import APIRouter, Body, HTTPException, status
@@ -60,7 +60,7 @@ def get_supplier_performance_stats(db: DbSession, current_user: OptionalCurrentU
 @router.get("/expiring-documents")
 def get_expiring_documents(db: DbSession):
     """Get documents expiring soon across all suppliers."""
-    cutoff = datetime.utcnow() + timedelta(days=30)
+    cutoff = datetime.now(timezone.utc) + timedelta(days=30)
     docs = db.query(SupplierDocument).filter(
         SupplierDocument.expiration_date.isnot(None),
         SupplierDocument.expiration_date <= cutoff,
@@ -72,7 +72,7 @@ def get_expiring_documents(db: DbSession):
             "name": d.name,
             "document_type": d.document_type,
             "expiration_date": d.expiration_date.isoformat() if d.expiration_date else None,
-            "days_until_expiry": (d.expiration_date - datetime.utcnow()).days if d.expiration_date else None,
+            "days_until_expiry": (d.expiration_date - datetime.now(timezone.utc)).days if d.expiration_date else None,
         }
         for d in docs
     ]

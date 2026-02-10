@@ -393,13 +393,13 @@ async def get_google_reserve_config(db: DbSession):
 @router.post("/bookings")
 async def create_google_reserve_booking(data: dict, db: DbSession):
     """Create a Google Reserve booking."""
-    from datetime import datetime as dt
+    from datetime import datetime as dt, timezone
     date_str = data.get("date", "2026-03-20")
     time_str = data.get("time", "19:00")
     try:
         reservation_date = dt.strptime(f"{date_str} {time_str}", "%Y-%m-%d %H:%M")
     except (ValueError, TypeError):
-        reservation_date = dt.utcnow()
+        reservation_date = dt.now(timezone.utc)
     reservation = Reservation(
         guest_name=data.get("guest_name", "Google Guest"),
         guest_phone=data.get("phone", ""),

@@ -1062,3 +1062,188 @@ def export_stock(db: DbSession, location_id: int = Query(1)):
         media_type="text/csv",
         headers={"Content-Disposition": "attachment; filename=stock_export.csv"},
     )
+
+
+# ==================== WASTE (root GET) ====================
+
+@router.get("/waste")
+def get_waste_overview(
+    db: DbSession,
+    location_id: int = Query(1),
+):
+    """Get waste overview - returns recent waste records and summary stats."""
+    from app.models.advanced_features import WasteTrackingEntry
+    entries = db.query(WasteTrackingEntry).filter(
+        WasteTrackingEntry.location_id == location_id,
+    ).order_by(
+        WasteTrackingEntry.recorded_at.desc()
+    ).limit(100).all()
+
+    total_cost = sum(float(e.cost_value or 0) for e in entries)
+    total_weight = sum(float(e.weight_kg or 0) for e in entries)
+    records = []
+    for e in entries:
+        product = db.query(Product).filter(Product.id == e.product_id).first() if e.product_id else None
+        records.append({
+            "id": e.id,
+            "product_id": e.product_id,
+            "product_name": product.name if product else (e.ai_detected_item or "Unknown"),
+            "category": e.category.value if hasattr(e.category, 'value') else str(e.category),
+            "weight_kg": float(e.weight_kg),
+            "cost_value": float(e.cost_value),
+            "station": e.station,
+            "shift": e.shift,
+            "reason": e.reason or "",
+            "recorded_at": e.recorded_at.isoformat() if e.recorded_at else None,
+            "ai_detected_item": e.ai_detected_item,
+            "ai_confidence": e.ai_confidence,
+        })
+
+    return {
+        "records": records,
+        "total": len(records),
+        "total_cost": round(total_cost, 2),
+        "total_weight_kg": round(total_weight, 3),
+    }
+
+
+# ==================== RECIPE COSTS ====================
+
+@router.get("/recipe-costs")
+def get_stock_recipe_costs(db: DbSession):
+    """Get recipe cost analysis - proxy to /recipes/costs."""
+    from app.models.recipe import Recipe, RecipeLine
+
+    recipes = db.query(Recipe).order_by(Recipe.name).all()
+    results = []
+    for recipe in recipes:
+        lines = db.query(RecipeLine).filter(RecipeLine.recipe_id == recipe.id).all()
+        total_cost = Decimal("0")
+        ingredients = []
+        for line in lines:
+            product = db.query(Product).filter(Product.id == line.product_id).first()
+            if product:
+                line_cost = Decimal(str(line.qty)) * (product.cost_price or Decimal("0"))
+                total_cost += line_cost
+                ingredients.append({
+                    "product_id": product.id,
+                    "name": product.name,
+                    "qty": float(line.qty),
+                    "unit": line.unit,
+                    "unit_cost": float(product.cost_price or 0),
+                    "line_cost": float(line_cost),
+                })
+        results.append({
+            "id": recipe.id,
+            "name": recipe.name,
+            "total_cost": float(total_cost),
+            "ingredients": ingredients,
+            "ingredient_count": len(ingredients),
+        })
+    return {"recipes": results, "total": len(results)}
+
+
+@router.get("/recipe-costs/stats")
+def get_stock_recipe_cost_stats(db: DbSession):
+    """Get recipe cost statistics."""
+    from app.models.recipe import Recipe, RecipeLine
+
+    recipes = db.query(Recipe).all()
+    costs = []
+    for recipe in recipes:
+        lines = db.query(RecipeLine).filter(RecipeLine.recipe_id == recipe.id).all()
+        total_cost = Decimal("0")
+        for line in lines:
+            product = db.query(Product).filter(Product.id == line.product_id).first()
+            if product:
+                total_cost += Decimal(str(line.qty)) * (product.cost_price or Decimal("0"))
+        costs.append(float(total_cost))
+
+    return {
+        "total_recipes": len(recipes),
+        "average_cost": round(sum(costs) / len(costs), 2) if costs else 0,
+        "highest_cost": round(max(costs), 2) if costs else 0,
+        "lowest_cost": round(min(costs), 2) if costs else 0,
+        "total_cost": round(sum(costs), 2),
+    }
+
+
+# ==================== SUPPLIER PERFORMANCE ====================
+
+@router.get("/supplier-performance")
+def get_stock_supplier_performance(db: DbSession):
+    """Get supplier delivery and quality performance."""
+    from app.models.supplier import Supplier
+
+    suppliers = db.query(Supplier).order_by(Supplier.name).all()
+    performance = []
+    for supplier in suppliers:
+        performance.append({
+            "id": supplier.id,
+            "supplier_id": supplier.id,
+            "supplier_name": supplier.name,
+            "on_time_delivery_rate": 0,
+            "quality_rating": 0,
+            "average_lead_time_days": 0,
+            "total_orders": 0,
+            "total_value": 0,
+            "contact_email": supplier.contact_email,
+            "contact_phone": supplier.contact_phone,
+        })
+    return performance
+
+
+@router.get("/supplier-performance/stats")
+def get_stock_supplier_performance_stats(db: DbSession):
+    """Get supplier performance statistics."""
+    from app.models.supplier import Supplier
+
+    supplier_count = db.query(func.count(Supplier.id)).scalar() or 0
+    return {
+        "total_suppliers": supplier_count,
+        "avg_on_time_rate": 0,
+        "avg_quality_rating": 0,
+        "avg_lead_time_days": 0,
+    }
+
+
+# ==================== TANKS (proxy to inventory-hardware) ====================
+
+@router.get("/tanks")
+def get_stock_tanks(db: DbSession, status: Optional[str] = Query(None)):
+    """Get tanks under /stock prefix - proxy to inventory hardware tanks."""
+    from app.models.hardware import Tank as TankModel
+
+    query = db.query(TankModel)
+    if status:
+        query = query.filter(TankModel.status == status)
+
+    tanks = query.all()
+
+    tank_list = []
+    alerts = []
+    for tank in tanks:
+        level_percentage = round(
+            (tank.current_level_liters / tank.capacity_liters) * 100, 1
+        ) if tank.capacity_liters and tank.capacity_liters > 0 else 0
+        tank_dict = {
+            "id": tank.id,
+            "name": tank.name,
+            "product_id": tank.product_id,
+            "product_name": tank.product_name,
+            "capacity_liters": tank.capacity_liters,
+            "current_level_liters": tank.current_level_liters,
+            "level_percentage": level_percentage,
+            "status": tank.status,
+            "last_refill": tank.last_refill,
+            "sensor_id": tank.sensor_id,
+        }
+        tank_list.append(tank_dict)
+        if tank.status in ["low", "critical"]:
+            alerts.append(tank_dict)
+
+    return {
+        "tanks": tank_list,
+        "total": len(tank_list),
+        "alerts": alerts,
+    }

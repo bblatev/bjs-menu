@@ -71,7 +71,9 @@ export default function CloudKitchenPage() {
   // Fetch virtual brands
   const fetchBrands = useCallback(async () => {
     try {
-      const response = await fetch(`${API_URL}/v6/${getVenueId()}/cloud-kitchen/brands`);
+      const response = await fetch(`${API_URL}/v6/${getVenueId()}/cloud-kitchen/brands`, {
+        headers: getAuthHeaders(),
+      });
       if (response.ok) {
         const data = await response.json();
         const brandsData = (data.brands || []).map((b: any) => ({
@@ -99,7 +101,9 @@ export default function CloudKitchenPage() {
   // Fetch kitchen stations
   const fetchStations = useCallback(async () => {
     try {
-      const response = await fetch(`${API_URL}/v6/${getVenueId()}/cloud-kitchen/stations`);
+      const response = await fetch(`${API_URL}/v6/${getVenueId()}/cloud-kitchen/stations`, {
+        headers: getAuthHeaders(),
+      });
       if (response.ok) {
         const data = await response.json();
         const stationsData = (data.stations || []).map((s: any) => ({

@@ -1,6 +1,8 @@
 """Cloud kitchen, delivery, and drive-thru v6 routes."""
 
+from typing import Optional
 from fastapi import APIRouter
+from pydantic import BaseModel, Field
 
 from app.db.session import DbSession
 from app.models.operations import AppSetting
@@ -26,8 +28,14 @@ async def get_cloud_kitchen_brands(venue_id: str, db: DbSession):
     return _get_setting_list(db, "cloud_kitchen_brands", venue_id)
 
 
+class CreateCloudKitchenBrandRequest(BaseModel):
+    name: str = Field(..., min_length=1)
+    cuisine: str = Field(default="")
+    active: Optional[bool] = True
+
+
 @router.post("/{venue_id}/cloud-kitchen/brands")
-async def create_cloud_kitchen_brand(venue_id: str, data: dict, db: DbSession):
+async def create_cloud_kitchen_brand(venue_id: str, data: CreateCloudKitchenBrandRequest, db: DbSession):
     """Create a virtual brand for cloud kitchen."""
     row = db.query(AppSetting).filter(
         AppSetting.category == "cloud_kitchen_brands",
@@ -36,9 +44,9 @@ async def create_cloud_kitchen_brand(venue_id: str, data: dict, db: DbSession):
     brands = row.value if row and isinstance(row.value, list) else []
     new_brand = {
         "id": len(brands) + 1,
-        "name": data.get("name", ""),
-        "cuisine": data.get("cuisine", ""),
-        "active": True,
+        "name": data.name,
+        "cuisine": data.cuisine,
+        "active": data.active,
     }
     brands.append(new_brand)
     if row:

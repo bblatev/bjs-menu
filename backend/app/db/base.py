@@ -60,7 +60,8 @@ class SoftDeleteMixin:
 
     def soft_delete(self) -> None:
         """Mark this row as deleted."""
-        self.deleted_at = datetime.utcnow()
+        from datetime import timezone
+        self.deleted_at = datetime.now(timezone.utc)
 
     @classmethod
     def not_deleted(cls):

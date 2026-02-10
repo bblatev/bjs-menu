@@ -319,24 +319,24 @@ export default function FeedbackPage() {
           <div className="flex h-4 rounded-full overflow-hidden">
             <div
               className="bg-green-500"
-              style={{ width: `${(stats.positive_count / stats.total_reviews) * 100}%` }}
+              style={{ width: `${stats.total_reviews ? (stats.positive_count / stats.total_reviews) * 100 : 0}%` }}
               title={`Positive: ${stats.positive_count}`}
             />
             <div
               className="bg-yellow-500"
-              style={{ width: `${(stats.neutral_count / stats.total_reviews) * 100}%` }}
+              style={{ width: `${stats.total_reviews ? (stats.neutral_count / stats.total_reviews) * 100 : 0}%` }}
               title={`Neutral: ${stats.neutral_count}`}
             />
             <div
               className="bg-red-500"
-              style={{ width: `${(stats.negative_count / stats.total_reviews) * 100}%` }}
+              style={{ width: `${stats.total_reviews ? (stats.negative_count / stats.total_reviews) * 100 : 0}%` }}
               title={`Negative: ${stats.negative_count}`}
             />
           </div>
           <div className="flex justify-between mt-2 text-sm">
-            <span className="text-green-400">{((stats.positive_count / stats.total_reviews) * 100).toFixed(0)}% Positive</span>
-            <span className="text-yellow-400">{((stats.neutral_count / stats.total_reviews) * 100).toFixed(0)}% Neutral</span>
-            <span className="text-red-400">{((stats.negative_count / stats.total_reviews) * 100).toFixed(0)}% Negative</span>
+            <span className="text-green-400">{(stats.total_reviews ? (stats.positive_count / stats.total_reviews) * 100 : 0).toFixed(0)}% Positive</span>
+            <span className="text-yellow-400">{(stats.total_reviews ? (stats.neutral_count / stats.total_reviews) * 100 : 0).toFixed(0)}% Neutral</span>
+            <span className="text-red-400">{(stats.total_reviews ? (stats.negative_count / stats.total_reviews) * 100 : 0).toFixed(0)}% Negative</span>
           </div>
         </div>
       )}

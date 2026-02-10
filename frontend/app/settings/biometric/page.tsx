@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { API_URL, getAuthHeaders } from "@/lib/api";
 
 interface DeviceStatus {
   device_type: string;
@@ -57,7 +58,7 @@ interface AccessStats {
   by_auth_method: Record<string, number>;
 }
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || "/api/v1";
+// Using API_URL and getAuthHeaders from @/lib/api
 
 export default function BiometricSettingsPage() {
   const [activeTab, setActiveTab] = useState<"device" | "enroll" | "logs" | "schedule">("device");
@@ -76,7 +77,7 @@ export default function BiometricSettingsPage() {
   // Fetch device status
   const fetchDeviceStatus = async () => {
     try {
-      const res = await fetch(`${API_BASE}/biometric/device/status`);
+      const res = await fetch(`${API_URL}/biometric/device/status`, { headers: getAuthHeaders() });
       if (res.ok) {
         const data = await res.json();
         setDeviceStatus(data);
@@ -89,7 +90,7 @@ export default function BiometricSettingsPage() {
   // Fetch device types
   const fetchDeviceTypes = async () => {
     try {
-      const res = await fetch(`${API_BASE}/biometric/device/types`);
+      const res = await fetch(`${API_URL}/biometric/device/types`, { headers: getAuthHeaders() });
       if (res.ok) {
         const data = await res.json();
         setDeviceTypes(data.device_types || []);
@@ -102,7 +103,7 @@ export default function BiometricSettingsPage() {
   // Fetch access log
   const fetchAccessLog = async () => {
     try {
-      const res = await fetch(`${API_BASE}/biometric/access-log?limit=50`);
+      const res = await fetch(`${API_URL}/biometric/access-log?limit=50`, { headers: getAuthHeaders() });
       if (res.ok) {
         const data = await res.json();
         setAccessLog(data.entries || []);
@@ -115,7 +116,7 @@ export default function BiometricSettingsPage() {
   // Fetch access stats
   const fetchAccessStats = async () => {
     try {
-      const res = await fetch(`${API_BASE}/biometric/access-log/stats?days=7`);
+      const res = await fetch(`${API_URL}/biometric/access-log/stats?days=7`, { headers: getAuthHeaders() });
       if (res.ok) {
         const data = await res.json();
         setAccessStats(data);
@@ -129,9 +130,9 @@ export default function BiometricSettingsPage() {
   const configureDevice = async () => {
     setLoading(true);
     try {
-      const res = await fetch(`${API_BASE}/biometric/device/configure`, {
+      const res = await fetch(`${API_URL}/biometric/device/configure`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: getAuthHeaders(),
         body: JSON.stringify({ device_type: selectedDeviceType }),
       });
       if (res.ok) {
@@ -152,7 +153,7 @@ export default function BiometricSettingsPage() {
     if (!staffId) return;
     setLoading(true);
     try {
-      const res = await fetch(`${API_BASE}/biometric/staff/${staffId}/credentials`);
+      const res = await fetch(`${API_URL}/biometric/staff/${staffId}/credentials`, { headers: getAuthHeaders() });
       if (res.ok) {
         const data = await res.json();
         setStaffCredentials(data);
@@ -171,9 +172,9 @@ export default function BiometricSettingsPage() {
     if (!staffId) return;
     setLoading(true);
     try {
-      const res = await fetch(`${API_BASE}/biometric/fingerprint/enroll`, {
+      const res = await fetch(`${API_URL}/biometric/fingerprint/enroll`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: getAuthHeaders(),
         body: JSON.stringify({
           staff_id: parseInt(staffId),
           quality_score: 0.85,
@@ -197,9 +198,9 @@ export default function BiometricSettingsPage() {
     if (!staffId || !cardNumber) return;
     setLoading(true);
     try {
-      const res = await fetch(`${API_BASE}/biometric/card/register`, {
+      const res = await fetch(`${API_URL}/biometric/card/register`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: getAuthHeaders(),
         body: JSON.stringify({
           staff_id: parseInt(staffId),
           card_number: cardNumber,
@@ -226,9 +227,9 @@ export default function BiometricSettingsPage() {
     setLoading(true);
     try {
       const endpoint = type === "fingerprint"
-        ? `${API_BASE}/biometric/fingerprint/${credentialId}`
-        : `${API_BASE}/biometric/card/${credentialId}`;
-      const res = await fetch(endpoint, { method: "DELETE" });
+        ? `${API_URL}/biometric/fingerprint/${credentialId}`
+        : `${API_URL}/biometric/card/${credentialId}`;
+      const res = await fetch(endpoint, { method: "DELETE", headers: getAuthHeaders() });
       if (res.ok) {
         setMessage({ type: "success", text: "Идентификаторът е деактивиран / Credential revoked" });
         fetchStaffCredentials();

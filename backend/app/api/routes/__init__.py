@@ -23,6 +23,7 @@ from app.api.routes import (
     risk_alerts, roles, voice,
     promotions, gamification,
     fiscal_printers, pos_fiscal_bridge, cloud_kitchen,
+    menu, auto_reorder,
 )
 
 api_router = APIRouter()
@@ -232,6 +233,12 @@ api_router.include_router(pos_fiscal_bridge.router, prefix="/pos-fiscal-bridge",
 
 # Cloud Kitchen / Delivery v6
 api_router.include_router(cloud_kitchen.router, prefix="/v6", tags=["cloud-kitchen", "delivery", "drive-thru"])
+
+# Menu (frontend-facing /menu/* endpoints: modifiers, combos, allergens, scheduling, inventory)
+api_router.include_router(menu.router, prefix="/menu", tags=["menu", "modifiers", "combos", "allergens"])
+
+# Auto-Reorder (frontend-facing /auto-reorder/* endpoints)
+api_router.include_router(auto_reorder.router, prefix="/auto-reorder", tags=["auto-reorder", "inventory"])
 
 # Multi-location v3.1 (reuse locations router)
 api_router.include_router(locations.router, prefix="/v3.1/locations", tags=["locations", "multi-location", "v3.1"])

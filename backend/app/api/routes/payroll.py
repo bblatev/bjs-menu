@@ -13,6 +13,57 @@ from app.models.operations import PayrollRun, PayrollEntry
 router = APIRouter()
 
 
+# ==================== ROOT ENDPOINT ====================
+
+@router.get("/")
+def get_payroll_overview(
+    db: DbSession,
+    period_start: Optional[str] = Query(None),
+    period_end: Optional[str] = Query(None),
+):
+    """Get payroll overview - list of payroll entries with summary."""
+    query = db.query(PayrollEntry)
+    if period_start:
+        query = query.filter(PayrollEntry.period_start >= period_start)
+    if period_end:
+        query = query.filter(PayrollEntry.period_end <= period_end)
+    entries = query.order_by(PayrollEntry.id.desc()).limit(100).all()
+
+    total_gross = sum(float(e.gross_pay or 0) for e in entries)
+    total_net = sum(float(e.net_pay or 0) for e in entries)
+    total_hours = sum(float(e.regular_hours or 0) + float(e.overtime_hours or 0) for e in entries)
+
+    entry_list = []
+    for e in entries:
+        entry_list.append({
+            "id": str(e.id),
+            "staff_id": str(e.staff_id),
+            "staff_name": e.staff_name or "",
+            "role": e.role or "",
+            "period_start": e.period_start.isoformat() if e.period_start else "",
+            "period_end": e.period_end.isoformat() if e.period_end else "",
+            "regular_hours": float(e.regular_hours or 0),
+            "overtime_hours": float(e.overtime_hours or 0),
+            "hourly_rate": float(e.hourly_rate or 0),
+            "overtime_rate": float(e.overtime_rate or 0),
+            "gross_pay": float(e.gross_pay or 0),
+            "deductions": float(e.deductions or 0),
+            "net_pay": float(e.net_pay or 0),
+            "status": e.status or "draft",
+        })
+
+    return {
+        "entries": entry_list,
+        "total": len(entry_list),
+        "summary": {
+            "total_gross": round(total_gross, 2),
+            "total_net": round(total_net, 2),
+            "total_hours": round(total_hours, 2),
+            "entry_count": len(entry_list),
+        },
+    }
+
+
 # --------------- Pydantic Schemas ---------------
 
 class PayrollEntrySchema(BaseModel):

@@ -1,6 +1,6 @@
 """Settings API routes."""
 
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
 from fastapi import APIRouter, Depends
@@ -83,7 +83,7 @@ def _upsert_setting(db: DbSession, category: str, value: Any, key: str = "defaul
     )
     if row:
         row.value = value
-        row.updated_at = datetime.utcnow()
+        row.updated_at = datetime.now(timezone.utc)
     else:
         row = AppSetting(category=category, key=key, value=value)
         db.add(row)

@@ -35,7 +35,7 @@ export default function SMSMarketingPage() {
 
   const fetchCampaigns = useCallback(async () => {
     try {
-      const res = await axios.get(`${API_URL}/v5/sms/campaigns`);
+      const res = await axios.get(`${API_URL}/v5/sms/campaigns`, { headers: getAuthHeaders() });
       setCampaigns(res.data.campaigns || []);
     } catch (e) {
       console.error('Error fetching campaigns:', e);
@@ -45,7 +45,7 @@ export default function SMSMarketingPage() {
 
   const fetchStats = useCallback(async () => {
     try {
-      const res = await axios.get(`${API_URL}/v5/sms/stats`);
+      const res = await axios.get(`${API_URL}/v5/sms/stats`, { headers: getAuthHeaders() });
       setStats({
         total_campaigns: res.data.total_campaigns || 0,
         total_sent: res.data.total_sent || 0,
@@ -83,7 +83,7 @@ export default function SMSMarketingPage() {
 
   const createCampaign = async () => {
     try {
-      await axios.post(`${API_URL}/v5/sms/campaigns`, newCampaign);
+      await axios.post(`${API_URL}/v5/sms/campaigns`, newCampaign, { headers: getAuthHeaders() });
       setShowCreate(false);
       setNewCampaign({ name: '', message: '', target_segment: 'all' });
       fetchCampaigns();
@@ -94,7 +94,7 @@ export default function SMSMarketingPage() {
 
   const sendCampaign = async (id: number) => {
     try {
-      await axios.post(`${API_URL}/v5/sms/campaigns/${id}/send`);
+      await axios.post(`${API_URL}/v5/sms/campaigns/${id}/send`, {}, { headers: getAuthHeaders() });
       fetchCampaigns();
     } catch (e) {
       console.error(e);

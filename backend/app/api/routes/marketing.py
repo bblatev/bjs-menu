@@ -120,6 +120,20 @@ def create_pricing_rule(db: DbSession, data: dict = None):
     return {"id": rule.id, "name": rule.name, "is_active": rule.is_active}
 
 
+@router.patch("/pricing-rules/{rule_id}/toggle-active")
+def toggle_pricing_rule_active(rule_id: int, db: DbSession):
+    """Toggle a pricing rule's active status."""
+    from app.models.advanced_features import DynamicPricingRule
+    rule = db.query(DynamicPricingRule).filter(DynamicPricingRule.id == rule_id).first()
+    if not rule:
+        raise HTTPException(status_code=404, detail="Pricing rule not found")
+
+    rule.is_active = not rule.is_active
+    db.commit()
+    db.refresh(rule)
+    return {"success": True, "id": rule.id, "is_active": rule.is_active}
+
+
 @router.post("/promotions/")
 def create_marketing_promotion(db: DbSession, data: dict = None):
     """Create a promotion via marketing route."""

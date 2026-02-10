@@ -85,7 +85,9 @@ export default function ScheduledReportsPage() {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch(`${API_URL}/scheduled-reports/schedules`);
+      const res = await fetch(`${API_URL}/scheduled-reports/schedules`, {
+        headers: getAuthHeaders(),
+      });
       if (res.ok) {
         const data = await res.json();
         setSchedules(data);
@@ -128,7 +130,7 @@ export default function ScheduledReportsPage() {
 
       const res = await fetch(url, {
         method,
-        headers: { 'Content-Type': 'application/json' },
+        headers: getAuthHeaders(),
         body: JSON.stringify(form),
       });
 
@@ -146,6 +148,7 @@ export default function ScheduledReportsPage() {
     try {
       const res = await fetch(`${API_URL}/scheduled-reports/schedules/${scheduleId}`, {
         method: 'DELETE',
+        headers: getAuthHeaders(),
       });
       if (res.ok) {
         loadData();
@@ -159,7 +162,7 @@ export default function ScheduledReportsPage() {
     try {
       const res = await fetch(`${API_URL}/scheduled-reports/schedules/${schedule.schedule_id}`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getAuthHeaders(),
         body: JSON.stringify({ ...schedule, is_active: !schedule.is_active }),
       });
       if (res.ok) {
@@ -174,6 +177,7 @@ export default function ScheduledReportsPage() {
     try {
       const res = await fetch(`${API_URL}/scheduled-reports/schedules/${scheduleId}/run`, {
         method: 'POST',
+        headers: getAuthHeaders(),
       });
       if (res.ok) {
         alert('Report sent successfully!');

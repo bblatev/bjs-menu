@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { API_URL, getAuthHeaders } from '@/lib/api';
 
 interface Transaction {
   id: number;
@@ -60,7 +61,7 @@ interface TransactionReport {
   waiter_breakdown: WaiterSales[];
 }
 
-const API = () => process.env.NEXT_PUBLIC_API_URL || '/api/v1';
+// Using API_URL and getAuthHeaders from @/lib/api
 
 export default function TransactionsReportPage() {
   const [loading, setLoading] = useState(true);
@@ -82,10 +83,6 @@ export default function TransactionsReportPage() {
   // View mode
   const [viewMode, setViewMode] = useState<'transactions' | 'hourly' | 'waiters' | 'payments'>('transactions');
 
-  const headers = () => ({
-    'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
-    'Content-Type': 'application/json'
-  });
 
   useEffect(() => {
     const loadReport = async () => {
@@ -101,15 +98,12 @@ export default function TransactionsReportPage() {
           status: statusFilter
         });
 
-        const res = await fetch(`${API()}/reports/transactions?${params}`, { headers: headers() });
+        const res = await fetch(`${API_URL}/reports/transactions?${params}`, { headers: getAuthHeaders() });
         if (res.ok) {
           setData(await res.json());
-        } else {
-          // Generate mock data for demo
-          setData(generateMockData());
         }
-      } catch {
-        setData(generateMockData());
+      } catch (err) {
+        console.error('Error loading transactions:', err);
       }
       setLoading(false);
     };

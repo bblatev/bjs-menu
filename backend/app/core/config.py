@@ -35,7 +35,7 @@ class Settings(BaseSettings):
     # Security
     secret_key: str = "change-me-in-production"
     algorithm: str = "HS256"
-    access_token_expire_minutes: int = 1440  # 24 hours
+    access_token_expire_minutes: int = 240  # 4 hours
 
     # CORS - comma-separated origins or "*" for development only
     cors_origins: str = "http://localhost:3000,http://localhost:8000"

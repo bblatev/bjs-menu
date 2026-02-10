@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 
 import { API_URL, getAuthHeaders } from '@/lib/api';
+import { getVenueId } from '@/lib/auth';
 
 interface Reservation {
   id: number;
@@ -273,7 +274,7 @@ export default function ReservationsPage() {
   const loadPlatforms = async () => {
     try {
       const token = getToken();
-      const response = await fetch(`${API_URL}/reservations/1/platforms`, {
+      const response = await fetch(`${API_URL}/reservations/${getVenueId()}/platforms`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (response.ok) {
@@ -289,7 +290,7 @@ export default function ReservationsPage() {
     if (!selectedReservationForDeposit) return;
     try {
       const token = getToken();
-      const response = await fetch(`${API_URL}/reservations/1/deposits`, {
+      const response = await fetch(`${API_URL}/reservations/${getVenueId()}/deposits`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -314,7 +315,7 @@ export default function ReservationsPage() {
   const syncExternalReservations = async () => {
     try {
       const token = getToken();
-      await fetch(`${API_URL}/reservations/1/external/sync`, {
+      await fetch(`${API_URL}/reservations/${getVenueId()}/external/sync`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -328,7 +329,7 @@ export default function ReservationsPage() {
   const loadTurnTimes = async () => {
     try {
       const token = getToken();
-      const response = await fetch(`${API_URL}/reservations/1/turn-times?date=${selectedDate}`, {
+      const response = await fetch(`${API_URL}/reservations/${getVenueId()}/turn-times?date=${selectedDate}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (response.ok) {
@@ -344,7 +345,7 @@ export default function ReservationsPage() {
   const loadPartySizeOptimization = async () => {
     try {
       const token = getToken();
-      const response = await fetch(`${API_URL}/reservations/1/party-size-optimization?date=${selectedDate}`, {
+      const response = await fetch(`${API_URL}/reservations/${getVenueId()}/party-size-optimization?date=${selectedDate}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (response.ok) {
@@ -361,7 +362,7 @@ export default function ReservationsPage() {
     setAutoAssigning(true);
     try {
       const token = getToken();
-      const response = await fetch(`${API_URL}/reservations/1/auto-assign-tables`, {
+      const response = await fetch(`${API_URL}/reservations/${getVenueId()}/auto-assign-tables`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -385,7 +386,7 @@ export default function ReservationsPage() {
   const loadCancellationPolicies = async () => {
     try {
       const token = getToken();
-      const response = await fetch(`${API_URL}/reservations/1/cancellation-policy`, {
+      const response = await fetch(`${API_URL}/reservations/${getVenueId()}/cancellation-policy`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (response.ok) {
@@ -401,7 +402,7 @@ export default function ReservationsPage() {
   const createCancellationPolicy = async (policy: any) => {
     try {
       const token = getToken();
-      const response = await fetch(`${API_URL}/reservations/1/cancellation-policy`, {
+      const response = await fetch(`${API_URL}/reservations/${getVenueId()}/cancellation-policy`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -422,13 +423,12 @@ export default function ReservationsPage() {
     if (!selectedReservationForRefund) return;
     try {
       const token = getToken();
-      const response = await fetch(`${API_URL}/reservations/1/reservations/${selectedReservationForRefund.id}/refund`, {
+      const venueId = getVenueId();
+      const response = await fetch(`${API_URL}/reservations/${venueId}/reservations/${selectedReservationForRefund.id}/refund?amount=${refundAmount}`, {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify(refundAmount),
       });
       if (response.ok) {
         setShowRefundModal(false);
@@ -445,7 +445,7 @@ export default function ReservationsPage() {
   const loadWebhookLogs = async () => {
     try {
       const token = getToken();
-      const response = await fetch(`${API_URL}/reservations/1/webhooks/logs`, {
+      const response = await fetch(`${API_URL}/reservations/${getVenueId()}/webhooks/logs`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (response.ok) {

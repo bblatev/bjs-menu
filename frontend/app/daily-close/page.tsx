@@ -435,19 +435,22 @@ export default function DailyClosePage() {
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <h4 className="font-medium text-surface-900 mb-3">Bills</h4>
-                    {denominations.filter(d => parseFloat(d.denomination) >= 5).map((denom, index) => (
-                      <div key={denom.denomination} className="flex items-center gap-3 mb-2">
-                        <span className="w-16 text-surface-600">{denom.denomination} лв</span>
-                        <input
-                          type="number"
-                          min="0"
-                          value={denom.count || ''}
-                          onChange={(e) => updateDenomination(index, parseInt(e.target.value) || 0)}
-                          className="w-20 px-3 py-1 border border-surface-200 rounded-lg focus:ring-2 focus:ring-amber-500 text-center"
-                        />
-                        <span className="text-surface-500">= {formatCurrency(denom.count * denom.value)}</span>
-                      </div>
-                    ))}
+                    {denominations.filter(d => parseFloat(d.denomination) >= 5).map((denom, index) => {
+                      const actualIndex = denominations.findIndex(d2 => d2.denomination === denom.denomination);
+                      return (
+                        <div key={denom.denomination} className="flex items-center gap-3 mb-2">
+                          <span className="w-16 text-surface-600">{denom.denomination} лв</span>
+                          <input
+                            type="number"
+                            min="0"
+                            value={denom.count || ''}
+                            onChange={(e) => updateDenomination(actualIndex, parseInt(e.target.value) || 0)}
+                            className="w-20 px-3 py-1 border border-surface-200 rounded-lg focus:ring-2 focus:ring-amber-500 text-center"
+                          />
+                          <span className="text-surface-500">= {formatCurrency(denom.count * denom.value)}</span>
+                        </div>
+                      );
+                    })}
                   </div>
                   <div>
                     <h4 className="font-medium text-surface-900 mb-3">Coins</h4>

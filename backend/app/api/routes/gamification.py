@@ -114,7 +114,7 @@ def update_badge(badge_id: str, data: BadgeUpdate, db: DbSession):
     return {"success": True}
 
 
-@router.post("/badges/{badge_id}/toggle-active")
+@router.api_route("/badges/{badge_id}/toggle-active", methods=["POST", "PATCH"])
 def toggle_badge(badge_id: str, db: DbSession):
     """Toggle badge active status."""
     badge = db.query(Badge).filter(Badge.id == int(badge_id)).first()
@@ -188,7 +188,7 @@ def create_challenge(data: ChallengeCreate, db: DbSession):
     return {"success": True, "id": str(challenge.id)}
 
 
-@router.post("/challenges/{challenge_id}/toggle-active")
+@router.api_route("/challenges/{challenge_id}/toggle-active", methods=["POST", "PATCH"])
 def toggle_challenge(challenge_id: str, db: DbSession):
     """Toggle challenge active status."""
     challenge = db.query(Challenge).filter(

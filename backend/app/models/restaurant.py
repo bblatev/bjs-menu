@@ -1,6 +1,6 @@
 """Restaurant operations models - tables, checks, orders, kitchen."""
 
-from datetime import datetime
+from datetime import datetime, timezone
 from decimal import Decimal
 from typing import Optional, List
 from sqlalchemy import Column, Integer, String, DateTime, Numeric, Boolean, ForeignKey, Text, JSON
@@ -22,8 +22,8 @@ class Table(Base):
     location_id = Column(Integer, ForeignKey("locations.id"), nullable=True)
     token = Column(String(100), nullable=True, unique=True)  # QR code token
     pos_table_id = Column(String(50), nullable=True)  # External POS ID
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
 
     # Relationships
     checks = relationship("Check", back_populates="table")
@@ -48,7 +48,7 @@ class Check(Base, VersionMixin, SoftDeleteMixin):
     balance_due = Column(Numeric(10, 2), default=Decimal("0"))
 
     notes = Column(Text, nullable=True)
-    opened_at = Column(DateTime, default=datetime.utcnow)
+    opened_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
     closed_at = Column(DateTime, nullable=True)
 
     # Relationships
@@ -85,7 +85,7 @@ class CheckItem(Base, VersionMixin, SoftDeleteMixin):
     notes = Column(Text, nullable=True)
     modifiers = Column(JSON, nullable=True)
 
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
     fired_at = Column(DateTime, nullable=True)
     served_at = Column(DateTime, nullable=True)
     voided_at = Column(DateTime, nullable=True)
@@ -121,7 +121,7 @@ class CheckPayment(Base):
     card_last_four = Column(String(4), nullable=True)
     authorization_code = Column(String(50), nullable=True)
 
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
     # Relationships
     check = relationship("Check", back_populates="payments")
@@ -157,8 +157,8 @@ class MenuCategory(Base):
     display_on_app = Column(Boolean, default=True)
     display_on_web = Column(Boolean, default=True)
     schedule = Column(JSON, nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
 
     # Relationships
     children = relationship("MenuCategory", backref="parent", remote_side="MenuCategory.id", lazy="select")
@@ -188,8 +188,8 @@ class MenuItem(Base, SoftDeleteMixin):
     pos_item_id = Column(String(50), nullable=True)
     recipe_id = Column(Integer, ForeignKey("recipes.id"), nullable=True)  # Link to recipe for stock deduction
 
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
 
     # Relationships
     recipe = relationship("Recipe", foreign_keys=[recipe_id])
@@ -218,8 +218,8 @@ class ModifierGroup(Base):
     max_selections = Column(Integer, default=1)
     active = Column(Boolean, default=True)
     sort_order = Column(Integer, default=0)
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
 
     options = relationship("ModifierOption", back_populates="group", cascade="all, delete-orphan")
     menu_item_links = relationship("MenuItemModifierGroup", back_populates="modifier_group", cascade="all, delete-orphan")
@@ -235,7 +235,7 @@ class ModifierOption(Base):
     price_adjustment = Column(Numeric(10, 2), default=Decimal("0"))
     available = Column(Boolean, default=True)
     sort_order = Column(Integer, default=0)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
     group = relationship("ModifierGroup", back_populates="options")
 
@@ -265,8 +265,8 @@ class ComboMeal(Base):
     available = Column(Boolean, default=True)
     featured = Column(Boolean, default=False)
     category = Column(String(100), nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
 
     items = relationship("ComboItem", back_populates="combo", cascade="all, delete-orphan")
 
@@ -307,7 +307,7 @@ class KitchenOrder(Base, VersionMixin):
     confirmed_at = Column(DateTime, nullable=True)
     rejection_reason = Column(String(200), nullable=True)
 
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
     started_at = Column(DateTime, nullable=True)
     completed_at = Column(DateTime, nullable=True)
 
@@ -355,7 +355,7 @@ class GuestOrder(Base):
     tip_amount = Column(Numeric(10, 2), default=Decimal("0"))
     paid_at = Column(DateTime, nullable=True)
 
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
     confirmed_at = Column(DateTime, nullable=True)
     ready_at = Column(DateTime, nullable=True)
     completed_at = Column(DateTime, nullable=True)

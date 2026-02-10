@@ -204,7 +204,9 @@ export default function StockTransfersPage() {
     const token = localStorage.getItem('access_token');
     try {
       let endpoint = '';
-      if (newStatus === 'in_transit') {
+      if (newStatus === 'pending') {
+        endpoint = `${API_URL}/warehouses/transfers/${transferId}/submit`;
+      } else if (newStatus === 'in_transit') {
         endpoint = `${API_URL}/warehouses/transfers/${transferId}/start`;
       } else if (newStatus === 'received') {
         endpoint = `${API_URL}/warehouses/transfers/${transferId}/complete`;

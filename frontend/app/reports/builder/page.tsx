@@ -102,7 +102,9 @@ export default function ReportBuilderPage() {
       setInitialLoading(true);
       setError(null);
       try {
-        const res = await fetch(`${API_URL}/custom-reports/data-sources`);
+        const res = await fetch(`${API_URL}/custom-reports/data-sources`, {
+          headers: getAuthHeaders(),
+        });
         if (res.ok) {
           const data = await res.json();
           setDataSources(data);
@@ -124,7 +126,9 @@ export default function ReportBuilderPage() {
 
   const loadSavedReports = async () => {
     try {
-      const res = await fetch(`${API_URL}/custom-reports/reports`);
+      const res = await fetch(`${API_URL}/custom-reports/reports`, {
+        headers: getAuthHeaders(),
+      });
       if (res.ok) {
         const data = await res.json();
         setSavedReports(data);
@@ -212,7 +216,7 @@ export default function ReportBuilderPage() {
     try {
       const res = await fetch(`${API_URL}/custom-reports/reports/execute`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getAuthHeaders(),
         body: JSON.stringify({
           data_source_id: report.data_source_id,
           columns: report.columns,
@@ -244,7 +248,7 @@ export default function ReportBuilderPage() {
 
       const res = await fetch(url, {
         method,
-        headers: { 'Content-Type': 'application/json' },
+        headers: getAuthHeaders(),
         body: JSON.stringify(report),
       });
 

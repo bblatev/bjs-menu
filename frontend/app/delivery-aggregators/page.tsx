@@ -82,7 +82,9 @@ export default function DeliveryAggregatorsPage() {
   // Fetch connected platforms
   const fetchPlatforms = useCallback(async () => {
     try {
-      const response = await fetch(`${API_URL}/v6/${getVenueId()}/delivery/platforms`);
+      const response = await fetch(`${API_URL}/v6/${getVenueId()}/delivery/platforms`, {
+        headers: getAuthHeaders(),
+      });
       if (!response.ok) throw new Error('Failed to fetch platforms');
       const data = await response.json();
 
@@ -124,7 +126,9 @@ export default function DeliveryAggregatorsPage() {
   // Fetch orders from aggregators
   const fetchOrders = useCallback(async () => {
     try {
-      const response = await fetch(`${API_URL}/v6/${getVenueId()}/delivery/orders`);
+      const response = await fetch(`${API_URL}/v6/${getVenueId()}/delivery/orders`, {
+        headers: getAuthHeaders(),
+      });
       if (!response.ok) throw new Error('Failed to fetch orders');
       const data = await response.json();
 
@@ -152,7 +156,9 @@ export default function DeliveryAggregatorsPage() {
   // Fetch delivery zones
   const fetchZones = useCallback(async () => {
     try {
-      const response = await fetch(`${API_URL}/v6/${getVenueId()}/delivery/zones`);
+      const response = await fetch(`${API_URL}/v6/${getVenueId()}/delivery/zones`, {
+        headers: getAuthHeaders(),
+      });
       if (!response.ok) throw new Error('Failed to fetch zones');
       const data = await response.json();
 
@@ -175,7 +181,9 @@ export default function DeliveryAggregatorsPage() {
   // Fetch drivers
   const fetchDrivers = useCallback(async () => {
     try {
-      const response = await fetch(`${API_URL}/v6/${getVenueId()}/delivery/drivers`);
+      const response = await fetch(`${API_URL}/v6/${getVenueId()}/delivery/drivers`, {
+        headers: getAuthHeaders(),
+      });
       if (!response.ok) throw new Error('Failed to fetch drivers');
       const data = await response.json();
 

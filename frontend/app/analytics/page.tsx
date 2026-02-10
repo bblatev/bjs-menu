@@ -60,7 +60,7 @@ export default function AnalyticsPage() {
     }
   };
 
-  const formatCurrency = (amount: number) => `${amount.toFixed(2)} €`;
+  const formatCurrency = (amount: number) => `${amount.toFixed(2)} лв`;
 
   const maxRevenue = data?.orders_by_hour
     ? Math.max(...data.orders_by_hour.map((h) => h.revenue))

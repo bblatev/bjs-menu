@@ -1137,3 +1137,61 @@ def get_cocktails(db: DbSession, current_user: OptionalCurrentUser = None):
             "image_url": None,
         })
     return results
+
+
+# ==================== TANKS (proxy to inventory-hardware) ====================
+
+@router.get("/tanks")
+def get_bar_tanks(
+    db: DbSession,
+    current_user: OptionalCurrentUser = None,
+    status: Optional[str] = Query(None),
+):
+    """Get bar tanks - delegates to inventory hardware tank listing."""
+    from app.models.hardware import Tank as TankModel
+
+    query = db.query(TankModel)
+    if status:
+        query = query.filter(TankModel.status == status)
+
+    tanks = query.all()
+
+    tank_list = []
+    alerts = []
+    for tank in tanks:
+        level_percentage = round(
+            (tank.current_level_liters / tank.capacity_liters) * 100, 1
+        ) if tank.capacity_liters and tank.capacity_liters > 0 else 0
+        tank_dict = {
+            "id": tank.id,
+            "name": tank.name,
+            "product_id": tank.product_id,
+            "product_name": tank.product_name,
+            "capacity_liters": tank.capacity_liters,
+            "current_level_liters": tank.current_level_liters,
+            "level_percentage": level_percentage,
+            "status": tank.status,
+            "last_refill": tank.last_refill,
+            "sensor_id": tank.sensor_id,
+        }
+        tank_list.append(tank_dict)
+        if tank.status in ["low", "critical"]:
+            alerts.append(tank_dict)
+
+    return {
+        "tanks": tank_list,
+        "total": len(tank_list),
+        "alerts": alerts,
+    }
+
+
+# ==================== POUR COSTS (root listing) ====================
+
+@router.get("/pour-costs")
+def get_pour_costs(
+    db: DbSession,
+    current_user: OptionalCurrentUser = None,
+    location_id: int = Query(1),
+):
+    """Get pour costs list - delegates to pour-costs/summary."""
+    return get_pour_costs_summary(db=db, current_user=current_user, location_id=location_id)

@@ -1,6 +1,6 @@
 """HACCP food safety API routes."""
 
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import List, Optional
 
 from fastapi import APIRouter, HTTPException, Query
@@ -150,7 +150,7 @@ def create_temperature_log(log: TemperatureLog, db: DbSession):
         status=log.status,
         recorded_by=log.recorded_by,
         notes=log.notes,
-        recorded_at=datetime.utcnow(),
+        recorded_at=datetime.now(timezone.utc),
     )
     db.add(db_log)
     db.commit()
@@ -177,9 +177,9 @@ def create_safety_check(request: CreateSafetyCheckRequest, db: DbSession):
         name=request.check_type,
         category=request.check_type,
         status="completed",
-        completed_at=datetime.utcnow(),
+        completed_at=datetime.now(timezone.utc),
         completed_by=request.checked_by,
-        due_date=datetime.utcnow(),
+        due_date=datetime.now(timezone.utc),
         notes=notes,
     )
     db.add(check)
@@ -235,7 +235,7 @@ def complete_safety_check(
         raise HTTPException(status_code=404, detail="Safety check not found")
 
     check.status = "completed"
-    check.completed_at = datetime.utcnow()
+    check.completed_at = datetime.now(timezone.utc)
     check.notes = notes if notes else check.notes
     db.commit()
     return {"success": True}

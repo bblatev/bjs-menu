@@ -83,9 +83,9 @@ export default function MobileWalletPage() {
     setError(null);
     try {
       const [configRes, sessionsRes, statsRes] = await Promise.all([
-        fetch(`${API_URL}/mobile-wallet/config`),
-        fetch(`${API_URL}/mobile-wallet/payments?limit=20`),
-        fetch(`${API_URL}/mobile-wallet/stats`),
+        fetch(`${API_URL}/mobile-wallet/config`, { headers: getAuthHeaders() }),
+        fetch(`${API_URL}/mobile-wallet/payments?limit=20`, { headers: getAuthHeaders() }),
+        fetch(`${API_URL}/mobile-wallet/stats`, { headers: getAuthHeaders() }),
       ]);
 
       if (configRes.ok) {
@@ -113,7 +113,7 @@ export default function MobileWalletPage() {
     try {
       const res = await fetch(`${API_URL}/mobile-wallet/config`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getAuthHeaders(),
         body: JSON.stringify(config),
       });
       if (res.ok) {

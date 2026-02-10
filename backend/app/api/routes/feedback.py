@@ -128,7 +128,7 @@ async def create_review(data: dict, db: DbSession):
         text=data.get("comment", data.get("text", "")),
         source=data.get("source", "internal"),
         status="new",
-        created_at=datetime.utcnow(),
+        created_at=datetime.now(timezone.utc),
     )
     db.add(review)
     db.commit()
@@ -184,6 +184,31 @@ async def get_review(review_id: str, db: DbSession):
     return _review_to_schema(review)
 
 
+@router.patch("/reviews/{review_id}/status")
+async def update_review_status(review_id: str, data: dict, db: DbSession):
+    """Update a review's status."""
+    review = db.query(FeedbackReview).filter(
+        FeedbackReview.id == int(review_id)
+    ).first()
+
+    if not review:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Review not found",
+        )
+
+    new_status = data.get("status")
+    if new_status not in ("new", "responded", "flagged"):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid status. Must be one of: new, responded, flagged",
+        )
+
+    review.status = new_status
+    db.commit()
+    return {"success": True, "id": str(review.id), "status": review.status}
+
+
 @router.post("/reviews/{review_id}/respond")
 async def respond_to_review(review_id: str, body: RespondRequest, db: DbSession):
     """Respond to a review."""
@@ -198,7 +223,7 @@ async def respond_to_review(review_id: str, body: RespondRequest, db: DbSession)
         )
 
     review.response = body.response
-    review.responded_at = datetime.utcnow()
+    review.responded_at = datetime.now(timezone.utc)
     review.status = "responded"
     db.commit()
 
@@ -211,7 +236,7 @@ async def get_feedback_stats(db: DbSession, period: str = Query("month")):
     query = db.query(FeedbackReview)
 
     # Apply period filter
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
     if period == "week":
         from datetime import timedelta
         cutoff = now - timedelta(weeks=1)

@@ -4,7 +4,7 @@ Provides fraud detection, risk scoring, and alert management
 for the /fraud-detection frontend page.
 """
 
-from datetime import datetime
+from datetime import datetime, timezone
 from decimal import Decimal
 from typing import Optional, List
 
@@ -315,7 +315,7 @@ async def acknowledge_risk_alert(alert_id: str, db: DbSession):
         raise HTTPException(status_code=404, detail="Alert not found")
 
     alert.status = "acknowledged"
-    alert.acknowledged_at = datetime.utcnow()
+    alert.acknowledged_at = datetime.now(timezone.utc)
     alert.acknowledged_by = "Manager"
     db.commit()
     db.refresh(alert)

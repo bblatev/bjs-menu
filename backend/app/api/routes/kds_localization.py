@@ -82,15 +82,64 @@ async def list_supported_languages():
 async def list_stations():
     """List all KDS stations with their language settings."""
     service = get_kds_localization_service()
-    stations = service.list_station_languages()
-    return {
-        "stations": stations if stations else [
-            {"station_id": "grill", "name": "Grill Station", "language": "en", "fallback_language": "en"},
-            {"station_id": "fry", "name": "Fry Station", "language": "en", "fallback_language": "en"},
-            {"station_id": "salad", "name": "Salad Station", "language": "bg", "fallback_language": "en"},
-        ],
-        "count": len(stations) if stations else 3,
-    }
+    raw_stations = service.list_station_languages()
+    defaults = [
+        {"station_id": "grill", "name": "Grill Station", "language": "en", "fallback_language": "en"},
+        {"station_id": "fry", "name": "Fry Station", "language": "en", "fallback_language": "en"},
+        {"station_id": "salad", "name": "Salad Station", "language": "bg", "fallback_language": "en"},
+    ]
+    source = raw_stations if raw_stations else defaults
+    # Transform to frontend-expected format
+    result = []
+    for s in source:
+        if isinstance(s, dict):
+            result.append({
+                "station_id": s.get("station_id", ""),
+                "station_name": s.get("name", s.get("station_name", "")),
+                "language_code": s.get("language", s.get("language_code", "en")),
+                "show_translations": s.get("show_translations", True),
+                "primary_font_size": s.get("primary_font_size", 18),
+                "secondary_font_size": s.get("secondary_font_size", 14),
+            })
+        else:
+            result.append({
+                "station_id": getattr(s, "station_id", ""),
+                "station_name": getattr(s, "name", getattr(s, "station_name", "")),
+                "language_code": getattr(s, "language", getattr(s, "language_code", "en")),
+                "show_translations": getattr(s, "show_translations", True),
+                "primary_font_size": getattr(s, "primary_font_size", 18),
+                "secondary_font_size": getattr(s, "secondary_font_size", 14),
+            })
+    return result
+
+
+@router.put("/stations/{station_id}")
+async def update_station_settings(station_id: str, updates: dict):
+    """Update station display settings (language, font sizes, etc.)."""
+    service = get_kds_localization_service()
+    if "language_code" in updates:
+        try:
+            language = SupportedLanguage(updates["language_code"])
+            fallback = SupportedLanguage.ENGLISH
+            service.set_station_language(station_id, language, fallback)
+        except ValueError:
+            pass
+    return {"success": True, "station_id": station_id}
+
+
+@router.put("/translations/{key}")
+async def update_translation_by_key(key: str, body: dict):
+    """Update a single translation by key."""
+    service = get_kds_localization_service()
+    lang_code = body.get("language_code", "")
+    value = body.get("value", "")
+    if lang_code and value:
+        try:
+            language = SupportedLanguage(lang_code)
+            service.add_translation(key, language, value)
+        except ValueError:
+            raise HTTPException(status_code=400, detail=f"Unsupported language: {lang_code}")
+    return {"success": True, "key": key}
 
 
 @router.post("/stations/language")
@@ -211,10 +260,19 @@ async def get_all_translations():
     all_translations = {}
     for lang in SupportedLanguage:
         all_translations[lang.value] = service.get_all_translations(lang)
-    return {
-        "languages": [l.value for l in SupportedLanguage],
-        "translations": all_translations,
-    }
+    # Transform to array format: [{key, en, es, bg, ...}, ...]
+    en_translations = all_translations.get("en", {})
+    all_keys = set()
+    for lang_data in all_translations.values():
+        all_keys.update(lang_data.keys())
+    result = []
+    for key in sorted(all_keys):
+        entry = {"key": key, "en": en_translations.get(key, key)}
+        for lang_code, lang_data in all_translations.items():
+            if lang_code != "en" and key in lang_data:
+                entry[lang_code] = lang_data[key]
+        result.append(entry)
+    return result
 
 
 @router.get("/translations/{language}")

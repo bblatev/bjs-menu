@@ -50,6 +50,21 @@ interface SalesReportData {
   revenueByTime: RevenueByTime[];
 }
 
+const statColorClass: Record<string, string> = {
+  green: 'text-green-600',
+  red: 'text-red-600',
+  blue: 'text-blue-600',
+  yellow: 'text-yellow-600',
+  purple: 'text-purple-600',
+  orange: 'text-orange-600',
+  primary: 'text-primary-600',
+  success: 'text-success-600',
+  error: 'text-error-600',
+  warning: 'text-warning-600',
+  accent: 'text-accent-600',
+  surface: 'text-surface-600',
+};
+
 export default function ReportsSalesPage() {
   const [dateRange, setDateRange] = useState('week');
   const [startDate, setStartDate] = useState('');
@@ -66,7 +81,7 @@ export default function ReportsSalesPage() {
     setLoading(true);
     try {
       const token = localStorage.getItem('access_token');
-      let url = `${API_URL}/reports/sales?range=${dateRange}`;
+      let url = `${API_URL}/reports/sales?period=${dateRange}`;
 
       if (startDate && endDate) {
         url += `&start_date=${startDate}&end_date=${endDate}`;
@@ -200,7 +215,7 @@ export default function ReportsSalesPage() {
                 </span>
               )}
             </div>
-            <p className={`text-2xl font-display font-bold text-${stat.color}-600`}>{stat.value}</p>
+            <p className={`text-2xl font-display font-bold ${statColorClass[stat.color] || 'text-gray-600'}`}>{stat.value}</p>
             <p className="text-xs text-surface-500 mt-1">{stat.subvalue}</p>
           </motion.div>
         ))}

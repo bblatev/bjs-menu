@@ -50,6 +50,7 @@ def _sync_guest_order_status(db: DbSession, kitchen_order: KitchenOrder, new_sta
             guest_order.status = guest_status
             if new_status == "ready":
                 guest_order.ready_at = datetime.now(timezone.utc)
+            db.flush()
 
 
 def _compute_avg_cook_time(db: DbSession, location_id: Optional[int] = None) -> float:
@@ -1266,3 +1267,119 @@ async def get_kitchen_alert_stats(db: DbSession):
         "warnings": overdue_count + warning_temps,
         "resolved_today": resolved_today,
     }
+
+
+# ==================== LOCALIZATION (proxy to kds-localization) ====================
+
+@router.get("/localization/stations")
+async def get_localization_stations():
+    """Get KDS stations with localization settings - proxy to kds-localization service."""
+    from app.services.kds_localization_service import (
+        get_kds_localization_service,
+        SupportedLanguage,
+    )
+    service = get_kds_localization_service()
+    raw_stations = service.list_station_languages()
+    defaults = [
+        {"station_id": "grill", "name": "Grill Station", "language": "en", "fallback_language": "en"},
+        {"station_id": "fry", "name": "Fry Station", "language": "en", "fallback_language": "en"},
+        {"station_id": "salad", "name": "Salad Station", "language": "bg", "fallback_language": "en"},
+    ]
+    source = raw_stations if raw_stations else defaults
+    result = []
+    for s in source:
+        if isinstance(s, dict):
+            result.append({
+                "station_id": s.get("station_id", ""),
+                "station_name": s.get("name", s.get("station_name", "")),
+                "language_code": s.get("language", s.get("language_code", "en")),
+                "show_translations": s.get("show_translations", True),
+                "primary_font_size": s.get("primary_font_size", 18),
+                "secondary_font_size": s.get("secondary_font_size", 14),
+            })
+        else:
+            result.append({
+                "station_id": getattr(s, "station_id", ""),
+                "station_name": getattr(s, "name", getattr(s, "station_name", "")),
+                "language_code": getattr(s, "language", getattr(s, "language_code", "en")),
+                "show_translations": getattr(s, "show_translations", True),
+                "primary_font_size": getattr(s, "primary_font_size", 18),
+                "secondary_font_size": getattr(s, "secondary_font_size", 14),
+            })
+    return result
+
+
+@router.get("/localization/translations")
+async def get_localization_translations():
+    """Get all translations - proxy to kds-localization service."""
+    from app.services.kds_localization_service import (
+        get_kds_localization_service,
+        SupportedLanguage,
+    )
+    service = get_kds_localization_service()
+    all_translations = {}
+    for lang in SupportedLanguage:
+        all_translations[lang.value] = service.get_all_translations(lang)
+    en_translations = all_translations.get("en", {})
+    all_keys = set()
+    for lang_data in all_translations.values():
+        all_keys.update(lang_data.keys())
+    result = []
+    for key in sorted(all_keys):
+        entry = {"key": key, "en": en_translations.get(key, key)}
+        for lang_code, lang_data in all_translations.items():
+            if lang_code != "en" and key in lang_data:
+                entry[lang_code] = lang_data[key]
+        result.append(entry)
+    return result
+
+
+@router.get("/localization/languages")
+async def get_localization_languages():
+    """Get supported KDS languages - proxy to kds-localization service."""
+    from app.services.kds_localization_service import (
+        get_kds_localization_service,
+    )
+    service = get_kds_localization_service()
+    languages = service.list_supported_languages()
+    return {
+        "languages": languages,
+        "default": "en",
+    }
+
+
+@router.put("/localization/stations/{station_id}")
+async def update_localization_station(station_id: str, updates: dict):
+    """Update station localization settings - proxy to kds-localization service."""
+    from app.services.kds_localization_service import (
+        get_kds_localization_service,
+        SupportedLanguage,
+    )
+    service = get_kds_localization_service()
+    if "language_code" in updates:
+        try:
+            language = SupportedLanguage(updates["language_code"])
+            fallback = SupportedLanguage.ENGLISH
+            service.set_station_language(station_id, language, fallback)
+        except ValueError:
+            pass
+    return {"success": True, "station_id": station_id}
+
+
+@router.put("/localization/translations/{key}")
+async def update_localization_translation(key: str, body: dict):
+    """Update a single translation - proxy to kds-localization service."""
+    from app.services.kds_localization_service import (
+        get_kds_localization_service,
+        SupportedLanguage,
+    )
+    service = get_kds_localization_service()
+    lang_code = body.get("language_code", "")
+    value = body.get("value", "")
+    if lang_code and value:
+        try:
+            language = SupportedLanguage(lang_code)
+            service.add_translation(key, language, value)
+        except ValueError:
+            raise HTTPException(status_code=400, detail=f"Unsupported language: {lang_code}")
+    return {"success": True, "key": key}

@@ -377,8 +377,8 @@ def get_dead_stock(
     threshold_days: int = Query(30, ge=7, le=365),
 ):
     """Identify dead stock — items with no movement for N days."""
-    cutoff = datetime.utcnow() - timedelta(days=threshold_days)
-    now = datetime.utcnow()
+    cutoff = datetime.now(timezone.utc) - timedelta(days=threshold_days)
+    now = datetime.now(timezone.utc)
 
     # Get products with stock > 0
     on_hand = (

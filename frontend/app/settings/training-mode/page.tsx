@@ -70,10 +70,10 @@ export default function TrainingModePage() {
     setError(null);
     try {
       const [configRes, sessionsRes, activeRes, statsRes] = await Promise.all([
-        fetch(`${API_URL}/training/config`),
-        fetch(`${API_URL}/training/sessions?limit=20`),
-        fetch(`${API_URL}/training/sessions/active`),
-        fetch(`${API_URL}/training/stats`),
+        fetch(`${API_URL}/training/config`, { headers: getAuthHeaders() }),
+        fetch(`${API_URL}/training/sessions?limit=20`, { headers: getAuthHeaders() }),
+        fetch(`${API_URL}/training/sessions/active`, { headers: getAuthHeaders() }),
+        fetch(`${API_URL}/training/stats`, { headers: getAuthHeaders() }),
       ]);
 
       if (configRes.ok) {
@@ -105,7 +105,7 @@ export default function TrainingModePage() {
     try {
       const res = await fetch(`${API_URL}/training/config`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getAuthHeaders(),
         body: JSON.stringify(config),
       });
       if (res.ok) {
@@ -122,7 +122,7 @@ export default function TrainingModePage() {
     try {
       const res = await fetch(`${API_URL}/training/sessions`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getAuthHeaders(),
         body: JSON.stringify({ staff_id: parseInt(newSessionStaffId) }),
       });
       if (res.ok) {
@@ -139,6 +139,7 @@ export default function TrainingModePage() {
     try {
       const res = await fetch(`${API_URL}/training/sessions/${sessionId}/end`, {
         method: 'POST',
+        headers: getAuthHeaders(),
       });
       if (res.ok) {
         loadData();

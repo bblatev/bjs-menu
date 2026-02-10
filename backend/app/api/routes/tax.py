@@ -1,6 +1,6 @@
 """Tax management API routes."""
 
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import List, Optional
 
 from fastapi import APIRouter, HTTPException, Query
@@ -106,12 +106,16 @@ async def get_tax_summary(db: DbSession):
 @router.post("/filings/{filing_id}/file")
 async def file_tax_return(filing_id: str, db: DbSession):
     """Mark a tax filing as filed."""
-    filing = db.query(TaxFilingModel).filter(TaxFilingModel.id == int(filing_id)).first()
+    try:
+        numeric_id = int(filing_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail=f"Invalid filing ID: {filing_id}. Must be a numeric value.")
+    filing = db.query(TaxFilingModel).filter(TaxFilingModel.id == numeric_id).first()
     if not filing:
         raise HTTPException(status_code=404, detail=f"Tax filing {filing_id} not found")
 
     filing.status = "filed"
-    filing.filed_at = datetime.utcnow()
+    filing.filed_at = datetime.now(timezone.utc)
     db.commit()
     db.refresh(filing)
 

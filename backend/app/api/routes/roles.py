@@ -1,6 +1,6 @@
 """Roles management API routes."""
 
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
 from fastapi import APIRouter, HTTPException, status
@@ -103,7 +103,7 @@ async def create_role(payload: RoleCreate, db: DbSession, current_user: CurrentU
         category=ROLE_CATEGORY,
         key=payload.name,
         value=value,
-        updated_at=datetime.utcnow(),
+        updated_at=datetime.now(timezone.utc),
     )
     db.add(row)
     db.commit()
@@ -133,7 +133,7 @@ async def update_role(role_name: str, payload: RoleUpdate, db: DbSession, curren
         current_value["permissions"] = payload.permissions
 
     row.value = current_value
-    row.updated_at = datetime.utcnow()
+    row.updated_at = datetime.now(timezone.utc)
     db.commit()
     db.refresh(row)
     return _role_row_to_dict(row)

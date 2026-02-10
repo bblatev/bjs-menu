@@ -94,7 +94,9 @@ export default function TemplateBuilderPage() {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch(`${API_URL}/email-campaigns/templates`);
+      const res = await fetch(`${API_URL}/email-campaigns/templates`, {
+        headers: getAuthHeaders(),
+      });
       if (res.ok) {
         const data = await res.json();
         setTemplates(data);

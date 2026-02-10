@@ -270,7 +270,7 @@ export default function StockCountsPage() {
   const filteredItems = countItems.filter(item => {
     if (categoryFilter !== 'all' && item.category !== categoryFilter) return false;
     if (searchQuery && !item.name.toLowerCase().includes(searchQuery.toLowerCase())) return false;
-    if (activeCount && activeCount.type !== 'full' && item.location !== activeCount.location) return false;
+    // Location filter removed: item.location is not populated from the API, so filtering by location would exclude all items for non-full counts
     return true;
   });
 
@@ -383,7 +383,7 @@ export default function StockCountsPage() {
                   <td className="px-4 py-3 text-right">
                     {count.status === 'in_progress' && (
                       <button
-                        onClick={() => { setActiveCount(count); setShowCountModal(true); }}
+                        onClick={() => { setActiveCount(count); loadCountItems(count.id); setShowCountModal(true); }}
                         className="px-3 py-1 bg-primary-50 text-primary-600 rounded text-sm font-medium hover:bg-primary-100"
                       >
                         Continue

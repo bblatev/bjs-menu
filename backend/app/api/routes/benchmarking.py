@@ -1,6 +1,6 @@
 """Industry benchmarking API routes."""
 
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any, List, Optional
 
 from fastapi import APIRouter, Query
@@ -71,7 +71,7 @@ def _upsert_setting(db: DbSession, key: str, value: Any) -> AppSetting:
     )
     if row:
         row.value = value
-        row.updated_at = datetime.utcnow()
+        row.updated_at = datetime.now(timezone.utc)
     else:
         row = AppSetting(category=BENCHMARK_CATEGORY, key=key, value=value)
         db.add(row)

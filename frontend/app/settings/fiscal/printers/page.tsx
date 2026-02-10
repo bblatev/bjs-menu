@@ -59,9 +59,9 @@ export default function FiscalPrintersPage() {
   const loadData = async () => {
     try {
       const [mfrsRes, printersRes, connRes] = await Promise.all([
-        fetch(`${API_URL}/fiscal-printers/manufacturers`),
-        fetch(`${API_URL}/fiscal-printers/models`),
-        fetch(`${API_URL}/fiscal-printers/connection-types`),
+        fetch(`${API_URL}/fiscal-printers/manufacturers`, { headers: getAuthHeaders() }),
+        fetch(`${API_URL}/fiscal-printers/models`, { headers: getAuthHeaders() }),
+        fetch(`${API_URL}/fiscal-printers/connection-types`, { headers: getAuthHeaders() }),
       ]);
 
       if (mfrsRes.ok) {
@@ -94,13 +94,9 @@ export default function FiscalPrintersPage() {
     if (!selectedPrinter) return;
     setConfiguring(true);
     try {
-      const token = localStorage.getItem('access_token');
       const response = await fetch(`${API_URL}/fiscal-printers/configure`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
+        headers: getAuthHeaders(),
         body: JSON.stringify({
           ...configForm,
           model_id: selectedPrinter.id,

@@ -13,6 +13,7 @@ from app.models.restaurant import (
     GuestOrder as GuestOrderModel, KitchenOrder, Table, MenuItem,
     ModifierGroup, ModifierOption, MenuItemModifierGroup,
     ComboMeal, ComboItem, MenuCategory as MenuCategoryModel,
+    CheckItem,
 )
 from app.models.operations import AppSetting
 from app.services.stock_deduction_service import StockDeductionService
@@ -983,6 +984,70 @@ def void_order_item(
         "item_id": item_id,
         "new_order_total": float(order.total),
         "stock_returned": stock_refund_result.get("success", False) if stock_refund_result else False
+    }
+
+
+# Valid statuses for CheckItem (defined in restaurant.py model)
+VALID_CHECK_ITEM_STATUSES = {"ordered", "fired", "cooking", "ready", "served", "voided"}
+
+
+class UpdateItemStatusRequest(BaseModel):
+    status: str
+
+    @field_validator("status", mode="before")
+    @classmethod
+    def _validate_status(cls, v):
+        if v not in VALID_CHECK_ITEM_STATUSES:
+            raise ValueError(
+                f"Invalid status '{v}'. Must be one of: {', '.join(sorted(VALID_CHECK_ITEM_STATUSES))}"
+            )
+        return v
+
+
+@router.patch("/orders/{order_id}/items/{item_id}/status")
+def update_order_item_status(
+    db: DbSession,
+    order_id: int,
+    item_id: int,
+    request: UpdateItemStatusRequest,
+):
+    """Update the status of an individual order item (CheckItem).
+
+    Used by kitchen/server to mark items as preparing, ready, served, etc.
+    """
+    item = db.query(CheckItem).filter(
+        CheckItem.id == item_id,
+        CheckItem.check_id == order_id,
+    ).first()
+
+    if not item:
+        raise HTTPException(status_code=404, detail="Order item not found")
+
+    now = datetime.now(timezone.utc)
+    item.status = request.status
+
+    # Update relevant timestamp fields based on status
+    if request.status == "fired":
+        item.fired_at = now
+    elif request.status == "served":
+        item.served_at = now
+    elif request.status == "voided":
+        item.voided_at = now
+
+    db.commit()
+    db.refresh(item)
+
+    return {
+        "id": item.id,
+        "check_id": item.check_id,
+        "name": item.name,
+        "status": item.status,
+        "quantity": item.quantity,
+        "price": float(item.price),
+        "total": float(item.total),
+        "fired_at": item.fired_at.isoformat() if item.fired_at else None,
+        "served_at": item.served_at.isoformat() if item.served_at else None,
+        "voided_at": item.voided_at.isoformat() if item.voided_at else None,
     }
 
 

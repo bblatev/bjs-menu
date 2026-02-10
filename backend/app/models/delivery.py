@@ -1,6 +1,6 @@
 """Delivery Aggregator Integration models - DoorDash/Uber Eats/Deliverect style."""
 
-from datetime import datetime
+from datetime import datetime, timezone
 from enum import Enum
 from typing import Optional, List
 from sqlalchemy import Column, Integer, String, Float, DateTime, Text, Boolean, ForeignKey, Enum as SQLEnum, JSON
@@ -63,8 +63,8 @@ class DeliveryIntegration(Base):
     # Commission tracking
     commission_percent = Column(Float, nullable=True)
 
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
 
 
 class DeliveryOrder(Base):
@@ -85,7 +85,7 @@ class DeliveryOrder(Base):
     status_updated_at = Column(DateTime, nullable=True)
 
     # Timing
-    received_at = Column(DateTime, default=datetime.utcnow)
+    received_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
     confirmed_at = Column(DateTime, nullable=True)
     ready_at = Column(DateTime, nullable=True)
     picked_up_at = Column(DateTime, nullable=True)
@@ -125,8 +125,8 @@ class DeliveryOrder(Base):
     # Raw payload (for debugging)
     raw_payload = Column(JSON, nullable=True)
 
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
 
     # Relationships
     integration = relationship("DeliveryIntegration", backref="orders")
@@ -170,7 +170,7 @@ class MenuSync(Base):
 
     # Sync details
     sync_type = Column(String(50), nullable=False)  # full, incremental, availability
-    started_at = Column(DateTime, default=datetime.utcnow)
+    started_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
     completed_at = Column(DateTime, nullable=True)
 
     # Results
@@ -183,7 +183,7 @@ class MenuSync(Base):
     error_message = Column(Text, nullable=True)
     error_details = Column(JSON, nullable=True)
 
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
 
 class ItemAvailability(Base):
@@ -204,7 +204,7 @@ class ItemAvailability(Base):
     # {"doordash": true, "uber_eats": true, "grubhub": false}
     last_sync_at = Column(DateTime, nullable=True)
 
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
 
 
 class DeliveryPlatformMapping(Base):
@@ -223,4 +223,4 @@ class DeliveryPlatformMapping(Base):
     platform_price = Column(Float, nullable=True)  # If different from base price
 
     is_active = Column(Boolean, default=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))

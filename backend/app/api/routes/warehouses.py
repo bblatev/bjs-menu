@@ -1,6 +1,6 @@
 """Warehouse management API routes."""
 
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import List, Optional
 
 from fastapi import APIRouter, HTTPException, Query
@@ -287,12 +287,23 @@ async def create_transfer(transfer: TransferCreate, db: DbSession):
         status=transfer.status,
         notes=transfer.notes,
         created_by=transfer.created_by,
-        created_at=datetime.utcnow(),
+        created_at=datetime.now(timezone.utc),
     )
     db.add(db_transfer)
     db.commit()
     db.refresh(db_transfer)
     return {"success": True, "id": str(db_transfer.id)}
+
+
+@router.put("/transfers/{transfer_id}/submit")
+async def submit_transfer(transfer_id: int, db: DbSession):
+    """Submit a draft transfer for approval (draft -> pending)."""
+    transfer = db.query(WarehouseTransfer).filter(WarehouseTransfer.id == transfer_id).first()
+    if not transfer:
+        raise HTTPException(status_code=404, detail="Transfer not found")
+    transfer.status = "pending"
+    db.commit()
+    return {"success": True, "id": str(transfer.id), "status": "pending"}
 
 
 @router.put("/transfers/{transfer_id}/start")
@@ -313,7 +324,7 @@ async def complete_transfer(transfer_id: int, db: DbSession):
     if not transfer:
         raise HTTPException(status_code=404, detail="Transfer not found")
     transfer.status = "completed"
-    transfer.completed_at = datetime.utcnow()
+    transfer.completed_at = datetime.now(timezone.utc)
     db.commit()
     return {"success": True, "id": str(transfer.id), "status": "completed"}
 

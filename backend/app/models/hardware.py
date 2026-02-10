@@ -1,7 +1,7 @@
 """Hardware inventory models - kegs, tanks, RFID tags."""
 
 from __future__ import annotations
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional
 from sqlalchemy import Boolean, String, Integer, Float, DateTime, Text, JSON
 from sqlalchemy.orm import Mapped, mapped_column
@@ -59,7 +59,7 @@ class RFIDTag(Base, TimestampMixin):
     unit: Mapped[str] = mapped_column(String(50), default="units", nullable=False)
     zone: Mapped[str] = mapped_column(String(100), nullable=False)
     status: Mapped[str] = mapped_column(String(50), default="active", nullable=False)  # active, inactive, lost
-    last_seen: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
+    last_seen: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
     location: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
     location_id: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
 
@@ -71,7 +71,7 @@ class InventoryCountSession(Base, TimestampMixin):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     zone: Mapped[str] = mapped_column(String(100), nullable=False)
-    started_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
+    started_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
     completed_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
     tags_scanned: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     discrepancies: Mapped[int] = mapped_column(Integer, default=0, nullable=False)

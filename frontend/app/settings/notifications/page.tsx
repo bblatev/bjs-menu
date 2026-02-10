@@ -37,11 +37,11 @@ export default function NotificationSettingsPage() {
     const token = localStorage.getItem('access_token');
     try {
       const [alertsRes, prefsRes] = await Promise.all([
-        fetch(`\${API_URL}/notifications/alerts/config`, {
-          headers: { 'Authorization': `Bearer \${token}` }
+        fetch(`${API_URL}/notifications/alerts/config`, {
+          headers: { 'Authorization': `Bearer ${token}` }
         }),
-        fetch(`\${API_URL}/notifications/preferences`, {
-          headers: { 'Authorization': `Bearer \${token}` }
+        fetch(`${API_URL}/notifications/preferences`, {
+          headers: { 'Authorization': `Bearer ${token}` }
         })
       ]);
       
@@ -64,10 +64,10 @@ export default function NotificationSettingsPage() {
     const token = localStorage.getItem('access_token');
     setSaving(true);
     try {
-      await fetch(`\${API_URL}/notifications/alerts/config/\${alertType}`, {
+      await fetch(`${API_URL}/notifications/alerts/config/${alertType}`, {
         method: 'PUT',
-        headers: { 
-          'Authorization': `Bearer \${token}`,
+        headers: {
+          'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({ alert_type: alertType, enabled })
@@ -83,9 +83,9 @@ export default function NotificationSettingsPage() {
   const testNotification = async () => {
     const token = localStorage.getItem('access_token');
     try {
-      await fetch(`\${API_URL}/notifications/test/all-channels`, {
+      await fetch(`${API_URL}/notifications/test/all-channels`, {
         method: 'POST',
-        headers: { 'Authorization': `Bearer \${token}` }
+        headers: { 'Authorization': `Bearer ${token}` }
       });
       alert('Test notification sent!');
     } catch (error) {

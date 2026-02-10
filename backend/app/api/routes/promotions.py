@@ -155,6 +155,19 @@ async def update_promotion(promotion_id: str, data: dict, db: DbSession):
     return {"success": True}
 
 
+@router.patch("/{promotion_id}/toggle-active")
+async def toggle_promotion_active(promotion_id: str, db: DbSession):
+    """Toggle a promotion's active status."""
+    promo = db.get(PromotionModel, int(promotion_id))
+    if not promo:
+        raise HTTPException(status_code=404, detail="Promotion not found")
+
+    promo.active = not promo.active
+    db.commit()
+    db.refresh(promo)
+    return {"success": True, "id": str(promo.id), "active": promo.active}
+
+
 @router.delete("/{promotion_id}")
 async def delete_promotion(promotion_id: str, db: DbSession):
     """Delete a promotion."""

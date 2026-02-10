@@ -64,11 +64,17 @@ export default function ForecastingPage() {
         if (forecastRes.ok) {
           const data = await forecastRes.json();
           // Transform daily metrics to forecast format
-          setForecasts(data.metrics?.map((m: Record<string, unknown>) => ({
-            date: m.date,
-            predicted_revenue: m.revenue || 0,
-            predicted_orders: m.order_count || 0,
-            confidence: 0.85
+          const metrics = data.metrics || [];
+          setForecasts(metrics.map((m: Record<string, unknown>, idx: number) => ({
+            item_id: idx + 1,
+            item_name: (m.date as string) || `Day ${idx + 1}`,
+            current_value: Number(m.revenue) || 0,
+            forecast_values: [Number(m.revenue) || 0],
+            forecast_dates: [(m.date as string) || ''],
+            confidence_interval: [0, 0] as [number, number],
+            trend: Number(m.revenue) > 0 ? 'up' : 'stable',
+            accuracy_score: 85,
+            recommendations: [`${Number(m.order_count) || 0} orders`],
           })) || []);
         }
       } catch (error) {
@@ -123,7 +129,7 @@ export default function ForecastingPage() {
                 <span className="text-2xl font-bold">
                   {dashboardData.sales_trend.direction === 'up' ? '↗' : dashboardData.sales_trend.direction === 'down' ? '↘' : '→'}
                 </span>
-                <span className={`text-lg font-semibold \${dashboardData.sales_trend.change_percent > 0 ? 'text-green-600' : 'text-red-600'}`}>
+                <span className={`text-lg font-semibold ${dashboardData.sales_trend.change_percent > 0 ? 'text-green-600' : 'text-red-600'}`}>
                   {dashboardData.sales_trend.change_percent > 0 ? '+' : ''}{dashboardData.sales_trend.change_percent.toFixed(1)}%
                 </span>
               </div>
@@ -179,13 +185,13 @@ export default function ForecastingPage() {
                     <td className="px-6 py-4 font-medium">{item.item_name}</td>
                     <td className="px-6 py-4">{item.current_value}</td>
                     <td className="px-6 py-4">
-                      <span className={`px-2 py-1 rounded-full text-xs font-medium \${getTrendColor(item.trend)}`}>{item.trend}</span>
+                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${getTrendColor(item.trend)}`}>{item.trend}</span>
                     </td>
                     <td className="px-6 py-4">{item.forecast_values.slice(0,3).map(v => v.toFixed(0)).join(', ')}...</td>
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-2">
                         <div className="w-16 h-2 bg-surface-200 rounded-full overflow-hidden">
-                          <div className={`h-full \${item.accuracy_score > 80 ? 'bg-green-500' : item.accuracy_score > 60 ? 'bg-yellow-500' : 'bg-red-500'}`} style={{width: `\${item.accuracy_score}%`}}/>
+                          <div className={`h-full ${item.accuracy_score > 80 ? 'bg-green-500' : item.accuracy_score > 60 ? 'bg-yellow-500' : 'bg-red-500'}`} style={{width: `${item.accuracy_score}%`}}/>
                         </div>
                         <span className="text-sm">{item.accuracy_score}%</span>
                       </div>

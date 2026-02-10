@@ -65,6 +65,17 @@ class UpdateReportRequest(BaseModel):
     is_public: Optional[bool] = None
 
 
+class ExecuteReportRequest(BaseModel):
+    data_source_id: str  # orders, sales, inventory, staff, customers, products
+    columns: List[ColumnRequest] = []
+    filters: List[FilterRequest] = []
+    groupings: List[GroupingRequest] = []
+    sort_direction: str = "asc"
+    limit: int = 100
+    chart_type: str = "table"
+    chart_config: dict = {}
+
+
 class RunReportRequest(BaseModel):
     parameters: dict = {}
     limit: int = 100
@@ -275,6 +286,59 @@ async def duplicate_report(report_id: str, new_name: str):
 # ============================================================================
 # Report Execution
 # ============================================================================
+
+@router.post("/reports/execute")
+async def execute_report(request: ExecuteReportRequest):
+    """
+    Execute an ad-hoc report without saving it.
+
+    Accepts a report configuration directly and returns results.
+    Useful for previewing reports before saving.
+    """
+    service = get_custom_report_builder_service()
+
+    try:
+        data_source = DataSourceType(request.data_source_id)
+    except ValueError:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid data source: {request.data_source_id}",
+        )
+
+    try:
+        chart_type = ChartType(request.chart_type)
+    except ValueError:
+        chart_type = ChartType.TABLE
+
+    columns = [col.model_dump() for col in request.columns]
+    filters = [flt.model_dump() for flt in request.filters]
+    groupings = [grp.model_dump() for grp in request.groupings]
+
+    # Create a temporary report to execute
+    temp_report = service.create_report(
+        name="__adhoc_execute__",
+        data_source=data_source,
+        columns=columns,
+        filters=filters,
+        groupings=groupings,
+        chart_type=chart_type,
+        chart_config=request.chart_config,
+    )
+
+    try:
+        result = service.run_report(
+            temp_report.report_id,
+            {"limit": request.limit, "sort_direction": request.sort_direction},
+        )
+
+        if "error" in result:
+            raise HTTPException(status_code=400, detail=result["error"])
+
+        return result
+    finally:
+        # Clean up the temporary report
+        service.delete_report(temp_report.report_id)
+
 
 @router.post("/reports/{report_id}/run")
 async def run_report(report_id: str, request: RunReportRequest):

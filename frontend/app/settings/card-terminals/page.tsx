@@ -105,10 +105,10 @@ export default function CardTerminalsPage() {
     setError(null);
     try {
       const [terminalsRes, typesRes, paymentsRes, statsRes] = await Promise.all([
-        fetch(`${API_URL}/card-terminals/terminals`),
-        fetch(`${API_URL}/card-terminals/terminal-types`),
-        fetch(`${API_URL}/card-terminals/payments?limit=20`),
-        fetch(`${API_URL}/card-terminals/stats`),
+        fetch(`${API_URL}/card-terminals/terminals`, { headers: getAuthHeaders() }),
+        fetch(`${API_URL}/card-terminals/terminal-types`, { headers: getAuthHeaders() }),
+        fetch(`${API_URL}/card-terminals/payments?limit=20`, { headers: getAuthHeaders() }),
+        fetch(`${API_URL}/card-terminals/stats`, { headers: getAuthHeaders() }),
       ]);
 
       if (terminalsRes.ok) {
@@ -139,7 +139,7 @@ export default function CardTerminalsPage() {
     try {
       const res = await fetch(`${API_URL}/card-terminals/terminals`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getAuthHeaders(),
         body: JSON.stringify(newTerminal),
       });
 
@@ -158,6 +158,7 @@ export default function CardTerminalsPage() {
     try {
       const res = await fetch(`${API_URL}/card-terminals/terminals/${terminalId}`, {
         method: 'DELETE',
+        headers: getAuthHeaders(),
       });
       if (res.ok) {
         loadData();
@@ -171,7 +172,7 @@ export default function CardTerminalsPage() {
     try {
       const res = await fetch(`${API_URL}/card-terminals/payments`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getAuthHeaders(),
         body: JSON.stringify(testPayment),
       });
 
@@ -189,7 +190,7 @@ export default function CardTerminalsPage() {
     try {
       await fetch(`${API_URL}/card-terminals/terminals/${terminalId}/display`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getAuthHeaders(),
         body: JSON.stringify({ message }),
       });
     } catch (error) {
@@ -201,6 +202,7 @@ export default function CardTerminalsPage() {
     try {
       await fetch(`${API_URL}/card-terminals/terminals/${terminalId}/clear`, {
         method: 'POST',
+        headers: getAuthHeaders(),
       });
     } catch (error) {
       console.error('Error clearing display:', error);
