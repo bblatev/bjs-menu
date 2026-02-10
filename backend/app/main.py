@@ -194,8 +194,8 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
             "default-src 'self'; "
             "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://js.stripe.com; "
             "style-src 'self' 'unsafe-inline'; "
-            "img-src 'self' data: blob:; "
-            "connect-src 'self' ws: wss: https://api.stripe.com; "
+            "img-src 'self' data: blob: https://api.qrserver.com; "
+            "connect-src 'self' ws: wss: https://api.stripe.com https://menu.bjs.bar; "
             "frame-src https://js.stripe.com; "
             "font-src 'self' data:;"
         )
