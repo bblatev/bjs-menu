@@ -100,7 +100,7 @@ export default function AllergensNutritionPage() {
 
       if (response.ok) {
         const data = await response.json();
-        setItems(data);
+        setItems(Array.isArray(data) ? data : (data.items || []));
       } else {
         console.error('Failed to load items');
       }
@@ -193,7 +193,7 @@ export default function AllergensNutritionPage() {
     });
   };
 
-  const filteredItems = items.filter(item => {
+  const filteredItems = (items || []).filter(item => {
     const matchesSearch = searchQuery === '' ||
       item.name.en.toLowerCase().includes(searchQuery.toLowerCase()) ||
       item.name.bg.toLowerCase().includes(searchQuery.toLowerCase());
@@ -209,16 +209,16 @@ export default function AllergensNutritionPage() {
 
   const allergenCounts = ALLERGENS.map(allergen => ({
     ...allergen,
-    count: items.filter(i => i.allergens.includes(allergen.id)).length,
+    count: (items || []).filter(i => (i.allergens || []).includes(allergen.id)).length,
   }));
 
   const dietaryCounts = DIETARY_LABELS.map(label => ({
     ...label,
-    count: items.filter(i => i.dietary_labels.includes(label.id)).length,
+    count: (items || []).filter(i => (i.dietary_labels || []).includes(label.id)).length,
   }));
 
-  const itemsWithNutrition = items.filter(i => i.nutrition).length;
-  const itemsWithAllergens = items.filter(i => i.allergens.length > 0).length;
+  const itemsWithNutrition = (items || []).filter(i => i.nutrition).length;
+  const itemsWithAllergens = (items || []).filter(i => (i.allergens || []).length > 0).length;
 
   if (loading) {
     return (

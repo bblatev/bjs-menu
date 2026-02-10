@@ -251,7 +251,7 @@ export default function ReportsStaffPage() {
                         </div>
                         <div>
                           <p className="text-xs text-surface-500">Avg Order</p>
-                          <p className="text-sm font-semibold text-surface-900">{staff.avgOrderValue.toFixed(1)} лв</p>
+                          <p className="text-sm font-semibold text-surface-900">{(staff.avgOrderValue ?? 0).toFixed(1)} лв</p>
                         </div>
                       </div>
 
@@ -284,7 +284,7 @@ export default function ReportsStaffPage() {
             </div>
             <div className="p-4">
               <div className="space-y-4">
-                {data.shiftDistribution.map((shift, i) => (
+                {(data.shiftDistribution || []).map((shift, i) => (
                   <motion.div
                     key={i}
                     initial={{ opacity: 0, scale: 0.95 }}
@@ -328,7 +328,7 @@ export default function ReportsStaffPage() {
             </div>
             <div className="p-4">
               <div className="space-y-4">
-                {data.performanceMetrics.map((metric, i) => (
+                {(data.performanceMetrics || []).map((metric, i) => (
                   <motion.div
                     key={i}
                     initial={{ opacity: 0, scale: 0.95 }}

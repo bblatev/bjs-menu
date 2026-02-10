@@ -479,7 +479,7 @@ export default function MarketingPromotionsPage() {
             {/* Schedule */}
             <div className="mb-4 space-y-2">
               <div className="flex flex-wrap gap-1">
-                {promo.days_active.map(day => (
+                {(promo.days_active || []).map(day => (
                   <span key={day} className="px-2 py-1 bg-blue-50 text-blue-700 rounded text-xs">
                     {day.slice(0, 3)}
                   </span>
@@ -495,7 +495,7 @@ export default function MarketingPromotionsPage() {
             {/* Applicable Categories */}
             <div className="mb-4">
               <div className="flex flex-wrap gap-1">
-                {promo.applicable_to.map(cat => (
+                {(promo.applicable_to || []).map(cat => (
                   <span key={cat} className="px-2 py-1 bg-purple-50 text-purple-700 rounded text-xs">
                     {cat}
                   </span>
@@ -504,9 +504,9 @@ export default function MarketingPromotionsPage() {
             </div>
 
             {/* Conditions */}
-            {promo.conditions.length > 0 && (
+            {(promo.conditions || []).length > 0 && (
               <div className="mb-4 space-y-1">
-                {promo.conditions.map((cond, idx) => (
+                {(promo.conditions || []).map((cond, idx) => (
                   <div key={idx} className="text-xs text-surface-500 flex items-start gap-1">
                     <span>•</span>
                     <span>{cond}</span>
@@ -522,11 +522,11 @@ export default function MarketingPromotionsPage() {
                 <div className="text-xs text-surface-500">Uses</div>
               </div>
               <div>
-                <div className="text-lg font-bold text-green-600">{promo.revenue_generated.toLocaleString()}</div>
+                <div className="text-lg font-bold text-green-600">{(promo.revenue_generated ?? 0).toLocaleString()}</div>
                 <div className="text-xs text-surface-500">Revenue</div>
               </div>
               <div>
-                <div className="text-lg font-bold text-surface-900">{promo.avg_order_value.toFixed(0)}</div>
+                <div className="text-lg font-bold text-surface-900">{(promo.avg_order_value ?? 0).toFixed(0)}</div>
                 <div className="text-xs text-surface-500">Avg Order</div>
               </div>
             </div>

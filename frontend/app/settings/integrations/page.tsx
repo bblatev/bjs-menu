@@ -399,7 +399,7 @@ export default function SettingsIntegrationsPage() {
               <div className="flex items-start justify-between mb-3">
                 <div>
                   <h3 className="text-lg font-semibold text-surface-900">{integration.name}</h3>
-                  <p className="text-xs text-surface-500 capitalize">{integration.category.replace('_', ' ')}</p>
+                  <p className="text-xs text-surface-500 capitalize">{(integration.category || '').replace('_', ' ')}</p>
                 </div>
                 {integration.popular && <Badge variant="primary">Popular</Badge>}
               </div>

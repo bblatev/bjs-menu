@@ -402,7 +402,7 @@ export default function DynamicPricingPage() {
 
                   {/* Conditions Preview */}
                   <div className="mt-3 pt-3 border-t border-gray-200 flex flex-wrap gap-2">
-                    {rule.conditions.map((cond, idx) => (
+                    {(rule.conditions || []).map((cond, idx) => (
                       <span key={idx} className="px-2 py-1 bg-gray-50 text-gray-600 text-xs rounded">
                         {cond.type}: {Array.isArray(cond.value) ? cond.value.join(', ') : cond.value}
                       </span>

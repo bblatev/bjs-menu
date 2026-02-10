@@ -599,20 +599,20 @@ export default function PurchaseOrdersManagementPage() {
                                   <div className="flex items-center gap-3">
                                     <span className="font-bold text-lg">{po.po_number}</span>
                                     <span className={`px-2 py-1 rounded-full text-xs font-medium ${poStatusColors[po.status]}`}>
-                                      {po.status.replace("_", " ").toUpperCase()}
+                                      {(po.status || '').replace("_", " ").toUpperCase()}
                                     </span>
                                   </div>
                                   <div className="text-gray-600">{po.supplier_name}</div>
                                 </div>
                                 <div className="text-right">
-                                  <div className="font-bold text-lg">{po.total_amount.toFixed(2)} {po.currency}</div>
+                                  <div className="font-bold text-lg">{(po.total_amount ?? 0).toFixed(2)} {po.currency}</div>
                                   <div className="text-sm text-gray-500">Expected: {po.expected_date}</div>
                                 </div>
                               </div>
                               <div className="flex justify-between items-center text-sm text-gray-500">
                                 <div className="flex items-center gap-4">
                                   <span>📦 {po.warehouse_name}</span>
-                                  <span>📝 {po.items.length} items</span>
+                                  <span>📝 {(po.items || []).length} items</span>
                                 </div>
                                 <div>
                                   {po.approved_by && (
@@ -627,8 +627,8 @@ export default function PurchaseOrdersManagementPage() {
                                     <span>Receiving Progress</span>
                                     <span>
                                       {Math.round(
-                                        (po.items.reduce((sum, i) => sum + i.quantity_received, 0) /
-                                          po.items.reduce((sum, i) => sum + i.quantity_ordered, 0)) * 100
+                                        ((po.items || []).reduce((sum, i) => sum + i.quantity_received, 0) /
+                                          ((po.items || []).reduce((sum, i) => sum + i.quantity_ordered, 0) || 1)) * 100
                                       )}%
                                     </span>
                                   </div>
@@ -636,8 +636,8 @@ export default function PurchaseOrdersManagementPage() {
                                     <div
                                       className="h-full bg-orange-500 rounded-full"
                                       style={{
-                                        width: `${(po.items.reduce((sum, i) => sum + i.quantity_received, 0) /
-                                          po.items.reduce((sum, i) => sum + i.quantity_ordered, 0)) * 100}%`,
+                                        width: `${((po.items || []).reduce((sum, i) => sum + i.quantity_received, 0) /
+                                          ((po.items || []).reduce((sum, i) => sum + i.quantity_ordered, 0) || 1)) * 100}%`,
                                       }}
                                     />
                                   </div>
@@ -698,7 +698,7 @@ export default function PurchaseOrdersManagementPage() {
                                 </div>
                               </div>
                               <div className="text-right">
-                                <div className="font-bold text-lg">{approval.amount.toFixed(2)} BGN</div>
+                                <div className="font-bold text-lg">{(approval.amount ?? 0).toFixed(2)} BGN</div>
                               </div>
                             </div>
                             {approval.notes && (
@@ -914,7 +914,7 @@ export default function PurchaseOrdersManagementPage() {
                                   </div>
                                 </div>
                                 <div className="text-right">
-                                  <div className="font-bold text-lg">{invoice.total_amount.toFixed(2)} {invoice.currency}</div>
+                                  <div className="font-bold text-lg">{(invoice.total_amount ?? 0).toFixed(2)} {invoice.currency}</div>
                                   <div className="text-sm text-gray-500">Due: {invoice.due_date}</div>
                                   {invoice.variance_amount && invoice.variance_amount > 0 && (
                                     <div className="text-sm text-red-600">Variance: {invoice.variance_amount.toFixed(2)} {invoice.currency}</div>
@@ -923,11 +923,11 @@ export default function PurchaseOrdersManagementPage() {
                               </div>
                               <div className="flex justify-between items-center">
                                 <div className="text-sm text-gray-500">
-                                  Tax: {invoice.tax_amount.toFixed(2)} | Subtotal: {invoice.subtotal.toFixed(2)}
+                                  Tax: {(invoice.tax_amount ?? 0).toFixed(2)} | Subtotal: {(invoice.subtotal ?? 0).toFixed(2)}
                                 </div>
-                                {invoice.amount_paid > 0 && (
+                                {(invoice.amount_paid ?? 0) > 0 && (
                                   <div className="text-sm text-green-600">
-                                    Paid: {invoice.amount_paid.toFixed(2)} {invoice.currency}
+                                    Paid: {(invoice.amount_paid ?? 0).toFixed(2)} {invoice.currency}
                                   </div>
                                 )}
                               </div>
@@ -1001,7 +1001,7 @@ export default function PurchaseOrdersManagementPage() {
                                 <div className="text-center p-3 bg-blue-50 rounded">
                                   <div className="text-xs text-gray-500 mb-1">Purchase Order</div>
                                   <div className="font-medium">{match.po_number}</div>
-                                  <div className="text-lg font-bold text-blue-600">{match.po_total.toFixed(2)}</div>
+                                  <div className="text-lg font-bold text-blue-600">{(match.po_total ?? 0).toFixed(2)}</div>
                                 </div>
                                 <div className="text-center p-3 bg-purple-50 rounded">
                                   <div className="text-xs text-gray-500 mb-1">GRN</div>
@@ -1025,7 +1025,7 @@ export default function PurchaseOrdersManagementPage() {
                                     </div>
                                     <div className="flex items-center gap-2">
                                       <span className="text-red-600">Price:</span>
-                                      <span>Price Variance: <strong>{match.price_variance.toFixed(2)} BGN</strong></span>
+                                      <span>Price Variance: <strong>{(match.price_variance ?? 0).toFixed(2)} BGN</strong></span>
                                     </div>
                                   </div>
                                 </div>
@@ -1046,7 +1046,7 @@ export default function PurchaseOrdersManagementPage() {
                                     </tr>
                                   </thead>
                                   <tbody>
-                                    {match.items.map((item, idx) => (
+                                    {(match.items || []).map((item, idx) => (
                                       <tr key={idx} className={`border-t ${
                                         item.qty_variance !== 0 || item.price_variance !== 0 ? "bg-red-50" : ""
                                       }`}>
@@ -1054,14 +1054,14 @@ export default function PurchaseOrdersManagementPage() {
                                         <td className="text-center p-3">{item.po_qty}</td>
                                         <td className="text-center p-3">{item.grn_qty}</td>
                                         <td className="text-center p-3">{item.invoice_qty}</td>
-                                        <td className="text-center p-3">{item.po_price.toFixed(2)}</td>
-                                        <td className="text-center p-3">{item.invoice_price.toFixed(2)}</td>
+                                        <td className="text-center p-3">{(item.po_price ?? 0).toFixed(2)}</td>
+                                        <td className="text-center p-3">{(item.invoice_price ?? 0).toFixed(2)}</td>
                                         <td className="text-center p-3">
                                           {item.qty_variance !== 0 && (
                                             <span className="text-red-600">{item.qty_variance > 0 ? "+" : ""}{item.qty_variance} qty</span>
                                           )}
                                           {item.price_variance !== 0 && (
-                                            <span className="text-red-600 ml-2">{item.price_variance.toFixed(2)} BGN</span>
+                                            <span className="text-red-600 ml-2">{(item.price_variance ?? 0).toFixed(2)} BGN</span>
                                           )}
                                           {item.qty_variance === 0 && item.price_variance === 0 && (
                                             <span className="text-green-600">OK</span>

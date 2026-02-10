@@ -369,7 +369,7 @@ export default function HotelPMSPage() {
                         <div className="text-sm text-surface-500">Room {charge.room_number} • {charge.description}</div>
                       </div>
                       <div className="text-right">
-                        <div className="font-semibold text-surface-900">${charge.amount.toFixed(2)}</div>
+                        <div className="font-semibold text-surface-900">${(charge.amount ?? 0).toFixed(2)}</div>
                         <span className={`px-2 py-0.5 rounded-full text-xs ${getStatusColor(charge.status)}`}>
                           {charge.status}
                         </span>
@@ -447,13 +447,13 @@ export default function HotelPMSPage() {
                       </td>
                       <td className="px-6 py-4 text-right">
                         {guest.fb_credit_balance > 0 ? (
-                          <span className="text-green-600 font-medium">${guest.fb_credit_balance.toFixed(2)}</span>
+                          <span className="text-green-600 font-medium">${(guest.fb_credit_balance ?? 0).toFixed(2)}</span>
                         ) : (
                           <span className="text-surface-400">$0.00</span>
                         )}
                       </td>
                       <td className="px-6 py-4 text-right font-medium text-surface-900">
-                        ${guest.total_charges.toFixed(2)}
+                        ${(guest.total_charges ?? 0).toFixed(2)}
                       </td>
                     </tr>
                   ))}

@@ -423,8 +423,8 @@ export default function MenuCombosPage() {
                     <p className="text-gray-500 text-sm">{combo.name.bg}</p>
                   </div>
                   <div className="text-right">
-                    <p className="text-2xl font-bold text-orange-400">{combo.price.toFixed(2)} lv</p>
-                    <p className="text-gray-500 line-through text-sm">{combo.original_price.toFixed(2)} lv</p>
+                    <p className="text-2xl font-bold text-orange-400">{(combo.price ?? 0).toFixed(2)} lv</p>
+                    <p className="text-gray-500 line-through text-sm">{(combo.original_price ?? 0).toFixed(2)} lv</p>
                   </div>
                 </div>
 
@@ -435,7 +435,7 @@ export default function MenuCombosPage() {
                 {/* Savings Badge */}
                 <div className="flex items-center gap-2 mb-4">
                   <span className="px-3 py-1 bg-green-500/20 text-green-400 text-sm rounded-lg">
-                    Save {combo.savings.toFixed(2)} lv ({combo.savings_percentage}%)
+                    Save {(combo.savings ?? 0).toFixed(2)} lv ({combo.savings_percentage ?? 0}%)
                   </span>
                   <span className="px-3 py-1 bg-gray-100 text-gray-600 text-sm rounded-lg">
                     {combo.sold_count} sold
@@ -848,7 +848,7 @@ export default function MenuCombosPage() {
                         />
                         <span className="text-gray-900 text-sm">{item.name}</span>
                         <span className="text-gray-500 text-xs">({item.category})</span>
-                        <span className="text-gray-500 text-sm ml-auto">{item.price.toFixed(2)} lv</span>
+                        <span className="text-gray-500 text-sm ml-auto">{(item.price ?? 0).toFixed(2)} lv</span>
                       </label>
                     ))}
                   </div>

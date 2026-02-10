@@ -90,7 +90,7 @@ export default function MenuSchedulingPage() {
 
       if (response.ok) {
         const data = await response.json();
-        setDayparts(data);
+        setDayparts(Array.isArray(data) ? data : (data.items || data.schedules || data.dayparts || []));
       } else {
         console.error('Failed to load dayparts');
       }
@@ -245,8 +245,8 @@ export default function MenuSchedulingPage() {
     return endPos - startPos;
   };
 
-  const activeDayparts = dayparts.filter(d => d.active).length;
-  const totalCategories = Array.from(new Set(dayparts.flatMap(d => d.categories))).length;
+  const activeDayparts = (dayparts || []).filter(d => d.active).length;
+  const totalCategories = Array.from(new Set((dayparts || []).flatMap(d => d.categories))).length;
 
   if (loading) {
     return (
@@ -284,7 +284,7 @@ export default function MenuSchedulingPage() {
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
           <div className="bg-gray-100 rounded-xl p-4">
             <p className="text-gray-600 text-sm">Total Dayparts</p>
-            <p className="text-2xl font-bold text-gray-900">{dayparts.length}</p>
+            <p className="text-2xl font-bold text-gray-900">{(dayparts || []).length}</p>
           </div>
           <div className="bg-gray-100 rounded-xl p-4">
             <p className="text-gray-600 text-sm">Active</p>
@@ -297,7 +297,7 @@ export default function MenuSchedulingPage() {
           <div className="bg-gray-100 rounded-xl p-4">
             <p className="text-gray-600 text-sm">With Discounts</p>
             <p className="text-2xl font-bold text-purple-400">
-              {dayparts.filter(d => d.price_adjustment !== 0).length}
+              {(dayparts || []).filter(d => d.price_adjustment !== 0).length}
             </p>
           </div>
         </div>
@@ -382,7 +382,7 @@ export default function MenuSchedulingPage() {
         {/* List View */}
         {activeView === 'list' && (
           <div className="space-y-4">
-            {dayparts.map(daypart => (
+            {(dayparts || []).map(daypart => (
               <motion.div
                 key={daypart.id}
                 layout

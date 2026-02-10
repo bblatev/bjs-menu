@@ -237,7 +237,7 @@ export default function ReportsSalesPage() {
             </div>
           </div>
           <div className="space-y-3">
-            {data.dailySales.map((day, i) => {
+            {(data.dailySales || []).map((day, i) => {
               const barWidth = (day.revenue / maxRevenue) * 100;
               return (
                 <motion.div
@@ -273,7 +273,7 @@ export default function ReportsSalesPage() {
         <div className="bg-white rounded-2xl p-6 shadow-sm border border-surface-100">
           <h2 className="text-lg font-semibold text-surface-900 mb-6">Revenue by Category</h2>
           <div className="space-y-4">
-            {data.categoryBreakdown.map((cat, i) => (
+            {(data.categoryBreakdown || []).map((cat, i) => (
               <motion.div
                 key={i}
                 initial={{ opacity: 0, scale: 0.95 }}
@@ -326,7 +326,7 @@ export default function ReportsSalesPage() {
                 </tr>
               </thead>
               <tbody>
-                {data.topItems.map((item, i) => (
+                {(data.topItems || []).map((item, i) => (
                   <motion.tr
                     key={i}
                     initial={{ opacity: 0, x: -10 }}
@@ -368,7 +368,7 @@ export default function ReportsSalesPage() {
                 </tr>
               </thead>
               <tbody>
-                {data.revenueByTime.map((period, i) => (
+                {(data.revenueByTime || []).map((period, i) => (
                   <motion.tr
                     key={i}
                     initial={{ opacity: 0, x: -10 }}

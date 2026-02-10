@@ -774,18 +774,59 @@ def get_stock_counts(
         query = query.filter(InventorySession.location_id == location_id)
 
     sessions = query.order_by(InventorySession.started_at.desc()).limit(20).all()
-    return [
-        {
+    results = []
+    for s in sessions:
+        lines = s.lines or []
+        items_count = len(lines)
+
+        # Compute variance by comparing counted qty vs current stock
+        variance_count = 0
+        variance_value = 0.0
+        for line in lines:
+            stock = db.query(StockOnHand).filter(
+                StockOnHand.product_id == line.product_id,
+                StockOnHand.location_id == s.location_id,
+            ).first()
+            current_qty = float(stock.qty) if stock else 0.0
+            delta = float(line.counted_qty) - current_qty
+            if delta != 0:
+                variance_count += 1
+                product = db.query(Product).filter(Product.id == line.product_id).first()
+                cost = float(product.cost_price) if product and product.cost_price else 0.0
+                variance_value += delta * cost
+
+        # Parse type from notes (format: "Stock count (full) - Location")
+        count_type = "full"
+        location_name = ""
+        if s.notes:
+            import re
+            type_match = re.search(r'\((\w+)\)', s.notes)
+            if type_match:
+                count_type = type_match.group(1)
+            loc_match = re.search(r' - (.+)$', s.notes)
+            if loc_match:
+                location_name = loc_match.group(1)
+        if not location_name and s.location:
+            location_name = s.location.name
+
+        status_val = s.status.value if hasattr(s.status, 'value') else str(s.status)
+
+        results.append({
             "id": s.id,
+            "count_number": f"SC-{s.id:04d}",
+            "type": count_type,
             "location_id": s.location_id,
-            "status": s.status.value if hasattr(s.status, 'value') else str(s.status),
+            "location": location_name,
+            "status": status_val,
             "notes": s.notes,
             "started_at": s.started_at.isoformat() if s.started_at else None,
-            "committed_at": s.committed_at.isoformat() if s.committed_at else None,
-            "items_count": len(s.lines) if s.lines else 0,
-        }
-        for s in sessions
-    ]
+            "completed_at": s.committed_at.isoformat() if s.committed_at else None,
+            "counted_by": "Staff",
+            "items_count": items_count,
+            "variance_count": variance_count,
+            "variance_value": round(variance_value, 2),
+        })
+    return results
 
 
 @router.post("/counts")

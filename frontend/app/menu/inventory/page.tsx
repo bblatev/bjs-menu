@@ -150,9 +150,10 @@ export default function MenuInventoryPage() {
       });
       if (res.ok) {
         const data = await res.json();
-        setItems(data);
-        if (data.length > 0) {
-          setSelectedItem(data[0]);
+        const itemsArray = Array.isArray(data) ? data : (data.items || []);
+        setItems(itemsArray);
+        if (itemsArray.length > 0) {
+          setSelectedItem(itemsArray[0]);
         }
       }
     } catch (error) {

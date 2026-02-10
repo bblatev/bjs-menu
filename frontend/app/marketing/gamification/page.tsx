@@ -676,12 +676,12 @@ export default function MarketingGamificationPage() {
                       <div className="flex gap-4 text-sm text-surface-600">
                         <span>🏆 {entry.badges_earned} badges</span>
                         <span>📍 {entry.visits} visits</span>
-                        <span>💰 {entry.total_spend.toLocaleString()} BGN</span>
+                        <span>💰 {(entry.total_spend ?? 0).toLocaleString()} BGN</span>
                       </div>
                     </div>
 
                     <div className="text-right">
-                      <div className="text-2xl font-bold text-amber-600">{entry.points.toLocaleString()}</div>
+                      <div className="text-2xl font-bold text-amber-600">{(entry.points ?? 0).toLocaleString()}</div>
                       <div className="text-xs text-surface-500">points</div>
                     </div>
                   </motion.div>

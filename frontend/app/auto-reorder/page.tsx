@@ -366,7 +366,7 @@ export default function AutoReorderPage() {
                 >
                   <td className="px-6 py-4">
                     <div className="font-medium text-surface-900">{rule.stock_item_name}</div>
-                    <div className="text-xs text-surface-500">{rule.trigger_type.replace(/_/g, ' ')}</div>
+                    <div className="text-xs text-surface-500">{(rule.trigger_type || '').replace(/_/g, ' ')}</div>
                   </td>
                   <td className="px-6 py-4 text-surface-600">{rule.preferred_supplier_name}</td>
                   <td className="px-6 py-4 text-center">

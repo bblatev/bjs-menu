@@ -104,9 +104,10 @@ export default function MenuModifiersPage() {
 
       if (response.ok) {
         const data = await response.json();
-        setModifierGroups(data);
-        if (data.length > 0) {
-          setExpandedGroups([data[0].id, data[1]?.id].filter(Boolean));
+        const groups = Array.isArray(data) ? data : (data.modifier_groups || data.items || []);
+        setModifierGroups(groups);
+        if (groups.length > 0) {
+          setExpandedGroups([groups[0].id, groups[1]?.id].filter(Boolean));
         }
       } else {
         console.error('Failed to load modifier groups');
@@ -137,7 +138,7 @@ export default function MenuModifiersPage() {
       free_selections: groupForm.free_selections,
       applies_to: groupForm.applies_to,
       active: groupForm.active,
-      sort_order: modifierGroups.length + 1,
+      sort_order: (modifierGroups || []).length + 1,
       display_type: groupForm.display_type,
     };
 
@@ -369,9 +370,9 @@ export default function MenuModifiersPage() {
     }
   };
 
-  const totalOptions = modifierGroups.reduce((sum, g) => sum + g.options.length, 0);
-  const activeGroups = modifierGroups.filter(g => g.active).length;
-  const requiredGroups = modifierGroups.filter(g => g.required).length;
+  const totalOptions = (modifierGroups || []).reduce((sum, g) => sum + (g.options || []).length, 0);
+  const activeGroups = (modifierGroups || []).filter(g => g.active).length;
+  const requiredGroups = (modifierGroups || []).filter(g => g.required).length;
 
   if (loading) {
     return (
@@ -409,7 +410,7 @@ export default function MenuModifiersPage() {
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
           <div className="bg-gray-100 rounded-xl p-4">
             <p className="text-gray-600 text-sm">Modifier Groups</p>
-            <p className="text-2xl font-bold text-gray-900">{modifierGroups.length}</p>
+            <p className="text-2xl font-bold text-gray-900">{(modifierGroups || []).length}</p>
           </div>
           <div className="bg-gray-100 rounded-xl p-4">
             <p className="text-gray-600 text-sm">Total Options</p>
@@ -610,7 +611,7 @@ export default function MenuModifiersPage() {
             ))}
         </div>
 
-        {modifierGroups.length === 0 && (
+        {(modifierGroups || []).length === 0 && (
           <div className="text-center py-16">
             <div className="text-6xl mb-4">🎛️</div>
             <p className="text-gray-900 text-xl mb-2">No Modifier Groups Yet</p>

@@ -208,7 +208,7 @@ export default function ReportsFinancialPage() {
             <div>
               <h3 className="text-sm font-semibold text-surface-700 mb-3">Revenue</h3>
               <div className="space-y-2">
-                {data.revenueStreams.map((stream, i) => (
+                {(data.revenueStreams || []).map((stream, i) => (
                   <motion.div
                     key={i}
                     initial={{ opacity: 0, x: -10 }}
@@ -244,7 +244,7 @@ export default function ReportsFinancialPage() {
                 <div className="flex items-center justify-between py-2 px-3 bg-success-50 rounded-lg mt-3">
                   <span className="text-sm font-bold text-success-900">Total Revenue</span>
                   <span className="text-lg font-bold text-success-700">
-                    {data.revenueStreams.reduce((sum, s) => sum + s.amount, 0).toLocaleString()} лв
+                    {(data.revenueStreams || []).reduce((sum, s) => sum + s.amount, 0).toLocaleString()} лв
                   </span>
                 </div>
               </div>
@@ -254,7 +254,7 @@ export default function ReportsFinancialPage() {
             <div>
               <h3 className="text-sm font-semibold text-surface-700 mb-3">Expenses</h3>
               <div className="space-y-2">
-                {data.expenseCategories.map((expense, i) => (
+                {(data.expenseCategories || []).map((expense, i) => (
                   <motion.div
                     key={i}
                     initial={{ opacity: 0, x: -10 }}
@@ -290,7 +290,7 @@ export default function ReportsFinancialPage() {
                 <div className="flex items-center justify-between py-2 px-3 bg-error-50 rounded-lg mt-3">
                   <span className="text-sm font-bold text-error-900">Total Expenses</span>
                   <span className="text-lg font-bold text-error-700">
-                    {data.expenseCategories.reduce((sum, e) => sum + e.amount, 0).toLocaleString()} лв
+                    {(data.expenseCategories || []).reduce((sum, e) => sum + e.amount, 0).toLocaleString()} лв
                   </span>
                 </div>
               </div>
@@ -300,7 +300,7 @@ export default function ReportsFinancialPage() {
             <div className="border-t-2 border-surface-200 pt-4">
               <div className="flex items-center justify-between py-3 px-4 bg-gradient-to-r from-primary-50 to-primary-100 rounded-xl">
                 <span className="text-lg font-bold text-primary-900">Net Profit</span>
-                <span className="text-2xl font-bold text-primary-700">{data.netProfit?.toLocaleString() || (data.revenueStreams.reduce((sum, s) => sum + s.amount, 0) - data.expenseCategories.reduce((sum, e) => sum + e.amount, 0)).toLocaleString()} лв</span>
+                <span className="text-2xl font-bold text-primary-700">{data.netProfit?.toLocaleString() || ((data.revenueStreams || []).reduce((sum, s) => sum + s.amount, 0) - (data.expenseCategories || []).reduce((sum, e) => sum + e.amount, 0)).toLocaleString()} лв</span>
               </div>
             </div>
           </div>
@@ -316,7 +316,7 @@ export default function ReportsFinancialPage() {
           </div>
           <div className="p-6">
             <div className="space-y-4">
-              {data.monthlyPL.map((month, i) => (
+              {(data.monthlyPL || []).map((month, i) => (
                 <motion.div
                   key={i}
                   initial={{ opacity: 0, y: 10 }}
@@ -371,7 +371,7 @@ export default function ReportsFinancialPage() {
           </div>
           <div className="p-6">
             <div className="space-y-2">
-              {data.cashFlow.map((item, i) => (
+              {(data.cashFlow || []).map((item, i) => (
                 <motion.div
                   key={i}
                   initial={{ opacity: 0, x: -10 }}

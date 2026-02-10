@@ -264,7 +264,7 @@ export default function ReportsCustomersPage() {
                     </div>
                     <div>
                       <p className="text-xs text-surface-500">Avg Order</p>
-                      <p className="text-sm font-semibold text-surface-900">{customer.avgOrderValue.toFixed(2)} лв</p>
+                      <p className="text-sm font-semibold text-surface-900">{(customer.avgOrderValue ?? 0).toFixed(2)} лв</p>
                     </div>
                     <div>
                       <p className="text-xs text-surface-500">Loyalty Points</p>
@@ -301,7 +301,7 @@ export default function ReportsCustomersPage() {
             </div>
             <div className="p-4">
               <div className="space-y-4">
-                {data.customerSegments.map((segment, i) => (
+                {(data.customerSegments || []).map((segment, i) => (
                   <motion.div
                     key={i}
                     initial={{ opacity: 0, scale: 0.95 }}
@@ -338,7 +338,7 @@ export default function ReportsCustomersPage() {
             </div>
             <div className="p-4">
               <div className="space-y-3">
-                {data.visitFrequency.map((freq, i) => (
+                {(data.visitFrequency || []).map((freq, i) => (
                   <motion.div
                     key={i}
                     initial={{ opacity: 0, x: -10 }}
@@ -368,8 +368,8 @@ export default function ReportsCustomersPage() {
           </div>
           <div className="p-6">
             <div className="space-y-3">
-              {data.spendingDistribution.map((dist, i) => {
-                const maxCustomers = Math.max(...data.spendingDistribution.map(d => d.customers));
+              {(data.spendingDistribution || []).map((dist, i) => {
+                const maxCustomers = Math.max(...(data.spendingDistribution || []).map(d => d.customers));
                 const barWidth = (dist.customers / maxCustomers) * 100;
                 return (
                   <motion.div
@@ -407,8 +407,8 @@ export default function ReportsCustomersPage() {
           </div>
           <div className="p-6">
             <div className="space-y-3">
-              {data.customerLifetime.map((lifeData, i) => {
-                const maxValue = Math.max(...data.customerLifetime.map(d => Math.max(d.newCustomers, d.churnedCustomers)));
+              {(data.customerLifetime || []).map((lifeData, i) => {
+                const maxValue = Math.max(...(data.customerLifetime || []).map(d => Math.max(d.newCustomers, d.churnedCustomers)));
                 return (
                   <motion.div
                     key={i}

@@ -531,12 +531,12 @@ export default function MarketingPage() {
                               <div className="text-xs text-gray-500">Customers</div>
                             </div>
                             <div>
-                              <div className="text-2xl font-bold">{segment.avg_order_value.toFixed(0)} BGN</div>
+                              <div className="text-2xl font-bold">{(segment.avg_order_value ?? 0).toFixed(0)} BGN</div>
                               <div className="text-xs text-gray-500">Avg Order</div>
                             </div>
                           </div>
                           <div className="space-y-1 mb-4">
-                            {segment.criteria.map((c, idx) => (
+                            {(segment.criteria || []).map((c, idx) => (
                               <div key={idx} className="text-xs text-gray-500 flex items-center gap-1">
                                 <span>•</span>
                                 <span>{c}</span>
