@@ -132,7 +132,7 @@ class TerminalHealth(Base):
     venue = relationship("Venue", backref="terminal_health")
     
     __table_args__ = (
-        UniqueConstraint('venue_id', 'terminal_id', name='uq_venue_terminal'),
+        UniqueConstraint('venue_id', 'terminal_id', name='uq_terminal_health_venue_terminal'),
     )
 
 
