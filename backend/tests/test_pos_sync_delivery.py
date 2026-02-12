@@ -222,9 +222,9 @@ class TestSyncEndpoints:
 class TestDeliveryEndpoints:
     """Test delivery aggregator endpoints."""
 
-    def test_list_integrations_empty(self, client: TestClient, db_session):
+    def test_list_integrations_empty(self, client: TestClient, db_session, auth_headers):
         """Test listing integrations when none exist."""
-        response = client.get("/api/v1/delivery/integrations/")
+        response = client.get("/api/v1/delivery/integrations/", headers=auth_headers)
         assert response.status_code == 200
         assert response.json() == []
 
@@ -243,20 +243,20 @@ class TestDeliveryEndpoints:
         )
         assert response.status_code in [200, 422]
 
-    def test_get_integration_not_found(self, client: TestClient, db_session):
+    def test_get_integration_not_found(self, client: TestClient, db_session, auth_headers):
         """Test getting non-existent integration."""
-        response = client.get("/api/v1/delivery/integrations/9999")
+        response = client.get("/api/v1/delivery/integrations/9999", headers=auth_headers)
         assert response.status_code == 404
 
-    def test_list_orders_empty(self, client: TestClient, db_session):
+    def test_list_orders_empty(self, client: TestClient, db_session, auth_headers):
         """Test listing orders when none exist."""
-        response = client.get("/api/v1/delivery/orders/")
+        response = client.get("/api/v1/delivery/orders/", headers=auth_headers)
         assert response.status_code == 200
         assert response.json() == []
 
-    def test_get_order_not_found(self, client: TestClient, db_session):
+    def test_get_order_not_found(self, client: TestClient, db_session, auth_headers):
         """Test getting non-existent order."""
-        response = client.get("/api/v1/delivery/orders/9999")
+        response = client.get("/api/v1/delivery/orders/9999", headers=auth_headers)
         assert response.status_code == 404
 
     def test_reject_order_not_found(self, client: TestClient, db_session, auth_headers):
@@ -268,9 +268,9 @@ class TestDeliveryEndpoints:
         )
         assert response.status_code == 404
 
-    def test_list_item_availability(self, client: TestClient, db_session):
+    def test_list_item_availability(self, client: TestClient, db_session, auth_headers):
         """Test listing item availability."""
-        response = client.get("/api/v1/delivery/availability/")
+        response = client.get("/api/v1/delivery/availability/", headers=auth_headers)
         assert response.status_code == 200
         assert isinstance(response.json(), list)
 
@@ -279,14 +279,14 @@ class TestDeliveryEndpoints:
         response = client.delete("/api/v1/delivery/integrations/9999", headers=auth_headers)
         assert response.status_code == 404
 
-    def test_get_delivery_summary(self, client: TestClient, db_session):
+    def test_get_delivery_summary(self, client: TestClient, db_session, auth_headers):
         """Test getting delivery summary report."""
-        response = client.get("/api/v1/delivery/reports/summary")
+        response = client.get("/api/v1/delivery/reports/summary", headers=auth_headers)
         assert response.status_code == 200
 
-    def test_get_platform_performance_invalid(self, client: TestClient, db_session):
+    def test_get_platform_performance_invalid(self, client: TestClient, db_session, auth_headers):
         """Test getting performance for invalid platform."""
-        response = client.get("/api/v1/delivery/reports/performance/invalid_platform")
+        response = client.get("/api/v1/delivery/reports/performance/invalid_platform", headers=auth_headers)
         assert response.status_code == 400
 
     def test_handle_webhook_invalid_platform(self, client: TestClient, db_session, auth_headers):
@@ -304,40 +304,41 @@ class TestDeliveryEndpoints:
 class TestAnalyticsEndpoints:
     """Test analytics and reporting endpoints."""
 
-    def test_get_menu_engineering_report(self, client: TestClient, db_session):
+    def test_get_menu_engineering_report(self, client: TestClient, db_session, auth_headers):
         """Test getting menu engineering report."""
-        response = client.get("/api/v1/analytics/menu-engineering/")
+        response = client.get("/api/v1/analytics/menu-engineering/", headers=auth_headers)
         assert response.status_code == 200
 
-    def test_get_product_analysis_not_found(self, client: TestClient, db_session):
+    def test_get_product_analysis_not_found(self, client: TestClient, db_session, auth_headers):
         """Test getting analysis for non-existent product."""
-        response = client.get("/api/v1/analytics/menu-engineering/9999")
+        response = client.get("/api/v1/analytics/menu-engineering/9999", headers=auth_headers)
         assert response.status_code == 404
 
-    def test_get_server_performance_report(self, client: TestClient, db_session):
+    def test_get_server_performance_report(self, client: TestClient, db_session, auth_headers):
         """Test getting server performance report."""
-        response = client.get("/api/v1/analytics/server-performance/")
+        response = client.get("/api/v1/analytics/server-performance/", headers=auth_headers)
         assert response.status_code == 200
         data = response.json()
         assert "date_range" in data
         assert "rankings" in data
 
-    def test_get_server_metrics(self, client: TestClient, db_session, test_user):
+    def test_get_server_metrics(self, client: TestClient, db_session, auth_headers, test_user):
         """Test getting metrics for a specific server."""
-        response = client.get(f"/api/v1/analytics/server-performance/{test_user.id}")
+        response = client.get(f"/api/v1/analytics/server-performance/{test_user.id}", headers=auth_headers)
         assert response.status_code == 200
         assert isinstance(response.json(), list)
 
-    def test_get_daily_metrics(self, client: TestClient, db_session):
+    def test_get_daily_metrics(self, client: TestClient, db_session, auth_headers):
         """Test getting daily metrics."""
-        response = client.get("/api/v1/analytics/daily-metrics/")
+        response = client.get("/api/v1/analytics/daily-metrics/", headers=auth_headers)
         assert response.status_code == 200
         assert isinstance(response.json(), list)
 
-    def test_get_daily_metrics_with_filters(self, client: TestClient, db_session, test_location):
+    def test_get_daily_metrics_with_filters(self, client: TestClient, db_session, auth_headers, test_location):
         """Test getting daily metrics with filters."""
         response = client.get(
-            f"/api/v1/analytics/daily-metrics/?location_id={test_location.id}&start_date=2024-01-01"
+            f"/api/v1/analytics/daily-metrics/?location_id={test_location.id}&start_date=2024-01-01",
+            headers=auth_headers
         )
         assert response.status_code == 200
 
@@ -346,9 +347,9 @@ class TestAnalyticsEndpoints:
         response = client.post("/api/v1/analytics/daily-metrics/calculate", headers=auth_headers)
         assert response.status_code == 200
 
-    def test_get_metric_trend(self, client: TestClient, db_session):
+    def test_get_metric_trend(self, client: TestClient, db_session, auth_headers):
         """Test getting metric trend."""
-        response = client.get("/api/v1/analytics/metrics-trend/average_ticket")
+        response = client.get("/api/v1/analytics/metrics-trend/average_ticket", headers=auth_headers)
         assert response.status_code == 200
         data = response.json()
         assert "metric_name" in data
@@ -363,9 +364,9 @@ class TestAnalyticsEndpoints:
         )
         assert response.status_code == 200
 
-    def test_get_conversation_history(self, client: TestClient, db_session):
+    def test_get_conversation_history(self, client: TestClient, db_session, auth_headers):
         """Test getting conversation history."""
-        response = client.get("/api/v1/analytics/chat/history/test-conversation-id")
+        response = client.get("/api/v1/analytics/chat/history/test-conversation-id", headers=auth_headers)
         assert response.status_code in [200, 404]
 
     def test_submit_query_feedback(self, client: TestClient, db_session, auth_headers):
@@ -377,15 +378,15 @@ class TestAnalyticsEndpoints:
         )
         assert response.status_code in [200, 404, 422]
 
-    def test_list_benchmarks(self, client: TestClient, db_session):
+    def test_list_benchmarks(self, client: TestClient, db_session, auth_headers):
         """Test listing benchmarks."""
-        response = client.get("/api/v1/analytics/benchmarks/")
+        response = client.get("/api/v1/analytics/benchmarks/", headers=auth_headers)
         assert response.status_code == 200
         assert isinstance(response.json(), list)
 
-    def test_compare_to_benchmarks_no_metrics(self, client: TestClient, db_session, test_location):
+    def test_compare_to_benchmarks_no_metrics(self, client: TestClient, db_session, auth_headers, test_location):
         """Test comparing to benchmarks when no metrics exist."""
-        response = client.get(f"/api/v1/analytics/benchmarks/compare?location_id={test_location.id}")
+        response = client.get(f"/api/v1/analytics/benchmarks/compare?location_id={test_location.id}", headers=auth_headers)
         assert response.status_code == 404
 
 
@@ -394,9 +395,9 @@ class TestAnalyticsEndpoints:
 class TestBottleWeightEndpoints:
     """Test bottle weight database endpoints."""
 
-    def test_list_bottle_weights_empty(self, client: TestClient, db_session):
+    def test_list_bottle_weights_empty(self, client: TestClient, db_session, auth_headers):
         """Test listing bottle weights when none exist."""
-        response = client.get("/api/v1/analytics/bottle-weights/")
+        response = client.get("/api/v1/analytics/bottle-weights/", headers=auth_headers)
         assert response.status_code == 200
         assert response.json() == []
 
@@ -414,14 +415,14 @@ class TestBottleWeightEndpoints:
         )
         assert response.status_code in [200, 422]
 
-    def test_get_bottle_weight_not_found(self, client: TestClient, db_session):
+    def test_get_bottle_weight_not_found(self, client: TestClient, db_session, auth_headers):
         """Test getting bottle weight for non-existent product."""
-        response = client.get("/api/v1/analytics/bottle-weights/9999")
+        response = client.get("/api/v1/analytics/bottle-weights/9999", headers=auth_headers)
         assert response.status_code == 404
 
-    def test_get_products_without_weights(self, client: TestClient, db_session):
+    def test_get_products_without_weights(self, client: TestClient, db_session, auth_headers):
         """Test getting products without bottle weights."""
-        response = client.get("/api/v1/analytics/bottle-weights/missing/")
+        response = client.get("/api/v1/analytics/bottle-weights/missing/", headers=auth_headers)
         assert response.status_code == 200
         assert isinstance(response.json(), list)
 
@@ -456,9 +457,9 @@ class TestScaleEndpoints:
         )
         assert response.status_code in [200, 400]
 
-    def test_get_scale_session_summary_not_found(self, client: TestClient, db_session):
+    def test_get_scale_session_summary_not_found(self, client: TestClient, db_session, auth_headers):
         """Test getting scale session summary for non-existent session."""
-        response = client.get("/api/v1/analytics/scale/session-summary/9999")
+        response = client.get("/api/v1/analytics/scale/session-summary/9999", headers=auth_headers)
         assert response.status_code in [200, 404]
 
 

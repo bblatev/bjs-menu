@@ -130,8 +130,9 @@ export default function SupplierManagementPage() {
       });
       if (res.ok) {
         const data = await res.json();
-        setSuppliers(data);
-        if (data.length > 0) setSelectedSupplier(data[0]);
+        const list = Array.isArray(data) ? data : (data.items || data.suppliers || []);
+        setSuppliers(list);
+        if (list.length > 0) setSelectedSupplier(list[0]);
       }
     } catch (error) {
       console.error("Error fetching suppliers:", error);

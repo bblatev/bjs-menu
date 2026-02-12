@@ -161,16 +161,16 @@ class TestOrderRetrieval:
         })
         return res.json()["order_id"]
 
-    def test_get_order_by_id(self, client, order_setup):
+    def test_get_order_by_id(self, client, auth_headers, order_setup):
         order_id = self._create_order(client, order_setup["beer"].id)
-        res = client.get(f"/api/v1/orders/guest/{order_id}")
+        res = client.get(f"/api/v1/orders/guest/{order_id}", headers=auth_headers)
         assert res.status_code == 200
         data = res.json()
         assert data["id"] == order_id
         assert data["status"] == "received"
 
-    def test_get_nonexistent_order_404(self, client, order_setup):
-        res = client.get("/api/v1/orders/guest/99999")
+    def test_get_nonexistent_order_404(self, client, auth_headers, order_setup):
+        res = client.get("/api/v1/orders/guest/99999", headers=auth_headers)
         assert res.status_code == 404
 
     def test_get_table_orders(self, client, order_setup):
@@ -200,7 +200,7 @@ class TestOrderStatusUpdates:
         assert res.status_code == 200
 
         # Verify status changed
-        res = client.get(f"/api/v1/orders/guest/{order_id}")
+        res = client.get(f"/api/v1/orders/guest/{order_id}", headers=auth_headers)
         assert res.json()["status"] == "confirmed"
 
     def test_update_status_to_ready(self, client, auth_headers, order_setup):
@@ -236,7 +236,7 @@ class TestOrderVoidCancel:
         assert res.status_code == 200
 
         # Verify cancelled
-        res = client.get(f"/api/v1/orders/guest/{order_id}")
+        res = client.get(f"/api/v1/orders/guest/{order_id}", headers=auth_headers)
         assert res.json()["status"] == "cancelled"
 
     def test_void_order(self, client, auth_headers, order_setup):

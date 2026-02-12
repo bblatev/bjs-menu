@@ -123,7 +123,7 @@ export default function CustomersPage() {
 
       if (response.ok) {
         const data = await response.json();
-        setCustomers(data.customers || data || []);
+        setCustomers(data.items || data.customers || (Array.isArray(data) ? data : []));
       } else {
         const errorMessage = response.status === 401
           ? 'Unauthorized. Please log in again.'

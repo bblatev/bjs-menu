@@ -79,7 +79,7 @@ export default function FeedbackPage() {
       }
 
       const data = await response.json();
-      setReviews(data.reviews || data);
+      setReviews(Array.isArray(data) ? data : (data.items || data.reviews || []));
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load reviews');
       setReviews([]);

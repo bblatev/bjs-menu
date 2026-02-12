@@ -230,7 +230,7 @@ export default function PurchaseOrdersManagementPage() {
       });
       if (!res.ok) throw new Error('Failed to fetch purchase orders');
       const data = await res.json();
-      setPurchaseOrders(data);
+      setPurchaseOrders(Array.isArray(data) ? data : (data.items || []));
     } catch (err) {
       console.error('Error fetching purchase orders:', err);
       setError(prev => ({ ...prev, purchaseOrders: err instanceof Error ? err.message : 'Failed to load purchase orders' }));
@@ -250,7 +250,7 @@ export default function PurchaseOrdersManagementPage() {
       });
       if (!res.ok) throw new Error('Failed to fetch goods received notes');
       const data = await res.json();
-      setGRNs(data);
+      setGRNs(Array.isArray(data) ? data : (data.items || []));
     } catch (err) {
       console.error('Error fetching GRNs:', err);
       setError(prev => ({ ...prev, grns: err instanceof Error ? err.message : 'Failed to load goods received notes' }));
@@ -270,7 +270,7 @@ export default function PurchaseOrdersManagementPage() {
       });
       if (!res.ok) throw new Error('Failed to fetch invoices');
       const data = await res.json();
-      setInvoices(data);
+      setInvoices(Array.isArray(data) ? data : (data.items || []));
     } catch (err) {
       console.error('Error fetching invoices:', err);
       setError(prev => ({ ...prev, invoices: err instanceof Error ? err.message : 'Failed to load invoices' }));
@@ -290,7 +290,7 @@ export default function PurchaseOrdersManagementPage() {
       });
       if (!res.ok) throw new Error('Failed to fetch approvals');
       const data = await res.json();
-      setApprovals(data);
+      setApprovals(Array.isArray(data) ? data : (data.items || []));
     } catch (err) {
       console.error('Error fetching approvals:', err);
       setError(prev => ({ ...prev, approvals: err instanceof Error ? err.message : 'Failed to load approvals' }));
@@ -310,7 +310,7 @@ export default function PurchaseOrdersManagementPage() {
       });
       if (!res.ok) throw new Error('Failed to fetch three-way matches');
       const data = await res.json();
-      setMatches(data);
+      setMatches(Array.isArray(data) ? data : (data.items || []));
     } catch (err) {
       console.error('Error fetching matches:', err);
       setError(prev => ({ ...prev, matches: err instanceof Error ? err.message : 'Failed to load three-way matches' }));

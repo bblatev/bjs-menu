@@ -24,8 +24,8 @@ class TestSupplierCRUD:
         assert data["name"] == "New Supplier"
         assert data["id"] > 0
 
-    def test_list_suppliers(self, client, test_supplier):
-        res = client.get("/api/v1/suppliers/")
+    def test_list_suppliers(self, client, auth_headers, test_supplier):
+        res = client.get("/api/v1/suppliers/", headers=auth_headers)
         assert res.status_code == 200
         data = res.json()
         assert len(data) >= 1
@@ -161,7 +161,7 @@ class TestCustomerCRUD:
         client.post("/api/v1/customers/", json={
             "name": "List Test", "phone": "555-LIST",
         }, headers=auth_headers)
-        res = client.get("/api/v1/customers/")
+        res = client.get("/api/v1/customers/", headers=auth_headers)
         assert res.status_code == 200
         data = res.json()
         assert data["total"] >= 1
@@ -172,7 +172,7 @@ class TestCustomerCRUD:
         }, headers=auth_headers)
         cust_id = create_res.json()["id"]
 
-        res = client.get(f"/api/v1/customers/{cust_id}")
+        res = client.get(f"/api/v1/customers/{cust_id}", headers=auth_headers)
         assert res.status_code == 200
         assert res.json()["name"] == "Get Test"
 
@@ -198,14 +198,14 @@ class TestCustomerCRUD:
         assert res.status_code == 200
 
         # Verify deleted
-        res = client.get(f"/api/v1/customers/{cust_id}")
+        res = client.get(f"/api/v1/customers/{cust_id}", headers=auth_headers)
         assert res.status_code == 404
 
     def test_search_customers(self, client, auth_headers):
         client.post("/api/v1/customers/", json={
             "name": "Searchable Person", "phone": "555-SRCH",
         }, headers=auth_headers)
-        res = client.get("/api/v1/customers/?search=Searchable")
+        res = client.get("/api/v1/customers/?search=Searchable", headers=auth_headers)
         assert res.status_code == 200
         assert res.json()["total"] >= 1
 
@@ -237,7 +237,7 @@ class TestRecipeCRUD:
             "lines": [{"product_id": test_product.id, "qty": "1", "unit": "pcs"}],
         }, headers=auth_headers)
 
-        res = client.get("/api/v1/recipes/")
+        res = client.get("/api/v1/recipes/", headers=auth_headers)
         assert res.status_code == 200
         assert len(res.json()) >= 1
 

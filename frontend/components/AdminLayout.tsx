@@ -54,8 +54,7 @@ const navigationGroups = [
       { name: 'Menu Features', href: '/menu/features', icon: '✨' },
       { name: 'Menu Inventory', href: '/menu/inventory', icon: '📦' },
       { name: 'Menu Engineering', href: '/menu-engineering', icon: '📈' },
-      { name: 'Recipes', href: '/recipes', icon: '📝' },
-      { name: 'Recipe Management', href: '/recipes/management', icon: '🧪' },
+      { name: 'Recipes', href: '/recipes/management', icon: '📝' },
     ]
   },
   {
@@ -82,10 +81,8 @@ const navigationGroups = [
   {
     name: 'Purchasing',
     items: [
-      { name: 'Suppliers', href: '/suppliers', icon: '🚛' },
-      { name: 'Supplier Management', href: '/suppliers/management', icon: '📋' },
-      { name: 'Purchase Orders', href: '/purchase-orders', icon: '📝' },
-      { name: 'PO Management', href: '/purchase-orders/management', icon: '📊' },
+      { name: 'Suppliers', href: '/suppliers/management', icon: '🚛' },
+      { name: 'Purchase Orders', href: '/purchase-orders/management', icon: '📝' },
       { name: 'Invoices', href: '/invoices', icon: '🧾' },
       { name: 'Invoice OCR', href: '/invoices/ocr', icon: '📸' },
       { name: 'Invoice Upload', href: '/invoices/upload', icon: '⬆️' },

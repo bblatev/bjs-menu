@@ -105,8 +105,9 @@ export default function RecipeManagementPage() {
       });
       if (res.ok) {
         const data = await res.json();
-        setRecipes(data);
-        if (data.length > 0) setSelectedRecipe(data[0]);
+        const list = Array.isArray(data) ? data : (data.items || data.recipes || []);
+        setRecipes(list);
+        if (list.length > 0) setSelectedRecipe(list[0]);
       }
     } catch (error) {
       console.error("Error fetching recipes:", error);

@@ -86,8 +86,8 @@ export default function StaffManagementPage() {
 
       if (response.ok) {
         const data = await response.json();
-        // Handle both array and {staff: [...]} response formats
-        setStaff(Array.isArray(data) ? data : (data.staff || []));
+        // Handle array, {items: [...]} and {staff: [...]} response formats
+        setStaff(Array.isArray(data) ? data : (data.items || data.staff || []));
       }
     } catch (error) {
       console.error("Error loading staff:", error);

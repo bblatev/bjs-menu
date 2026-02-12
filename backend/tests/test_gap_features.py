@@ -317,7 +317,7 @@ class TestGapFeatureRoutes:
     def test_email_campaign_endpoints(self, client, auth_headers):
         """Test email campaign API endpoints."""
         # Get templates
-        response = client.get("/api/v1/email-campaigns/templates")
+        response = client.get("/api/v1/email-campaigns/templates", headers=auth_headers)
         assert response.status_code == 200
 
         # Create template
@@ -331,7 +331,7 @@ class TestGapFeatureRoutes:
     def test_birthday_rewards_endpoints(self, client, auth_headers):
         """Test birthday rewards API endpoints."""
         # Get rules - may have serialization issues with enums
-        response = client.get("/api/v1/birthday-rewards/rules")
+        response = client.get("/api/v1/birthday-rewards/rules", headers=auth_headers)
         # Accept 200 or 500 (internal serialization error)
         assert response.status_code in [200, 500]
 
@@ -347,60 +347,60 @@ class TestGapFeatureRoutes:
         # Accept 200, 422, or 500
         assert response.status_code in [200, 422, 500]
 
-    def test_kds_localization_endpoints(self, client):
+    def test_kds_localization_endpoints(self, client, auth_headers):
         """Test KDS localization API endpoints."""
         # Get languages
-        response = client.get("/api/v1/kds-localization/languages")
+        response = client.get("/api/v1/kds-localization/languages", headers=auth_headers)
         assert response.status_code == 200
         data = response.json()
         assert len(data) > 0
 
-    def test_mobile_wallet_endpoints(self, client):
+    def test_mobile_wallet_endpoints(self, client, auth_headers):
         """Test mobile wallet API endpoints."""
         # Get config - may need venue_id parameter
-        response = client.get("/api/v1/mobile-wallet/config")
+        response = client.get("/api/v1/mobile-wallet/config", headers=auth_headers)
         # Accept 200 or 422/404 if venue_id is required
         assert response.status_code in [200, 404, 422]
 
-    def test_custom_reports_endpoints(self, client):
+    def test_custom_reports_endpoints(self, client, auth_headers):
         """Test custom reports API endpoints."""
         # Get data sources
-        response = client.get("/api/v1/custom-reports/data-sources")
+        response = client.get("/api/v1/custom-reports/data-sources", headers=auth_headers)
         assert response.status_code == 200
         data = response.json()
         assert len(data) > 0
 
-    def test_card_terminals_endpoints(self, client):
+    def test_card_terminals_endpoints(self, client, auth_headers):
         """Test card terminals API endpoints."""
         # Get terminal types
-        response = client.get("/api/v1/card-terminals/terminal-types")
+        response = client.get("/api/v1/card-terminals/terminal-types", headers=auth_headers)
         assert response.status_code == 200
         data = response.json()
         assert "types" in data
 
         # Get terminals - may have serialization issues with enums
-        response = client.get("/api/v1/card-terminals/terminals")
+        response = client.get("/api/v1/card-terminals/terminals", headers=auth_headers)
         # Accept 200 or 500 (internal serialization error)
         assert response.status_code in [200, 500]
 
-    def test_opentable_endpoints(self, client):
+    def test_opentable_endpoints(self, client, auth_headers):
         """Test OpenTable API endpoints."""
         # Get reservations
-        response = client.get("/api/v1/opentable/reservations")
+        response = client.get("/api/v1/opentable/reservations", headers=auth_headers)
         assert response.status_code == 200
 
         # Get guests
-        response = client.get("/api/v1/opentable/guests")
+        response = client.get("/api/v1/opentable/guests", headers=auth_headers)
         assert response.status_code == 200
 
-    def test_scheduled_reports_endpoints(self, client):
+    def test_scheduled_reports_endpoints(self, client, auth_headers):
         """Test scheduled reports API endpoints."""
         # Get schedules
-        response = client.get("/api/v1/scheduled-reports/schedules")
+        response = client.get("/api/v1/scheduled-reports/schedules", headers=auth_headers)
         assert response.status_code == 200
 
-    def test_google_reserve_endpoints(self, client):
+    def test_google_reserve_endpoints(self, client, auth_headers):
         """Test Google Reserve API endpoints."""
         # Use the status endpoint which exists
-        response = client.get("/api/v1/google-reserve/status")
+        response = client.get("/api/v1/google-reserve/status", headers=auth_headers)
         assert response.status_code == 200

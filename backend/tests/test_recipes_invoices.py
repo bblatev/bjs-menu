@@ -218,9 +218,9 @@ class TestRecipeEndpoints:
 class TestInvoiceEndpoints:
     """Test invoice management endpoints."""
 
-    def test_list_invoices_empty(self, client: TestClient, db_session):
+    def test_list_invoices_empty(self, client: TestClient, db_session, auth_headers):
         """Test listing invoices when none exist."""
-        response = client.get("/api/v1/invoices/")
+        response = client.get("/api/v1/invoices/", headers=auth_headers)
         assert response.status_code == 200
         assert response.json() == []
 
@@ -266,7 +266,7 @@ class TestInvoiceEndpoints:
         )
         assert response.status_code == 200
 
-    def test_get_invoice(self, client: TestClient, db_session, test_supplier):
+    def test_get_invoice(self, client: TestClient, db_session, auth_headers, test_supplier):
         """Test getting a specific invoice."""
         invoice = Invoice(
             supplier_id=test_supplier.id,
@@ -278,34 +278,34 @@ class TestInvoiceEndpoints:
         db_session.add(invoice)
         db_session.commit()
 
-        response = client.get(f"/api/v1/invoices/{invoice.id}")
+        response = client.get(f"/api/v1/invoices/{invoice.id}", headers=auth_headers)
         assert response.status_code == 200
         assert response.json()["invoice_number"] == "INV-GET"
 
-    def test_get_invoice_not_found(self, client: TestClient, db_session):
+    def test_get_invoice_not_found(self, client: TestClient, db_session, auth_headers):
         """Test getting non-existent invoice."""
-        response = client.get("/api/v1/invoices/9999")
+        response = client.get("/api/v1/invoices/9999", headers=auth_headers)
         assert response.status_code == 404
 
-    def test_list_invoices_filter_by_supplier(self, client: TestClient, db_session, test_supplier):
+    def test_list_invoices_filter_by_supplier(self, client: TestClient, db_session, auth_headers, test_supplier):
         """Test filtering invoices by supplier."""
         invoice = Invoice(supplier_id=test_supplier.id, invoice_number="SUP-001")
         db_session.add(invoice)
         db_session.commit()
 
-        response = client.get(f"/api/v1/invoices/?supplier_id={test_supplier.id}")
+        response = client.get(f"/api/v1/invoices/?supplier_id={test_supplier.id}", headers=auth_headers)
         assert response.status_code == 200
         data = response.json()
         assert all(inv["supplier_id"] == test_supplier.id for inv in data)
 
-    def test_list_invoices_filter_by_status(self, client: TestClient, db_session, test_supplier):
+    def test_list_invoices_filter_by_status(self, client: TestClient, db_session, auth_headers, test_supplier):
         """Test filtering invoices by status."""
         invoice1 = Invoice(supplier_id=test_supplier.id, invoice_number="STAT-001", status="pending")
         invoice2 = Invoice(supplier_id=test_supplier.id, invoice_number="STAT-002", status="approved")
         db_session.add_all([invoice1, invoice2])
         db_session.commit()
 
-        response = client.get("/api/v1/invoices/?status=pending")
+        response = client.get("/api/v1/invoices/?status=pending", headers=auth_headers)
         assert response.status_code == 200
         data = response.json()
         assert all(inv["status"] == "pending" for inv in data)
@@ -358,9 +358,9 @@ class TestInvoiceEndpoints:
 class TestGLCodeEndpoints:
     """Test GL code management endpoints."""
 
-    def test_list_gl_codes_empty(self, client: TestClient, db_session):
+    def test_list_gl_codes_empty(self, client: TestClient, db_session, auth_headers):
         """Test listing GL codes when none exist."""
-        response = client.get("/api/v1/invoices/gl-codes/")
+        response = client.get("/api/v1/invoices/gl-codes/", headers=auth_headers)
         assert response.status_code == 200
         assert response.json() == []
 
@@ -381,7 +381,7 @@ class TestGLCodeEndpoints:
         assert data["code"] == "5000"
         assert data["name"] == "Cost of Goods Sold"
 
-    def test_list_gl_codes(self, client: TestClient, db_session):
+    def test_list_gl_codes(self, client: TestClient, db_session, auth_headers):
         """Test listing GL codes."""
         gl1 = GLCode(code="5001", name="Food Cost", is_active=True)
         gl2 = GLCode(code="5002", name="Beverage Cost", is_active=True)
@@ -389,7 +389,7 @@ class TestGLCodeEndpoints:
         db_session.add_all([gl1, gl2, gl3])
         db_session.commit()
 
-        response = client.get("/api/v1/invoices/gl-codes/")
+        response = client.get("/api/v1/invoices/gl-codes/", headers=auth_headers)
         assert response.status_code == 200
         data = response.json()
         # Should only show active GL codes
@@ -401,13 +401,13 @@ class TestGLCodeEndpoints:
 class TestPriceAlertEndpoints:
     """Test price alert endpoints."""
 
-    def test_list_price_alerts_empty(self, client: TestClient, db_session):
+    def test_list_price_alerts_empty(self, client: TestClient, db_session, auth_headers):
         """Test listing price alerts when none exist."""
-        response = client.get("/api/v1/invoices/price-alerts/")
+        response = client.get("/api/v1/invoices/price-alerts/", headers=auth_headers)
         assert response.status_code == 200
         assert response.json() == []
 
-    def test_list_price_alerts(self, client: TestClient, db_session, test_product, test_supplier):
+    def test_list_price_alerts(self, client: TestClient, db_session, auth_headers, test_product, test_supplier):
         """Test listing price alerts."""
         # Use actual model fields (alert configuration model)
         alert = PriceAlert(
@@ -420,14 +420,14 @@ class TestPriceAlertEndpoints:
         db_session.add(alert)
         db_session.commit()
 
-        response = client.get("/api/v1/invoices/price-alerts/")
+        response = client.get("/api/v1/invoices/price-alerts/", headers=auth_headers)
         assert response.status_code == 200
         data = response.json()
         assert len(data) >= 1
 
-    def test_list_price_alerts_filter_active(self, client: TestClient, db_session, test_product, test_supplier):
+    def test_list_price_alerts_filter_active(self, client: TestClient, db_session, auth_headers, test_product, test_supplier):
         """Test filtering price alerts by active status."""
-        response = client.get("/api/v1/invoices/price-alerts/?active=true")
+        response = client.get("/api/v1/invoices/price-alerts/?active=true", headers=auth_headers)
         assert response.status_code == 200
 
     def test_acknowledge_price_alert(self, client: TestClient, db_session, auth_headers, test_product, test_supplier, test_user):
@@ -497,7 +497,7 @@ class TestInvoiceApprovalEndpoints:
         )
         assert response.status_code in [200, 400]
 
-    def test_get_invoice_approvals(self, client: TestClient, db_session, test_supplier):
+    def test_get_invoice_approvals(self, client: TestClient, db_session, auth_headers, test_supplier):
         """Test getting approval history for an invoice."""
         invoice = Invoice(
             supplier_id=test_supplier.id,
@@ -506,7 +506,7 @@ class TestInvoiceApprovalEndpoints:
         db_session.add(invoice)
         db_session.commit()
 
-        response = client.get(f"/api/v1/invoices/{invoice.id}/approvals")
+        response = client.get(f"/api/v1/invoices/{invoice.id}/approvals", headers=auth_headers)
         assert response.status_code == 200
         assert isinstance(response.json(), list)
 
@@ -598,7 +598,7 @@ class TestInvoiceIntegration:
         data = response.json()
         assert len(data["lines"]) == 3
 
-    def test_invoice_filtering_combined(self, client: TestClient, db_session, test_supplier):
+    def test_invoice_filtering_combined(self, client: TestClient, db_session, auth_headers, test_supplier):
         """Test combined invoice filtering."""
         # Create invoices with different attributes
         inv1 = Invoice(
@@ -618,7 +618,8 @@ class TestInvoiceIntegration:
 
         # Filter by supplier and status
         response = client.get(
-            f"/api/v1/invoices/?supplier_id={test_supplier.id}&status=pending"
+            f"/api/v1/invoices/?supplier_id={test_supplier.id}&status=pending",
+            headers=auth_headers
         )
         assert response.status_code == 200
         data = response.json()

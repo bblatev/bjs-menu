@@ -115,12 +115,12 @@ export default function MultiLocationPage() {
       }
 
       const locationsData = await locationsRes.json();
-      setLocations(locationsData.locations || locationsData || []);
+      setLocations(Array.isArray(locationsData) ? locationsData : (locationsData.items || locationsData.locations || []));
 
       if (statsRes.ok) {
         const statsData = await statsRes.json();
         const statsMap = new Map<number, LocationStats>();
-        (statsData.stats || statsData || []).forEach((stat: LocationStats) => {
+        (Array.isArray(statsData) ? statsData : (statsData.stats || [])).forEach((stat: LocationStats) => {
           statsMap.set(stat.location_id, stat);
         });
         setLocationStats(statsMap);

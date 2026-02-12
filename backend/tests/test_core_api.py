@@ -847,17 +847,17 @@ class TestErrorHandling:
         assert response.status_code == 422
 
     def test_unauthenticated_access(self, client: TestClient, db_session):
-        """Test GET endpoints pass through without auth (middleware allows all GETs)."""
+        """Test GET endpoints require auth and reject unauthenticated requests."""
         response = client.get("/api/v1/products/")
-        assert response.status_code == 200
+        assert response.status_code == 401
 
     def test_invalid_token(self, client: TestClient, db_session):
-        """Test GET endpoints pass through even with invalid token (middleware allows all GETs)."""
+        """Test GET endpoints reject invalid tokens."""
         response = client.get(
             "/api/v1/products/",
             headers={"Authorization": "Bearer invalid_token"}
         )
-        assert response.status_code == 200
+        assert response.status_code == 401
 
 
 # ==================== PAGINATION TESTS ====================

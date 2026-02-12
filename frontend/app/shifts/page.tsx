@@ -108,8 +108,8 @@ export default function ShiftSchedulingPage() {
       const staffData = await staffRes.json();
       const shiftsData = await shiftsRes.json();
 
-      setStaff(staffData.staff || staffData || []);
-      setShifts(shiftsData.shifts || shiftsData || []);
+      setStaff(Array.isArray(staffData) ? staffData : (staffData.items || staffData.staff || []));
+      setShifts(Array.isArray(shiftsData) ? shiftsData : (shiftsData.items || shiftsData.shifts || []));
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load data');
       setStaff([]);
