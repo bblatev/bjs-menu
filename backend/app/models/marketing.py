@@ -40,6 +40,7 @@ class TriggerType(str, Enum):
 class MarketingCampaign(Base):
     """Marketing campaign configuration."""
     __tablename__ = "marketing_campaigns"
+    __table_args__ = {'extend_existing': True}
 
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String(200), nullable=False)
@@ -97,6 +98,7 @@ class MarketingCampaign(Base):
 class CampaignRecipient(Base):
     """Individual recipient tracking for campaigns."""
     __tablename__ = "campaign_recipients"
+    __table_args__ = {'extend_existing': True}
 
     id = Column(Integer, primary_key=True, index=True)
     campaign_id = Column(Integer, ForeignKey("marketing_campaigns.id"), nullable=False)
@@ -128,6 +130,7 @@ class CampaignRecipient(Base):
 class CustomerSegment(Base):
     """Customer segmentation for targeting."""
     __tablename__ = "customer_segments"
+    __table_args__ = {'extend_existing': True}
 
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String(200), nullable=False)
@@ -152,6 +155,7 @@ class CustomerSegment(Base):
 class AutomatedTrigger(Base):
     """Automated marketing triggers."""
     __tablename__ = "automated_triggers"
+    __table_args__ = {'extend_existing': True}
 
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String(200), nullable=False)
@@ -181,6 +185,7 @@ class AutomatedTrigger(Base):
 class MenuRecommendation(Base):
     """AI-powered menu recommendations - 'Picked for You' style."""
     __tablename__ = "menu_recommendations"
+    __table_args__ = {'extend_existing': True}
 
     id = Column(Integer, primary_key=True, index=True)
     customer_id = Column(Integer, nullable=True)
@@ -206,6 +211,7 @@ class MenuRecommendation(Base):
 class LoyaltyProgram(Base):
     """Loyalty program configuration."""
     __tablename__ = "loyalty_programs"
+    __table_args__ = {'extend_existing': True}
 
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String(200), nullable=False)
@@ -230,6 +236,7 @@ class LoyaltyProgram(Base):
 class CustomerLoyalty(Base):
     """Customer loyalty status and points."""
     __tablename__ = "customer_loyalty"
+    __table_args__ = {'extend_existing': True}
 
     id = Column(Integer, primary_key=True, index=True)
     customer_id = Column(Integer, nullable=False, unique=True)

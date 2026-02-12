@@ -33,6 +33,7 @@ class InventorySession(Base):
     """An inventory counting session."""
 
     __tablename__ = "inventory_sessions"
+    __table_args__ = {'extend_existing': True}
 
     id: Mapped[int] = mapped_column(primary_key=True)
     location_id: Mapped[int] = mapped_column(
@@ -72,6 +73,7 @@ class InventoryLine(Base):
     """A single product count in an inventory session."""
 
     __tablename__ = "inventory_lines"
+    __table_args__ = {'extend_existing': True}
 
     id: Mapped[int] = mapped_column(primary_key=True)
     session_id: Mapped[int] = mapped_column(

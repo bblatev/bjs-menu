@@ -19,6 +19,7 @@ class MenuQuadrant(str, Enum):
 class MenuAnalysis(Base):
     """Menu engineering analysis results."""
     __tablename__ = "menu_analysis"
+    __table_args__ = {'extend_existing': True}
 
     id = Column(Integer, primary_key=True, index=True)
     product_id = Column(Integer, ForeignKey("products.id"), nullable=False)
@@ -58,6 +59,7 @@ class MenuAnalysis(Base):
 class ServerPerformance(Base):
     """Server/staff performance metrics."""
     __tablename__ = "server_performance"
+    __table_args__ = {'extend_existing': True}
 
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
@@ -106,6 +108,7 @@ class ServerPerformance(Base):
 class SalesForecast(Base):
     """AI-powered sales and demand forecasting."""
     __tablename__ = "sales_forecasts"
+    __table_args__ = {'extend_existing': True}
 
     id = Column(Integer, primary_key=True, index=True)
     location_id = Column(Integer, ForeignKey("locations.id"), nullable=True)
@@ -137,6 +140,7 @@ class SalesForecast(Base):
 class DailyMetrics(Base):
     """Daily business metrics snapshot."""
     __tablename__ = "daily_metrics"
+    __table_args__ = {'extend_existing': True}
 
     id = Column(Integer, primary_key=True, index=True)
     location_id = Column(Integer, ForeignKey("locations.id"), nullable=True)
@@ -193,6 +197,7 @@ class DailyMetrics(Base):
 class ConversationalQuery(Base):
     """Log conversational AI analytics queries."""
     __tablename__ = "conversational_queries"
+    __table_args__ = {'extend_existing': True}
 
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=True)
@@ -223,6 +228,7 @@ class ConversationalQuery(Base):
 class Benchmark(Base):
     """Industry benchmarking data."""
     __tablename__ = "benchmarks"
+    __table_args__ = {'extend_existing': True}
 
     id = Column(Integer, primary_key=True, index=True)
     location_id = Column(Integer, ForeignKey("locations.id"), nullable=True)
@@ -265,6 +271,7 @@ class Benchmark(Base):
 class BottleWeight(Base):
     """Bottle weight database for scale integration - WISK style."""
     __tablename__ = "bottle_weights"
+    __table_args__ = {'extend_existing': True}
 
     id = Column(Integer, primary_key=True, index=True)
     product_id = Column(Integer, ForeignKey("products.id"), nullable=True)
@@ -298,6 +305,7 @@ class BottleWeight(Base):
 class ScaleReading(Base):
     """Bluetooth scale readings for inventory."""
     __tablename__ = "scale_readings"
+    __table_args__ = {'extend_existing': True}
 
     id = Column(Integer, primary_key=True, index=True)
     session_id = Column(Integer, ForeignKey("inventory_sessions.id"), nullable=True)

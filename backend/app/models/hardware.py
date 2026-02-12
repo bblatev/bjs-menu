@@ -15,6 +15,7 @@ class Keg(Base, TimestampMixin):
     """Keg inventory model."""
 
     __tablename__ = "kegs"
+    __table_args__ = {'extend_existing': True}
 
     id: Mapped[int] = mapped_column(primary_key=True)
     product_id: Mapped[int] = mapped_column(Integer, nullable=False)
@@ -33,6 +34,7 @@ class Tank(Base, TimestampMixin):
     """Gas tank model (CO2, Nitrogen, etc.)."""
 
     __tablename__ = "tanks"
+    __table_args__ = {'extend_existing': True}
 
     id: Mapped[int] = mapped_column(primary_key=True)
     name: Mapped[str] = mapped_column(String(100), nullable=False)
@@ -50,6 +52,7 @@ class RFIDTag(Base, TimestampMixin):
     """RFID tag for inventory tracking."""
 
     __tablename__ = "rfid_tags"
+    __table_args__ = {'extend_existing': True}
 
     id: Mapped[int] = mapped_column(primary_key=True)
     tag_id: Mapped[str] = mapped_column(String(100), unique=True, nullable=False)
@@ -68,6 +71,7 @@ class InventoryCountSession(Base, TimestampMixin):
     """RFID inventory count session."""
 
     __tablename__ = "inventory_count_sessions"
+    __table_args__ = {'extend_existing': True}
 
     id: Mapped[int] = mapped_column(primary_key=True)
     zone: Mapped[str] = mapped_column(String(100), nullable=False)
@@ -83,6 +87,7 @@ class BarTab(Base, TimestampMixin):
     """Bar tab model."""
 
     __tablename__ = "bar_tabs"
+    __table_args__ = {'extend_existing': True}
 
     id: Mapped[int] = mapped_column(primary_key=True)
     customer_name: Mapped[str] = mapped_column(String(255), nullable=False)
@@ -106,6 +111,7 @@ class WaiterCall(Base, TimestampMixin):
     """Waiter call from guest tablet."""
 
     __tablename__ = "waiter_calls"
+    __table_args__ = {'extend_existing': True}
 
     id: Mapped[int] = mapped_column(primary_key=True)
     table_id: Mapped[int] = mapped_column(Integer, nullable=False)
@@ -123,6 +129,7 @@ class Integration(Base, TimestampMixin):
     """External integration configuration."""
 
     __tablename__ = "integrations"
+    __table_args__ = {'extend_existing': True}
 
     id: Mapped[int] = mapped_column(primary_key=True)
     integration_id: Mapped[str] = mapped_column(String(100), unique=True, nullable=False)
@@ -139,6 +146,7 @@ class ThrottleRule(Base, TimestampMixin):
     """Order throttling rule."""
 
     __tablename__ = "throttle_rules"
+    __table_args__ = {'extend_existing': True}
 
     id: Mapped[int] = mapped_column(primary_key=True)
     name: Mapped[str] = mapped_column(String(100), nullable=False)
@@ -154,6 +162,7 @@ class HotelGuest(Base, TimestampMixin):
     """Hotel guest for PMS integration."""
 
     __tablename__ = "hotel_guests"
+    __table_args__ = {'extend_existing': True}
 
     id: Mapped[int] = mapped_column(primary_key=True)
     room_number: Mapped[str] = mapped_column(String(50), nullable=False)
@@ -169,6 +178,7 @@ class OfflineQueueItem(Base, TimestampMixin):
     """Offline sync queue item."""
 
     __tablename__ = "offline_queue"
+    __table_args__ = {'extend_existing': True}
 
     id: Mapped[int] = mapped_column(primary_key=True)
     item_type: Mapped[str] = mapped_column(String(50), nullable=False)  # order, payment, inventory
@@ -183,6 +193,7 @@ class OCRJob(Base, TimestampMixin):
     """Invoice OCR job."""
 
     __tablename__ = "ocr_jobs"
+    __table_args__ = {'extend_existing': True}
 
     id: Mapped[int] = mapped_column(primary_key=True)
     filename: Mapped[str] = mapped_column(String(255), nullable=False)

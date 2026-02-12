@@ -20,6 +20,7 @@ from app.db.base import Base
 class AppSetting(Base):
     """Key-value settings store."""
     __tablename__ = "app_settings"
+    __table_args__ = {'extend_existing': True}
 
     id = Column(Integer, primary_key=True, index=True)
     category = Column(String(50), nullable=False, index=True)  # general, venue, payment, security, fiscal, tax
@@ -38,11 +39,12 @@ class AppSetting(Base):
 class PayrollRun(Base):
     """A payroll run for a period."""
     __tablename__ = "payroll_runs"
+    __table_args__ = {'extend_existing': True}
 
     id = Column(Integer, primary_key=True, index=True)
     period_start = Column(Date, nullable=False)
     period_end = Column(Date, nullable=False)
-    status = Column(String(20), default="pending")  # pending, approved, paid
+    status = Column(String(20), default="pending")
     total_gross = Column(Numeric(12, 2), default=0)
     total_net = Column(Numeric(12, 2), default=0)
     total_tax = Column(Numeric(12, 2), default=0)
@@ -56,6 +58,7 @@ class PayrollRun(Base):
 class PayrollEntry(Base):
     """Individual payroll entry for a staff member."""
     __tablename__ = "payroll_entries"
+    __table_args__ = {'extend_existing': True}
 
     id = Column(Integer, primary_key=True, index=True)
     payroll_run_id = Column(Integer, ForeignKey("payroll_runs.id"), nullable=True)
@@ -82,6 +85,7 @@ class PayrollEntry(Base):
 class Notification(Base):
     """User notification."""
     __tablename__ = "notifications"
+    __table_args__ = {'extend_existing': True}
 
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, nullable=True, index=True)
@@ -97,6 +101,7 @@ class Notification(Base):
 class NotificationPreference(Base):
     """Notification preference for a channel."""
     __tablename__ = "notification_preferences"
+    __table_args__ = {'extend_existing': True}
 
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, nullable=True)
@@ -110,6 +115,7 @@ class NotificationPreference(Base):
 class AlertConfig(Base):
     """Alert configuration."""
     __tablename__ = "alert_configs"
+    __table_args__ = {'extend_existing': True}
 
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String(200), nullable=False)
@@ -125,6 +131,7 @@ class AlertConfig(Base):
 class HACCPTemperatureLog(Base):
     """HACCP temperature log entry."""
     __tablename__ = "haccp_temperature_logs"
+    __table_args__ = {'extend_existing': True}
 
     id = Column(Integer, primary_key=True, index=True)
     location = Column(String(100), nullable=False)
@@ -142,6 +149,7 @@ class HACCPTemperatureLog(Base):
 class HACCPSafetyCheck(Base):
     """HACCP safety check."""
     __tablename__ = "haccp_safety_checks"
+    __table_args__ = {'extend_existing': True}
 
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String(200), nullable=False)
@@ -160,6 +168,7 @@ class HACCPSafetyCheck(Base):
 class FeedbackReview(Base):
     """Customer feedback/review."""
     __tablename__ = "feedback_reviews"
+    __table_args__ = {'extend_existing': True}
 
     id = Column(Integer, primary_key=True, index=True)
     source = Column(String(50), default="internal")  # google, yelp, tripadvisor, internal
@@ -180,6 +189,7 @@ class FeedbackReview(Base):
 class AuditLogEntry(Base):
     """Audit log entry."""
     __tablename__ = "audit_log_entries"
+    __table_args__ = {'extend_existing': True}
 
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, nullable=True, index=True)
@@ -197,6 +207,7 @@ class AuditLogEntry(Base):
 class VIPCustomerLink(Base):
     """Links a customer to VIP status."""
     __tablename__ = "vip_customer_links"
+    __table_args__ = {'extend_existing': True}
 
     id = Column(Integer, primary_key=True, index=True)
     customer_id = Column(Integer, nullable=True, index=True)
@@ -214,6 +225,7 @@ class VIPCustomerLink(Base):
 class VIPOccasion(Base):
     """VIP special occasion."""
     __tablename__ = "vip_occasions"
+    __table_args__ = {'extend_existing': True}
 
     id = Column(Integer, primary_key=True, index=True)
     customer_id = Column(Integer, nullable=True)
@@ -230,6 +242,7 @@ class VIPOccasion(Base):
 class Warehouse(Base):
     """Warehouse/storage location."""
     __tablename__ = "warehouses"
+    __table_args__ = {'extend_existing': True}
 
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String(200), nullable=False)
@@ -247,6 +260,7 @@ class Warehouse(Base):
 class WarehouseTransfer(Base):
     """Transfer between warehouses."""
     __tablename__ = "warehouse_transfers"
+    __table_args__ = {'extend_existing': True}
 
     id = Column(Integer, primary_key=True, index=True)
     from_warehouse_id = Column(Integer, ForeignKey("warehouses.id"), nullable=True)
@@ -266,6 +280,7 @@ class WarehouseTransfer(Base):
 class Promotion(Base):
     """Promotion/discount."""
     __tablename__ = "promotions"
+    __table_args__ = {'extend_existing': True}
 
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String(200), nullable=False)
@@ -289,6 +304,7 @@ class Promotion(Base):
 class Badge(Base):
     """Staff badge/achievement type."""
     __tablename__ = "badges"
+    __table_args__ = {'extend_existing': True}
 
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String(200), nullable=False)
@@ -304,11 +320,12 @@ class Badge(Base):
 class Challenge(Base):
     """Staff challenge."""
     __tablename__ = "challenges"
+    __table_args__ = {'extend_existing': True}
 
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String(200), nullable=False)
     description = Column(Text, nullable=True)
-    type = Column(String(50), default="individual")  # individual, team
+    type = Column(String(50), default="individual")
     target_value = Column(Float, nullable=True)
     reward_points = Column(Integer, default=0)
     reward_description = Column(String(200), nullable=True)
@@ -321,6 +338,7 @@ class Challenge(Base):
 class StaffAchievement(Base):
     """Record of a staff member earning a badge."""
     __tablename__ = "staff_achievements"
+    __table_args__ = {'extend_existing': True}
 
     id = Column(Integer, primary_key=True, index=True)
     staff_id = Column(Integer, nullable=False, index=True)
@@ -334,6 +352,7 @@ class StaffAchievement(Base):
 class StaffPoints(Base):
     """Staff gamification points."""
     __tablename__ = "staff_points"
+    __table_args__ = {'extend_existing': True}
 
     id = Column(Integer, primary_key=True, index=True)
     staff_id = Column(Integer, nullable=False, unique=True, index=True)
@@ -349,6 +368,7 @@ class StaffPoints(Base):
 class RiskAlert(Base):
     """Fraud/risk alert."""
     __tablename__ = "risk_alerts"
+    __table_args__ = {'extend_existing': True}
 
     id = Column(Integer, primary_key=True, index=True)
     type = Column(String(50), nullable=False)  # void_pattern, discount_abuse, cash_variance, time_theft
@@ -370,10 +390,11 @@ class RiskAlert(Base):
 class ReferralProgram(Base):
     """Referral program."""
     __tablename__ = "referral_programs"
+    __table_args__ = {'extend_existing': True}
 
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String(200), nullable=False)
-    reward_type = Column(String(50), default="discount")  # discount, points, credit
+    reward_type = Column(String(50), default="discount")
     reward_value = Column(Numeric(10, 2), default=0)
     referee_reward_value = Column(Numeric(10, 2), default=0)
     active = Column(Boolean, default=True)
@@ -383,6 +404,7 @@ class ReferralProgram(Base):
 class ReferralRecord(Base):
     """Individual referral record."""
     __tablename__ = "referral_records"
+    __table_args__ = {'extend_existing': True}
 
     id = Column(Integer, primary_key=True, index=True)
     referrer_name = Column(String(200), nullable=True)
@@ -401,6 +423,7 @@ class ReferralRecord(Base):
 class TaxFiling(Base):
     """Tax filing record."""
     __tablename__ = "tax_filings"
+    __table_args__ = {'extend_existing': True}
 
     id = Column(Integer, primary_key=True, index=True)
     period = Column(String(20), nullable=False)  # Q1, Q2, Q3, Q4
@@ -420,11 +443,12 @@ class TaxFiling(Base):
 class Budget(Base):
     """Budget entry."""
     __tablename__ = "budgets"
+    __table_args__ = {'extend_existing': True}
 
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String(200), nullable=False)
     category = Column(String(100), nullable=False)
-    period = Column(String(20), nullable=True)  # monthly, quarterly, annual
+    period = Column(String(20), nullable=True)
     year = Column(Integer, nullable=True)
     month = Column(Integer, nullable=True)
     budgeted_amount = Column(Numeric(12, 2), default=0)
@@ -436,10 +460,11 @@ class Budget(Base):
 class DailyReconciliation(Base):
     """Daily reconciliation/close session."""
     __tablename__ = "daily_reconciliations"
+    __table_args__ = {'extend_existing': True}
 
     id = Column(Integer, primary_key=True, index=True)
     date = Column(Date, nullable=False)
-    status = Column(String(20), default="open")  # open, completed
+    status = Column(String(20), default="open")
     expected_cash = Column(Numeric(10, 2), default=0)
     actual_cash = Column(Numeric(10, 2), default=0)
     cash_variance = Column(Numeric(10, 2), default=0)
@@ -457,6 +482,7 @@ class DailyReconciliation(Base):
 class ShiftSchedule(Base):
     """Shift schedule entry (for the shifts.py route, separate from staff/shifts)."""
     __tablename__ = "shift_schedules"
+    __table_args__ = {'extend_existing': True}
 
     id = Column(Integer, primary_key=True, index=True)
     staff_id = Column(Integer, nullable=False, index=True)

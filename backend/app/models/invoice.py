@@ -27,6 +27,7 @@ class InvoiceCaptureMethod(str, Enum):
 class Invoice(Base):
     """Supplier invoice with OCR processing."""
     __tablename__ = "invoices"
+    __table_args__ = {'extend_existing': True}
 
     id = Column(Integer, primary_key=True, index=True)
     supplier_id = Column(Integer, ForeignKey("suppliers.id"), nullable=True)
@@ -77,6 +78,7 @@ class Invoice(Base):
 class InvoiceLine(Base):
     """Individual line item on an invoice."""
     __tablename__ = "invoice_lines"
+    __table_args__ = {'extend_existing': True}
 
     id = Column(Integer, primary_key=True, index=True)
     invoice_id = Column(Integer, ForeignKey("invoices.id"), nullable=False)
@@ -109,6 +111,7 @@ class InvoiceLine(Base):
 class PriceHistory(Base):
     """Track historical prices for products from suppliers."""
     __tablename__ = "price_history"
+    __table_args__ = {'extend_existing': True}
 
     id = Column(Integer, primary_key=True, index=True)
     product_id = Column(Integer, ForeignKey("products.id"), nullable=False)
@@ -127,6 +130,7 @@ class PriceHistory(Base):
 class PriceAlert(Base):
     """Price alert configuration and triggers."""
     __tablename__ = "price_alerts"
+    __table_args__ = {'extend_existing': True}
 
     id = Column(Integer, primary_key=True, index=True)
     product_id = Column(Integer, ForeignKey("products.id"), nullable=True)
@@ -153,6 +157,7 @@ class PriceAlert(Base):
 class GLCode(Base):
     """General Ledger codes for accounting integration."""
     __tablename__ = "gl_codes"
+    __table_args__ = {'extend_existing': True}
 
     id = Column(Integer, primary_key=True, index=True)
     code = Column(String(50), unique=True, nullable=False)
@@ -170,6 +175,7 @@ class GLCode(Base):
 class APApprovalWorkflow(Base):
     """Approval workflow configuration."""
     __tablename__ = "ap_approval_workflows"
+    __table_args__ = {'extend_existing': True}
 
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String(200), nullable=False)

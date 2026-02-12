@@ -15,6 +15,7 @@ class Recipe(Base, TimestampMixin):
     """A recipe that maps a POS item to stock consumption."""
 
     __tablename__ = "recipes"
+    __table_args__ = {'extend_existing': True}
 
     id: Mapped[int] = mapped_column(primary_key=True)
     name: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
@@ -33,6 +34,7 @@ class RecipeLine(Base):
     """A single ingredient/component in a recipe."""
 
     __tablename__ = "recipe_lines"
+    __table_args__ = {'extend_existing': True}
 
     id: Mapped[int] = mapped_column(primary_key=True)
     recipe_id: Mapped[int] = mapped_column(

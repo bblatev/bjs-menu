@@ -124,17 +124,17 @@ export default function TableOrderPage() {
           rawCategories.forEach((cat: any) => {
             const items: MenuItem[] = (cat.items || []).map((item: any) => ({
               id: item.id,
-              name: typeof item.name === 'object' ? (item.name.bg || item.name.en || Object.values(item.name)[0]) : item.name,
-              description: typeof item.description === 'object' ? (item.description.bg || item.description.en || Object.values(item.description)[0] || '') : (item.description || ''),
+              name: (item.name && typeof item.name === 'object') ? (item.name.bg || item.name.en || Object.values(item.name)[0]) : (item.name || ''),
+              description: (item.description && typeof item.description === 'object') ? (item.description.bg || item.description.en || Object.values(item.description)[0] || '') : (item.description || ''),
               price: item.price || 0,
               image_url: item.image || item.image_url || item.images?.[0]?.url || item.primary_image_url,
-              category: typeof cat.name === 'object' ? (cat.name.bg || cat.name.en || Object.values(cat.name)[0]) : cat.name,
+              category: (cat.name && typeof cat.name === 'object') ? (cat.name.bg || cat.name.en || Object.values(cat.name)[0]) : (cat.name || ''),
               available: item.available !== false,
             }));
             if (items.length > 0) {
               cats.push({
                 id: cat.id,
-                name: typeof cat.name === 'object' ? (cat.name.bg || cat.name.en || Object.values(cat.name)[0]) : cat.name,
+                name: (cat.name && typeof cat.name === 'object') ? (cat.name.bg || cat.name.en || Object.values(cat.name)[0]) : (cat.name || ''),
                 items,
               });
             }

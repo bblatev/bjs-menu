@@ -162,6 +162,25 @@ from app.schemas.analytics import (
     InventoryCountResponse,
 )
 
+# Extended schemas (split bills, floor plans, kiosk, drive-thru, QR, admin)
+from app.schemas.extended import (
+    AutoDiscountCreate, AutoDiscountResponse, AutoDiscountType,
+    BatchCreate, BatchResponse,
+    SplitBillCreate, SplitBillResponse, SplitBillPayment,
+    SplitBillType, SplitBillGuest, SplitBillGuestItem,
+    FloorPlanCreate, FloorPlanResponse,
+    FloorPlanTablePosition, FloorPlanAreaCreate,
+    KioskModeConfig, KioskOrderCreate,
+    DriveThruOrderCreate, DriveThruOrderResponse,
+    DriveThruLane, DriveThruOrderStatus,
+    TableResponse, QRCodeRequest, QRCodeResponse, VenueStationResponse,
+)
+
+# Waiter call schemas
+from app.schemas.waiter_call import (
+    WaiterCallCreate, WaiterCallResponse, WaiterCallStatusUpdate,
+)
+
 __all__ = [
     # Auth
     "Token",

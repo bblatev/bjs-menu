@@ -274,3 +274,106 @@ class SMSPreview(BaseModel):
     """Preview SMS message."""
     phone: str
     message: str
+
+
+# ---------------------------------------------------------------------------
+# Google Reserve with Google Integration
+# ---------------------------------------------------------------------------
+
+class GoogleSlot(BaseModel):
+    """A single bookable time slot for Google Reserve."""
+    slot_id: str
+    start_time: datetime
+    end_time: datetime
+    party_size: int = Field(..., ge=1)
+    available: bool = True
+    resource_id: Optional[str] = None
+
+
+class GoogleAvailabilityRequest(BaseModel):
+    """Request availability from Google Reserve."""
+    merchant_id: str
+    service_id: Optional[str] = None
+    start_time: datetime
+    end_time: datetime
+    party_size: int = Field(..., ge=1, le=100)
+    resource_ids: Optional[List[str]] = None
+
+
+class GoogleAvailabilityResponse(BaseModel):
+    """Availability response for Google Reserve."""
+    merchant_id: str
+    slots: List[GoogleSlot] = []
+    next_page_token: Optional[str] = None
+
+
+class GoogleUserInfo(BaseModel):
+    """User information provided by Google during booking."""
+    google_user_id: Optional[str] = None
+    given_name: str
+    family_name: str
+    email: Optional[str] = None
+    phone: Optional[str] = None
+    language_code: Optional[str] = "en"
+
+
+class GoogleBookingRequest(BaseModel):
+    """Booking request from Google Reserve."""
+    slot_id: str
+    merchant_id: str
+    service_id: Optional[str] = None
+    party_size: int = Field(..., ge=1, le=100)
+    user_info: GoogleUserInfo
+    idempotency_token: str
+    additional_request: Optional[str] = None
+    payment_info: Optional[Dict[str, Any]] = None
+
+
+class GoogleBookingResponse(BaseModel):
+    """Booking response for Google Reserve."""
+    booking_id: str
+    slot_id: str
+    merchant_id: str
+    status: str = "confirmed"
+    user_info: GoogleUserInfo
+    party_size: int
+    start_time: datetime
+    end_time: datetime
+    confirmation_code: Optional[str] = None
+    prepayment_status: Optional[str] = None
+    created_at: datetime
+
+
+class GoogleBookingStatusRequest(BaseModel):
+    """Request to check booking status via Google Reserve."""
+    booking_id: str
+    merchant_id: str
+
+
+class GoogleBookingUpdateRequest(BaseModel):
+    """Request to update an existing Google booking."""
+    booking_id: str
+    merchant_id: str
+    slot_id: Optional[str] = None
+    party_size: Optional[int] = Field(None, ge=1, le=100)
+    start_time: Optional[datetime] = None
+    end_time: Optional[datetime] = None
+    status: Optional[str] = None
+
+
+class GoogleCancelRequest(BaseModel):
+    """Request to cancel a Google Reserve booking."""
+    booking_id: str
+    merchant_id: str
+    cancel_reason: Optional[str] = None
+    cancelled_by: str = "user"  # user | merchant
+
+
+class GoogleHealthCheckResponse(BaseModel):
+    """Health check response for the Google Reserve integration."""
+    status: str = "healthy"
+    server_time: datetime
+    api_version: str = "v2"
+    merchant_count: int = 0
+    supported_features: List[str] = []
+    latency_ms: Optional[float] = None

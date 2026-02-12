@@ -127,3 +127,11 @@ async def get_optional_current_user(
 
 
 OptionalCurrentUser = Annotated[Optional[TokenData], Depends(get_optional_current_user)]
+
+
+async def get_current_venue(
+    current_user: Annotated[TokenData, Depends(get_current_user)]
+) -> int:
+    """Extract venue_id from the current user's token.
+    Returns 1 as default venue for single-venue deployments."""
+    return getattr(current_user, 'venue_id', 1)

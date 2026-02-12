@@ -12,6 +12,7 @@ class PriceList(Base, TimestampMixin):
     """Price list configuration - allows different pricing contexts."""
 
     __tablename__ = "price_lists"
+    __table_args__ = {'extend_existing': True}
 
     id: Mapped[int] = mapped_column(primary_key=True)
     name: Mapped[str] = mapped_column(String(100), nullable=False)  # "Dine-In", "Takeout", "Delivery", "Happy Hour", "VIP"
@@ -41,6 +42,7 @@ class ProductPrice(Base, TimestampMixin):
     """Product price in a specific price list."""
 
     __tablename__ = "product_prices"
+    __table_args__ = {'extend_existing': True}
 
     id: Mapped[int] = mapped_column(primary_key=True)
     product_id: Mapped[int] = mapped_column(Integer, nullable=False)  # References products table
@@ -62,6 +64,7 @@ class DailyMenu(Base, TimestampMixin):
     """Daily specials menu - Menu of the Day feature."""
 
     __tablename__ = "daily_menus"
+    __table_args__ = {'extend_existing': True}
 
     id: Mapped[int] = mapped_column(primary_key=True)
     date: Mapped[datetime] = mapped_column(DateTime, nullable=False)
@@ -91,6 +94,7 @@ class OperatorRecentItem(Base, TimestampMixin):
     """Track recently used items per operator for quick access."""
 
     __tablename__ = "operator_recent_items"
+    __table_args__ = {'extend_existing': True}
 
     id: Mapped[int] = mapped_column(primary_key=True)
     staff_id: Mapped[int] = mapped_column(ForeignKey("staff_users.id"), nullable=False)
@@ -104,6 +108,7 @@ class ManagerAlert(Base, TimestampMixin):
     """Manager alert configuration for real-time notifications."""
 
     __tablename__ = "manager_alerts"
+    __table_args__ = {'extend_existing': True}
 
     id: Mapped[int] = mapped_column(primary_key=True)
     name: Mapped[str] = mapped_column(String(100), nullable=False)
@@ -135,6 +140,7 @@ class CustomerCredit(Base, TimestampMixin):
     """Customer credit/account limit tracking."""
 
     __tablename__ = "customer_credits"
+    __table_args__ = {'extend_existing': True}
 
     id: Mapped[int] = mapped_column(primary_key=True)
     customer_id: Mapped[int] = mapped_column(Integer, nullable=False, unique=True)
@@ -157,6 +163,7 @@ class SubTable(Base, TimestampMixin):
     """Subtable for splitting large tables into sections."""
 
     __tablename__ = "subtables"
+    __table_args__ = {'extend_existing': True}
 
     id: Mapped[int] = mapped_column(primary_key=True)
     parent_table_id: Mapped[int] = mapped_column(Integer, nullable=False)  # References tables

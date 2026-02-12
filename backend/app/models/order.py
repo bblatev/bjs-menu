@@ -26,6 +26,7 @@ class PurchaseOrder(Base, VersionMixin, SoftDeleteMixin):
     """A purchase order to a supplier."""
 
     __tablename__ = "purchase_orders"
+    __table_args__ = {'extend_existing': True}
 
     id: Mapped[int] = mapped_column(primary_key=True)
     supplier_id: Mapped[int] = mapped_column(
@@ -59,6 +60,7 @@ class PurchaseOrderLine(Base):
     """A single product line in a purchase order."""
 
     __tablename__ = "purchase_order_lines"
+    __table_args__ = {'extend_existing': True}
 
     id: Mapped[int] = mapped_column(primary_key=True)
     po_id: Mapped[int] = mapped_column(

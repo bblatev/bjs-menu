@@ -37,6 +37,7 @@ class BookingSource(str, Enum):
 class Reservation(Base):
     """Restaurant reservation."""
     __tablename__ = "reservations"
+    __table_args__ = {'extend_existing': True}
 
     id = Column(Integer, primary_key=True, index=True)
     location_id = Column(Integer, ForeignKey("locations.id"), nullable=True)
@@ -100,6 +101,7 @@ class Reservation(Base):
 class Waitlist(Base):
     """Walk-in waitlist management."""
     __tablename__ = "waitlist"
+    __table_args__ = {'extend_existing': True}
 
     id = Column(Integer, primary_key=True, index=True)
     location_id = Column(Integer, ForeignKey("locations.id"), nullable=True)
@@ -146,6 +148,7 @@ class Waitlist(Base):
 class TableAvailability(Base):
     """Table availability and blocking rules."""
     __tablename__ = "table_availability"
+    __table_args__ = {'extend_existing': True}
 
     id = Column(Integer, primary_key=True, index=True)
     table_id = Column(Integer, nullable=False)
@@ -167,6 +170,7 @@ class TableAvailability(Base):
 class ReservationSettings(Base):
     """Reservation system configuration."""
     __tablename__ = "reservation_settings"
+    __table_args__ = {'extend_existing': True}
 
     id = Column(Integer, primary_key=True, index=True)
     location_id = Column(Integer, ForeignKey("locations.id"), nullable=True, unique=True)
@@ -219,6 +223,7 @@ class ReservationSettings(Base):
 class GuestHistory(Base):
     """Track guest visit history for VIP handling."""
     __tablename__ = "guest_history"
+    __table_args__ = {'extend_existing': True}
 
     id = Column(Integer, primary_key=True, index=True)
     customer_id = Column(Integer, nullable=True)

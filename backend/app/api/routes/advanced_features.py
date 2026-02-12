@@ -6,8 +6,9 @@ from typing import List, Optional, Dict, Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
-
 from app.db.session import get_db
+
+
 from app.schemas.advanced_features import (
     # Waste Tracking
     WasteTrackingEntryCreate,

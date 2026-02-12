@@ -63,6 +63,7 @@ class StockMovement(Base):
     """Ledger of all stock changes (single source of truth)."""
 
     __tablename__ = "stock_movements"
+    __table_args__ = {'extend_existing': True}
 
     id: Mapped[int] = mapped_column(primary_key=True)
     ts: Mapped[datetime] = mapped_column(

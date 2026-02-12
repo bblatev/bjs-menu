@@ -16,6 +16,7 @@ class PosRawEvent(Base):
     """Raw POS event data as received from connectors."""
 
     __tablename__ = "pos_raw_events"
+    __table_args__ = {'extend_existing': True}
 
     id: Mapped[int] = mapped_column(primary_key=True)
     source: Mapped[str] = mapped_column(String(50), nullable=False, index=True)  # csv, webhook, etc.
@@ -31,6 +32,7 @@ class PosSalesLine(Base):
     """Normalized POS sales line (after processing raw events)."""
 
     __tablename__ = "pos_sales_lines"
+    __table_args__ = {'extend_existing': True}
 
     id: Mapped[int] = mapped_column(primary_key=True)
     ts: Mapped[datetime] = mapped_column(

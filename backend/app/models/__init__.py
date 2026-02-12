@@ -129,6 +129,34 @@ from app.models.restaurant import (
     MenuCategory, ModifierGroup, ModifierOption,
     MenuItemModifierGroup, ComboMeal, ComboItem,
 )
+# Platform compatibility models (ported from platform.zver.ai)
+from app.models.platform_compat import (
+    DepositStatus, ShiftStatus, OrderStatus, PaymentStatus,
+    WaiterCallStatus, WaiterCallStatus as WaiterCallStatusEnum,
+    GiftCardStatus, PurchaseOrderStatus,
+    Venue, VenueStation, TableToken,
+    Menu, MenuVersion, ItemTag, ItemTagLink,
+    Order, OrderItem, OrderItemModifier, OrderEvent,
+    LoyaltyTransaction, PromotionUsage,
+    PurchaseOrderItem,
+    AuditLog,
+    AutoDiscount, StockBatch,
+    DeliveryZone, DeliveryDriver,
+    ReservationDeposit,
+    StaffShift, ClockEvent, StaffBreak,
+    CashDrawer, CashDrawerTransaction,
+    OrderCancellation, ComboMenu, ComboMenuItem,
+    OfflineTransaction, OfflineConnectivityLog,
+    FraudScore, Stock,
+    HouseAccount, HouseAccountTransaction,
+    ThrottleEvent,
+    Payment, LoyaltyCard, MenuItemModifier,
+    KioskStatusLog, TimeEntry,
+)
+# Models moved to their canonical sources
+from app.models.advanced_features import GiftCard, DynamicPricingRule
+from app.models.menu_inventory_complete import MenuItemVariant
+
 from app.models.advanced_features import (
     HappyHour,
     WasteTrackingEntry,
@@ -138,6 +166,37 @@ from app.models.advanced_features import (
     WaitTimePrediction,
     KitchenStation,
 )
+
+# Integration models (missing models for untracked route files)
+from app.models.integration_models import (
+    SplitBill, SplitBillOrder, SplitBillGuest, SplitBillGuestItem, SplitBillStatus,
+    HeldOrder, HeldOrderStatus,
+    TableMerge, TableMergeItem,
+    TableSession, TableSessionStatus, TableHistory,
+    FloorPlan, FloorPlanTablePosition, FloorPlanArea,
+    KioskConfig,
+    VenueSettings,
+    DriveThruOrder,
+    AggregatorOrder,
+)
+
+# Complete modules (production, serial/batch)
+from app.models.complete_modules import RecipeIngredient, ProductionOrder
+
+# Missing features models
+from app.models.missing_features_models import (
+    ShiftTradeRequest, MenuItemReview, MenuItemRatingAggregate,
+    CustomerReferral, CustomerRFMScore, RFMSegmentDefinition, SMSCampaign,
+)
+
+# Feature models
+from app.models.feature_models import ProductionBatch
+
+# Core business models (SMS, etc.)
+from app.models.core_business_models import SMSMessage
+
+# Staff enums
+from app.models.staff import StaffRole
 
 __all__ = [
     # Core models

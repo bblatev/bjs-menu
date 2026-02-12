@@ -26,6 +26,7 @@ class AIPhoto(Base):
     """Photo taken for AI shelf scanning (optional persistence)."""
 
     __tablename__ = "ai_photos"
+    __table_args__ = {'extend_existing': True}
 
     id: Mapped[int] = mapped_column(primary_key=True)
     session_id: Mapped[Optional[int]] = mapped_column(
@@ -46,6 +47,7 @@ class TrainingImage(Base):
     """
 
     __tablename__ = "training_images"
+    __table_args__ = {'extend_existing': True}
 
     id: Mapped[int] = mapped_column(primary_key=True)
     stock_item_id: Mapped[int] = mapped_column(
@@ -119,6 +121,7 @@ class ProductFeatureCache(Base):
     """
 
     __tablename__ = "product_feature_cache"
+    __table_args__ = {'extend_existing': True}
 
     id: Mapped[int] = mapped_column(primary_key=True)
     stock_item_id: Mapped[int] = mapped_column(
@@ -150,6 +153,7 @@ class RecognitionLog(Base):
     """Log of recognition attempts for analytics and debugging."""
 
     __tablename__ = "recognition_logs"
+    __table_args__ = {'extend_existing': True}
 
     id: Mapped[int] = mapped_column(primary_key=True)
 

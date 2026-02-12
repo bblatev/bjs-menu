@@ -13,6 +13,7 @@ class Customer(Base, TimestampMixin, SoftDeleteMixin):
     """Customer model for CRM."""
 
     __tablename__ = "customers"
+    __table_args__ = {'extend_existing': True}
 
     id: Mapped[int] = mapped_column(primary_key=True)
     name: Mapped[str] = mapped_column(String(255), nullable=False)

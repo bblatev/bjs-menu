@@ -15,6 +15,7 @@ class Supplier(Base, TimestampMixin):
     """Supplier for products."""
 
     __tablename__ = "suppliers"
+    __table_args__ = {'extend_existing': True}
 
     id: Mapped[int] = mapped_column(primary_key=True)
     name: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
@@ -29,7 +30,7 @@ class Supplier(Base, TimestampMixin):
         "PurchaseOrder", back_populates="supplier"
     )
     documents: Mapped[list["SupplierDocument"]] = relationship(
-        "SupplierDocument", back_populates="supplier"
+        "app.models.supplier.SupplierDocument", back_populates="supplier"
     )
 
 
@@ -37,6 +38,7 @@ class SupplierDocument(Base, TimestampMixin):
     """Document attached to a supplier (contracts, certificates, etc)."""
 
     __tablename__ = "supplier_documents"
+    __table_args__ = {'extend_existing': True}
 
     id: Mapped[int] = mapped_column(primary_key=True)
     supplier_id: Mapped[int] = mapped_column(Integer, ForeignKey("suppliers.id"), nullable=False, index=True)

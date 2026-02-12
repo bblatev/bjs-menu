@@ -23,6 +23,7 @@ class StockItem(Base):
     """
 
     __tablename__ = "stock_items"
+    __table_args__ = {'extend_existing': True}
 
     id: Mapped[int] = mapped_column(primary_key=True)
     venue_id: Mapped[int] = mapped_column(Integer, nullable=False, default=1)

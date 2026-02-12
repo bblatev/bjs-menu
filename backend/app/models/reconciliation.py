@@ -25,6 +25,7 @@ class ReconciliationResult(Base):
     """Result of comparing expected vs counted quantities for a product."""
 
     __tablename__ = "reconciliation_results"
+    __table_args__ = {'extend_existing': True}
 
     id: Mapped[int] = mapped_column(primary_key=True)
     session_id: Mapped[int] = mapped_column(
@@ -68,6 +69,7 @@ class ReorderProposal(Base):
     """Suggested reorder for a product based on stock analysis."""
 
     __tablename__ = "reorder_proposals"
+    __table_args__ = {'extend_existing': True}
 
     id: Mapped[int] = mapped_column(primary_key=True)
     session_id: Mapped[int] = mapped_column(
@@ -129,6 +131,7 @@ class SupplierOrderDraft(Base):
     """Draft order to a supplier, generated from reorder proposals."""
 
     __tablename__ = "supplier_order_drafts"
+    __table_args__ = {'extend_existing': True}
 
     id: Mapped[int] = mapped_column(primary_key=True)
     session_id: Mapped[int] = mapped_column(

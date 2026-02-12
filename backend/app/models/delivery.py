@@ -33,6 +33,7 @@ class DeliveryOrderStatus(str, Enum):
 class DeliveryIntegration(Base):
     """Third-party delivery platform integration configuration."""
     __tablename__ = "delivery_integrations"
+    __table_args__ = {'extend_existing': True}
 
     id = Column(Integer, primary_key=True, index=True)
     location_id = Column(Integer, ForeignKey("locations.id"), nullable=True)
@@ -70,6 +71,7 @@ class DeliveryIntegration(Base):
 class DeliveryOrder(Base):
     """Orders received from delivery platforms."""
     __tablename__ = "delivery_orders"
+    __table_args__ = {'extend_existing': True}
 
     id = Column(Integer, primary_key=True, index=True)
     integration_id = Column(Integer, ForeignKey("delivery_integrations.id"), nullable=False)
@@ -136,6 +138,7 @@ class DeliveryOrder(Base):
 class DeliveryOrderItem(Base):
     """Individual items in a delivery order."""
     __tablename__ = "delivery_order_items"
+    __table_args__ = {'extend_existing': True}
 
     id = Column(Integer, primary_key=True, index=True)
     order_id = Column(Integer, ForeignKey("delivery_orders.id"), nullable=False)
@@ -164,6 +167,7 @@ class DeliveryOrderItem(Base):
 class MenuSync(Base):
     """Track menu synchronization with delivery platforms."""
     __tablename__ = "menu_syncs"
+    __table_args__ = {'extend_existing': True}
 
     id = Column(Integer, primary_key=True, index=True)
     integration_id = Column(Integer, ForeignKey("delivery_integrations.id"), nullable=False)
@@ -189,6 +193,7 @@ class MenuSync(Base):
 class ItemAvailability(Base):
     """Track item availability across delivery platforms (86'd items)."""
     __tablename__ = "item_availability"
+    __table_args__ = {'extend_existing': True}
 
     id = Column(Integer, primary_key=True, index=True)
     product_id = Column(Integer, ForeignKey("products.id"), nullable=False)
@@ -210,6 +215,7 @@ class ItemAvailability(Base):
 class DeliveryPlatformMapping(Base):
     """Map local products to delivery platform product IDs."""
     __tablename__ = "delivery_platform_mappings"
+    __table_args__ = {'extend_existing': True}
 
     id = Column(Integer, primary_key=True, index=True)
     product_id = Column(Integer, ForeignKey("products.id"), nullable=False)

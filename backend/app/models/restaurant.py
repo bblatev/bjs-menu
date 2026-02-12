@@ -13,6 +13,7 @@ from app.models.validators import non_negative, positive, validate_list, validat
 class Table(Base):
     """Restaurant table for seating."""
     __tablename__ = "tables"
+    __table_args__ = {'extend_existing': True}
 
     id = Column(Integer, primary_key=True, index=True)
     number = Column(String(50), nullable=False)
@@ -27,11 +28,14 @@ class Table(Base):
 
     # Relationships
     checks = relationship("Check", back_populates="table")
+    tokens = relationship("TableToken", back_populates="table")
+    orders = relationship("Order", back_populates="table")
 
 
 class Check(Base, VersionMixin, SoftDeleteMixin):
     """Restaurant check/bill."""
     __tablename__ = "checks"
+    __table_args__ = {'extend_existing': True}
 
     id = Column(Integer, primary_key=True, index=True)
     table_id = Column(Integer, ForeignKey("tables.id"), nullable=True)
@@ -68,6 +72,7 @@ class Check(Base, VersionMixin, SoftDeleteMixin):
 class CheckItem(Base, VersionMixin, SoftDeleteMixin):
     """Item on a check."""
     __tablename__ = "check_items"
+    __table_args__ = {'extend_existing': True}
 
     id = Column(Integer, primary_key=True, index=True)
     check_id = Column(Integer, ForeignKey("checks.id"), nullable=False)
@@ -110,6 +115,7 @@ class CheckItem(Base, VersionMixin, SoftDeleteMixin):
 class CheckPayment(Base):
     """Payment on a check."""
     __tablename__ = "check_payments"
+    __table_args__ = {'extend_existing': True}
 
     id = Column(Integer, primary_key=True, index=True)
     check_id = Column(Integer, ForeignKey("checks.id"), nullable=False)
@@ -138,6 +144,7 @@ class CheckPayment(Base):
 class MenuCategory(Base):
     """Menu category for organizing items."""
     __tablename__ = "menu_categories"
+    __table_args__ = {'extend_existing': True}
 
     id = Column(Integer, primary_key=True, index=True)
     name_bg = Column(String(200), nullable=False)
@@ -167,6 +174,7 @@ class MenuCategory(Base):
 class MenuItem(Base, SoftDeleteMixin):
     """Menu item for ordering."""
     __tablename__ = "menu_items"
+    __table_args__ = {'extend_existing': True}
 
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String(200), nullable=False)
@@ -211,6 +219,7 @@ class MenuItem(Base, SoftDeleteMixin):
 class ModifierGroup(Base):
     """A group of modifiers (e.g. 'Choose your side', 'Add toppings')."""
     __tablename__ = "modifier_groups"
+    __table_args__ = {'extend_existing': True}
 
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String(200), nullable=False)
@@ -228,6 +237,7 @@ class ModifierGroup(Base):
 class ModifierOption(Base):
     """An individual modifier option within a group."""
     __tablename__ = "modifier_options"
+    __table_args__ = {'extend_existing': True}
 
     id = Column(Integer, primary_key=True, index=True)
     group_id = Column(Integer, ForeignKey("modifier_groups.id"), nullable=False)
@@ -243,6 +253,7 @@ class ModifierOption(Base):
 class MenuItemModifierGroup(Base):
     """Link table between menu items and modifier groups."""
     __tablename__ = "menu_item_modifier_groups"
+    __table_args__ = {'extend_existing': True}
 
     id = Column(Integer, primary_key=True, index=True)
     menu_item_id = Column(Integer, ForeignKey("menu_items.id"), nullable=False)
@@ -256,6 +267,7 @@ class MenuItemModifierGroup(Base):
 class ComboMeal(Base):
     """A combo meal that bundles multiple items at a set price."""
     __tablename__ = "combo_meals"
+    __table_args__ = {'extend_existing': True}
 
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String(200), nullable=False)
@@ -274,6 +286,7 @@ class ComboMeal(Base):
 class ComboItem(Base):
     """An item included in a combo meal."""
     __tablename__ = "combo_items"
+    __table_args__ = {'extend_existing': True}
 
     id = Column(Integer, primary_key=True, index=True)
     combo_id = Column(Integer, ForeignKey("combo_meals.id"), nullable=False)
@@ -289,6 +302,7 @@ class ComboItem(Base):
 class KitchenOrder(Base, VersionMixin):
     """Kitchen order/ticket."""
     __tablename__ = "kitchen_orders"
+    __table_args__ = {'extend_existing': True}
 
     id = Column(Integer, primary_key=True, index=True)
     check_id = Column(Integer, ForeignKey("checks.id"), nullable=True)
@@ -328,6 +342,7 @@ class KitchenOrder(Base, VersionMixin):
 class GuestOrder(Base):
     """Guest order from QR code ordering."""
     __tablename__ = "guest_orders"
+    __table_args__ = {'extend_existing': True}
 
     id = Column(Integer, primary_key=True, index=True)
     table_id = Column(Integer, ForeignKey("tables.id"), nullable=True)

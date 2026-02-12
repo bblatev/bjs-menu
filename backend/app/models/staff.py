@@ -80,6 +80,7 @@ class StaffUser(Base, TimestampMixin, SoftDeleteMixin):
     """Staff member model."""
 
     __tablename__ = "staff_users"
+    __table_args__ = {'extend_existing': True}
 
     id: Mapped[int] = mapped_column(primary_key=True)
     full_name: Mapped[str] = mapped_column(String(255), nullable=False)
@@ -98,7 +99,7 @@ class StaffUser(Base, TimestampMixin, SoftDeleteMixin):
 
     # Relationships
     shifts = relationship("Shift", back_populates="staff")
-    time_off_requests = relationship("TimeOffRequest", back_populates="staff")
+    time_off_requests = relationship("app.models.staff.TimeOffRequest", back_populates="staff")
     time_clock_entries = relationship("TimeClockEntry", back_populates="staff")
     table_assignments = relationship("TableAssignment", back_populates="staff")
 
@@ -119,6 +120,7 @@ class Shift(Base, TimestampMixin):
     """Shift schedule model."""
 
     __tablename__ = "shifts"
+    __table_args__ = {'extend_existing': True}
 
     id: Mapped[int] = mapped_column(primary_key=True)
     staff_id: Mapped[int] = mapped_column(ForeignKey("staff_users.id"), nullable=False)
@@ -145,6 +147,7 @@ class TimeOffRequest(Base, TimestampMixin):
     """Time off request model."""
 
     __tablename__ = "time_off_requests"
+    __table_args__ = {'extend_existing': True}
 
     id: Mapped[int] = mapped_column(primary_key=True)
     staff_id: Mapped[int] = mapped_column(ForeignKey("staff_users.id"), nullable=False)
@@ -158,13 +161,14 @@ class TimeOffRequest(Base, TimestampMixin):
     location_id: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
 
     # Relationships
-    staff = relationship("StaffUser", back_populates="time_off_requests")
+    staff = relationship("app.models.staff.StaffUser", back_populates="time_off_requests")
 
 
 class TimeClockEntry(Base, TimestampMixin):
     """Time clock entry model."""
 
     __tablename__ = "time_clock_entries"
+    __table_args__ = {'extend_existing': True}
 
     id: Mapped[int] = mapped_column(primary_key=True)
     staff_id: Mapped[int] = mapped_column(ForeignKey("staff_users.id"), nullable=False)
@@ -187,6 +191,7 @@ class TableAssignment(Base, TimestampMixin):
     """Table assignment model for servers."""
 
     __tablename__ = "table_assignments"
+    __table_args__ = {'extend_existing': True}
 
     id: Mapped[int] = mapped_column(primary_key=True)
     staff_id: Mapped[int] = mapped_column(ForeignKey("staff_users.id"), nullable=False)
@@ -203,6 +208,7 @@ class PerformanceMetric(Base, TimestampMixin):
     """Staff performance metrics model."""
 
     __tablename__ = "staff_performance_metrics"
+    __table_args__ = {'extend_existing': True}
 
     id: Mapped[int] = mapped_column(primary_key=True)
     staff_id: Mapped[int] = mapped_column(ForeignKey("staff_users.id"), nullable=False)
@@ -228,6 +234,7 @@ class PerformanceGoal(Base, TimestampMixin):
     """Performance goals model."""
 
     __tablename__ = "performance_goals"
+    __table_args__ = {'extend_existing': True}
 
     id: Mapped[int] = mapped_column(primary_key=True)
     metric: Mapped[str] = mapped_column(String(100), nullable=False)
@@ -242,6 +249,7 @@ class TipPool(Base, TimestampMixin):
     """Tip pool model."""
 
     __tablename__ = "tip_pools"
+    __table_args__ = {'extend_existing': True}
 
     id: Mapped[int] = mapped_column(primary_key=True)
     date: Mapped[date] = mapped_column(Date, nullable=False)
@@ -263,6 +271,7 @@ class TipDistribution(Base, TimestampMixin):
     """Tip distribution to individual staff."""
 
     __tablename__ = "tip_distributions"
+    __table_args__ = {'extend_existing': True}
 
     id: Mapped[int] = mapped_column(primary_key=True)
     pool_id: Mapped[int] = mapped_column(ForeignKey("tip_pools.id"), nullable=False)

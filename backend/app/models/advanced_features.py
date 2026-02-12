@@ -36,6 +36,7 @@ class WasteTrackingEntry(Base, TimestampMixin):
     """AI-powered food waste tracking with image recognition."""
 
     __tablename__ = "waste_tracking_entries"
+    __table_args__ = {'extend_existing': True}
 
     id: Mapped[int] = mapped_column(primary_key=True)
     location_id: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
@@ -68,6 +69,7 @@ class WasteForecast(Base, TimestampMixin):
     """Predicted waste based on historical patterns."""
 
     __tablename__ = "waste_forecasts"
+    __table_args__ = {'extend_existing': True}
 
     id: Mapped[int] = mapped_column(primary_key=True)
     location_id: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
@@ -89,6 +91,7 @@ class LaborForecast(Base, TimestampMixin):
     """ML-based labor demand forecasting."""
 
     __tablename__ = "labor_forecasts"
+    __table_args__ = {'extend_existing': True}
 
     id: Mapped[int] = mapped_column(primary_key=True)
     location_id: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
@@ -116,6 +119,7 @@ class LaborComplianceRule(Base, TimestampMixin):
     """Labor law compliance rules (Fair Workweek, breaks, overtime)."""
 
     __tablename__ = "labor_compliance_rules"
+    __table_args__ = {'extend_existing': True}
 
     id: Mapped[int] = mapped_column(primary_key=True)
     location_id: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
@@ -136,6 +140,7 @@ class LaborComplianceViolation(Base, TimestampMixin):
     """Tracked labor compliance violations."""
 
     __tablename__ = "labor_compliance_violations"
+    __table_args__ = {'extend_existing': True}
 
     id: Mapped[int] = mapped_column(primary_key=True)
     rule_id: Mapped[int] = mapped_column(ForeignKey("labor_compliance_rules.id"), nullable=False)
@@ -159,6 +164,7 @@ class KitchenCapacity(Base, TimestampMixin):
     """Kitchen capacity configuration for order throttling."""
 
     __tablename__ = "kitchen_capacities"
+    __table_args__ = {'extend_existing': True}
 
     id: Mapped[int] = mapped_column(primary_key=True)
     location_id: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
@@ -182,6 +188,7 @@ class OrderThrottleEvent(Base, TimestampMixin):
     """Logged throttling events."""
 
     __tablename__ = "order_throttle_events"
+    __table_args__ = {'extend_existing': True}
 
     id: Mapped[int] = mapped_column(primary_key=True)
     location_id: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
@@ -207,6 +214,7 @@ class GuestWifiSession(Base, TimestampMixin):
     """Guest WiFi login sessions for marketing."""
 
     __tablename__ = "guest_wifi_sessions"
+    __table_args__ = {'extend_existing': True}
 
     id: Mapped[int] = mapped_column(primary_key=True)
     location_id: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
@@ -242,6 +250,7 @@ class MenuExperiment(Base, TimestampMixin):
     """A/B testing for menu items, prices, and layouts."""
 
     __tablename__ = "menu_experiments"
+    __table_args__ = {'extend_existing': True}
 
     id: Mapped[int] = mapped_column(primary_key=True)
     location_id: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)  # null = all locations
@@ -274,6 +283,7 @@ class MenuExperimentResult(Base, TimestampMixin):
     """Results tracking for menu experiments."""
 
     __tablename__ = "menu_experiment_results"
+    __table_args__ = {'extend_existing': True}
 
     id: Mapped[int] = mapped_column(primary_key=True)
     experiment_id: Mapped[int] = mapped_column(ForeignKey("menu_experiments.id"), nullable=False)
@@ -300,6 +310,7 @@ class DynamicPricingRule(Base, TimestampMixin):
     """Demand-based dynamic pricing rules."""
 
     __tablename__ = "dynamic_pricing_rules"
+    __table_args__ = {'extend_existing': True}
 
     id: Mapped[int] = mapped_column(primary_key=True)
     location_id: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
@@ -330,6 +341,7 @@ class DynamicPriceAdjustment(Base, TimestampMixin):
     """Log of dynamic price adjustments."""
 
     __tablename__ = "dynamic_price_adjustments"
+    __table_args__ = {'extend_existing': True}
 
     id: Mapped[int] = mapped_column(primary_key=True)
     rule_id: Mapped[int] = mapped_column(ForeignKey("dynamic_pricing_rules.id"), nullable=False)
@@ -354,6 +366,7 @@ class CurbsideOrder(Base, TimestampMixin):
     """Curbside pickup order tracking."""
 
     __tablename__ = "curbside_orders"
+    __table_args__ = {'extend_existing': True}
 
     id: Mapped[int] = mapped_column(primary_key=True)
     order_id: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
@@ -387,6 +400,7 @@ class DeliveryProvider(Base, TimestampMixin):
     """Delivery provider configuration."""
 
     __tablename__ = "delivery_providers"
+    __table_args__ = {'extend_existing': True}
 
     id: Mapped[int] = mapped_column(primary_key=True)
     location_id: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
@@ -416,6 +430,7 @@ class DeliveryDispatch(Base, TimestampMixin):
     """Smart delivery dispatch decisions."""
 
     __tablename__ = "delivery_dispatches"
+    __table_args__ = {'extend_existing': True}
 
     id: Mapped[int] = mapped_column(primary_key=True)
     order_id: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
@@ -449,6 +464,7 @@ class ReviewSentiment(Base, TimestampMixin):
     """AI-analyzed customer review sentiment."""
 
     __tablename__ = "review_sentiments"
+    __table_args__ = {'extend_existing': True}
 
     id: Mapped[int] = mapped_column(primary_key=True)
     location_id: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
@@ -492,6 +508,7 @@ class GiftCardProgram(Base, TimestampMixin):
     """Gift card program configuration."""
 
     __tablename__ = "gift_card_programs"
+    __table_args__ = {'extend_existing': True}
 
     id: Mapped[int] = mapped_column(primary_key=True)
     name: Mapped[str] = mapped_column(String(255), nullable=False)
@@ -518,6 +535,7 @@ class GiftCard(Base, TimestampMixin, VersionMixin):
     """Individual gift card."""
 
     __tablename__ = "gift_cards"
+    __table_args__ = {'extend_existing': True}
 
     id: Mapped[int] = mapped_column(primary_key=True)
     program_id: Mapped[int] = mapped_column(ForeignKey("gift_card_programs.id"), nullable=False)
@@ -551,11 +569,15 @@ class GiftCard(Base, TimestampMixin, VersionMixin):
     purchase_order_id: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
     purchase_location_id: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
 
+    # Relationships
+    transactions = relationship("GiftCardTransaction", back_populates="gift_card", cascade="all, delete-orphan")
+
 
 class GiftCardTransaction(Base, TimestampMixin):
     """Gift card transaction history."""
 
     __tablename__ = "gift_card_transactions"
+    __table_args__ = {'extend_existing': True}
 
     id: Mapped[int] = mapped_column(primary_key=True)
     gift_card_id: Mapped[int] = mapped_column(ForeignKey("gift_cards.id"), nullable=False)
@@ -572,6 +594,8 @@ class GiftCardTransaction(Base, TimestampMixin):
 
     notes: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
 
+    gift_card = relationship("GiftCard", back_populates="transactions")
+
 
 # ============================================================================
 # 11. TIPS POOLING & DISTRIBUTION
@@ -581,6 +605,7 @@ class TipPoolConfiguration(Base, TimestampMixin):
     """Tip pooling configuration."""
 
     __tablename__ = "tip_pool_configurations"
+    __table_args__ = {'extend_existing': True}
 
     id: Mapped[int] = mapped_column(primary_key=True)
     location_id: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
@@ -607,6 +632,7 @@ class TipPoolDistribution(Base, TimestampMixin):
     """Tip pool distribution record."""
 
     __tablename__ = "tip_pool_distributions"
+    __table_args__ = {'extend_existing': True}
 
     id: Mapped[int] = mapped_column(primary_key=True)
     configuration_id: Mapped[int] = mapped_column(ForeignKey("tip_pool_configurations.id"), nullable=False)
@@ -636,6 +662,7 @@ class CrossSellRule(Base, TimestampMixin):
     """AI-powered cross-sell/upsell rules."""
 
     __tablename__ = "cross_sell_rules"
+    __table_args__ = {'extend_existing': True}
 
     id: Mapped[int] = mapped_column(primary_key=True)
     location_id: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
@@ -669,6 +696,7 @@ class CrossSellImpression(Base, TimestampMixin):
     """Cross-sell impression tracking."""
 
     __tablename__ = "cross_sell_impressions"
+    __table_args__ = {'extend_existing': True}
 
     id: Mapped[int] = mapped_column(primary_key=True)
     rule_id: Mapped[int] = mapped_column(ForeignKey("cross_sell_rules.id"), nullable=False)
@@ -692,6 +720,7 @@ class CustomerJourneyEvent(Base, TimestampMixin):
     """Customer journey touchpoint tracking."""
 
     __tablename__ = "customer_journey_events"
+    __table_args__ = {'extend_existing': True}
 
     id: Mapped[int] = mapped_column(primary_key=True)
     customer_id: Mapped[Optional[int]] = mapped_column(Integer, nullable=True, index=True)
@@ -724,6 +753,7 @@ class CustomerJourneyFunnel(Base, TimestampMixin):
     """Pre-calculated funnel analytics."""
 
     __tablename__ = "customer_journey_funnels"
+    __table_args__ = {'extend_existing': True}
 
     id: Mapped[int] = mapped_column(primary_key=True)
     location_id: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
@@ -757,6 +787,7 @@ class ProductShelfLife(Base, TimestampMixin):
     """Product shelf life configuration."""
 
     __tablename__ = "product_shelf_lives"
+    __table_args__ = {'extend_existing': True}
 
     id: Mapped[int] = mapped_column(primary_key=True)
     product_id: Mapped[int] = mapped_column(ForeignKey("products.id"), nullable=False, index=True)
@@ -780,6 +811,7 @@ class InventoryBatch(Base, TimestampMixin):
     """Inventory batch with expiration tracking."""
 
     __tablename__ = "inventory_batches"
+    __table_args__ = {'extend_existing': True}
 
     id: Mapped[int] = mapped_column(primary_key=True)
     product_id: Mapped[int] = mapped_column(ForeignKey("products.id"), nullable=False, index=True)
@@ -810,6 +842,7 @@ class ExpirationAlert(Base, TimestampMixin):
     """Expiration alerts and actions."""
 
     __tablename__ = "expiration_alerts"
+    __table_args__ = {'extend_existing': True}
 
     id: Mapped[int] = mapped_column(primary_key=True)
     batch_id: Mapped[int] = mapped_column(ForeignKey("inventory_batches.id"), nullable=False)
@@ -839,6 +872,7 @@ class PrepList(Base, TimestampMixin):
     """Auto-generated prep lists."""
 
     __tablename__ = "prep_lists"
+    __table_args__ = {'extend_existing': True}
 
     id: Mapped[int] = mapped_column(primary_key=True)
     location_id: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
@@ -865,6 +899,7 @@ class PrepListItem(Base, TimestampMixin):
     """Individual prep list items."""
 
     __tablename__ = "prep_list_items"
+    __table_args__ = {'extend_existing': True}
 
     id: Mapped[int] = mapped_column(primary_key=True)
     prep_list_id: Mapped[int] = mapped_column(ForeignKey("prep_lists.id"), nullable=False)
@@ -896,6 +931,7 @@ class KitchenStation(Base, TimestampMixin):
     """Kitchen station configuration for load balancing."""
 
     __tablename__ = "kitchen_stations"
+    __table_args__ = {'extend_existing': True}
 
     id: Mapped[int] = mapped_column(primary_key=True)
     location_id: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
@@ -922,6 +958,7 @@ class StationLoadMetric(Base, TimestampMixin):
     """Real-time station load tracking."""
 
     __tablename__ = "station_load_metrics"
+    __table_args__ = {'extend_existing': True}
 
     id: Mapped[int] = mapped_column(primary_key=True)
     station_id: Mapped[int] = mapped_column(ForeignKey("kitchen_stations.id"), nullable=False)
@@ -949,6 +986,7 @@ class WaitTimePrediction(Base, TimestampMixin):
     """ML-based wait time predictions."""
 
     __tablename__ = "wait_time_predictions"
+    __table_args__ = {'extend_existing': True}
 
     id: Mapped[int] = mapped_column(primary_key=True)
     location_id: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
@@ -978,6 +1016,7 @@ class AllergenProfile(Base, TimestampMixin):
     """Allergen profiles for products."""
 
     __tablename__ = "allergen_profiles"
+    __table_args__ = {'extend_existing': True}
 
     id: Mapped[int] = mapped_column(primary_key=True)
     product_id: Mapped[int] = mapped_column(ForeignKey("products.id"), nullable=False, index=True)
@@ -1007,6 +1046,7 @@ class AllergenAlert(Base, TimestampMixin):
     """Kitchen alerts for allergen orders."""
 
     __tablename__ = "allergen_alerts"
+    __table_args__ = {'extend_existing': True}
 
     id: Mapped[int] = mapped_column(primary_key=True)
     order_id: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
@@ -1036,6 +1076,7 @@ class SustainabilityMetric(Base, TimestampMixin):
     """Daily sustainability metrics."""
 
     __tablename__ = "sustainability_metrics"
+    __table_args__ = {'extend_existing': True}
 
     id: Mapped[int] = mapped_column(primary_key=True)
     location_id: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
@@ -1068,6 +1109,7 @@ class ESGReport(Base, TimestampMixin):
     """ESG reporting periods."""
 
     __tablename__ = "esg_reports"
+    __table_args__ = {'extend_existing': True}
 
     id: Mapped[int] = mapped_column(primary_key=True)
     location_id: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)  # null = company-wide
@@ -1103,6 +1145,7 @@ class EquipmentSensor(Base, TimestampMixin):
     """IoT equipment sensors."""
 
     __tablename__ = "equipment_sensors"
+    __table_args__ = {'extend_existing': True}
 
     id: Mapped[int] = mapped_column(primary_key=True)
     location_id: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
@@ -1130,6 +1173,7 @@ class SensorReading(Base):
     """IoT sensor readings."""
 
     __tablename__ = "sensor_readings"
+    __table_args__ = {'extend_existing': True}
 
     id: Mapped[int] = mapped_column(primary_key=True)
     sensor_id: Mapped[int] = mapped_column(ForeignKey("equipment_sensors.id"), nullable=False, index=True)
@@ -1147,6 +1191,7 @@ class PredictiveMaintenance(Base, TimestampMixin):
     """Predictive maintenance alerts."""
 
     __tablename__ = "predictive_maintenance"
+    __table_args__ = {'extend_existing': True}
 
     id: Mapped[int] = mapped_column(primary_key=True)
     sensor_id: Mapped[int] = mapped_column(ForeignKey("equipment_sensors.id"), nullable=False)
@@ -1175,6 +1220,7 @@ class VendorScorecard(Base, TimestampMixin):
     """Comprehensive vendor performance scorecard."""
 
     __tablename__ = "vendor_scorecards"
+    __table_args__ = {'extend_existing': True}
 
     id: Mapped[int] = mapped_column(primary_key=True)
     supplier_id: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
@@ -1216,6 +1262,7 @@ class VirtualBrand(Base, TimestampMixin):
     """Virtual/ghost kitchen brand management."""
 
     __tablename__ = "virtual_brands"
+    __table_args__ = {'extend_existing': True}
 
     id: Mapped[int] = mapped_column(primary_key=True)
     parent_location_id: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
@@ -1254,6 +1301,7 @@ class TableTurnMetric(Base, TimestampMixin):
     """Table turn time tracking and optimization."""
 
     __tablename__ = "table_turn_metrics"
+    __table_args__ = {'extend_existing': True}
 
     id: Mapped[int] = mapped_column(primary_key=True)
     location_id: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
@@ -1285,6 +1333,7 @@ class TableTurnForecast(Base, TimestampMixin):
     """Predicted table availability."""
 
     __tablename__ = "table_turn_forecasts"
+    __table_args__ = {'extend_existing': True}
 
     id: Mapped[int] = mapped_column(primary_key=True)
     location_id: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
@@ -1306,6 +1355,7 @@ class OrderStatusNotification(Base, TimestampMixin):
     """Customer order status notifications."""
 
     __tablename__ = "order_status_notifications"
+    __table_args__ = {'extend_existing': True}
 
     id: Mapped[int] = mapped_column(primary_key=True)
     order_id: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
@@ -1336,6 +1386,7 @@ class SupplyChainTrace(Base, TimestampMixin):
     """Supply chain traceability records."""
 
     __tablename__ = "supply_chain_traces"
+    __table_args__ = {'extend_existing': True}
 
     id: Mapped[int] = mapped_column(primary_key=True)
     product_id: Mapped[int] = mapped_column(ForeignKey("products.id"), nullable=False, index=True)
@@ -1378,6 +1429,7 @@ class HappyHour(Base, TimestampMixin):
     """Happy hour and time-based promotions."""
 
     __tablename__ = "happy_hours"
+    __table_args__ = {'extend_existing': True}
 
     id: Mapped[int] = mapped_column(primary_key=True)
     location_id: Mapped[Optional[int]] = mapped_column(Integer, nullable=True, index=True)

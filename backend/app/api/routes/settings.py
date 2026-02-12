@@ -11,6 +11,17 @@ from app.models.operations import AppSetting
 
 router = APIRouter()
 
+from app.core.rbac import get_current_user
+
+def require_manager(current_user = Depends(get_current_user)):
+    """Require manager or above role."""
+    if not hasattr(current_user, 'role'):
+        return current_user
+    if current_user.role not in ("admin", "owner", "manager"):
+        raise HTTPException(status_code=403, detail="Manager access required")
+    return current_user
+
+
 
 # --------------- Pydantic schemas (unchanged) ---------------
 

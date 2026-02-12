@@ -1,7 +1,11 @@
 """API routes."""
 
+import logging
 from fastapi import APIRouter
 
+logger = logging.getLogger(__name__)
+
+# Core imports (these must work)
 from app.api.routes import (
     auth, suppliers, products, locations, inventory, orders,
     pos, recipes, ai, sync, reports, reconciliation,
@@ -77,8 +81,6 @@ api_router.include_router(enterprise.router, prefix="/enterprise", tags=["enterp
 
 # Inventory Hardware (kegs, tanks, RFID)
 api_router.include_router(inventory_hardware.router, prefix="/inventory-hardware", tags=["inventory-hardware", "kegs", "tanks", "rfid"])
-
-# Guest/Customer Ordering - moved to top of file (before purchase orders router)
 
 # Staff Management (staff, shifts, time-clock, performance, tips)
 api_router.include_router(staff.router, tags=["staff", "schedules", "time-clock", "performance", "tips"])
@@ -242,3 +244,95 @@ api_router.include_router(auto_reorder.router, prefix="/auto-reorder", tags=["au
 
 # Multi-location v3.1 (reuse locations router)
 api_router.include_router(locations.router, prefix="/v3.1/locations", tags=["locations", "multi-location", "v3.1"])
+
+# ============================================================================
+# PORTED FROM platform.zver.ai (graceful loading - skip if dependencies missing)
+# ============================================================================
+
+_ported_modules = [
+    ("bulgarian_payments", "/bulgarian-payments", ["bulgarian-payments", "borica", "epay"]),
+    ("crypto_payments", "/crypto-payments", ["crypto", "payments"]),
+    ("split_bills", "/split-bills", ["split-bills", "payments"]),
+    ("cash_drawers", "/cash-drawers", ["cash-drawers", "pos"]),
+    ("house_accounts", "/house-accounts", ["house-accounts"]),
+    ("held_orders", "/held-orders", ["held-orders"]),
+    ("currency", "/currency", ["currency", "exchange"]),
+    ("hardware_bnpl", "/hardware-bnpl", ["bnpl", "klarna", "affirm"]),
+    ("auto_discounts", "/auto-discounts", ["auto-discounts", "pricing"]),
+    ("financial_endpoints", "/financial-endpoints", ["financial", "accounting"]),
+    ("menu_admin", "/menu-admin", ["menu", "admin"]),
+    ("menu_advanced", "/menu-advanced", ["menu", "advanced"]),
+    ("menu_complete_features", "/menu-complete-features", ["menu", "complete"]),
+    ("combos", "/combos", ["combos", "menu"]),
+    ("customer_self_ordering", "/self-order", ["self-order", "qr"]),
+    ("drive_thru", "/drive-thru", ["drive-thru"]),
+    ("telephone_integration", "/telephone", ["telephone", "phone-orders"]),
+    ("table_merges", "/table-merges", ["tables", "merge"]),
+    ("table_sessions", "/table-sessions", ["tables", "sessions"]),
+    ("tabs", "/tabs", ["tabs", "bar"]),
+    ("barcode_labels", "/barcode-labels", ["barcode", "labels", "printing"]),
+    ("batches", "/batches", ["batches", "inventory"]),
+    ("serial_batch", "/serial-batch", ["serial", "batch", "tracking"]),
+    ("enhanced_inventory_endpoints", "/enhanced-inventory", ["inventory", "enhanced"]),
+    ("inventory_complete_features", "/inventory-complete-features", ["inventory", "complete"]),
+    ("inventory_reports", "/inventory-reports", ["inventory", "reports"]),
+    ("mobile_scanner", "/mobile-scanner", ["mobile", "scanner", "barcode"]),
+    ("production", "/production", ["production", "kitchen"]),
+    ("production_features", "/production-features", ["production", "features"]),
+    ("purchase_order_advanced", "/purchase-order-advanced", ["purchase-orders", "advanced"]),
+    ("enterprise_features", "/enterprise-features", ["enterprise"]),
+    ("external_integrations", "/external-integrations", ["integrations", "external"]),
+    ("google_booking", "/google-booking", ["google", "booking"]),
+    ("datecs", "/datecs", ["datecs", "fiscal"]),
+    ("erpnet_fp", "/erpnet-fp", ["erpnet", "fiscal"]),
+    ("multi_terminal", "/multi-terminal", ["multi-terminal", "pos"]),
+    ("waiter_terminal", "/waiter-terminal", ["waiter", "terminal"]),
+    ("delivery_platforms", "/delivery-platforms", ["delivery", "ubereats", "doordash"]),
+    ("reports_enhanced", "/reports-enhanced", ["reports", "enhanced"]),
+    ("report_export", "/report-export", ["reports", "export"]),
+    ("ratings", "/ratings", ["ratings", "reviews"]),
+    ("messaging", "/messaging", ["messaging", "internal"]),
+    ("sms_alerts", "/sms-alerts", ["sms", "alerts"]),
+    ("analytics_forecasting", "/analytics-forecasting", ["analytics", "forecasting"]),
+    ("ai_assistant", "/ai-assistant", ["ai", "assistant"]),
+    ("ai_recommendations", "/ai-recommendations", ["ai", "recommendations"]),
+    ("ai_training", "/ai-training", ["ai", "training"]),
+    ("floor_plans", "/floor-plans", ["floor-plans", "tables"]),
+    ("kiosk", "/kiosk", ["kiosk", "self-service"]),
+    ("dynamic_pricing", "/dynamic-pricing", ["pricing", "dynamic"]),
+    ("sustainability", "/sustainability", ["sustainability", "green"]),
+    ("websocket_endpoints", "/ws-endpoints", ["websocket", "realtime"]),
+    ("staff_advanced", "/staff-advanced", ["staff", "advanced"]),
+    ("staff_scheduling_endpoints", "/staff-scheduling", ["staff", "scheduling"]),
+    ("allergens", "/allergens", ["allergens", "nutrition"]),
+    ("bar_management", "/bar-management", ["bar", "management"]),
+    ("competitor_features", "/competitor-features", ["competitor"]),
+    ("competitor_menu_features", "/competitor-menu-features", ["competitor", "menu"]),
+    ("crm_complete", "/crm", ["crm", "customers"]),
+    ("gap_features", "/gap-features", ["gap-features", "enterprise"]),
+    ("missing_features", "/missing-features", ["missing-features"]),
+    ("v3_endpoints", "/v3", ["v3"]),
+    ("v31_endpoints", "/v3.1-features", ["v3.1"]),
+    ("v5_endpoints", "/v5-features", ["v5"]),
+    ("v6_endpoints", "/v6-features", ["v6"]),
+    ("v7_endpoints", "/v7", ["v7"]),
+    ("v7_tier3_endpoints", "/v7-tier3", ["v7", "tier3"]),
+    ("v9_endpoints", "/v9", ["v9", "advanced"]),
+    ("v9_endpoints_part2", "/v9-part2", ["v9", "advanced"]),
+    ("admin", "/admin", ["admin", "tables"]),
+    ("waiter_calls", "/waiter-calls", ["waiter", "calls"]),
+]
+
+_loaded = 0
+_failed = 0
+for _module_name, _prefix, _tags in _ported_modules:
+    try:
+        import importlib
+        _mod = importlib.import_module(f"app.api.routes.{_module_name}")
+        api_router.include_router(_mod.router, prefix=_prefix, tags=_tags)
+        _loaded += 1
+    except Exception as e:
+        _failed += 1
+        logger.warning(f"Skipped ported module {_module_name}: {e}")
+
+logger.info(f"Ported modules: {_loaded} loaded, {_failed} skipped")
