@@ -1039,16 +1039,21 @@ def create_happy_hour(
 ):
     """Create a new happy hour promotion."""
     # Parse times
-    start_parts = data.start_time.split(":")
-    end_parts = data.end_time.split(":")
+    try:
+        start_parts = data.start_time.split(":")
+        end_parts = data.end_time.split(":")
+        parsed_start = time(int(start_parts[0]), int(start_parts[1]))
+        parsed_end = time(int(end_parts[0]), int(end_parts[1]))
+    except (ValueError, IndexError):
+        raise HTTPException(status_code=422, detail="Invalid time format. Use HH:MM.")
 
     hh = HappyHour(
         location_id=location_id,
         name=data.name,
         description=data.description,
         days=data.days,
-        start_time=time(int(start_parts[0]), int(start_parts[1])),
-        end_time=time(int(end_parts[0]), int(end_parts[1])),
+        start_time=parsed_start,
+        end_time=parsed_end,
         discount_type=data.discount_type,
         discount_value=Decimal(str(data.discount_value)),
         applies_to=data.applies_to,

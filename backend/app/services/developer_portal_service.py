@@ -806,7 +806,7 @@ class MarketplaceService:
         }
 
         try:
-            async with httpx.AsyncClient() as client:
+            async with httpx.AsyncClient(timeout=30) as client:
                 response = await client.post(
                     app.webhook_url,
                     json=webhook_payload,

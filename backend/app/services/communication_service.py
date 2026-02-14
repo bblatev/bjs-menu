@@ -242,7 +242,7 @@ class SMSService:
         try:
             url = f"{self.api_url}/Accounts/{self.account_sid}/Messages.json"
 
-            async with httpx.AsyncClient() as client:
+            async with httpx.AsyncClient(timeout=30) as client:
                 response = await client.post(
                     url,
                     auth=(self.account_sid, self.auth_token),

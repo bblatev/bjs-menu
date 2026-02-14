@@ -6,6 +6,7 @@ replacing the in-memory dictionary storage.
 """
 import json
 import pickle
+from app.core.safe_pickle import safe_loads
 import redis
 from datetime import datetime, timedelta
 from typing import Optional, Dict, Any
@@ -104,7 +105,7 @@ class RedisSessionService:
                 key = self._make_key(session_id)
                 data = self._client.get(key)
                 if data:
-                    return pickle.loads(data)
+                    return safe_loads(data)
                 return None
             except Exception as e:
                 logger.error(f"Redis get error: {e}")

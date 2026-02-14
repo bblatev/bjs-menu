@@ -190,12 +190,13 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         response.headers["X-Frame-Options"] = "DENY"
         response.headers["X-XSS-Protection"] = "1; mode=block"
         response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+        csp_origins = " ".join(settings.cors_origins_list)
         response.headers["Content-Security-Policy"] = (
             "default-src 'self'; "
             "script-src 'self' 'unsafe-inline' https://js.stripe.com; "
             "style-src 'self' 'unsafe-inline'; "
             "img-src 'self' data: blob: https://api.qrserver.com; "
-            "connect-src 'self' ws: wss: https://api.stripe.com https://menu.bjs.bar; "
+            f"connect-src 'self' ws: wss: https://api.stripe.com {csp_origins}; "
             "frame-src https://js.stripe.com; "
             "font-src 'self' data:;"
         )

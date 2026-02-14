@@ -706,7 +706,7 @@ class PushNotificationService:
         if not fcm_key:
             return
 
-        async with httpx.AsyncClient() as client:
+        async with httpx.AsyncClient(timeout=30) as client:
             response = await client.post(
                 "https://fcm.googleapis.com/fcm/send",
                 headers={
@@ -756,7 +756,7 @@ class PushNotificationService:
         """Send via Expo Push Notification service."""
         import httpx
 
-        async with httpx.AsyncClient() as client:
+        async with httpx.AsyncClient(timeout=30) as client:
             response = await client.post(
                 "https://exp.host/--/api/v2/push/send",
                 json={

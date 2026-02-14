@@ -306,7 +306,7 @@ class SSOService:
             raise ValueError(f"Unsupported provider type: {provider_type}")
 
         # Exchange code for tokens
-        async with httpx.AsyncClient() as client:
+        async with httpx.AsyncClient(timeout=30) as client:
             token_response = await client.post(
                 token_url,
                 data={
@@ -570,7 +570,7 @@ class SSOService:
             raise ValueError(f"Token refresh not supported for {provider_type}")
 
         # Refresh tokens
-        async with httpx.AsyncClient() as client:
+        async with httpx.AsyncClient(timeout=30) as client:
             response = await client.post(
                 token_url,
                 data={

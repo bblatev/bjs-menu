@@ -6,6 +6,7 @@ aggregated feature vectors per product for faster recognition.
 
 import logging
 import pickle
+from app.core.safe_pickle import safe_loads
 from typing import List, Optional, Dict, Tuple, Any
 from datetime import datetime, timezone
 
@@ -41,7 +42,7 @@ def update_product_cache(product_id: int, db: Session) -> Optional[ProductFeatur
     for img in training_images:
         if img.feature_vector:
             try:
-                vec = pickle.loads(img.feature_vector)
+                vec = safe_loads(img.feature_vector)
                 vectors.append(vec)
             except Exception as e:
                 logger.warning(f"Failed to load features for image {img.id}: {e}")

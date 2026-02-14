@@ -720,7 +720,7 @@ class BNPLService:
 
         base_url = credentials.get("base_url", "https://api.klarna.com")
 
-        async with httpx.AsyncClient() as client:
+        async with httpx.AsyncClient(timeout=30) as client:
             response = await client.post(
                 f"{base_url}/payments/v1/sessions",
                 headers={
@@ -767,7 +767,7 @@ class BNPLService:
         private_key = credentials.get("private_key")
         base_url = credentials.get("base_url", "https://api.affirm.com")
 
-        async with httpx.AsyncClient() as client:
+        async with httpx.AsyncClient(timeout=30) as client:
             response = await client.post(
                 f"{base_url}/api/v1/checkout",
                 auth=(public_key, private_key),
@@ -803,7 +803,7 @@ class BNPLService:
         secret_key = credentials.get("secret_key")
         base_url = credentials.get("base_url", "https://api.afterpay.com")
 
-        async with httpx.AsyncClient() as client:
+        async with httpx.AsyncClient(timeout=30) as client:
             response = await client.post(
                 f"{base_url}/v2/checkouts",
                 auth=(merchant_id, secret_key),

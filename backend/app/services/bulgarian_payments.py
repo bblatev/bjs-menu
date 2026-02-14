@@ -520,7 +520,8 @@ class EPayService:
                 data={
                     "encoded": encoded,
                     "checksum": checksum
-                }
+                },
+                timeout=10
             )
 
             if response.status_code == 200:

@@ -176,7 +176,8 @@ class SevenShiftsIntegration:
             headers={
                 "Authorization": f"Bearer {credentials['access_token']}",
                 "Content-Type": "application/json"
-            }
+            },
+            timeout=30
         )
 
     async def sync_employees(self) -> Dict[str, Any]:
@@ -281,7 +282,8 @@ class HomebaseIntegration:
             headers={
                 "Authorization": f"Bearer {credentials['access_token']}",
                 "Content-Type": "application/json"
-            }
+            },
+            timeout=30
         )
 
     async def sync_timecards(
@@ -358,7 +360,8 @@ class MarginEdgeIntegration:
             headers={
                 "Authorization": f"Bearer {credentials['access_token']}",
                 "Content-Type": "application/json"
-            }
+            },
+            timeout=30
         )
 
     async def sync_invoices(
@@ -426,7 +429,7 @@ class MarginEdgeIntegration:
         if not credentials:
             raise ValueError("MarginEdge integration not configured")
 
-        async with httpx.AsyncClient() as client:
+        async with httpx.AsyncClient(timeout=30) as client:
             response = await client.post(
                 f"{self.BASE_URL}/invoices/upload",
                 headers={"Authorization": f"Bearer {credentials['access_token']}"},
@@ -551,7 +554,7 @@ class ZapierService:
             ).hexdigest()
 
             try:
-                async with httpx.AsyncClient() as client:
+                async with httpx.AsyncClient(timeout=30) as client:
                     response = await client.post(
                         webhook.webhook_url,
                         json=signed_payload,
@@ -746,7 +749,7 @@ class AccountingSyncService:
 
         # Push to QuickBooks
         synced = 0
-        async with httpx.AsyncClient() as client:
+        async with httpx.AsyncClient(timeout=30) as client:
             for day, data in daily_sales.items():
                 response = await client.post(
                     f"https://quickbooks.api.intuit.com/v3/company/{credentials['realm_id']}/salesreceipt",
@@ -805,7 +808,7 @@ class AccountingSyncService:
         purchase_orders = result.scalars().all()
 
         synced = 0
-        async with httpx.AsyncClient() as client:
+        async with httpx.AsyncClient(timeout=30) as client:
             for po in purchase_orders:
                 response = await client.post(
                     "https://api.xero.com/api.xro/2.0/Invoices",

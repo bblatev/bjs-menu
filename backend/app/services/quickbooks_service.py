@@ -88,7 +88,7 @@ class QuickBooksService:
         realm_id: str,
     ) -> Optional[QBOTokens]:
         """Exchange authorization code for access tokens."""
-        async with httpx.AsyncClient() as client:
+        async with httpx.AsyncClient(timeout=30) as client:
             try:
                 import base64
                 credentials = base64.b64encode(
@@ -132,7 +132,7 @@ class QuickBooksService:
         if not self._tokens or not self._tokens.refresh_token:
             return False
 
-        async with httpx.AsyncClient() as client:
+        async with httpx.AsyncClient(timeout=30) as client:
             try:
                 import base64
                 credentials = base64.b64encode(

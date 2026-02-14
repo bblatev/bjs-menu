@@ -21,6 +21,7 @@ Also includes:
 
 import io
 import pickle
+from app.core.safe_pickle import safe_loads
 import hashlib
 import logging
 from typing import Optional, Tuple, List, Dict, Any
@@ -768,8 +769,8 @@ def extract_features_with_quality(image_data: bytes, config: FeatureConfig = Non
 def compute_similarity(features1: bytes, features2: bytes) -> float:
     """Compute cosine similarity between two feature vectors."""
     try:
-        vec1 = pickle.loads(features1)
-        vec2 = pickle.loads(features2)
+        vec1 = safe_loads(features1)
+        vec2 = safe_loads(features2)
 
         min_len = min(len(vec1), len(vec2))
         vec1 = vec1[:min_len]
@@ -821,7 +822,7 @@ def aggregate_product_features(feature_vectors: List[bytes]) -> bytes:
     vectors = []
     for fv in feature_vectors:
         try:
-            vectors.append(pickle.loads(fv))
+            vectors.append(safe_loads(fv))
         except Exception:
             continue
 

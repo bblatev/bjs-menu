@@ -122,7 +122,7 @@ class OpenTableService:
             return False
 
         try:
-            async with httpx.AsyncClient() as client:
+            async with httpx.AsyncClient(timeout=30) as client:
                 response = await client.post(
                     f"{self.API_BASE}/oauth/token",
                     data={
@@ -378,7 +378,7 @@ class OpenTableService:
 
         # In production, push to OpenTable API
         try:
-            async with httpx.AsyncClient() as client:
+            async with httpx.AsyncClient(timeout=30) as client:
                 availability_data = {
                     "restaurant_id": self.restaurant_id,
                     "date": date.isoformat(),
@@ -473,7 +473,7 @@ class OpenTableService:
             return False
 
         try:
-            async with httpx.AsyncClient() as client:
+            async with httpx.AsyncClient(timeout=30) as client:
                 response = await client.patch(
                     f"{self.API_BASE}/reservations/{reservation.opentable_id}",
                     headers=self._get_headers(),

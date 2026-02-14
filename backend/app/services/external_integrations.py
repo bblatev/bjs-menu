@@ -107,7 +107,7 @@ class BaseIntegration(ABC):
         if HAS_AIOHTTP and not self.session:
             self.session = aiohttp.ClientSession()
         elif HAS_HTTPX and not self.client:
-            self.client = httpx.AsyncClient()
+            self.client = httpx.AsyncClient(timeout=30)
 
     async def disconnect(self):
         """Close connection"""

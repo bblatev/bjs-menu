@@ -110,7 +110,7 @@ class UberEatsService:
         if self._access_token and self._token_expires and datetime.utcnow() < self._token_expires:
             return self._access_token
 
-        async with httpx.AsyncClient() as client:
+        async with httpx.AsyncClient(timeout=30) as client:
             response = await client.post(
                 "https://login.uber.com/oauth/v2/token",
                 data={
@@ -133,7 +133,7 @@ class UberEatsService:
         """Get all active orders from UberEats"""
         try:
             token = await self._get_access_token()
-            async with httpx.AsyncClient() as client:
+            async with httpx.AsyncClient(timeout=30) as client:
                 response = await client.get(
                     f"{self.BASE_URL}/stores/{self.store_id}/orders",
                     headers={"Authorization": f"Bearer {token}"},
@@ -159,7 +159,7 @@ class UberEatsService:
         """Accept an incoming order"""
         try:
             token = await self._get_access_token()
-            async with httpx.AsyncClient() as client:
+            async with httpx.AsyncClient(timeout=30) as client:
                 response = await client.post(
                     f"{self.BASE_URL}/orders/{order_id}/accept",
                     headers={"Authorization": f"Bearer {token}"},
@@ -182,7 +182,7 @@ class UberEatsService:
         """Deny an incoming order"""
         try:
             token = await self._get_access_token()
-            async with httpx.AsyncClient() as client:
+            async with httpx.AsyncClient(timeout=30) as client:
                 response = await client.post(
                     f"{self.BASE_URL}/orders/{order_id}/deny",
                     headers={"Authorization": f"Bearer {token}"},
@@ -211,7 +211,7 @@ class UberEatsService:
 
         try:
             token = await self._get_access_token()
-            async with httpx.AsyncClient() as client:
+            async with httpx.AsyncClient(timeout=30) as client:
                 response = await client.post(
                     f"{self.BASE_URL}/orders/{order_id}/status",
                     headers={"Authorization": f"Bearer {token}"},
@@ -230,7 +230,7 @@ class UberEatsService:
         """Cancel an order"""
         try:
             token = await self._get_access_token()
-            async with httpx.AsyncClient() as client:
+            async with httpx.AsyncClient(timeout=30) as client:
                 response = await client.post(
                     f"{self.BASE_URL}/orders/{order_id}/cancel",
                     headers={"Authorization": f"Bearer {token}"},
@@ -254,7 +254,7 @@ class UberEatsService:
         """Sync menu items to UberEats"""
         try:
             token = await self._get_access_token()
-            async with httpx.AsyncClient() as client:
+            async with httpx.AsyncClient(timeout=30) as client:
                 response = await client.put(
                     f"{self.BASE_URL}/stores/{self.store_id}/menus",
                     headers={"Authorization": f"Bearer {token}"},
@@ -273,7 +273,7 @@ class UberEatsService:
         """Set store online/offline status"""
         try:
             token = await self._get_access_token()
-            async with httpx.AsyncClient() as client:
+            async with httpx.AsyncClient(timeout=30) as client:
                 response = await client.post(
                     f"{self.BASE_URL}/stores/{self.store_id}/status",
                     headers={"Authorization": f"Bearer {token}"},
@@ -384,7 +384,7 @@ class DoorDashService:
         """Get active orders from DoorDash"""
         try:
             token = self._create_jwt()
-            async with httpx.AsyncClient() as client:
+            async with httpx.AsyncClient(timeout=30) as client:
                 response = await client.get(
                     f"{self.BASE_URL}/drive/v2/deliveries",
                     headers={"Authorization": f"Bearer {token}"},
@@ -406,7 +406,7 @@ class DoorDashService:
         """Accept a DoorDash order"""
         try:
             token = self._create_jwt()
-            async with httpx.AsyncClient() as client:
+            async with httpx.AsyncClient(timeout=30) as client:
                 response = await client.patch(
                     f"{self.BASE_URL}/drive/v2/deliveries/{order_id}",
                     headers={"Authorization": f"Bearer {token}"},
@@ -428,7 +428,7 @@ class DoorDashService:
         """Cancel a DoorDash order"""
         try:
             token = self._create_jwt()
-            async with httpx.AsyncClient() as client:
+            async with httpx.AsyncClient(timeout=30) as client:
                 response = await client.patch(
                     f"{self.BASE_URL}/drive/v2/deliveries/{order_id}",
                     headers={"Authorization": f"Bearer {token}"},
@@ -455,7 +455,7 @@ class DoorDashService:
 
         try:
             token = self._create_jwt()
-            async with httpx.AsyncClient() as client:
+            async with httpx.AsyncClient(timeout=30) as client:
                 response = await client.patch(
                     f"{self.BASE_URL}/drive/v2/deliveries/{order_id}",
                     headers={"Authorization": f"Bearer {token}"},
@@ -481,7 +481,7 @@ class DoorDashService:
         """Create a DoorDash Drive delivery (for your own orders)"""
         try:
             token = self._create_jwt()
-            async with httpx.AsyncClient() as client:
+            async with httpx.AsyncClient(timeout=30) as client:
                 response = await client.post(
                     f"{self.BASE_URL}/drive/v2/deliveries",
                     headers={"Authorization": f"Bearer {token}"},
@@ -513,7 +513,7 @@ class DoorDashService:
         """Get delivery quote from DoorDash Drive"""
         try:
             token = self._create_jwt()
-            async with httpx.AsyncClient() as client:
+            async with httpx.AsyncClient(timeout=30) as client:
                 response = await client.post(
                     f"{self.BASE_URL}/drive/v2/quotes",
                     headers={"Authorization": f"Bearer {token}"},
@@ -616,7 +616,7 @@ class OpenTableService:
         if self._access_token and self._token_expires and datetime.utcnow() < self._token_expires:
             return self._access_token
 
-        async with httpx.AsyncClient() as client:
+        async with httpx.AsyncClient(timeout=30) as client:
             response = await client.post(
                 "https://oauth.opentable.com/api/v2/oauth/token",
                 data={
@@ -649,7 +649,7 @@ class OpenTableService:
             if status:
                 params["status"] = status
 
-            async with httpx.AsyncClient() as client:
+            async with httpx.AsyncClient(timeout=30) as client:
                 response = await client.get(
                     f"{self.BASE_URL}/reservations",
                     headers={"Authorization": f"Bearer {token}"},
@@ -671,7 +671,7 @@ class OpenTableService:
         """Get a specific reservation"""
         try:
             token = await self._get_access_token()
-            async with httpx.AsyncClient() as client:
+            async with httpx.AsyncClient(timeout=30) as client:
                 response = await client.get(
                     f"{self.BASE_URL}/reservations/{reservation_id}",
                     headers={"Authorization": f"Bearer {token}"}
@@ -692,7 +692,7 @@ class OpenTableService:
         """Confirm a reservation"""
         try:
             token = await self._get_access_token()
-            async with httpx.AsyncClient() as client:
+            async with httpx.AsyncClient(timeout=30) as client:
                 response = await client.post(
                     f"{self.BASE_URL}/reservations/{reservation_id}/confirm",
                     headers={"Authorization": f"Bearer {token}"}
@@ -710,7 +710,7 @@ class OpenTableService:
         """Cancel a reservation"""
         try:
             token = await self._get_access_token()
-            async with httpx.AsyncClient() as client:
+            async with httpx.AsyncClient(timeout=30) as client:
                 response = await client.post(
                     f"{self.BASE_URL}/reservations/{reservation_id}/cancel",
                     headers={"Authorization": f"Bearer {token}"},
@@ -729,7 +729,7 @@ class OpenTableService:
         """Mark reservation as seated"""
         try:
             token = await self._get_access_token()
-            async with httpx.AsyncClient() as client:
+            async with httpx.AsyncClient(timeout=30) as client:
                 response = await client.post(
                     f"{self.BASE_URL}/reservations/{reservation_id}/seat",
                     headers={"Authorization": f"Bearer {token}"},
@@ -748,7 +748,7 @@ class OpenTableService:
         """Mark reservation as completed"""
         try:
             token = await self._get_access_token()
-            async with httpx.AsyncClient() as client:
+            async with httpx.AsyncClient(timeout=30) as client:
                 response = await client.post(
                     f"{self.BASE_URL}/reservations/{reservation_id}/complete",
                     headers={"Authorization": f"Bearer {token}"}
@@ -766,7 +766,7 @@ class OpenTableService:
         """Update availability for a date"""
         try:
             token = await self._get_access_token()
-            async with httpx.AsyncClient() as client:
+            async with httpx.AsyncClient(timeout=30) as client:
                 response = await client.put(
                     f"{self.BASE_URL}/availability",
                     headers={"Authorization": f"Bearer {token}"},
@@ -856,7 +856,7 @@ class ResyService:
             if date:
                 params["day"] = date
 
-            async with httpx.AsyncClient() as client:
+            async with httpx.AsyncClient(timeout=30) as client:
                 response = await client.get(
                     f"{self.BASE_URL}/venue/{self.venue_id}/reservations",
                     headers={
@@ -880,7 +880,7 @@ class ResyService:
     async def get_reservation(self, reservation_id: str) -> IntegrationResult:
         """Get a specific reservation"""
         try:
-            async with httpx.AsyncClient() as client:
+            async with httpx.AsyncClient(timeout=30) as client:
                 response = await client.get(
                     f"{self.BASE_URL}/reservation/{reservation_id}",
                     headers={
@@ -903,7 +903,7 @@ class ResyService:
     async def confirm_reservation(self, reservation_id: str) -> IntegrationResult:
         """Confirm a reservation"""
         try:
-            async with httpx.AsyncClient() as client:
+            async with httpx.AsyncClient(timeout=30) as client:
                 response = await client.post(
                     f"{self.BASE_URL}/reservation/{reservation_id}/confirm",
                     headers={
@@ -923,7 +923,7 @@ class ResyService:
     async def cancel_reservation(self, reservation_id: str, reason: str) -> IntegrationResult:
         """Cancel a reservation"""
         try:
-            async with httpx.AsyncClient() as client:
+            async with httpx.AsyncClient(timeout=30) as client:
                 response = await client.post(
                     f"{self.BASE_URL}/reservation/{reservation_id}/cancel",
                     headers={
@@ -944,7 +944,7 @@ class ResyService:
     async def seat_reservation(self, reservation_id: str, table_number: str) -> IntegrationResult:
         """Mark reservation as seated"""
         try:
-            async with httpx.AsyncClient() as client:
+            async with httpx.AsyncClient(timeout=30) as client:
                 response = await client.post(
                     f"{self.BASE_URL}/reservation/{reservation_id}/seat",
                     headers={
@@ -965,7 +965,7 @@ class ResyService:
     async def no_show(self, reservation_id: str) -> IntegrationResult:
         """Mark reservation as no-show"""
         try:
-            async with httpx.AsyncClient() as client:
+            async with httpx.AsyncClient(timeout=30) as client:
                 response = await client.post(
                     f"{self.BASE_URL}/reservation/{reservation_id}/noshow",
                     headers={
@@ -985,7 +985,7 @@ class ResyService:
     async def get_availability(self, date: str, party_size: int) -> IntegrationResult:
         """Get availability for a date"""
         try:
-            async with httpx.AsyncClient() as client:
+            async with httpx.AsyncClient(timeout=30) as client:
                 response = await client.get(
                     f"{self.BASE_URL}/venue/{self.venue_id}/calendar",
                     headers={

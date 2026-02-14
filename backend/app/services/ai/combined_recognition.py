@@ -16,6 +16,7 @@ import logging
 from typing import Optional, List, Dict, Any, Tuple
 from dataclasses import dataclass, field
 import numpy as np
+from app.core.safe_pickle import safe_loads
 from PIL import Image, ImageOps
 
 logger = logging.getLogger(__name__)
@@ -285,12 +286,10 @@ def combined_recognize(
 
     # 4a. CLIP similarity scoring
     if query_clip_features is not None and training_data:
-        import pickle
-
         for product_id, product_name, feat_bytes, stored_ocr in training_data:
             if feat_bytes and product_id in candidates_map:
                 try:
-                    stored_features = pickle.loads(feat_bytes)
+                    stored_features = safe_loads(feat_bytes)
 
                     # Compute cosine similarity
                     dot_product = np.dot(query_clip_features, stored_features)

@@ -10,6 +10,7 @@ Together they provide more robust recognition than CNN features alone.
 import io
 import logging
 import pickle
+from app.core.safe_pickle import safe_loads
 from typing import Optional, List, Tuple, Dict, Any
 import numpy as np
 from PIL import Image, ImageOps
@@ -406,8 +407,8 @@ def extract_enhanced_features(
 def compute_clip_similarity(features1: bytes, features2: bytes) -> float:
     """Compute cosine similarity between CLIP feature vectors."""
     try:
-        vec1 = pickle.loads(features1)
-        vec2 = pickle.loads(features2)
+        vec1 = safe_loads(features1)
+        vec2 = safe_loads(features2)
 
         # Handle different lengths (shouldn't happen with pure CLIP)
         min_len = min(len(vec1), len(vec2))
