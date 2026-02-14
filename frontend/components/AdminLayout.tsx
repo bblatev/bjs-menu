@@ -408,11 +408,11 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
                           >
                             <span className="text-base">{item.icon}</span>
                             <span className="flex-1 truncate">{item.name}</span>
-                            {item.badge && (
+                            {(item as any).badge && (
                               <span className={`px-1.5 py-0.5 text-xs font-semibold rounded-full ${
                                 isActive ? 'bg-amber-600 text-white' : 'bg-surface-200 text-surface-600'
                               }`}>
-                                {item.badge}
+                                {(item as any).badge}
                               </span>
                             )}
                           </Link>

@@ -197,7 +197,7 @@ function DashboardContent() {
   }, []);
 
   const getGreeting = () => {
-    const hour = currentTime.getHours();
+    const hour = new Date().getHours();
     if (hour < 12) return 'Добро утро';
     if (hour < 18) return 'Добър ден';
     return 'Добър вечер';
@@ -426,12 +426,12 @@ function DashboardContent() {
                 <p className="text-xs font-semibold uppercase tracking-wider text-surface-400 mb-1">{stat.label}</p>
                 <p className={`text-2xl font-display font-bold ${colorClasses[stat.color]?.text600 || 'text-primary-600'}`}>{stat.value}</p>
                 {stat.subvalue && <p className="text-xs text-surface-500 mt-0.5">{stat.subvalue}</p>}
-                {stat.trend && (
-                  <div className={`flex items-center gap-1 mt-2 text-xs font-medium ${stat.trend.up ? 'text-success-600' : 'text-error-600'}`}>
-                    <svg className={`w-3 h-3 ${stat.trend.up ? '' : 'rotate-180'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                {(stat as any).trend && (
+                  <div className={`flex items-center gap-1 mt-2 text-xs font-medium ${(stat as any).trend.up ? 'text-success-600' : 'text-error-600'}`}>
+                    <svg className={`w-3 h-3 ${(stat as any).trend.up ? '' : 'rotate-180'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 10l7-7m0 0l7 7m-7-7v18" />
                     </svg>
-                    <span>{stat.trend.value}%</span>
+                    <span>{(stat as any).trend.value}%</span>
                   </div>
                 )}
               </div>
