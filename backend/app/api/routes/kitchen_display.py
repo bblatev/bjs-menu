@@ -1,8 +1,9 @@
 """Kitchen Display System display routes (backward compat for /kitchen-display/ prefix)."""
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Request
 from sqlalchemy import func
 
+from app.core.rate_limit import limiter
 from app.db.session import DbSession
 from app.models.advanced_features import KitchenStation
 from app.models.restaurant import KitchenOrder
@@ -11,7 +12,8 @@ router = APIRouter()
 
 
 @router.get("/stations")
-async def get_display_stations(db: DbSession):
+@limiter.limit("60/minute")
+async def get_display_stations(request: Request, db: DbSession):
     """Get KDS display stations."""
     stations = db.query(KitchenStation).filter(KitchenStation.is_active == True).order_by(KitchenStation.id).all()
 
@@ -40,7 +42,8 @@ async def get_display_stations(db: DbSession):
 
 
 @router.get("/tickets")
-async def get_display_tickets(db: DbSession, station: str = None, status: str = None):
+@limiter.limit("60/minute")
+async def get_display_tickets(request: Request, db: DbSession, station: str = None, status: str = None):
     """Get KDS display tickets."""
     query = db.query(KitchenOrder)
     if status:

@@ -3,7 +3,7 @@ Currency API Endpoints
 Handles EUR/BGN dual currency operations and euro adoption
 """
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Path
+from fastapi import APIRouter, Depends, HTTPException, Query, Path, Request
 from sqlalchemy.orm import Session
 from typing import Optional, List
 from decimal import Decimal
@@ -11,6 +11,7 @@ from decimal import Decimal
 from app.db.session import get_db
 from app.services.currency_service import CurrencyService
 from pydantic import BaseModel, Field, ConfigDict
+from app.core.rate_limit import limiter
 
 
 router = APIRouter()
@@ -102,7 +103,9 @@ class OrderTotalsResponse(BaseModel):
     summary="Get currency status",
     description="Get current currency status including dual pricing, primary currency, and euro adoption timeline"
 )
+@limiter.limit("60/minute")
 def get_currency_status(
+    request: Request,
     venue_id: int,
     db: Session = Depends(get_db)
 ):
@@ -128,7 +131,9 @@ def get_currency_status(
     summary="Convert currency",
     description="Convert amount between EUR and BGN using official fixed rate"
 )
+@limiter.limit("60/minute")
 def convert_currency(
+    request: Request,
     amount: float = Query(..., description="Amount to convert", gt=0),
     from_currency: str = Query("BGN", description="Source currency (EUR or BGN)"),
     db: Session = Depends(get_db)
@@ -161,7 +166,9 @@ def convert_currency(
     summary="Get menu item dual price",
     description="Get menu item price in both EUR and BGN"
 )
+@limiter.limit("60/minute")
 def get_item_dual_price(
+    request: Request,
     item_id: int = Path(..., description="Menu item ID"),
     db: Session = Depends(get_db)
 ):
@@ -193,8 +200,10 @@ def get_item_dual_price(
     summary="Calculate order totals",
     description="Calculate order subtotal, tax, and total in both currencies"
 )
+@limiter.limit("30/minute")
 def calculate_order_totals(
-    request: OrderTotalsRequest,
+    request: Request,
+    body: OrderTotalsRequest,
     db: Session = Depends(get_db)
 ):
     """
@@ -217,18 +226,18 @@ def calculate_order_totals(
     ]
     ```
     """
-    if request.payment_currency not in ['EUR', 'BGN']:
+    if body.payment_currency not in ['EUR', 'BGN']:
         raise HTTPException(
             status_code=400,
             detail="payment_currency must be 'EUR' or 'BGN'"
         )
-    
+
     service = CurrencyService(db)
-    
+
     totals = service.calculate_order_totals_dual(
-        items=request.items,
-        payment_currency=request.payment_currency,
-        vat_rate=Decimal(str(request.vat_rate))
+        items=body.items,
+        payment_currency=body.payment_currency,
+        vat_rate=Decimal(str(body.vat_rate))
     )
     
     return totals
@@ -239,7 +248,9 @@ def calculate_order_totals(
     summary="Format price for display",
     description="Get formatted price string in dual currency format"
 )
+@limiter.limit("60/minute")
 def format_price(
+    request: Request,
     amount: float = Query(..., description="Amount to format", gt=0),
     currency: str = Query("BGN", description="Original currency (EUR or BGN)"),
     db: Session = Depends(get_db)
@@ -273,7 +284,8 @@ def format_price(
     summary="Get euro adoption timeline",
     description="Get key dates and milestones for Bulgaria's euro adoption"
 )
-def get_euro_timeline():
+@limiter.limit("60/minute")
+def get_euro_timeline(request: Request):
     """
     Get complete timeline for Bulgaria's euro adoption
     

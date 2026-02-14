@@ -22,9 +22,9 @@ jobs:
       postgres:
         image: postgres:15
         env:
-          POSTGRES_USER: test
-          POSTGRES_PASSWORD: test
-          POSTGRES_DB: test
+          POSTGRES_USER: ${{ secrets.TEST_DB_USER || 'test' }}
+          POSTGRES_PASSWORD: ${{ secrets.TEST_DB_PASSWORD || 'test' }}
+          POSTGRES_DB: ${{ secrets.TEST_DB_NAME || 'test' }}
         ports:
           - 5432:5432
         options: >-
@@ -49,8 +49,8 @@ jobs:
 
       - name: Run tests
         env:
-          DATABASE_URL: postgresql://test:test@localhost:5432/test
-          SECRET_KEY: test-secret-key
+          DATABASE_URL: postgresql://${{ secrets.TEST_DB_USER || 'test' }}:${{ secrets.TEST_DB_PASSWORD || 'test' }}@localhost:5432/${{ secrets.TEST_DB_NAME || 'test' }}
+          SECRET_KEY: ${{ secrets.TEST_SECRET_KEY || 'ci-test-key-not-for-production-use-minimum-32chars' }}
         run: |
           pytest tests/ -v --cov=app --cov-report=xml
 

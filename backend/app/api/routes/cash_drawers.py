@@ -1,12 +1,13 @@
 """
 Cash Drawer Management API
 """
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy.orm import Session
 from typing import List, Optional
 from datetime import datetime, timedelta, date
 from pydantic import BaseModel, ConfigDict
 
+from app.core.rate_limit import limiter
 from app.db.session import get_db
 from app.core.rbac import get_current_user
 from app.models import (
@@ -66,7 +67,9 @@ class TransactionResponse(BaseModel):
 
 # Cash Drawer Operations
 @router.post("/open", response_model=CashDrawerResponse)
+@limiter.limit("30/minute")
 def open_drawer(
+    request: Request,
     data: CashDrawerOpen,
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(get_current_user)
@@ -100,7 +103,9 @@ def open_drawer(
 
 
 @router.get("/current", response_model=CashDrawerResponse)
+@limiter.limit("60/minute")
 def get_current_drawer(
+    request: Request,
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(get_current_user)
 ):
@@ -117,7 +122,9 @@ def get_current_drawer(
 
 
 @router.post("/current/transaction", response_model=TransactionResponse)
+@limiter.limit("30/minute")
 def add_transaction(
+    request: Request,
     data: CashTransactionCreate,
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(get_current_user)
@@ -164,7 +171,9 @@ def add_transaction(
 
 
 @router.post("/current/close")
+@limiter.limit("30/minute")
 def close_drawer(
+    request: Request,
     data: CashDrawerClose,
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(get_current_user)
@@ -202,8 +211,12 @@ def close_drawer(
 
 
 @router.get("/transactions", response_model=List[TransactionResponse])
+@limiter.limit("60/minute")
 def list_transactions(
+    request: Request,
     drawer_id: Optional[int] = None,
+    skip: int = Query(0, ge=0),
+    limit: int = Query(100, ge=1, le=500),
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(get_current_user)
 ):
@@ -230,11 +243,13 @@ def list_transactions(
             CashDrawerTransaction.drawer_id == drawer.id
         )
 
-    return query.order_by(CashDrawerTransaction.created_at.desc()).all()
+    return query.order_by(CashDrawerTransaction.created_at.desc()).offset(skip).limit(limit).all()
 
 
 @router.get("/history", response_model=List[CashDrawerResponse])
+@limiter.limit("60/minute")
 def get_drawer_history(
+    request: Request,
     days: int = 30,
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(get_current_user)
@@ -251,7 +266,9 @@ def get_drawer_history(
 
 
 @router.get("/report/daily")
+@limiter.limit("60/minute")
 def get_daily_cash_report(
+    request: Request,
     report_date: Optional[date] = None,
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(get_current_user)
@@ -312,7 +329,9 @@ def get_daily_cash_report(
 
 
 @router.get("/variances")
+@limiter.limit("60/minute")
 def get_variance_report(
+    request: Request,
     days: int = 30,
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(get_current_user)

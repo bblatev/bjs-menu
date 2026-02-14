@@ -4,7 +4,7 @@ V6 API Endpoints - Enterprise Extensions
 Complete API routes for all V6 features.
 """
 
-from fastapi import APIRouter, HTTPException, Query, Body, Depends
+from fastapi import APIRouter, HTTPException, Query, Body, Depends, Request
 from sqlalchemy.orm import Session
 from typing import List, Dict, Optional
 from datetime import datetime, date
@@ -26,6 +26,7 @@ from app.models import (
     DeliveryZone, DeliveryDriver, AggregatorOrder
 )
 from app.models.hardware import Integration
+from app.core.rate_limit import limiter
 
 
 router = APIRouter(tags=["V6 Features"])
@@ -122,34 +123,35 @@ class ExpenseCreate(BaseModel):
 # ==================== DELIVERY AGGREGATOR ENDPOINTS ====================
 
 @router.post("/{venue_id}/delivery/connect")
-async def connect_delivery_platform(venue_id: int, request: PlatformConnectRequest, db: Session = Depends(get_db)):
+@limiter.limit("30/minute")
+async def connect_delivery_platform(request: Request, venue_id: int, body_data: PlatformConnectRequest, db: Session = Depends(get_db)):
     """Connect to delivery platform (Glovo, Wolt, Bolt Food, Foodpanda, Uber Eats)"""
     # Check if already connected
     existing = db.query(Integration).filter(
         Integration.venue_id == venue_id,
-        Integration.integration_id == request.platform,
+        Integration.integration_id == body_data.platform,
         Integration.category == "delivery",
         Integration.status == "connected"
     ).first()
 
     if existing:
-        raise HTTPException(status_code=400, detail=f"Platform {request.platform} is already connected")
+        raise HTTPException(status_code=400, detail=f"Platform {body_data.platform} is already connected")
 
     # Create new integration
     integration = Integration(
         venue_id=venue_id,
-        integration_id=request.platform,
-        integration_name=request.platform.replace("_", " ").title(),
+        integration_id=body_data.platform,
+        integration_name=body_data.platform.replace("_", " ").title(),
         category="delivery",
         status="connected",
         credentials={
-            "api_key": request.api_key,
-            "api_secret": request.api_secret,
-            "store_id": request.store_id
+            "api_key": body_data.api_key,
+            "api_secret": body_data.api_secret,
+            "store_id": body_data.store_id
         },
         settings={
-            "auto_accept": request.auto_accept,
-            "commission_percent": request.commission_percent
+            "auto_accept": body_data.auto_accept,
+            "commission_percent": body_data.commission_percent
         },
         sync_frequency="realtime",
         last_sync_at=datetime.utcnow(),
@@ -161,7 +163,7 @@ async def connect_delivery_platform(venue_id: int, request: PlatformConnectReque
 
     return {
         "success": True,
-        "platform": request.platform,
+        "platform": body_data.platform,
         "venue_id": venue_id,
         "connected": True,
         "integration_id": integration.id
@@ -169,7 +171,8 @@ async def connect_delivery_platform(venue_id: int, request: PlatformConnectReque
 
 
 @router.delete("/{venue_id}/delivery/{platform}/disconnect")
-async def disconnect_delivery_platform(venue_id: int, platform: str, db: Session = Depends(get_db)):
+@limiter.limit("30/minute")
+async def disconnect_delivery_platform(request: Request, venue_id: int, platform: str, db: Session = Depends(get_db)):
     """Disconnect from delivery platform"""
     integration = db.query(Integration).filter(
         Integration.venue_id == venue_id,
@@ -189,7 +192,8 @@ async def disconnect_delivery_platform(venue_id: int, platform: str, db: Session
 
 
 @router.get("/{venue_id}/delivery/platforms")
-async def get_connected_platforms(venue_id: int, db: Session = Depends(get_db)):
+@limiter.limit("60/minute")
+async def get_connected_platforms(request: Request, venue_id: int, db: Session = Depends(get_db)):
     """Get all connected delivery platforms"""
     integrations = db.query(Integration).filter(
         Integration.venue_id == venue_id,
@@ -211,7 +215,8 @@ async def get_connected_platforms(venue_id: int, db: Session = Depends(get_db)):
 
 
 @router.get("/{venue_id}/delivery/orders")
-async def get_aggregator_orders(venue_id: int, status: Optional[str] = None, platform: Optional[str] = None, db: Session = Depends(get_db)):
+@limiter.limit("60/minute")
+async def get_aggregator_orders(request: Request, venue_id: int, status: Optional[str] = None, platform: Optional[str] = None, db: Session = Depends(get_db)):
     """Get orders from delivery platforms"""
     query = db.query(AggregatorOrder).filter(AggregatorOrder.venue_id == venue_id)
 
@@ -250,7 +255,8 @@ async def get_aggregator_orders(venue_id: int, status: Optional[str] = None, pla
 
 
 @router.post("/{venue_id}/delivery/orders/{order_id}/accept")
-async def accept_aggregator_order(venue_id: int, order_id: str, prep_time: int = 20, db: Session = Depends(get_db)):
+@limiter.limit("30/minute")
+async def accept_aggregator_order(request: Request, venue_id: int, order_id: str, prep_time: int = 20, db: Session = Depends(get_db)):
     """Accept order from delivery platform"""
     order = db.query(AggregatorOrder).filter(
         AggregatorOrder.venue_id == venue_id,
@@ -272,7 +278,8 @@ async def accept_aggregator_order(venue_id: int, order_id: str, prep_time: int =
 
 
 @router.post("/{venue_id}/delivery/orders/{order_id}/reject")
-async def reject_aggregator_order(venue_id: int, order_id: str, reason: str = "", db: Session = Depends(get_db)):
+@limiter.limit("30/minute")
+async def reject_aggregator_order(request: Request, venue_id: int, order_id: str, reason: str = "", db: Session = Depends(get_db)):
     """Reject order from delivery platform"""
     order = db.query(AggregatorOrder).filter(
         AggregatorOrder.venue_id == venue_id,
@@ -293,7 +300,8 @@ async def reject_aggregator_order(venue_id: int, order_id: str, reason: str = ""
 
 
 @router.post("/{venue_id}/delivery/orders/{order_id}/ready")
-async def mark_delivery_order_ready(venue_id: int, order_id: str, db: Session = Depends(get_db)):
+@limiter.limit("30/minute")
+async def mark_delivery_order_ready(request: Request, venue_id: int, order_id: str, db: Session = Depends(get_db)):
     """Mark order as ready for pickup by driver"""
     order = db.query(AggregatorOrder).filter(
         AggregatorOrder.venue_id == venue_id,
@@ -314,7 +322,8 @@ async def mark_delivery_order_ready(venue_id: int, order_id: str, db: Session = 
 
 
 @router.post("/{venue_id}/delivery/zones")
-async def create_delivery_zone(venue_id: int, zone: DeliveryZoneCreate, db: Session = Depends(get_db)):
+@limiter.limit("30/minute")
+async def create_delivery_zone(request: Request, venue_id: int, zone: DeliveryZoneCreate, db: Session = Depends(get_db)):
     """Create delivery zone for own fleet"""
     zone_id = f"ZONE-{uuid.uuid4().hex[:8].upper()}"
 
@@ -349,7 +358,8 @@ async def create_delivery_zone(venue_id: int, zone: DeliveryZoneCreate, db: Sess
 
 
 @router.get("/{venue_id}/delivery/zones")
-async def get_delivery_zones(venue_id: int, db: Session = Depends(get_db)):
+@limiter.limit("60/minute")
+async def get_delivery_zones(request: Request, venue_id: int, db: Session = Depends(get_db)):
     """Get all delivery zones"""
     zones = db.query(DeliveryZone).filter(
         DeliveryZone.venue_id == venue_id,
@@ -377,7 +387,8 @@ async def get_delivery_zones(venue_id: int, db: Session = Depends(get_db)):
 
 
 @router.post("/{venue_id}/delivery/drivers")
-async def add_delivery_driver(venue_id: int, driver: DriverCreate, db: Session = Depends(get_db)):
+@limiter.limit("30/minute")
+async def add_delivery_driver(request: Request, venue_id: int, driver: DriverCreate, db: Session = Depends(get_db)):
     """Add driver to own delivery fleet"""
     new_driver = DeliveryDriver(
         venue_id=venue_id,
@@ -407,7 +418,8 @@ async def add_delivery_driver(venue_id: int, driver: DriverCreate, db: Session =
 
 
 @router.get("/{venue_id}/delivery/drivers")
-async def get_delivery_drivers(venue_id: int, status: Optional[str] = None, db: Session = Depends(get_db)):
+@limiter.limit("60/minute")
+async def get_delivery_drivers(request: Request, venue_id: int, status: Optional[str] = None, db: Session = Depends(get_db)):
     """Get all drivers"""
     query = db.query(DeliveryDriver).filter(
         DeliveryDriver.venue_id == venue_id,
@@ -439,7 +451,8 @@ async def get_delivery_drivers(venue_id: int, status: Optional[str] = None, db: 
 
 
 @router.post("/{venue_id}/delivery/drivers/{driver_id}/location")
-async def update_driver_location(venue_id: int, driver_id: str, lat: float = Body(...), lng: float = Body(...), db: Session = Depends(get_db)):
+@limiter.limit("30/minute")
+async def update_driver_location(request: Request, venue_id: int, driver_id: str, lat: float = Body(...), lng: float = Body(...), db: Session = Depends(get_db)):
     """Update driver GPS location"""
     try:
         driver_id_int = int(driver_id)
@@ -463,7 +476,8 @@ async def update_driver_location(venue_id: int, driver_id: str, lat: float = Bod
 
 
 @router.get("/{venue_id}/delivery/stats")
-async def get_delivery_stats(venue_id: int, start: datetime = Query(...), end: datetime = Query(...), db: Session = Depends(get_db)):
+@limiter.limit("60/minute")
+async def get_delivery_stats(request: Request, venue_id: int, start: datetime = Query(...), end: datetime = Query(...), db: Session = Depends(get_db)):
     """Get delivery platform statistics"""
     # Get all orders in the date range
     orders = db.query(AggregatorOrder).filter(
@@ -525,7 +539,8 @@ async def get_delivery_stats(venue_id: int, start: datetime = Query(...), end: d
 # ==================== ADVANCED PAYMENTS ====================
 
 @router.post("/{venue_id}/gift-cards")
-async def create_gift_card(venue_id: int, card: GiftCardCreate, db: Session = Depends(get_db)):
+@limiter.limit("30/minute")
+async def create_gift_card(request: Request, venue_id: int, card: GiftCardCreate, db: Session = Depends(get_db)):
     """Create gift card"""
     service = AdvancedPaymentsService(db)
     result = service.create_gift_card(
@@ -546,7 +561,8 @@ async def create_gift_card(venue_id: int, card: GiftCardCreate, db: Session = De
     }
 
 @router.get("/{venue_id}/gift-cards/{code}/balance")
-async def check_gift_card_balance(venue_id: int, code: str, db: Session = Depends(get_db)):
+@limiter.limit("60/minute")
+async def check_gift_card_balance(request: Request, venue_id: int, code: str, db: Session = Depends(get_db)):
     """Check gift card balance"""
     service = AdvancedPaymentsService(db)
     result = service.check_gift_card_balance(code)
@@ -555,7 +571,8 @@ async def check_gift_card_balance(venue_id: int, code: str, db: Session = Depend
     return {"code": code, "balance": result["balance"], "status": result["status"]}
 
 @router.post("/{venue_id}/gift-cards/{code}/redeem")
-async def redeem_gift_card(venue_id: int, code: str, amount: float = Body(...), db: Session = Depends(get_db)):
+@limiter.limit("30/minute")
+async def redeem_gift_card(request: Request, venue_id: int, code: str, amount: float = Body(...), db: Session = Depends(get_db)):
     """Redeem gift card (PIN validation removed - using code-only redemption)"""
     service = AdvancedPaymentsService(db)
     result = service.redeem_gift_card(code=code, amount=amount)
@@ -564,14 +581,16 @@ async def redeem_gift_card(venue_id: int, code: str, amount: float = Body(...), 
     return {"success": True, "redeemed": amount, "remaining": result["remaining_balance"]}
 
 @router.post("/{venue_id}/customers/{customer_id}/wallet")
-async def create_customer_wallet(venue_id: int, customer_id: int, db: Session = Depends(get_db)):
+@limiter.limit("30/minute")
+async def create_customer_wallet(request: Request, venue_id: int, customer_id: int, db: Session = Depends(get_db)):
     """Create or get customer wallet"""
     service = AdvancedPaymentsService(db)
     result = service.get_or_create_wallet(venue_id, customer_id)
     return {"success": True, "wallet_id": result["id"], "balance": result["balance"]}
 
 @router.post("/{venue_id}/customers/{customer_id}/wallet/add")
-async def add_wallet_funds(venue_id: int, customer_id: int, amount: float = Body(...), db: Session = Depends(get_db)):
+@limiter.limit("30/minute")
+async def add_wallet_funds(request: Request, venue_id: int, customer_id: int, amount: float = Body(...), db: Session = Depends(get_db)):
     """Add funds to wallet"""
     service = AdvancedPaymentsService(db)
     # First get or create the wallet
@@ -582,7 +601,8 @@ async def add_wallet_funds(venue_id: int, customer_id: int, amount: float = Body
     return {"success": True, "new_balance": result["new_balance"]}
 
 @router.post("/{venue_id}/payments/crypto")
-async def create_crypto_payment(venue_id: int, order_id: int = Body(...), amount: float = Body(...), crypto_type: str = Body("btc"), db: Session = Depends(get_db)):
+@limiter.limit("30/minute")
+async def create_crypto_payment(request: Request, venue_id: int, order_id: int = Body(...), amount: float = Body(...), crypto_type: str = Body("btc"), db: Session = Depends(get_db)):
     """Create cryptocurrency payment"""
     service = AdvancedPaymentsService(db)
     result = service.create_crypto_payment(
@@ -604,7 +624,8 @@ async def create_crypto_payment(venue_id: int, order_id: int = Body(...), amount
     }
 
 @router.post("/{venue_id}/payments/bnpl")
-async def create_bnpl_plan(venue_id: int, order_id: int = Body(...), customer_id: int = Body(...), total: float = Body(...), installments: int = Body(3), db: Session = Depends(get_db)):
+@limiter.limit("30/minute")
+async def create_bnpl_plan(request: Request, venue_id: int, order_id: int = Body(...), customer_id: int = Body(...), total: float = Body(...), installments: int = Body(3), db: Session = Depends(get_db)):
     """Create Buy Now Pay Later plan"""
     service = AdvancedPaymentsService(db)
     result = service.create_bnpl_plan(
@@ -627,7 +648,8 @@ async def create_bnpl_plan(venue_id: int, order_id: int = Body(...), customer_id
 # ==================== QUEUE & WAITLIST ====================
 
 @router.post("/{venue_id}/waitlist")
-async def add_to_waitlist(venue_id: int, entry: WaitlistAdd, db: Session = Depends(get_db)):
+@limiter.limit("30/minute")
+async def add_to_waitlist(request: Request, venue_id: int, entry: WaitlistAdd, db: Session = Depends(get_db)):
     """Add party to waitlist"""
     service = QueueWaitlistService(db)
     result = service.add_to_waitlist(
@@ -646,35 +668,40 @@ async def add_to_waitlist(venue_id: int, entry: WaitlistAdd, db: Session = Depen
     }
 
 @router.get("/{venue_id}/waitlist")
-async def get_waitlist(venue_id: int, db: Session = Depends(get_db)):
+@limiter.limit("60/minute")
+async def get_waitlist(request: Request, venue_id: int, db: Session = Depends(get_db)):
     """Get current waitlist"""
     service = QueueWaitlistService(db)
     entries = service.get_waitlist(venue_id)
     return {"venue_id": venue_id, "entries": [e.dict() for e in entries], "count": len(entries)}
 
 @router.post("/{venue_id}/waitlist/{entry_id}/notify")
-async def notify_party(venue_id: int, entry_id: str, db: Session = Depends(get_db)):
+@limiter.limit("30/minute")
+async def notify_party(request: Request, venue_id: int, entry_id: str, db: Session = Depends(get_db)):
     """Notify party that table is ready"""
     service = QueueWaitlistService(db)
     result = service.notify_party(entry_id)
     return {"success": True, "entry_id": entry_id, "notified": result.get("notified", True)}
 
 @router.post("/{venue_id}/waitlist/{entry_id}/seat")
-async def seat_party(venue_id: int, entry_id: str, table_id: int = Body(...), db: Session = Depends(get_db)):
+@limiter.limit("30/minute")
+async def seat_party(request: Request, venue_id: int, entry_id: str, table_id: int = Body(...), db: Session = Depends(get_db)):
     """Mark party as seated"""
     service = QueueWaitlistService(db)
     result = service.seat_party(entry_id, table_id)
     return {"success": True, "entry_id": entry_id, "table_id": table_id, "seated": True}
 
 @router.delete("/{venue_id}/waitlist/{entry_id}")
-async def cancel_waitlist_entry(venue_id: int, entry_id: str, db: Session = Depends(get_db)):
+@limiter.limit("30/minute")
+async def cancel_waitlist_entry(request: Request, venue_id: int, entry_id: str, db: Session = Depends(get_db)):
     """Cancel waitlist entry"""
     service = QueueWaitlistService(db)
     service.cancel_entry(entry_id)
     return {"success": True, "entry_id": entry_id, "cancelled": True}
 
 @router.get("/{venue_id}/waitlist/stats")
-async def get_waitlist_stats(venue_id: int, db: Session = Depends(get_db)):
+@limiter.limit("60/minute")
+async def get_waitlist_stats(request: Request, venue_id: int, db: Session = Depends(get_db)):
     """Get waitlist statistics"""
     service = QueueWaitlistService(db)
     stats = service.get_stats(venue_id)
@@ -684,7 +711,8 @@ async def get_waitlist_stats(venue_id: int, db: Session = Depends(get_db)):
 # ==================== HACCP FOOD SAFETY ====================
 
 @router.post("/{venue_id}/haccp/ccp")
-async def create_critical_control_point(venue_id: int, ccp: CCPCreate, db: Session = Depends(get_db)):
+@limiter.limit("30/minute")
+async def create_critical_control_point(request: Request, venue_id: int, ccp: CCPCreate, db: Session = Depends(get_db)):
     """Create Critical Control Point"""
     service = HACCPFoodSafetyService(db)
     result = service.create_ccp(
@@ -698,14 +726,16 @@ async def create_critical_control_point(venue_id: int, ccp: CCPCreate, db: Sessi
     return {"success": True, "ccp_id": result.id, "ccp": result.dict()}
 
 @router.get("/{venue_id}/haccp/ccp")
-async def get_critical_control_points(venue_id: int, db: Session = Depends(get_db)):
+@limiter.limit("60/minute")
+async def get_critical_control_points(request: Request, venue_id: int, db: Session = Depends(get_db)):
     """Get all CCPs"""
     service = HACCPFoodSafetyService(db)
     ccps = service.get_ccps(venue_id)
     return {"venue_id": venue_id, "ccps": [c.dict() for c in ccps]}
 
 @router.post("/{venue_id}/haccp/temperature")
-async def record_temperature(venue_id: int, reading: TemperatureRecord, db: Session = Depends(get_db)):
+@limiter.limit("30/minute")
+async def record_temperature(request: Request, venue_id: int, reading: TemperatureRecord, db: Session = Depends(get_db)):
     """Record temperature reading"""
     service = HACCPFoodSafetyService(db)
     result = service.record_temperature(
@@ -718,14 +748,16 @@ async def record_temperature(venue_id: int, reading: TemperatureRecord, db: Sess
     return {"success": True, "reading_id": result.id, "within_limits": result.within_limits}
 
 @router.get("/{venue_id}/haccp/temperature")
-async def get_temperature_readings(venue_id: int, ccp_id: Optional[str] = None, start: date = Query(...), end: date = Query(...), db: Session = Depends(get_db)):
+@limiter.limit("60/minute")
+async def get_temperature_readings(request: Request, venue_id: int, ccp_id: Optional[str] = None, start: date = Query(...), end: date = Query(...), db: Session = Depends(get_db)):
     """Get temperature readings"""
     service = HACCPFoodSafetyService(db)
     readings = service.get_temperature_readings(venue_id, ccp_id, start, end)
     return {"venue_id": venue_id, "readings": [r.dict() for r in readings]}
 
 @router.post("/{venue_id}/haccp/batch")
-async def register_food_batch(venue_id: int, batch: BatchRegister, db: Session = Depends(get_db)):
+@limiter.limit("30/minute")
+async def register_food_batch(request: Request, venue_id: int, batch: BatchRegister, db: Session = Depends(get_db)):
     """Register food batch for tracking"""
     service = HACCPFoodSafetyService(db)
     result = service.register_batch(
@@ -741,14 +773,16 @@ async def register_food_batch(venue_id: int, batch: BatchRegister, db: Session =
     return {"success": True, "batch_id": result.id}
 
 @router.get("/{venue_id}/haccp/batches/expiring")
-async def get_expiring_food_batches(venue_id: int, days: int = 3, db: Session = Depends(get_db)):
+@limiter.limit("60/minute")
+async def get_expiring_food_batches(request: Request, venue_id: int, days: int = 3, db: Session = Depends(get_db)):
     """Get batches expiring soon"""
     service = HACCPFoodSafetyService(db)
     batches = service.get_expiring_batches(venue_id, days)
     return {"venue_id": venue_id, "expiring_batches": [b.dict() for b in batches]}
 
 @router.get("/{venue_id}/haccp/report")
-async def get_haccp_compliance_report(venue_id: int, start: date = Query(...), end: date = Query(...), db: Session = Depends(get_db)):
+@limiter.limit("60/minute")
+async def get_haccp_compliance_report(request: Request, venue_id: int, start: date = Query(...), end: date = Query(...), db: Session = Depends(get_db)):
     """Generate HACCP compliance report"""
     service = HACCPFoodSafetyService(db)
     report = service.generate_haccp_report(venue_id, start, end)
@@ -758,7 +792,8 @@ async def get_haccp_compliance_report(venue_id: int, start: date = Query(...), e
 # ==================== CLOUD KITCHEN ====================
 
 @router.post("/{venue_id}/cloud-kitchen/brands")
-async def create_virtual_brand(venue_id: int, brand: VirtualBrandCreate, db: Session = Depends(get_db)):
+@limiter.limit("30/minute")
+async def create_virtual_brand(request: Request, venue_id: int, brand: VirtualBrandCreate, db: Session = Depends(get_db)):
     """Create virtual brand for cloud kitchen"""
     service = CloudKitchenService(db)
     result = service.create_brand(
@@ -771,14 +806,16 @@ async def create_virtual_brand(venue_id: int, brand: VirtualBrandCreate, db: Ses
     return {"success": True, "brand_id": result.id, "brand": result.dict()}
 
 @router.get("/{venue_id}/cloud-kitchen/brands")
-async def get_virtual_brands(venue_id: int, db: Session = Depends(get_db)):
+@limiter.limit("60/minute")
+async def get_virtual_brands(request: Request, venue_id: int, db: Session = Depends(get_db)):
     """Get all virtual brands"""
     service = CloudKitchenService(db)
     brands = service.get_brands(venue_id)
     return {"venue_id": venue_id, "brands": [b.dict() for b in brands]}
 
 @router.put("/{venue_id}/cloud-kitchen/brands/{brand_id}")
-async def update_virtual_brand(venue_id: int, brand_id: str, updates: Dict = Body(...), db: Session = Depends(get_db)):
+@limiter.limit("30/minute")
+async def update_virtual_brand(request: Request, venue_id: int, brand_id: str, updates: Dict = Body(...), db: Session = Depends(get_db)):
     """Update virtual brand"""
     service = CloudKitchenService(db)
     result = service.update_virtual_brand(brand_id, updates)
@@ -787,7 +824,8 @@ async def update_virtual_brand(venue_id: int, brand_id: str, updates: Dict = Bod
     return {"success": True, "brand_id": brand_id}
 
 @router.post("/{venue_id}/cloud-kitchen/brands/{brand_id}/pause")
-async def pause_virtual_brand(venue_id: int, brand_id: str, db: Session = Depends(get_db)):
+@limiter.limit("30/minute")
+async def pause_virtual_brand(request: Request, venue_id: int, brand_id: str, db: Session = Depends(get_db)):
     """Pause virtual brand"""
     service = CloudKitchenService(db)
     result = service.pause_brand(brand_id)
@@ -796,7 +834,8 @@ async def pause_virtual_brand(venue_id: int, brand_id: str, db: Session = Depend
     return {"success": True, "brand_id": brand_id, "status": "paused"}
 
 @router.post("/{venue_id}/cloud-kitchen/brands/{brand_id}/activate")
-async def activate_virtual_brand(venue_id: int, brand_id: str, db: Session = Depends(get_db)):
+@limiter.limit("30/minute")
+async def activate_virtual_brand(request: Request, venue_id: int, brand_id: str, db: Session = Depends(get_db)):
     """Activate virtual brand"""
     service = CloudKitchenService(db)
     result = service.activate_brand(brand_id)
@@ -805,7 +844,8 @@ async def activate_virtual_brand(venue_id: int, brand_id: str, db: Session = Dep
     return {"success": True, "brand_id": brand_id, "status": "active"}
 
 @router.post("/{venue_id}/cloud-kitchen/stations")
-async def create_kitchen_station(venue_id: int, station: KitchenStationCreate, db: Session = Depends(get_db)):
+@limiter.limit("30/minute")
+async def create_kitchen_station(request: Request, venue_id: int, station: KitchenStationCreate, db: Session = Depends(get_db)):
     """Create kitchen station"""
     service = CloudKitchenService(db)
     result = service.create_station(
@@ -817,14 +857,16 @@ async def create_kitchen_station(venue_id: int, station: KitchenStationCreate, d
     return {"success": True, "station_id": result.id}
 
 @router.get("/{venue_id}/cloud-kitchen/stations")
-async def get_kitchen_stations(venue_id: int, db: Session = Depends(get_db)):
+@limiter.limit("60/minute")
+async def get_kitchen_stations(request: Request, venue_id: int, db: Session = Depends(get_db)):
     """Get all kitchen stations"""
     service = CloudKitchenService(db)
     stations = service.get_stations(venue_id)
     return {"venue_id": venue_id, "stations": [s.dict() for s in stations]}
 
 @router.get("/{venue_id}/cloud-kitchen/performance")
-async def get_cloud_kitchen_performance(venue_id: int, start: datetime = Query(...), end: datetime = Query(...), db: Session = Depends(get_db)):
+@limiter.limit("60/minute")
+async def get_cloud_kitchen_performance(request: Request, venue_id: int, start: datetime = Query(...), end: datetime = Query(...), db: Session = Depends(get_db)):
     """Get cloud kitchen performance metrics"""
     service = CloudKitchenService(db)
     performance = service.get_brand_performance(venue_id, start, end)
@@ -834,7 +876,8 @@ async def get_cloud_kitchen_performance(venue_id: int, start: datetime = Query(.
 # ==================== FRANCHISE MANAGEMENT ====================
 
 @router.post("/franchise/franchisees")
-async def register_franchisee(franchisee: FranchiseeRegister, db: Session = Depends(get_db)):
+@limiter.limit("30/minute")
+async def register_franchisee(request: Request, franchisee: FranchiseeRegister, db: Session = Depends(get_db)):
     """Register new franchisee"""
     service = FranchiseManagementService(db)
     result = service.register_franchisee(
@@ -849,7 +892,8 @@ async def register_franchisee(franchisee: FranchiseeRegister, db: Session = Depe
     return {"success": True, "franchisee_id": result.id, "franchisee": result.dict()}
 
 @router.get("/franchise/franchisees")
-async def get_all_franchisees(status: Optional[str] = None, db: Session = Depends(get_db)):
+@limiter.limit("60/minute")
+async def get_all_franchisees(request: Request, status: Optional[str] = None, db: Session = Depends(get_db)):
     """Get all franchisees"""
     service = FranchiseManagementService(db)
     from app.services.v6_features.franchise_management_service import FranchiseStatus
@@ -858,35 +902,40 @@ async def get_all_franchisees(status: Optional[str] = None, db: Session = Depend
     return {"franchisees": [f.dict() for f in franchisees], "count": len(franchisees)}
 
 @router.post("/franchise/franchisees/{franchisee_id}/approve")
-async def approve_franchisee(franchisee_id: str, agreement_years: int = 10, db: Session = Depends(get_db)):
+@limiter.limit("30/minute")
+async def approve_franchisee(request: Request, franchisee_id: str, agreement_years: int = 10, db: Session = Depends(get_db)):
     """Approve franchisee application"""
     service = FranchiseManagementService(db)
     result = service.approve_franchisee(franchisee_id, agreement_years)
     return {"success": True, "franchisee_id": result.id, "status": result.status}
 
 @router.post("/franchise/franchisees/{franchisee_id}/royalty")
-async def calculate_royalty(franchisee_id: str, period_start: date = Body(...), period_end: date = Body(...), gross_sales: float = Body(...), db: Session = Depends(get_db)):
+@limiter.limit("30/minute")
+async def calculate_royalty(request: Request, franchisee_id: str, period_start: date = Body(...), period_end: date = Body(...), gross_sales: float = Body(...), db: Session = Depends(get_db)):
     """Calculate royalty payment"""
     service = FranchiseManagementService(db)
     result = service.calculate_royalty(franchisee_id, period_start, period_end, gross_sales)
     return {"success": True, "payment_id": result.id, "royalty_due": result.royalty_amount, "payment": result.dict()}
 
 @router.get("/franchise/franchisees/{franchisee_id}/performance")
-async def get_franchisee_performance(franchisee_id: str, start: date = Query(...), end: date = Query(...), db: Session = Depends(get_db)):
+@limiter.limit("60/minute")
+async def get_franchisee_performance(request: Request, franchisee_id: str, start: date = Query(...), end: date = Query(...), db: Session = Depends(get_db)):
     """Get franchisee performance metrics"""
     service = FranchiseManagementService(db)
     performance = service.get_franchise_performance(franchisee_id, start, end)
     return {"franchisee_id": franchisee_id, "performance": performance}
 
 @router.post("/franchise/audits")
-async def create_compliance_audit(franchisee_id: str = Body(...), venue_id: int = Body(...), auditor_name: str = Body(...), db: Session = Depends(get_db)):
+@limiter.limit("30/minute")
+async def create_compliance_audit(request: Request, franchisee_id: str = Body(...), venue_id: int = Body(...), auditor_name: str = Body(...), db: Session = Depends(get_db)):
     """Create compliance audit"""
     service = FranchiseManagementService(db)
     result = service.create_audit(franchisee_id, venue_id, auditor_name)
     return {"success": True, "audit_id": result.id, "audit": result.dict()}
 
 @router.get("/franchise/network-overview")
-async def get_franchise_network_overview(db: Session = Depends(get_db)):
+@limiter.limit("60/minute")
+async def get_franchise_network_overview(request: Request, db: Session = Depends(get_db)):
     """Get franchise network overview"""
     service = FranchiseManagementService(db)
     overview = service.get_network_overview()
@@ -896,7 +945,8 @@ async def get_franchise_network_overview(db: Session = Depends(get_db)):
 # ==================== DRIVE-THRU ====================
 
 @router.post("/{venue_id}/drive-thru/lanes")
-async def create_drive_thru_lane(venue_id: int, lane_number: int = Body(...), lane_type: str = Body("standard"), db: Session = Depends(get_db)):
+@limiter.limit("30/minute")
+async def create_drive_thru_lane(request: Request, venue_id: int, lane_number: int = Body(...), lane_type: str = Body("standard"), db: Session = Depends(get_db)):
     """Create drive-thru lane"""
     service = DriveThruService(db)
     result = service.create_lane(venue_id, lane_number, lane_type)
@@ -905,14 +955,16 @@ async def create_drive_thru_lane(venue_id: int, lane_number: int = Body(...), la
     return {"success": True, "lane_id": result.get("id"), "lane": result}
 
 @router.get("/{venue_id}/drive-thru/lanes")
-async def get_drive_thru_lanes(venue_id: int, db: Session = Depends(get_db)):
+@limiter.limit("60/minute")
+async def get_drive_thru_lanes(request: Request, venue_id: int, db: Session = Depends(get_db)):
     """Get all drive-thru lanes"""
     service = DriveThruService(db)
     lanes = service.get_lanes(venue_id)
     return {"venue_id": venue_id, "lanes": lanes}
 
 @router.post("/{venue_id}/drive-thru/lanes/{lane_id}/open")
-async def open_lane(venue_id: int, lane_id: str, db: Session = Depends(get_db)):
+@limiter.limit("30/minute")
+async def open_lane(request: Request, venue_id: int, lane_id: str, db: Session = Depends(get_db)):
     """Open drive-thru lane"""
     service = DriveThruService(db)
     try:
@@ -925,7 +977,8 @@ async def open_lane(venue_id: int, lane_id: str, db: Session = Depends(get_db)):
     return {"success": True, "lane_id": result.get("lane_id"), "status": result.get("status")}
 
 @router.post("/{venue_id}/drive-thru/lanes/{lane_id}/close")
-async def close_lane(venue_id: int, lane_id: str, db: Session = Depends(get_db)):
+@limiter.limit("30/minute")
+async def close_lane(request: Request, venue_id: int, lane_id: str, db: Session = Depends(get_db)):
     """Close drive-thru lane"""
     service = DriveThruService(db)
     try:
@@ -938,7 +991,8 @@ async def close_lane(venue_id: int, lane_id: str, db: Session = Depends(get_db))
     return {"success": True, "lane_id": result.get("lane_id"), "status": result.get("status")}
 
 @router.post("/{venue_id}/drive-thru/vehicle")
-async def register_vehicle(venue_id: int, lane_id: str = Body(...), license_plate: Optional[str] = Body(None), db: Session = Depends(get_db)):
+@limiter.limit("30/minute")
+async def register_vehicle(request: Request, venue_id: int, lane_id: str = Body(...), license_plate: Optional[str] = Body(None), db: Session = Depends(get_db)):
     """Register vehicle in drive-thru"""
     service = DriveThruService(db)
     try:
@@ -951,7 +1005,8 @@ async def register_vehicle(venue_id: int, lane_id: str = Body(...), license_plat
     return {"success": True, "vehicle_id": result.get("id"), "vehicle": result}
 
 @router.post("/{venue_id}/drive-thru/vehicle/{vehicle_id}/complete")
-async def complete_vehicle_order(venue_id: int, vehicle_id: str, db: Session = Depends(get_db)):
+@limiter.limit("30/minute")
+async def complete_vehicle_order(request: Request, venue_id: int, vehicle_id: str, db: Session = Depends(get_db)):
     """Complete vehicle order and exit"""
     service = DriveThruService(db)
     try:
@@ -964,7 +1019,8 @@ async def complete_vehicle_order(venue_id: int, vehicle_id: str, db: Session = D
     return {"success": True, "vehicle_id": result.get("vehicle_id"), "total_time_seconds": result.get("total_time_seconds", 0), "vehicle": result}
 
 @router.get("/{venue_id}/drive-thru/stats")
-async def get_drive_thru_stats(venue_id: int, db: Session = Depends(get_db)):
+@limiter.limit("60/minute")
+async def get_drive_thru_stats(request: Request, venue_id: int, db: Session = Depends(get_db)):
     """Get drive-thru statistics"""
     service = DriveThruService(db)
     stats = service.get_stats(venue_id)
@@ -974,7 +1030,8 @@ async def get_drive_thru_stats(venue_id: int, db: Session = Depends(get_db)):
 # ==================== FINANCIAL MANAGEMENT ====================
 
 @router.post("/{venue_id}/finance/expenses")
-async def create_expense(venue_id: int, expense: ExpenseCreate, created_by: int = 1, db: Session = Depends(get_db)):
+@limiter.limit("30/minute")
+async def create_expense(request: Request, venue_id: int, expense: ExpenseCreate, created_by: int = 1, db: Session = Depends(get_db)):
     """Create expense record"""
     service = FinancialManagementService(db)
     from app.services.v6_features.financial_management_service import ExpenseCategory
@@ -991,7 +1048,8 @@ async def create_expense(venue_id: int, expense: ExpenseCreate, created_by: int 
     return {"success": True, "expense_id": result.id, "expense": result.dict()}
 
 @router.get("/{venue_id}/finance/expenses")
-async def get_expenses(venue_id: int, start: date = Query(...), end: date = Query(...), category: Optional[str] = None, db: Session = Depends(get_db)):
+@limiter.limit("60/minute")
+async def get_expenses(request: Request, venue_id: int, start: date = Query(...), end: date = Query(...), category: Optional[str] = None, db: Session = Depends(get_db)):
     """Get expenses"""
     service = FinancialManagementService(db)
     from app.services.v6_features.financial_management_service import ExpenseCategory
@@ -1001,35 +1059,40 @@ async def get_expenses(venue_id: int, start: date = Query(...), end: date = Quer
     return {"venue_id": venue_id, "expenses": [e.dict() for e in expenses], "total": total}
 
 @router.get("/{venue_id}/finance/expenses/summary")
-async def get_expense_summary(venue_id: int, start: date = Query(...), end: date = Query(...), db: Session = Depends(get_db)):
+@limiter.limit("60/minute")
+async def get_expense_summary(request: Request, venue_id: int, start: date = Query(...), end: date = Query(...), db: Session = Depends(get_db)):
     """Get expense summary by category"""
     service = FinancialManagementService(db)
     summary = service.get_expense_summary(venue_id, start, end)
     return {"venue_id": venue_id, **summary}
 
 @router.get("/{venue_id}/finance/cash-flow/forecast")
-async def get_cash_flow_forecast(venue_id: int, days: int = 30, db: Session = Depends(get_db)):
+@limiter.limit("60/minute")
+async def get_cash_flow_forecast(request: Request, venue_id: int, days: int = 30, db: Session = Depends(get_db)):
     """Get cash flow forecast"""
     service = FinancialManagementService(db)
     forecast = service.forecast_cash_flow(venue_id, days)
     return {"venue_id": venue_id, "forecast": [f.dict() for f in forecast]}
 
 @router.get("/{venue_id}/finance/break-even")
-async def get_break_even_analysis(venue_id: int, start: date = Query(...), end: date = Query(...), revenue: float = Query(...), avg_check: float = Query(...), db: Session = Depends(get_db)):
+@limiter.limit("60/minute")
+async def get_break_even_analysis(request: Request, venue_id: int, start: date = Query(...), end: date = Query(...), revenue: float = Query(...), avg_check: float = Query(...), db: Session = Depends(get_db)):
     """Get break-even analysis"""
     service = FinancialManagementService(db)
     analysis = service.calculate_break_even(venue_id, start, end, revenue, avg_check)
     return {"venue_id": venue_id, **analysis}
 
 @router.get("/{venue_id}/finance/profit-margins")
-async def get_profit_margins(venue_id: int, start: date = Query(...), end: date = Query(...), revenue: float = Query(...), db: Session = Depends(get_db)):
+@limiter.limit("60/minute")
+async def get_profit_margins(request: Request, venue_id: int, start: date = Query(...), end: date = Query(...), revenue: float = Query(...), db: Session = Depends(get_db)):
     """Get profit margin analysis"""
     service = FinancialManagementService(db)
     margins = service.get_profit_margins(venue_id, start, end, revenue)
     return {"venue_id": venue_id, **margins}
 
 @router.post("/{venue_id}/finance/budget/{category}")
-async def set_budget(venue_id: int, category: str, monthly_budget: float = Body(...), db: Session = Depends(get_db)):
+@limiter.limit("30/minute")
+async def set_budget(request: Request, venue_id: int, category: str, monthly_budget: float = Body(...), db: Session = Depends(get_db)):
     """Set monthly budget for category"""
     service = FinancialManagementService(db)
     from app.services.v6_features.financial_management_service import ExpenseCategory
@@ -1037,7 +1100,8 @@ async def set_budget(venue_id: int, category: str, monthly_budget: float = Body(
     return {"success": True, "category": category, "budget": result.get("budget"), "budget_data": result}
 
 @router.get("/{venue_id}/finance/budget/status")
-async def get_budget_status(venue_id: int, month: date = Query(...), db: Session = Depends(get_db)):
+@limiter.limit("60/minute")
+async def get_budget_status(request: Request, venue_id: int, month: date = Query(...), db: Session = Depends(get_db)):
     """Get budget status"""
     service = FinancialManagementService(db)
     status = service.get_budget_status(venue_id, month)
@@ -1047,56 +1111,64 @@ async def get_budget_status(venue_id: int, month: date = Query(...), db: Session
 # ==================== NRA TAX COMPLIANCE ====================
 
 @router.post("/{venue_id}/nra/fiscal-receipt")
-async def create_fiscal_receipt(venue_id: int, order_id: str = Body(...), items: List[Dict] = Body(...), payment_method: str = Body(...), db: Session = Depends(get_db)):
+@limiter.limit("30/minute")
+async def create_fiscal_receipt(request: Request, venue_id: int, order_id: str = Body(...), items: List[Dict] = Body(...), payment_method: str = Body(...), db: Session = Depends(get_db)):
     """Create fiscal receipt for NRA"""
     service = NRATaxComplianceService(db)
     result = service.create_fiscal_receipt(venue_id, order_id, items, payment_method)
     return {"success": True, "document_id": result.id, "unique_sale_number": result.unique_sale_number, "qr_code": result.qr_code, "receipt": result.dict()}
 
 @router.post("/{venue_id}/nra/storno/{document_id}")
-async def create_storno(venue_id: int, document_id: str, reason: str = Body(...), db: Session = Depends(get_db)):
+@limiter.limit("30/minute")
+async def create_storno(request: Request, venue_id: int, document_id: str, reason: str = Body(...), db: Session = Depends(get_db)):
     """Create storno/reversal document"""
     service = NRATaxComplianceService(db)
     result = service.create_storno(document_id, reason)
     return {"success": True, "storno_id": result.id, "storno": result.dict()}
 
 @router.get("/{venue_id}/nra/daily-report")
-async def get_daily_z_report(venue_id: int, report_date: date = Query(...), db: Session = Depends(get_db)):
+@limiter.limit("60/minute")
+async def get_daily_z_report(request: Request, venue_id: int, report_date: date = Query(...), db: Session = Depends(get_db)):
     """Get daily Z-report for NRA"""
     service = NRATaxComplianceService(db)
     report = service.generate_daily_report(venue_id, report_date)
     return {"venue_id": venue_id, "report_date": str(report_date), "report": report.dict()}
 
 @router.post("/{venue_id}/nra/report/{report_id}/send")
-async def send_report_to_nra(venue_id: int, report_id: str, db: Session = Depends(get_db)):
+@limiter.limit("30/minute")
+async def send_report_to_nra(request: Request, venue_id: int, report_id: str, db: Session = Depends(get_db)):
     """Send report to NRA"""
     service = NRATaxComplianceService(db)
     result = service.send_report_to_nra(report_id)
     return {"success": True, **result}
 
 @router.get("/{venue_id}/nra/saft-export")
-async def export_saft(venue_id: int, start: date = Query(...), end: date = Query(...), db: Session = Depends(get_db)):
+@limiter.limit("60/minute")
+async def export_saft(request: Request, venue_id: int, start: date = Query(...), end: date = Query(...), db: Session = Depends(get_db)):
     """Export SAF-T format for tax audit"""
     service = NRATaxComplianceService(db)
     result = service.generate_saft_export(venue_id, start, end)
     return {"venue_id": venue_id, "format": "SAF-T", **result}
 
 @router.post("/{venue_id}/gdpr/consent")
-async def record_gdpr_consent(venue_id: int, customer_id: int = Body(...), consent_type: str = Body(...), consented: bool = Body(...), consent_text: str = Body(""), db: Session = Depends(get_db)):
+@limiter.limit("30/minute")
+async def record_gdpr_consent(request: Request, venue_id: int, customer_id: int = Body(...), consent_type: str = Body(...), consented: bool = Body(...), consent_text: str = Body(""), db: Session = Depends(get_db)):
     """Record GDPR consent"""
     service = NRATaxComplianceService(db)
     result = service.record_consent(venue_id, customer_id, consent_type, consented, consent_text)
     return {"success": True, "consent_id": result.id, "consent": result.dict()}
 
 @router.get("/{venue_id}/gdpr/customer/{customer_id}/data")
-async def export_customer_data(venue_id: int, customer_id: int, db: Session = Depends(get_db)):
+@limiter.limit("60/minute")
+async def export_customer_data(request: Request, venue_id: int, customer_id: int, db: Session = Depends(get_db)):
     """GDPR data export for customer"""
     service = NRATaxComplianceService(db)
     data = service.export_customer_data(customer_id)
     return {"customer_id": customer_id, **data}
 
 @router.delete("/{venue_id}/gdpr/customer/{customer_id}")
-async def delete_customer_data(venue_id: int, customer_id: int, db: Session = Depends(get_db)):
+@limiter.limit("30/minute")
+async def delete_customer_data(request: Request, venue_id: int, customer_id: int, db: Session = Depends(get_db)):
     """GDPR right to be forgotten"""
     service = NRATaxComplianceService(db)
     result = service.delete_customer_data(customer_id)

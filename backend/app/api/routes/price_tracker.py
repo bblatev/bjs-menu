@@ -1,9 +1,11 @@
 """Price tracking API routes."""
 
 from typing import List, Optional
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, Query, Request
 from pydantic import BaseModel
 from sqlalchemy import func
+
+from app.core.rate_limit import limiter
 
 from app.db.session import DbSession
 from app.models.invoice import PriceAlert as PriceAlertModel, PriceHistory as PriceHistoryModel
@@ -13,7 +15,8 @@ router = APIRouter()
 
 
 @router.get("/alerts")
-async def get_price_alerts(db: DbSession, date_range: str = Query("week"), acknowledged: bool = Query(None)):
+@limiter.limit("60/minute")
+async def get_price_alerts(request: Request, db: DbSession, date_range: str = Query("week"), acknowledged: bool = Query(None)):
     """Get price alerts."""
     query = db.query(PriceAlertModel).filter(PriceAlertModel.is_active == True)
     alerts = query.order_by(PriceAlertModel.created_at.desc()).all()
@@ -34,7 +37,8 @@ async def get_price_alerts(db: DbSession, date_range: str = Query("week"), ackno
 
 
 @router.post("/alerts/acknowledge-all")
-async def acknowledge_all_alerts(db: DbSession):
+@limiter.limit("30/minute")
+async def acknowledge_all_alerts(request: Request, db: DbSession):
     """Acknowledge all alerts."""
     count = db.query(PriceAlertModel).filter(PriceAlertModel.is_active == True).update({"is_active": False})
     db.commit()
@@ -42,7 +46,8 @@ async def acknowledge_all_alerts(db: DbSession):
 
 
 @router.post("/alerts/{alert_id}/acknowledge")
-async def acknowledge_alert(alert_id: str, db: DbSession):
+@limiter.limit("30/minute")
+async def acknowledge_alert(request: Request, alert_id: str, db: DbSession):
     """Acknowledge a specific alert."""
     alert = db.query(PriceAlertModel).filter(PriceAlertModel.id == int(alert_id)).first()
     if alert:
@@ -52,7 +57,8 @@ async def acknowledge_alert(alert_id: str, db: DbSession):
 
 
 @router.get("/alert-rules")
-async def get_alert_rules(db: DbSession):
+@limiter.limit("60/minute")
+async def get_alert_rules(request: Request, db: DbSession):
     """Get price alert rules."""
     setting = db.query(AppSetting).filter(
         AppSetting.category == "price_tracker",
@@ -64,7 +70,8 @@ async def get_alert_rules(db: DbSession):
 
 
 @router.post("/alert-rules")
-async def create_alert_rule(rule: dict, db: DbSession):
+@limiter.limit("30/minute")
+async def create_alert_rule(request: Request, rule: dict, db: DbSession):
     """Create an alert rule."""
     setting = db.query(AppSetting).filter(
         AppSetting.category == "price_tracker",
@@ -84,7 +91,8 @@ async def create_alert_rule(rule: dict, db: DbSession):
 
 
 @router.put("/alert-rules/{rule_id}")
-async def update_alert_rule(rule_id: str, rule: dict, db: DbSession):
+@limiter.limit("30/minute")
+async def update_alert_rule(request: Request, rule_id: str, rule: dict, db: DbSession):
     """Update an alert rule."""
     setting = db.query(AppSetting).filter(
         AppSetting.category == "price_tracker",
@@ -104,7 +112,8 @@ async def update_alert_rule(rule_id: str, rule: dict, db: DbSession):
 
 
 @router.delete("/alert-rules/{rule_id}")
-async def delete_alert_rule(rule_id: str, db: DbSession):
+@limiter.limit("30/minute")
+async def delete_alert_rule(request: Request, rule_id: str, db: DbSession):
     """Delete an alert rule."""
     setting = db.query(AppSetting).filter(
         AppSetting.category == "price_tracker",
@@ -117,7 +126,8 @@ async def delete_alert_rule(rule_id: str, db: DbSession):
 
 
 @router.get("/history")
-async def get_price_history(db: DbSession, date_range: str = Query("30d")):
+@limiter.limit("60/minute")
+async def get_price_history(request: Request, db: DbSession, date_range: str = Query("30d")):
     """Get price history for tracked items."""
     from app.models.product import Product
     from app.models.supplier import Supplier
@@ -167,7 +177,8 @@ async def get_price_history(db: DbSession, date_range: str = Query("30d")):
 
 
 @router.get("/supplier-comparisons")
-async def get_supplier_comparisons(db: DbSession):
+@limiter.limit("60/minute")
+async def get_supplier_comparisons(request: Request, db: DbSession):
     """Compare prices across suppliers for same items."""
     from app.models.product import Product
     from sqlalchemy import distinct
@@ -217,7 +228,8 @@ async def get_supplier_comparisons(db: DbSession):
 
 
 @router.get("/category-trends")
-async def get_category_trends(db: DbSession, date_range: str = Query("30d")):
+@limiter.limit("60/minute")
+async def get_category_trends(request: Request, db: DbSession, date_range: str = Query("30d")):
     """Get price trends by category."""
     from app.models.product import Product
     # Compute from price history records
@@ -248,7 +260,8 @@ async def get_category_trends(db: DbSession, date_range: str = Query("30d")):
 
 
 @router.get("/budget-impacts")
-async def get_budget_impacts(db: DbSession, date_range: str = Query("30d")):
+@limiter.limit("60/minute")
+async def get_budget_impacts(request: Request, db: DbSession, date_range: str = Query("30d")):
     """Get budget impact analysis from price changes."""
     # Compute from price alerts
     alerts = db.query(PriceAlertModel).filter(PriceAlertModel.is_active == True).all()

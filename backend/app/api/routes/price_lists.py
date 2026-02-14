@@ -2,10 +2,11 @@
 
 from typing import List, Optional
 from datetime import datetime, date, time, timedelta, timezone
-from fastapi import APIRouter, HTTPException, Body, Query
+from fastapi import APIRouter, HTTPException, Body, Query, Request
 from pydantic import BaseModel
 from sqlalchemy import func, and_
 
+from app.core.rate_limit import limiter
 from app.db.session import DbSession
 from app.models.price_lists import (
     PriceList, ProductPrice, DailyMenu,
@@ -121,7 +122,8 @@ def _daily_menu_to_dict(dm: DailyMenu) -> dict:
 # ============== Price Lists CRUD ==============
 
 @router.get("/price-lists")
-def list_price_lists(db: DbSession, active_only: bool = False):
+@limiter.limit("60/minute")
+def list_price_lists(request: Request, db: DbSession, active_only: bool = False):
     """List all price lists."""
     _init_default_price_lists(db)
 
@@ -134,7 +136,9 @@ def list_price_lists(db: DbSession, active_only: bool = False):
 
 
 @router.get("/price-lists/active")
+@limiter.limit("60/minute")
 def get_active_price_list(
+    request: Request,
     db: DbSession,
     context: Optional[str] = None,
     is_member: bool = False,
@@ -186,7 +190,8 @@ def get_active_price_list(
 
 
 @router.post("/price-lists")
-def create_price_list(db: DbSession, data: PriceListCreate):
+@limiter.limit("30/minute")
+def create_price_list(request: Request, db: DbSession, data: PriceListCreate):
     """Create a new price list."""
     # Check for duplicate code
     existing = db.query(PriceList).filter(PriceList.code == data.code).first()
@@ -216,7 +221,8 @@ def create_price_list(db: DbSession, data: PriceListCreate):
 
 
 @router.put("/price-lists/{price_list_id}")
-def update_price_list(db: DbSession, price_list_id: int, data: dict = Body(...)):
+@limiter.limit("30/minute")
+def update_price_list(request: Request, db: DbSession, price_list_id: int, data: dict = Body(...)):
     """Update a price list."""
     price_list = db.query(PriceList).filter(PriceList.id == price_list_id).first()
     if not price_list:
@@ -234,7 +240,8 @@ def update_price_list(db: DbSession, price_list_id: int, data: dict = Body(...))
 
 
 @router.delete("/price-lists/{price_list_id}")
-def delete_price_list(db: DbSession, price_list_id: int):
+@limiter.limit("30/minute")
+def delete_price_list(request: Request, db: DbSession, price_list_id: int):
     """Delete a price list."""
     price_list = db.query(PriceList).filter(PriceList.id == price_list_id).first()
     if not price_list:
@@ -248,7 +255,8 @@ def delete_price_list(db: DbSession, price_list_id: int):
 # ============== Product Prices ==============
 
 @router.get("/products/{product_id}/prices")
-def get_product_prices(db: DbSession, product_id: int):
+@limiter.limit("60/minute")
+def get_product_prices(request: Request, db: DbSession, product_id: int):
     """Get all prices for a product across price lists."""
     prices = db.query(ProductPrice).filter(ProductPrice.product_id == product_id).all()
 
@@ -271,7 +279,8 @@ def get_product_prices(db: DbSession, product_id: int):
 
 
 @router.post("/products/{product_id}/prices")
-def set_product_price(db: DbSession, product_id: int, data: ProductPriceCreate):
+@limiter.limit("30/minute")
+def set_product_price(request: Request, db: DbSession, product_id: int, data: ProductPriceCreate):
     """Set a product's price in a specific price list."""
     # Check if price already exists for this product/price list combo
     existing = db.query(ProductPrice).filter(
@@ -301,7 +310,8 @@ def set_product_price(db: DbSession, product_id: int, data: ProductPriceCreate):
 
 
 @router.post("/price-lists/{price_list_id}/products/{product_id}")
-def set_price_in_list(db: DbSession, price_list_id: int, product_id: int, data: dict = Body(...)):
+@limiter.limit("30/minute")
+def set_price_in_list(request: Request, db: DbSession, price_list_id: int, product_id: int, data: dict = Body(...)):
     """Set a product's price in a specific price list."""
     price_list = db.query(PriceList).filter(PriceList.id == price_list_id).first()
     if not price_list:
@@ -337,7 +347,9 @@ def set_price_in_list(db: DbSession, price_list_id: int, product_id: int, data: 
 # ============== Daily Menu ==============
 
 @router.get("/daily-menu")
+@limiter.limit("60/minute")
 def list_daily_menus(
+    request: Request,
     db: DbSession,
     start_date: Optional[str] = None,
     end_date: Optional[str] = None,
@@ -358,7 +370,8 @@ def list_daily_menus(
 
 
 @router.get("/daily-menu/today")
-def get_todays_menu(db: DbSession):
+@limiter.limit("60/minute")
+def get_todays_menu(request: Request, db: DbSession):
     """Get today's daily menu."""
     today = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
     tomorrow = today + timedelta(days=1)
@@ -373,7 +386,8 @@ def get_todays_menu(db: DbSession):
 
 
 @router.get("/daily-menu/current")
-def get_current_menu(db: DbSession):
+@limiter.limit("60/minute")
+def get_current_menu(request: Request, db: DbSession):
     """Get currently available daily menu (active and within time window)."""
     now = datetime.now()
     today = now.replace(hour=0, minute=0, second=0, microsecond=0)
@@ -401,7 +415,8 @@ def get_current_menu(db: DbSession):
 
 
 @router.post("/daily-menu")
-def create_daily_menu(db: DbSession, data: DailyMenuCreate):
+@limiter.limit("30/minute")
+def create_daily_menu(request: Request, db: DbSession, data: DailyMenuCreate):
     """Create a new daily menu."""
     menu_date = datetime.strptime(data.date, "%Y-%m-%d")
 
@@ -427,7 +442,8 @@ def create_daily_menu(db: DbSession, data: DailyMenuCreate):
 
 
 @router.put("/daily-menu/{menu_id}")
-def update_daily_menu(db: DbSession, menu_id: int, data: dict = Body(...)):
+@limiter.limit("30/minute")
+def update_daily_menu(request: Request, db: DbSession, menu_id: int, data: dict = Body(...)):
     """Update a daily menu."""
     menu = db.query(DailyMenu).filter(DailyMenu.id == menu_id).first()
     if not menu:
@@ -447,7 +463,8 @@ def update_daily_menu(db: DbSession, menu_id: int, data: dict = Body(...)):
 
 
 @router.post("/daily-menu/{menu_id}/order")
-def record_daily_menu_order(db: DbSession, menu_id: int):
+@limiter.limit("30/minute")
+def record_daily_menu_order(request: Request, db: DbSession, menu_id: int):
     """Record an order of the daily menu (increment sold count)."""
     menu = db.query(DailyMenu).filter(DailyMenu.id == menu_id).first()
     if not menu:
@@ -463,7 +480,8 @@ def record_daily_menu_order(db: DbSession, menu_id: int):
 
 
 @router.delete("/daily-menu/{menu_id}")
-def delete_daily_menu(db: DbSession, menu_id: int):
+@limiter.limit("30/minute")
+def delete_daily_menu(request: Request, db: DbSession, menu_id: int):
     """Delete a daily menu."""
     menu = db.query(DailyMenu).filter(DailyMenu.id == menu_id).first()
     if not menu:
@@ -477,7 +495,8 @@ def delete_daily_menu(db: DbSession, menu_id: int):
 # ============== Recently Used Items ==============
 
 @router.get("/staff/{staff_id}/recent-items")
-def get_recent_items(db: DbSession, staff_id: int, limit: int = 20):
+@limiter.limit("60/minute")
+def get_recent_items(request: Request, db: DbSession, staff_id: int, limit: int = 20):
     """Get recently used items for an operator."""
     items = db.query(OperatorRecentItem).filter(
         OperatorRecentItem.staff_id == staff_id
@@ -494,7 +513,8 @@ def get_recent_items(db: DbSession, staff_id: int, limit: int = 20):
 
 
 @router.post("/staff/{staff_id}/recent-items/{product_id}")
-def record_item_use(db: DbSession, staff_id: int, product_id: int):
+@limiter.limit("30/minute")
+def record_item_use(request: Request, db: DbSession, staff_id: int, product_id: int):
     """Record that an operator used/ordered an item."""
     existing = db.query(OperatorRecentItem).filter(
         OperatorRecentItem.staff_id == staff_id,
@@ -524,7 +544,8 @@ def record_item_use(db: DbSession, staff_id: int, product_id: int):
 
 
 @router.get("/recent-items/most-used")
-def get_most_used_items(db: DbSession, limit: int = 10):
+@limiter.limit("60/minute")
+def get_most_used_items(request: Request, db: DbSession, limit: int = 10):
     """Get most frequently used items across all operators."""
     items = db.query(
         OperatorRecentItem.product_id,
@@ -539,7 +560,8 @@ def get_most_used_items(db: DbSession, limit: int = 10):
 # ============== Manager Alerts ==============
 
 @router.get("/manager-alerts")
-def list_manager_alerts(db: DbSession, active_only: bool = True):
+@limiter.limit("60/minute")
+def list_manager_alerts(request: Request, db: DbSession, active_only: bool = True):
     """List all manager alerts."""
     query = db.query(ManagerAlert)
     if active_only:
@@ -567,7 +589,8 @@ def list_manager_alerts(db: DbSession, active_only: bool = True):
 
 
 @router.post("/manager-alerts")
-def create_manager_alert(db: DbSession, data: ManagerAlertCreate):
+@limiter.limit("30/minute")
+def create_manager_alert(request: Request, db: DbSession, data: ManagerAlertCreate):
     """Create a new manager alert."""
     alert = ManagerAlert(
         name=data.name,
@@ -589,7 +612,8 @@ def create_manager_alert(db: DbSession, data: ManagerAlertCreate):
 
 
 @router.put("/manager-alerts/{alert_id}")
-def update_manager_alert(db: DbSession, alert_id: int, data: dict = Body(...)):
+@limiter.limit("30/minute")
+def update_manager_alert(request: Request, db: DbSession, alert_id: int, data: dict = Body(...)):
     """Update a manager alert."""
     alert = db.query(ManagerAlert).filter(ManagerAlert.id == alert_id).first()
     if not alert:
@@ -605,7 +629,8 @@ def update_manager_alert(db: DbSession, alert_id: int, data: dict = Body(...)):
 
 
 @router.delete("/manager-alerts/{alert_id}")
-def delete_manager_alert(db: DbSession, alert_id: int):
+@limiter.limit("30/minute")
+def delete_manager_alert(request: Request, db: DbSession, alert_id: int):
     """Delete a manager alert."""
     alert = db.query(ManagerAlert).filter(ManagerAlert.id == alert_id).first()
     if not alert:
@@ -617,7 +642,8 @@ def delete_manager_alert(db: DbSession, alert_id: int):
 
 
 @router.post("/manager-alerts/trigger")
-def trigger_alert(db: DbSession, data: dict = Body(...)):
+@limiter.limit("30/minute")
+def trigger_alert(request: Request, db: DbSession, data: dict = Body(...)):
     """Trigger an alert (called by system when events occur)."""
     alert_type = data.get("alert_type")
     value = data.get("value", 0)
@@ -704,7 +730,8 @@ def trigger_alert(db: DbSession, data: dict = Body(...)):
 # ============== Customer Credit ==============
 
 @router.get("/customers/{customer_id}/credit")
-def get_customer_credit(db: DbSession, customer_id: int):
+@limiter.limit("60/minute")
+def get_customer_credit(request: Request, db: DbSession, customer_id: int):
     """Get customer credit status."""
     credit = db.query(CustomerCredit).filter(CustomerCredit.customer_id == customer_id).first()
 
@@ -730,7 +757,8 @@ def get_customer_credit(db: DbSession, customer_id: int):
 
 
 @router.post("/customers/{customer_id}/credit")
-def set_customer_credit(db: DbSession, customer_id: int, data: dict = Body(...)):
+@limiter.limit("30/minute")
+def set_customer_credit(request: Request, db: DbSession, customer_id: int, data: dict = Body(...)):
     """Set or update customer credit limit."""
     credit = db.query(CustomerCredit).filter(CustomerCredit.customer_id == customer_id).first()
 
@@ -752,7 +780,8 @@ def set_customer_credit(db: DbSession, customer_id: int, data: dict = Body(...))
 
 
 @router.post("/customers/{customer_id}/credit/charge")
-def charge_customer_credit(db: DbSession, customer_id: int, data: dict = Body(...)):
+@limiter.limit("30/minute")
+def charge_customer_credit(request: Request, db: DbSession, customer_id: int, data: dict = Body(...)):
     """Charge amount to customer's credit balance."""
     amount = data.get("amount", 0)
 
@@ -782,7 +811,8 @@ def charge_customer_credit(db: DbSession, customer_id: int, data: dict = Body(..
 
 
 @router.post("/customers/{customer_id}/credit/payment")
-def record_customer_payment(db: DbSession, customer_id: int, data: dict = Body(...)):
+@limiter.limit("30/minute")
+def record_customer_payment(request: Request, db: DbSession, customer_id: int, data: dict = Body(...)):
     """Record a payment to reduce customer's credit balance."""
     amount = data.get("amount", 0)
 
@@ -807,7 +837,8 @@ def record_customer_payment(db: DbSession, customer_id: int, data: dict = Body(.
 # ============== Quick Reorder ==============
 
 @router.get("/orders/{order_id}/items")
-def get_order_items_for_reorder(db: DbSession, order_id: int):
+@limiter.limit("60/minute")
+def get_order_items_for_reorder(request: Request, db: DbSession, order_id: int):
     """Get items from a previous order for quick reorder."""
     from app.models.restaurant import GuestOrder
     order = db.query(GuestOrder).filter(GuestOrder.id == order_id).first()
@@ -827,7 +858,8 @@ def get_order_items_for_reorder(db: DbSession, order_id: int):
 
 
 @router.post("/orders/reorder/{order_id}")
-def reorder_previous_order(db: DbSession, order_id: int, data: dict = Body(...)):
+@limiter.limit("30/minute")
+def reorder_previous_order(request: Request, db: DbSession, order_id: int, data: dict = Body(...)):
     """Create a new order based on a previous order, applying current prices."""
     from app.models.restaurant import GuestOrder, MenuItem
     from decimal import Decimal
@@ -912,7 +944,8 @@ def _subtable_to_dict(st) -> dict:
 
 
 @router.get("/tables/{table_id}/subtables")
-def list_subtables(db: DbSession, table_id: int):
+@limiter.limit("60/minute")
+def list_subtables(request: Request, db: DbSession, table_id: int):
     """List all subtables for a table."""
     from app.models.price_lists import SubTable
 
@@ -925,7 +958,8 @@ def list_subtables(db: DbSession, table_id: int):
 
 
 @router.post("/tables/{table_id}/subtables")
-def create_subtable(db: DbSession, table_id: int, data: SubTableCreate):
+@limiter.limit("30/minute")
+def create_subtable(request: Request, db: DbSession, table_id: int, data: SubTableCreate):
     """Create a new subtable under a table."""
     from app.models.price_lists import SubTable
 
@@ -953,7 +987,8 @@ def create_subtable(db: DbSession, table_id: int, data: SubTableCreate):
 
 
 @router.post("/tables/{table_id}/subtables/auto-create")
-def auto_create_subtables(db: DbSession, table_id: int, data: dict = Body(...)):
+@limiter.limit("30/minute")
+def auto_create_subtables(request: Request, db: DbSession, table_id: int, data: dict = Body(...)):
     """Auto-create multiple subtables (A, B, C or 1, 2, 3)."""
     from app.models.price_lists import SubTable
 
@@ -989,7 +1024,8 @@ def auto_create_subtables(db: DbSession, table_id: int, data: dict = Body(...)):
 
 
 @router.put("/subtables/{subtable_id}")
-def update_subtable(db: DbSession, subtable_id: int, data: SubTableUpdate):
+@limiter.limit("30/minute")
+def update_subtable(request: Request, db: DbSession, subtable_id: int, data: SubTableUpdate):
     """Update a subtable."""
     from app.models.price_lists import SubTable
 
@@ -1017,7 +1053,8 @@ def update_subtable(db: DbSession, subtable_id: int, data: SubTableUpdate):
 
 
 @router.post("/subtables/{subtable_id}/occupy")
-def occupy_subtable(db: DbSession, subtable_id: int, data: dict = Body(...)):
+@limiter.limit("30/minute")
+def occupy_subtable(request: Request, db: DbSession, subtable_id: int, data: dict = Body(...)):
     """Mark a subtable as occupied with guests."""
     from app.models.price_lists import SubTable
 
@@ -1035,7 +1072,8 @@ def occupy_subtable(db: DbSession, subtable_id: int, data: dict = Body(...)):
 
 
 @router.post("/subtables/{subtable_id}/clear")
-def clear_subtable(db: DbSession, subtable_id: int):
+@limiter.limit("30/minute")
+def clear_subtable(request: Request, db: DbSession, subtable_id: int):
     """Clear a subtable (mark as available)."""
     from app.models.price_lists import SubTable
 
@@ -1054,7 +1092,8 @@ def clear_subtable(db: DbSession, subtable_id: int):
 
 
 @router.post("/tables/{table_id}/subtables/merge")
-def merge_subtables(db: DbSession, table_id: int):
+@limiter.limit("30/minute")
+def merge_subtables(request: Request, db: DbSession, table_id: int):
     """Merge all subtables back into the main table (delete subtables)."""
     from app.models.price_lists import SubTable
 
@@ -1074,7 +1113,8 @@ def merge_subtables(db: DbSession, table_id: int):
 
 
 @router.delete("/subtables/{subtable_id}")
-def delete_subtable(db: DbSession, subtable_id: int):
+@limiter.limit("30/minute")
+def delete_subtable(request: Request, db: DbSession, subtable_id: int):
     """Delete a specific subtable."""
     from app.models.price_lists import SubTable
 

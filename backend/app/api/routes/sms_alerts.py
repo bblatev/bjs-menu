@@ -2,13 +2,14 @@
 
 from __future__ import annotations
 
-from fastapi import APIRouter, HTTPException, BackgroundTasks
+from fastapi import APIRouter, HTTPException, BackgroundTasks, Request
 from typing import List, Optional
 from datetime import datetime, time
 from pydantic import BaseModel, Field
 
 from app.db.session import DbSession
 from app.core.rbac import CurrentUser, OptionalCurrentUser
+from app.core.rate_limit import limiter
 
 router = APIRouter()
 
@@ -96,7 +97,8 @@ sms_service = SMSService(provider="mock")
 # ==================== ALERT CONFIGURATION ENDPOINTS ====================
 
 @router.post("/config", response_model=SMSAlertConfigResponse)
-def create_alert_config(data: SMSAlertConfigCreate, db: DbSession, current_user: CurrentUser = None):
+@limiter.limit("30/minute")
+def create_alert_config(request: Request, data: SMSAlertConfigCreate, db: DbSession, current_user: CurrentUser = None):
     """Create SMS alert configuration for a manager."""
     global _next_config_id
 
@@ -133,7 +135,8 @@ def create_alert_config(data: SMSAlertConfigCreate, db: DbSession, current_user:
 
 
 @router.get("/config", response_model=List[SMSAlertConfigResponse])
-def list_alert_configs(db: DbSession, current_user: CurrentUser = None):
+@limiter.limit("60/minute")
+def list_alert_configs(request: Request, db: DbSession, current_user: CurrentUser = None):
     """List all SMS alert configurations (Admin only)."""
     return [
         SMSAlertConfigResponse(**{k: v for k, v in cfg.items() if k in SMSAlertConfigResponse.model_fields})
@@ -142,7 +145,8 @@ def list_alert_configs(db: DbSession, current_user: CurrentUser = None):
 
 
 @router.get("/config/me", response_model=SMSAlertConfigResponse)
-def get_my_alert_config(db: DbSession, current_user: CurrentUser = None):
+@limiter.limit("60/minute")
+def get_my_alert_config(request: Request, db: DbSession, current_user: CurrentUser = None):
     """Get current user's SMS alert configuration."""
     for cfg in _alert_configs:
         if cfg["staff_user_id"] == 0:
@@ -151,7 +155,8 @@ def get_my_alert_config(db: DbSession, current_user: CurrentUser = None):
 
 
 @router.put("/config/{config_id}", response_model=SMSAlertConfigResponse)
-def update_alert_config(config_id: int, data: SMSAlertConfigCreate, db: DbSession, current_user: CurrentUser = None):
+@limiter.limit("30/minute")
+def update_alert_config(request: Request, config_id: int, data: SMSAlertConfigCreate, db: DbSession, current_user: CurrentUser = None):
     """Update SMS alert configuration."""
     for cfg in _alert_configs:
         if cfg["id"] == config_id:
@@ -163,7 +168,8 @@ def update_alert_config(config_id: int, data: SMSAlertConfigCreate, db: DbSessio
 
 
 @router.delete("/config/{config_id}")
-def delete_alert_config(config_id: int, db: DbSession, current_user: CurrentUser = None):
+@limiter.limit("30/minute")
+def delete_alert_config(request: Request, config_id: int, db: DbSession, current_user: CurrentUser = None):
     """Delete SMS alert configuration."""
     global _alert_configs
     original_len = len(_alert_configs)
@@ -174,7 +180,8 @@ def delete_alert_config(config_id: int, db: DbSession, current_user: CurrentUser
 
 
 @router.put("/config/{config_id}/toggle")
-def toggle_alert_config(config_id: int, db: DbSession, current_user: CurrentUser = None):
+@limiter.limit("30/minute")
+def toggle_alert_config(request: Request, config_id: int, db: DbSession, current_user: CurrentUser = None):
     """Toggle SMS alerts on/off."""
     for cfg in _alert_configs:
         if cfg["id"] == config_id:
@@ -231,7 +238,9 @@ async def send_alert_to_managers(alert_type: str, message: str, order_id: Option
 
 
 @router.post("/trigger/void")
+@limiter.limit("30/minute")
 async def trigger_void_alert(
+    request: Request,
     order_id: int, amount: float, reason: str,
     background_tasks: BackgroundTasks,
     db: DbSession, current_user: CurrentUser = None,
@@ -248,7 +257,9 @@ async def trigger_void_alert(
 
 
 @router.post("/trigger/refund")
+@limiter.limit("30/minute")
 async def trigger_refund_alert(
+    request: Request,
     order_id: int, amount: float, reason: str,
     background_tasks: BackgroundTasks,
     db: DbSession, current_user: CurrentUser = None,
@@ -265,7 +276,9 @@ async def trigger_refund_alert(
 
 
 @router.post("/trigger/discount")
+@limiter.limit("30/minute")
 async def trigger_discount_alert(
+    request: Request,
     order_id: int, discount_percent: float, discount_amount: float,
     background_tasks: BackgroundTasks,
     db: DbSession, current_user: CurrentUser = None,
@@ -281,7 +294,9 @@ async def trigger_discount_alert(
 
 
 @router.post("/trigger/cash-drawer")
+@limiter.limit("30/minute")
 async def trigger_cash_drawer_alert(
+    request: Request,
     reason: str,
     background_tasks: BackgroundTasks,
     db: DbSession, current_user: CurrentUser = None,
@@ -297,7 +312,9 @@ async def trigger_cash_drawer_alert(
 
 
 @router.post("/trigger/complaint")
+@limiter.limit("30/minute")
 async def trigger_complaint_alert(
+    request: Request,
     table_number: str, complaint: str,
     background_tasks: BackgroundTasks,
     db: DbSession, current_user: CurrentUser = None,
@@ -316,7 +333,9 @@ async def trigger_complaint_alert(
 # ==================== ALERT LOGS ====================
 
 @router.get("/logs", response_model=List[SMSAlertLogResponse])
+@limiter.limit("60/minute")
 def get_alert_logs(
+    request: Request,
     db: DbSession, current_user: CurrentUser = None,
     alert_type: Optional[str] = None, skip: int = 0, limit: int = 50,
 ):
@@ -330,7 +349,8 @@ def get_alert_logs(
 
 
 @router.get("/stats")
-def get_alert_stats(db: DbSession, current_user: CurrentUser = None):
+@limiter.limit("60/minute")
+def get_alert_stats(request: Request, db: DbSession, current_user: CurrentUser = None):
     """Get SMS alert statistics."""
     total = len(_alert_logs)
     delivered = sum(1 for log in _alert_logs if log["delivery_status"] == "sent")
@@ -352,7 +372,8 @@ def get_alert_stats(db: DbSession, current_user: CurrentUser = None):
 # ==================== TEST ENDPOINT ====================
 
 @router.post("/test")
-async def send_test_sms(data: TestSMSRequest, db: DbSession, current_user: CurrentUser = None):
+@limiter.limit("30/minute")
+async def send_test_sms(request: Request, data: TestSMSRequest, db: DbSession, current_user: CurrentUser = None):
     """Send a test SMS to verify configuration."""
     result = await sms_service.send_sms(data.phone_number, f"BJ's Bar POS Test: {data.message}")
     return {

@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import Link from 'next/link';
 
+import { toast } from '@/lib/toast';
 type OrderType = 'dine_in' | 'takeout' | 'delivery' | 'drive_thru';
 type TicketStatus = 'new' | 'in_progress' | 'ready' | 'bumped' | 'recalled' | 'voided';
 type ViewMode = 'tickets' | 'expo' | 'all_day' | 'history';
@@ -306,7 +307,7 @@ export default function KitchenDisplayPage() {
       await fetchTickets();
     } catch (error) {
       console.error('Error bumping ticket:', error);
-      alert('Failed to bump ticket');
+      toast.error('Failed to bump ticket');
     }
   }, [fetchTickets]);
 
@@ -329,7 +330,7 @@ export default function KitchenDisplayPage() {
       await fetchTickets();
     } catch (error) {
       console.error('Error starting ticket:', error);
-      alert('Failed to start ticket');
+      toast.error('Failed to start ticket');
     }
   }, [fetchTickets]);
 
@@ -354,7 +355,7 @@ export default function KitchenDisplayPage() {
       await fetchTickets();
     } catch (error) {
       console.error('Error recalling ticket:', error);
-      alert('Failed to recall ticket');
+      toast.error('Failed to recall ticket');
     }
   }, [fetchTickets]);
 
@@ -387,7 +388,7 @@ export default function KitchenDisplayPage() {
       await fetchTickets();
     } catch (error) {
       console.error('Error firing course:', error);
-      alert('Failed to fire course');
+      toast.error('Failed to fire course');
     }
   }, [tickets, fetchTickets]);
 

@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import Link from 'next/link';
 import { API_URL } from '@/lib/api';
 
+import { toast } from '@/lib/toast';
 interface Account {
   id: number;
   account_code: string;
@@ -78,7 +79,7 @@ export default function ChartOfAccountsPage() {
         closeModal();
       } else {
         const error = await response.json();
-        alert(error.detail || 'Error creating account');
+        toast.error(error.detail || 'Error creating account');
       }
     } catch (error) {
       console.error('Error creating account:', error);

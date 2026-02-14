@@ -3,12 +3,13 @@
 from datetime import datetime, timezone
 from typing import List, Optional
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Query, Request
 from pydantic import BaseModel
 from sqlalchemy import func
 
 from app.db.session import DbSession
 from app.models.operations import AppSetting, ReferralProgram, ReferralRecord
+from app.core.rate_limit import limiter
 
 router = APIRouter()
 
@@ -61,13 +62,14 @@ class CreateReferralProgramRequest(BaseModel):
 
 
 @router.post("/programs")
-def create_referral_program(request: CreateReferralProgramRequest, db: DbSession):
+@limiter.limit("30/minute")
+def create_referral_program(request: Request, program_data: CreateReferralProgramRequest, db: DbSession):
     """Create a referral program."""
     program = ReferralProgram(
-        name=request.name,
-        reward_type=request.reward_type,
-        reward_value=request.referrer_reward,
-        referee_reward_value=request.referee_reward,
+        name=program_data.name,
+        reward_type=program_data.reward_type,
+        reward_value=program_data.referrer_reward,
+        referee_reward_value=program_data.referee_reward,
         active=True,
     )
     db.add(program)
@@ -84,9 +86,10 @@ def create_referral_program(request: CreateReferralProgramRequest, db: DbSession
 
 
 @router.get("/programs")
-def get_referral_programs(db: DbSession):
+@limiter.limit("60/minute")
+def get_referral_programs(request: Request, db: DbSession, skip: int = Query(0, ge=0), limit: int = Query(100, ge=1, le=500)):
     """Get referral programs."""
-    programs = db.query(ReferralProgram).all()
+    programs = db.query(ReferralProgram).offset(skip).limit(limit).all()
     result = []
     for p in programs:
         result.append({
@@ -102,7 +105,8 @@ def get_referral_programs(db: DbSession):
 
 
 @router.post("/")
-def create_referral(data: dict, db: DbSession):
+@limiter.limit("30/minute")
+def create_referral(request: Request, data: dict, db: DbSession):
     """Create a single referral."""
     program = db.query(ReferralProgram).filter(ReferralProgram.active == True).first()
     record = ReferralRecord(
@@ -122,22 +126,18 @@ def create_referral(data: dict, db: DbSession):
 
 
 @router.get("/")
-def get_referrals(db: DbSession):
+@limiter.limit("60/minute")
+def get_referrals(request: Request, db: DbSession, skip: int = Query(0, ge=0), limit: int = Query(100, ge=1, le=500)):
     """Get all referrals."""
     records = (
-        db.query(ReferralRecord)
+        db.query(ReferralRecord, ReferralProgram.reward_value)
+        .outerjoin(ReferralProgram, ReferralRecord.program_id == ReferralProgram.id)
         .order_by(ReferralRecord.created_at.desc())
+        .offset(skip).limit(limit)
         .all()
     )
     result = []
-    for r in records:
-        # Look up the program to get the reward value
-        reward_amount = 0.0
-        if r.program_id:
-            program = db.query(ReferralProgram).filter(ReferralProgram.id == r.program_id).first()
-            if program and program.reward_value:
-                reward_amount = float(program.reward_value)
-
+    for r, reward_value in records:
         result.append(Referral(
             id=str(r.id),
             referrer_id=str(r.id),
@@ -145,7 +145,7 @@ def get_referrals(db: DbSession):
             referee_name=r.referee_name or "",
             referee_email=r.referee_email or "",
             status=r.status or "pending",
-            reward_amount=reward_amount,
+            reward_amount=float(reward_value) if reward_value else 0.0,
             created_at=r.created_at.isoformat() if r.created_at else "",
             completed_at=r.completed_at.isoformat() if r.completed_at else None,
         ))
@@ -153,9 +153,12 @@ def get_referrals(db: DbSession):
 
 
 @router.get("/referrers")
-def get_referrers(db: DbSession):
+@limiter.limit("60/minute")
+def get_referrers(request: Request, db: DbSession):
     """Get all referrers."""
-    # Aggregate referral records by referrer_email to build referrer summaries
+    from sqlalchemy import case
+
+    # Single aggregate query with joins - replaces N+1 pattern
     referrer_rows = (
         db.query(
             ReferralRecord.referrer_name,
@@ -164,64 +167,49 @@ def get_referrers(db: DbSession):
             func.count(
                 func.nullif(ReferralRecord.status != "completed", True)
             ).label("successful_referrals"),
+            func.coalesce(
+                func.sum(case(
+                    (
+                        (ReferralRecord.status == "completed") & (ReferralRecord.reward_claimed == True),
+                        ReferralProgram.reward_value,
+                    ),
+                    else_=0,
+                )),
+                0,
+            ).label("total_earned"),
+            func.coalesce(
+                func.sum(case(
+                    (
+                        (ReferralRecord.status == "completed") & (ReferralRecord.reward_claimed == False),
+                        ReferralProgram.reward_value,
+                    ),
+                    else_=0,
+                )),
+                0,
+            ).label("pending_rewards"),
         )
+        .outerjoin(ReferralProgram, ReferralRecord.program_id == ReferralProgram.id)
         .group_by(ReferralRecord.referrer_email, ReferralRecord.referrer_name)
         .all()
     )
 
     result = []
     for idx, row in enumerate(referrer_rows, start=1):
-        referrer_email = row.referrer_email or ""
-        referrer_name = row.referrer_name or ""
-
-        # Calculate earnings from completed referrals for this referrer
-        completed_records = (
-            db.query(ReferralRecord)
-            .filter(
-                ReferralRecord.referrer_email == referrer_email,
-                ReferralRecord.status == "completed",
-                ReferralRecord.reward_claimed == True,
-            )
-            .all()
-        )
-        total_earned = 0.0
-        for rec in completed_records:
-            if rec.program_id:
-                prog = db.query(ReferralProgram).filter(ReferralProgram.id == rec.program_id).first()
-                if prog and prog.reward_value:
-                    total_earned += float(prog.reward_value)
-
-        # Pending rewards: completed but not yet claimed
-        pending_records = (
-            db.query(ReferralRecord)
-            .filter(
-                ReferralRecord.referrer_email == referrer_email,
-                ReferralRecord.status == "completed",
-                ReferralRecord.reward_claimed == False,
-            )
-            .all()
-        )
-        pending_rewards = 0.0
-        for rec in pending_records:
-            if rec.program_id:
-                prog = db.query(ReferralProgram).filter(ReferralProgram.id == rec.program_id).first()
-                if prog and prog.reward_value:
-                    pending_rewards += float(prog.reward_value)
-
         result.append(Referrer(
             id=str(idx),
-            name=referrer_name,
-            email=referrer_email,
+            name=row.referrer_name or "",
+            email=row.referrer_email or "",
             total_referrals=row.total_referrals,
             successful_referrals=row.successful_referrals,
-            total_earned=total_earned,
-            pending_rewards=pending_rewards,
+            total_earned=float(row.total_earned),
+            pending_rewards=float(row.pending_rewards),
         ))
     return result
 
 
 @router.get("/campaigns")
-def get_referral_campaigns(db: DbSession):
+@limiter.limit("60/minute")
+def get_referral_campaigns(request: Request, db: DbSession):
     """Get referral campaigns."""
     programs = db.query(ReferralProgram).all()
     result = []
@@ -239,7 +227,8 @@ def get_referral_campaigns(db: DbSession):
 
 
 @router.get("/settings")
-def get_referral_settings(db: DbSession):
+@limiter.limit("60/minute")
+def get_referral_settings(request: Request, db: DbSession):
     """Get referral program settings."""
     # Derive defaults from the first active program, or use sensible defaults
     default_program = (
@@ -269,7 +258,8 @@ def get_referral_settings(db: DbSession):
 
 
 @router.put("/settings")
-def update_referral_settings(data: ReferralSettings, db: DbSession):
+@limiter.limit("30/minute")
+def update_referral_settings(request: Request, data: ReferralSettings, db: DbSession):
     """Save referral program settings."""
     setting = db.query(AppSetting).filter(
         AppSetting.category == "referrals",
@@ -294,7 +284,8 @@ def update_referral_settings(data: ReferralSettings, db: DbSession):
 
 
 @router.post("/bulk-send")
-def send_bulk_invites(emails: List[str], db: DbSession):
+@limiter.limit("30/minute")
+def send_bulk_invites(request: Request, emails: List[str], db: DbSession):
     """Send bulk referral invites."""
     # Get the default active program
     program = (
@@ -320,7 +311,8 @@ def send_bulk_invites(emails: List[str], db: DbSession):
 
 
 @router.get("/stats")
-def get_referral_stats(db: DbSession):
+@limiter.limit("60/minute")
+def get_referral_stats(request: Request, db: DbSession):
     """Get referral program statistics."""
     total_referrals = (
         db.query(func.count(ReferralRecord.id)).scalar() or 0

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Query, Request
 from typing import List, Optional
 from datetime import date, datetime, timedelta
 from pydantic import BaseModel, Field
@@ -10,6 +10,7 @@ import logging
 
 from app.db.session import DbSession
 from app.core.rbac import CurrentUser, OptionalCurrentUser
+from app.core.rate_limit import limiter
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -142,14 +143,15 @@ _next_ids = {
 # ==================== CONVERSATIONAL AI ENDPOINTS ====================
 
 @router.post("/ai-assistant/query", response_model=AIQueryResponse)
-def process_ai_query(request: AIQueryRequest, db: DbSession, current_user: CurrentUser = None):
+@limiter.limit("30/minute")
+def process_ai_query(request: Request, data: AIQueryRequest, db: DbSession, current_user: CurrentUser = None):
     """Process natural language query with AI assistant."""
     import uuid
-    conversation_id = request.conversation_id or str(uuid.uuid4())
+    conversation_id = data.conversation_id or str(uuid.uuid4())
 
     # Placeholder AI response
     return AIQueryResponse(
-        message=f"I received your query: '{request.query}'. AI processing is not yet configured.",
+        message=f"I received your query: '{data.query}'. AI processing is not yet configured.",
         data={},
         chart_type=None,
         suggestions=["Try asking about sales", "Ask about top items", "Compare periods"],
@@ -160,7 +162,9 @@ def process_ai_query(request: AIQueryRequest, db: DbSession, current_user: Curre
 
 
 @router.get("/ai-assistant/insights", response_model=List[AIInsightResponse])
+@limiter.limit("60/minute")
 def get_ai_insights(
+    request: Request,
     db: DbSession, current_user: CurrentUser = None,
     limit: int = Query(5, ge=1, le=20), include_dismissed: bool = False,
 ):
@@ -179,30 +183,35 @@ def get_ai_insights(
 
 
 @router.post("/ai-assistant/insights/{insight_id}/read")
-def mark_insight_read(insight_id: int, db: DbSession, current_user: CurrentUser = None):
+@limiter.limit("30/minute")
+def mark_insight_read(request: Request, insight_id: int, db: DbSession, current_user: CurrentUser = None):
     """Mark an insight as read."""
     return {"status": "ok"}
 
 
 @router.post("/ai-assistant/insights/{insight_id}/dismiss")
-def dismiss_insight(insight_id: int, db: DbSession, current_user: CurrentUser = None):
+@limiter.limit("30/minute")
+def dismiss_insight(request: Request, insight_id: int, db: DbSession, current_user: CurrentUser = None):
     """Dismiss an insight."""
     return {"status": "ok"}
 
 
 @router.post("/ai-assistant/menu-command")
-def execute_menu_command(request: MenuCommandRequest, db: DbSession, current_user: CurrentUser = None):
+@limiter.limit("30/minute")
+def execute_menu_command(request: Request, data: MenuCommandRequest, db: DbSession, current_user: CurrentUser = None):
     """Execute a natural language menu command."""
     return {
-        "command": request.command,
-        "preview_only": request.preview_only,
+        "command": data.command,
+        "preview_only": data.preview_only,
         "changes": [],
         "message": "Menu command processing is not yet configured.",
     }
 
 
 @router.get("/ai-assistant/conversations")
+@limiter.limit("60/minute")
 def get_conversations(
+    request: Request,
     db: DbSession, current_user: CurrentUser = None,
     limit: int = Query(10, ge=1, le=50),
 ):
@@ -211,7 +220,9 @@ def get_conversations(
 
 
 @router.get("/ai-assistant/conversations/{session_id}/messages")
+@limiter.limit("60/minute")
 def get_conversation_messages(
+    request: Request,
     session_id: str, db: DbSession, current_user: CurrentUser = None,
     limit: int = Query(50, ge=1, le=100),
 ):
@@ -222,7 +233,9 @@ def get_conversation_messages(
 # ==================== P&L ANALYSIS ENDPOINTS ====================
 
 @router.get("/profit-assist/analysis", response_model=PLAnalysisResponse)
+@limiter.limit("60/minute")
 def get_pl_analysis(
+    request: Request,
     db: DbSession, current_user: CurrentUser = None,
     period: str = Query("last_30_days"),
 ):
@@ -242,7 +255,9 @@ def get_pl_analysis(
 
 
 @router.get("/profit-assist/comparison")
+@limiter.limit("60/minute")
 def get_pl_comparison(
+    request: Request,
     db: DbSession, current_user: CurrentUser = None,
     current_period: str = Query("last_7_days"),
     comparison_period: str = Query("last_7_days"),
@@ -257,7 +272,9 @@ def get_pl_comparison(
 
 
 @router.post("/profit-assist/snapshots", response_model=PLSnapshotResponse)
+@limiter.limit("30/minute")
 def create_pl_snapshot(
+    request: Request,
     db: DbSession, current_user: CurrentUser = None,
     period_type: str = Query("daily"),
 ):
@@ -286,7 +303,9 @@ def create_pl_snapshot(
 
 
 @router.get("/profit-assist/snapshots", response_model=List[PLSnapshotResponse])
+@limiter.limit("60/minute")
 def get_pl_snapshots(
+    request: Request,
     db: DbSession, current_user: CurrentUser = None,
     period_type: Optional[str] = None,
     limit: int = Query(30, ge=1, le=100),
@@ -296,7 +315,9 @@ def get_pl_snapshots(
 
 
 @router.get("/profit-assist/opportunities", response_model=List[SavingOpportunityResponse])
+@limiter.limit("60/minute")
 def get_saving_opportunities(
+    request: Request,
     db: DbSession, current_user: CurrentUser = None,
     status: Optional[str] = Query(None),
 ):
@@ -305,8 +326,10 @@ def get_saving_opportunities(
 
 
 @router.patch("/profit-assist/opportunities/{opportunity_id}", response_model=SavingOpportunityResponse)
+@limiter.limit("30/minute")
 def update_opportunity(
-    opportunity_id: int, request: OpportunityUpdateRequest,
+    request: Request,
+    opportunity_id: int, data: OpportunityUpdateRequest,
     db: DbSession, current_user: CurrentUser = None,
 ):
     """Update a saving opportunity status."""
@@ -316,7 +339,9 @@ def update_opportunity(
 # ==================== DEMAND FORECASTING ENDPOINTS ====================
 
 @router.get("/forecasting/demand", response_model=DemandForecastResponse)
+@limiter.limit("60/minute")
 def get_demand_forecast(
+    request: Request,
     db: DbSession, current_user: CurrentUser = None,
     days: int = Query(7, ge=1, le=30),
 ):
@@ -330,7 +355,9 @@ def get_demand_forecast(
 
 
 @router.get("/forecasting/accuracy")
+@limiter.limit("60/minute")
 def get_forecast_accuracy(
+    request: Request,
     db: DbSession, current_user: CurrentUser = None,
     days: int = Query(30, ge=7, le=90),
 ):
@@ -343,7 +370,9 @@ def get_forecast_accuracy(
 
 
 @router.post("/forecasting/demand/save")
+@limiter.limit("30/minute")
 def save_demand_forecast(
+    request: Request,
     db: DbSession, current_user: CurrentUser = None,
     days: int = Query(7, ge=1, le=30),
 ):
@@ -354,7 +383,9 @@ def save_demand_forecast(
 # ==================== AUTO-PLANNING ENDPOINTS ====================
 
 @router.post("/auto-planning/schedule", response_model=ScheduleProposalResponse)
+@limiter.limit("30/minute")
 def generate_schedule_proposal(
+    request: Request,
     db: DbSession, current_user: CurrentUser = None,
     week_start: date = Query(..., description="Start date of the week (Monday)"),
 ):
@@ -379,7 +410,9 @@ def generate_schedule_proposal(
 
 
 @router.get("/auto-planning/schedules", response_model=List[ScheduleProposalResponse])
+@limiter.limit("60/minute")
 def get_schedule_proposals(
+    request: Request,
     db: DbSession, current_user: CurrentUser = None,
     status: Optional[str] = Query(None),
     limit: int = Query(10, ge=1, le=50),
@@ -389,17 +422,21 @@ def get_schedule_proposals(
 
 
 @router.post("/auto-planning/schedules/{proposal_id}/approve")
+@limiter.limit("30/minute")
 def approve_schedule_proposal(
-    proposal_id: int, request: ProposalApprovalRequest,
+    request: Request,
+    proposal_id: int, data: ProposalApprovalRequest,
     db: DbSession, current_user: CurrentUser = None,
 ):
     """Approve or reject a schedule proposal."""
-    new_status = "approved" if request.approved else "rejected"
+    new_status = "approved" if data.approved else "rejected"
     return {"status": "ok", "new_status": new_status}
 
 
 @router.post("/auto-planning/purchase-plan", response_model=PurchasePlanResponse)
+@limiter.limit("30/minute")
 def generate_purchase_plan(
+    request: Request,
     db: DbSession, current_user: CurrentUser = None,
     forecast_days: int = Query(7, ge=1, le=14),
 ):
@@ -420,7 +457,9 @@ def generate_purchase_plan(
 
 
 @router.get("/auto-planning/purchase-plans", response_model=List[PurchasePlanResponse])
+@limiter.limit("60/minute")
 def get_purchase_plans(
+    request: Request,
     db: DbSession, current_user: CurrentUser = None,
     status: Optional[str] = Query(None),
     limit: int = Query(10, ge=1, le=50),
@@ -430,10 +469,12 @@ def get_purchase_plans(
 
 
 @router.post("/auto-planning/purchase-plans/{proposal_id}/approve")
+@limiter.limit("30/minute")
 def approve_purchase_plan(
-    proposal_id: int, request: ProposalApprovalRequest,
+    request: Request,
+    proposal_id: int, data: ProposalApprovalRequest,
     db: DbSession, current_user: CurrentUser = None,
 ):
     """Approve or reject a purchase plan proposal."""
-    new_status = "approved" if request.approved else "rejected"
+    new_status = "approved" if data.approved else "rejected"
     return {"status": "ok", "new_status": new_status}

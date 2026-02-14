@@ -5,10 +5,11 @@ All data persisted to the integrations table using JSON config fields.
 
 from typing import List, Optional
 from datetime import datetime, timezone
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel
 
 from app.db.session import DbSession
+from app.core.rate_limit import limiter
 from app.models.hardware import Integration
 
 router = APIRouter(prefix="/menu-complete")
@@ -171,7 +172,8 @@ class ModifierOptionSchema(BaseModel):
 # ============ MODIFIER GROUPS (DB-backed) ============
 
 @router.get("/modifier-groups")
-def get_modifier_groups(db: DbSession):
+@limiter.limit("60/minute")
+def get_modifier_groups(request: Request, db: DbSession):
     """List all modifier groups from the database."""
     from app.models.restaurant import ModifierGroup as ModifierGroupModel
     groups = db.query(ModifierGroupModel).filter(ModifierGroupModel.active == True).order_by(ModifierGroupModel.sort_order).all()
@@ -189,7 +191,8 @@ def get_modifier_groups(db: DbSession):
 
 
 @router.post("/modifier-groups")
-def create_modifier_group(item: ModifierGroupSchema, db: DbSession):
+@limiter.limit("30/minute")
+def create_modifier_group(request: Request, item: ModifierGroupSchema, db: DbSession):
     """Create a modifier group in the database."""
     from app.models.restaurant import ModifierGroup as ModifierGroupModel
     group = ModifierGroupModel(
@@ -212,7 +215,8 @@ def create_modifier_group(item: ModifierGroupSchema, db: DbSession):
 
 
 @router.get("/modifier-options")
-def get_modifier_options(db: DbSession):
+@limiter.limit("60/minute")
+def get_modifier_options(request: Request, db: DbSession):
     """List all modifier options from the database."""
     from app.models.restaurant import ModifierOption as ModifierOptionModel
     options = db.query(ModifierOptionModel).filter(ModifierOptionModel.available == True).order_by(ModifierOptionModel.sort_order).all()
@@ -229,7 +233,8 @@ def get_modifier_options(db: DbSession):
 
 
 @router.post("/modifier-options")
-def create_modifier_option(item: ModifierOptionSchema, db: DbSession):
+@limiter.limit("30/minute")
+def create_modifier_option(request: Request, item: ModifierOptionSchema, db: DbSession):
     """Create a modifier option in the database."""
     from app.models.restaurant import ModifierOption as ModifierOptionModel
     option = ModifierOptionModel(
@@ -253,7 +258,8 @@ def create_modifier_option(item: ModifierOptionSchema, db: DbSession):
 # ============ ITEMS ============
 
 @router.get("/items")
-def get_menu_complete_items(db: DbSession):
+@limiter.limit("60/minute")
+def get_menu_complete_items(request: Request, db: DbSession):
     """Get all menu items with complete details."""
     from app.models.restaurant import MenuItem
     items = db.query(MenuItem).filter(MenuItem.available == True).all()
@@ -263,12 +269,14 @@ def get_menu_complete_items(db: DbSession):
 # ============ TAGS ============
 
 @router.get("/tags", response_model=List[MenuTag])
-def get_tags(db: DbSession):
+@limiter.limit("60/minute")
+def get_tags(request: Request, db: DbSession):
     return _load(db, STORE_TAGS)
 
 
 @router.post("/tags", response_model=MenuTag)
-def create_tag(db: DbSession, tag: MenuTag):
+@limiter.limit("30/minute")
+def create_tag(request: Request, db: DbSession, tag: MenuTag):
     items = _load(db, STORE_TAGS)
     tag.id = _next_id(db, STORE_TAGS)
     items.append(tag.model_dump())
@@ -277,7 +285,8 @@ def create_tag(db: DbSession, tag: MenuTag):
 
 
 @router.delete("/tags/{tag_id}")
-def delete_tag(db: DbSession, tag_id: int):
+@limiter.limit("30/minute")
+def delete_tag(request: Request, db: DbSession, tag_id: int):
     items = _load(db, STORE_TAGS)
     items = [t for t in items if t.get("id") != tag_id]
     _save(db, STORE_TAGS, items, "Menu Tags")
@@ -287,13 +296,15 @@ def delete_tag(db: DbSession, tag_id: int):
 # ============ VARIANTS ============
 
 @router.get("/items/{item_id}/variants", response_model=List[MenuVariant])
-def get_variants(db: DbSession, item_id: int):
+@limiter.limit("60/minute")
+def get_variants(request: Request, db: DbSession, item_id: int):
     all_variants = _load(db, STORE_VARIANTS)
     return [v for v in all_variants if v.get("menu_item_id") == item_id]
 
 
 @router.post("/items/{item_id}/variants", response_model=MenuVariant)
-def create_variant(db: DbSession, item_id: int, variant: MenuVariant):
+@limiter.limit("30/minute")
+def create_variant(request: Request, db: DbSession, item_id: int, variant: MenuVariant):
     items = _load(db, STORE_VARIANTS)
     variant.id = _next_id(db, STORE_VARIANTS)
     variant.menu_item_id = item_id
@@ -305,12 +316,14 @@ def create_variant(db: DbSession, item_id: int, variant: MenuVariant):
 # ============ COMBOS ============
 
 @router.get("/combos", response_model=List[Combo])
-def get_combos(db: DbSession):
+@limiter.limit("60/minute")
+def get_combos(request: Request, db: DbSession):
     return _load(db, STORE_COMBOS)
 
 
 @router.post("/combos", response_model=Combo)
-def create_combo(db: DbSession, combo: Combo):
+@limiter.limit("30/minute")
+def create_combo(request: Request, db: DbSession, combo: Combo):
     items = _load(db, STORE_COMBOS)
     combo.id = _next_id(db, STORE_COMBOS)
     items.append(combo.model_dump())
@@ -319,7 +332,8 @@ def create_combo(db: DbSession, combo: Combo):
 
 
 @router.delete("/combos/{combo_id}")
-def delete_combo(db: DbSession, combo_id: int):
+@limiter.limit("30/minute")
+def delete_combo(request: Request, db: DbSession, combo_id: int):
     items = _load(db, STORE_COMBOS)
     items = [c for c in items if c.get("id") != combo_id]
     _save(db, STORE_COMBOS, items, "Menu Combos")
@@ -329,12 +343,14 @@ def delete_combo(db: DbSession, combo_id: int):
 # ============ UPSELL RULES ============
 
 @router.get("/upsell-rules", response_model=List[UpsellRule])
-def get_upsell_rules(db: DbSession):
+@limiter.limit("60/minute")
+def get_upsell_rules(request: Request, db: DbSession):
     return _load(db, STORE_UPSELL)
 
 
 @router.post("/upsell-rules", response_model=UpsellRule)
-def create_upsell_rule(db: DbSession, rule: UpsellRule):
+@limiter.limit("30/minute")
+def create_upsell_rule(request: Request, db: DbSession, rule: UpsellRule):
     items = _load(db, STORE_UPSELL)
     rule.id = _next_id(db, STORE_UPSELL)
     items.append(rule.model_dump())
@@ -343,7 +359,8 @@ def create_upsell_rule(db: DbSession, rule: UpsellRule):
 
 
 @router.delete("/upsell-rules/{rule_id}")
-def delete_upsell_rule(db: DbSession, rule_id: int):
+@limiter.limit("30/minute")
+def delete_upsell_rule(request: Request, db: DbSession, rule_id: int):
     items = _load(db, STORE_UPSELL)
     items = [r for r in items if r.get("id") != rule_id]
     _save(db, STORE_UPSELL, items, "Upsell Rules")
@@ -353,12 +370,14 @@ def delete_upsell_rule(db: DbSession, rule_id: int):
 # ============ LIMITED TIME OFFERS ============
 
 @router.get("/limited-offers", response_model=List[LimitedTimeOffer])
-def get_limited_offers(db: DbSession):
+@limiter.limit("60/minute")
+def get_limited_offers(request: Request, db: DbSession):
     return _load(db, STORE_LTO)
 
 
 @router.post("/limited-offers", response_model=LimitedTimeOffer)
-def create_limited_offer(db: DbSession, offer: LimitedTimeOffer):
+@limiter.limit("30/minute")
+def create_limited_offer(request: Request, db: DbSession, offer: LimitedTimeOffer):
     items = _load(db, STORE_LTO)
     offer.id = _next_id(db, STORE_LTO)
     items.append(offer.model_dump())
@@ -367,7 +386,8 @@ def create_limited_offer(db: DbSession, offer: LimitedTimeOffer):
 
 
 @router.delete("/limited-offers/{offer_id}")
-def delete_limited_offer(db: DbSession, offer_id: int):
+@limiter.limit("30/minute")
+def delete_limited_offer(request: Request, db: DbSession, offer_id: int):
     items = _load(db, STORE_LTO)
     items = [o for o in items if o.get("id") != offer_id]
     _save(db, STORE_LTO, items, "Limited Time Offers")
@@ -377,13 +397,15 @@ def delete_limited_offer(db: DbSession, offer_id: int):
 # ============ 86'd ITEMS ============
 
 @router.get("/86", response_model=List[Item86])
-def get_86_items(db: DbSession):
+@limiter.limit("60/minute")
+def get_86_items(request: Request, db: DbSession):
     items = _load(db, STORE_86)
     return [i for i in items if i.get("is_active", True)]
 
 
 @router.post("/86", response_model=Item86)
-def create_86_item(db: DbSession, item: Item86):
+@limiter.limit("30/minute")
+def create_86_item(request: Request, db: DbSession, item: Item86):
     items = _load(db, STORE_86)
     item.id = _next_id(db, STORE_86)
     item.eighty_sixed_at = datetime.now(timezone.utc).isoformat()
@@ -393,7 +415,8 @@ def create_86_item(db: DbSession, item: Item86):
 
 
 @router.delete("/86/{item_id}")
-def remove_86_item(db: DbSession, item_id: int):
+@limiter.limit("30/minute")
+def remove_86_item(request: Request, db: DbSession, item_id: int):
     items = _load(db, STORE_86)
     for item in items:
         if item.get("id") == item_id:
@@ -405,12 +428,14 @@ def remove_86_item(db: DbSession, item_id: int):
 # ============ DIGITAL BOARDS ============
 
 @router.get("/digital-boards", response_model=List[DigitalBoard])
-def get_digital_boards(db: DbSession):
+@limiter.limit("60/minute")
+def get_digital_boards(request: Request, db: DbSession):
     return _load(db, STORE_BOARDS)
 
 
 @router.post("/digital-boards", response_model=DigitalBoard)
-def create_digital_board(db: DbSession, board: DigitalBoard):
+@limiter.limit("30/minute")
+def create_digital_board(request: Request, db: DbSession, board: DigitalBoard):
     items = _load(db, STORE_BOARDS)
     board.id = _next_id(db, STORE_BOARDS)
     items.append(board.model_dump())
@@ -419,7 +444,8 @@ def create_digital_board(db: DbSession, board: DigitalBoard):
 
 
 @router.delete("/digital-boards/{board_id}")
-def delete_digital_board(db: DbSession, board_id: int):
+@limiter.limit("30/minute")
+def delete_digital_board(request: Request, db: DbSession, board_id: int):
     items = _load(db, STORE_BOARDS)
     items = [b for b in items if b.get("id") != board_id]
     _save(db, STORE_BOARDS, items, "Digital Boards")

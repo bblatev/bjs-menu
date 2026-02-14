@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
 import { API_URL } from '@/lib/api';
 
+import { toast } from '@/lib/toast';
 interface MultiLang {
   bg: string;
   en: string;
@@ -191,18 +192,18 @@ export default function MenuCategoriesPage() {
         resetForm();
       } else {
         const error = await response.json();
-        alert(error.detail || 'Error saving category');
+        toast.error(error.detail || 'Error saving category');
       }
     } catch (error) {
       console.error('Error saving category:', error);
-      alert('Error saving category');
+      toast.error('Error saving category');
     }
   };
 
   const handleDelete = async (id: number) => {
     const category = categories.find(c => c.id === id);
     if (category && category.items_count > 0) {
-      alert(`Cannot delete category with ${category.items_count} items. Move or delete items first.`);
+      toast.error(`Cannot delete category with ${category.items_count} items. Move or delete items first.`);
       return;
     }
     if (!confirm('Are you sure you want to delete this category?')) return;
@@ -219,11 +220,11 @@ export default function MenuCategoriesPage() {
       if (response.ok) {
         loadCategories();
       } else {
-        alert('Error deleting category');
+        toast.error('Error deleting category');
       }
     } catch (error) {
       console.error('Error deleting category:', error);
-      alert('Error deleting category');
+      toast.error('Error deleting category');
     }
   };
 
@@ -289,7 +290,7 @@ export default function MenuCategoriesPage() {
       if (response.ok) {
         loadCategories();
       } else {
-        alert('Error toggling category status');
+        toast.error('Error toggling category status');
       }
     } catch (error) {
       console.error('Error toggling category active:', error);

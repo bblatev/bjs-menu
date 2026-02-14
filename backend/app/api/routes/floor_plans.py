@@ -2,12 +2,13 @@
 Floor Plan API Endpoints
 Interactive floor plan management with drag-and-drop table positioning
 """
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.orm import Session
 from typing import List
 
 from app.db.session import get_db
 from app.core.rbac import get_current_user
+from app.core.rate_limit import limiter
 from app.models import (
     StaffUser, Table, Order, FloorPlan,
     FloorPlanTablePosition, FloorPlanArea, OrderStatus
@@ -22,7 +23,9 @@ router = APIRouter()
 
 
 @router.post("/", response_model=FloorPlanResponse)
+@limiter.limit("30/minute")
 async def create_floor_plan(
+    request: Request,
     data: FloorPlanCreate,
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(get_current_user)
@@ -90,7 +93,9 @@ async def create_floor_plan(
 
 
 @router.get("/", response_model=List[FloorPlanResponse])
+@limiter.limit("60/minute")
 async def list_floor_plans(
+    request: Request,
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(get_current_user)
 ):
@@ -103,7 +108,9 @@ async def list_floor_plans(
 
 
 @router.get("/active", response_model=FloorPlanResponse)
+@limiter.limit("60/minute")
 async def get_active_floor_plan(
+    request: Request,
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(get_current_user)
 ):
@@ -120,7 +127,9 @@ async def get_active_floor_plan(
 
 
 @router.get("/{floor_plan_id}", response_model=FloorPlanResponse)
+@limiter.limit("60/minute")
 async def get_floor_plan(
+    request: Request,
     floor_plan_id: int,
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(get_current_user)
@@ -138,7 +147,9 @@ async def get_floor_plan(
 
 
 @router.put("/{floor_plan_id}", response_model=FloorPlanResponse)
+@limiter.limit("30/minute")
 async def update_floor_plan(
+    request: Request,
     floor_plan_id: int,
     data: FloorPlanCreate,
     db: Session = Depends(get_db),
@@ -211,7 +222,9 @@ async def update_floor_plan(
 
 
 @router.put("/{floor_plan_id}/table/{table_id}/position")
+@limiter.limit("30/minute")
 async def update_table_position(
+    request: Request,
     floor_plan_id: int,
     table_id: int,
     position: FloorPlanTablePositionSchema,
@@ -260,7 +273,9 @@ async def update_table_position(
 
 
 @router.put("/{floor_plan_id}/activate")
+@limiter.limit("30/minute")
 async def activate_floor_plan(
+    request: Request,
     floor_plan_id: int,
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(get_current_user)
@@ -289,7 +304,9 @@ async def activate_floor_plan(
 
 
 @router.delete("/{floor_plan_id}")
+@limiter.limit("30/minute")
 async def delete_floor_plan(
+    request: Request,
     floor_plan_id: int,
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(get_current_user)
@@ -316,7 +333,9 @@ async def delete_floor_plan(
 
 
 @router.get("/tables/status")
+@limiter.limit("60/minute")
 async def get_table_statuses(
+    request: Request,
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(get_current_user)
 ):

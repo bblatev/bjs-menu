@@ -2,11 +2,12 @@
 
 from datetime import datetime, timezone
 from typing import List, Optional
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel
 from sqlalchemy import select
 
 from app.db.session import DbSession
+from app.core.rate_limit import limiter
 from app.models.hardware import Integration as IntegrationModel
 from app.models.operations import AppSetting
 
@@ -47,14 +48,16 @@ def _integration_to_dict(i: IntegrationModel) -> dict:
 
 
 @router.get("/")
-async def get_integrations(db: DbSession):
+@limiter.limit("60/minute")
+async def get_integrations(request: Request, db: DbSession):
     """Get all integrations."""
     results = db.execute(select(IntegrationModel).order_by(IntegrationModel.id)).scalars().all()
     return [_integration_to_dict(i) for i in results]
 
 
 @router.post("/{integration_id}/connect")
-async def connect_integration(integration_id: str, config: dict, db: DbSession):
+@limiter.limit("30/minute")
+async def connect_integration(request: Request, integration_id: str, config: dict, db: DbSession):
     """Connect an integration."""
     from datetime import datetime, timezone
     try:
@@ -72,7 +75,8 @@ async def connect_integration(integration_id: str, config: dict, db: DbSession):
 
 
 @router.post("/{integration_id}/disconnect")
-async def disconnect_integration(integration_id: str, db: DbSession):
+@limiter.limit("30/minute")
+async def disconnect_integration(request: Request, integration_id: str, db: DbSession):
     """Disconnect an integration."""
     try:
         iid = int(integration_id)
@@ -87,7 +91,8 @@ async def disconnect_integration(integration_id: str, db: DbSession):
 
 
 @router.post("/{integration_id}/sync")
-async def sync_integration(integration_id: str, db: DbSession):
+@limiter.limit("30/minute")
+async def sync_integration(request: Request, integration_id: str, db: DbSession):
     """Trigger a sync for an integration."""
     from datetime import datetime, timezone
     try:
@@ -103,7 +108,8 @@ async def sync_integration(integration_id: str, db: DbSession):
 
 
 @router.get("/webhooks")
-async def get_webhooks(db: DbSession):
+@limiter.limit("60/minute")
+async def get_webhooks(request: Request, db: DbSession):
     """Get all webhooks."""
     setting = db.query(AppSetting).filter(
         AppSetting.category == "webhooks",
@@ -115,7 +121,8 @@ async def get_webhooks(db: DbSession):
 
 
 @router.post("/webhooks")
-async def create_webhook(webhook: Webhook, db: DbSession):
+@limiter.limit("30/minute")
+async def create_webhook(request: Request, webhook: Webhook, db: DbSession):
     """Create a webhook."""
     setting = db.query(AppSetting).filter(
         AppSetting.category == "webhooks",
@@ -136,7 +143,8 @@ async def create_webhook(webhook: Webhook, db: DbSession):
 
 
 @router.put("/webhooks/{webhook_id}")
-async def update_webhook(webhook_id: str, webhook: Webhook, db: DbSession):
+@limiter.limit("30/minute")
+async def update_webhook(request: Request, webhook_id: str, webhook: Webhook, db: DbSession):
     """Update a webhook."""
     setting = db.query(AppSetting).filter(
         AppSetting.category == "webhooks",
@@ -157,7 +165,8 @@ async def update_webhook(webhook_id: str, webhook: Webhook, db: DbSession):
 
 
 @router.delete("/webhooks/{webhook_id}")
-async def delete_webhook(webhook_id: str, db: DbSession):
+@limiter.limit("30/minute")
+async def delete_webhook(request: Request, webhook_id: str, db: DbSession):
     """Delete a webhook."""
     setting = db.query(AppSetting).filter(
         AppSetting.category == "webhooks",
@@ -172,7 +181,8 @@ async def delete_webhook(webhook_id: str, db: DbSession):
 
 
 @router.post("/webhooks/{webhook_id}/test")
-async def test_webhook(webhook_id: str, db: DbSession):
+@limiter.limit("30/minute")
+async def test_webhook(request: Request, webhook_id: str, db: DbSession):
     """Test a webhook."""
     setting = db.query(AppSetting).filter(
         AppSetting.category == "webhooks",
@@ -186,14 +196,16 @@ async def test_webhook(webhook_id: str, db: DbSession):
 
 
 @router.get("/integrations")
-async def list_all_integrations(db: DbSession):
+@limiter.limit("60/minute")
+async def list_all_integrations(request: Request, db: DbSession):
     """List all available integrations (alias for frontend compatibility)."""
     results = db.execute(select(IntegrationModel).order_by(IntegrationModel.id)).scalars().all()
     return [_integration_to_dict(i) for i in results]
 
 
 @router.get("/integrations/categories")
-async def get_integration_categories(db: DbSession):
+@limiter.limit("60/minute")
+async def get_integration_categories(request: Request, db: DbSession):
     """Get integration categories."""
     setting = db.query(AppSetting).filter(
         AppSetting.category == "integrations",
@@ -213,7 +225,8 @@ async def get_integration_categories(db: DbSession):
 
 
 @router.get("/integrations/connect")
-async def get_connectable_integrations(db: DbSession):
+@limiter.limit("60/minute")
+async def get_connectable_integrations(request: Request, db: DbSession):
     """Get list of integrations that can be connected."""
     results = db.query(IntegrationModel).filter(
         IntegrationModel.status == "disconnected"
@@ -222,7 +235,8 @@ async def get_connectable_integrations(db: DbSession):
 
 
 @router.get("/hardware/devices")
-async def get_hardware_devices(db: DbSession):
+@limiter.limit("60/minute")
+async def get_hardware_devices(request: Request, db: DbSession):
     """Get hardware devices."""
     setting = db.query(AppSetting).filter(
         AppSetting.category == "hardware",
@@ -234,7 +248,8 @@ async def get_hardware_devices(db: DbSession):
 
 
 @router.get("/api-keys")
-async def get_api_keys(db: DbSession):
+@limiter.limit("60/minute")
+async def get_api_keys(request: Request, db: DbSession):
     """Get API keys."""
     setting = db.query(AppSetting).filter(
         AppSetting.category == "api_keys",
@@ -246,7 +261,8 @@ async def get_api_keys(db: DbSession):
 
 
 @router.post("/api-keys")
-async def create_api_key(data: dict, db: DbSession):
+@limiter.limit("30/minute")
+async def create_api_key(request: Request, data: dict, db: DbSession):
     """Create an API key."""
     import secrets
     setting = db.query(AppSetting).filter(
@@ -273,7 +289,8 @@ async def create_api_key(data: dict, db: DbSession):
 
 
 @router.get("/accounting/available")
-async def get_accounting_integrations_available(db: DbSession):
+@limiter.limit("60/minute")
+async def get_accounting_integrations_available(request: Request, db: DbSession):
     """Get available accounting integrations."""
     setting = db.query(AppSetting).filter(
         AppSetting.category == "accounting",
@@ -285,7 +302,8 @@ async def get_accounting_integrations_available(db: DbSession):
 
 
 @router.get("/accounting/status")
-async def get_accounting_integration_status(db: DbSession):
+@limiter.limit("60/minute")
+async def get_accounting_integration_status(request: Request, db: DbSession):
     """Get current accounting integration status."""
     setting = db.query(AppSetting).filter(
         AppSetting.category == "accounting",
@@ -305,13 +323,15 @@ async def get_accounting_integration_status(db: DbSession):
 
 
 @router.post("/accounting/connect")
-async def connect_accounting_integration(db: DbSession):
+@limiter.limit("30/minute")
+async def connect_accounting_integration(request: Request, db: DbSession):
     """Connect an accounting integration."""
     return {"success": True, "status": "connected"}
 
 
 @router.get("/multi-location/sync-settings")
-async def get_multi_location_sync_settings(db: DbSession):
+@limiter.limit("60/minute")
+async def get_multi_location_sync_settings(request: Request, db: DbSession):
     """Get multi-location sync settings."""
     setting = db.query(AppSetting).filter(
         AppSetting.category == "multi_location",
@@ -331,7 +351,8 @@ async def get_multi_location_sync_settings(db: DbSession):
 
 
 @router.get("/{integration_id}")
-async def get_integration(integration_id: str, db: DbSession):
+@limiter.limit("60/minute")
+async def get_integration(request: Request, integration_id: str, db: DbSession):
     """Get a specific integration by ID."""
     try:
         iid = int(integration_id)

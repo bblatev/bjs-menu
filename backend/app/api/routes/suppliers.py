@@ -3,13 +3,14 @@
 from datetime import datetime, timedelta, timezone
 from typing import Optional
 
-from fastapi import APIRouter, Body, HTTPException, status
+from fastapi import APIRouter, Body, HTTPException, Request, status
 from sqlalchemy import func
 
 from app.core.rbac import RequireManager, CurrentUser, OptionalCurrentUser
 from app.db.session import DbSession
 from app.models.supplier import Supplier, SupplierDocument
 from app.schemas.supplier import SupplierCreate, SupplierUpdate, SupplierResponse
+from app.core.rate_limit import limiter
 
 router = APIRouter()
 
@@ -17,13 +18,15 @@ router = APIRouter()
 # ==================== CORE CRUD ====================
 
 @router.get("/", response_model=list[SupplierResponse])
-def list_suppliers(db: DbSession, current_user: OptionalCurrentUser = None):
+@limiter.limit("60/minute")
+def list_suppliers(request: Request, db: DbSession, current_user: OptionalCurrentUser = None):
     """List all suppliers."""
     return db.query(Supplier).order_by(Supplier.name).all()
 
 
 @router.get("/performance")
-def get_supplier_performance(db: DbSession, current_user: OptionalCurrentUser = None):
+@limiter.limit("60/minute")
+def get_supplier_performance(request: Request, db: DbSession, current_user: OptionalCurrentUser = None):
     """Get supplier performance metrics list."""
     suppliers = db.query(Supplier).order_by(Supplier.name).all()
     return [
@@ -41,7 +44,8 @@ def get_supplier_performance(db: DbSession, current_user: OptionalCurrentUser = 
 
 
 @router.get("/performance/stats")
-def get_supplier_performance_stats(db: DbSession, current_user: OptionalCurrentUser = None):
+@limiter.limit("60/minute")
+def get_supplier_performance_stats(request: Request, db: DbSession, current_user: OptionalCurrentUser = None):
     """Get supplier performance statistics."""
     total = db.query(func.count(Supplier.id)).scalar() or 0
     from app.models.order import PurchaseOrder
@@ -58,7 +62,8 @@ def get_supplier_performance_stats(db: DbSession, current_user: OptionalCurrentU
 # ==================== DOCUMENTS ====================
 
 @router.get("/expiring-documents")
-def get_expiring_documents(db: DbSession):
+@limiter.limit("60/minute")
+def get_expiring_documents(request: Request, db: DbSession):
     """Get documents expiring soon across all suppliers."""
     cutoff = datetime.now(timezone.utc) + timedelta(days=30)
     docs = db.query(SupplierDocument).filter(
@@ -79,7 +84,8 @@ def get_expiring_documents(db: DbSession):
 
 
 @router.get("/documents")
-def get_all_documents(db: DbSession):
+@limiter.limit("60/minute")
+def get_all_documents(request: Request, db: DbSession):
     """Get all supplier documents."""
     docs = db.query(SupplierDocument).order_by(SupplierDocument.id.desc()).all()
     return [
@@ -98,7 +104,8 @@ def get_all_documents(db: DbSession):
 
 
 @router.post("/documents")
-def create_document(db: DbSession, data: dict = Body(...)):
+@limiter.limit("30/minute")
+def create_document(request: Request, db: DbSession, data: dict = Body(...)):
     """Upload/register a document for a supplier."""
     supplier_id = data.get("supplier_id")
     if not supplier_id:
@@ -129,7 +136,8 @@ def create_document(db: DbSession, data: dict = Body(...)):
 # ==================== CONTACTS ====================
 
 @router.get("/contacts")
-def get_all_contacts(db: DbSession):
+@limiter.limit("60/minute")
+def get_all_contacts(request: Request, db: DbSession):
     """Get all supplier contacts."""
     suppliers = db.query(Supplier).order_by(Supplier.name).all()
     return [
@@ -146,7 +154,8 @@ def get_all_contacts(db: DbSession):
 
 
 @router.post("/contacts")
-def create_contact(db: DbSession, data: dict = Body(...)):
+@limiter.limit("30/minute")
+def create_contact(request: Request, db: DbSession, data: dict = Body(...)):
     """Add a contact to a supplier. Updates the supplier's contact info."""
     supplier_id = data.get("supplier_id")
     if not supplier_id:
@@ -165,7 +174,8 @@ def create_contact(db: DbSession, data: dict = Body(...)):
 # ==================== RATINGS ====================
 
 @router.get("/ratings")
-def get_all_ratings(db: DbSession):
+@limiter.limit("60/minute")
+def get_all_ratings(request: Request, db: DbSession):
     """Get supplier ratings summary."""
     suppliers = db.query(Supplier).order_by(Supplier.name).all()
     return [
@@ -175,7 +185,8 @@ def get_all_ratings(db: DbSession):
 
 
 @router.post("/ratings")
-def create_rating(db: DbSession, data: dict = Body(...)):
+@limiter.limit("30/minute")
+def create_rating(request: Request, db: DbSession, data: dict = Body(...)):
     """Add a rating for a supplier."""
     supplier_id = data.get("supplier_id")
     if not supplier_id:
@@ -191,7 +202,8 @@ def create_rating(db: DbSession, data: dict = Body(...)):
 # ==================== PRICE LISTS ====================
 
 @router.get("/price-lists")
-def get_all_price_lists(db: DbSession):
+@limiter.limit("60/minute")
+def get_all_price_lists(request: Request, db: DbSession):
     """Get all supplier price lists."""
     from app.models.price_lists import PriceList
     lists = db.query(PriceList).order_by(PriceList.id).all()
@@ -202,7 +214,8 @@ def get_all_price_lists(db: DbSession):
 
 
 @router.post("/price-lists")
-def create_price_list(db: DbSession, data: dict = Body(...)):
+@limiter.limit("30/minute")
+def create_price_list(request: Request, db: DbSession, data: dict = Body(...)):
     """Create a price list."""
     from app.models.price_lists import PriceList
     name = data.get("name", "")
@@ -227,7 +240,8 @@ def create_price_list(db: DbSession, data: dict = Body(...)):
 # ==================== BEST PRICE ====================
 
 @router.get("/best-price/{item_id}")
-def get_best_price(item_id: str, db: DbSession):
+@limiter.limit("60/minute")
+def get_best_price(request: Request, item_id: str, db: DbSession):
     """Get best price across suppliers for an item."""
     from app.models.invoice import PriceHistory
     histories = db.query(PriceHistory).filter(
@@ -245,7 +259,8 @@ def get_best_price(item_id: str, db: DbSession):
 # ==================== PER-SUPPLIER ENDPOINTS ====================
 
 @router.get("/{supplier_id}/contacts")
-def get_supplier_contacts(supplier_id: int, db: DbSession):
+@limiter.limit("60/minute")
+def get_supplier_contacts(request: Request, supplier_id: int, db: DbSession):
     """Get contacts for a specific supplier."""
     supplier = db.query(Supplier).filter(Supplier.id == supplier_id).first()
     if not supplier:
@@ -262,7 +277,8 @@ def get_supplier_contacts(supplier_id: int, db: DbSession):
 
 
 @router.get("/{supplier_id}/price-lists")
-def get_supplier_price_lists(supplier_id: int, db: DbSession):
+@limiter.limit("60/minute")
+def get_supplier_price_lists(request: Request, supplier_id: int, db: DbSession):
     """Get price lists for a specific supplier."""
     from app.models.invoice import PriceHistory
     histories = db.query(PriceHistory).filter(
@@ -279,7 +295,8 @@ def get_supplier_price_lists(supplier_id: int, db: DbSession):
 
 
 @router.get("/{supplier_id}/ratings")
-def get_supplier_ratings(supplier_id: int, db: DbSession):
+@limiter.limit("60/minute")
+def get_supplier_ratings(request: Request, supplier_id: int, db: DbSession):
     """Get ratings for a specific supplier."""
     from app.models.order import PurchaseOrder
     order_count = db.query(func.count(PurchaseOrder.id)).filter(
@@ -289,7 +306,8 @@ def get_supplier_ratings(supplier_id: int, db: DbSession):
 
 
 @router.get("/{supplier_id}/documents")
-def get_supplier_documents(supplier_id: int, db: DbSession):
+@limiter.limit("60/minute")
+def get_supplier_documents(request: Request, supplier_id: int, db: DbSession):
     """Get documents for a specific supplier."""
     docs = db.query(SupplierDocument).filter(
         SupplierDocument.supplier_id == supplier_id
@@ -312,7 +330,8 @@ def get_supplier_documents(supplier_id: int, db: DbSession):
 # ==================== SINGLE SUPPLIER (must be last - catches {supplier_id}) ====================
 
 @router.get("/{supplier_id}", response_model=SupplierResponse)
-def get_supplier(supplier_id: int, db: DbSession, current_user: CurrentUser):
+@limiter.limit("60/minute")
+def get_supplier(request: Request, supplier_id: int, db: DbSession, current_user: CurrentUser):
     """Get a specific supplier."""
     supplier = db.query(Supplier).filter(Supplier.id == supplier_id).first()
     if not supplier:
@@ -321,9 +340,10 @@ def get_supplier(supplier_id: int, db: DbSession, current_user: CurrentUser):
 
 
 @router.post("/", response_model=SupplierResponse, status_code=status.HTTP_201_CREATED)
-def create_supplier(request: SupplierCreate, db: DbSession, current_user: RequireManager):
+@limiter.limit("30/minute")
+def create_supplier(request: Request, body: SupplierCreate, db: DbSession, current_user: RequireManager):
     """Create a new supplier (requires Manager role)."""
-    supplier = Supplier(**request.model_dump())
+    supplier = Supplier(**body.model_dump())
     db.add(supplier)
     db.commit()
     db.refresh(supplier)
@@ -331,15 +351,16 @@ def create_supplier(request: SupplierCreate, db: DbSession, current_user: Requir
 
 
 @router.put("/{supplier_id}", response_model=SupplierResponse)
+@limiter.limit("30/minute")
 def update_supplier(
-    supplier_id: int, request: SupplierUpdate, db: DbSession, current_user: RequireManager
+    request: Request, supplier_id: int, body: SupplierUpdate, db: DbSession, current_user: RequireManager
 ):
     """Update a supplier (requires Manager role)."""
     supplier = db.query(Supplier).filter(Supplier.id == supplier_id).first()
     if not supplier:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Supplier not found")
 
-    update_data = request.model_dump(exclude_unset=True)
+    update_data = body.model_dump(exclude_unset=True)
     for field, value in update_data.items():
         setattr(supplier, field, value)
 

@@ -3,9 +3,10 @@
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, HTTPException, Request, status
 from pydantic import BaseModel
 
+from app.core.rate_limit import limiter
 from app.db.session import DbSession
 from app.models.operations import AppSetting
 from app.core.rbac import CurrentUser
@@ -54,7 +55,8 @@ def _role_row_to_dict(row: AppSetting) -> Dict[str, Any]:
 # --------------- Endpoints ---------------
 
 @router.get("/")
-async def get_roles(db: DbSession):
+@limiter.limit("60/minute")
+async def get_roles(request: Request, db: DbSession):
     """Get all user roles."""
     rows = (
         db.query(AppSetting)
@@ -66,7 +68,8 @@ async def get_roles(db: DbSession):
 
 
 @router.get("/{role_name}")
-async def get_role(role_name: str, db: DbSession):
+@limiter.limit("60/minute")
+async def get_role(request: Request, role_name: str, db: DbSession):
     """Get a single role by name."""
     row = (
         db.query(AppSetting)
@@ -82,7 +85,8 @@ async def get_role(role_name: str, db: DbSession):
 
 
 @router.post("/", status_code=status.HTTP_201_CREATED)
-async def create_role(payload: RoleCreate, db: DbSession, current_user: CurrentUser):
+@limiter.limit("30/minute")
+async def create_role(request: Request, payload: RoleCreate, db: DbSession, current_user: CurrentUser):
     """Create a new role."""
     existing = (
         db.query(AppSetting)
@@ -112,7 +116,8 @@ async def create_role(payload: RoleCreate, db: DbSession, current_user: CurrentU
 
 
 @router.put("/{role_name}")
-async def update_role(role_name: str, payload: RoleUpdate, db: DbSession, current_user: CurrentUser):
+@limiter.limit("30/minute")
+async def update_role(request: Request, role_name: str, payload: RoleUpdate, db: DbSession, current_user: CurrentUser):
     """Update an existing role."""
     row = (
         db.query(AppSetting)
@@ -140,7 +145,8 @@ async def update_role(role_name: str, payload: RoleUpdate, db: DbSession, curren
 
 
 @router.delete("/{role_name}", status_code=status.HTTP_200_OK)
-async def delete_role(role_name: str, db: DbSession, current_user: CurrentUser):
+@limiter.limit("30/minute")
+async def delete_role(request: Request, role_name: str, db: DbSession, current_user: CurrentUser):
     """Delete a role."""
     row = (
         db.query(AppSetting)

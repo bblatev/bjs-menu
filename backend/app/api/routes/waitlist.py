@@ -2,7 +2,8 @@
 
 from datetime import datetime, timezone
 from typing import Optional
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Request
+from app.core.rate_limit import limiter
 from pydantic import BaseModel, field_validator
 
 from app.core.sanitize import sanitize_text
@@ -47,7 +48,9 @@ class WaitlistUpdate(BaseModel):
 
 
 @router.get("/")
+@limiter.limit("60/minute")
 def list_waitlist(
+    request: Request,
     db: DbSession,
     location_id: int = 1,
     status: Optional[str] = None,
@@ -88,7 +91,9 @@ def list_waitlist(
 
 
 @router.post("/")
+@limiter.limit("30/minute")
 def add_to_waitlist(
+    request: Request,
     db: DbSession,
     entry: WaitlistAdd,
 ):
@@ -142,7 +147,9 @@ def add_to_waitlist(
 
 
 @router.get("/stats")
+@limiter.limit("60/minute")
 def get_waitlist_stats(
+    request: Request,
     db: DbSession,
     location_id: int = 1,
 ):
@@ -199,7 +206,9 @@ def get_waitlist_stats(
 
 
 @router.get("/{entry_id}")
+@limiter.limit("60/minute")
 def get_waitlist_entry(
+    request: Request,
     db: DbSession,
     entry_id: int,
 ):
@@ -226,7 +235,9 @@ def get_waitlist_entry(
 
 
 @router.put("/{entry_id}")
+@limiter.limit("30/minute")
 def update_waitlist_entry(
+    request: Request,
     db: DbSession,
     entry_id: int,
     update: WaitlistUpdate,
@@ -257,7 +268,9 @@ def update_waitlist_entry(
 
 
 @router.post("/{entry_id}/notify")
+@limiter.limit("30/minute")
 def send_notification(
+    request: Request,
     db: DbSession,
     entry_id: int,
 ):
@@ -280,7 +293,9 @@ def send_notification(
 
 
 @router.post("/{entry_id}/seat")
+@limiter.limit("30/minute")
 def seat_guest(
+    request: Request,
     db: DbSession,
     entry_id: int,
     table_id: Optional[int] = None,
@@ -312,7 +327,9 @@ def seat_guest(
 
 @router.post("/{entry_id}/cancel")
 @router.post("/{entry_id}/remove")
+@limiter.limit("30/minute")
 def cancel_waitlist_entry(
+    request: Request,
     db: DbSession,
     entry_id: int,
     reason: str = "cancelled",
@@ -335,7 +352,9 @@ def cancel_waitlist_entry(
 
 
 @router.delete("/{entry_id}")
+@limiter.limit("30/minute")
 def delete_waitlist_entry(
+    request: Request,
     db: DbSession,
     entry_id: int,
 ):

@@ -2,7 +2,7 @@
 WebSocket Endpoints for Real-time Updates
 Handles connections for hardware monitoring, kitchen display, and notifications
 """
-from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Depends, Query, HTTPException
+from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Depends, Query, HTTPException, Request
 from typing import Optional
 import json
 import logging
@@ -12,6 +12,7 @@ from app.services.websocket_service import manager, EventType, WebSocketMessage
 from app.core.config import settings
 from app.core.rbac import get_current_user
 from app.models import StaffUser
+from app.core.rate_limit import limiter
 
 logger = logging.getLogger(__name__)
 
@@ -204,13 +205,16 @@ async def hardware_websocket(
 
 
 @router.get("/stats")
-async def get_websocket_stats():
+@limiter.limit("60/minute")
+async def get_websocket_stats(request: Request):
     """Get WebSocket connection statistics."""
     return manager.get_stats()
 
 
 @router.post("/broadcast/{venue_id}")
+@limiter.limit("30/minute")
 async def broadcast_message(
+    request: Request,
     venue_id: int,
     event: str,
     data: dict,

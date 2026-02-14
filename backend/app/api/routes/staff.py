@@ -2,7 +2,7 @@
 
 from typing import List, Optional, Dict
 from datetime import datetime, date, time, timedelta, timezone
-from fastapi import APIRouter, HTTPException, Body, Query
+from fastapi import APIRouter, HTTPException, Body, Query, Request
 from sqlalchemy import func, and_, or_
 
 from app.core.security import get_password_hash, verify_password
@@ -12,6 +12,7 @@ from app.models.staff import (
     TableAssignment, PerformanceMetric, PerformanceGoal,
     TipPool, TipDistribution
 )
+from app.core.rate_limit import limiter
 from app.schemas.pagination import paginate_query
 from app.schemas.staff import (
     StaffCreate, StaffUpdate, StaffResponse,
@@ -98,7 +99,9 @@ def _init_default_staff(db: DbSession):
 # ============== Staff CRUD ==============
 
 @router.get("/staff")
+@limiter.limit("60/minute")
 def list_staff(
+    request: Request,
     db: DbSession,
     role: Optional[str] = None,
     active_only: Optional[bool] = None,
@@ -128,7 +131,8 @@ def list_staff(
 
 
 @router.post("/staff")
-def create_staff(db: DbSession, data: StaffCreate):
+@limiter.limit("30/minute")
+def create_staff(request: Request, db: DbSession, data: StaffCreate):
     """Create a new staff member."""
     if data.role not in ["admin", "manager", "kitchen", "bar", "waiter"]:
         raise HTTPException(status_code=400, detail="Invalid role")
@@ -156,7 +160,8 @@ def create_staff(db: DbSession, data: StaffCreate):
 # ============== Schedules & Shifts ==============
 
 @router.get("/staff/schedules/staff")
-def get_scheduling_staff(db: DbSession):
+@limiter.limit("60/minute")
+def get_scheduling_staff(request: Request, db: DbSession):
     """Get staff members for scheduling view."""
     _init_default_staff(db)
     staff = db.query(StaffUser).filter(StaffUser.is_active == True).all()
@@ -176,7 +181,9 @@ def get_scheduling_staff(db: DbSession):
 
 
 @router.get("/staff/shifts")
+@limiter.limit("60/minute")
 def list_shifts(
+    request: Request,
     db: DbSession,
     start_date: Optional[str] = Query(None),
     end_date: Optional[str] = Query(None),
@@ -207,7 +214,8 @@ def list_shifts(
 
 
 @router.post("/staff/shifts")
-def create_shift(db: DbSession, data: ShiftCreate):
+@limiter.limit("30/minute")
+def create_shift(request: Request, db: DbSession, data: ShiftCreate):
     """Create a new shift."""
     # Validate staff exists
     staff = db.query(StaffUser).filter(StaffUser.id == data.staff_id).first()
@@ -239,7 +247,8 @@ def create_shift(db: DbSession, data: ShiftCreate):
 
 
 @router.put("/staff/shifts/{shift_id}")
-def update_shift(db: DbSession, shift_id: int, data: ShiftUpdate):
+@limiter.limit("30/minute")
+def update_shift(request: Request, db: DbSession, shift_id: int, data: ShiftUpdate):
     """Update a shift."""
     shift = db.query(Shift).filter(Shift.id == shift_id).first()
     if not shift:
@@ -272,7 +281,8 @@ def update_shift(db: DbSession, shift_id: int, data: ShiftUpdate):
 
 
 @router.delete("/staff/shifts/{shift_id}")
-def delete_shift(db: DbSession, shift_id: int):
+@limiter.limit("30/minute")
+def delete_shift(request: Request, db: DbSession, shift_id: int):
     """Delete a shift."""
     shift = db.query(Shift).filter(Shift.id == shift_id).first()
     if not shift:
@@ -284,7 +294,8 @@ def delete_shift(db: DbSession, shift_id: int):
 
 
 @router.post("/staff/shifts/copy-week")
-def copy_week_shifts(db: DbSession, data: dict = Body(...)):
+@limiter.limit("30/minute")
+def copy_week_shifts(request: Request, db: DbSession, data: dict = Body(...)):
     """Copy shifts from previous week."""
     try:
         target_start = datetime.strptime(data.get("target_start_date"), "%Y-%m-%d").date()
@@ -320,7 +331,8 @@ def copy_week_shifts(db: DbSession, data: dict = Body(...)):
 
 
 @router.post("/staff/shifts/publish")
-def publish_shifts(db: DbSession, data: dict = Body(...)):
+@limiter.limit("30/minute")
+def publish_shifts(request: Request, db: DbSession, data: dict = Body(...)):
     """Publish shifts for a date range."""
     try:
         start = datetime.strptime(data.get("start_date"), "%Y-%m-%d").date()
@@ -339,7 +351,9 @@ def publish_shifts(db: DbSession, data: dict = Body(...)):
 # ============== Time Off ==============
 
 @router.get("/staff/time-off")
+@limiter.limit("60/minute")
 def list_time_off(
+    request: Request,
     db: DbSession,
     start_date: Optional[str] = Query(None),
     end_date: Optional[str] = Query(None),
@@ -380,7 +394,8 @@ def list_time_off(
 
 
 @router.post("/staff/time-off")
-def create_time_off(db: DbSession, data: TimeOffCreate):
+@limiter.limit("30/minute")
+def create_time_off(request: Request, db: DbSession, data: TimeOffCreate):
     """Create a time off request."""
     staff = db.query(StaffUser).filter(StaffUser.id == data.staff_id).first()
     if not staff:
@@ -392,52 +407,54 @@ def create_time_off(db: DbSession, data: TimeOffCreate):
     except ValueError:
         raise HTTPException(status_code=400, detail="Invalid date format")
 
-    request = TimeOffRequest(
+    time_off_request = TimeOffRequest(
         staff_id=data.staff_id,
         start_date=start,
         end_date=end,
         type=data.type,
         notes=data.notes,
     )
-    db.add(request)
+    db.add(time_off_request)
     db.commit()
-    db.refresh(request)
+    db.refresh(time_off_request)
 
     return {
-        "id": request.id,
-        "staff_id": request.staff_id,
+        "id": time_off_request.id,
+        "staff_id": time_off_request.staff_id,
         "staff_name": staff.full_name,
-        "start_date": request.start_date.isoformat(),
-        "end_date": request.end_date.isoformat(),
-        "type": request.type,
-        "status": request.status,
-        "notes": request.notes,
+        "start_date": time_off_request.start_date.isoformat(),
+        "end_date": time_off_request.end_date.isoformat(),
+        "type": time_off_request.type,
+        "status": time_off_request.status,
+        "notes": time_off_request.notes,
     }
 
 
 @router.patch("/staff/time-off/{request_id}/approve")
-def approve_time_off(db: DbSession, request_id: int):
+@limiter.limit("30/minute")
+def approve_time_off(request: Request, db: DbSession, request_id: int):
     """Approve a time off request."""
-    request = db.query(TimeOffRequest).filter(TimeOffRequest.id == request_id).first()
-    if not request:
+    time_off_request = db.query(TimeOffRequest).filter(TimeOffRequest.id == request_id).first()
+    if not time_off_request:
         raise HTTPException(status_code=404, detail="Time off request not found")
 
-    request.status = "approved"
-    request.reviewed_at = datetime.now(timezone.utc)
+    time_off_request.status = "approved"
+    time_off_request.reviewed_at = datetime.now(timezone.utc)
     db.commit()
 
     return {"status": "approved", "id": request_id}
 
 
 @router.patch("/staff/time-off/{request_id}/reject")
-def reject_time_off(db: DbSession, request_id: int):
+@limiter.limit("30/minute")
+def reject_time_off(request: Request, db: DbSession, request_id: int):
     """Reject a time off request."""
-    request = db.query(TimeOffRequest).filter(TimeOffRequest.id == request_id).first()
-    if not request:
+    time_off_request = db.query(TimeOffRequest).filter(TimeOffRequest.id == request_id).first()
+    if not time_off_request:
         raise HTTPException(status_code=404, detail="Time off request not found")
 
-    request.status = "rejected"
-    request.reviewed_at = datetime.now(timezone.utc)
+    time_off_request.status = "rejected"
+    time_off_request.reviewed_at = datetime.now(timezone.utc)
     db.commit()
 
     return {"status": "rejected", "id": request_id}
@@ -446,7 +463,8 @@ def reject_time_off(db: DbSession, request_id: int):
 # ============== Time Clock ==============
 
 @router.get("/staff/time-clock/status")
-def get_clock_status(db: DbSession, staff_id: Optional[int] = None):
+@limiter.limit("60/minute")
+def get_clock_status(request: Request, db: DbSession, staff_id: Optional[int] = None):
     """Get current clock status."""
     # For now, return a default status - in production, use authenticated user
     today = date.today()
@@ -481,7 +499,9 @@ def get_clock_status(db: DbSession, staff_id: Optional[int] = None):
 
 
 @router.get("/staff/time-clock/entries")
+@limiter.limit("60/minute")
 def list_time_entries(
+    request: Request,
     db: DbSession,
     start_date: Optional[str] = Query(None),
     end_date: Optional[str] = Query(None),
@@ -519,7 +539,8 @@ def list_time_entries(
 
 
 @router.post("/staff/time-clock/punch-in")
-def punch_in(db: DbSession, data: dict = Body(...)):
+@limiter.limit("30/minute")
+def punch_in(request: Request, db: DbSession, data: dict = Body(...)):
     """Clock in."""
     staff_id = data.get("staff_id")
     method = data.get("method", "web")
@@ -554,7 +575,8 @@ def punch_in(db: DbSession, data: dict = Body(...)):
 
 
 @router.post("/staff/time-clock/punch-out")
-def punch_out(db: DbSession, data: dict = Body(...)):
+@limiter.limit("30/minute")
+def punch_out(request: Request, db: DbSession, data: dict = Body(...)):
     """Clock out."""
     staff_id = data.get("staff_id")
 
@@ -597,7 +619,8 @@ def punch_out(db: DbSession, data: dict = Body(...)):
 
 
 @router.post("/staff/time-clock/break/start")
-def start_break(db: DbSession, data: dict = Body(...)):
+@limiter.limit("30/minute")
+def start_break(request: Request, db: DbSession, data: dict = Body(...)):
     """Start break."""
     staff_id = data.get("staff_id")
 
@@ -625,7 +648,8 @@ def start_break(db: DbSession, data: dict = Body(...)):
 
 
 @router.post("/staff/time-clock/break/end")
-def end_break(db: DbSession, data: dict = Body(...)):
+@limiter.limit("30/minute")
+def end_break(request: Request, db: DbSession, data: dict = Body(...)):
     """End break."""
     staff_id = data.get("staff_id")
 
@@ -663,7 +687,9 @@ def end_break(db: DbSession, data: dict = Body(...)):
 # ============== Performance ==============
 
 @router.get("/staff/performance/leaderboard")
+@limiter.limit("60/minute")
 def get_leaderboard(
+    request: Request,
     db: DbSession,
     period: str = Query("month"),
     sort_by: str = Query("sales"),
@@ -755,7 +781,8 @@ def get_leaderboard(
 
 
 @router.get("/staff/performance/goals")
-def get_performance_goals(db: DbSession):
+@limiter.limit("60/minute")
+def get_performance_goals(request: Request, db: DbSession):
     """Get performance goals."""
     try:
         goals = db.query(PerformanceGoal).all()
@@ -780,7 +807,8 @@ def get_performance_goals(db: DbSession):
 
 
 @router.put("/staff/performance/goals")
-def update_performance_goals(db: DbSession, data: List[dict] = Body(...)):
+@limiter.limit("30/minute")
+def update_performance_goals(request: Request, db: DbSession, data: List[dict] = Body(...)):
     """Update performance goals."""
     for goal_data in data:
         goal_id = goal_data.get("id")
@@ -807,7 +835,8 @@ def update_performance_goals(db: DbSession, data: List[dict] = Body(...)):
 # ============== Sections ==============
 
 @router.get("/staff/sections/servers")
-def get_servers_for_sections(db: DbSession):
+@limiter.limit("60/minute")
+def get_servers_for_sections(request: Request, db: DbSession):
     """Get servers and bartenders for section assignment."""
     _init_default_staff(db)
 
@@ -843,7 +872,9 @@ def get_servers_for_sections(db: DbSession):
 
 
 @router.get("/tables/assignments")
+@limiter.limit("60/minute")
 def get_table_assignments(
+    request: Request,
     db: DbSession,
     staff_user_id: Optional[int] = None,
 ):
@@ -869,7 +900,8 @@ def get_table_assignments(
 
 
 @router.post("/tables/assignments/bulk")
-def bulk_assign_tables(db: DbSession, data: dict = Body(...)):
+@limiter.limit("30/minute")
+def bulk_assign_tables(request: Request, db: DbSession, data: dict = Body(...)):
     """Bulk assign tables to a staff member."""
     staff_id = data.get("staff_user_id")
     table_ids = data.get("table_ids", [])
@@ -911,7 +943,8 @@ def bulk_assign_tables(db: DbSession, data: dict = Body(...)):
 
 
 @router.post("/tables/sections/{section_id}/assign")
-def assign_section(db: DbSession, section_id: int, data: dict = Body(...)):
+@limiter.limit("30/minute")
+def assign_section(request: Request, db: DbSession, section_id: int, data: dict = Body(...)):
     """Assign a server to a section."""
     server_id = data.get("server_id")
 
@@ -933,7 +966,9 @@ def assign_section(db: DbSession, section_id: int, data: dict = Body(...)):
 # ============== Tips ==============
 
 @router.get("/tips/pools")
+@limiter.limit("60/minute")
 def list_tip_pools(
+    request: Request,
     db: DbSession,
     range: str = Query("week"),
 ):
@@ -982,7 +1017,8 @@ def list_tip_pools(
 
 
 @router.post("/tips/pools")
-def create_tip_pool(db: DbSession, data: TipPoolCreate):
+@limiter.limit("30/minute")
+def create_tip_pool(request: Request, db: DbSession, data: TipPoolCreate):
     """Create a new tip pool."""
     try:
         pool_date = datetime.strptime(data.date, "%Y-%m-%d").date()
@@ -1027,7 +1063,9 @@ def create_tip_pool(db: DbSession, data: TipPoolCreate):
 
 
 @router.get("/tips/stats")
+@limiter.limit("60/minute")
 def get_tip_stats(
+    request: Request,
     db: DbSession,
     range: str = Query("week"),
 ):
@@ -1068,7 +1106,9 @@ def get_tip_stats(
 
 
 @router.get("/tips/earnings")
+@limiter.limit("60/minute")
 def get_tip_earnings(
+    request: Request,
     db: DbSession,
     range: str = Query("week"),
 ):
@@ -1108,7 +1148,8 @@ def get_tip_earnings(
 
 
 @router.post("/tips/distributions")
-def distribute_tips(db: DbSession, data: dict = Body(...)):
+@limiter.limit("30/minute")
+def distribute_tips(request: Request, db: DbSession, data: dict = Body(...)):
     """Distribute tips from a pool."""
     pool_id = data.get("pool_id")
 
@@ -1129,7 +1170,8 @@ def distribute_tips(db: DbSession, data: dict = Body(...)):
 # ============== Staff CRUD by ID (must be at end to avoid catching specific routes) ==============
 
 @router.get("/staff/{staff_id}")
-def get_staff(db: DbSession, staff_id: int):
+@limiter.limit("60/minute")
+def get_staff(request: Request, db: DbSession, staff_id: int):
     """Get a specific staff member."""
     staff = db.query(StaffUser).filter(StaffUser.id == staff_id).first()
     if not staff:
@@ -1138,7 +1180,8 @@ def get_staff(db: DbSession, staff_id: int):
 
 
 @router.put("/staff/{staff_id}")
-def update_staff(db: DbSession, staff_id: int, data: StaffUpdate):
+@limiter.limit("30/minute")
+def update_staff(request: Request, db: DbSession, staff_id: int, data: StaffUpdate):
     """Update a staff member."""
     staff = db.query(StaffUser).filter(StaffUser.id == staff_id).first()
     if not staff:
@@ -1163,7 +1206,8 @@ def update_staff(db: DbSession, staff_id: int, data: StaffUpdate):
 
 
 @router.delete("/staff/{staff_id}")
-def delete_staff(db: DbSession, staff_id: int):
+@limiter.limit("30/minute")
+def delete_staff(request: Request, db: DbSession, staff_id: int):
     """Soft-delete a staff member."""
     staff = db.query(StaffUser).filter(StaffUser.id == staff_id, StaffUser.not_deleted()).first()
     if not staff:
@@ -1176,7 +1220,8 @@ def delete_staff(db: DbSession, staff_id: int):
 
 
 @router.patch("/staff/{staff_id}/activate")
-def activate_staff(db: DbSession, staff_id: int):
+@limiter.limit("30/minute")
+def activate_staff(request: Request, db: DbSession, staff_id: int):
     """Activate a staff member."""
     staff = db.query(StaffUser).filter(StaffUser.id == staff_id).first()
     if not staff:
@@ -1189,7 +1234,8 @@ def activate_staff(db: DbSession, staff_id: int):
 
 
 @router.patch("/staff/{staff_id}/deactivate")
-def deactivate_staff(db: DbSession, staff_id: int):
+@limiter.limit("30/minute")
+def deactivate_staff(request: Request, db: DbSession, staff_id: int):
     """Deactivate a staff member."""
     staff = db.query(StaffUser).filter(StaffUser.id == staff_id).first()
     if not staff:
@@ -1202,7 +1248,8 @@ def deactivate_staff(db: DbSession, staff_id: int):
 
 
 @router.patch("/staff/{staff_id}/pin")
-def set_staff_pin(db: DbSession, staff_id: int, data: dict = Body(...)):
+@limiter.limit("30/minute")
+def set_staff_pin(request: Request, db: DbSession, staff_id: int, data: dict = Body(...)):
     """Set PIN for a staff member."""
     staff = db.query(StaffUser).filter(StaffUser.id == staff_id).first()
     if not staff:
@@ -1223,7 +1270,8 @@ def set_staff_pin(db: DbSession, staff_id: int, data: dict = Body(...)):
 
 
 @router.post("/staff/{staff_id}/verify-pin")
-def verify_staff_pin(db: DbSession, staff_id: int, data: dict = Body(...)):
+@limiter.limit("30/minute")
+def verify_staff_pin(request: Request, db: DbSession, staff_id: int, data: dict = Body(...)):
     """Verify PIN for a staff member."""
     staff = db.query(StaffUser).filter(StaffUser.id == staff_id).first()
     if not staff:
@@ -1243,7 +1291,8 @@ def verify_staff_pin(db: DbSession, staff_id: int, data: dict = Body(...)):
 
 
 @router.delete("/staff/{staff_id}/pin")
-def remove_staff_pin(db: DbSession, staff_id: int):
+@limiter.limit("30/minute")
+def remove_staff_pin(request: Request, db: DbSession, staff_id: int):
     """Remove PIN from a staff member."""
     staff = db.query(StaffUser).filter(StaffUser.id == staff_id).first()
     if not staff:
@@ -1258,7 +1307,9 @@ def remove_staff_pin(db: DbSession, staff_id: int):
 # ============== Service Deduction Reports ==============
 
 @router.get("/staff/reports/service-deductions")
+@limiter.limit("60/minute")
 def get_service_deduction_report(
+    request: Request,
     db: DbSession,
     start_date: Optional[str] = Query(None),
     end_date: Optional[str] = Query(None),
@@ -1356,7 +1407,8 @@ def get_service_deduction_report(
 
 
 @router.patch("/staff/{staff_id}/commission")
-def update_staff_commission(db: DbSession, staff_id: int, data: dict = Body(...)):
+@limiter.limit("30/minute")
+def update_staff_commission(request: Request, db: DbSession, staff_id: int, data: dict = Body(...)):
     """Update commission and service fee settings for a staff member."""
     staff = db.query(StaffUser).filter(StaffUser.id == staff_id).first()
     if not staff:
@@ -1386,7 +1438,9 @@ def update_staff_commission(db: DbSession, staff_id: int, data: dict = Body(...)
 
 
 @router.get("/staff/{staff_id}/earnings-summary")
+@limiter.limit("60/minute")
 def get_staff_earnings_summary(
+    request: Request,
     db: DbSession,
     staff_id: int,
     period: str = Query("month"),

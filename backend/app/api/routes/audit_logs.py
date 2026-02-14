@@ -3,10 +3,11 @@
 from datetime import datetime, timedelta, timezone
 from typing import List, Optional
 
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, Query, Request
 from pydantic import BaseModel
 from sqlalchemy import func
 
+from app.core.rate_limit import limiter
 from app.db.session import DbSession
 from app.models.operations import AuditLogEntry
 
@@ -55,7 +56,9 @@ def _row_to_audit_log(entry: AuditLogEntry) -> AuditLog:
 
 
 @router.get("/")
+@limiter.limit("60/minute")
 async def get_audit_logs(
+    request: Request,
     db: DbSession,
     action: str = Query(None),
     entity_type: str = Query(None),
@@ -83,7 +86,8 @@ async def get_audit_logs(
 
 
 @router.get("/summary")
-async def get_audit_summary(db: DbSession, period: str = Query("today")):
+@limiter.limit("60/minute")
+async def get_audit_summary(request: Request, db: DbSession, period: str = Query("today")):
     """Get audit summary for a period."""
     base_query = db.query(AuditLogEntry)
 
@@ -129,7 +133,8 @@ async def get_audit_summary(db: DbSession, period: str = Query("today")):
 
 
 @router.get("/actions")
-async def get_action_types(db: DbSession):
+@limiter.limit("60/minute")
+async def get_action_types(request: Request, db: DbSession):
     """Get available action types."""
     rows = (
         db.query(AuditLogEntry.action)
@@ -142,7 +147,8 @@ async def get_action_types(db: DbSession):
 
 
 @router.get("/entity-types")
-async def get_entity_types(db: DbSession):
+@limiter.limit("60/minute")
+async def get_entity_types(request: Request, db: DbSession):
     """Get available entity types."""
     rows = (
         db.query(AuditLogEntry.entity_type)

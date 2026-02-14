@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
 import { API_URL } from '@/lib/api';
 
+import { toast } from '@/lib/toast';
 interface Badge {
   id: string;
   name: string;
@@ -204,11 +205,11 @@ export default function MarketingGamificationPage() {
         });
       } else {
         const error = await response.json();
-        alert(error.detail || 'Error creating badge');
+        toast.error(error.detail || 'Error creating badge');
       }
     } catch (error) {
       console.error('Error creating badge:', error);
-      alert('Error creating badge');
+      toast.error('Error creating badge');
     }
   };
 
@@ -243,11 +244,11 @@ export default function MarketingGamificationPage() {
         });
       } else {
         const error = await response.json();
-        alert(error.detail || 'Error creating challenge');
+        toast.error(error.detail || 'Error creating challenge');
       }
     } catch (error) {
       console.error('Error creating challenge:', error);
-      alert('Error creating challenge');
+      toast.error('Error creating challenge');
     }
   };
 
@@ -265,11 +266,11 @@ export default function MarketingGamificationPage() {
         if (response.ok) {
           loadGamificationData();
         } else {
-          alert('Error deleting badge');
+          toast.error('Error deleting badge');
         }
       } catch (error) {
         console.error('Error deleting badge:', error);
-        alert('Error deleting badge');
+        toast.error('Error deleting badge');
       }
     }
   };
@@ -288,11 +289,11 @@ export default function MarketingGamificationPage() {
         if (response.ok) {
           loadGamificationData();
         } else {
-          alert('Error deleting challenge');
+          toast.error('Error deleting challenge');
         }
       } catch (error) {
         console.error('Error deleting challenge:', error);
-        alert('Error deleting challenge');
+        toast.error('Error deleting challenge');
       }
     }
   };
@@ -310,11 +311,11 @@ export default function MarketingGamificationPage() {
       if (response.ok) {
         loadGamificationData();
       } else {
-        alert('Error toggling badge status');
+        toast.error('Error toggling badge status');
       }
     } catch (error) {
       console.error('Error toggling badge status:', error);
-      alert('Error toggling badge status');
+      toast.error('Error toggling badge status');
     }
   };
 
@@ -331,11 +332,11 @@ export default function MarketingGamificationPage() {
       if (response.ok) {
         loadGamificationData();
       } else {
-        alert('Error toggling challenge status');
+        toast.error('Error toggling challenge status');
       }
     } catch (error) {
       console.error('Error toggling challenge status:', error);
-      alert('Error toggling challenge status');
+      toast.error('Error toggling challenge status');
     }
   };
 

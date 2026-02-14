@@ -2,9 +2,10 @@
 
 from typing import List, Optional
 from datetime import date, timezone
-from fastapi import APIRouter, HTTPException, UploadFile, File, Query
+from fastapi import APIRouter, HTTPException, UploadFile, File, Query, Request
 
 from app.db.session import DbSession
+from app.core.rate_limit import limiter
 from app.models.invoice import Invoice, InvoiceLine, GLCode, PriceAlert, PriceHistory
 from app.services.invoice_service import InvoiceOCRService, APAutomationService, PriceTrackingService
 from app.schemas.invoice import (
@@ -19,7 +20,8 @@ router = APIRouter()
 # ==================== Stats & Summary ====================
 
 @router.get("/stats")
-def get_invoice_stats(db: DbSession):
+@limiter.limit("60/minute")
+def get_invoice_stats(request: Request, db: DbSession):
     """Get invoice statistics for dashboard."""
     from sqlalchemy import func
     from datetime import datetime
@@ -75,7 +77,8 @@ def get_invoice_stats(db: DbSession):
 
 
 @router.get("/suppliers")
-def get_invoice_suppliers(db: DbSession):
+@limiter.limit("60/minute")
+def get_invoice_suppliers(request: Request, db: DbSession):
     """Get suppliers that have invoices."""
     from sqlalchemy import func
     from app.models.supplier import Supplier
@@ -105,7 +108,9 @@ def get_invoice_suppliers(db: DbSession):
 # ==================== Invoice CRUD ====================
 
 @router.get("/", response_model=List[InvoiceResponse])
+@limiter.limit("60/minute")
 def list_invoices(
+    request: Request,
     db: DbSession,
     supplier_id: Optional[int] = None,
     status: Optional[str] = None,
@@ -130,7 +135,9 @@ def list_invoices(
 
 
 @router.get("/pending", response_model=List[InvoiceResponse])
+@limiter.limit("60/minute")
 def list_pending_invoices(
+    request: Request,
     db: DbSession,
     skip: int = 0,
     limit: int = 100,
@@ -143,7 +150,9 @@ def list_pending_invoices(
 
 
 @router.get("/overdue", response_model=List[InvoiceResponse])
+@limiter.limit("60/minute")
 def list_overdue_invoices(
+    request: Request,
     db: DbSession,
     skip: int = 0,
     limit: int = 100,
@@ -159,7 +168,8 @@ def list_overdue_invoices(
 
 
 @router.get("/{invoice_id}", response_model=InvoiceResponse)
-def get_invoice(db: DbSession, invoice_id: int):
+@limiter.limit("60/minute")
+def get_invoice(request: Request, db: DbSession, invoice_id: int):
     """Get invoice by ID."""
     invoice = db.query(Invoice).filter(Invoice.id == invoice_id).first()
     if not invoice:
@@ -168,7 +178,8 @@ def get_invoice(db: DbSession, invoice_id: int):
 
 
 @router.post("/", response_model=InvoiceResponse)
-def create_invoice(db: DbSession, invoice: InvoiceCreate):
+@limiter.limit("30/minute")
+def create_invoice(request: Request, db: DbSession, invoice: InvoiceCreate):
     """Create a new invoice manually."""
     # Map schema fields to model fields
     invoice_data = invoice.model_dump(exclude={"lines"})
@@ -195,7 +206,9 @@ def create_invoice(db: DbSession, invoice: InvoiceCreate):
 
 
 @router.put("/{invoice_id}", response_model=InvoiceResponse)
+@limiter.limit("30/minute")
 def update_invoice(
+    request: Request,
     db: DbSession,
     invoice_id: int,
     invoice: InvoiceUpdate,
@@ -214,7 +227,8 @@ def update_invoice(
 
 
 @router.delete("/{invoice_id}")
-def delete_invoice(db: DbSession, invoice_id: int):
+@limiter.limit("30/minute")
+def delete_invoice(request: Request, db: DbSession, invoice_id: int):
     """Delete an invoice."""
     db_invoice = db.query(Invoice).filter(Invoice.id == invoice_id).first()
     if not db_invoice:
@@ -228,7 +242,9 @@ def delete_invoice(db: DbSession, invoice_id: int):
 # Invoice OCR
 
 @router.post("/ocr/upload", response_model=InvoiceOCRResponse)
+@limiter.limit("30/minute")
 async def upload_invoice_image(
+    request: Request,
     db: DbSession,
     file: UploadFile = File(...),
     supplier_id: Optional[int] = None,
@@ -255,7 +271,9 @@ async def upload_invoice_image(
 
 
 @router.post("/ocr/url", response_model=InvoiceOCRResponse)
+@limiter.limit("30/minute")
 async def process_invoice_url(
+    request: Request,
     db: DbSession,
     image_url: str,
     supplier_id: Optional[int] = None,
@@ -279,7 +297,9 @@ async def process_invoice_url(
 # AP Approval Workflow
 
 @router.post("/{invoice_id}/approve", response_model=InvoiceResponse)
+@limiter.limit("30/minute")
 def approve_invoice(
+    request: Request,
     db: DbSession,
     invoice_id: int,
     approver_id: int = Query(default=1),
@@ -296,7 +316,9 @@ def approve_invoice(
 
 
 @router.post("/{invoice_id}/reject", response_model=InvoiceResponse)
+@limiter.limit("30/minute")
 def reject_invoice(
+    request: Request,
     db: DbSession,
     invoice_id: int,
     approver_id: int = Query(default=1),
@@ -313,7 +335,8 @@ def reject_invoice(
 
 
 @router.get("/{invoice_id}/approvals", response_model=List[APApprovalResponse])
-def get_invoice_approvals(db: DbSession, invoice_id: int):
+@limiter.limit("60/minute")
+def get_invoice_approvals(request: Request, db: DbSession, invoice_id: int):
     """Get approval history for an invoice."""
     invoice = db.query(Invoice).filter(Invoice.id == invoice_id).first()
     if not invoice:
@@ -341,13 +364,15 @@ def get_invoice_approvals(db: DbSession, invoice_id: int):
 # GL Codes
 
 @router.get("/gl-codes/", response_model=List[GLCodeResponse])
-def list_gl_codes(db: DbSession):
+@limiter.limit("60/minute")
+def list_gl_codes(request: Request, db: DbSession):
     """List all GL codes."""
     return db.query(GLCode).filter(GLCode.is_active == True).all()
 
 
 @router.post("/gl-codes/", response_model=GLCodeResponse)
-def create_gl_code(db: DbSession, gl_code: GLCodeCreate):
+@limiter.limit("30/minute")
+def create_gl_code(request: Request, db: DbSession, gl_code: GLCodeCreate):
     """Create a new GL code."""
     existing = db.query(GLCode).filter(GLCode.code == gl_code.code).first()
     if existing:
@@ -362,7 +387,9 @@ def create_gl_code(db: DbSession, gl_code: GLCodeCreate):
 # Price Tracking
 
 @router.get("/price-alerts/", response_model=List[PriceAlertResponse])
+@limiter.limit("60/minute")
 def list_price_alerts(
+    request: Request,
     db: DbSession,
     active: Optional[bool] = None,
 ):
@@ -374,7 +401,9 @@ def list_price_alerts(
 
 
 @router.post("/price-alerts/{alert_id}/acknowledge")
+@limiter.limit("30/minute")
 def acknowledge_price_alert(
+    request: Request,
     db: DbSession,
     alert_id: int,
     user_id: int = Query(...),
@@ -392,7 +421,9 @@ def acknowledge_price_alert(
 
 
 @router.get("/price-history/{product_id}", response_model=List[PriceHistoryResponse])
+@limiter.limit("60/minute")
 def get_price_history(
+    request: Request,
     db: DbSession,
     product_id: int,
     supplier_id: Optional[int] = None,
@@ -404,7 +435,9 @@ def get_price_history(
 
 
 @router.get("/price-trends/{product_id}", response_model=PriceTrendResponse)
+@limiter.limit("60/minute")
 def get_price_trends(
+    request: Request,
     db: DbSession,
     product_id: int,
     days: int = 30,

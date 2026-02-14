@@ -1,0 +1,7 @@
+'use client';
+import { ReactNode } from 'react';
+import { ErrorBoundary } from '@/components/ErrorBoundary';
+
+export default function MenuLayout({ children }: { children: ReactNode }) {
+  return <ErrorBoundary>{children}</ErrorBoundary>;
+}

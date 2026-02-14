@@ -11,10 +11,11 @@ Provides endpoints for:
 
 from typing import Optional, List
 from datetime import datetime, timezone
-from fastapi import APIRouter, HTTPException, Body, Query
+from fastapi import APIRouter, HTTPException, Body, Query, Request
 from pydantic import BaseModel
 
 from app.db.session import DbSession
+from app.core.rate_limit import limiter
 from app.services.biometric_service import (
     BiometricService,
     AuthMethod,
@@ -61,13 +62,15 @@ class SetScheduleRequest(BaseModel):
 # ============== Device Endpoints ==============
 
 @router.get("/device/status")
-def get_device_status(db: DbSession):
+@limiter.limit("60/minute")
+def get_device_status(request: Request, db: DbSession):
     """Get biometric device status."""
     return BiometricService.get_device_status()
 
 
 @router.get("/device/types")
-def list_device_types(db: DbSession):
+@limiter.limit("60/minute")
+def list_device_types(request: Request, db: DbSession):
     """List available device types."""
     return {
         "device_types": [
@@ -112,7 +115,9 @@ def list_device_types(db: DbSession):
 
 
 @router.post("/device/configure")
+@limiter.limit("30/minute")
 def configure_device(
+    request: Request,
     db: DbSession,
     device_type: str = Body(...),
     connection_params: Optional[dict] = Body(None),
@@ -127,7 +132,8 @@ def configure_device(
 
 
 @router.post("/device/test")
-def test_device_connection(db: DbSession):
+@limiter.limit("30/minute")
+def test_device_connection(request: Request, db: DbSession):
     """Test connection to biometric device."""
     status = BiometricService.get_device_status()
 
@@ -142,7 +148,8 @@ def test_device_connection(db: DbSession):
 # ============== Fingerprint Endpoints ==============
 
 @router.post("/fingerprint/enroll")
-def enroll_fingerprint(db: DbSession, request: FingerprintEnrollRequest):
+@limiter.limit("30/minute")
+def enroll_fingerprint(request: Request, db: DbSession, data: FingerprintEnrollRequest):
     """
     Enroll a fingerprint for a staff member.
 
@@ -150,16 +157,17 @@ def enroll_fingerprint(db: DbSession, request: FingerprintEnrollRequest):
     With real hardware, template_data comes from the fingerprint scanner.
     """
     result = BiometricService.enroll_fingerprint(
-        staff_id=request.staff_id,
-        template_data=request.template_data or "",
-        quality_score=request.quality_score,
+        staff_id=data.staff_id,
+        template_data=data.template_data or "",
+        quality_score=data.quality_score,
     )
 
     return result
 
 
 @router.post("/fingerprint/verify")
-def verify_fingerprint(db: DbSession, request: VerifyRequest):
+@limiter.limit("30/minute")
+def verify_fingerprint(request: Request, db: DbSession, data: VerifyRequest):
     """
     Verify a fingerprint.
 
@@ -167,15 +175,16 @@ def verify_fingerprint(db: DbSession, request: VerifyRequest):
     With real hardware, actual biometric matching is performed.
     """
     result = BiometricService.verify_fingerprint(
-        template_data=request.data,
-        location_id=request.location_id,
+        template_data=data.data,
+        location_id=data.location_id,
     )
 
     return result
 
 
 @router.delete("/fingerprint/{template_id}")
-def revoke_fingerprint(db: DbSession, template_id: str):
+@limiter.limit("30/minute")
+def revoke_fingerprint(request: Request, db: DbSession, template_id: str):
     """Revoke an enrolled fingerprint."""
     result = BiometricService.revoke_credential(template_id, "fingerprint")
 
@@ -188,36 +197,39 @@ def revoke_fingerprint(db: DbSession, template_id: str):
 # ============== Card Endpoints ==============
 
 @router.post("/card/register")
-def register_card(db: DbSession, request: CardRegisterRequest):
+@limiter.limit("30/minute")
+def register_card(request: Request, db: DbSession, data: CardRegisterRequest):
     """
     Register a card/badge for a staff member.
     """
     result = BiometricService.register_card(
-        staff_id=request.staff_id,
-        card_number=request.card_number,
-        card_type=request.card_type,
-        facility_code=request.facility_code,
-        valid_days=request.valid_days,
+        staff_id=data.staff_id,
+        card_number=data.card_number,
+        card_type=data.card_type,
+        facility_code=data.facility_code,
+        valid_days=data.valid_days,
     )
 
     return result
 
 
 @router.post("/card/verify")
-def verify_card(db: DbSession, request: VerifyRequest):
+@limiter.limit("30/minute")
+def verify_card(request: Request, db: DbSession, data: VerifyRequest):
     """
     Verify a card/badge.
     """
     result = BiometricService.verify_card(
-        card_number=request.data,
-        location_id=request.location_id,
+        card_number=data.data,
+        location_id=data.location_id,
     )
 
     return result
 
 
 @router.delete("/card/{card_id}")
-def revoke_card(db: DbSession, card_id: str):
+@limiter.limit("30/minute")
+def revoke_card(request: Request, db: DbSession, card_id: str):
     """Revoke a registered card."""
     result = BiometricService.revoke_credential(card_id, "card")
 
@@ -230,13 +242,15 @@ def revoke_card(db: DbSession, card_id: str):
 # ============== Staff Credentials ==============
 
 @router.get("/staff/{staff_id}/credentials")
-def get_staff_credentials(db: DbSession, staff_id: int):
+@limiter.limit("60/minute")
+def get_staff_credentials(request: Request, db: DbSession, staff_id: int):
     """Get all enrolled credentials for a staff member."""
     return BiometricService.get_enrolled_credentials(staff_id)
 
 
 @router.post("/staff/{staff_id}/schedule")
-def set_staff_schedule(db: DbSession, staff_id: int, schedules: List[ScheduleItem] = Body(...)):
+@limiter.limit("30/minute")
+def set_staff_schedule(request: Request, db: DbSession, staff_id: int, schedules: List[ScheduleItem] = Body(...)):
     """
     Set access schedule for a staff member.
 
@@ -252,7 +266,9 @@ def set_staff_schedule(db: DbSession, staff_id: int, schedules: List[ScheduleIte
 # ============== Access Log ==============
 
 @router.get("/access-log")
+@limiter.limit("60/minute")
 def get_access_log(
+    request: Request,
     db: DbSession,
     staff_id: Optional[int] = Query(None),
     start_date: Optional[str] = Query(None),
@@ -293,7 +309,9 @@ def get_access_log(
 
 
 @router.get("/access-log/stats")
+@limiter.limit("60/minute")
 def get_access_stats(
+    request: Request,
     db: DbSession,
     days: int = Query(7, ge=1, le=90),
 ):
@@ -328,7 +346,9 @@ def get_access_stats(
 # ============== Quick Actions ==============
 
 @router.post("/clock-in")
+@limiter.limit("30/minute")
 def clock_in(
+    request: Request,
     db: DbSession,
     auth_method: str = Body(...),  # pin, fingerprint, card
     credential: str = Body(...),  # PIN, template data, or card number
@@ -373,7 +393,9 @@ def clock_in(
 
 
 @router.post("/clock-out")
+@limiter.limit("30/minute")
 def clock_out(
+    request: Request,
     db: DbSession,
     auth_method: str = Body(...),
     credential: str = Body(...),

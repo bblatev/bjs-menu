@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { API_URL, getAuthHeaders } from '@/lib/api';
 
+import { toast } from '@/lib/toast';
 interface BarTab {
   id: number;
   tab_number: string;
@@ -158,7 +159,7 @@ export default function BarTabsPage() {
       loadStats();
     } catch (err) {
       console.error('Error creating tab:', err);
-      alert('Failed to create tab');
+      toast.error('Failed to create tab');
     }
   };
 
@@ -185,7 +186,7 @@ export default function BarTabsPage() {
       loadStats();
     } catch (err) {
       console.error('Error closing tab:', err);
-      alert('Failed to close tab');
+      toast.error('Failed to close tab');
     }
   };
 

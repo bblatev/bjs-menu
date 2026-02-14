@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { API_URL, getAuthHeaders, isAuthenticated } from '@/lib/api';
 
+import { toast } from '@/lib/toast';
 interface FraudAlert {
   id: string;
   staff_id: number;
@@ -263,7 +264,7 @@ export default function FraudDetectionPage() {
       ));
     } catch (err) {
       console.error('Error acknowledging alert:', err);
-      alert('Failed to acknowledge alert');
+      toast.error('Failed to acknowledge alert');
     }
   };
 

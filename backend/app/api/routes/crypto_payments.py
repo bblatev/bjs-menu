@@ -2,7 +2,7 @@
 Cryptocurrency Payment API Endpoints
 Square 2025 feature: Bitcoin payments with zero transaction fees
 """
-from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks
+from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks, Request
 from sqlalchemy.orm import Session
 from typing import List, Optional, Dict, Any
 from datetime import datetime, timedelta
@@ -11,6 +11,7 @@ import secrets
 
 from app.db.session import get_db
 from app.core.rbac import get_current_user
+from app.core.rate_limit import limiter
 from app.models import StaffUser, Order
 
 
@@ -162,7 +163,9 @@ def generate_payment_uri(currency: str, address: str, amount: float, payment_id:
 # =============================================================================
 
 @router.post("/wallets", response_model=CryptoWalletResponse)
+@limiter.limit("30/minute")
 async def create_crypto_wallet(
+    request: Request,
     data: CryptoWalletConfig,
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(require_admin)
@@ -193,7 +196,9 @@ async def create_crypto_wallet(
 
 
 @router.get("/wallets", response_model=List[CryptoWalletResponse])
+@limiter.limit("60/minute")
 async def list_crypto_wallets(
+    request: Request,
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(require_manager)
 ):
@@ -207,7 +212,9 @@ async def list_crypto_wallets(
 
 
 @router.put("/wallets/{wallet_id}", response_model=CryptoWalletResponse)
+@limiter.limit("30/minute")
 async def update_crypto_wallet(
+    request: Request,
     wallet_id: int,
     data: CryptoWalletConfig,
     db: Session = Depends(get_db),
@@ -227,7 +234,9 @@ async def update_crypto_wallet(
 
 
 @router.delete("/wallets/{wallet_id}")
+@limiter.limit("30/minute")
 async def delete_crypto_wallet(
+    request: Request,
     wallet_id: int,
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(require_admin)
@@ -246,7 +255,9 @@ async def delete_crypto_wallet(
 
 
 @router.put("/wallets/{wallet_id}/toggle")
+@limiter.limit("30/minute")
 async def toggle_crypto_wallet(
+    request: Request,
     wallet_id: int,
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(require_admin)
@@ -269,7 +280,9 @@ async def toggle_crypto_wallet(
 # =============================================================================
 
 @router.get("/rates", response_model=CryptoRates)
+@limiter.limit("60/minute")
 async def get_crypto_rates(
+    request: Request,
     base_currency: str = "BGN",
     current_user: StaffUser = Depends(get_current_user)
 ):
@@ -296,7 +309,9 @@ async def get_crypto_rates(
 
 
 @router.get("/convert")
+@limiter.limit("60/minute")
 async def convert_currency(
+    request: Request,
     amount: float,
     from_currency: str = "BGN",
     to_currency: str = "BTC",
@@ -330,7 +345,9 @@ async def convert_currency(
 # =============================================================================
 
 @router.post("/payments", response_model=CryptoPaymentResponse)
+@limiter.limit("30/minute")
 async def create_crypto_payment(
+    request: Request,
     data: CryptoPaymentRequest,
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(get_current_user)
@@ -405,7 +422,9 @@ async def create_crypto_payment(
 
 
 @router.get("/payments/{payment_id}", response_model=CryptoPaymentStatus)
+@limiter.limit("60/minute")
 async def get_payment_status(
+    request: Request,
     payment_id: str,
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(get_current_user)
@@ -432,7 +451,9 @@ async def get_payment_status(
 
 
 @router.post("/payments/{payment_id}/check")
+@limiter.limit("30/minute")
 async def check_payment_status(
+    request: Request,
     payment_id: str,
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(get_current_user)
@@ -482,7 +503,9 @@ async def check_payment_status(
 
 
 @router.post("/payments/{payment_id}/cancel")
+@limiter.limit("30/minute")
 async def cancel_payment(
+    request: Request,
     payment_id: str,
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(get_current_user)
@@ -506,7 +529,9 @@ async def cancel_payment(
 # =============================================================================
 
 @router.post("/webhook/{provider}")
+@limiter.limit("30/minute")
 async def handle_payment_webhook(
+    request: Request,
     provider: str,
     payload: Dict[str, Any],
     background_tasks: BackgroundTasks,
@@ -556,7 +581,9 @@ async def handle_payment_webhook(
 # =============================================================================
 
 @router.get("/transactions")
+@limiter.limit("60/minute")
 async def list_crypto_transactions(
+    request: Request,
     currency: Optional[str] = None,
     status: Optional[str] = None,
     skip: int = 0,
@@ -586,7 +613,9 @@ async def list_crypto_transactions(
 
 
 @router.get("/stats")
+@limiter.limit("60/minute")
 async def get_crypto_stats(
+    request: Request,
     days: int = 30,
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(require_manager)
@@ -633,7 +662,9 @@ async def get_crypto_stats(
 # =============================================================================
 
 @router.get("/payments/{payment_id}/qr")
+@limiter.limit("60/minute")
 async def get_payment_qr_code(
+    request: Request,
     payment_id: str,
     size: int = 300,
     db: Session = Depends(get_db),
@@ -680,7 +711,8 @@ async def get_payment_qr_code(
 # =============================================================================
 
 @router.get("/currencies")
-async def get_supported_currencies():
+@limiter.limit("60/minute")
+async def get_supported_currencies(request: Request):
     """Get list of supported cryptocurrencies"""
     return {
         "currencies": [

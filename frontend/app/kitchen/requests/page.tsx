@@ -7,6 +7,7 @@ import { Button, Card, CardBody, Badge } from '@/components/ui';
 
 import { API_URL, getAuthHeaders } from '@/lib/api';
 
+import { toast } from '@/lib/toast';
 interface OrderItem {
   name: string;
   quantity: number;
@@ -82,7 +83,7 @@ export default function KitchenRequestsPage() {
         setRequests(requests.filter((r) => r.id !== requestId));
       } else {
         const err = await response.json();
-        alert(err.detail || 'Failed to confirm request');
+        toast.error(err.detail || 'Failed to confirm request');
       }
     } catch (err) {
       console.error('Error confirming request:', err);
@@ -109,7 +110,7 @@ export default function KitchenRequestsPage() {
         setRejectReason('');
       } else {
         const err = await response.json();
-        alert(err.detail || 'Failed to reject request');
+        toast.error(err.detail || 'Failed to reject request');
       }
     } catch (err) {
       console.error('Error rejecting request:', err);

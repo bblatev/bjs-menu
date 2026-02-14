@@ -8,6 +8,30 @@ import { ErrorAlert } from '@/components/ui/ErrorAlert';
 
 import { API_URL, getAuthHeaders } from '@/lib/api';
 
+/** Escape HTML special characters to prevent XSS in template preview */
+function escapeHtml(str: string): string {
+  return str
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+/** Validate and sanitize URL - only allow http/https/mailto protocols */
+function sanitizeUrl(url: string): string {
+  if (!url) return '#';
+  try {
+    const parsed = new URL(url);
+    if (['http:', 'https:', 'mailto:'].includes(parsed.protocol)) {
+      return parsed.href;
+    }
+  } catch {
+    // not a valid URL
+  }
+  return '#';
+}
+
 interface TemplateBlock {
   block_id: string;
   type: string;
@@ -116,27 +140,27 @@ export default function TemplateBuilderPage() {
       case 'header':
         return `
           <div style="text-align: center; padding: 20px 0; border-bottom: 1px solid #eee;">
-            ${content.logo_url ? `<img src="${content.logo_url}" alt="Logo" style="max-width: 150px;">` : ''}
-            <h1 style="margin: 10px 0; color: #333;">${content.title || 'Header Title'}</h1>
+            ${content.logo_url ? `<img src="${sanitizeUrl(content.logo_url)}" alt="Logo" style="max-width: 150px;">` : ''}
+            <h1 style="margin: 10px 0; color: #333;">${escapeHtml(content.title || 'Header Title')}</h1>
           </div>
         `;
       case 'text':
         return `
           <div style="padding: 15px 0; color: #444; line-height: 1.6;">
-            ${(content.text || 'Your text content here...').replace(/\n/g, '<br>')}
+            ${escapeHtml(content.text || 'Your text content here...').replace(/\n/g, '<br>')}
           </div>
         `;
       case 'image':
         return `
           <div style="text-align: center; padding: 15px 0;">
-            <img src="${content.url || 'https://via.placeholder.com/600x300'}" alt="${content.alt || 'Image'}" style="max-width: 100%; border-radius: 8px;">
+            <img src="${sanitizeUrl(content.url || 'https://via.placeholder.com/600x300')}" alt="${escapeHtml(content.alt || 'Image')}" style="max-width: 100%; border-radius: 8px;">
           </div>
         `;
       case 'button':
         return `
           <div style="text-align: center; padding: 20px 0;">
-            <a href="${content.url || '#'}" style="display: inline-block; padding: 12px 30px; background: #3b82f6; color: white; text-decoration: none; border-radius: 6px; font-weight: bold;">
-              ${content.text || 'Click Here'}
+            <a href="${sanitizeUrl(content.url || '#')}" style="display: inline-block; padding: 12px 30px; background: #3b82f6; color: white; text-decoration: none; border-radius: 6px; font-weight: bold;">
+              ${escapeHtml(content.text || 'Click Here')}
             </a>
           </div>
         `;
@@ -145,20 +169,20 @@ export default function TemplateBuilderPage() {
       case 'coupon':
         return `
           <div style="border: 2px dashed #f59e0b; padding: 20px; text-align: center; background: #fef3c7; border-radius: 8px; margin: 15px 0;">
-            <div style="font-size: 24px; font-weight: bold; color: #f59e0b;">${content.discount || '10% OFF'}</div>
-            <div style="margin: 10px 0; color: #666;">${content.description || 'Your next order'}</div>
+            <div style="font-size: 24px; font-weight: bold; color: #f59e0b;">${escapeHtml(content.discount || '10% OFF')}</div>
+            <div style="margin: 10px 0; color: #666;">${escapeHtml(content.description || 'Your next order')}</div>
             <div style="font-size: 20px; font-weight: bold; letter-spacing: 3px; background: white; padding: 10px; border-radius: 4px; margin: 10px 0;">
-              ${content.code || 'SAVE10'}
+              ${escapeHtml(content.code || 'SAVE10')}
             </div>
-            <div style="font-size: 12px; color: #888;">Expires: ${content.expires || '12/31/2026'}</div>
+            <div style="font-size: 12px; color: #888;">Expires: ${escapeHtml(content.expires || '12/31/2026')}</div>
           </div>
         `;
       case 'footer':
         return `
           <div style="text-align: center; padding: 20px 0; color: #888; font-size: 12px; border-top: 1px solid #eee; margin-top: 20px;">
-            <p>${content.address || '123 Restaurant St, City'}</p>
-            <p>${content.phone || '(555) 123-4567'}</p>
-            <p><a href="${content.unsubscribe_url || '#'}" style="color: #888;">Unsubscribe</a></p>
+            <p>${escapeHtml(content.address || '123 Restaurant St, City')}</p>
+            <p>${escapeHtml(content.phone || '(555) 123-4567')}</p>
+            <p><a href="${sanitizeUrl(content.unsubscribe_url || '#')}" style="color: #888;">Unsubscribe</a></p>
           </div>
         `;
       default:

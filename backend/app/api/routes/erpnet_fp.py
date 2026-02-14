@@ -2,7 +2,8 @@
 ErpNet.FP API Endpoints
 JSON REST API for Datecs Blue Cash 50 and other fiscal printers
 """
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
+from app.core.rate_limit import limiter
 from sqlalchemy.orm import Session
 from typing import List, Optional
 from pydantic import BaseModel
@@ -43,7 +44,9 @@ class CashOperationRequest(BaseModel):
 
 # Endpoints
 @router.get("/status")
+@limiter.limit("60/minute")
 async def get_fiscal_status(
+    request: Request,
     current_user: StaffUser = Depends(get_current_user)
 ):
     """Check ErpNet.FP server and printer status"""
@@ -53,7 +56,9 @@ async def get_fiscal_status(
 
 
 @router.get("/printers")
+@limiter.limit("60/minute")
 async def get_printers(
+    request: Request,
     current_user: StaffUser = Depends(get_current_user)
 ):
     """Get list of available fiscal printers"""
@@ -63,8 +68,10 @@ async def get_printers(
 
 
 @router.post("/receipt")
+@limiter.limit("30/minute")
 async def print_fiscal_receipt(
-    request: PrintReceiptRequest,
+    request: Request,
+    body: PrintReceiptRequest = None,
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(get_current_user)
 ):
@@ -78,9 +85,9 @@ async def print_fiscal_receipt(
     items = []
     payments = []
 
-    if request.order_id:
+    if body.order_id:
         # Get order from database
-        order = db.query(Order).filter(Order.id == request.order_id).first()
+        order = db.query(Order).filter(Order.id == body.order_id).first()
         if not order:
             raise HTTPException(status_code=404, detail="Order not found")
 
@@ -101,14 +108,14 @@ async def print_fiscal_receipt(
             })
 
         # Default to cash payment for full amount
-        if request.payments:
-            payments = [{"amount": p.amount, "paymentType": p.payment_type} for p in request.payments]
+        if body.payments:
+            payments = [{"amount": p.amount, "paymentType": p.payment_type} for p in body.payments]
         else:
             payments = [{"amount": float(total), "paymentType": "cash"}]
 
-    elif request.items:
+    elif body.items:
         total = Decimal("0")
-        for item in request.items:
+        for item in body.items:
             items.append({
                 "text": item.text[:30],
                 "quantity": item.quantity,
@@ -117,8 +124,8 @@ async def print_fiscal_receipt(
             })
             total += Decimal(str(item.unit_price)) * Decimal(str(item.quantity))
 
-        if request.payments:
-            payments = [{"amount": p.amount, "paymentType": p.payment_type} for p in request.payments]
+        if body.payments:
+            payments = [{"amount": p.amount, "paymentType": p.payment_type} for p in body.payments]
         else:
             payments = [{"amount": float(total), "paymentType": "cash"}]
     else:
@@ -130,15 +137,15 @@ async def print_fiscal_receipt(
     result = await service.print_fiscal_receipt(
         items=items,
         payments=payments,
-        unique_sale_number=request.unique_sale_number
+        unique_sale_number=body.unique_sale_number
     )
 
     if not result.get("success"):
         raise HTTPException(status_code=500, detail=result.get("error", "Print failed"))
 
     # Update order with receipt number
-    if request.order_id and result.get("receipt_number"):
-        order = db.query(Order).filter(Order.id == request.order_id).first()
+    if body.order_id and result.get("receipt_number"):
+        order = db.query(Order).filter(Order.id == body.order_id).first()
         if order:
             order.fiscal_receipt_number = result.get("receipt_number")
             db.commit()
@@ -147,7 +154,9 @@ async def print_fiscal_receipt(
 
 
 @router.post("/receipt/order/{order_id}")
+@limiter.limit("30/minute")
 async def print_order_receipt(
+    request: Request,
     order_id: int,
     payment_type: str = "cash",
     db: Session = Depends(get_db),
@@ -155,7 +164,8 @@ async def print_order_receipt(
 ):
     """Quick print fiscal receipt for an order"""
     return await print_fiscal_receipt(
-        PrintReceiptRequest(
+        request=request,
+        body=PrintReceiptRequest(
             order_id=order_id,
             payments=[Payment(amount=0, payment_type=payment_type)]  # Amount will be calculated
         ),
@@ -165,7 +175,9 @@ async def print_order_receipt(
 
 
 @router.post("/x-report")
+@limiter.limit("30/minute")
 async def print_x_report(
+    request: Request,
     current_user: StaffUser = Depends(get_current_user)
 ):
     """Print X-report (daily summary without closing)"""
@@ -179,7 +191,9 @@ async def print_x_report(
 
 
 @router.post("/z-report")
+@limiter.limit("30/minute")
 async def print_z_report(
+    request: Request,
     current_user: StaffUser = Depends(get_current_user)
 ):
     """Print Z-report (daily closing report)"""
@@ -193,13 +207,15 @@ async def print_z_report(
 
 
 @router.post("/cash-in")
+@limiter.limit("30/minute")
 async def cash_in(
-    request: CashOperationRequest,
+    request: Request,
+    body: CashOperationRequest = None,
     current_user: StaffUser = Depends(get_current_user)
 ):
     """Cash in operation (service deposit)"""
     service = get_erpnet_fp_service()
-    result = await service.cash_in(Decimal(str(request.amount)))
+    result = await service.cash_in(Decimal(str(body.amount)))
 
     if not result.get("ok", True):
         raise HTTPException(status_code=500, detail=result.get("error", "Cash in failed"))
@@ -208,13 +224,15 @@ async def cash_in(
 
 
 @router.post("/cash-out")
+@limiter.limit("30/minute")
 async def cash_out(
-    request: CashOperationRequest,
+    request: Request,
+    body: CashOperationRequest = None,
     current_user: StaffUser = Depends(get_current_user)
 ):
     """Cash out operation (service withdraw)"""
     service = get_erpnet_fp_service()
-    result = await service.cash_out(Decimal(str(request.amount)))
+    result = await service.cash_out(Decimal(str(body.amount)))
 
     if not result.get("ok", True):
         raise HTTPException(status_code=500, detail=result.get("error", "Cash out failed"))
@@ -223,7 +241,9 @@ async def cash_out(
 
 
 @router.post("/duplicate")
+@limiter.limit("30/minute")
 async def print_duplicate(
+    request: Request,
     current_user: StaffUser = Depends(get_current_user)
 ):
     """Print duplicate of last receipt"""

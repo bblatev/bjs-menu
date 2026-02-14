@@ -4,13 +4,14 @@ from datetime import datetime
 from decimal import Decimal
 from typing import Optional, List
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Query, Request
 from pydantic import BaseModel
 from sqlalchemy import select
 
 from app.db.session import DbSession
 from app.models.operations import Promotion as PromotionModel
 from app.core.rbac import CurrentUser
+from app.core.rate_limit import limiter
 
 router = APIRouter()
 
@@ -80,7 +81,9 @@ def _serialize_promotion(p: PromotionModel) -> dict:
 # ---- Endpoints ----
 
 @router.get("/")
+@limiter.limit("60/minute")
 async def get_promotions(
+    request: Request,
     db: DbSession,
     active: Optional[bool] = None,
 ):
@@ -93,7 +96,8 @@ async def get_promotions(
 
 
 @router.get("/{promotion_id}")
-async def get_promotion(promotion_id: str, db: DbSession):
+@limiter.limit("60/minute")
+async def get_promotion(request: Request, promotion_id: str, db: DbSession):
     """Get a specific promotion."""
     promo = db.get(PromotionModel, int(promotion_id))
     if not promo:
@@ -102,7 +106,8 @@ async def get_promotion(promotion_id: str, db: DbSession):
 
 
 @router.post("/")
-async def create_promotion(data: dict, db: DbSession):
+@limiter.limit("30/minute")
+async def create_promotion(request: Request, data: dict, db: DbSession):
     """Create a promotion."""
     promo = PromotionModel(
         name=data.get("name", ""),
@@ -125,7 +130,8 @@ async def create_promotion(data: dict, db: DbSession):
 
 
 @router.put("/{promotion_id}")
-async def update_promotion(promotion_id: str, data: dict, db: DbSession):
+@limiter.limit("30/minute")
+async def update_promotion(request: Request, promotion_id: str, data: dict, db: DbSession):
     """Update a promotion."""
     promo = db.get(PromotionModel, int(promotion_id))
     if not promo:
@@ -156,7 +162,8 @@ async def update_promotion(promotion_id: str, data: dict, db: DbSession):
 
 
 @router.patch("/{promotion_id}/toggle-active")
-async def toggle_promotion_active(promotion_id: str, db: DbSession):
+@limiter.limit("30/minute")
+async def toggle_promotion_active(request: Request, promotion_id: str, db: DbSession):
     """Toggle a promotion's active status."""
     promo = db.get(PromotionModel, int(promotion_id))
     if not promo:
@@ -169,7 +176,8 @@ async def toggle_promotion_active(promotion_id: str, db: DbSession):
 
 
 @router.delete("/{promotion_id}")
-async def delete_promotion(promotion_id: str, db: DbSession):
+@limiter.limit("30/minute")
+async def delete_promotion(request: Request, promotion_id: str, db: DbSession):
     """Delete a promotion."""
     promo = db.get(PromotionModel, int(promotion_id))
     if not promo:

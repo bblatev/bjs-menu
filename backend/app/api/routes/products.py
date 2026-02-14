@@ -22,7 +22,9 @@ router = APIRouter()
 
 
 @router.get("/")
+@limiter.limit("60/minute")
 def list_products(
+    request: Request,
     db: DbSession,
     current_user: OptionalCurrentUser = None,
     active_only: bool = Query(True, description="Only show active products"),
@@ -57,7 +59,8 @@ def list_products(
 
 
 @router.get("/by-barcode/{barcode}", response_model=ProductResponse)
-def get_product_by_barcode(barcode: str, db: DbSession, current_user: CurrentUser):
+@limiter.limit("60/minute")
+def get_product_by_barcode(request: Request, barcode: str, db: DbSession, current_user: CurrentUser):
     """Get a product by barcode (EAN/UPC)."""
     product = db.query(Product).filter(Product.barcode == barcode, Product.active == True).first()
     if not product:
@@ -66,7 +69,8 @@ def get_product_by_barcode(barcode: str, db: DbSession, current_user: CurrentUse
 
 
 @router.get("/{product_id}", response_model=ProductResponse)
-def get_product(product_id: int, db: DbSession, current_user: CurrentUser):
+@limiter.limit("60/minute")
+def get_product(request: Request, product_id: int, db: DbSession, current_user: CurrentUser):
     """Get a specific product."""
     product = db.query(Product).filter(Product.id == product_id).first()
     if not product:
@@ -75,18 +79,19 @@ def get_product(product_id: int, db: DbSession, current_user: CurrentUser):
 
 
 @router.post("/", response_model=ProductResponse, status_code=status.HTTP_201_CREATED)
-def create_product(request: ProductCreate, db: DbSession, current_user: RequireManager):
+@limiter.limit("30/minute")
+def create_product(request: Request, product_data: ProductCreate, db: DbSession, current_user: RequireManager):
     """Create a new product (requires Manager role)."""
     # Check for duplicate barcode
-    if request.barcode:
-        existing = db.query(Product).filter(Product.barcode == request.barcode).first()
+    if product_data.barcode:
+        existing = db.query(Product).filter(Product.barcode == product_data.barcode).first()
         if existing:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Product with barcode {request.barcode} already exists",
+                detail=f"Product with barcode {product_data.barcode} already exists",
             )
 
-    product = Product(**request.model_dump())
+    product = Product(**product_data.model_dump())
     db.add(product)
     db.commit()
     db.refresh(product)
@@ -94,8 +99,9 @@ def create_product(request: ProductCreate, db: DbSession, current_user: RequireM
 
 
 @router.put("/{product_id}", response_model=ProductResponse)
+@limiter.limit("30/minute")
 def update_product(
-    product_id: int, request: ProductUpdate, db: DbSession, current_user: RequireManager
+    request: Request, product_id: int, product_data: ProductUpdate, db: DbSession, current_user: RequireManager
 ):
     """Update a product (requires Manager role)."""
     product = db.query(Product).filter(Product.id == product_id).first()
@@ -103,15 +109,15 @@ def update_product(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Product not found")
 
     # Check for duplicate barcode if updating
-    if request.barcode and request.barcode != product.barcode:
-        existing = db.query(Product).filter(Product.barcode == request.barcode).first()
+    if product_data.barcode and product_data.barcode != product.barcode:
+        existing = db.query(Product).filter(Product.barcode == product_data.barcode).first()
         if existing:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Product with barcode {request.barcode} already exists",
+                detail=f"Product with barcode {product_data.barcode} already exists",
             )
 
-    update_data = request.model_dump(exclude_unset=True)
+    update_data = product_data.model_dump(exclude_unset=True)
     for field, value in update_data.items():
         setattr(product, field, value)
 
@@ -216,7 +222,9 @@ def import_products(
 
 
 @router.get("/search/smart")
+@limiter.limit("60/minute")
 def smart_search_products(
+    request: Request,
     q: str = Query(..., min_length=2, description="Search query (barcode, SKU, or name)"),
     limit: int = Query(10, ge=1, le=50),
     db: DbSession = None,
@@ -244,7 +252,9 @@ def smart_search_products(
 
 
 @router.post("/match")
+@limiter.limit("30/minute")
 def match_product(
+    request: Request,
     db: DbSession,
     current_user: CurrentUser,
     barcode: Optional[str] = Query(None, description="Product barcode"),

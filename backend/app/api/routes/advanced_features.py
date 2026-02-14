@@ -4,7 +4,7 @@ from datetime import date, datetime
 from decimal import Decimal
 from typing import List, Optional, Dict, Any
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy.orm import Session
 from app.db.session import get_db
 
@@ -161,6 +161,7 @@ from app.services.advanced import (
     NotificationService,
     TraceabilityService,
 )
+from app.core.rate_limit import limiter
 
 router = APIRouter(prefix="/advanced", tags=["Advanced Features"])
 
@@ -170,7 +171,9 @@ router = APIRouter(prefix="/advanced", tags=["Advanced Features"])
 # ============================================================================
 
 @router.post("/waste-tracking", response_model=WasteTrackingEntryResponse)
+@limiter.limit("30/minute")
 def create_waste_entry(
+    request: Request,
     data: WasteTrackingEntryCreate,
     db: Session = Depends(get_db),
 ):
@@ -180,7 +183,9 @@ def create_waste_entry(
 
 
 @router.get("/waste-tracking/location/{location_id}", response_model=List[WasteTrackingEntryResponse])
+@limiter.limit("60/minute")
 def get_waste_entries(
+    request: Request,
     location_id: int,
     start_date: Optional[date] = None,
     end_date: Optional[date] = None,
@@ -193,7 +198,9 @@ def get_waste_entries(
 
 
 @router.get("/waste-tracking/summary/{location_id}", response_model=WasteSummaryResponse)
+@limiter.limit("60/minute")
 def get_waste_summary(
+    request: Request,
     location_id: int,
     start_date: date,
     end_date: date,
@@ -205,7 +212,9 @@ def get_waste_summary(
 
 
 @router.post("/waste-tracking/forecast/{location_id}", response_model=WasteForecastResponse)
+@limiter.limit("30/minute")
 def generate_waste_forecast(
+    request: Request,
     location_id: int,
     forecast_date: date,
     db: Session = Depends(get_db),
@@ -220,7 +229,9 @@ def generate_waste_forecast(
 # ============================================================================
 
 @router.post("/labor/forecast/{location_id}", response_model=LaborForecastResponse)
+@limiter.limit("30/minute")
 def generate_labor_forecast(
+    request: Request,
     location_id: int,
     forecast_date: date,
     db: Session = Depends(get_db),
@@ -231,7 +242,9 @@ def generate_labor_forecast(
 
 
 @router.get("/labor/forecast/{location_id}/{forecast_date}", response_model=Optional[LaborForecastResponse])
+@limiter.limit("60/minute")
 def get_labor_forecast(
+    request: Request,
     location_id: int,
     forecast_date: date,
     db: Session = Depends(get_db),
@@ -242,7 +255,9 @@ def get_labor_forecast(
 
 
 @router.post("/labor/compliance-rules", response_model=LaborComplianceRuleResponse)
+@limiter.limit("30/minute")
 def create_compliance_rule(
+    request: Request,
     data: LaborComplianceRuleCreate,
     db: Session = Depends(get_db),
 ):
@@ -252,7 +267,9 @@ def create_compliance_rule(
 
 
 @router.get("/labor/violations/{location_id}", response_model=List[LaborComplianceViolationResponse])
+@limiter.limit("60/minute")
 def get_violations(
+    request: Request,
     location_id: int,
     start_date: Optional[date] = None,
     end_date: Optional[date] = None,
@@ -269,7 +286,9 @@ def get_violations(
 # ============================================================================
 
 @router.post("/throttling/config", response_model=KitchenCapacityResponse)
+@limiter.limit("30/minute")
 def create_capacity_config(
+    request: Request,
     data: KitchenCapacityCreate,
     db: Session = Depends(get_db),
 ):
@@ -279,7 +298,9 @@ def create_capacity_config(
 
 
 @router.get("/throttling/status/{location_id}", response_model=ThrottleStatusResponse)
+@limiter.limit("60/minute")
 def get_throttle_status(
+    request: Request,
     location_id: int,
     db: Session = Depends(get_db),
 ):
@@ -301,7 +322,9 @@ def get_throttle_status(
 # ============================================================================
 
 @router.post("/wifi/session", response_model=GuestWifiSessionResponse)
+@limiter.limit("30/minute")
 def create_wifi_session(
+    request: Request,
     data: GuestWifiSessionCreate,
     db: Session = Depends(get_db),
 ):
@@ -311,7 +334,9 @@ def create_wifi_session(
 
 
 @router.get("/wifi/stats/{location_id}", response_model=WifiMarketingStatsResponse)
+@limiter.limit("60/minute")
 def get_wifi_stats(
+    request: Request,
     location_id: int,
     days: int = 30,
     db: Session = Depends(get_db),
@@ -326,7 +351,9 @@ def get_wifi_stats(
 # ============================================================================
 
 @router.post("/experiments", response_model=MenuExperimentResponse)
+@limiter.limit("30/minute")
 def create_experiment(
+    request: Request,
     data: MenuExperimentCreate,
     db: Session = Depends(get_db),
 ):
@@ -336,7 +363,9 @@ def create_experiment(
 
 
 @router.get("/experiments/{experiment_id}/analyze", response_model=ExperimentAnalysisResponse)
+@limiter.limit("60/minute")
 def analyze_experiment(
+    request: Request,
     experiment_id: int,
     db: Session = Depends(get_db),
 ):
@@ -355,7 +384,9 @@ def analyze_experiment(
 # ============================================================================
 
 @router.post("/pricing/rules", response_model=DynamicPricingRuleResponse)
+@limiter.limit("30/minute")
 def create_pricing_rule(
+    request: Request,
     data: DynamicPricingRuleCreate,
     db: Session = Depends(get_db),
 ):
@@ -365,7 +396,9 @@ def create_pricing_rule(
 
 
 @router.get("/pricing/status/{location_id}", response_model=SurgePricingStatusResponse)
+@limiter.limit("60/minute")
 def get_surge_status(
+    request: Request,
     location_id: int,
     db: Session = Depends(get_db),
 ):
@@ -379,7 +412,9 @@ def get_surge_status(
 # ============================================================================
 
 @router.post("/curbside", response_model=CurbsideOrderResponse)
+@limiter.limit("30/minute")
 def create_curbside_order(
+    request: Request,
     data: CurbsideOrderCreate,
     db: Session = Depends(get_db),
 ):
@@ -389,7 +424,9 @@ def create_curbside_order(
 
 
 @router.post("/curbside/{order_id}/arrived", response_model=CurbsideOrderResponse)
+@limiter.limit("30/minute")
 def customer_arrived(
+    request: Request,
     order_id: int,
     data: CurbsideArrivalRequest,
     db: Session = Depends(get_db),
@@ -403,7 +440,9 @@ def customer_arrived(
 
 
 @router.get("/curbside/status/{location_id}", response_model=CurbsideStatusResponse)
+@limiter.limit("60/minute")
 def get_curbside_status(
+    request: Request,
     location_id: int,
     db: Session = Depends(get_db),
 ):
@@ -417,7 +456,9 @@ def get_curbside_status(
 # ============================================================================
 
 @router.post("/delivery/providers", response_model=DeliveryProviderResponse)
+@limiter.limit("30/minute")
 def create_delivery_provider(
+    request: Request,
     data: DeliveryProviderCreate,
     db: Session = Depends(get_db),
 ):
@@ -427,7 +468,9 @@ def create_delivery_provider(
 
 
 @router.get("/delivery/quotes/{location_id}")
+@limiter.limit("60/minute")
 def get_delivery_quotes(
+    request: Request,
     location_id: int,
     address: str,
     distance: float = 3.0,
@@ -439,7 +482,9 @@ def get_delivery_quotes(
 
 
 @router.post("/delivery/dispatch", response_model=DeliveryDispatchResponse)
+@limiter.limit("30/minute")
 def dispatch_delivery(
+    request: Request,
     data: DeliveryDispatchRequest,
     db: Session = Depends(get_db),
 ):
@@ -453,7 +498,9 @@ def dispatch_delivery(
 # ============================================================================
 
 @router.post("/reviews/analyze", response_model=ReviewSentimentResponse)
+@limiter.limit("30/minute")
 def analyze_review(
+    request: Request,
     data: ReviewSentimentCreate,
     db: Session = Depends(get_db),
 ):
@@ -463,7 +510,9 @@ def analyze_review(
 
 
 @router.get("/reviews/summary/{location_id}", response_model=SentimentSummaryResponse)
+@limiter.limit("60/minute")
 def get_sentiment_summary(
+    request: Request,
     location_id: int,
     days: int = 30,
     db: Session = Depends(get_db),
@@ -474,7 +523,9 @@ def get_sentiment_summary(
 
 
 @router.get("/reviews/{review_id}/suggest-response", response_model=AIResponseSuggestion)
+@limiter.limit("60/minute")
 def suggest_response(
+    request: Request,
     review_id: int,
     db: Session = Depends(get_db),
 ):
@@ -493,7 +544,9 @@ def suggest_response(
 # ============================================================================
 
 @router.post("/gift-cards/programs", response_model=GiftCardProgramResponse)
+@limiter.limit("30/minute")
 def create_gift_card_program(
+    request: Request,
     data: GiftCardProgramCreate,
     db: Session = Depends(get_db),
 ):
@@ -503,7 +556,9 @@ def create_gift_card_program(
 
 
 @router.post("/gift-cards/purchase", response_model=GiftCardResponse)
+@limiter.limit("30/minute")
 def purchase_gift_card(
+    request: Request,
     data: GiftCardCreate,
     db: Session = Depends(get_db),
 ):
@@ -516,7 +571,9 @@ def purchase_gift_card(
 
 
 @router.get("/gift-cards/{card_number}/balance", response_model=GiftCardBalanceResponse)
+@limiter.limit("60/minute")
 def check_gift_card_balance(
+    request: Request,
     card_number: str,
     pin: Optional[str] = None,
     db: Session = Depends(get_db),
@@ -530,7 +587,9 @@ def check_gift_card_balance(
 
 
 @router.post("/gift-cards/redeem")
+@limiter.limit("30/minute")
 def redeem_gift_card(
+    request: Request,
     data: GiftCardRedemptionRequest,
     db: Session = Depends(get_db),
 ):
@@ -547,7 +606,9 @@ def redeem_gift_card(
 # ============================================================================
 
 @router.post("/tips/config", response_model=TipPoolConfigurationResponse)
+@limiter.limit("30/minute")
 def create_tip_pool_config(
+    request: Request,
     data: TipPoolConfigurationCreate,
     db: Session = Depends(get_db),
 ):
@@ -557,7 +618,9 @@ def create_tip_pool_config(
 
 
 @router.post("/tips/calculate", response_model=TipCalculationResponse)
+@limiter.limit("30/minute")
 def calculate_tip_distribution(
+    request: Request,
     data: TipCalculationRequest,
     db: Session = Depends(get_db),
 ):
@@ -575,7 +638,9 @@ def calculate_tip_distribution(
 # ============================================================================
 
 @router.post("/cross-sell/rules", response_model=CrossSellRuleResponse)
+@limiter.limit("30/minute")
 def create_cross_sell_rule(
+    request: Request,
     data: CrossSellRuleCreate,
     db: Session = Depends(get_db),
 ):
@@ -585,7 +650,9 @@ def create_cross_sell_rule(
 
 
 @router.post("/cross-sell/recommendations", response_model=CrossSellRecommendationResponse)
+@limiter.limit("30/minute")
 def get_cross_sell_recommendations(
+    request: Request,
     data: CrossSellRecommendationRequest,
     db: Session = Depends(get_db),
 ):
@@ -595,7 +662,9 @@ def get_cross_sell_recommendations(
 
 
 @router.get("/cross-sell/performance", response_model=CrossSellPerformanceResponse)
+@limiter.limit("60/minute")
 def get_cross_sell_performance(
+    request: Request,
     location_id: Optional[int] = None,
     days: int = 30,
     db: Session = Depends(get_db),
@@ -610,7 +679,9 @@ def get_cross_sell_performance(
 # ============================================================================
 
 @router.post("/journey/event", response_model=CustomerJourneyEventResponse)
+@limiter.limit("30/minute")
 def track_journey_event(
+    request: Request,
     data: CustomerJourneyEventCreate,
     db: Session = Depends(get_db),
 ):
@@ -620,7 +691,9 @@ def track_journey_event(
 
 
 @router.get("/journey/funnel", response_model=FunnelAnalysisResponse)
+@limiter.limit("60/minute")
 def get_funnel_analysis(
+    request: Request,
     location_id: Optional[int] = None,
     start_date: Optional[date] = None,
     end_date: Optional[date] = None,
@@ -637,7 +710,9 @@ def get_funnel_analysis(
 # ============================================================================
 
 @router.post("/shelf-life/config", response_model=ProductShelfLifeResponse)
+@limiter.limit("30/minute")
 def create_shelf_life_config(
+    request: Request,
     data: ProductShelfLifeCreate,
     db: Session = Depends(get_db),
 ):
@@ -647,7 +722,9 @@ def create_shelf_life_config(
 
 
 @router.post("/shelf-life/batch", response_model=InventoryBatchResponse)
+@limiter.limit("30/minute")
 def create_inventory_batch(
+    request: Request,
     data: InventoryBatchCreate,
     db: Session = Depends(get_db),
 ):
@@ -657,7 +734,9 @@ def create_inventory_batch(
 
 
 @router.get("/shelf-life/summary/{location_id}", response_model=ExpirationSummaryResponse)
+@limiter.limit("60/minute")
 def get_expiration_summary(
+    request: Request,
     location_id: int,
     db: Session = Depends(get_db),
 ):
@@ -671,7 +750,9 @@ def get_expiration_summary(
 # ============================================================================
 
 @router.post("/prep-lists/generate", response_model=PrepListGenerationResponse)
+@limiter.limit("30/minute")
 def generate_prep_list(
+    request: Request,
     data: PrepListGenerationRequest,
     db: Session = Depends(get_db),
 ):
@@ -686,7 +767,9 @@ def generate_prep_list(
 
 
 @router.get("/prep-lists/{location_id}", response_model=List[PrepListResponse])
+@limiter.limit("60/minute")
 def get_prep_lists(
+    request: Request,
     location_id: int,
     prep_date: Optional[date] = None,
     status: Optional[str] = None,
@@ -702,7 +785,9 @@ def get_prep_lists(
 # ============================================================================
 
 @router.post("/kitchen/stations", response_model=KitchenStationResponse)
+@limiter.limit("30/minute")
 def create_kitchen_station(
+    request: Request,
     data: KitchenStationCreate,
     db: Session = Depends(get_db),
 ):
@@ -712,7 +797,9 @@ def create_kitchen_station(
 
 
 @router.get("/kitchen/summary/{location_id}", response_model=KitchenLoadSummaryResponse)
+@limiter.limit("60/minute")
 def get_kitchen_summary(
+    request: Request,
     location_id: int,
     db: Session = Depends(get_db),
 ):
@@ -726,7 +813,9 @@ def get_kitchen_summary(
 # ============================================================================
 
 @router.post("/wait-time/predict", response_model=WaitTimePredictionResponse)
+@limiter.limit("30/minute")
 def predict_wait_time(
+    request: Request,
     data: WaitTimePredictionRequest,
     db: Session = Depends(get_db),
 ):
@@ -736,7 +825,9 @@ def predict_wait_time(
 
 
 @router.get("/wait-time/accuracy/{location_id}", response_model=WaitTimePredictionAccuracyResponse)
+@limiter.limit("60/minute")
 def get_wait_time_accuracy(
+    request: Request,
     location_id: int,
     days: int = 7,
     db: Session = Depends(get_db),
@@ -751,7 +842,9 @@ def get_wait_time_accuracy(
 # ============================================================================
 
 @router.post("/allergens/profile", response_model=AllergenProfileResponse)
+@limiter.limit("30/minute")
 def create_allergen_profile(
+    request: Request,
     data: AllergenProfileCreate,
     db: Session = Depends(get_db),
 ):
@@ -761,7 +854,9 @@ def create_allergen_profile(
 
 
 @router.post("/allergens/check", response_model=AllergenCheckResponse)
+@limiter.limit("30/minute")
 def check_allergens(
+    request: Request,
     data: AllergenCheckRequest,
     db: Session = Depends(get_db),
 ):
@@ -775,7 +870,9 @@ def check_allergens(
 # ============================================================================
 
 @router.post("/sustainability/metrics", response_model=SustainabilityMetricResponse)
+@limiter.limit("30/minute")
 def record_sustainability_metrics(
+    request: Request,
     data: SustainabilityMetricCreate,
     db: Session = Depends(get_db),
 ):
@@ -785,7 +882,9 @@ def record_sustainability_metrics(
 
 
 @router.get("/sustainability/dashboard/{location_id}", response_model=ESGDashboardResponse)
+@limiter.limit("60/minute")
 def get_sustainability_dashboard(
+    request: Request,
     location_id: int,
     days: int = 30,
     db: Session = Depends(get_db),
@@ -800,7 +899,9 @@ def get_sustainability_dashboard(
 # ============================================================================
 
 @router.post("/iot/sensors", response_model=EquipmentSensorResponse)
+@limiter.limit("30/minute")
 def create_sensor(
+    request: Request,
     data: EquipmentSensorCreate,
     db: Session = Depends(get_db),
 ):
@@ -810,7 +911,9 @@ def create_sensor(
 
 
 @router.post("/iot/readings", response_model=SensorReadingResponse)
+@limiter.limit("30/minute")
 def record_sensor_reading(
+    request: Request,
     data: SensorReadingCreate,
     db: Session = Depends(get_db),
 ):
@@ -820,7 +923,9 @@ def record_sensor_reading(
 
 
 @router.get("/iot/dashboard/{location_id}", response_model=EquipmentDashboardResponse)
+@limiter.limit("60/minute")
 def get_equipment_dashboard(
+    request: Request,
     location_id: int,
     db: Session = Depends(get_db),
 ):
@@ -834,7 +939,9 @@ def get_equipment_dashboard(
 # ============================================================================
 
 @router.post("/vendors/scorecard", response_model=VendorScorecardResponse)
+@limiter.limit("30/minute")
 def create_vendor_scorecard(
+    request: Request,
     data: VendorScorecardCreate,
     db: Session = Depends(get_db),
 ):
@@ -844,7 +951,9 @@ def create_vendor_scorecard(
 
 
 @router.get("/vendors/{supplier_id}/scorecard", response_model=Optional[VendorScorecardResponse])
+@limiter.limit("60/minute")
 def get_vendor_scorecard(
+    request: Request,
     supplier_id: int,
     db: Session = Depends(get_db),
 ):
@@ -854,7 +963,9 @@ def get_vendor_scorecard(
 
 
 @router.post("/vendors/compare", response_model=VendorComparisonResponse)
+@limiter.limit("30/minute")
 def compare_vendors(
+    request: Request,
     supplier_ids: List[int],
     db: Session = Depends(get_db),
 ):
@@ -868,7 +979,9 @@ def compare_vendors(
 # ============================================================================
 
 @router.post("/virtual-brands", response_model=VirtualBrandResponse)
+@limiter.limit("30/minute")
 def create_virtual_brand(
+    request: Request,
     data: VirtualBrandCreate,
     db: Session = Depends(get_db),
 ):
@@ -878,7 +991,9 @@ def create_virtual_brand(
 
 
 @router.get("/virtual-brands/{location_id}", response_model=List[VirtualBrandResponse])
+@limiter.limit("60/minute")
 def get_virtual_brands(
+    request: Request,
     location_id: int,
     db: Session = Depends(get_db),
 ):
@@ -888,7 +1003,9 @@ def get_virtual_brands(
 
 
 @router.get("/virtual-brands/{brand_id}/performance", response_model=VirtualBrandPerformanceResponse)
+@limiter.limit("60/minute")
 def get_brand_performance(
+    request: Request,
     brand_id: int,
     db: Session = Depends(get_db),
 ):
@@ -905,7 +1022,9 @@ def get_brand_performance(
 # ============================================================================
 
 @router.post("/table-turn/start", response_model=TableTurnMetricResponse)
+@limiter.limit("30/minute")
 def start_table_turn(
+    request: Request,
     data: TableTurnMetricCreate,
     db: Session = Depends(get_db),
 ):
@@ -915,7 +1034,9 @@ def start_table_turn(
 
 
 @router.post("/table-turn/{turn_id}/milestone", response_model=TableTurnMetricResponse)
+@limiter.limit("30/minute")
 def update_table_milestone(
+    request: Request,
     turn_id: int,
     data: TableMilestoneUpdate,
     db: Session = Depends(get_db),
@@ -929,7 +1050,9 @@ def update_table_milestone(
 
 
 @router.get("/table-turn/summary/{location_id}", response_model=TableTurnSummaryResponse)
+@limiter.limit("60/minute")
 def get_table_turn_summary(
+    request: Request,
     location_id: int,
     db: Session = Depends(get_db),
 ):
@@ -943,7 +1066,9 @@ def get_table_turn_summary(
 # ============================================================================
 
 @router.post("/notifications", response_model=OrderStatusNotificationResponse)
+@limiter.limit("30/minute")
 def create_notification(
+    request: Request,
     data: OrderStatusNotificationCreate,
     db: Session = Depends(get_db),
 ):
@@ -955,7 +1080,9 @@ def create_notification(
 
 
 @router.get("/notifications/stats", response_model=NotificationStatsResponse)
+@limiter.limit("60/minute")
 def get_notification_stats(
+    request: Request,
     days: int = 7,
     db: Session = Depends(get_db),
 ):
@@ -969,7 +1096,9 @@ def get_notification_stats(
 # ============================================================================
 
 @router.post("/traceability", response_model=SupplyChainTraceResponse)
+@limiter.limit("30/minute")
 def create_trace(
+    request: Request,
     data: SupplyChainTraceCreate,
     db: Session = Depends(get_db),
 ):
@@ -979,7 +1108,9 @@ def create_trace(
 
 
 @router.get("/traceability/{trace_id}", response_model=TraceabilityQueryResponse)
+@limiter.limit("60/minute")
 def get_traceability(
+    request: Request,
     trace_id: str,
     db: Session = Depends(get_db),
 ):
@@ -992,7 +1123,9 @@ def get_traceability(
 
 
 @router.get("/traceability/{trace_id}/verify", response_model=BlockchainVerificationResponse)
+@limiter.limit("60/minute")
 def verify_trace(
+    request: Request,
     trace_id: str,
     db: Session = Depends(get_db),
 ):

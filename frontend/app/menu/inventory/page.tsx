@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { API_URL } from "@/lib/api";
 
+import { toast } from '@/lib/toast';
 interface MultiLang {
   bg: string;
   en: string;
@@ -207,7 +208,7 @@ export default function MenuInventoryPage() {
         headers: { Authorization: `Bearer ${token}` }
       });
       if (res.ok) {
-        alert("Version restored successfully!");
+        toast.success("Version restored successfully!");
         fetchMenuItems();
         fetchItemData(selectedItem!.id);
       }
@@ -330,7 +331,7 @@ export default function MenuInventoryPage() {
 
   const handleBulkPriceUpdate = async () => {
     if (bulkPriceForm.selected_items.length === 0) {
-      alert("Please select items to update");
+      toast.error("Please select items to update");
       return;
     }
     setSaving(true);
@@ -351,7 +352,7 @@ export default function MenuInventoryPage() {
       });
       if (res.ok) {
         const result = await res.json();
-        alert(`Updated ${result.updated_count} items!`);
+        toast.success(`Updated ${result.updated_count} items!`);
         setShowBulkPriceModal(false);
         fetchMenuItems();
       }

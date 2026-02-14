@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
 import { API_URL } from '@/lib/api';
 
+import { toast } from '@/lib/toast';
 interface Campaign {
   id: string;
   name: string;
@@ -131,11 +132,11 @@ export default function MarketingCampaignsPage() {
         closeModal();
       } else {
         const error = await response.json();
-        alert(error.detail || 'Error creating campaign');
+        toast.error(error.detail || 'Error creating campaign');
       }
     } catch (error) {
       console.error('Error creating campaign:', error);
-      alert('Error creating campaign');
+      toast.error('Error creating campaign');
     }
   };
 
@@ -157,11 +158,11 @@ export default function MarketingCampaignsPage() {
         closeModal();
       } else {
         const error = await response.json();
-        alert(error.detail || 'Error updating campaign');
+        toast.error(error.detail || 'Error updating campaign');
       }
     } catch (error) {
       console.error('Error updating campaign:', error);
-      alert('Error updating campaign');
+      toast.error('Error updating campaign');
     }
   };
 
@@ -180,11 +181,11 @@ export default function MarketingCampaignsPage() {
           loadCampaigns();
           setShowDetailsModal(false);
         } else {
-          alert('Error deleting campaign');
+          toast.error('Error deleting campaign');
         }
       } catch (error) {
         console.error('Error deleting campaign:', error);
-        alert('Error deleting campaign');
+        toast.error('Error deleting campaign');
       }
     }
   };
@@ -207,11 +208,11 @@ export default function MarketingCampaignsPage() {
       if (response.ok) {
         loadCampaigns();
       } else {
-        alert('Error updating campaign status');
+        toast.error('Error updating campaign status');
       }
     } catch (error) {
       console.error('Error updating campaign status:', error);
-      alert('Error updating campaign status');
+      toast.error('Error updating campaign status');
     }
   };
 

@@ -6,6 +6,7 @@ import Link from 'next/link';
 
 import { API_URL, getAuthHeaders } from '@/lib/api';
 
+import { toast } from '@/lib/toast';
 // ============ INTERFACES ============
 
 interface OrderItem {
@@ -429,7 +430,7 @@ export default function OrdersPage() {
         headers,
         body: JSON.stringify({ station }),
       });
-      alert('Поръчката е изпратена за повторен печат!');
+      toast.success('Поръчката е изпратена за повторен печат!');
     } catch (error) {
       console.error('Error reprinting order:', error);
     }

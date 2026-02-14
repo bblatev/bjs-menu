@@ -5,7 +5,7 @@ Handles voice command processing with DB-backed intent resolution.
 
 from typing import Optional
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Request
 from pydantic import BaseModel
 from sqlalchemy import func
 
@@ -13,6 +13,7 @@ from app.db.session import DbSession
 from app.models.restaurant import MenuItem, Table
 from app.models.stock import StockOnHand
 from app.models.product import Product
+from app.core.rate_limit import limiter
 
 router = APIRouter()
 
@@ -172,9 +173,10 @@ def _handle_menu_query(db: DbSession, text: str) -> dict:
 
 
 @router.post("/command")
-async def process_voice_command(request: VoiceCommandRequest, db: DbSession):
+@limiter.limit("30/minute")
+async def process_voice_command(request: Request, body: VoiceCommandRequest, db: DbSession):
     """Process a voice command and return intent + response with real DB data."""
-    text = request.command_text
+    text = body.command_text
     intent = _resolve_intent(text)
 
     if intent == "check_tables":

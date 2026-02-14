@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useEffect, createContext, useContext, useCallback, ReactNode } from 'react';
+import { useState, useEffect, createContext, useContext, useCallback, ReactNode, useRef } from 'react';
+import { onToast } from '@/lib/toast';
 import { motion, AnimatePresence } from 'framer-motion';
 
 type ToastType = 'success' | 'error' | 'warning' | 'info';
@@ -110,6 +111,15 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   const info = useCallback((title: string, message?: string) => {
     addToast({ type: 'info', title, message });
   }, [addToast]);
+
+  // Listen for global toast events (from lib/toast.ts)
+  const addToastRef = useRef(addToast);
+  addToastRef.current = addToast;
+  useEffect(() => {
+    return onToast((event) => {
+      addToastRef.current({ type: event.type, title: event.title, message: event.message });
+    });
+  }, []);
 
   return (
     <ToastContext.Provider value={{ toasts, addToast, removeToast, success, error, warning, info }}>

@@ -1,7 +1,7 @@
 """V5 API Endpoints - TouchBistro/iiko/Toast Feature Parity
 33 New Features, ~150 Endpoints
 """
-from fastapi import APIRouter, HTTPException, Depends, Query, Body
+from fastapi import APIRouter, HTTPException, Depends, Query, Body, Request
 from sqlalchemy.orm import Session
 from sqlalchemy import func
 from typing import List, Dict, Optional
@@ -33,6 +33,7 @@ from app.models.core_business_models import SMSMessage
 from app.models import StockItem
 from dateutil.relativedelta import relativedelta
 from calendar import monthrange
+from app.core.rate_limit import limiter
 
 
 router = APIRouter(tags=["V5 - Competitive Features"])
@@ -121,7 +122,9 @@ class ChargebackResponse(BaseModel):
 # ==================== SMS MARKETING ====================
 
 @router.post("/sms/campaigns")
+@limiter.limit("30/minute")
 async def create_sms_campaign(
+    request: Request,
     campaign: SMSCampaignCreate,
     venue_id: int = Query(1),
     db: Session = Depends(get_db)
@@ -154,7 +157,9 @@ async def create_sms_campaign(
     }
 
 @router.get("/sms/campaigns")
+@limiter.limit("60/minute")
 async def list_sms_campaigns(
+    request: Request,
     venue_id: int = Query(1),
     status: Optional[str] = None,
     limit: int = 20,
@@ -188,7 +193,9 @@ async def list_sms_campaigns(
     }
 
 @router.post("/sms/campaigns/{campaign_id}/send")
+@limiter.limit("30/minute")
 async def send_sms_campaign(
+    request: Request,
     campaign_id: int,
     db: Session = Depends(get_db)
 ):
@@ -218,7 +225,9 @@ async def send_sms_campaign(
     }
 
 @router.get("/sms/campaigns/{campaign_id}/analytics")
+@limiter.limit("60/minute")
 async def get_campaign_analytics(
+    request: Request,
     campaign_id: int,
     db: Session = Depends(get_db)
 ):
@@ -249,7 +258,9 @@ async def get_campaign_analytics(
     }
 
 @router.post("/sms/send-transactional")
+@limiter.limit("30/minute")
 async def send_transactional_sms(
+    request: Request,
     phone: str = Body(...),
     message_type: str = Body(...),
     message_data: Dict = Body(...),
@@ -328,7 +339,9 @@ async def send_transactional_sms(
 # ==================== CATERING & EVENTS ====================
 
 @router.post("/catering/events")
+@limiter.limit("30/minute")
 async def create_catering_event(
+    request: Request,
     event: CateringEventCreate,
     venue_id: int = Query(1),
     db: Session = Depends(get_db)
@@ -372,7 +385,9 @@ async def create_catering_event(
     }
 
 @router.get("/catering/events")
+@limiter.limit("60/minute")
 async def list_catering_events(
+    request: Request,
     venue_id: int = Query(1),
     status: Optional[str] = None,
     start_date: Optional[date] = None,
@@ -416,7 +431,9 @@ async def list_catering_events(
     }
 
 @router.get("/catering/events/{event_id}")
+@limiter.limit("60/minute")
 async def get_catering_event(
+    request: Request,
     event_id: int,
     db: Session = Depends(get_db)
 ):
@@ -471,7 +488,9 @@ async def get_catering_event(
     }
 
 @router.patch("/catering/events/{event_id}")
+@limiter.limit("30/minute")
 async def update_catering_event(
+    request: Request,
     event_id: int,
     event_name: Optional[str] = Body(None),
     event_type: Optional[str] = Body(None),
@@ -534,7 +553,9 @@ async def update_catering_event(
     }
 
 @router.delete("/catering/events/{event_id}")
+@limiter.limit("30/minute")
 async def delete_catering_event(
+    request: Request,
     event_id: int,
     db: Session = Depends(get_db)
 ):
@@ -557,7 +578,9 @@ async def delete_catering_event(
     return {"deleted": True, "event_id": event_id}
 
 @router.post("/catering/events/{event_id}/items")
+@limiter.limit("30/minute")
 async def add_event_item(
+    request: Request,
     event_id: int,
     item_name: str = Body(...),
     quantity: int = Body(...),
@@ -605,7 +628,9 @@ async def add_event_item(
     }
 
 @router.delete("/catering/events/{event_id}/items/{item_id}")
+@limiter.limit("30/minute")
 async def delete_event_item(
+    request: Request,
     event_id: int,
     item_id: int,
     db: Session = Depends(get_db)
@@ -652,7 +677,9 @@ def _recalculate_event_totals(db: Session, event: CateringEvent):
 
 
 @router.post("/catering/events/{event_id}/invoice")
+@limiter.limit("30/minute")
 async def create_event_invoice(
+    request: Request,
     event_id: int,
     due_date: date = Body(...),
     notes: Optional[str] = Body(None),
@@ -717,7 +744,9 @@ async def create_event_invoice(
     }
 
 @router.get("/catering/events/{event_id}/invoice")
+@limiter.limit("60/minute")
 async def get_event_invoice(
+    request: Request,
     event_id: int,
     db: Session = Depends(get_db)
 ):
@@ -763,7 +792,9 @@ async def get_event_invoice(
     }
 
 @router.get("/catering/events/{event_id}/prep-sheet")
+@limiter.limit("60/minute")
 async def get_prep_sheet(
+    request: Request,
     event_id: int,
     station: Optional[str] = None,
     db: Session = Depends(get_db)
@@ -821,7 +852,9 @@ async def get_prep_sheet(
     }
 
 @router.get("/catering/events/{event_id}/labels")
+@limiter.limit("60/minute")
 async def get_food_labels(
+    request: Request,
     event_id: int,
     db: Session = Depends(get_db)
 ):
@@ -904,7 +937,9 @@ def _calculate_percentile(venue_value: float, industry_avg: float, higher_is_bet
 
 
 @router.get("/benchmarking/summary")
+@limiter.limit("60/minute")
 async def get_benchmark_summary(
+    request: Request,
     venue_id: int = Query(1),
     period: str = Query("month"),
     db: Session = Depends(get_db)
@@ -990,7 +1025,9 @@ async def get_benchmark_summary(
 
 
 @router.get("/benchmarking/peers")
+@limiter.limit("60/minute")
 async def get_peer_comparison(
+    request: Request,
     venue_id: int = Query(1),
     comparison_group: str = Query("region"),
     db: Session = Depends(get_db)
@@ -1058,7 +1095,9 @@ async def get_peer_comparison(
 
 
 @router.get("/benchmarking/trends/{metric}")
+@limiter.limit("60/minute")
 async def get_benchmark_trends(
+    request: Request,
     metric: str,
     venue_id: int = Query(1),
     periods: int = Query(12),
@@ -1161,7 +1200,9 @@ async def get_benchmark_trends(
 
 
 @router.get("/benchmarking/recommendations")
+@limiter.limit("60/minute")
 async def get_improvement_recommendations(
+    request: Request,
     venue_id: int = Query(1),
     db: Session = Depends(get_db)
 ):
@@ -1267,7 +1308,9 @@ async def get_improvement_recommendations(
 # ==================== RESERVATION DEPOSITS ====================
 
 @router.post("/reservations/{reservation_id}/deposit")
+@limiter.limit("30/minute")
 async def create_deposit_request(
+    request: Request,
     reservation_id: int,
     deposit: DepositRequest,
     db: Session = Depends(get_db)
@@ -1308,7 +1351,9 @@ async def create_deposit_request(
 
 
 @router.get("/deposits/{deposit_id}")
+@limiter.limit("60/minute")
 async def get_deposit(
+    request: Request,
     deposit_id: int,
     db: Session = Depends(get_db)
 ):
@@ -1339,7 +1384,9 @@ async def get_deposit(
 
 
 @router.post("/deposits/{deposit_id}/collect")
+@limiter.limit("30/minute")
 async def collect_deposit(
+    request: Request,
     deposit_id: int,
     payment_method: str = Body(...),
     transaction_id: str = Body(...),
@@ -1379,7 +1426,9 @@ async def collect_deposit(
 
 
 @router.post("/deposits/{deposit_id}/apply")
+@limiter.limit("30/minute")
 async def apply_deposit_to_order(
+    request: Request,
     deposit_id: int,
     order_id: int = Body(...),
     amount: Optional[float] = Body(None),
@@ -1430,7 +1479,9 @@ async def apply_deposit_to_order(
 
 
 @router.post("/deposits/{deposit_id}/refund")
+@limiter.limit("30/minute")
 async def refund_deposit(
+    request: Request,
     deposit_id: int,
     reason: str = Body(...),
     staff_id: Optional[int] = Body(None),
@@ -1467,7 +1518,9 @@ async def refund_deposit(
 
 
 @router.get("/reservations/{reservation_id}/deposits")
+@limiter.limit("60/minute")
 async def get_reservation_deposits(
+    request: Request,
     reservation_id: int,
     db: Session = Depends(get_db)
 ):
@@ -1504,7 +1557,9 @@ async def get_reservation_deposits(
 
 
 @router.get("/deposits/settings")
+@limiter.limit("60/minute")
 async def get_deposit_settings(
+    request: Request,
     venue_id: int = Query(1),
     db: Session = Depends(get_db)
 ):
@@ -1533,7 +1588,9 @@ async def get_deposit_settings(
 
 
 @router.put("/deposits/settings")
+@limiter.limit("30/minute")
 async def update_deposit_settings(
+    request: Request,
     venue_id: int = Query(1),
     deposits_enabled: Optional[bool] = Body(None),
     default_amount: Optional[float] = Body(None),
@@ -1674,7 +1731,9 @@ def _get_rfm_segment(recency_score: int, frequency_score: int, monetary_score: i
 
 
 @router.get("/rfm/customer/{customer_id}")
+@limiter.limit("60/minute")
 async def get_customer_rfm(
+    request: Request,
     customer_id: int,
     venue_id: int = Query(1),
     db: Session = Depends(get_db)
@@ -1753,7 +1812,9 @@ async def get_customer_rfm(
 
 
 @router.get("/rfm/segments")
+@limiter.limit("60/minute")
 async def get_rfm_segments(
+    request: Request,
     venue_id: int = Query(1),
     db: Session = Depends(get_db)
 ):
@@ -1799,7 +1860,9 @@ async def get_rfm_segments(
 
 
 @router.get("/rfm/segment/{segment}/customers")
+@limiter.limit("60/minute")
 async def get_segment_customers(
+    request: Request,
     segment: str,
     venue_id: int = Query(1),
     limit: int = Query(100),
@@ -1869,7 +1932,8 @@ async def get_segment_customers(
 
 
 @router.get("/rfm/segment/{segment}/recommendations")
-async def get_segment_recommendations(segment: str):
+@limiter.limit("60/minute")
+async def get_segment_recommendations(request: Request, segment: str):
     """Get marketing recommendations for segment"""
     # Segment-specific marketing strategies
     recommendations = {
@@ -2036,7 +2100,9 @@ async def get_segment_recommendations(segment: str):
 # ==================== REFERRAL PROGRAM ====================
 
 @router.post("/referral/programs")
+@limiter.limit("30/minute")
 async def create_referral_program(
+    request: Request,
     venue_id: int = Query(1),
     name: str = Body(...),
     referrer_reward_type: str = Body("credit"),
@@ -2082,7 +2148,9 @@ async def create_referral_program(
 
 
 @router.get("/referral/programs")
+@limiter.limit("60/minute")
 async def list_referral_programs(
+    request: Request,
     venue_id: int = Query(1),
     is_active: Optional[bool] = Query(None),
     db: Session = Depends(get_db)
@@ -2114,7 +2182,9 @@ async def list_referral_programs(
 
 
 @router.post("/referral/generate-code")
+@limiter.limit("30/minute")
 async def generate_referral_code(
+    request: Request,
     program_id: int = Body(...),
     customer_id: int = Body(...),
     referee_email: Optional[str] = Body(None),
@@ -2187,7 +2257,9 @@ async def generate_referral_code(
 
 
 @router.post("/referral/validate")
+@limiter.limit("30/minute")
 async def validate_referral_code(
+    request: Request,
     validation: ReferralCodeValidation,
     db: Session = Depends(get_db)
 ):
@@ -2253,7 +2325,9 @@ async def validate_referral_code(
 
 
 @router.post("/referral/{referral_id}/qualify")
+@limiter.limit("30/minute")
 async def qualify_referral(
+    request: Request,
     referral_id: int,
     order_id: int = Body(...),
     db: Session = Depends(get_db)
@@ -2293,7 +2367,9 @@ async def qualify_referral(
 
 
 @router.post("/referral/{referral_id}/issue-rewards")
+@limiter.limit("30/minute")
 async def issue_referral_rewards(
+    request: Request,
     referral_id: int,
     db: Session = Depends(get_db)
 ):
@@ -2355,7 +2431,9 @@ async def issue_referral_rewards(
 
 
 @router.get("/referral/customer/{customer_id}/stats")
+@limiter.limit("60/minute")
 async def get_customer_referrals(
+    request: Request,
     customer_id: int,
     venue_id: int = Query(1),
     db: Session = Depends(get_db)
@@ -2407,7 +2485,9 @@ async def get_customer_referrals(
 
 
 @router.get("/referral/program/{program_id}/stats")
+@limiter.limit("60/minute")
 async def get_program_stats(
+    request: Request,
     program_id: int,
     db: Session = Depends(get_db)
 ):
@@ -2455,7 +2535,9 @@ async def get_program_stats(
 # ==================== STAFF MANAGEMENT V5 ====================
 
 @router.post("/staff/{staff_id}/breaks")
+@limiter.limit("30/minute")
 async def schedule_break(
+    request: Request,
     staff_id: int,
     shift_id: int = Body(...),
     break_type: str = Body(...),
@@ -2511,7 +2593,8 @@ async def schedule_break(
     }
 
 @router.post("/breaks/{break_id}/start")
-async def start_break(break_id: int, db: Session = Depends(get_db)):
+@limiter.limit("30/minute")
+async def start_break(request: Request, break_id: int, db: Session = Depends(get_db)):
     """Clock in for break"""
     # Find the break record
     employee_break = db.query(EmployeeBreak).filter(
@@ -2537,7 +2620,8 @@ async def start_break(break_id: int, db: Session = Depends(get_db)):
     }
 
 @router.post("/breaks/{break_id}/end")
-async def end_break(break_id: int, db: Session = Depends(get_db)):
+@limiter.limit("30/minute")
+async def end_break(request: Request, break_id: int, db: Session = Depends(get_db)):
     """Clock out from break"""
     # Find the break record
     employee_break = db.query(EmployeeBreak).filter(
@@ -2572,13 +2656,15 @@ async def end_break(break_id: int, db: Session = Depends(get_db)):
     }
 
 @router.post("/shifts/trade-requests")
+@limiter.limit("30/minute")
 async def create_shift_trade(
-    request: ShiftTradeRequest,
+    request: Request,
+    body_data: ShiftTradeRequest,
     requesting_staff_id: int = Query(...),
     venue_id: int = Query(1),
     db: Session = Depends(get_db)
 ):
-    """Create shift trade request"""
+    """Create shift trade body_data"""
     # Verify requesting staff exists
     requester = db.query(StaffUser).filter(
         StaffUser.id == requesting_staff_id,
@@ -2589,31 +2675,31 @@ async def create_shift_trade(
 
     # Verify original shift exists and belongs to requester
     original_shift = db.query(StaffShift).filter(
-        StaffShift.id == request.original_shift_id,
+        StaffShift.id == body_data.original_shift_id,
         StaffShift.staff_user_id == requesting_staff_id
     ).first()
     if not original_shift:
         raise HTTPException(status_code=404, detail="Original shift not found for this staff member")
 
     # Verify offered shift if provided
-    if request.offered_shift_id:
+    if body_data.offered_shift_id:
         offered_shift = db.query(StaffShift).filter(
-            StaffShift.id == request.offered_shift_id
+            StaffShift.id == body_data.offered_shift_id
         ).first()
         if not offered_shift:
             raise HTTPException(status_code=404, detail="Offered shift not found")
 
-    # Create the trade request
+    # Create the trade body_data
     trade_request = ShiftTradeRequestModel(
         venue_id=venue_id,
-        original_shift_id=request.original_shift_id,
+        original_shift_id=body_data.original_shift_id,
         requester_id=requesting_staff_id,
-        trade_type=request.trade_type,
-        offered_shift_id=request.offered_shift_id,
-        target_employee_id=request.target_staff_id,
-        is_open_to_all=request.target_staff_id is None,
+        trade_type=body_data.trade_type,
+        offered_shift_id=body_data.offered_shift_id,
+        target_employee_id=body_data.target_staff_id,
+        is_open_to_all=body_data.target_staff_id is None,
         status="pending",
-        reason=request.reason,
+        reason=body_data.reason,
         expires_at=datetime.utcnow() + timedelta(days=7)  # Default 7 day expiry
     )
     db.add(trade_request)
@@ -2632,7 +2718,9 @@ async def create_shift_trade(
     }
 
 @router.post("/shifts/trade-requests/{request_id}/respond")
+@limiter.limit("30/minute")
 async def respond_to_trade(
+    request: Request,
     request_id: int,
     response: str = Body(...),
     staff_id: int = Body(...),
@@ -2672,7 +2760,9 @@ async def respond_to_trade(
     }
 
 @router.post("/shifts/trade-requests/{request_id}/approve")
+@limiter.limit("30/minute")
 async def approve_trade(
+    request: Request,
     request_id: int,
     manager_id: int = Body(...),
     approved: bool = Body(...),
@@ -2732,7 +2822,8 @@ async def approve_trade(
     }
 
 @router.get("/shifts/open-requests")
-async def get_open_shifts(venue_id: int = Query(1), db: Session = Depends(get_db)):
+@limiter.limit("60/minute")
+async def get_open_shifts(request: Request, venue_id: int = Query(1), db: Session = Depends(get_db)):
     """Get open shift giveaway requests"""
     # Get all open trade requests (giveaways that are open to all)
     open_requests = db.query(ShiftTradeRequestModel).filter(
@@ -2762,7 +2853,9 @@ async def get_open_shifts(venue_id: int = Query(1), db: Session = Depends(get_db
     return {"open_shifts": result}
 
 @router.post("/staff/{staff_id}/onboarding")
+@limiter.limit("30/minute")
 async def create_onboarding(
+    request: Request,
     staff_id: int,
     venue_id: int = Query(1),
     start_date: date = Body(...),
@@ -2830,7 +2923,8 @@ async def create_onboarding(
     }
 
 @router.get("/onboarding/{onboarding_id}")
-async def get_onboarding_progress(onboarding_id: int, db: Session = Depends(get_db)):
+@limiter.limit("60/minute")
+async def get_onboarding_progress(request: Request, onboarding_id: int, db: Session = Depends(get_db)):
     """Get onboarding progress"""
     # Find the onboarding record
     onboarding = db.query(EmployeeOnboarding).filter(
@@ -2896,7 +2990,9 @@ async def get_onboarding_progress(onboarding_id: int, db: Session = Depends(get_
     }
 
 @router.patch("/onboarding/{onboarding_id}")
+@limiter.limit("30/minute")
 async def update_onboarding(
+    request: Request,
     onboarding_id: int,
     task_id: int = Body(...),
     completed: bool = Body(...),
@@ -2977,7 +3073,9 @@ async def update_onboarding(
 # ==================== PRICE TRACKER ====================
 
 @router.post("/price-tracker/record")
+@limiter.limit("30/minute")
 async def record_price(
+    request: Request,
     stock_item_id: int = Body(...),
     supplier_id: int = Body(...),
     unit_price: float = Body(...),
@@ -3021,7 +3119,9 @@ async def record_price(
     }
 
 @router.get("/price-tracker/item/{stock_item_id}/history")
+@limiter.limit("60/minute")
 async def get_price_history(
+    request: Request,
     stock_item_id: int,
     months: int = Query(6),
     venue_id: int = Query(1),
@@ -3077,7 +3177,9 @@ async def get_price_history(
     }
 
 @router.get("/price-tracker/alerts")
+@limiter.limit("60/minute")
 async def get_price_alerts(
+    request: Request,
     venue_id: int = Query(1),
     unacknowledged: bool = Query(True),
     db: Session = Depends(get_db)
@@ -3121,7 +3223,9 @@ async def get_price_alerts(
     }
 
 @router.post("/price-tracker/alerts/{alert_id}/acknowledge")
+@limiter.limit("30/minute")
 async def acknowledge_alert(
+    request: Request,
     alert_id: int,
     staff_id: Optional[int] = Body(None),
     db: Session = Depends(get_db)
@@ -3152,7 +3256,9 @@ async def acknowledge_alert(
     }
 
 @router.get("/price-tracker/trends")
+@limiter.limit("60/minute")
 async def get_price_trends(
+    request: Request,
     venue_id: int = Query(1),
     days: int = Query(30),
     db: Session = Depends(get_db)
@@ -3217,7 +3323,9 @@ async def get_price_trends(
 # ==================== VIP & CUSTOMER ENGAGEMENT ====================
 
 @router.post("/vip/profiles")
+@limiter.limit("30/minute")
 async def create_vip_profile(
+    request: Request,
     customer_id: int = Body(...),
     venue_id: int = Query(1),
     vip_tier: str = Body("silver"),
@@ -3292,7 +3400,9 @@ async def create_vip_profile(
     }
 
 @router.get("/vip/profiles/{customer_id}")
+@limiter.limit("60/minute")
 async def get_vip_profile(
+    request: Request,
     customer_id: int,
     venue_id: int = Query(1),
     db: Session = Depends(get_db)
@@ -3335,7 +3445,9 @@ async def get_vip_profile(
     }
 
 @router.get("/vip/upcoming-occasions")
+@limiter.limit("60/minute")
 async def get_upcoming_occasions(
+    request: Request,
     venue_id: int = Query(1),
     days: int = Query(30),
     db: Session = Depends(get_db)
@@ -3389,7 +3501,9 @@ async def get_upcoming_occasions(
     return {"occasions": occasions, "total": len(occasions)}
 
 @router.post("/guestbook/entries")
+@limiter.limit("30/minute")
 async def create_guestbook_entry(
+    request: Request,
     venue_id: int = Query(1),
     customer_id: Optional[int] = Body(None),
     guest_name: Optional[str] = Body(None),
@@ -3443,7 +3557,9 @@ async def create_guestbook_entry(
     }
 
 @router.get("/guestbook/entries")
+@limiter.limit("60/minute")
 async def list_guestbook_entries(
+    request: Request,
     venue_id: int = Query(1),
     approved_only: bool = Query(True),
     featured_only: bool = Query(False),
@@ -3483,7 +3599,9 @@ async def list_guestbook_entries(
     }
 
 @router.get("/guestbook/customer/{customer_id}/history")
+@limiter.limit("60/minute")
 async def get_visit_history(
+    request: Request,
     customer_id: int,
     venue_id: int = Query(1),
     limit: int = Query(20),
@@ -3546,7 +3664,9 @@ async def get_visit_history(
     }
 
 @router.post("/menu-reviews")
+@limiter.limit("30/minute")
 async def submit_menu_review(
+    request: Request,
     venue_id: int = Query(1),
     menu_item_id: int = Body(...),
     rating: int = Body(...),
@@ -3611,7 +3731,9 @@ async def submit_menu_review(
     }
 
 @router.get("/menu-reviews/item/{menu_item_id}")
+@limiter.limit("60/minute")
 async def get_item_reviews(
+    request: Request,
     menu_item_id: int,
     venue_id: int = Query(1),
     approved_only: bool = Query(True),
@@ -3713,7 +3835,9 @@ async def get_item_reviews(
 # ==================== FUNDRAISING ====================
 
 @router.post("/charity/campaigns")
+@limiter.limit("30/minute")
 async def create_charity_campaign(
+    request: Request,
     venue_id: int = Query(1),
     charity_name: str = Body(...),
     goal_amount: Optional[float] = Body(None),
@@ -3759,7 +3883,9 @@ async def create_charity_campaign(
     }
 
 @router.get("/charity/campaigns")
+@limiter.limit("60/minute")
 async def list_charity_campaigns(
+    request: Request,
     venue_id: int = Query(1),
     active_only: bool = Query(True),
     db: Session = Depends(get_db)
@@ -3792,7 +3918,9 @@ async def list_charity_campaigns(
     }
 
 @router.get("/charity/campaigns/{campaign_id}")
+@limiter.limit("60/minute")
 async def get_charity_campaign(
+    request: Request,
     campaign_id: int,
     db: Session = Depends(get_db)
 ):
@@ -3824,7 +3952,9 @@ async def get_charity_campaign(
     }
 
 @router.post("/charity/donations/round-up")
+@limiter.limit("30/minute")
 async def process_round_up(
+    request: Request,
     campaign_id: int = Body(...),
     order_id: int = Body(...),
     original_total: float = Body(...),
@@ -3877,7 +4007,9 @@ async def process_round_up(
     }
 
 @router.post("/charity/donations/flat")
+@limiter.limit("30/minute")
 async def process_flat_donation(
+    request: Request,
     donation: CharityDonation,
     customer_id: Optional[int] = Body(None),
     db: Session = Depends(get_db)
@@ -3916,7 +4048,9 @@ async def process_flat_donation(
     }
 
 @router.get("/charity/campaigns/{campaign_id}/stats")
+@limiter.limit("60/minute")
 async def get_campaign_stats(
+    request: Request,
     campaign_id: int,
     db: Session = Depends(get_db)
 ):
@@ -3953,7 +4087,9 @@ async def get_campaign_stats(
     }
 
 @router.get("/charity/campaigns/{campaign_id}/donations")
+@limiter.limit("60/minute")
 async def get_campaign_donations(
+    request: Request,
     campaign_id: int,
     limit: int = Query(50, ge=1, le=200),
     offset: int = Query(0, ge=0),
@@ -3994,7 +4130,9 @@ async def get_campaign_donations(
     }
 
 @router.patch("/charity/campaigns/{campaign_id}")
+@limiter.limit("30/minute")
 async def update_charity_campaign(
+    request: Request,
     campaign_id: int,
     is_active: Optional[bool] = Body(None),
     goal_amount: Optional[float] = Body(None),
@@ -4034,7 +4172,9 @@ async def update_charity_campaign(
 # ==================== PROMO CODES ====================
 
 @router.post("/promo-codes/generate")
+@limiter.limit("30/minute")
 async def generate_promo_codes(
+    request: Request,
     config: PromoCodeGenerate,
     venue_id: int = Query(1),
     db: Session = Depends(get_db)
@@ -4078,7 +4218,9 @@ async def generate_promo_codes(
     return {"codes": created_promotions, "count": len(created_promotions)}
 
 @router.post("/promo-codes/validate")
+@limiter.limit("30/minute")
 async def validate_promo_code(
+    request: Request,
     code: str = Body(...),
     order_total: float = Body(...),
     venue_id: int = Body(1),
@@ -4153,7 +4295,9 @@ async def validate_promo_code(
     }
 
 @router.post("/promo-codes/{code}/redeem")
+@limiter.limit("30/minute")
 async def redeem_promo_code(
+    request: Request,
     code: str,
     order_id: int = Body(...),
     customer_id: Optional[int] = Body(None),
@@ -4209,7 +4353,9 @@ async def redeem_promo_code(
 # ==================== SMART QUOTE ====================
 
 @router.post("/smart-quote/estimate")
+@limiter.limit("30/minute")
 async def get_prep_time_estimate(
+    request: Request,
     venue_id: int = Query(1),
     order_items: List[Dict] = Body(...),
     order_channel: str = Body("online"),
@@ -4383,7 +4529,9 @@ def calculate_tax_from_orders(db: Session, venue_id: int, start_date: date, end_
 
 
 @router.post("/tax/filings")
+@limiter.limit("30/minute")
 async def generate_tax_filing(
+    request: Request,
     venue_id: int = Query(1),
     period_type: str = Body(...),
     period_start: date = Body(...),
@@ -4428,7 +4576,9 @@ async def generate_tax_filing(
 
 
 @router.get("/tax/filings")
+@limiter.limit("60/minute")
 async def get_tax_filings(
+    request: Request,
     venue_id: int = Query(1),
     year: int = Query(2025),
     db: Session = Depends(get_db)
@@ -4469,7 +4619,9 @@ async def get_tax_filings(
 
 
 @router.post("/tax/filings/{filing_id}/submit")
+@limiter.limit("30/minute")
 async def submit_tax_filing(
+    request: Request,
     filing_id: int,
     db: Session = Depends(get_db)
 ):
@@ -4499,7 +4651,9 @@ async def submit_tax_filing(
 
 
 @router.get("/tax/summary")
+@limiter.limit("60/minute")
 async def get_tax_summary(
+    request: Request,
     venue_id: int = Query(1),
     year: int = Query(2025),
     db: Session = Depends(get_db)
@@ -4564,7 +4718,9 @@ async def get_tax_summary(
 # ==================== CHARGEBACKS ====================
 
 @router.post("/chargebacks")
+@limiter.limit("30/minute")
 async def record_chargeback(
+    request: Request,
     chargeback_data: ChargebackCreate,
     venue_id: int = Query(1),
     db: Session = Depends(get_db)
@@ -4607,7 +4763,9 @@ async def record_chargeback(
     }
 
 @router.get("/chargebacks/{chargeback_id}")
+@limiter.limit("60/minute")
 async def get_chargeback(
+    request: Request,
     chargeback_id: int,
     db: Session = Depends(get_db)
 ):
@@ -4644,7 +4802,9 @@ async def get_chargeback(
     }
 
 @router.post("/chargebacks/{chargeback_id}/respond")
+@limiter.limit("30/minute")
 async def respond_to_chargeback(
+    request: Request,
     chargeback_id: int,
     response_data: ChargebackResponse,
     db: Session = Depends(get_db)
@@ -4677,7 +4837,9 @@ async def respond_to_chargeback(
     }
 
 @router.put("/chargebacks/{chargeback_id}/resolve")
+@limiter.limit("30/minute")
 async def resolve_chargeback(
+    request: Request,
     chargeback_id: int,
     won: bool = Body(...),
     amount_recovered: Optional[float] = Body(None),
@@ -4710,7 +4872,9 @@ async def resolve_chargeback(
     }
 
 @router.put("/chargebacks/{chargeback_id}/assign")
+@limiter.limit("30/minute")
 async def assign_chargeback(
+    request: Request,
     chargeback_id: int,
     staff_id: int = Body(..., embed=True),
     db: Session = Depends(get_db)
@@ -4734,7 +4898,9 @@ async def assign_chargeback(
     }
 
 @router.get("/chargebacks")
+@limiter.limit("60/minute")
 async def get_chargebacks(
+    request: Request,
     venue_id: int = Query(1),
     status: Optional[str] = None,
     skip: int = Query(0, ge=0),
@@ -4775,7 +4941,9 @@ async def get_chargebacks(
     }
 
 @router.get("/chargebacks/stats")
+@limiter.limit("60/minute")
 async def get_chargeback_stats(
+    request: Request,
     venue_id: int = Query(1),
     db: Session = Depends(get_db)
 ):
@@ -4834,7 +5002,9 @@ async def get_chargeback_stats(
     }
 
 @router.get("/chargebacks/overdue")
+@limiter.limit("60/minute")
 async def get_overdue_chargebacks(
+    request: Request,
     venue_id: int = Query(1),
     db: Session = Depends(get_db)
 ):
@@ -4869,7 +5039,9 @@ async def get_overdue_chargebacks(
 # ==================== MENU PAIRINGS ====================
 
 @router.post("/menu-pairings")
+@limiter.limit("30/minute")
 async def create_pairing(
+    request: Request,
     pairing: MenuPairingCreate,
     venue_id: int = Query(1),
     db: Session = Depends(get_db)
@@ -4923,7 +5095,9 @@ async def create_pairing(
     }
 
 @router.get("/menu-pairings/item/{menu_item_id}")
+@limiter.limit("60/minute")
 async def get_item_pairings(
+    request: Request,
     menu_item_id: int,
     venue_id: int = Query(1),
     db: Session = Depends(get_db)
@@ -4960,7 +5134,9 @@ async def get_item_pairings(
     return {"pairings": result}
 
 @router.get("/menu-pairings/item/{menu_item_id}/ai-suggestions")
+@limiter.limit("60/minute")
 async def get_ai_pairing_suggestions(
+    request: Request,
     menu_item_id: int,
     venue_id: int = Query(1),
     limit: int = Query(5, ge=1, le=20),
@@ -5020,7 +5196,9 @@ async def get_ai_pairing_suggestions(
     }
 
 @router.post("/menu-pairings/{pairing_id}/record-response")
+@limiter.limit("30/minute")
 async def record_pairing_response(
+    request: Request,
     pairing_id: int,
     accepted: bool = Body(..., embed=True),
     db: Session = Depends(get_db)
@@ -5054,7 +5232,9 @@ async def record_pairing_response(
 # ==================== TABLE BLOCKING ====================
 
 @router.post("/table-blocks")
+@limiter.limit("30/minute")
 async def create_table_block(
+    request: Request,
     block: TableBlockCreate,
     db: Session = Depends(get_db)
 ):
@@ -5117,7 +5297,9 @@ async def create_table_block(
     }
 
 @router.get("/table-blocks")
+@limiter.limit("60/minute")
 async def get_table_blocks(
+    request: Request,
     venue_id: int = Query(...),
     block_date: date = Query(...),
     table_id: Optional[int] = Query(None),
@@ -5161,7 +5343,9 @@ async def get_table_blocks(
     }
 
 @router.get("/table-blocks/{block_id}")
+@limiter.limit("60/minute")
 async def get_table_block(
+    request: Request,
     block_id: int,
     db: Session = Depends(get_db)
 ):
@@ -5187,7 +5371,9 @@ async def get_table_block(
     }
 
 @router.put("/table-blocks/{block_id}")
+@limiter.limit("30/minute")
 async def update_table_block(
+    request: Request,
     block_id: int,
     block_type: Optional[str] = Body(None),
     start_time: Optional[str] = Body(None),
@@ -5243,7 +5429,9 @@ async def update_table_block(
     }
 
 @router.delete("/table-blocks/{block_id}")
+@limiter.limit("30/minute")
 async def delete_table_block(
+    request: Request,
     block_id: int,
     db: Session = Depends(get_db)
 ):
@@ -5258,7 +5446,9 @@ async def delete_table_block(
     return {"id": block_id, "deleted": True}
 
 @router.get("/tables/{table_id}/availability")
+@limiter.limit("60/minute")
 async def check_table_availability(
+    request: Request,
     table_id: int,
     check_date: date = Query(...),
     start_time: str = Query(...),
@@ -5320,7 +5510,9 @@ async def check_table_availability(
     }
 
 @router.get("/tables/{table_id}/blocks")
+@limiter.limit("60/minute")
 async def get_table_blocks_by_table(
+    request: Request,
     table_id: int,
     start_date: date = Query(...),
     end_date: Optional[date] = Query(None),
@@ -5365,7 +5557,9 @@ async def get_table_blocks_by_table(
     }
 
 @router.get("/venues/{venue_id}/table-availability")
+@limiter.limit("60/minute")
 async def get_venue_table_availability(
+    request: Request,
     venue_id: int,
     check_date: date = Query(...),
     start_time: str = Query(...),
@@ -5431,7 +5625,9 @@ async def get_venue_table_availability(
 
 
 @router.post("/customer-display/{display_id}/show-order")
+@limiter.limit("30/minute")
 async def show_order_on_display(
+    request: Request,
     display_id: str,
     order_items: List[Dict] = Body(...),
     order_total: float = Body(...),
@@ -5485,7 +5681,9 @@ async def show_order_on_display(
     }
 
 @router.post("/customer-display/{display_id}/show-promo")
+@limiter.limit("30/minute")
 async def show_promo_on_display(
+    request: Request,
     display_id: str,
     title: str = Body(...),
     description: str = Body(...),
@@ -5547,7 +5745,9 @@ async def show_promo_on_display(
     }
 
 @router.get("/customer-display/{display_id}/config")
+@limiter.limit("60/minute")
 async def get_display_config(
+    request: Request,
     display_id: str,
     venue_id: int = Query(1),
     db: Session = Depends(get_db)
@@ -5616,7 +5816,8 @@ async def get_display_config(
 # ==================== ENDPOINT COUNT ====================
 
 @router.get("/stats")
-async def get_v5_stats():
+@limiter.limit("60/minute")
+async def get_v5_stats(request: Request, ):
     """Get V5 endpoint statistics"""
     return {
         "version": "5.0",

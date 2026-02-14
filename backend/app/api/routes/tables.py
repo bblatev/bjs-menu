@@ -2,7 +2,8 @@
 
 from typing import List, Optional
 from datetime import datetime, timezone
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Request
+from app.core.rate_limit import limiter
 from pydantic import BaseModel
 
 from app.db.session import DbSession
@@ -94,7 +95,9 @@ def _init_default_tables(db: DbSession):
 
 
 @router.get("/")
+@limiter.limit("60/minute")
 def list_tables(
+    request: Request,
     db: DbSession,
     location_id: Optional[int] = None,
     status: Optional[str] = None,
@@ -113,7 +116,9 @@ def list_tables(
 
 
 @router.get("/sections")
+@limiter.limit("60/minute")
 def get_table_sections(
+    request: Request,
     db: DbSession,
     location_id: Optional[int] = None,
 ):
@@ -133,7 +138,9 @@ def get_table_sections(
 
 
 @router.get("/summary/stats")
+@limiter.limit("60/minute")
 def get_table_stats(
+    request: Request,
     db: DbSession,
     location_id: Optional[int] = None,
 ):
@@ -162,7 +169,9 @@ def get_table_stats(
 
 
 @router.get("/areas")
+@limiter.limit("60/minute")
 def get_table_areas(
+    request: Request,
     db: DbSession,
     location_id: Optional[int] = None,
 ):
@@ -180,7 +189,9 @@ def get_table_areas(
 
 
 @router.get("/assignments")
+@limiter.limit("60/minute")
 def get_table_assignments(
+    request: Request,
     db: DbSession,
     location_id: Optional[int] = None,
 ):
@@ -202,7 +213,9 @@ def get_table_assignments(
 
 
 @router.get("/{table_id}")
+@limiter.limit("60/minute")
 def get_table(
+    request: Request,
     db: DbSession,
     table_id: int,
 ):
@@ -214,7 +227,9 @@ def get_table(
 
 
 @router.post("/")
+@limiter.limit("30/minute")
 def create_table(
+    request: Request,
     db: DbSession,
     table: TableCreate,
 ):
@@ -251,7 +266,9 @@ def create_table(
 
 
 @router.put("/{table_id}")
+@limiter.limit("30/minute")
 def update_table(
+    request: Request,
     db: DbSession,
     table_id: int,
     table: TableUpdate,
@@ -277,7 +294,9 @@ def update_table(
 
 
 @router.delete("/{table_id}")
+@limiter.limit("30/minute")
 def delete_table(
+    request: Request,
     db: DbSession,
     table_id: int,
 ):
@@ -292,7 +311,9 @@ def delete_table(
 
 
 @router.post("/{table_id}/occupy")
+@limiter.limit("30/minute")
 def occupy_table(
+    request: Request,
     db: DbSession,
     table_id: int,
 ):
@@ -309,7 +330,9 @@ def occupy_table(
 
 
 @router.post("/{table_id}/free")
+@limiter.limit("30/minute")
 def free_table(
+    request: Request,
     db: DbSession,
     table_id: int,
 ):
@@ -326,7 +349,9 @@ def free_table(
 
 
 @router.post("/{table_id}/reserve")
+@limiter.limit("30/minute")
 def reserve_table(
+    request: Request,
     db: DbSession,
     table_id: int,
 ):
@@ -343,7 +368,9 @@ def reserve_table(
 
 
 @router.post("/{table_id}/cleaning")
+@limiter.limit("30/minute")
 def set_table_cleaning(
+    request: Request,
     db: DbSession,
     table_id: int,
 ):

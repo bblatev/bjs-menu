@@ -2,11 +2,12 @@
 Inventory Hardware Reports API
 RFID accuracy, keg yield, pour analysis, tank consumption
 """
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, Request
 from sqlalchemy.orm import Session
 from typing import Optional, Dict, Any
 from datetime import datetime, timedelta
 
+from app.core.rate_limit import limiter
 from app.db.session import get_db
 from app.core.rbac import get_current_user
 from app.models import StaffUser
@@ -19,7 +20,9 @@ router = APIRouter()
 # =============================================================================
 
 @router.get("/rfid/accuracy", response_model=Dict[str, Any])
+@limiter.limit("60/minute")
 async def get_rfid_accuracy_report(
+    request: Request,
     start_date: Optional[datetime] = None,
     end_date: Optional[datetime] = None,
     db: Session = Depends(get_db),
@@ -112,7 +115,9 @@ async def get_rfid_accuracy_report(
 
 
 @router.get("/rfid/movement", response_model=Dict[str, Any])
+@limiter.limit("60/minute")
 async def get_rfid_movement_report(
+    request: Request,
     zone: Optional[str] = None,
     hours: int = Query(24, ge=1, le=168),
     db: Session = Depends(get_db),
@@ -161,7 +166,9 @@ async def get_rfid_movement_report(
 
 
 @router.get("/rfid/expiring", response_model=Dict[str, Any])
+@limiter.limit("60/minute")
 async def get_rfid_expiring_report(
+    request: Request,
     days: int = Query(7, ge=1, le=90),
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(get_current_user)
@@ -217,7 +224,9 @@ async def get_rfid_expiring_report(
 # =============================================================================
 
 @router.get("/kegs/yield", response_model=Dict[str, Any])
+@limiter.limit("60/minute")
 async def get_keg_yield_report(
+    request: Request,
     start_date: Optional[datetime] = None,
     end_date: Optional[datetime] = None,
     db: Session = Depends(get_db),
@@ -288,7 +297,9 @@ async def get_keg_yield_report(
 
 
 @router.get("/kegs/status", response_model=Dict[str, Any])
+@limiter.limit("60/minute")
 async def get_keg_status_report(
+    request: Request,
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(get_current_user)
 ):
@@ -344,7 +355,9 @@ async def get_keg_status_report(
 # =============================================================================
 
 @router.get("/tanks/consumption", response_model=Dict[str, Any])
+@limiter.limit("60/minute")
 async def get_tank_consumption_report(
+    request: Request,
     days: int = Query(30, ge=1, le=90),
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(get_current_user)
@@ -402,7 +415,9 @@ async def get_tank_consumption_report(
 # =============================================================================
 
 @router.get("/dashboard", response_model=Dict[str, Any])
+@limiter.limit("60/minute")
 async def get_inventory_hardware_dashboard(
+    request: Request,
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(get_current_user)
 ):

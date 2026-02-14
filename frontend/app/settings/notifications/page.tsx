@@ -5,6 +5,7 @@ import { motion } from 'framer-motion';
 import AdminLayout from '@/components/AdminLayout';
 import { API_URL, getAuthHeaders } from '@/lib/api';
 
+import { toast } from '@/lib/toast';
 interface AlertConfig {
   type: string;
   enabled: boolean;
@@ -87,7 +88,7 @@ export default function NotificationSettingsPage() {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${token}` }
       });
-      alert('Test notification sent!');
+      toast.info('Test notification sent!');
     } catch (error) {
       console.error('Error:', error);
     }

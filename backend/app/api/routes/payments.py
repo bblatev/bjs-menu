@@ -7,6 +7,7 @@ from typing import Optional, List, Dict
 from fastapi import APIRouter, HTTPException, Request, Header
 from pydantic import BaseModel
 from app.core.rate_limit import limiter
+from app.core.rbac import CurrentUser, RequireManager
 
 from app.db.session import DbSession
 from app.models.restaurant import GuestOrder
@@ -95,7 +96,7 @@ class PaymentMethodResponse(BaseModel):
 
 @router.post("/intents", response_model=PaymentIntentResponse)
 @limiter.limit("5/minute")
-async def create_payment_intent(request: Request, body: CreatePaymentIntentRequest = None):
+async def create_payment_intent(request: Request, current_user: CurrentUser, body: CreatePaymentIntentRequest = None):
     """
     Create a payment intent for processing a payment.
 
@@ -140,7 +141,8 @@ async def create_payment_intent(request: Request, body: CreatePaymentIntentReque
 
 
 @router.get("/intents/{payment_intent_id}", response_model=PaymentIntentResponse)
-async def get_payment_intent(payment_intent_id: str):
+@limiter.limit("60/minute")
+async def get_payment_intent(request: Request, payment_intent_id: str, current_user: CurrentUser):
     """Get the status of a payment intent."""
     stripe = get_stripe_service()
     if not stripe:
@@ -160,7 +162,7 @@ async def get_payment_intent(payment_intent_id: str):
 
 @router.post("/intents/{payment_intent_id}/capture", response_model=PaymentIntentResponse)
 @limiter.limit("5/minute")
-async def capture_payment_intent(request: Request, payment_intent_id: str, body: CapturePaymentRequest = None):
+async def capture_payment_intent(request: Request, payment_intent_id: str, current_user: CurrentUser, body: CapturePaymentRequest = None):
     """
     Capture a previously authorized payment.
 
@@ -190,6 +192,7 @@ async def capture_payment_intent(request: Request, payment_intent_id: str, body:
 async def cancel_payment_intent(
     request: Request,
     payment_intent_id: str,
+    current_user: RequireManager,
     reason: Optional[str] = None,
 ):
     """Cancel a payment intent."""
@@ -216,7 +219,7 @@ async def cancel_payment_intent(
 
 @router.post("/intents/{payment_intent_id}/refund", response_model=RefundResponse)
 @limiter.limit("5/minute")
-async def refund_payment(request: Request, payment_intent_id: str, body: RefundRequest = None):
+async def refund_payment(request: Request, payment_intent_id: str, current_user: RequireManager, body: RefundRequest = None):
     """
     Create a refund for a payment.
 
@@ -247,7 +250,7 @@ async def refund_payment(request: Request, payment_intent_id: str, body: RefundR
 
 @router.post("/customers", response_model=CustomerResponse)
 @limiter.limit("10/minute")
-async def create_customer(request: Request, body: CreateCustomerRequest = None):
+async def create_customer(request: Request, current_user: CurrentUser, body: CreateCustomerRequest = None):
     """Create a Stripe customer for saving payment methods."""
     stripe = get_stripe_service()
     if not stripe:
@@ -274,7 +277,8 @@ async def create_customer(request: Request, body: CreateCustomerRequest = None):
 
 
 @router.get("/customers/{customer_id}/payment-methods", response_model=List[PaymentMethodResponse])
-async def list_customer_payment_methods(customer_id: str, type: str = "card"):
+@limiter.limit("60/minute")
+async def list_customer_payment_methods(request: Request, customer_id: str, current_user: CurrentUser, type: str = "card"):
     """List saved payment methods for a customer."""
     stripe = get_stripe_service()
     if not stripe:
@@ -300,6 +304,7 @@ async def list_customer_payment_methods(customer_id: str, type: str = "card"):
 # ============================================================================
 
 @router.post("/webhook")
+@limiter.limit("30/minute")
 async def stripe_webhook(
     request: Request,
     db: DbSession,
@@ -474,7 +479,8 @@ async def stripe_webhook(
 # ============================================================================
 
 @router.get("/terminal/readers")
-async def list_terminal_readers():
+@limiter.limit("60/minute")
+async def list_terminal_readers(request: Request, current_user: CurrentUser):
     """List connected Stripe Terminal readers."""
     stripe = get_stripe_service()
     if not stripe:
@@ -489,7 +495,8 @@ async def list_terminal_readers():
 
 
 @router.post("/terminal/connection-token")
-async def create_terminal_connection_token():
+@limiter.limit("30/minute")
+async def create_terminal_connection_token(request: Request, current_user: CurrentUser):
     """Create a connection token for Stripe Terminal."""
     stripe = get_stripe_service()
     if not stripe:
@@ -514,7 +521,8 @@ async def create_terminal_connection_token():
 # ============================================================================
 
 @router.get("/status")
-async def get_payment_status():
+@limiter.limit("60/minute")
+async def get_payment_status(request: Request, current_user: RequireManager):
     """Check if payment processing is configured and working."""
     stripe = get_stripe_service()
 
@@ -557,8 +565,11 @@ async def get_payment_status():
 
 
 @router.get("/transactions")
+@limiter.limit("60/minute")
 def get_payment_transactions(
+    request: Request,
     db: DbSession,
+    current_user: CurrentUser,
     limit: int = 50,
     offset: int = 0,
 ):

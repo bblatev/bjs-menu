@@ -2,7 +2,7 @@
 Kiosk Mode API Endpoints
 Self-service kiosk configuration and ordering
 """
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.orm import Session
 from datetime import datetime
 
@@ -13,12 +13,15 @@ from app.models import (
     ModifierOption, OrderStatus
 )
 from app.schemas import KioskModeConfig, KioskOrderCreate
+from app.core.rate_limit import limiter
 
 router = APIRouter()
 
 
 @router.get("/config", response_model=KioskModeConfig)
+@limiter.limit("60/minute")
 async def get_kiosk_config(
+    request: Request,
     venue_id: int,
     db: Session = Depends(get_db)
 ):
@@ -54,7 +57,9 @@ async def get_kiosk_config(
 
 
 @router.put("/config", response_model=KioskModeConfig)
+@limiter.limit("30/minute")
 async def update_kiosk_config(
+    request: Request,
     data: KioskModeConfig,
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(get_current_user)
@@ -95,7 +100,9 @@ async def update_kiosk_config(
 
 
 @router.post("/order")
+@limiter.limit("30/minute")
 async def create_kiosk_order(
+    request: Request,
     data: KioskOrderCreate,
     db: Session = Depends(get_db)
 ):
@@ -202,7 +209,9 @@ async def create_kiosk_order(
 
 
 @router.get("/orders/{venue_id}/queue")
+@limiter.limit("60/minute")
 async def get_kiosk_order_queue(
+    request: Request,
     venue_id: int,
     db: Session = Depends(get_db)
 ):
@@ -245,7 +254,9 @@ async def get_kiosk_order_queue(
 
 
 @router.get("/orders/{order_number}/status")
+@limiter.limit("60/minute")
 async def get_kiosk_order_status(
+    request: Request,
     order_number: str,
     db: Session = Depends(get_db)
 ):

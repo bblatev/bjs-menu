@@ -3,7 +3,7 @@ House Accounts API Endpoints
 Corporate account management for restaurants
 """
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Request
 from sqlalchemy.orm import Session
 from typing import List, Optional
 from pydantic import BaseModel
@@ -11,6 +11,7 @@ from datetime import date
 
 from app.db.session import get_db
 from app.core.rbac import get_current_user
+from app.core.rate_limit import limiter
 from app.services.house_account_service import HouseAccountService
 
 
@@ -64,8 +65,10 @@ class SuspendAccountRequest(BaseModel):
 # ========== ENDPOINTS ==========
 
 @router.post("/")
+@limiter.limit("30/minute")
 async def create_house_account(
-    request: CreateAccountRequest,
+    request: Request,
+    account_request: CreateAccountRequest,
     db: Session = Depends(get_db),
     current_user = Depends(get_current_user)
 ):
@@ -81,18 +84,18 @@ async def create_house_account(
     
     result = service.create_account(
         venue_id=1,  # Would come from current_user
-        account_name=request.account_name,
-        account_type=request.account_type,
-        contact_name=request.contact_name,
-        contact_email=request.contact_email,
-        contact_phone=request.contact_phone,
-        billing_address=request.billing_address,
-        credit_limit=request.credit_limit,
-        payment_terms=request.payment_terms,
-        discount_percentage=request.discount_percentage,
-        tax_id=request.tax_id,
-        notes=request.notes,
-        authorized_users=request.authorized_users,
+        account_name=account_request.account_name,
+        account_type=account_request.account_type,
+        contact_name=account_request.contact_name,
+        contact_email=account_request.contact_email,
+        contact_phone=account_request.contact_phone,
+        billing_address=account_request.billing_address,
+        credit_limit=account_request.credit_limit,
+        payment_terms=account_request.payment_terms,
+        discount_percentage=account_request.discount_percentage,
+        tax_id=account_request.tax_id,
+        notes=account_request.notes,
+        authorized_users=account_request.authorized_users,
         created_by=current_user.id if current_user else None
     )
     
@@ -100,9 +103,11 @@ async def create_house_account(
 
 
 @router.post("/{account_id}/charge")
+@limiter.limit("30/minute")
 async def charge_to_account(
+    request: Request,
     account_id: str,
-    request: ChargeToAccountRequest,
+    charge_request: ChargeToAccountRequest,
     db: Session = Depends(get_db),
     current_user = Depends(get_current_user)
 ):
@@ -117,13 +122,13 @@ async def charge_to_account(
     
     result = service.charge_to_account(
         account_id=account_id,
-        order_id=request.order_id,
-        amount=request.amount,
-        description=request.description,
-        authorized_by=request.authorized_by,
+        order_id=charge_request.order_id,
+        amount=charge_request.amount,
+        description=charge_request.description,
+        authorized_by=charge_request.authorized_by,
         staff_id=current_user.id if current_user else None,
-        signature=request.signature,
-        table_id=request.table_id
+        signature=charge_request.signature,
+        table_id=charge_request.table_id
     )
     
     if not result.get("success"):
@@ -136,9 +141,11 @@ async def charge_to_account(
 
 
 @router.post("/{account_id}/payment")
+@limiter.limit("30/minute")
 async def record_payment(
+    request: Request,
     account_id: str,
-    request: RecordPaymentRequest,
+    payment_request: RecordPaymentRequest,
     db: Session = Depends(get_db),
     current_user = Depends(get_current_user)
 ):
@@ -153,10 +160,10 @@ async def record_payment(
     
     result = service.record_payment(
         account_id=account_id,
-        amount=request.amount,
-        payment_method=request.payment_method,
-        reference=request.reference,
-        notes=request.notes,
+        amount=payment_request.amount,
+        payment_method=payment_request.payment_method,
+        reference=payment_request.reference,
+        notes=payment_request.notes,
         staff_id=current_user.id if current_user else None
     )
     
@@ -170,7 +177,9 @@ async def record_payment(
 
 
 @router.get("/{account_id}/statement")
+@limiter.limit("60/minute")
 async def get_statement(
+    request: Request,
     account_id: str,
     start_date: Optional[date] = None,
     end_date: Optional[date] = None,
@@ -190,7 +199,9 @@ async def get_statement(
 
 
 @router.get("/aging-report")
+@limiter.limit("60/minute")
 async def get_aging_report(
+    request: Request,
     db: Session = Depends(get_db)
 ):
     """Get accounts receivable aging report"""
@@ -199,9 +210,11 @@ async def get_aging_report(
 
 
 @router.post("/{account_id}/authorized-users")
+@limiter.limit("30/minute")
 async def add_authorized_user(
+    request: Request,
     account_id: str,
-    request: AddAuthorizedUserRequest,
+    user_request: AddAuthorizedUserRequest,
     db: Session = Depends(get_db)
 ):
     """Add an authorized user to a house account"""
@@ -209,10 +222,10 @@ async def add_authorized_user(
     
     result = service.add_authorized_user(
         account_id=account_id,
-        name=request.name,
-        email=request.email,
-        phone=request.phone,
-        spending_limit=request.spending_limit
+        name=user_request.name,
+        email=user_request.email,
+        phone=user_request.phone,
+        spending_limit=user_request.spending_limit
     )
     
     if not result.get("success"):
@@ -225,9 +238,11 @@ async def add_authorized_user(
 
 
 @router.post("/{account_id}/suspend")
+@limiter.limit("30/minute")
 async def suspend_account(
+    request: Request,
     account_id: str,
-    request: SuspendAccountRequest,
+    suspend_request: SuspendAccountRequest,
     db: Session = Depends(get_db),
     current_user = Depends(get_current_user)
 ):
@@ -236,7 +251,7 @@ async def suspend_account(
     
     result = service.suspend_account(
         account_id=account_id,
-        reason=request.reason,
+        reason=suspend_request.reason,
         staff_id=current_user.id if current_user else None
     )
     
@@ -250,7 +265,9 @@ async def suspend_account(
 
 
 @router.post("/{account_id}/reactivate")
+@limiter.limit("30/minute")
 async def reactivate_account(
+    request: Request,
     account_id: str,
     db: Session = Depends(get_db),
     current_user = Depends(get_current_user)
@@ -273,7 +290,9 @@ async def reactivate_account(
 
 
 @router.get("/{account_id}")
+@limiter.limit("60/minute")
 async def get_account(
+    request: Request,
     account_id: str,
     db: Session = Depends(get_db)
 ):
@@ -291,7 +310,9 @@ async def get_account(
 
 
 @router.get("/")
+@limiter.limit("60/minute")
 async def list_accounts(
+    request: Request,
     status: Optional[str] = None,
     db: Session = Depends(get_db)
 ):
@@ -316,9 +337,11 @@ class UpdateAccountRequest(BaseModel):
 
 
 @router.put("/{account_id}")
+@limiter.limit("30/minute")
 async def update_account(
+    request: Request,
     account_id: str,
-    request: UpdateAccountRequest,
+    update_request: UpdateAccountRequest,
     db: Session = Depends(get_db),
     current_user = Depends(get_current_user)
 ):
@@ -339,7 +362,7 @@ async def update_account(
         )
 
     # Build update dict from non-None values
-    update_data = {k: v for k, v in request.dict().items() if v is not None}
+    update_data = {k: v for k, v in update_request.dict().items() if v is not None}
 
     if not update_data:
         raise HTTPException(
@@ -365,7 +388,9 @@ async def update_account(
 # ========== DELETE OPERATION ==========
 
 @router.delete("/{account_id}")
+@limiter.limit("30/minute")
 async def delete_account(
+    request: Request,
     account_id: str,
     permanent: bool = False,
     db: Session = Depends(get_db),
@@ -412,7 +437,9 @@ async def delete_account(
 
 
 @router.delete("/{account_id}/authorized-users/{user_id}")
+@limiter.limit("30/minute")
 async def remove_authorized_user(
+    request: Request,
     account_id: str,
     user_id: str,
     db: Session = Depends(get_db),

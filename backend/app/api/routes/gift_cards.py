@@ -6,11 +6,12 @@ from decimal import Decimal
 import secrets
 import string
 
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, HTTPException, Depends, Request
 from pydantic import BaseModel
 from sqlalchemy import func, case
 from sqlalchemy.orm import Session
 
+from app.core.rate_limit import limiter
 from app.db.session import DbSession
 from app.models.advanced_features import (
     GiftCard as GiftCardModel,
@@ -173,7 +174,8 @@ class GiftCardProgramCreate(BaseModel):
 # ============================================================================
 
 @router.post("/programs")
-async def create_gift_card_program(data: GiftCardProgramCreate, db: DbSession):
+@limiter.limit("30/minute")
+async def create_gift_card_program(request: Request, data: GiftCardProgramCreate, db: DbSession):
     """Create a gift card program."""
     program = GiftCardProgram(
         name=data.name,
@@ -202,7 +204,8 @@ async def create_gift_card_program(data: GiftCardProgramCreate, db: DbSession):
 
 
 @router.get("/programs")
-async def get_gift_card_programs(db: DbSession):
+@limiter.limit("60/minute")
+async def get_gift_card_programs(request: Request, db: DbSession):
     """Get all gift card programs."""
     programs = db.query(GiftCardProgram).order_by(GiftCardProgram.id).all()
     return [
@@ -221,7 +224,8 @@ async def get_gift_card_programs(db: DbSession):
 
 
 @router.get("/stats/summary")
-async def get_gift_card_stats(db: DbSession):
+@limiter.limit("60/minute")
+async def get_gift_card_stats(request: Request, db: DbSession):
     """Get gift card statistics from database."""
 
     # Total issued cards
@@ -268,7 +272,8 @@ async def get_gift_card_stats(db: DbSession):
 
 
 @router.get("/lookup/{code}")
-async def lookup_gift_card(code: str, db: DbSession):
+@limiter.limit("60/minute")
+async def lookup_gift_card(request: Request, code: str, db: DbSession):
     """Lookup a gift card by card number."""
     card = db.query(GiftCardModel).filter(
         GiftCardModel.card_number == code
@@ -281,7 +286,9 @@ async def lookup_gift_card(code: str, db: DbSession):
 
 
 @router.get("/")
+@limiter.limit("60/minute")
 async def get_gift_cards(
+    request: Request,
     db: DbSession,
     status: Optional[str] = None,
     skip: int = 0,
@@ -311,7 +318,8 @@ async def get_gift_cards(
 
 
 @router.post("/")
-async def create_gift_card(card_data: GiftCardCreate, db: DbSession):
+@limiter.limit("30/minute")
+async def create_gift_card(request: Request, card_data: GiftCardCreate, db: DbSession):
     """Create a new gift card."""
 
     # Generate card number if not provided
@@ -390,7 +398,8 @@ async def create_gift_card(card_data: GiftCardCreate, db: DbSession):
 
 
 @router.get("/{card_id}")
-async def get_gift_card(card_id: int, db: DbSession):
+@limiter.limit("60/minute")
+async def get_gift_card(request: Request, card_id: int, db: DbSession):
     """Get a specific gift card by ID."""
     card = db.query(GiftCardModel).filter(GiftCardModel.id == card_id).first()
 
@@ -421,7 +430,8 @@ async def get_gift_card(card_id: int, db: DbSession):
 
 
 @router.get("/{card_id}/transactions")
-async def get_card_transactions(card_id: int, db: DbSession):
+@limiter.limit("60/minute")
+async def get_card_transactions(request: Request, card_id: int, db: DbSession):
     """Get transaction history for a gift card."""
 
     # Verify card exists
@@ -463,7 +473,8 @@ async def get_card_transactions(card_id: int, db: DbSession):
 
 
 @router.post("/{card_id}/redeem")
-async def redeem_gift_card(card_id: int, redeem_data: RedeemRequest, db: DbSession):
+@limiter.limit("30/minute")
+async def redeem_gift_card(request: Request, card_id: int, redeem_data: RedeemRequest, db: DbSession):
     """Redeem (spend) from a gift card."""
     card = db.query(GiftCardModel).filter(GiftCardModel.id == card_id).first()
     if not card:
@@ -496,7 +507,8 @@ async def redeem_gift_card(card_id: int, redeem_data: RedeemRequest, db: DbSessi
 
 
 @router.post("/{card_id}/cancel")
-async def cancel_gift_card(card_id: int, db: DbSession):
+@limiter.limit("30/minute")
+async def cancel_gift_card(request: Request, card_id: int, db: DbSession):
     """Cancel a gift card (deactivate)."""
 
     card = db.query(GiftCardModel).filter(GiftCardModel.id == card_id).first()
@@ -534,7 +546,8 @@ async def cancel_gift_card(card_id: int, db: DbSession):
 
 
 @router.post("/{card_id}/reload")
-async def reload_gift_card(card_id: int, reload_data: ReloadRequest, db: DbSession):
+@limiter.limit("30/minute")
+async def reload_gift_card(request: Request, card_id: int, reload_data: ReloadRequest, db: DbSession):
     """Reload a gift card with additional funds."""
 
     card = db.query(GiftCardModel).filter(GiftCardModel.id == card_id).first()

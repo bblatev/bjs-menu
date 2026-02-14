@@ -4,7 +4,7 @@ BJ's Bar V9 - Enterprise POS System
 100+ Advanced Features with Full API Coverage
 """
 
-from fastapi import APIRouter, Depends, HTTPException, Query, BackgroundTasks
+from fastapi import APIRouter, Depends, HTTPException, Query, BackgroundTasks, Request
 from sqlalchemy.orm import Session
 from app.db.session import get_db
 from typing import List, Optional, Dict, Any
@@ -76,6 +76,7 @@ from app.services.v9_features.platform_qr_service import (
 
 # Import V9 Schemas
 from app.schemas.v9_schemas import *
+from app.core.rate_limit import limiter
 
 # Create main V9 router
 router = APIRouter()
@@ -84,7 +85,9 @@ router = APIRouter()
 # ==================== PERMISSION OVERRIDES ====================
 
 @router.post("/permissions/overrides", response_model=PermissionOverrideResponse, tags=["V9 - Operations"])
+@limiter.limit("30/minute")
 async def create_permission_override(
+    request: Request,
     data: PermissionOverrideCreate,
     db: Session = Depends(get_db),
     current_user: dict = Depends(get_current_user)
@@ -104,7 +107,9 @@ async def create_permission_override(
 
 
 @router.get("/permissions/overrides/{staff_id}", response_model=List[PermissionOverrideResponse], tags=["V9 - Operations"])
+@limiter.limit("60/minute")
 async def get_staff_overrides(
+    request: Request,
     staff_id: int,
     active_only: bool = True,
     db: Session = Depends(get_db),
@@ -116,7 +121,9 @@ async def get_staff_overrides(
 
 
 @router.post("/permissions/overrides/use", response_model=SuccessResponse, tags=["V9 - Operations"])
+@limiter.limit("30/minute")
 async def use_permission_override(
+    request: Request,
     data: UseOverrideRequest,
     db: Session = Depends(get_db),
     current_user: dict = Depends(get_current_user)
@@ -133,7 +140,9 @@ async def use_permission_override(
 
 
 @router.delete("/permissions/overrides/{override_id}", response_model=SuccessResponse, tags=["V9 - Operations"])
+@limiter.limit("30/minute")
 async def revoke_permission_override(
+    request: Request,
     override_id: int,
     revoked_by_id: int,
     reason: str,
@@ -149,7 +158,9 @@ async def revoke_permission_override(
 # ==================== TERMINAL HEALTH ====================
 
 @router.post("/terminals", response_model=TerminalHealthResponse, tags=["V9 - Operations"])
+@limiter.limit("30/minute")
 async def register_terminal(
+    request: Request,
     data: TerminalHealthCreate,
     db: Session = Depends(get_db),
     current_user: dict = Depends(get_current_user)
@@ -166,7 +177,9 @@ async def register_terminal(
 
 
 @router.post("/terminals/{terminal_id}/heartbeat", response_model=SuccessResponse, tags=["V9 - Operations"])
+@limiter.limit("30/minute")
 async def terminal_heartbeat(
+    request: Request,
     terminal_id: str,
     data: TerminalHealthUpdate,
     db: Session = Depends(get_db),
@@ -187,7 +200,9 @@ async def terminal_heartbeat(
 
 
 @router.get("/terminals/offline", response_model=List[TerminalHealthResponse], tags=["V9 - Operations"])
+@limiter.limit("60/minute")
 async def get_offline_terminals(
+    request: Request,
     threshold_minutes: int = 5,
     db: Session = Depends(get_db),
     current_user: dict = Depends(get_current_user)
@@ -198,7 +213,9 @@ async def get_offline_terminals(
 
 
 @router.post("/terminals/{terminal_id}/lock", response_model=SuccessResponse, tags=["V9 - Operations"])
+@limiter.limit("30/minute")
 async def lock_terminal(
+    request: Request,
     terminal_id: str,
     locked_by_id: int,
     reason: str,
@@ -212,7 +229,9 @@ async def lock_terminal(
 
 
 @router.post("/terminals/{terminal_id}/unlock", response_model=SuccessResponse, tags=["V9 - Operations"])
+@limiter.limit("30/minute")
 async def unlock_terminal(
+    request: Request,
     terminal_id: str,
     unlocked_by_id: int,
     db: Session = Depends(get_db),
@@ -225,7 +244,9 @@ async def unlock_terminal(
 
 
 @router.post("/terminals/geo-fence", response_model=SuccessResponse, tags=["V9 - Operations"])
+@limiter.limit("30/minute")
 async def configure_geo_fence(
+    request: Request,
     data: GeoFenceConfig,
     db: Session = Depends(get_db),
     current_user: dict = Depends(get_current_user)
@@ -244,7 +265,9 @@ async def configure_geo_fence(
 # ==================== SAFE/EMERGENCY MODE ====================
 
 @router.post("/safe-mode/activate", response_model=SafeModeResponse, tags=["V9 - Operations"])
+@limiter.limit("30/minute")
 async def activate_safe_mode(
+    request: Request,
     data: SafeModeActivate,
     db: Session = Depends(get_db),
     current_user: dict = Depends(get_current_user)
@@ -261,7 +284,9 @@ async def activate_safe_mode(
 
 
 @router.post("/safe-mode/deactivate/{mode_id}", response_model=SuccessResponse, tags=["V9 - Operations"])
+@limiter.limit("30/minute")
 async def deactivate_safe_mode(
+    request: Request,
     mode_id: int,
     deactivated_by_id: int,
     db: Session = Depends(get_db),
@@ -274,7 +299,9 @@ async def deactivate_safe_mode(
 
 
 @router.get("/safe-mode/current", response_model=Optional[SafeModeResponse], tags=["V9 - Operations"])
+@limiter.limit("60/minute")
 async def get_current_safe_mode(
+    request: Request,
     db: Session = Depends(get_db),
     current_user: dict = Depends(get_current_user)
 ):
@@ -284,7 +311,9 @@ async def get_current_safe_mode(
 
 
 @router.get("/safe-mode/check-operation/{operation}", response_model=SuccessResponse, tags=["V9 - Operations"])
+@limiter.limit("60/minute")
 async def check_operation_allowed(
+    request: Request,
     operation: str,
     db: Session = Depends(get_db),
     current_user: dict = Depends(get_current_user)
@@ -298,7 +327,9 @@ async def check_operation_allowed(
 # ==================== CASH VARIANCE ====================
 
 @router.post("/cash-variance", response_model=CashVarianceResponse, tags=["V9 - Operations"])
+@limiter.limit("30/minute")
 async def submit_cash_count(
+    request: Request,
     data: CashCountSubmit,
     background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
@@ -321,7 +352,9 @@ async def submit_cash_count(
 
 
 @router.get("/cash-variance/unresolved", response_model=List[CashVarianceResponse], tags=["V9 - Operations"])
+@limiter.limit("60/minute")
 async def get_unresolved_variances(
+    request: Request,
     min_severity: str = "low",
     db: Session = Depends(get_db),
     current_user: dict = Depends(get_current_user)
@@ -332,7 +365,9 @@ async def get_unresolved_variances(
 
 
 @router.post("/cash-variance/{variance_id}/resolve", response_model=SuccessResponse, tags=["V9 - Operations"])
+@limiter.limit("30/minute")
 async def resolve_cash_variance(
+    request: Request,
     variance_id: int,
     reviewed_by_id: int,
     notes: str,
@@ -348,7 +383,9 @@ async def resolve_cash_variance(
 # ==================== SESSION TIMEOUT ====================
 
 @router.post("/session-timeout/config", response_model=SessionTimeoutResponse, tags=["V9 - Operations"])
+@limiter.limit("30/minute")
 async def configure_session_timeout(
+    request: Request,
     data: SessionTimeoutConfig,
     db: Session = Depends(get_db),
     current_user: dict = Depends(get_current_user)
@@ -365,7 +402,9 @@ async def configure_session_timeout(
 
 
 @router.get("/session-timeout/config/{role}", response_model=SessionTimeoutResponse, tags=["V9 - Operations"])
+@limiter.limit("60/minute")
 async def get_session_timeout_config(
+    request: Request,
     role: str,
     db: Session = Depends(get_db),
     current_user: dict = Depends(get_current_user)
@@ -378,7 +417,9 @@ async def get_session_timeout_config(
 # ==================== PRODUCTION FORECASTING ====================
 
 @router.post("/kitchen/forecast", response_model=ForecastResponse, tags=["V9 - Kitchen"])
+@limiter.limit("30/minute")
 async def generate_production_forecast(
+    request: Request,
     data: ForecastRequest,
     db: Session = Depends(get_db),
     current_user: dict = Depends(get_current_user)
@@ -394,7 +435,9 @@ async def generate_production_forecast(
 
 
 @router.get("/kitchen/forecast/ingredients/{forecast_date}", response_model=List[IngredientRequirementResponse], tags=["V9 - Kitchen"])
+@limiter.limit("60/minute")
 async def get_ingredient_requirements(
+    request: Request,
     forecast_date: date,
     db: Session = Depends(get_db),
     current_user: dict = Depends(get_current_user)
@@ -407,7 +450,9 @@ async def get_ingredient_requirements(
 # ==================== STATION LOAD BALANCING ====================
 
 @router.post("/kitchen/stations", response_model=Dict[str, Any], tags=["V9 - Kitchen"])
+@limiter.limit("30/minute")
 async def create_kitchen_station(
+    request: Request,
     data: StationCreate,
     db: Session = Depends(get_db),
     current_user: dict = Depends(get_current_user)
@@ -423,7 +468,9 @@ async def create_kitchen_station(
 
 
 @router.get("/kitchen/stations/load", response_model=List[StationLoadResponse], tags=["V9 - Kitchen"])
+@limiter.limit("60/minute")
 async def get_station_loads(
+    request: Request,
     db: Session = Depends(get_db),
     current_user: dict = Depends(get_current_user)
 ):
@@ -433,7 +480,9 @@ async def get_station_loads(
 
 
 @router.get("/kitchen/routing/suggestions", response_model=List[RoutingSuggestion], tags=["V9 - Kitchen"])
+@limiter.limit("60/minute")
 async def get_routing_suggestions(
+    request: Request,
     db: Session = Depends(get_db),
     current_user: dict = Depends(get_current_user)
 ):
@@ -443,7 +492,9 @@ async def get_routing_suggestions(
 
 
 @router.post("/kitchen/routing/apply/{order_item_id}", response_model=SuccessResponse, tags=["V9 - Kitchen"])
+@limiter.limit("30/minute")
 async def apply_routing_suggestion(
+    request: Request,
     order_item_id: int,
     target_station_id: int,
     db: Session = Depends(get_db),
@@ -458,7 +509,9 @@ async def apply_routing_suggestion(
 # ==================== COURSE FIRE RULES ====================
 
 @router.post("/kitchen/course-fire/rules", response_model=CourseFireRuleResponse, tags=["V9 - Kitchen"])
+@limiter.limit("30/minute")
 async def create_course_fire_rule(
+    request: Request,
     data: CourseFireRuleCreate,
     db: Session = Depends(get_db),
     current_user: dict = Depends(get_current_user)
@@ -475,7 +528,9 @@ async def create_course_fire_rule(
 
 
 @router.get("/kitchen/course-fire/rules", response_model=List[CourseFireRuleResponse], tags=["V9 - Kitchen"])
+@limiter.limit("60/minute")
 async def get_course_fire_rules(
+    request: Request,
     menu_item_id: Optional[int] = None,
     db: Session = Depends(get_db),
     current_user: dict = Depends(get_current_user)
@@ -486,7 +541,9 @@ async def get_course_fire_rules(
 
 
 @router.post("/kitchen/course-fire/check/{order_id}", response_model=Dict[str, Any], tags=["V9 - Kitchen"])
+@limiter.limit("30/minute")
 async def check_course_fire(
+    request: Request,
     order_id: int,
     db: Session = Depends(get_db),
     current_user: dict = Depends(get_current_user)
@@ -499,7 +556,9 @@ async def check_course_fire(
 # ==================== KITCHEN PERFORMANCE ====================
 
 @router.get("/kitchen/performance", response_model=KitchenPerformanceMetrics, tags=["V9 - Kitchen"])
+@limiter.limit("60/minute")
 async def get_kitchen_performance(
+    request: Request,
     start_date: datetime = Query(default_factory=lambda: datetime.now() - timedelta(days=7)),
     end_date: datetime = Query(default_factory=datetime.now),
     db: Session = Depends(get_db),
@@ -513,7 +572,9 @@ async def get_kitchen_performance(
 # ==================== AUTO PURCHASE ORDERS ====================
 
 @router.post("/supply-chain/auto-po/config", response_model=Dict[str, Any], tags=["V9 - Supply Chain"])
+@limiter.limit("30/minute")
 async def configure_auto_po(
+    request: Request,
     data: AutoPOConfig,
     db: Session = Depends(get_db),
     current_user: dict = Depends(get_current_user)
@@ -530,7 +591,9 @@ async def configure_auto_po(
 
 
 @router.post("/supply-chain/auto-po/check", response_model=List[AutoPOResponse], tags=["V9 - Supply Chain"])
+@limiter.limit("30/minute")
 async def check_and_generate_pos(
+    request: Request,
     db: Session = Depends(get_db),
     current_user: dict = Depends(get_current_user)
 ):
@@ -540,7 +603,9 @@ async def check_and_generate_pos(
 
 
 @router.get("/supply-chain/auto-po/pending", response_model=List[AutoPOResponse], tags=["V9 - Supply Chain"])
+@limiter.limit("60/minute")
 async def get_pending_auto_pos(
+    request: Request,
     db: Session = Depends(get_db),
     current_user: dict = Depends(get_current_user)
 ):
@@ -552,7 +617,9 @@ async def get_pending_auto_pos(
 # ==================== SUPPLIER LEAD TIME ====================
 
 @router.post("/supply-chain/lead-times", response_model=SuccessResponse, tags=["V9 - Supply Chain"])
+@limiter.limit("30/minute")
 async def update_supplier_lead_time(
+    request: Request,
     data: SupplierLeadTimeUpdate,
     db: Session = Depends(get_db),
     current_user: dict = Depends(get_current_user)
@@ -569,7 +636,9 @@ async def update_supplier_lead_time(
 
 
 @router.get("/supply-chain/lead-times/{ingredient_id}", response_model=List[Dict[str, Any]], tags=["V9 - Supply Chain"])
+@limiter.limit("60/minute")
 async def get_supplier_lead_times(
+    request: Request,
     ingredient_id: int,
     db: Session = Depends(get_db),
     current_user: dict = Depends(get_current_user)
@@ -580,7 +649,9 @@ async def get_supplier_lead_times(
 
 
 @router.get("/supply-chain/alternatives/{ingredient_id}", response_model=List[Dict[str, Any]], tags=["V9 - Supply Chain"])
+@limiter.limit("60/minute")
 async def get_alternative_suppliers(
+    request: Request,
     ingredient_id: int,
     db: Session = Depends(get_db),
     current_user: dict = Depends(get_current_user)
@@ -593,7 +664,9 @@ async def get_alternative_suppliers(
 # ==================== INVENTORY COSTING ====================
 
 @router.post("/supply-chain/costing/config", response_model=SuccessResponse, tags=["V9 - Supply Chain"])
+@limiter.limit("30/minute")
 async def configure_costing_method(
+    request: Request,
     data: InventoryCostingConfig,
     db: Session = Depends(get_db),
     current_user: dict = Depends(get_current_user)
@@ -608,7 +681,9 @@ async def configure_costing_method(
 
 
 @router.get("/supply-chain/costing/{ingredient_id}", response_model=Dict[str, Any], tags=["V9 - Supply Chain"])
+@limiter.limit("60/minute")
 async def get_ingredient_cost(
+    request: Request,
     ingredient_id: int,
     quantity: float = 1.0,
     db: Session = Depends(get_db),
@@ -622,7 +697,9 @@ async def get_ingredient_cost(
 # ==================== CROSS-STORE BALANCING ====================
 
 @router.get("/supply-chain/cross-store/suggestions", response_model=List[CrossStoreBalancingSuggestion], tags=["V9 - Supply Chain"])
+@limiter.limit("60/minute")
 async def get_cross_store_balancing_suggestions(
+    request: Request,
     db: Session = Depends(get_db),
     current_user: dict = Depends(get_current_user)
 ):
@@ -632,7 +709,9 @@ async def get_cross_store_balancing_suggestions(
 
 
 @router.post("/supply-chain/cross-store/transfer", response_model=SuccessResponse, tags=["V9 - Supply Chain"])
+@limiter.limit("30/minute")
 async def create_cross_store_transfer(
+    request: Request,
     ingredient_id: int,
     source_location_id: int,
     target_location_id: int,
@@ -685,7 +764,9 @@ async def send_variance_alert(variance: CashVarianceResponse):
 # ==================== FINANCIAL CONTROLS - PRIME COST ====================
 
 @router.post("/financial/prime-cost", response_model=Dict[str, Any], tags=["V9 - Financial Controls"])
+@limiter.limit("30/minute")
 async def record_prime_cost(
+    request: Request,
     period_date: date,
     food_cost: Decimal,
     beverage_cost: Decimal,
@@ -712,7 +793,9 @@ async def record_prime_cost(
 
 
 @router.get("/financial/prime-cost/dashboard", response_model=Dict[str, Any], tags=["V9 - Financial Controls"])
+@limiter.limit("60/minute")
 async def get_prime_cost_dashboard(
+    request: Request,
     start_date: date,
     end_date: date,
     db: Session = Depends(get_db),
@@ -726,7 +809,9 @@ async def get_prime_cost_dashboard(
 
 
 @router.get("/financial/profitability/{menu_item_id}", response_model=Dict[str, Any], tags=["V9 - Financial Controls"])
+@limiter.limit("60/minute")
 async def get_item_profitability(
+    request: Request,
     menu_item_id: int,
     start_date: date,
     end_date: date,
@@ -741,7 +826,9 @@ async def get_item_profitability(
 
 
 @router.get("/financial/profit-leaderboard", response_model=Dict[str, Any], tags=["V9 - Financial Controls"])
+@limiter.limit("60/minute")
 async def get_profit_leaderboard(
+    request: Request,
     start_date: date,
     end_date: date,
     limit: int = 20,
@@ -758,7 +845,9 @@ async def get_profit_leaderboard(
 # ==================== FINANCIAL CONTROLS - ABUSE DETECTION ====================
 
 @router.get("/financial/abuse/config", response_model=Dict[str, Any], tags=["V9 - Financial Controls"])
+@limiter.limit("60/minute")
 async def get_abuse_config(
+    request: Request,
     db: Session = Depends(get_db),
     current_user: dict = Depends(get_current_user)
 ):
@@ -770,7 +859,9 @@ async def get_abuse_config(
 
 
 @router.put("/financial/abuse/config", response_model=Dict[str, Any], tags=["V9 - Financial Controls"])
+@limiter.limit("30/minute")
 async def update_abuse_config(
+    request: Request,
     updates: Dict[str, Any],
     db: Session = Depends(get_db),
     current_user: dict = Depends(get_current_user)
@@ -783,7 +874,9 @@ async def update_abuse_config(
 
 
 @router.post("/financial/abuse/check", response_model=Dict[str, Any], tags=["V9 - Financial Controls"])
+@limiter.limit("30/minute")
 async def check_for_abuse(
+    request: Request,
     staff_id: int,
     action_type: str,
     amount: Decimal,
@@ -800,7 +893,9 @@ async def check_for_abuse(
 
 
 @router.get("/financial/abuse/alerts", response_model=List[Dict[str, Any]], tags=["V9 - Financial Controls"])
+@limiter.limit("60/minute")
 async def get_pending_abuse_alerts(
+    request: Request,
     severity: Optional[str] = None,
     staff_id: Optional[int] = None,
     db: Session = Depends(get_db),
@@ -814,7 +909,9 @@ async def get_pending_abuse_alerts(
 
 
 @router.post("/financial/abuse/investigate/{alert_id}", response_model=Dict[str, Any], tags=["V9 - Financial Controls"])
+@limiter.limit("30/minute")
 async def investigate_abuse_alert(
+    request: Request,
     alert_id: int,
     status: str,
     notes: Optional[str] = None,
@@ -827,7 +924,9 @@ async def investigate_abuse_alert(
 
 
 @router.get("/financial/abuse/analytics", response_model=Dict[str, Any], tags=["V9 - Financial Controls"])
+@limiter.limit("60/minute")
 async def get_abuse_analytics(
+    request: Request,
     start_date: date,
     end_date: date,
     db: Session = Depends(get_db),
@@ -843,7 +942,9 @@ async def get_abuse_analytics(
 # ==================== CRM - GUEST PREFERENCES ====================
 
 @router.post("/crm/preferences/{guest_id}", response_model=Dict[str, Any], tags=["V9 - CRM"])
+@limiter.limit("30/minute")
 async def set_guest_preferences(
+    request: Request,
     guest_id: int,
     preferences: Dict[str, Any],
     db: Session = Depends(get_db),
@@ -854,7 +955,9 @@ async def set_guest_preferences(
 
 
 @router.get("/crm/preferences/{guest_id}", response_model=Optional[Dict[str, Any]], tags=["V9 - CRM"])
+@limiter.limit("60/minute")
 async def get_guest_preferences(
+    request: Request,
     guest_id: int,
     db: Session = Depends(get_db),
     current_user: dict = Depends(get_current_user)
@@ -864,7 +967,9 @@ async def get_guest_preferences(
 
 
 @router.get("/crm/service-alerts/{guest_id}", response_model=Dict[str, Any], tags=["V9 - CRM"])
+@limiter.limit("60/minute")
 async def get_service_alerts(
+    request: Request,
     guest_id: int,
     db: Session = Depends(get_db),
     current_user: dict = Depends(get_current_user)
@@ -876,7 +981,9 @@ async def get_service_alerts(
 # ==================== CRM - CUSTOMER LIFETIME VALUE ====================
 
 @router.get("/crm/clv/{guest_id}", response_model=Dict[str, Any], tags=["V9 - CRM"])
+@limiter.limit("60/minute")
 async def calculate_clv(
+    request: Request,
     guest_id: int,
     db: Session = Depends(get_db),
     current_user: dict = Depends(get_current_user)
@@ -889,7 +996,9 @@ async def calculate_clv(
 
 
 @router.post("/crm/clv/update", response_model=Dict[str, Any], tags=["V9 - CRM"])
+@limiter.limit("30/minute")
 async def update_clv_from_order(
+    request: Request,
     guest_id: int,
     order_total: Decimal,
     order_date: Optional[datetime] = None,
@@ -906,7 +1015,9 @@ async def update_clv_from_order(
 
 
 @router.get("/crm/at-risk-customers", response_model=List[Dict[str, Any]], tags=["V9 - CRM"])
+@limiter.limit("60/minute")
 async def get_at_risk_customers(
+    request: Request,
     risk_threshold: float = 0.6,
     limit: int = 50,
     db: Session = Depends(get_db),
@@ -922,7 +1033,9 @@ async def get_at_risk_customers(
 # ==================== CRM - CUSTOMER SEGMENTS ====================
 
 @router.get("/crm/segments", response_model=Dict[str, Any], tags=["V9 - CRM"])
+@limiter.limit("60/minute")
 async def get_customer_segments(
+    request: Request,
     db: Session = Depends(get_db),
     current_user: dict = Depends(get_current_user)
 ):
@@ -936,7 +1049,9 @@ async def get_customer_segments(
 # ==================== CRM - VIP MANAGEMENT ====================
 
 @router.post("/crm/vip/{guest_id}", response_model=Dict[str, Any], tags=["V9 - CRM"])
+@limiter.limit("30/minute")
 async def set_vip_status(
+    request: Request,
     guest_id: int,
     vip_status: bool,
     vip_tier: Optional[str] = None,
@@ -950,7 +1065,9 @@ async def set_vip_status(
 
 
 @router.get("/crm/vip", response_model=List[Dict[str, Any]], tags=["V9 - CRM"])
+@limiter.limit("60/minute")
 async def get_vip_guests(
+    request: Request,
     tier: Optional[str] = None,
     db: Session = Depends(get_db),
     current_user: dict = Depends(get_current_user)
@@ -965,7 +1082,9 @@ async def get_vip_guests(
 # ==================== CRM - PERSONALIZATION ====================
 
 @router.get("/crm/recommendations/{guest_id}", response_model=Dict[str, Any], tags=["V9 - CRM"])
+@limiter.limit("60/minute")
 async def get_personalized_recommendations(
+    request: Request,
     guest_id: int,
     limit: int = 5,
     db: Session = Depends(get_db),
@@ -979,7 +1098,9 @@ async def get_personalized_recommendations(
 
 
 @router.post("/crm/feedback", response_model=Dict[str, Any], tags=["V9 - CRM"])
+@limiter.limit("30/minute")
 async def record_feedback(
+    request: Request,
     guest_id: int,
     order_id: int,
     rating: int,
@@ -998,7 +1119,9 @@ async def record_feedback(
 # ==================== IOT - DEVICE MANAGEMENT ====================
 
 @router.post("/iot/devices", response_model=Dict[str, Any], tags=["V9 - IoT"])
+@limiter.limit("30/minute")
 async def register_iot_device(
+    request: Request,
     device_type: str,
     device_name: str,
     serial_number: str,
@@ -1015,7 +1138,9 @@ async def register_iot_device(
 
 
 @router.put("/iot/devices/{device_id}/status", response_model=Dict[str, Any], tags=["V9 - IoT"])
+@limiter.limit("30/minute")
 async def update_device_status(
+    request: Request,
     device_id: int,
     status: str,
     battery_level: Optional[int] = None,
@@ -1028,7 +1153,9 @@ async def update_device_status(
 
 
 @router.get("/iot/devices", response_model=List[Dict[str, Any]], tags=["V9 - IoT"])
+@limiter.limit("60/minute")
 async def get_iot_devices(
+    request: Request,
     device_type: Optional[str] = None,
     status: Optional[str] = None,
     db: Session = Depends(get_db),
@@ -1042,7 +1169,9 @@ async def get_iot_devices(
 
 
 @router.get("/iot/devices/offline", response_model=List[Dict[str, Any]], tags=["V9 - IoT"])
+@limiter.limit("60/minute")
 async def get_offline_iot_devices(
+    request: Request,
     threshold_minutes: int = 5,
     db: Session = Depends(get_db),
     current_user: dict = Depends(get_current_user)
@@ -1057,7 +1186,9 @@ async def get_offline_iot_devices(
 # ==================== IOT - TEMPERATURE MONITORING ====================
 
 @router.post("/iot/temperature", response_model=Dict[str, Any], tags=["V9 - IoT"])
+@limiter.limit("30/minute")
 async def record_temperature(
+    request: Request,
     device_id: int,
     temperature: Decimal,
     unit: str = "C",
@@ -1070,7 +1201,9 @@ async def record_temperature(
 
 
 @router.get("/iot/temperature/history", response_model=Dict[str, Any], tags=["V9 - IoT"])
+@limiter.limit("60/minute")
 async def get_temperature_history(
+    request: Request,
     device_id: Optional[int] = None,
     location: Optional[str] = None,
     start_date: Optional[datetime] = None,
@@ -1087,7 +1220,9 @@ async def get_temperature_history(
 
 
 @router.post("/iot/temperature/acknowledge/{log_id}", response_model=Dict[str, Any], tags=["V9 - IoT"])
+@limiter.limit("30/minute")
 async def acknowledge_temperature_alert(
+    request: Request,
     log_id: int,
     corrective_action: Optional[str] = None,
     db: Session = Depends(get_db),
@@ -1099,7 +1234,9 @@ async def acknowledge_temperature_alert(
 
 
 @router.get("/iot/haccp-report", response_model=Dict[str, Any], tags=["V9 - IoT"])
+@limiter.limit("60/minute")
 async def get_haccp_compliance_report(
+    request: Request,
     start_date: date,
     end_date: date,
     db: Session = Depends(get_db),
@@ -1115,7 +1252,9 @@ async def get_haccp_compliance_report(
 # ==================== IOT - POUR METERS ====================
 
 @router.post("/iot/pour", response_model=Dict[str, Any], tags=["V9 - IoT"])
+@limiter.limit("30/minute")
 async def record_pour(
+    request: Request,
     device_id: int,
     product_id: int,
     poured_amount_ml: Decimal,
@@ -1130,7 +1269,9 @@ async def record_pour(
 
 
 @router.get("/iot/pour/analytics", response_model=Dict[str, Any], tags=["V9 - IoT"])
+@limiter.limit("60/minute")
 async def get_pour_analytics(
+    request: Request,
     start_date: date,
     end_date: date,
     product_id: Optional[int] = None,
@@ -1148,7 +1289,9 @@ async def get_pour_analytics(
 # ==================== IOT - SCALE ====================
 
 @router.post("/iot/weight", response_model=Dict[str, Any], tags=["V9 - IoT"])
+@limiter.limit("30/minute")
 async def record_weight(
+    request: Request,
     device_id: int,
     item_id: int,
     weight_grams: Decimal,
@@ -1163,7 +1306,9 @@ async def record_weight(
 # ==================== COMPLIANCE - AUDIT LOGS ====================
 
 @router.post("/compliance/audit-log", response_model=Dict[str, Any], tags=["V9 - Compliance"])
+@limiter.limit("30/minute")
 async def log_action(
+    request: Request,
     action_type: str,
     entity_type: str,
     entity_id: int,
@@ -1182,7 +1327,9 @@ async def log_action(
 
 
 @router.get("/compliance/audit-log/verify", response_model=Dict[str, Any], tags=["V9 - Compliance"])
+@limiter.limit("60/minute")
 async def verify_audit_chain(
+    request: Request,
     start_id: Optional[int] = None,
     end_id: Optional[int] = None,
     db: Session = Depends(get_db),
@@ -1196,7 +1343,9 @@ async def verify_audit_chain(
 
 
 @router.get("/compliance/audit-log", response_model=List[Dict[str, Any]], tags=["V9 - Compliance"])
+@limiter.limit("60/minute")
 async def get_audit_logs(
+    request: Request,
     action_type: Optional[str] = None,
     entity_type: Optional[str] = None,
     user_id: Optional[int] = None,
@@ -1216,7 +1365,9 @@ async def get_audit_logs(
 # ==================== COMPLIANCE - FISCAL ARCHIVE ====================
 
 @router.post("/compliance/fiscal-archive", response_model=Dict[str, Any], tags=["V9 - Compliance"])
+@limiter.limit("30/minute")
 async def archive_fiscal_receipt(
+    request: Request,
     order_id: int,
     receipt_number: str,
     fiscal_device_id: str,
@@ -1233,7 +1384,9 @@ async def archive_fiscal_receipt(
 
 
 @router.get("/compliance/fiscal-archive", response_model=Dict[str, Any], tags=["V9 - Compliance"])
+@limiter.limit("60/minute")
 async def get_fiscal_archive(
+    request: Request,
     start_date: date,
     end_date: date,
     receipt_number: Optional[str] = None,
@@ -1250,7 +1403,9 @@ async def get_fiscal_archive(
 # ==================== COMPLIANCE - NRA EXPORT ====================
 
 @router.post("/compliance/nra-export", response_model=Dict[str, Any], tags=["V9 - Compliance"])
+@limiter.limit("30/minute")
 async def create_nra_export(
+    request: Request,
     export_type: str,
     start_date: date,
     end_date: date,
@@ -1266,7 +1421,9 @@ async def create_nra_export(
 
 
 @router.get("/compliance/nra-exports", response_model=List[Dict[str, Any]], tags=["V9 - Compliance"])
+@limiter.limit("60/minute")
 async def get_nra_exports(
+    request: Request,
     limit: int = 50,
     db: Session = Depends(get_db),
     current_user: dict = Depends(get_current_user)
@@ -1281,7 +1438,9 @@ async def get_nra_exports(
 # ==================== COMPLIANCE - AGE VERIFICATION ====================
 
 @router.post("/compliance/age-verification", response_model=Dict[str, Any], tags=["V9 - Compliance"])
+@limiter.limit("30/minute")
 async def log_age_verification(
+    request: Request,
     verification_method: str,
     order_id: Optional[int] = None,
     guest_birth_date: Optional[date] = None,
@@ -1303,7 +1462,9 @@ async def log_age_verification(
 
 
 @router.get("/compliance/age-verification/report", response_model=Dict[str, Any], tags=["V9 - Compliance"])
+@limiter.limit("60/minute")
 async def get_age_verification_report(
+    request: Request,
     start_date: date,
     end_date: date,
     db: Session = Depends(get_db),
@@ -1319,7 +1480,9 @@ async def get_age_verification_report(
 # ==================== COMPLIANCE - GDPR ====================
 
 @router.post("/compliance/gdpr/delete-request", response_model=Dict[str, Any], tags=["V9 - Compliance"])
+@limiter.limit("30/minute")
 async def process_data_deletion_request(
+    request: Request,
     customer_id: int,
     reason: str,
     db: Session = Depends(get_db),
@@ -1335,7 +1498,9 @@ async def process_data_deletion_request(
 
 
 @router.get("/compliance/gdpr/export/{customer_id}", response_model=Dict[str, Any], tags=["V9 - Compliance"])
+@limiter.limit("60/minute")
 async def generate_gdpr_data_export(
+    request: Request,
     customer_id: int,
     db: Session = Depends(get_db),
     current_user: dict = Depends(get_current_user)
@@ -1351,7 +1516,9 @@ async def generate_gdpr_data_export(
 # ==================== AI - MODEL MANAGEMENT ====================
 
 @router.post("/ai/models", response_model=Dict[str, Any], tags=["V9 - AI & Automation"])
+@limiter.limit("30/minute")
 async def register_ai_model(
+    request: Request,
     model_name: str,
     model_type: str,
     model_version: str,
@@ -1368,7 +1535,9 @@ async def register_ai_model(
 
 
 @router.post("/ai/models/{model_id}/activate", response_model=Dict[str, Any], tags=["V9 - AI & Automation"])
+@limiter.limit("30/minute")
 async def activate_ai_model(
+    request: Request,
     model_id: int,
     db: Session = Depends(get_db),
     current_user: dict = Depends(get_current_user)
@@ -1378,7 +1547,9 @@ async def activate_ai_model(
 
 
 @router.get("/ai/models/active", response_model=List[Dict[str, Any]], tags=["V9 - AI & Automation"])
+@limiter.limit("60/minute")
 async def get_active_ai_models(
+    request: Request,
     db: Session = Depends(get_db),
     current_user: dict = Depends(get_current_user)
 ):
@@ -1390,7 +1561,9 @@ async def get_active_ai_models(
 
 
 @router.put("/ai/models/{model_id}/accuracy", response_model=Dict[str, Any], tags=["V9 - AI & Automation"])
+@limiter.limit("30/minute")
 async def update_model_accuracy(
+    request: Request,
     model_id: int,
     accuracy_score: Decimal,
     db: Session = Depends(get_db),
@@ -1403,7 +1576,9 @@ async def update_model_accuracy(
 # ==================== AI - PREDICTIONS ====================
 
 @router.post("/ai/predictions", response_model=Dict[str, Any], tags=["V9 - AI & Automation"])
+@limiter.limit("30/minute")
 async def log_prediction(
+    request: Request,
     model_id: int,
     prediction_type: str,
     input_data: Dict[str, Any],
@@ -1418,7 +1593,9 @@ async def log_prediction(
 
 
 @router.post("/ai/predictions/{prediction_id}/actual", response_model=Dict[str, Any], tags=["V9 - AI & Automation"])
+@limiter.limit("30/minute")
 async def record_actual_value(
+    request: Request,
     prediction_id: int,
     actual_value: Any,
     db: Session = Depends(get_db),
@@ -1429,7 +1606,9 @@ async def record_actual_value(
 
 
 @router.get("/ai/predictions/accuracy-report", response_model=Dict[str, Any], tags=["V9 - AI & Automation"])
+@limiter.limit("60/minute")
 async def get_prediction_accuracy_report(
+    request: Request,
     model_id: Optional[int] = None,
     prediction_type: Optional[str] = None,
     start_date: Optional[date] = None,
@@ -1447,7 +1626,9 @@ async def get_prediction_accuracy_report(
 # ==================== AI - AUTOMATION RULES ====================
 
 @router.post("/ai/automation-rules", response_model=Dict[str, Any], tags=["V9 - AI & Automation"])
+@limiter.limit("30/minute")
 async def create_automation_rule(
+    request: Request,
     rule_name: str,
     trigger_type: str,
     trigger_config: Dict[str, Any],
@@ -1465,7 +1646,9 @@ async def create_automation_rule(
 
 
 @router.get("/ai/automation-rules", response_model=List[Dict[str, Any]], tags=["V9 - AI & Automation"])
+@limiter.limit("60/minute")
 async def get_automation_rules(
+    request: Request,
     enabled_only: bool = False,
     db: Session = Depends(get_db),
     current_user: dict = Depends(get_current_user)
@@ -1478,7 +1661,9 @@ async def get_automation_rules(
 
 
 @router.put("/ai/automation-rules/{rule_id}/toggle", response_model=Dict[str, Any], tags=["V9 - AI & Automation"])
+@limiter.limit("30/minute")
 async def toggle_automation_rule(
+    request: Request,
     rule_id: int,
     enabled: bool,
     db: Session = Depends(get_db),
@@ -1489,7 +1674,9 @@ async def toggle_automation_rule(
 
 
 @router.post("/ai/automation-rules/check", response_model=List[Dict[str, Any]], tags=["V9 - AI & Automation"])
+@limiter.limit("30/minute")
 async def check_and_execute_automations(
+    request: Request,
     trigger_type: str,
     trigger_data: Dict[str, Any],
     db: Session = Depends(get_db),
@@ -1505,7 +1692,9 @@ async def check_and_execute_automations(
 # ==================== AI - MENU OPTIMIZATION ====================
 
 @router.get("/ai/menu-optimization", response_model=Dict[str, Any], tags=["V9 - AI & Automation"])
+@limiter.limit("60/minute")
 async def get_menu_optimization_suggestions(
+    request: Request,
     db: Session = Depends(get_db),
     current_user: dict = Depends(get_current_user)
 ):
@@ -1519,7 +1708,9 @@ async def get_menu_optimization_suggestions(
 # ==================== AI - STAFFING RECOMMENDATIONS ====================
 
 @router.get("/ai/staffing-recommendations", response_model=Dict[str, Any], tags=["V9 - AI & Automation"])
+@limiter.limit("60/minute")
 async def get_staffing_recommendations(
+    request: Request,
     target_date: date,
     db: Session = Depends(get_db),
     current_user: dict = Depends(get_current_user)
@@ -1534,7 +1725,9 @@ async def get_staffing_recommendations(
 # ==================== LEGAL - INCIDENT REPORTS ====================
 
 @router.post("/legal/incidents", response_model=Dict[str, Any], tags=["V9 - Legal & Training"])
+@limiter.limit("30/minute")
 async def create_incident_report(
+    request: Request,
     incident_type: str,
     incident_date: datetime,
     location: str,
@@ -1558,7 +1751,9 @@ async def create_incident_report(
 
 
 @router.post("/legal/incidents/{report_id}/evidence", response_model=Dict[str, Any], tags=["V9 - Legal & Training"])
+@limiter.limit("30/minute")
 async def add_incident_evidence(
+    request: Request,
     report_id: int,
     evidence_type: str,
     file_path: str,
@@ -1572,7 +1767,9 @@ async def add_incident_evidence(
 
 
 @router.put("/legal/incidents/{report_id}/status", response_model=Dict[str, Any], tags=["V9 - Legal & Training"])
+@limiter.limit("30/minute")
 async def update_incident_status(
+    request: Request,
     report_id: int,
     status: str,
     notes: Optional[str] = None,
@@ -1586,7 +1783,9 @@ async def update_incident_status(
 
 
 @router.get("/legal/incidents", response_model=List[Dict[str, Any]], tags=["V9 - Legal & Training"])
+@limiter.limit("60/minute")
 async def get_incident_reports(
+    request: Request,
     status: Optional[str] = None,
     incident_type: Optional[str] = None,
     start_date: Optional[date] = None,
@@ -1602,7 +1801,9 @@ async def get_incident_reports(
 
 
 @router.post("/legal/incidents/{report_id}/insurance", response_model=Dict[str, Any], tags=["V9 - Legal & Training"])
+@limiter.limit("30/minute")
 async def link_insurance_claim(
+    request: Request,
     report_id: int,
     claim_number: str,
     claim_details: Optional[Dict[str, Any]] = None,
@@ -1616,7 +1817,9 @@ async def link_insurance_claim(
 # ==================== TRAINING ====================
 
 @router.post("/training/modules", response_model=Dict[str, Any], tags=["V9 - Legal & Training"])
+@limiter.limit("30/minute")
 async def create_training_module(
+    request: Request,
     module_name: str,
     module_type: str,
     description: str,
@@ -1639,7 +1842,9 @@ async def create_training_module(
 
 
 @router.get("/training/modules", response_model=List[Dict[str, Any]], tags=["V9 - Legal & Training"])
+@limiter.limit("60/minute")
 async def get_training_modules(
+    request: Request,
     module_type: Optional[str] = None,
     role: Optional[str] = None,
     db: Session = Depends(get_db),
@@ -1653,7 +1858,9 @@ async def get_training_modules(
 
 
 @router.post("/training/start/{module_id}", response_model=Dict[str, Any], tags=["V9 - Legal & Training"])
+@limiter.limit("30/minute")
 async def start_training(
+    request: Request,
     module_id: int,
     staff_id: int,
     db: Session = Depends(get_db),
@@ -1664,7 +1871,9 @@ async def start_training(
 
 
 @router.post("/training/complete/{record_id}", response_model=Dict[str, Any], tags=["V9 - Legal & Training"])
+@limiter.limit("30/minute")
 async def complete_training(
+    request: Request,
     record_id: int,
     score: int,
     db: Session = Depends(get_db),
@@ -1675,7 +1884,9 @@ async def complete_training(
 
 
 @router.get("/training/status/{staff_id}", response_model=Dict[str, Any], tags=["V9 - Legal & Training"])
+@limiter.limit("60/minute")
 async def get_staff_training_status(
+    request: Request,
     staff_id: int,
     db: Session = Depends(get_db),
     current_user: dict = Depends(get_current_user)
@@ -1688,7 +1899,9 @@ async def get_staff_training_status(
 
 
 @router.get("/training/expiring-certifications", response_model=List[Dict[str, Any]], tags=["V9 - Legal & Training"])
+@limiter.limit("60/minute")
 async def get_expiring_certifications(
+    request: Request,
     days_ahead: int = 30,
     db: Session = Depends(get_db),
     current_user: dict = Depends(get_current_user)
@@ -1703,7 +1916,9 @@ async def get_expiring_certifications(
 # ==================== CRISIS MANAGEMENT ====================
 
 @router.post("/crisis/modes", response_model=Dict[str, Any], tags=["V9 - Legal & Training"])
+@limiter.limit("30/minute")
 async def create_crisis_mode(
+    request: Request,
     mode_name: str,
     mode_type: str,
     description: str,
@@ -1725,7 +1940,9 @@ async def create_crisis_mode(
 
 
 @router.post("/crisis/modes/{crisis_mode_id}/activate", response_model=Dict[str, Any], tags=["V9 - Legal & Training"])
+@limiter.limit("30/minute")
 async def activate_crisis_mode(
+    request: Request,
     crisis_mode_id: int,
     reason: str,
     db: Session = Depends(get_db),
@@ -1737,7 +1954,9 @@ async def activate_crisis_mode(
 
 
 @router.post("/crisis/deactivate", response_model=Dict[str, Any], tags=["V9 - Legal & Training"])
+@limiter.limit("30/minute")
 async def deactivate_crisis_mode(
+    request: Request,
     reason: str,
     db: Session = Depends(get_db),
     current_user: dict = Depends(get_current_user)
@@ -1751,7 +1970,9 @@ async def deactivate_crisis_mode(
 
 
 @router.get("/crisis/active", response_model=Optional[Dict[str, Any]], tags=["V9 - Legal & Training"])
+@limiter.limit("60/minute")
 async def get_active_crisis_mode(
+    request: Request,
     db: Session = Depends(get_db),
     current_user: dict = Depends(get_current_user)
 ):
@@ -1763,7 +1984,9 @@ async def get_active_crisis_mode(
 
 
 @router.get("/crisis/modes", response_model=List[Dict[str, Any]], tags=["V9 - Legal & Training"])
+@limiter.limit("60/minute")
 async def get_crisis_modes(
+    request: Request,
     db: Session = Depends(get_db),
     current_user: dict = Depends(get_current_user)
 ):
@@ -1775,7 +1998,9 @@ async def get_crisis_modes(
 
 
 @router.post("/crisis/check-auto-activation", response_model=Optional[Dict[str, Any]], tags=["V9 - Legal & Training"])
+@limiter.limit("30/minute")
 async def check_crisis_auto_activation(
+    request: Request,
     current_conditions: Dict[str, Any],
     db: Session = Depends(get_db),
     current_user: dict = Depends(get_current_user)
@@ -1790,7 +2015,9 @@ async def check_crisis_auto_activation(
 # ==================== PLATFORM - FEATURE FLAGS ====================
 
 @router.post("/platform/feature-flags", response_model=Dict[str, Any], tags=["V9 - Platform"])
+@limiter.limit("30/minute")
 async def create_feature_flag(
+    request: Request,
     feature_key: str,
     feature_name: str,
     description: str,
@@ -1808,7 +2035,9 @@ async def create_feature_flag(
 
 
 @router.get("/platform/feature-flags/check/{feature_key}", response_model=Dict[str, Any], tags=["V9 - Platform"])
+@limiter.limit("60/minute")
 async def check_feature(
+    request: Request,
     feature_key: str,
     user_id: Optional[int] = None,
     context: Optional[Dict[str, Any]] = None,
@@ -1823,7 +2052,9 @@ async def check_feature(
 
 
 @router.put("/platform/feature-flags/{flag_id}", response_model=Dict[str, Any], tags=["V9 - Platform"])
+@limiter.limit("30/minute")
 async def update_feature_flag(
+    request: Request,
     flag_id: int,
     updates: Dict[str, Any],
     db: Session = Depends(get_db),
@@ -1834,7 +2065,9 @@ async def update_feature_flag(
 
 
 @router.get("/platform/feature-flags", response_model=List[Dict[str, Any]], tags=["V9 - Platform"])
+@limiter.limit("60/minute")
 async def get_feature_flags(
+    request: Request,
     db: Session = Depends(get_db),
     current_user: dict = Depends(get_current_user)
 ):
@@ -1848,7 +2081,9 @@ async def get_feature_flags(
 # ==================== PLATFORM - WHITE LABEL ====================
 
 @router.post("/platform/white-label", response_model=Dict[str, Any], tags=["V9 - Platform"])
+@limiter.limit("30/minute")
 async def set_white_label_config(
+    request: Request,
     brand_name: str,
     logo_url: Optional[str] = None,
     primary_color: str = "#2563eb",
@@ -1873,7 +2108,9 @@ async def set_white_label_config(
 
 
 @router.get("/platform/white-label", response_model=Optional[Dict[str, Any]], tags=["V9 - Platform"])
+@limiter.limit("60/minute")
 async def get_white_label_config(
+    request: Request,
     db: Session = Depends(get_db),
     current_user: dict = Depends(get_current_user)
 ):
@@ -1887,7 +2124,9 @@ async def get_white_label_config(
 # ==================== QR - PAY AT TABLE ====================
 
 @router.post("/qr/payment-session", response_model=Dict[str, Any], tags=["V9 - QR & Self-Service"])
+@limiter.limit("30/minute")
 async def create_qr_payment_session(
+    request: Request,
     order_id: int,
     table_number: str,
     total_amount: Decimal,
@@ -1903,7 +2142,9 @@ async def create_qr_payment_session(
 
 
 @router.get("/qr/payment-session/{session_code}", response_model=Optional[Dict[str, Any]], tags=["V9 - QR & Self-Service"])
+@limiter.limit("60/minute")
 async def get_payment_session(
+    request: Request,
     session_code: str,
     db: Session = Depends(get_db)
 ):
@@ -1912,7 +2153,9 @@ async def get_payment_session(
 
 
 @router.post("/qr/payment-session/{session_id}/split", response_model=Dict[str, Any], tags=["V9 - QR & Self-Service"])
+@limiter.limit("30/minute")
 async def configure_split_payment(
+    request: Request,
     session_id: int,
     split_type: str,
     split_count: int,
@@ -1923,7 +2166,9 @@ async def configure_split_payment(
 
 
 @router.post("/qr/payment-session/{session_id}/pay", response_model=Dict[str, Any], tags=["V9 - QR & Self-Service"])
+@limiter.limit("30/minute")
 async def record_qr_payment(
+    request: Request,
     session_id: int,
     amount: Decimal,
     tip_amount: Decimal,
@@ -1939,7 +2184,9 @@ async def record_qr_payment(
 # ==================== QR - SCAN TO REORDER ====================
 
 @router.post("/qr/reorder-session", response_model=Dict[str, Any], tags=["V9 - QR & Self-Service"])
+@limiter.limit("30/minute")
 async def create_reorder_session(
+    request: Request,
     original_order_id: int,
     table_number: str,
     guest_id: int,
@@ -1954,7 +2201,9 @@ async def create_reorder_session(
 
 
 @router.get("/qr/reorder-session/{session_code}", response_model=Optional[Dict[str, Any]], tags=["V9 - QR & Self-Service"])
+@limiter.limit("60/minute")
 async def get_reorder_items(
+    request: Request,
     session_code: str,
     db: Session = Depends(get_db)
 ):
@@ -1963,7 +2212,9 @@ async def get_reorder_items(
 
 
 @router.post("/qr/reorder-session/{session_id}/confirm", response_model=Dict[str, Any], tags=["V9 - QR & Self-Service"])
+@limiter.limit("30/minute")
 async def confirm_reorder(
+    request: Request,
     session_id: int,
     selected_item_ids: List[int],
     modifications: Optional[Dict[int, str]] = None,
@@ -1976,7 +2227,9 @@ async def confirm_reorder(
 # ==================== QR - TABLE QR CODES ====================
 
 @router.get("/qr/table/{table_number}", response_model=Dict[str, Any], tags=["V9 - QR & Self-Service"])
+@limiter.limit("60/minute")
 async def generate_table_qr(
+    request: Request,
     table_number: str,
     qr_type: str = "menu",
     current_user: dict = Depends(get_current_user)
@@ -1991,7 +2244,9 @@ async def generate_table_qr(
 # ==================== KIOSK - SELF SERVICE ====================
 
 @router.get("/kiosk/menu", response_model=Dict[str, Any], tags=["V9 - QR & Self-Service"])
+@limiter.limit("60/minute")
 async def get_kiosk_menu(
+    request: Request,
     db: Session = Depends(get_db),
     current_user: dict = Depends(get_current_user)
 ):
@@ -2003,7 +2258,9 @@ async def get_kiosk_menu(
 
 
 @router.post("/kiosk/order", response_model=Dict[str, Any], tags=["V9 - QR & Self-Service"])
+@limiter.limit("30/minute")
 async def submit_kiosk_order(
+    request: Request,
     items: List[Dict[str, Any]],
     payment_method: str,
     guest_name: Optional[str] = None,

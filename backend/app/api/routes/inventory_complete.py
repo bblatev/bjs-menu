@@ -10,11 +10,12 @@ from datetime import datetime, date, timedelta, timezone
 from decimal import Decimal
 from typing import Optional, List
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Query, Request
 from pydantic import BaseModel
 from sqlalchemy import func, and_, case
 
 from app.db.session import DbSession
+from app.core.rate_limit import limiter
 from app.models.stock import StockOnHand, StockMovement, MovementReason
 from app.models.product import Product
 from app.models.location import Location
@@ -37,7 +38,9 @@ class InventoryCountStartRequest(BaseModel):
 # ==================== DASHBOARD ====================
 
 @router.get("/dashboard")
+@limiter.limit("60/minute")
 def get_inventory_dashboard(
+    request: Request,
     db: DbSession,
     location_id: int = Query(1),
 ):
@@ -137,7 +140,9 @@ def get_inventory_dashboard(
 # ==================== ITEMS ====================
 
 @router.get("/items")
+@limiter.limit("60/minute")
 def get_inventory_items(
+    request: Request,
     db: DbSession,
     location_id: int = Query(1),
     search: Optional[str] = None,
@@ -245,7 +250,9 @@ def get_inventory_items(
 # ==================== CATEGORIES ====================
 
 @router.get("/categories")
+@limiter.limit("60/minute")
 def get_inventory_categories(
+    request: Request,
     db: DbSession,
     location_id: int = Query(1),
 ):
@@ -306,7 +313,9 @@ def get_inventory_categories(
 # ==================== ALERTS ====================
 
 @router.get("/alerts")
+@limiter.limit("60/minute")
 def get_inventory_alerts(
+    request: Request,
     db: DbSession,
     location_id: int = Query(1),
 ):
@@ -398,22 +407,24 @@ def get_inventory_alerts(
 # ==================== COUNT SESSION ====================
 
 @router.post("/count")
+@limiter.limit("30/minute")
 def start_count_session(
+    request: Request,
     db: DbSession,
-    request: InventoryCountStartRequest,
+    count_request: InventoryCountStartRequest,
 ):
     """
     Start a new inventory count session.
     Returns session ID and list of products to count with current quantities.
     """
-    location = db.query(Location).filter(Location.id == request.location_id).first()
+    location = db.query(Location).filter(Location.id == count_request.location_id).first()
     if not location:
         raise HTTPException(status_code=404, detail="Location not found")
 
     session = InventorySession(
-        location_id=request.location_id,
-        notes=request.notes or f"Count session - {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M')}",
-        shelf_zone=request.shelf_zone,
+        location_id=count_request.location_id,
+        notes=count_request.notes or f"Count session - {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M')}",
+        shelf_zone=count_request.shelf_zone,
     )
     db.add(session)
     db.flush()
@@ -421,7 +432,7 @@ def start_count_session(
     # Get all products at this location with current stock
     products_to_count = []
     stock_items = db.query(StockOnHand).filter(
-        StockOnHand.location_id == request.location_id,
+        StockOnHand.location_id == count_request.location_id,
     ).all()
 
     for s in stock_items:
@@ -443,7 +454,7 @@ def start_count_session(
 
     return {
         "session_id": session.id,
-        "location_id": request.location_id,
+        "location_id": count_request.location_id,
         "location_name": location.name,
         "status": "draft",
         "products_to_count": products_to_count,
@@ -454,7 +465,9 @@ def start_count_session(
 # ==================== HISTORY ====================
 
 @router.get("/history")
+@limiter.limit("60/minute")
 def get_inventory_history(
+    request: Request,
     db: DbSession,
     location_id: int = Query(1),
     product_id: Optional[int] = None,
@@ -508,7 +521,9 @@ def get_inventory_history(
 # ==================== VALUATION ====================
 
 @router.get("/valuation")
+@limiter.limit("60/minute")
 def get_inventory_valuation(
+    request: Request,
     db: DbSession,
     location_id: int = Query(1),
     method: str = Query("weighted_average", description="fifo, weighted_average, last_cost"),
@@ -605,7 +620,9 @@ class BarcodeCreateRequest(BaseModel):
 
 
 @router.get("/barcodes")
+@limiter.limit("60/minute")
 def list_barcodes(
+    request: Request,
     db: DbSession,
     location_id: int = Query(1),
 ):
@@ -632,7 +649,8 @@ def list_barcodes(
 
 
 @router.get("/barcodes/item/{item_id}")
-def get_barcodes_for_item(item_id: int, db: DbSession):
+@limiter.limit("60/minute")
+def get_barcodes_for_item(request: Request, item_id: int, db: DbSession):
     """Get barcodes for a specific item."""
     product = db.query(Product).filter(Product.id == item_id).first()
     if not product:
@@ -651,19 +669,20 @@ def get_barcodes_for_item(item_id: int, db: DbSession):
 
 
 @router.post("/barcodes")
-def create_barcode(request: BarcodeCreateRequest, db: DbSession):
+@limiter.limit("30/minute")
+def create_barcode(request: Request, barcode_request: BarcodeCreateRequest, db: DbSession):
     """Create a barcode for an inventory item."""
-    product = db.query(Product).filter(Product.id == request.stock_item_id).first()
+    product = db.query(Product).filter(Product.id == barcode_request.stock_item_id).first()
     if not product:
         raise HTTPException(status_code=404, detail="Item not found")
-    product.barcode = request.barcode_value
+    product.barcode = barcode_request.barcode_value
     db.commit()
     return {
         "id": product.id,
         "stock_item_id": product.id,
-        "barcode_value": request.barcode_value,
-        "barcode_type": request.barcode_type,
-        "is_primary": request.is_primary,
+        "barcode_value": barcode_request.barcode_value,
+        "barcode_type": barcode_request.barcode_type,
+        "is_primary": barcode_request.is_primary,
         "is_active": True,
     }
 
@@ -680,7 +699,8 @@ class AutoReorderRuleRequest(BaseModel):
 
 
 @router.get("/auto-reorder/history")
-def get_auto_reorder_history(db: DbSession, location_id: int = Query(1)):
+@limiter.limit("60/minute")
+def get_auto_reorder_history(request: Request, db: DbSession, location_id: int = Query(1)):
     """Get auto-reorder execution history from purchase orders triggered by low stock."""
     orders = db.query(PurchaseOrder).filter(
         PurchaseOrder.notes.like("%auto%reorder%"),
@@ -704,7 +724,8 @@ def get_auto_reorder_history(db: DbSession, location_id: int = Query(1)):
 
 
 @router.get("/auto-reorder/rules")
-def get_auto_reorder_rules(db: DbSession, location_id: int = Query(1)):
+@limiter.limit("60/minute")
+def get_auto_reorder_rules(request: Request, db: DbSession, location_id: int = Query(1)):
     """Get auto-reorder rules based on PAR levels."""
     stock_items = db.query(StockOnHand).filter(
         StockOnHand.location_id == location_id,
@@ -730,7 +751,8 @@ def get_auto_reorder_rules(db: DbSession, location_id: int = Query(1)):
 
 
 @router.get("/auto-reorder/alerts")
-def get_auto_reorder_alerts(db: DbSession, location_id: int = Query(1)):
+@limiter.limit("60/minute")
+def get_auto_reorder_alerts(request: Request, db: DbSession, location_id: int = Query(1)):
     """Get items that need reordering."""
     stock_items = db.query(StockOnHand).filter(
         StockOnHand.location_id == location_id,
@@ -757,20 +779,22 @@ def get_auto_reorder_alerts(db: DbSession, location_id: int = Query(1)):
 
 
 @router.post("/auto-reorder/rules")
-def create_auto_reorder_rule(request: AutoReorderRuleRequest, db: DbSession):
+@limiter.limit("30/minute")
+def create_auto_reorder_rule(request: Request, rule_request: AutoReorderRuleRequest, db: DbSession):
     """Create an auto-reorder rule."""
-    product = db.query(Product).filter(Product.id == request.stock_item_id).first()
+    product = db.query(Product).filter(Product.id == rule_request.stock_item_id).first()
     if not product:
         raise HTTPException(status_code=404, detail="Item not found")
-    product.min_stock = request.reorder_point
-    if request.reorder_quantity:
-        product.par_level = request.reorder_point + request.reorder_quantity
+    product.min_stock = rule_request.reorder_point
+    if rule_request.reorder_quantity:
+        product.par_level = rule_request.reorder_point + rule_request.reorder_quantity
     db.commit()
     return {"success": True, "id": product.id}
 
 
 @router.post("/auto-reorder/process")
-def process_auto_reorder(db: DbSession, location_id: int = Query(1)):
+@limiter.limit("30/minute")
+def process_auto_reorder(request: Request, db: DbSession, location_id: int = Query(1)):
     """Process auto-reorder for all items below reorder point."""
     stock_items = db.query(StockOnHand).filter(
         StockOnHand.location_id == location_id,
@@ -798,7 +822,8 @@ class BatchCreateRequest(BaseModel):
 
 
 @router.get("/batches")
-def list_batches(db: DbSession, location_id: int = Query(1)):
+@limiter.limit("60/minute")
+def list_batches(request: Request, db: DbSession, location_id: int = Query(1)):
     """List all active batches."""
     batches = []
     try:
@@ -826,7 +851,8 @@ def list_batches(db: DbSession, location_id: int = Query(1)):
 
 
 @router.get("/batches/item/{item_id}")
-def get_batches_for_item(item_id: int, db: DbSession, location_id: int = Query(1)):
+@limiter.limit("60/minute")
+def get_batches_for_item(request: Request, item_id: int, db: DbSession, location_id: int = Query(1)):
     """Get batches for a specific item."""
     batches = []
     try:
@@ -853,20 +879,21 @@ def get_batches_for_item(item_id: int, db: DbSession, location_id: int = Query(1
 
 
 @router.post("/batches")
-def create_batch(request: BatchCreateRequest, db: DbSession, location_id: int = Query(1)):
+@limiter.limit("30/minute")
+def create_batch(request: Request, batch_request: BatchCreateRequest, db: DbSession, location_id: int = Query(1)):
     """Record a new batch."""
     from app.models.advanced_features import InventoryBatch
     today = date.today()
-    exp = date.fromisoformat(request.expiry_date) if request.expiry_date else today + timedelta(days=365)
+    exp = date.fromisoformat(batch_request.expiry_date) if batch_request.expiry_date else today + timedelta(days=365)
     batch = InventoryBatch(
-        product_id=request.stock_item_id,
+        product_id=batch_request.stock_item_id,
         location_id=location_id,
-        batch_number=request.batch_number,
-        received_quantity=request.quantity,
-        current_quantity=request.quantity,
+        batch_number=batch_request.batch_number,
+        received_quantity=batch_request.quantity,
+        current_quantity=batch_request.quantity,
         received_date=today,
         expiration_date=exp,
-        unit_cost=request.cost_per_unit or 0,
+        unit_cost=batch_request.cost_per_unit or 0,
     )
     db.add(batch)
     db.commit()
@@ -893,7 +920,8 @@ class ShrinkageRecordRequest(BaseModel):
 
 
 @router.get("/shrinkage")
-def get_shrinkage_records(db: DbSession, location_id: int = Query(1), days: int = Query(30)):
+@limiter.limit("60/minute")
+def get_shrinkage_records(request: Request, db: DbSession, location_id: int = Query(1), days: int = Query(30)):
     """Get shrinkage records (waste/loss movements)."""
     start_date = datetime.now(timezone.utc) - timedelta(days=days)
     waste_movements = db.query(StockMovement).filter(
@@ -920,14 +948,15 @@ def get_shrinkage_records(db: DbSession, location_id: int = Query(1), days: int 
 
 
 @router.post("/shrinkage/record")
-def record_shrinkage(request: ShrinkageRecordRequest, db: DbSession, location_id: int = Query(1)):
+@limiter.limit("30/minute")
+def record_shrinkage(request: Request, shrinkage_request: ShrinkageRecordRequest, db: DbSession, location_id: int = Query(1)):
     """Record a shrinkage event."""
     movement = StockMovement(
-        product_id=request.stock_item_id,
+        product_id=shrinkage_request.stock_item_id,
         location_id=location_id,
-        qty_delta=-abs(request.quantity),
-        reason=request.reason if request.reason in ("waste", "spoilage", "theft", "damage", "shrinkage") else "shrinkage",
-        notes=request.notes,
+        qty_delta=-abs(shrinkage_request.quantity),
+        reason=shrinkage_request.reason if shrinkage_request.reason in ("waste", "spoilage", "theft", "damage", "shrinkage") else "shrinkage",
+        notes=shrinkage_request.notes,
         ts=datetime.now(timezone.utc),
     )
     db.add(movement)
@@ -936,7 +965,7 @@ def record_shrinkage(request: ShrinkageRecordRequest, db: DbSession, location_id
     return {
         "id": movement.id,
         "stock_item_id": movement.product_id,
-        "quantity": request.quantity,
+        "quantity": shrinkage_request.quantity,
         "reason": movement.reason,
         "notes": movement.notes,
         "recorded_at": movement.ts.isoformat() if movement.ts else datetime.now(timezone.utc).isoformat(),
@@ -953,7 +982,8 @@ class CycleCountScheduleRequest(BaseModel):
 
 
 @router.get("/cycle-counts/schedules")
-def get_cycle_count_schedules(db: DbSession):
+@limiter.limit("60/minute")
+def get_cycle_count_schedules(request: Request, db: DbSession):
     """Get cycle count schedules."""
     from app.models.operations import AppSetting
     setting = db.query(AppSetting).filter(
@@ -966,7 +996,8 @@ def get_cycle_count_schedules(db: DbSession):
 
 
 @router.get("/cycle-counts/tasks")
-def get_cycle_count_tasks(db: DbSession):
+@limiter.limit("60/minute")
+def get_cycle_count_tasks(request: Request, db: DbSession):
     """Get cycle count tasks."""
     sessions = db.query(InventorySession).order_by(
         InventorySession.id.desc()
@@ -990,7 +1021,8 @@ def get_cycle_count_tasks(db: DbSession):
 
 
 @router.post("/cycle-counts/schedules")
-def create_cycle_count_schedule(request: CycleCountScheduleRequest, db: DbSession):
+@limiter.limit("30/minute")
+def create_cycle_count_schedule(request: Request, schedule_request: CycleCountScheduleRequest, db: DbSession):
     """Create a cycle count schedule."""
     from app.models.operations import AppSetting
     setting = db.query(AppSetting).filter(
@@ -1003,11 +1035,11 @@ def create_cycle_count_schedule(request: CycleCountScheduleRequest, db: DbSessio
     next_id = max((s.get("id", 0) for s in schedules), default=0) + 1
     new_schedule = {
         "id": next_id,
-        "name": request.name,
-        "count_type": request.count_type,
-        "frequency_days": request.frequency_days,
-        "next_count_date": (date.today() + timedelta(days=request.frequency_days)).isoformat(),
-        "is_active": request.is_active,
+        "name": schedule_request.name,
+        "count_type": schedule_request.count_type,
+        "frequency_days": schedule_request.frequency_days,
+        "next_count_date": (date.today() + timedelta(days=schedule_request.frequency_days)).isoformat(),
+        "is_active": schedule_request.is_active,
     }
     schedules.append(new_schedule)
     if setting:
@@ -1022,7 +1054,8 @@ def create_cycle_count_schedule(request: CycleCountScheduleRequest, db: DbSessio
 # ==================== RECONCILIATION ====================
 
 @router.get("/reconciliation/sessions")
-def get_reconciliation_sessions(db: DbSession, location_id: int = Query(1)):
+@limiter.limit("60/minute")
+def get_reconciliation_sessions(request: Request, db: DbSession, location_id: int = Query(1)):
     """Get reconciliation sessions."""
     sessions = db.query(InventorySession).filter(
         InventorySession.location_id == location_id,
@@ -1047,7 +1080,8 @@ def get_reconciliation_sessions(db: DbSession, location_id: int = Query(1)):
 
 
 @router.post("/reconciliation/start")
-def start_reconciliation(db: DbSession, location_id: int = Query(1)):
+@limiter.limit("30/minute")
+def start_reconciliation(request: Request, db: DbSession, location_id: int = Query(1)):
     """Start a new reconciliation session."""
     session = InventorySession(
         location_id=location_id,
@@ -1073,7 +1107,8 @@ class UnitConversionRequest(BaseModel):
 
 
 @router.get("/unit-conversions")
-def get_unit_conversions(db: DbSession):
+@limiter.limit("60/minute")
+def get_unit_conversions(request: Request, db: DbSession):
     """Get unit conversion table."""
     from app.models.operations import AppSetting
     setting = db.query(AppSetting).filter(
@@ -1086,7 +1121,8 @@ def get_unit_conversions(db: DbSession):
 
 
 @router.post("/unit-conversions")
-def create_unit_conversion(request: UnitConversionRequest, db: DbSession):
+@limiter.limit("30/minute")
+def create_unit_conversion(request: Request, conversion_request: UnitConversionRequest, db: DbSession):
     """Create a unit conversion."""
     from app.models.operations import AppSetting
     import json
@@ -1098,10 +1134,10 @@ def create_unit_conversion(request: UnitConversionRequest, db: DbSession):
     new_id = max((c.get("id", 0) for c in conversions), default=0) + 1
     new_conversion = {
         "id": new_id,
-        "from_unit": request.from_unit,
-        "to_unit": request.to_unit,
-        "conversion_factor": request.conversion_factor,
-        "is_active": request.is_active,
+        "from_unit": conversion_request.from_unit,
+        "to_unit": conversion_request.to_unit,
+        "conversion_factor": conversion_request.conversion_factor,
+        "is_active": conversion_request.is_active,
     }
     conversions.append(new_conversion)
     if setting:
@@ -1116,7 +1152,8 @@ def create_unit_conversion(request: UnitConversionRequest, db: DbSession):
 # ==================== SUPPLIER PERFORMANCE ====================
 
 @router.get("/supplier-performance")
-def get_supplier_performance(db: DbSession, location_id: int = Query(1)):
+@limiter.limit("60/minute")
+def get_supplier_performance(request: Request, db: DbSession, location_id: int = Query(1)):
     """Get supplier delivery and quality performance."""
     from app.models.supplier import Supplier
 

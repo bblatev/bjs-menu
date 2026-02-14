@@ -2,7 +2,7 @@
 Mobile Scanner API Endpoints
 For handheld RFID scanners, barcode readers, and mobile inventory apps
 """
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.orm import Session
 from typing import List, Optional, Dict, Any
 from datetime import datetime
@@ -10,6 +10,7 @@ from pydantic import BaseModel, Field
 
 from app.db.session import get_db
 from app.core.rbac import get_current_user
+from app.core.rate_limit import limiter
 from app.models import StaffUser
 from app.services.v9_features.iot_service import IoTService
 
@@ -80,7 +81,9 @@ class QuickDispenseRequest(BaseModel):
 # =============================================================================
 
 @router.post("/scan", response_model=Dict[str, Any])
+@limiter.limit("30/minute")
 async def process_mobile_scan(
+    request: Request,
     data: MobileScanRequest,
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(get_current_user)
@@ -157,7 +160,9 @@ async def process_mobile_scan(
 
 
 @router.post("/scan/batch", response_model=Dict[str, Any])
+@limiter.limit("30/minute")
 async def process_batch_scans(
+    request: Request,
     data: BatchScanRequest,
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(get_current_user)
@@ -201,7 +206,7 @@ async def process_batch_scans(
                     count_id=data.session_id,
                     tag_ids=tag_ids
                 )
-            except:
+            except Exception:
                 pass
 
     return {
@@ -213,7 +218,9 @@ async def process_batch_scans(
 
 
 @router.post("/inventory/start", response_model=Dict[str, Any])
+@limiter.limit("30/minute")
 async def start_mobile_inventory(
+    request: Request,
     data: MobileInventoryStartRequest,
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(get_current_user)
@@ -241,7 +248,9 @@ async def start_mobile_inventory(
 
 
 @router.post("/inventory/{session_id}/complete", response_model=Dict[str, Any])
+@limiter.limit("30/minute")
 async def complete_mobile_inventory(
+    request: Request,
     session_id: str,
     notes: Optional[str] = None,
     db: Session = Depends(get_db),
@@ -260,7 +269,9 @@ async def complete_mobile_inventory(
 
 
 @router.post("/sync/offline", response_model=Dict[str, Any])
+@limiter.limit("30/minute")
 async def sync_offline_data(
+    request: Request,
     data: OfflineSyncRequest,
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(get_current_user)
@@ -304,7 +315,9 @@ async def sync_offline_data(
 # =============================================================================
 
 @router.post("/quick/lookup", response_model=Dict[str, Any])
+@limiter.limit("30/minute")
 async def quick_stock_lookup(
+    request: Request,
     data: StockLookupRequest,
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(get_current_user)
@@ -360,7 +373,9 @@ async def quick_stock_lookup(
 
 
 @router.post("/quick/receive", response_model=Dict[str, Any])
+@limiter.limit("30/minute")
 async def quick_receive_stock(
+    request: Request,
     data: QuickReceiveRequest,
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(get_current_user)
@@ -397,7 +412,9 @@ async def quick_receive_stock(
 
 
 @router.post("/quick/dispense", response_model=Dict[str, Any])
+@limiter.limit("30/minute")
 async def quick_dispense_stock(
+    request: Request,
     data: QuickDispenseRequest,
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(get_current_user)
@@ -444,7 +461,9 @@ async def quick_dispense_stock(
 # =============================================================================
 
 @router.post("/device/register", response_model=Dict[str, Any])
+@limiter.limit("30/minute")
 async def register_mobile_device(
+    request: Request,
     device_id: str,
     device_name: str,
     device_type: str = "mobile_scanner",
@@ -467,7 +486,9 @@ async def register_mobile_device(
 
 
 @router.get("/device/config", response_model=Dict[str, Any])
+@limiter.limit("60/minute")
 async def get_device_config(
+    request: Request,
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(get_current_user)
 ):

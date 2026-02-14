@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { API_URL } from '@/lib/api';
 
+import { toast } from '@/lib/toast';
 interface Warehouse {
   id: number;
   name: string;
@@ -203,7 +204,7 @@ export default function StockInventoryPage() {
 
   const handleCreateTransfer = async () => {
     if (transferForm.from_warehouse_id === transferForm.to_warehouse_id) {
-      alert("Source and destination warehouses must be different");
+      toast.error("Source and destination warehouses must be different");
       return;
     }
     setSaving(true);

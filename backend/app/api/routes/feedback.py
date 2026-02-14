@@ -3,9 +3,10 @@
 from datetime import datetime, date, timezone
 from typing import List, Optional
 
-from fastapi import APIRouter, HTTPException, Query, status
+from fastapi import APIRouter, HTTPException, Query, Request, status
 from pydantic import BaseModel, field_validator
 
+from app.core.rate_limit import limiter
 from app.core.sanitize import sanitize_text
 from sqlalchemy import func
 
@@ -64,7 +65,8 @@ def _review_to_schema(r: FeedbackReview) -> Review:
 
 
 @router.get("/")
-async def get_feedback_overview(db: DbSession):
+@limiter.limit("60/minute")
+async def get_feedback_overview(request: Request, db: DbSession):
     """Get feedback overview."""
     total_reviews = db.query(func.count(FeedbackReview.id)).scalar() or 0
 
@@ -120,7 +122,8 @@ async def get_feedback_overview(db: DbSession):
 
 
 @router.post("/reviews")
-async def create_review(data: dict, db: DbSession):
+@limiter.limit("30/minute")
+async def create_review(request: Request, data: dict, db: DbSession):
     """Create a customer review."""
     review = FeedbackReview(
         customer_name=data.get("customer_name", "Guest"),
@@ -137,7 +140,9 @@ async def create_review(data: dict, db: DbSession):
 
 
 @router.get("/reviews")
+@limiter.limit("60/minute")
 async def get_reviews(
+    request: Request,
     db: DbSession,
     source: str = Query(None),
     rating: int = Query(None),
@@ -169,7 +174,8 @@ async def get_reviews(
 
 
 @router.get("/reviews/{review_id}")
-async def get_review(review_id: str, db: DbSession):
+@limiter.limit("60/minute")
+async def get_review(request: Request, review_id: str, db: DbSession):
     """Get a specific review."""
     review = db.query(FeedbackReview).filter(
         FeedbackReview.id == int(review_id)
@@ -185,7 +191,8 @@ async def get_review(review_id: str, db: DbSession):
 
 
 @router.patch("/reviews/{review_id}/status")
-async def update_review_status(review_id: str, data: dict, db: DbSession):
+@limiter.limit("30/minute")
+async def update_review_status(request: Request, review_id: str, data: dict, db: DbSession):
     """Update a review's status."""
     review = db.query(FeedbackReview).filter(
         FeedbackReview.id == int(review_id)
@@ -210,7 +217,8 @@ async def update_review_status(review_id: str, data: dict, db: DbSession):
 
 
 @router.post("/reviews/{review_id}/respond")
-async def respond_to_review(review_id: str, body: RespondRequest, db: DbSession):
+@limiter.limit("30/minute")
+async def respond_to_review(request: Request, review_id: str, body: RespondRequest, db: DbSession):
     """Respond to a review."""
     review = db.query(FeedbackReview).filter(
         FeedbackReview.id == int(review_id)
@@ -231,7 +239,8 @@ async def respond_to_review(review_id: str, body: RespondRequest, db: DbSession)
 
 
 @router.get("/stats")
-async def get_feedback_stats(db: DbSession, period: str = Query("month")):
+@limiter.limit("60/minute")
+async def get_feedback_stats(request: Request, db: DbSession, period: str = Query("month")):
     """Get feedback statistics."""
     query = db.query(FeedbackReview)
 

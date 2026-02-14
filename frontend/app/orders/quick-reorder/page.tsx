@@ -7,6 +7,7 @@ import { motion, AnimatePresence } from "framer-motion";
 
 import { API_URL, getAuthHeaders } from '@/lib/api';
 
+import { toast } from '@/lib/toast';
 interface OrderItem {
   product_id: number;
   name: string;
@@ -154,7 +155,7 @@ export default function QuickReorderPage() {
 
   const submitReorder = async () => {
     if (!selectedTable || reorderItems.length === 0) {
-      alert("Please select a table and ensure there are items to order");
+      toast.success("Please select a table and ensure there are items to order");
       return;
     }
 
@@ -185,10 +186,10 @@ export default function QuickReorderPage() {
         router.push(`/orders?highlight=${newOrder.id}`);
       } else {
         const err = await response.json();
-        alert(err.detail || "Error creating order");
+        toast.error(err.detail || "Error creating order");
       }
     } catch (error) {
-      alert("Error creating order");
+      toast.error("Error creating order");
     } finally {
       setSubmitting(false);
     }

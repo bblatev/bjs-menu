@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { API_URL, getAuthHeaders } from '@/lib/api';
 
+import { toast } from '@/lib/toast';
 interface Table {
   id: number;
   number: string;
@@ -160,7 +161,7 @@ export default function TablesPage() {
       setIsAddModalOpen(false);
       setNewTable({ table_number: '', capacity: 4, area: 'Main' });
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'Failed to create table');
+      toast.error(err instanceof Error ? err.message : 'Failed to create table');
     }
   };
 
@@ -202,7 +203,7 @@ export default function TablesPage() {
         window.location.href = `/waiter?table=${selectedTable.id}&check=${result.check_id}`;
       }
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'Failed to create order');
+      toast.error(err instanceof Error ? err.message : 'Failed to create order');
     } finally {
       setActionLoading(false);
     }
@@ -271,7 +272,7 @@ export default function TablesPage() {
         notes: ''
       });
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'Failed to create reservation');
+      toast.error(err instanceof Error ? err.message : 'Failed to create reservation');
     } finally {
       setActionLoading(false);
     }
@@ -302,7 +303,7 @@ export default function TablesPage() {
       setTables(tables.filter(t => t.id !== selectedTable.id));
       setSelectedTable(null);
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'Failed to delete table');
+      toast.error(err instanceof Error ? err.message : 'Failed to delete table');
     } finally {
       setActionLoading(false);
     }
@@ -329,7 +330,7 @@ export default function TablesPage() {
       ));
       setSelectedTable(null);
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'Failed to free table');
+      toast.error(err instanceof Error ? err.message : 'Failed to free table');
     } finally {
       setActionLoading(false);
     }

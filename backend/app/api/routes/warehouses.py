@@ -3,12 +3,13 @@
 from datetime import datetime, timezone
 from typing import List, Optional
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Query, Request
 from pydantic import BaseModel
 from sqlalchemy import or_
 
 from app.db.session import DbSession
 from app.models.operations import Warehouse as WarehouseModel, WarehouseTransfer
+from app.core.rate_limit import limiter
 
 router = APIRouter()
 
@@ -126,7 +127,8 @@ def _transfer_to_schema(
 
 
 @router.post("/")
-async def create_warehouse(data: dict, db: DbSession):
+@limiter.limit("30/minute")
+async def create_warehouse(request: Request, data: dict, db: DbSession):
     """Create a new warehouse."""
     wh = WarehouseModel(
         name=data.get("name", ""),
@@ -143,14 +145,16 @@ async def create_warehouse(data: dict, db: DbSession):
 
 
 @router.get("/")
-async def get_warehouses(db: DbSession):
+@limiter.limit("60/minute")
+async def get_warehouses(request: Request, db: DbSession):
     """Get all warehouses."""
     warehouses = db.query(WarehouseModel).all()
     return [_warehouse_to_schema(w) for w in warehouses]
 
 
 @router.get("/stock-levels/")
-async def get_all_stock_levels(db: DbSession, warehouse_id: Optional[str] = None):
+@limiter.limit("60/minute")
+async def get_all_stock_levels(request: Request, db: DbSession, warehouse_id: Optional[str] = None):
     """Get stock levels for all warehouses or a specific one.
 
     Stock levels are derived from completed transfers into/out of warehouses.
@@ -222,16 +226,18 @@ async def get_all_stock_levels(db: DbSession, warehouse_id: Optional[str] = None
 
 
 @router.get("/stock-levels/{warehouse_id}")
-async def get_stock_levels(warehouse_id: str, db: DbSession):
+@limiter.limit("60/minute")
+async def get_stock_levels(request: Request, warehouse_id: str, db: DbSession):
     """Get stock levels for a warehouse."""
     wh = db.query(WarehouseModel).filter(WarehouseModel.id == int(warehouse_id)).first()
     if not wh:
         raise HTTPException(status_code=404, detail="Warehouse not found")
-    return await get_all_stock_levels(db=db, warehouse_id=warehouse_id)
+    return await get_all_stock_levels(request=request, db=db, warehouse_id=warehouse_id)
 
 
 @router.get("/transfers/")
-async def get_transfers(db: DbSession):
+@limiter.limit("60/minute")
+async def get_transfers(request: Request, db: DbSession):
     """Get all transfers."""
     transfers = db.query(WarehouseTransfer).order_by(WarehouseTransfer.created_at.desc()).all()
 
@@ -260,7 +266,8 @@ async def get_transfers(db: DbSession):
 
 
 @router.post("/transfers/")
-async def create_transfer(transfer: TransferCreate, db: DbSession):
+@limiter.limit("30/minute")
+async def create_transfer(request: Request, transfer: TransferCreate, db: DbSession):
     """Create a transfer."""
     # Resolve warehouse IDs from names or numeric IDs
     from_wh = None
@@ -296,7 +303,8 @@ async def create_transfer(transfer: TransferCreate, db: DbSession):
 
 
 @router.put("/transfers/{transfer_id}/submit")
-async def submit_transfer(transfer_id: int, db: DbSession):
+@limiter.limit("30/minute")
+async def submit_transfer(request: Request, transfer_id: int, db: DbSession):
     """Submit a draft transfer for approval (draft -> pending)."""
     transfer = db.query(WarehouseTransfer).filter(WarehouseTransfer.id == transfer_id).first()
     if not transfer:
@@ -307,7 +315,8 @@ async def submit_transfer(transfer_id: int, db: DbSession):
 
 
 @router.put("/transfers/{transfer_id}/start")
-async def start_transfer(transfer_id: int, db: DbSession):
+@limiter.limit("30/minute")
+async def start_transfer(request: Request, transfer_id: int, db: DbSession):
     """Mark a transfer as in transit."""
     transfer = db.query(WarehouseTransfer).filter(WarehouseTransfer.id == transfer_id).first()
     if not transfer:
@@ -318,7 +327,8 @@ async def start_transfer(transfer_id: int, db: DbSession):
 
 
 @router.put("/transfers/{transfer_id}/complete")
-async def complete_transfer(transfer_id: int, db: DbSession):
+@limiter.limit("30/minute")
+async def complete_transfer(request: Request, transfer_id: int, db: DbSession):
     """Mark a transfer as completed."""
     transfer = db.query(WarehouseTransfer).filter(WarehouseTransfer.id == transfer_id).first()
     if not transfer:
@@ -330,7 +340,8 @@ async def complete_transfer(transfer_id: int, db: DbSession):
 
 
 @router.put("/transfers/{transfer_id}/cancel")
-async def cancel_transfer(transfer_id: int, db: DbSession):
+@limiter.limit("30/minute")
+async def cancel_transfer(request: Request, transfer_id: int, db: DbSession):
     """Cancel a transfer."""
     transfer = db.query(WarehouseTransfer).filter(WarehouseTransfer.id == transfer_id).first()
     if not transfer:
@@ -341,7 +352,8 @@ async def cancel_transfer(transfer_id: int, db: DbSession):
 
 
 @router.get("/activities/")
-async def get_activities(db: DbSession):
+@limiter.limit("60/minute")
+async def get_activities(request: Request, db: DbSession):
     """Get warehouse activities.
 
     Activities are derived from warehouse transfers.

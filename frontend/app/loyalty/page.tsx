@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 
 import { API_URL, getAuthHeaders } from '@/lib/api';
 
+import { toast } from '@/lib/toast';
 // ============================================================================
 // GIFT CARDS TAB COMPONENT
 // ============================================================================
@@ -145,7 +146,7 @@ function GiftCardsTab() {
         loadStats();
       } else {
         const error = await res.json();
-        alert(error.detail || 'Failed to create gift card');
+        toast.error(error.detail || 'Failed to create gift card');
       }
     } catch (err) {
       console.error('Error creating gift card:', err);
@@ -189,7 +190,7 @@ function GiftCardsTab() {
         loadTransactions(card.id);
         setShowDetailsModal(true);
       } else {
-        alert('Gift card not found');
+        toast.error('Gift card not found');
       }
     } catch (err) {
       console.error('Error looking up gift card:', err);

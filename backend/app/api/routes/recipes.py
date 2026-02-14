@@ -5,7 +5,7 @@ import io
 
 from decimal import Decimal
 from typing import Optional, List
-from fastapi import APIRouter, File, HTTPException, Query, UploadFile, status
+from fastapi import APIRouter, File, HTTPException, Query, Request, UploadFile, status
 
 from app.core.file_utils import sanitize_filename
 from app.core.rbac import CurrentUser, OptionalCurrentUser, RequireManager
@@ -13,14 +13,17 @@ from app.db.session import DbSession
 from app.models.product import Product
 from app.models.recipe import Recipe, RecipeLine
 from app.schemas.recipe import RecipeCreate, RecipeResponse, RecipeUpdate
+from app.core.rate_limit import limiter
 
 router = APIRouter()
 
 
 @router.get("/", response_model=List[RecipeResponse])
+@limiter.limit("60/minute")
 def list_recipes(
+    request: Request,
     db: DbSession,
-    current_user: OptionalCurrentUser = None,
+    current_user: CurrentUser,
     search: Optional[str] = Query(None),
 ):
     """List all recipes."""
@@ -34,7 +37,8 @@ def list_recipes(
 
 
 @router.get("/costs")
-def get_recipe_costs(db: DbSession, current_user: OptionalCurrentUser = None):
+@limiter.limit("60/minute")
+def get_recipe_costs(request: Request, db: DbSession, current_user: CurrentUser):
     """Get recipe cost analysis."""
     recipes = db.query(Recipe).order_by(Recipe.name).all()
     results = []
@@ -56,7 +60,8 @@ def get_recipe_costs(db: DbSession, current_user: OptionalCurrentUser = None):
 
 
 @router.get("/costs/stats")
-def get_recipe_cost_stats(db: DbSession, current_user: OptionalCurrentUser = None):
+@limiter.limit("60/minute")
+def get_recipe_cost_stats(request: Request, db: DbSession, current_user: CurrentUser):
     """Get recipe cost statistics."""
     recipes = db.query(Recipe).all()
     count = len(recipes)
@@ -94,7 +99,8 @@ def get_recipe_cost_stats(db: DbSession, current_user: OptionalCurrentUser = Non
 
 
 @router.get("/{recipe_id}", response_model=RecipeResponse)
-def get_recipe(recipe_id: int, db: DbSession, current_user: CurrentUser):
+@limiter.limit("60/minute")
+def get_recipe(request: Request, recipe_id: int, db: DbSession, current_user: CurrentUser):
     """Get a specific recipe with lines."""
     recipe = db.query(Recipe).filter(Recipe.id == recipe_id).first()
     if not recipe:
@@ -103,27 +109,28 @@ def get_recipe(recipe_id: int, db: DbSession, current_user: CurrentUser):
 
 
 @router.post("/", response_model=RecipeResponse, status_code=status.HTTP_201_CREATED)
-def create_recipe(request: RecipeCreate, db: DbSession, current_user: RequireManager):
+@limiter.limit("30/minute")
+def create_recipe(request: Request, body: RecipeCreate, db: DbSession, current_user: RequireManager):
     """Create a new recipe."""
     # Check for duplicate pos_item_id
-    if request.pos_item_id:
-        existing = db.query(Recipe).filter(Recipe.pos_item_id == request.pos_item_id).first()
+    if body.pos_item_id:
+        existing = db.query(Recipe).filter(Recipe.pos_item_id == body.pos_item_id).first()
         if existing:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Recipe with pos_item_id '{request.pos_item_id}' already exists",
+                detail=f"Recipe with pos_item_id '{body.pos_item_id}' already exists",
             )
 
     recipe = Recipe(
-        name=request.name,
-        pos_item_id=request.pos_item_id,
-        pos_item_name=request.pos_item_name,
+        name=body.name,
+        pos_item_id=body.pos_item_id,
+        pos_item_name=body.pos_item_name,
     )
     db.add(recipe)
     db.flush()
 
     # Add lines
-    for line_data in request.lines:
+    for line_data in body.lines:
         # Verify product exists
         product = db.query(Product).filter(Product.id == line_data.product_id).first()
         if not product:
@@ -146,8 +153,9 @@ def create_recipe(request: RecipeCreate, db: DbSession, current_user: RequireMan
 
 
 @router.put("/{recipe_id}", response_model=RecipeResponse)
+@limiter.limit("30/minute")
 def update_recipe(
-    recipe_id: int, request: RecipeUpdate, db: DbSession, current_user: RequireManager
+    request: Request, recipe_id: int, body: RecipeUpdate, db: DbSession, current_user: RequireManager
 ):
     """Update a recipe."""
     recipe = db.query(Recipe).filter(Recipe.id == recipe_id).first()
@@ -155,29 +163,29 @@ def update_recipe(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Recipe not found")
 
     # Check for duplicate pos_item_id if changing
-    if request.pos_item_id and request.pos_item_id != recipe.pos_item_id:
-        existing = db.query(Recipe).filter(Recipe.pos_item_id == request.pos_item_id).first()
+    if body.pos_item_id and body.pos_item_id != recipe.pos_item_id:
+        existing = db.query(Recipe).filter(Recipe.pos_item_id == body.pos_item_id).first()
         if existing:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Recipe with pos_item_id '{request.pos_item_id}' already exists",
+                detail=f"Recipe with pos_item_id '{body.pos_item_id}' already exists",
             )
 
     # Update basic fields
-    if request.name is not None:
-        recipe.name = request.name
-    if request.pos_item_id is not None:
-        recipe.pos_item_id = request.pos_item_id
-    if request.pos_item_name is not None:
-        recipe.pos_item_name = request.pos_item_name
+    if body.name is not None:
+        recipe.name = body.name
+    if body.pos_item_id is not None:
+        recipe.pos_item_id = body.pos_item_id
+    if body.pos_item_name is not None:
+        recipe.pos_item_name = body.pos_item_name
 
     # Update lines if provided
-    if request.lines is not None:
+    if body.lines is not None:
         # Delete existing lines
         db.query(RecipeLine).filter(RecipeLine.recipe_id == recipe_id).delete()
 
         # Add new lines
-        for line_data in request.lines:
+        for line_data in body.lines:
             product = db.query(Product).filter(Product.id == line_data.product_id).first()
             if not product:
                 raise HTTPException(
@@ -199,7 +207,8 @@ def update_recipe(
 
 
 @router.delete("/{recipe_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_recipe(recipe_id: int, db: DbSession, current_user: RequireManager):
+@limiter.limit("30/minute")
+def delete_recipe(request: Request, recipe_id: int, db: DbSession, current_user: RequireManager):
     """Delete a recipe."""
     recipe = db.query(Recipe).filter(Recipe.id == recipe_id).first()
     if not recipe:
@@ -210,7 +219,9 @@ def delete_recipe(recipe_id: int, db: DbSession, current_user: RequireManager):
 
 
 @router.post("/import")
+@limiter.limit("30/minute")
 def import_recipes(
+    request: Request,
     file: UploadFile = File(...),
     db: DbSession = None,
     current_user: RequireManager = None,
@@ -304,7 +315,9 @@ def import_recipes(
 # ==================== MENU ITEM LINKING ====================
 
 @router.post("/{recipe_id}/link-menu-item")
+@limiter.limit("30/minute")
 def link_recipe_to_menu_item(
+    request: Request,
     recipe_id: int,
     menu_item_id: int,
     db: DbSession,
@@ -342,7 +355,9 @@ def link_recipe_to_menu_item(
 
 
 @router.delete("/{recipe_id}/unlink-menu-item")
+@limiter.limit("30/minute")
 def unlink_recipe_from_menu_item(
+    request: Request,
     recipe_id: int,
     menu_item_id: int,
     db: DbSession,
@@ -365,7 +380,9 @@ def unlink_recipe_from_menu_item(
 
 
 @router.get("/{recipe_id}/linked-menu-items")
+@limiter.limit("60/minute")
 def get_linked_menu_items(
+    request: Request,
     recipe_id: int,
     db: DbSession,
     current_user: CurrentUser,
@@ -395,8 +412,114 @@ def get_linked_menu_items(
     }
 
 
+@router.get("/{recipe_id}/cost")
+@limiter.limit("60/minute")
+def get_single_recipe_cost(
+    request: Request,
+    recipe_id: int,
+    db: DbSession,
+    current_user: CurrentUser,
+):
+    """Get cost breakdown for a single recipe."""
+    recipe = db.query(Recipe).filter(Recipe.id == recipe_id).first()
+    if not recipe:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Recipe not found")
+
+    total_cost = Decimal("0")
+    ingredients = []
+    for line in recipe.lines:
+        product = db.query(Product).filter(Product.id == line.product_id).first()
+        line_cost = Decimal("0")
+        if product and product.cost_price:
+            line_cost = line.qty * product.cost_price
+            total_cost += line_cost
+        ingredients.append({
+            "product_id": line.product_id,
+            "product_name": product.name if product else "Unknown",
+            "qty": float(line.qty),
+            "unit": line.unit,
+            "unit_cost": float(product.cost_price) if product and product.cost_price else 0,
+            "line_cost": float(line_cost),
+        })
+
+    return {
+        "recipe_id": recipe.id,
+        "recipe_name": recipe.name,
+        "total_cost": float(total_cost),
+        "sell_price": float(total_cost * 4) if total_cost > 0 else 0,
+        "margin_pct": 75.0 if total_cost > 0 else 0,
+        "ingredients": ingredients,
+    }
+
+
+@router.get("/{recipe_id}/cost-history")
+@limiter.limit("60/minute")
+def get_recipe_cost_history(
+    request: Request,
+    recipe_id: int,
+    db: DbSession,
+    current_user: CurrentUser,
+):
+    """Get cost history for a recipe based on its update timestamps."""
+    recipe = db.query(Recipe).filter(Recipe.id == recipe_id).first()
+    if not recipe:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Recipe not found")
+
+    # Calculate current cost
+    total_cost = Decimal("0")
+    for line in recipe.lines:
+        product = db.query(Product).filter(Product.id == line.product_id).first()
+        if product and product.cost_price:
+            total_cost += line.qty * product.cost_price
+
+    # Return current snapshot (full history requires audit log table)
+    return {
+        "recipe_id": recipe.id,
+        "recipe_name": recipe.name,
+        "history": [
+            {
+                "date": recipe.updated_at.isoformat() if recipe.updated_at else recipe.created_at.isoformat(),
+                "total_cost": float(total_cost),
+                "ingredients_count": len(recipe.lines),
+            }
+        ],
+    }
+
+
+@router.get("/{recipe_id}/versions")
+@limiter.limit("60/minute")
+def get_recipe_versions(
+    request: Request,
+    recipe_id: int,
+    db: DbSession,
+    current_user: CurrentUser,
+):
+    """Get version history for a recipe."""
+    recipe = db.query(Recipe).filter(Recipe.id == recipe_id).first()
+    if not recipe:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Recipe not found")
+
+    # Return current version (full versioning requires audit log table)
+    return {
+        "recipe_id": recipe.id,
+        "recipe_name": recipe.name,
+        "current_version": 1,
+        "versions": [
+            {
+                "version": 1,
+                "created_at": recipe.created_at.isoformat() if recipe.created_at else None,
+                "updated_at": recipe.updated_at.isoformat() if recipe.updated_at else None,
+                "ingredients_count": len(recipe.lines),
+                "is_current": True,
+            }
+        ],
+    }
+
+
 @router.get("/{recipe_id}/stock-availability")
+@limiter.limit("60/minute")
 def get_recipe_stock_availability(
+    request: Request,
     recipe_id: int,
     location_id: int = Query(1),
     db: DbSession = None,

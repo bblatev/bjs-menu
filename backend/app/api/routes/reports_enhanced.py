@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Query, Request
 from sqlalchemy import func, desc, extract
 from typing import Optional, List
 from datetime import datetime, timedelta
@@ -10,6 +10,7 @@ from collections import defaultdict
 from pydantic import BaseModel
 import statistics
 
+from app.core.rate_limit import limiter
 from app.db.session import DbSession
 from app.core.rbac import CurrentUser, OptionalCurrentUser
 
@@ -120,7 +121,9 @@ def get_date_range(period: str, start_date: Optional[str] = None, end_date: Opti
 # ==================== ENDPOINTS ====================
 
 @router.get("/sales/detailed")
+@limiter.limit("60/minute")
 def get_detailed_sales_report(
+    request: Request,
     db: DbSession,
     current_user: OptionalCurrentUser = None,
     period: str = Query("week"),
@@ -180,7 +183,9 @@ def get_detailed_sales_report(
 
 
 @router.get("/labor-costs")
+@limiter.limit("60/minute")
 def get_labor_cost_report(
+    request: Request,
     db: DbSession,
     current_user: OptionalCurrentUser = None,
     period: str = Query("month"),
@@ -211,7 +216,9 @@ def get_labor_cost_report(
 
 
 @router.get("/food-costs")
+@limiter.limit("60/minute")
 def get_food_cost_report(
+    request: Request,
     db: DbSession,
     current_user: OptionalCurrentUser = None,
     period: str = Query("month"),
@@ -255,7 +262,9 @@ def get_food_cost_report(
 
 
 @router.get("/product-mix")
+@limiter.limit("60/minute")
 def get_product_mix_report(
+    request: Request,
     db: DbSession,
     current_user: OptionalCurrentUser = None,
     period: str = Query("month"),
@@ -283,7 +292,9 @@ def get_product_mix_report(
 
 
 @router.get("/server-performance")
+@limiter.limit("60/minute")
 def get_server_performance_report(
+    request: Request,
     db: DbSession,
     current_user: OptionalCurrentUser = None,
     period: str = Query("month"),
@@ -320,7 +331,9 @@ def get_server_performance_report(
 
 
 @router.get("/trends")
+@limiter.limit("60/minute")
 def get_trend_analysis(
+    request: Request,
     db: DbSession,
     current_user: OptionalCurrentUser = None,
     period: str = Query("month"),
@@ -401,7 +414,9 @@ def get_trend_analysis(
 
 
 @router.get("/dashboard/kpis")
+@limiter.limit("60/minute")
 def get_dashboard_kpis(
+    request: Request,
     db: DbSession,
     current_user: OptionalCurrentUser = None,
 ):

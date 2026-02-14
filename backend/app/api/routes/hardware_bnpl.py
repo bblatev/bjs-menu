@@ -6,12 +6,13 @@ Phase 8: Hardware management, Terminal SDK, and Buy Now Pay Later integration
 from datetime import datetime
 from typing import Any, Dict, List, Optional
 from uuid import UUID
-from fastapi import APIRouter, Depends, HTTPException, Query, Body
+from fastapi import APIRouter, Depends, HTTPException, Query, Body, Request
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
 from app.db.session import get_db
 from app.core.rbac import get_current_user, get_current_venue
+from app.core.rate_limit import limiter
 from app.models import StaffUser as Staff
 
 
@@ -82,8 +83,10 @@ class BNPLRefundRequest(BaseModel):
 # ==================== HARDWARE DEVICE ENDPOINTS ====================
 
 @router.post("/hardware/devices")
+@limiter.limit("30/minute")
 async def register_device(
-    request: DeviceRegistrationRequest,
+    request: Request,
+    body: DeviceRegistrationRequest,
     db: Session = Depends(get_db),
     current_user: Staff = Depends(get_current_user),
     venue_id: UUID = Depends(get_current_venue)
@@ -94,22 +97,24 @@ async def register_device(
     service = HardwareSDKService(db)
     result = await service.register_device(
         venue_id=venue_id,
-        station_id=request.station_id,
-        device_type=request.device_type,
-        serial_number=request.serial_number,
-        manufacturer=request.manufacturer,
-        model=request.model,
-        firmware_version=request.firmware_version,
-        connection_type=request.connection_type,
-        connection_params=request.connection_params,
-        capabilities=request.capabilities
+        station_id=body.station_id,
+        device_type=body.device_type,
+        serial_number=body.serial_number,
+        manufacturer=body.manufacturer,
+        model=body.model,
+        firmware_version=body.firmware_version,
+        connection_type=body.connection_type,
+        connection_params=body.connection_params,
+        capabilities=body.capabilities
     )
     return result
 
 
 @router.post("/hardware/devices/authenticate")
+@limiter.limit("30/minute")
 async def authenticate_device(
-    request: DeviceAuthRequest,
+    request: Request,
+    body: DeviceAuthRequest,
     db: Session = Depends(get_db)
 ):
     """Authenticate a hardware device."""
@@ -117,8 +122,8 @@ async def authenticate_device(
 
     service = HardwareSDKService(db)
     result = await service.authenticate_device(
-        device_id=request.device_id,
-        device_token=request.device_token
+        device_id=body.device_id,
+        device_token=body.device_token
     )
 
     if not result:
@@ -128,7 +133,9 @@ async def authenticate_device(
 
 
 @router.get("/hardware/devices")
+@limiter.limit("60/minute")
 async def list_devices(
+    request: Request,
     device_type: Optional[str] = None,
     station_id: Optional[UUID] = None,
     db: Session = Depends(get_db),
@@ -148,7 +155,9 @@ async def list_devices(
 
 
 @router.get("/hardware/devices/{device_id}")
+@limiter.limit("60/minute")
 async def get_device(
+    request: Request,
     device_id: UUID,
     db: Session = Depends(get_db),
     current_user: Staff = Depends(get_current_user)
@@ -162,9 +171,11 @@ async def get_device(
 
 
 @router.put("/hardware/devices/{device_id}/status")
+@limiter.limit("30/minute")
 async def update_device_status(
+    request: Request,
     device_id: UUID,
-    request: DeviceStatusUpdate,
+    body: DeviceStatusUpdate,
     db: Session = Depends(get_db)
 ):
     """Update device status (called by device)."""
@@ -173,8 +184,8 @@ async def update_device_status(
     service = HardwareSDKService(db)
     success = await service.update_device_status(
         device_id=device_id,
-        status=request.status,
-        status_details=request.status_details
+        status=body.status,
+        status_details=body.status_details
     )
 
     if not success:
@@ -184,7 +195,9 @@ async def update_device_status(
 
 
 @router.delete("/hardware/devices/{device_id}")
+@limiter.limit("30/minute")
 async def deactivate_device(
+    request: Request,
     device_id: UUID,
     db: Session = Depends(get_db),
     current_user: Staff = Depends(get_current_user)
@@ -202,7 +215,9 @@ async def deactivate_device(
 
 
 @router.get("/hardware/devices/{device_id}/diagnostics")
+@limiter.limit("60/minute")
 async def run_diagnostics(
+    request: Request,
     device_id: UUID,
     db: Session = Depends(get_db),
     current_user: Staff = Depends(get_current_user)
@@ -219,7 +234,9 @@ async def run_diagnostics(
 
 
 @router.get("/hardware/devices/{device_id}/logs")
+@limiter.limit("60/minute")
 async def get_device_logs(
+    request: Request,
     device_id: UUID,
     limit: int = 100,
     since: Optional[datetime] = None,
@@ -241,7 +258,9 @@ async def get_device_logs(
 # ==================== TERMINAL SDK ENDPOINTS ====================
 
 @router.post("/hardware/terminals/{device_id}/sessions")
+@limiter.limit("30/minute")
 async def create_terminal_session(
+    request: Request,
     device_id: UUID,
     session_type: str = "payment",
     db: Session = Depends(get_db)
@@ -258,9 +277,11 @@ async def create_terminal_session(
 
 
 @router.post("/hardware/terminals/{device_id}/commands")
+@limiter.limit("30/minute")
 async def send_terminal_command(
+    request: Request,
     device_id: UUID,
-    request: TerminalCommandRequest,
+    body: TerminalCommandRequest,
     db: Session = Depends(get_db)
 ):
     """Send a command to a terminal."""
@@ -270,8 +291,8 @@ async def send_terminal_command(
     try:
         result = await service.send_terminal_command(
             device_id=device_id,
-            command=request.command,
-            params=request.params
+            command=body.command,
+            params=body.params
         )
         return result
     except ValueError as e:
@@ -279,7 +300,9 @@ async def send_terminal_command(
 
 
 @router.get("/hardware/terminals/commands/{command_id}")
+@limiter.limit("60/minute")
 async def get_command_result(
+    request: Request,
     command_id: UUID,
     db: Session = Depends(get_db)
 ):
@@ -296,7 +319,9 @@ async def get_command_result(
 
 
 @router.put("/hardware/terminals/commands/{command_id}")
+@limiter.limit("30/minute")
 async def update_command_result(
+    request: Request,
     command_id: UUID,
     status: str = Body(...),
     result: Optional[Dict[str, Any]] = Body(None),
@@ -323,9 +348,11 @@ async def update_command_result(
 # ==================== PRINTER ENDPOINTS ====================
 
 @router.post("/hardware/printers/{device_id}/print")
+@limiter.limit("30/minute")
 async def print_receipt(
+    request: Request,
     device_id: UUID,
-    request: PrintReceiptRequest,
+    body: PrintReceiptRequest,
     db: Session = Depends(get_db)
 ):
     """Print a receipt."""
@@ -334,14 +361,16 @@ async def print_receipt(
     service = HardwareSDKService(db)
     result = await service.print_receipt(
         device_id=device_id,
-        receipt_data=request.receipt_data,
-        copies=request.copies
+        receipt_data=body.receipt_data,
+        copies=body.copies
     )
     return result
 
 
 @router.post("/hardware/cash-drawers/{device_id}/open")
+@limiter.limit("30/minute")
 async def open_cash_drawer(
+    request: Request,
     device_id: UUID,
     db: Session = Depends(get_db)
 ):
@@ -354,9 +383,11 @@ async def open_cash_drawer(
 
 
 @router.post("/hardware/displays/{device_id}/message")
+@limiter.limit("30/minute")
 async def display_message(
+    request: Request,
     device_id: UUID,
-    request: CustomerDisplayRequest,
+    body: CustomerDisplayRequest,
     db: Session = Depends(get_db)
 ):
     """Display message on customer display."""
@@ -365,7 +396,7 @@ async def display_message(
     service = HardwareSDKService(db)
     result = await service.display_customer_message(
         device_id=device_id,
-        lines=request.lines
+        lines=body.lines
     )
     return result
 
@@ -373,8 +404,10 @@ async def display_message(
 # ==================== BNPL ENDPOINTS ====================
 
 @router.post("/bnpl/configure")
+@limiter.limit("30/minute")
 async def configure_bnpl_provider(
-    request: BNPLConfigRequest,
+    request: Request,
+    body: BNPLConfigRequest,
     db: Session = Depends(get_db),
     current_user: Staff = Depends(get_current_user),
     venue_id: UUID = Depends(get_current_venue)
@@ -385,15 +418,17 @@ async def configure_bnpl_provider(
     service = BNPLService(db)
     result = await service.configure_provider(
         venue_id=venue_id,
-        provider=request.provider,
-        credentials=request.credentials,
-        settings=request.settings
+        provider=body.provider,
+        credentials=body.credentials,
+        settings=body.settings
     )
     return result
 
 
 @router.get("/bnpl/providers")
+@limiter.limit("60/minute")
 async def get_enabled_providers(
+    request: Request,
     db: Session = Depends(get_db),
     current_user: Staff = Depends(get_current_user),
     venue_id: UUID = Depends(get_current_venue)
@@ -407,8 +442,10 @@ async def get_enabled_providers(
 
 
 @router.post("/bnpl/sessions")
+@limiter.limit("30/minute")
 async def create_bnpl_session(
-    request: BNPLSessionRequest,
+    request: Request,
+    body: BNPLSessionRequest,
     db: Session = Depends(get_db),
     current_user: Staff = Depends(get_current_user),
     venue_id: UUID = Depends(get_current_venue)
@@ -420,13 +457,13 @@ async def create_bnpl_session(
     try:
         result = await service.create_bnpl_session(
             venue_id=venue_id,
-            provider=request.provider,
-            order_id=request.order_id,
-            amount=request.amount,
-            currency=request.currency,
-            customer_info=request.customer_info,
-            return_url=request.return_url,
-            cancel_url=request.cancel_url
+            provider=body.provider,
+            order_id=body.order_id,
+            amount=body.amount,
+            currency=body.currency,
+            customer_info=body.customer_info,
+            return_url=body.return_url,
+            cancel_url=body.cancel_url
         )
         return result
     except ValueError as e:
@@ -434,7 +471,9 @@ async def create_bnpl_session(
 
 
 @router.get("/bnpl/transactions/{transaction_id}")
+@limiter.limit("60/minute")
 async def get_bnpl_transaction(
+    request: Request,
     transaction_id: UUID,
     db: Session = Depends(get_db),
     current_user: Staff = Depends(get_current_user)
@@ -452,7 +491,9 @@ async def get_bnpl_transaction(
 
 
 @router.post("/bnpl/transactions/{transaction_id}/capture")
+@limiter.limit("30/minute")
 async def capture_bnpl_payment(
+    request: Request,
     transaction_id: UUID,
     db: Session = Depends(get_db),
     current_user: Staff = Depends(get_current_user)
@@ -469,9 +510,11 @@ async def capture_bnpl_payment(
 
 
 @router.post("/bnpl/transactions/{transaction_id}/refund")
+@limiter.limit("30/minute")
 async def refund_bnpl_payment(
+    request: Request,
     transaction_id: UUID,
-    request: BNPLRefundRequest,
+    body: BNPLRefundRequest,
     db: Session = Depends(get_db),
     current_user: Staff = Depends(get_current_user)
 ):
@@ -482,8 +525,8 @@ async def refund_bnpl_payment(
     try:
         result = await service.refund_bnpl_payment(
             transaction_id=transaction_id,
-            amount=request.amount,
-            reason=request.reason
+            amount=body.amount,
+            reason=body.reason
         )
         return result
     except ValueError as e:
@@ -491,7 +534,9 @@ async def refund_bnpl_payment(
 
 
 @router.get("/bnpl/transactions")
+@limiter.limit("60/minute")
 async def list_bnpl_transactions(
+    request: Request,
     provider: Optional[str] = None,
     status: Optional[str] = None,
     start_date: Optional[datetime] = None,
@@ -519,7 +564,9 @@ async def list_bnpl_transactions(
 
 
 @router.post("/bnpl/webhooks/{provider}")
+@limiter.limit("30/minute")
 async def handle_bnpl_webhook(
+    request: Request,
     provider: str,
     payload: Dict[str, Any] = Body(...),
     signature: Optional[str] = None,
@@ -540,7 +587,8 @@ async def handle_bnpl_webhook(
 # ==================== DEVICE TYPES INFO ====================
 
 @router.get("/hardware/device-types")
-async def get_device_types():
+@limiter.limit("60/minute")
+async def get_device_types(request: Request):
     """Get supported device types and their capabilities."""
     from app.services.hardware_sdk_service import HardwareDevice
 
@@ -548,7 +596,8 @@ async def get_device_types():
 
 
 @router.get("/bnpl/provider-info")
-async def get_bnpl_provider_info():
+@limiter.limit("60/minute")
+async def get_bnpl_provider_info(request: Request):
     """Get information about supported BNPL providers."""
     return {
         "providers": [

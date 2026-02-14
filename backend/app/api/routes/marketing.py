@@ -2,9 +2,10 @@
 
 from typing import List, Optional
 from datetime import datetime, timezone
-from fastapi import APIRouter, HTTPException, Query, BackgroundTasks
+from fastapi import APIRouter, HTTPException, Query, BackgroundTasks, Request
 
 from app.db.session import DbSession
+from app.core.rate_limit import limiter
 from app.models.marketing import (
     MarketingCampaign, CustomerSegment, AutomatedTrigger,
     LoyaltyProgram, CustomerLoyalty, MenuRecommendation
@@ -29,7 +30,8 @@ router = APIRouter()
 # ==================== STUB ENDPOINTS ====================
 
 @router.get("/promotions")
-def get_promotions(db: DbSession, active_only: bool = False):
+@limiter.limit("60/minute")
+def get_promotions(request: Request, db: DbSession, active_only: bool = False):
     """Get promotions list."""
     from app.models.operations import Promotion
     query = db.query(Promotion)
@@ -56,7 +58,8 @@ def get_promotions(db: DbSession, active_only: bool = False):
 
 
 @router.get("/stats")
-def get_marketing_stats(db: DbSession):
+@limiter.limit("60/minute")
+def get_marketing_stats(request: Request, db: DbSession):
     """Get marketing statistics."""
     from sqlalchemy import func as sqlfunc
     total = db.query(sqlfunc.count(MarketingCampaign.id)).scalar() or 0
@@ -78,7 +81,8 @@ def get_marketing_stats(db: DbSession):
 
 
 @router.get("/pricing-rules")
-def get_pricing_rules(db: DbSession):
+@limiter.limit("60/minute")
+def get_pricing_rules(request: Request, db: DbSession):
     """Get pricing rules."""
     from app.models.advanced_features import DynamicPricingRule
     rules = db.query(DynamicPricingRule).order_by(DynamicPricingRule.id).all()
@@ -99,7 +103,8 @@ def get_pricing_rules(db: DbSession):
 
 
 @router.post("/pricing-rules")
-def create_pricing_rule(db: DbSession, data: dict = None):
+@limiter.limit("30/minute")
+def create_pricing_rule(request: Request, db: DbSession, data: dict = None):
     """Create a dynamic pricing rule."""
     from fastapi import Body
     from app.models.advanced_features import DynamicPricingRule
@@ -121,7 +126,8 @@ def create_pricing_rule(db: DbSession, data: dict = None):
 
 
 @router.patch("/pricing-rules/{rule_id}/toggle-active")
-def toggle_pricing_rule_active(rule_id: int, db: DbSession):
+@limiter.limit("30/minute")
+def toggle_pricing_rule_active(request: Request, rule_id: int, db: DbSession):
     """Toggle a pricing rule's active status."""
     from app.models.advanced_features import DynamicPricingRule
     rule = db.query(DynamicPricingRule).filter(DynamicPricingRule.id == rule_id).first()
@@ -135,7 +141,8 @@ def toggle_pricing_rule_active(rule_id: int, db: DbSession):
 
 
 @router.post("/promotions/")
-def create_marketing_promotion(db: DbSession, data: dict = None):
+@limiter.limit("30/minute")
+def create_marketing_promotion(request: Request, db: DbSession, data: dict = None):
     """Create a promotion via marketing route."""
     from fastapi import Body
     from app.models.operations import Promotion
@@ -157,7 +164,9 @@ def create_marketing_promotion(db: DbSession, data: dict = None):
 # Marketing Campaigns
 
 @router.get("/campaigns/", response_model=List[CampaignResponse])
+@limiter.limit("60/minute")
 def list_campaigns(
+    request: Request,
     db: DbSession,
     status: Optional[str] = None,
     campaign_type: Optional[str] = None,
@@ -174,7 +183,8 @@ def list_campaigns(
 
 
 @router.get("/campaigns/{campaign_id}", response_model=CampaignResponse)
-def get_campaign(db: DbSession, campaign_id: int):
+@limiter.limit("60/minute")
+def get_campaign(request: Request, db: DbSession, campaign_id: int):
     """Get campaign by ID."""
     campaign = db.query(MarketingCampaign).filter(MarketingCampaign.id == campaign_id).first()
     if not campaign:
@@ -183,7 +193,8 @@ def get_campaign(db: DbSession, campaign_id: int):
 
 
 @router.post("/campaigns/", response_model=CampaignResponse)
-def create_campaign(db: DbSession, campaign: CampaignCreate):
+@limiter.limit("30/minute")
+def create_campaign(request: Request, db: DbSession, campaign: CampaignCreate):
     """Create a new marketing campaign."""
     db_campaign = MarketingCampaign(**campaign.model_dump())
     db.add(db_campaign)
@@ -193,7 +204,9 @@ def create_campaign(db: DbSession, campaign: CampaignCreate):
 
 
 @router.put("/campaigns/{campaign_id}", response_model=CampaignResponse)
+@limiter.limit("30/minute")
 def update_campaign(
+    request: Request,
     db: DbSession,
     campaign_id: int,
     campaign: CampaignUpdate,
@@ -212,7 +225,9 @@ def update_campaign(
 
 
 @router.post("/campaigns/{campaign_id}/send")
+@limiter.limit("30/minute")
 async def send_campaign(
+    request: Request,
     db: DbSession,
     campaign_id: int,
     background_tasks: BackgroundTasks,
@@ -228,7 +243,8 @@ async def send_campaign(
 
 
 @router.get("/campaigns/{campaign_id}/stats", response_model=CampaignStats)
-def get_campaign_stats(db: DbSession, campaign_id: int):
+@limiter.limit("60/minute")
+def get_campaign_stats(request: Request, db: DbSession, campaign_id: int):
     """Get campaign statistics."""
     campaign = db.query(MarketingCampaign).filter(MarketingCampaign.id == campaign_id).first()
     if not campaign:
@@ -255,17 +271,19 @@ def get_campaign_stats(db: DbSession, campaign_id: int):
 
 
 @router.post("/campaigns/generate-ai", response_model=AICampaignResponse)
+@limiter.limit("30/minute")
 async def generate_ai_campaign(
+    request: Request,
     db: DbSession,
-    request: AICampaignRequest,
+    body: AICampaignRequest,
 ):
     """Generate campaign content using AI."""
     service = MarketingAutomationService(db)
     result = await service.generate_ai_campaign(
-        campaign_type=request.campaign_type,
-        target_segment=request.target_segment,
-        promotion_details=request.promotion_details,
-        tone=request.tone
+        campaign_type=body.campaign_type,
+        target_segment=body.target_segment,
+        promotion_details=body.promotion_details,
+        tone=body.tone
     )
     return result
 
@@ -273,13 +291,15 @@ async def generate_ai_campaign(
 # Customer Segments
 
 @router.get("/segments/", response_model=List[SegmentResponse])
-def list_segments(db: DbSession):
+@limiter.limit("60/minute")
+def list_segments(request: Request, db: DbSession):
     """List customer segments."""
     return db.query(CustomerSegment).filter(CustomerSegment.is_active == True).all()
 
 
 @router.get("/segments/{segment_id}", response_model=SegmentResponse)
-def get_segment(db: DbSession, segment_id: int):
+@limiter.limit("60/minute")
+def get_segment(request: Request, db: DbSession, segment_id: int):
     """Get segment by ID."""
     segment = db.query(CustomerSegment).filter(CustomerSegment.id == segment_id).first()
     if not segment:
@@ -288,7 +308,8 @@ def get_segment(db: DbSession, segment_id: int):
 
 
 @router.post("/segments/", response_model=SegmentResponse)
-def create_segment(db: DbSession, segment: SegmentCreate):
+@limiter.limit("30/minute")
+def create_segment(request: Request, db: DbSession, segment: SegmentCreate):
     """Create a customer segment."""
     db_segment = CustomerSegment(**segment.model_dump())
     db.add(db_segment)
@@ -298,7 +319,9 @@ def create_segment(db: DbSession, segment: SegmentCreate):
 
 
 @router.put("/segments/{segment_id}", response_model=SegmentResponse)
+@limiter.limit("30/minute")
 def update_segment(
+    request: Request,
     db: DbSession,
     segment_id: int,
     segment: SegmentUpdate,
@@ -317,7 +340,8 @@ def update_segment(
 
 
 @router.post("/segments/preview", response_model=SegmentPreview)
-def preview_segment(db: DbSession, criteria: dict):
+@limiter.limit("30/minute")
+def preview_segment(request: Request, db: DbSession, criteria: dict):
     """Preview customers matching segment criteria."""
     service = MarketingAutomationService(db)
     result = service.preview_segment(criteria)
@@ -327,13 +351,15 @@ def preview_segment(db: DbSession, criteria: dict):
 # Automated Triggers
 
 @router.get("/triggers/", response_model=List[TriggerResponse])
-def list_triggers(db: DbSession):
+@limiter.limit("60/minute")
+def list_triggers(request: Request, db: DbSession):
     """List automated triggers."""
     return db.query(AutomatedTrigger).all()
 
 
 @router.post("/triggers/", response_model=TriggerResponse)
-def create_trigger(db: DbSession, trigger: TriggerCreate):
+@limiter.limit("30/minute")
+def create_trigger(request: Request, db: DbSession, trigger: TriggerCreate):
     """Create an automated trigger."""
     db_trigger = AutomatedTrigger(**trigger.model_dump())
     db.add(db_trigger)
@@ -343,7 +369,9 @@ def create_trigger(db: DbSession, trigger: TriggerCreate):
 
 
 @router.put("/triggers/{trigger_id}", response_model=TriggerResponse)
+@limiter.limit("30/minute")
 def update_trigger(
+    request: Request,
     db: DbSession,
     trigger_id: int,
     trigger: TriggerUpdate,
@@ -362,7 +390,8 @@ def update_trigger(
 
 
 @router.post("/triggers/process-all")
-async def process_all_triggers(db: DbSession):
+@limiter.limit("30/minute")
+async def process_all_triggers(request: Request, db: DbSession):
     """Process all active triggers."""
     service = AutomatedTriggerService(db)
     results = await service.process_triggers()
@@ -372,7 +401,9 @@ async def process_all_triggers(db: DbSession):
 # Menu Recommendations ("Picked for You")
 
 @router.get("/recommendations/{customer_id}")
+@limiter.limit("60/minute")
 def get_customer_recommendations(
+    request: Request,
     db: DbSession,
     customer_id: int,
     limit: int = 5,
@@ -389,7 +420,9 @@ def get_customer_recommendations(
 
 
 @router.post("/recommendations/{recommendation_id}/presented")
+@limiter.limit("30/minute")
 def mark_recommendation_presented(
+    request: Request,
     db: DbSession,
     recommendation_id: int,
 ):
@@ -403,7 +436,9 @@ def mark_recommendation_presented(
 
 
 @router.post("/recommendations/{recommendation_id}/purchased")
+@limiter.limit("30/minute")
 def mark_recommendation_purchased(
+    request: Request,
     db: DbSession,
     recommendation_id: int,
 ):
@@ -419,13 +454,15 @@ def mark_recommendation_purchased(
 # Loyalty Program
 
 @router.get("/loyalty/programs/", response_model=List[LoyaltyProgramResponse])
-def list_loyalty_programs(db: DbSession):
+@limiter.limit("60/minute")
+def list_loyalty_programs(request: Request, db: DbSession):
     """List loyalty programs."""
     return db.query(LoyaltyProgram).all()
 
 
 @router.post("/loyalty/programs/", response_model=LoyaltyProgramResponse)
-def create_loyalty_program(db: DbSession, program: LoyaltyProgramCreate):
+@limiter.limit("30/minute")
+def create_loyalty_program(request: Request, db: DbSession, program: LoyaltyProgramCreate):
     """Create a loyalty program."""
     db_program = LoyaltyProgram(**program.model_dump())
     db.add(db_program)
@@ -435,7 +472,8 @@ def create_loyalty_program(db: DbSession, program: LoyaltyProgramCreate):
 
 
 @router.get("/loyalty/customer/{customer_id}", response_model=CustomerLoyaltyResponse)
-def get_customer_loyalty(db: DbSession, customer_id: int):
+@limiter.limit("60/minute")
+def get_customer_loyalty(request: Request, db: DbSession, customer_id: int):
     """Get customer's loyalty status."""
     loyalty = db.query(CustomerLoyalty).filter(
         CustomerLoyalty.customer_id == customer_id
@@ -448,7 +486,8 @@ def get_customer_loyalty(db: DbSession, customer_id: int):
 
 
 @router.post("/loyalty/earn")
-def earn_loyalty_points(db: DbSession, transaction: LoyaltyTransaction):
+@limiter.limit("30/minute")
+def earn_loyalty_points(request: Request, db: DbSession, transaction: LoyaltyTransaction):
     """Award loyalty points to a customer."""
     service = LoyaltyService(db)
     result = service.award_points(
@@ -465,7 +504,8 @@ def earn_loyalty_points(db: DbSession, transaction: LoyaltyTransaction):
 
 
 @router.post("/loyalty/redeem", response_model=LoyaltyRedemptionResponse)
-def redeem_loyalty_points(db: DbSession, redemption: LoyaltyRedemption):
+@limiter.limit("30/minute")
+def redeem_loyalty_points(request: Request, db: DbSession, redemption: LoyaltyRedemption):
     """Redeem loyalty points."""
     service = LoyaltyService(db)
     result = service.redeem_points(

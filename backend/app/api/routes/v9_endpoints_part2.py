@@ -3,13 +3,14 @@ V9 Advanced Features API Endpoints - Part 2
 Financial Controls, CRM, IoT, Compliance, AI, Legal/Training/Crisis, Platform/QR
 """
 
-from fastapi import APIRouter, Depends, HTTPException, Query, BackgroundTasks, UploadFile, File
+from fastapi import APIRouter, Depends, HTTPException, Query, BackgroundTasks, UploadFile, File, Request
 from sqlalchemy.orm import Session
 from typing import List, Optional, Dict, Any
 from datetime import datetime, date, timedelta
 from decimal import Decimal
 
 from app.db.session import get_db
+from app.core.rate_limit import limiter
 
 # Import services (already imported in main v9_endpoints.py)
 from app.services.v9_features.financial_controls_service import (
@@ -60,7 +61,9 @@ router_part2 = APIRouter()
 # ==================== FINANCIAL CONTROLS - PRIME COST ====================
 
 @router_part2.post("/finance/prime-cost", response_model=Dict[str, Any], tags=["V9 - Financial Controls"])
+@limiter.limit("30/minute")
 async def record_prime_cost(
+    request: Request,
     data: PrimeCostRecord,
     venue_id: int,
     db: Session = Depends(get_db)
@@ -78,7 +81,9 @@ async def record_prime_cost(
 
 
 @router_part2.get("/finance/prime-cost/dashboard", response_model=Dict[str, Any], tags=["V9 - Financial Controls"])
+@limiter.limit("60/minute")
 async def get_prime_cost_dashboard(
+    request: Request,
     venue_id: int,
     start_date: date = Query(default_factory=lambda: date.today() - timedelta(days=30)),
     end_date: date = Query(default_factory=date.today),
@@ -96,7 +101,9 @@ async def get_prime_cost_dashboard(
 # ==================== FINANCIAL CONTROLS - ABUSE DETECTION ====================
 
 @router_part2.post("/finance/abuse/config", response_model=Dict[str, Any], tags=["V9 - Financial Controls"])
+@limiter.limit("30/minute")
 async def configure_abuse_detection(
+    request: Request,
     data: AbuseConfigUpdate,
     venue_id: int,
     db: Session = Depends(get_db)
@@ -119,7 +126,9 @@ async def configure_abuse_detection(
 
 
 @router_part2.post("/finance/abuse/check/{staff_id}", response_model=Dict[str, Any], tags=["V9 - Financial Controls"])
+@limiter.limit("30/minute")
 async def check_for_abuse(
+    request: Request,
     staff_id: int,
     venue_id: int,
     transaction_type: str,
@@ -139,7 +148,9 @@ async def check_for_abuse(
 
 
 @router_part2.get("/finance/abuse/alerts", response_model=List[AbuseAlertResponse], tags=["V9 - Financial Controls"])
+@limiter.limit("60/minute")
 async def get_abuse_alerts(
+    request: Request,
     venue_id: int,
     pending_only: bool = True,
     staff_id: Optional[int] = None,
@@ -157,7 +168,9 @@ async def get_abuse_alerts(
 
 
 @router_part2.post("/finance/abuse/investigate", response_model=SuccessResponse, tags=["V9 - Financial Controls"])
+@limiter.limit("30/minute")
 async def investigate_abuse_alert(
+    request: Request,
     data: InvestigationSubmit,
     db: Session = Depends(get_db)
 ):
@@ -173,7 +186,9 @@ async def investigate_abuse_alert(
 
 
 @router_part2.get("/finance/abuse/analytics", response_model=Dict[str, Any], tags=["V9 - Financial Controls"])
+@limiter.limit("60/minute")
 async def get_abuse_analytics(
+    request: Request,
     venue_id: int,
     start_date: date = Query(default_factory=lambda: date.today() - timedelta(days=30)),
     end_date: date = Query(default_factory=date.today),
@@ -191,7 +206,9 @@ async def get_abuse_analytics(
 # ==================== CRM - GUEST PREFERENCES ====================
 
 @router_part2.post("/crm/preferences", response_model=GuestPreferencesResponse, tags=["V9 - CRM"])
+@limiter.limit("30/minute")
 async def set_guest_preferences(
+    request: Request,
     data: GuestPreferencesUpdate,
     db: Session = Depends(get_db)
 ):
@@ -214,7 +231,9 @@ async def set_guest_preferences(
 
 
 @router_part2.get("/crm/preferences/{customer_id}", response_model=GuestPreferencesResponse, tags=["V9 - CRM"])
+@limiter.limit("60/minute")
 async def get_guest_preferences(
+    request: Request,
     customer_id: int,
     db: Session = Depends(get_db)
 ):
@@ -226,7 +245,9 @@ async def get_guest_preferences(
 
 
 @router_part2.get("/crm/service-alerts/{customer_id}", response_model=List[ServiceAlert], tags=["V9 - CRM"])
+@limiter.limit("60/minute")
 async def get_service_alerts(
+    request: Request,
     customer_id: int,
     db: Session = Depends(get_db)
 ):
@@ -237,7 +258,9 @@ async def get_service_alerts(
 # ==================== CRM - CUSTOMER LIFETIME VALUE ====================
 
 @router_part2.get("/crm/clv/{customer_id}", response_model=CLVResponse, tags=["V9 - CRM"])
+@limiter.limit("60/minute")
 async def get_customer_clv(
+    request: Request,
     customer_id: int,
     venue_id: int,
     db: Session = Depends(get_db)
@@ -247,7 +270,9 @@ async def get_customer_clv(
 
 
 @router_part2.post("/crm/clv/update/{customer_id}", response_model=CLVResponse, tags=["V9 - CRM"])
+@limiter.limit("30/minute")
 async def update_clv_from_order(
+    request: Request,
     customer_id: int,
     order_id: int,
     venue_id: int,
@@ -270,7 +295,9 @@ async def update_clv_from_order(
 
 
 @router_part2.get("/crm/at-risk", response_model=List[Dict[str, Any]], tags=["V9 - CRM"])
+@limiter.limit("60/minute")
 async def get_at_risk_customers(
+    request: Request,
     venue_id: int,
     risk_threshold: float = 0.6,
     limit: int = 50,
@@ -297,7 +324,9 @@ async def get_customer_segments(
 
 
 @router_part2.get("/crm/segments/{segment}/customers", response_model=List[Dict[str, Any]], tags=["V9 - CRM"])
+@limiter.limit("60/minute")
 async def get_segment_customers(
+    request: Request,
     segment: str,
     venue_id: int,
     limit: int = 100,
@@ -326,7 +355,9 @@ async def get_segment_customers(
 # ==================== CRM - VIP MANAGEMENT ====================
 
 @router_part2.post("/crm/vip", response_model=SuccessResponse, tags=["V9 - CRM"])
+@limiter.limit("30/minute")
 async def set_vip_status(
+    request: Request,
     data: VIPStatusUpdate,
     db: Session = Depends(get_db)
 ):
@@ -343,7 +374,9 @@ async def set_vip_status(
 
 
 @router_part2.get("/crm/vip/{customer_id}", response_model=Dict[str, Any], tags=["V9 - CRM"])
+@limiter.limit("60/minute")
 async def get_vip_status(
+    request: Request,
     customer_id: int,
     db: Session = Depends(get_db)
 ):
@@ -368,7 +401,9 @@ async def get_vip_status(
 # ==================== CRM - PERSONALIZATION ====================
 
 @router_part2.get("/crm/recommendations/{customer_id}", response_model=Dict[str, Any], tags=["V9 - CRM"])
+@limiter.limit("60/minute")
 async def get_personalized_recommendations(
+    request: Request,
     customer_id: int,
     venue_id: int,
     limit: int = 5,
@@ -459,7 +494,9 @@ async def record_temperature(
 
 
 @router_part2.get("/iot/temperature/history/{venue_id}", response_model=Dict[str, Any], tags=["V9 - IoT"])
+@limiter.limit("60/minute")
 async def get_temperature_history(
+    request: Request,
     venue_id: int,
     device_id: Optional[int] = None,
     hours: int = 24,
@@ -477,7 +514,9 @@ async def get_temperature_history(
 
 
 @router_part2.get("/iot/temperature/alerts", response_model=Dict[str, Any], tags=["V9 - IoT"])
+@limiter.limit("60/minute")
 async def get_temperature_alerts(
+    request: Request,
     venue_id: int,
     unacknowledged_only: bool = True,
     db: Session = Depends(get_db)
@@ -491,7 +530,9 @@ async def get_temperature_alerts(
 
 
 @router_part2.post("/iot/temperature/alerts/{alert_id}/acknowledge", response_model=SuccessResponse, tags=["V9 - IoT"])
+@limiter.limit("30/minute")
 async def acknowledge_temperature_alert(
+    request: Request,
     alert_id: int,
     acknowledged_by_id: int,
     corrective_action: Optional[str] = None,
@@ -508,7 +549,9 @@ async def acknowledge_temperature_alert(
 
 
 @router_part2.get("/iot/haccp/report", response_model=Dict[str, Any], tags=["V9 - IoT"])
+@limiter.limit("60/minute")
 async def get_haccp_report(
+    request: Request,
     venue_id: int,
     start_date: date = Query(default_factory=lambda: date.today() - timedelta(days=7)),
     end_date: date = Query(default_factory=date.today),
@@ -567,7 +610,9 @@ async def get_pour_analytics(
 # ==================== COMPLIANCE - IMMUTABLE AUDIT ====================
 
 @router_part2.post("/compliance/audit", response_model=AuditLogResponse, tags=["V9 - Compliance"])
+@limiter.limit("30/minute")
 async def create_audit_log(
+    request: Request,
     data: AuditLogCreate,
     venue_id: int,
     db: Session = Depends(get_db)
@@ -586,7 +631,9 @@ async def create_audit_log(
 
 
 @router_part2.get("/compliance/audit/verify", response_model=Dict[str, Any], tags=["V9 - Compliance"])
+@limiter.limit("60/minute")
 async def verify_audit_chain(
+    request: Request,
     venue_id: int,
     start_id: Optional[int] = None,
     end_id: Optional[int] = None,
@@ -602,7 +649,9 @@ async def verify_audit_chain(
 
 
 @router_part2.get("/compliance/audit/logs", response_model=List[AuditLogResponse], tags=["V9 - Compliance"])
+@limiter.limit("60/minute")
 async def get_audit_logs(
+    request: Request,
     venue_id: int,
     entity_type: Optional[str] = None,
     entity_id: Optional[int] = None,
@@ -628,7 +677,9 @@ async def get_audit_logs(
 # ==================== COMPLIANCE - FISCAL ARCHIVE ====================
 
 @router_part2.post("/compliance/fiscal/archive", response_model=Dict[str, Any], tags=["V9 - Compliance"])
+@limiter.limit("30/minute")
 async def archive_fiscal_receipt(
+    request: Request,
     data: FiscalArchiveCreate,
     venue_id: int,
     fiscal_device_id: str = "default",
@@ -647,7 +698,9 @@ async def archive_fiscal_receipt(
 
 
 @router_part2.get("/compliance/fiscal/archive/{venue_id}", response_model=Dict[str, Any], tags=["V9 - Compliance"])
+@limiter.limit("60/minute")
 async def get_archived_receipts(
+    request: Request,
     venue_id: int,
     receipt_number: Optional[str] = None,
     start_date: date = Query(default_factory=lambda: date.today() - timedelta(days=30)),
@@ -667,7 +720,9 @@ async def get_archived_receipts(
 # ==================== COMPLIANCE - NRA EXPORT ====================
 
 @router_part2.post("/compliance/nra/export", response_model=NRAExportResponse, tags=["V9 - Compliance"])
+@limiter.limit("30/minute")
 async def create_nra_export(
+    request: Request,
     data: NRAExportRequest,
     venue_id: int,
     requested_by: int = 1,
@@ -690,7 +745,9 @@ async def create_nra_export(
 
 
 @router_part2.get("/compliance/nra/exports", response_model=List[NRAExportResponse], tags=["V9 - Compliance"])
+@limiter.limit("60/minute")
 async def get_nra_exports(
+    request: Request,
     venue_id: int,
     limit: int = 20,
     db: Session = Depends(get_db)
@@ -811,7 +868,9 @@ async def record_actual_value(
 
 
 @router_part2.get("/ai/predictions/accuracy/{model_id}", response_model=Dict[str, Any], tags=["V9 - AI & Automation"])
+@limiter.limit("60/minute")
 async def get_prediction_accuracy(
+    request: Request,
     model_id: int,
     venue_id: int,
     days: int = 30,
@@ -832,7 +891,9 @@ async def get_prediction_accuracy(
 # ==================== AI - AUTOMATION RULES ====================
 
 @router_part2.post("/ai/automation/rules", response_model=AutomationRuleResponse, tags=["V9 - AI & Automation"])
+@limiter.limit("30/minute")
 async def create_automation_rule(
+    request: Request,
     data: AutomationRuleCreate,
     venue_id: int,
     db: Session = Depends(get_db)
@@ -851,7 +912,9 @@ async def create_automation_rule(
 
 
 @router_part2.get("/ai/automation/rules", response_model=List[AutomationRuleResponse], tags=["V9 - AI & Automation"])
+@limiter.limit("60/minute")
 async def get_automation_rules(
+    request: Request,
     venue_id: int,
     active_only: bool = True,
     db: Session = Depends(get_db)
@@ -861,7 +924,9 @@ async def get_automation_rules(
 
 
 @router_part2.post("/ai/automation/execute", response_model=Dict[str, Any], tags=["V9 - AI & Automation"])
+@limiter.limit("30/minute")
 async def execute_automations(
+    request: Request,
     venue_id: int,
     trigger_type: str,
     trigger_data: Dict[str, Any],
@@ -896,7 +961,9 @@ async def get_menu_optimization_suggestions(
 # ==================== AI - STAFFING RECOMMENDATIONS ====================
 
 @router_part2.get("/ai/staffing", response_model=Dict[str, Any], tags=["V9 - AI & Automation"])
+@limiter.limit("60/minute")
 async def get_staffing_recommendations(
+    request: Request,
     venue_id: int,
     start_date: date = Query(default_factory=date.today),
     days: int = 7,
@@ -934,7 +1001,9 @@ async def create_incident_report(
 
 
 @router_part2.post("/legal/incidents/{incident_id}/evidence", response_model=SuccessResponse, tags=["V9 - Legal & Risk"])
+@limiter.limit("30/minute")
 async def add_incident_evidence(
+    request: Request,
     incident_id: int,
     data: EvidenceAdd,
     file: Optional[UploadFile] = File(None),
@@ -974,7 +1043,9 @@ async def get_incident_reports(
 
 
 @router_part2.put("/legal/incidents/{incident_id}/status", response_model=SuccessResponse, tags=["V9 - Legal & Risk"])
+@limiter.limit("30/minute")
 async def update_incident_status(
+    request: Request,
     incident_id: int,
     status: str,
     updated_by: int,
@@ -1027,7 +1098,9 @@ async def get_training_modules(
 
 
 @router_part2.post("/training/complete", response_model=Dict[str, Any], tags=["V9 - Training"])
+@limiter.limit("30/minute")
 async def complete_training(
+    request: Request,
     data: TrainingCompletion,
     db: Session = Depends(get_db)
 ):
@@ -1048,7 +1121,9 @@ async def complete_training(
 
 
 @router_part2.get("/training/staff/{staff_id}/status", response_model=StaffTrainingStatus, tags=["V9 - Training"])
+@limiter.limit("60/minute")
 async def get_staff_training_status(
+    request: Request,
     staff_id: int,
     venue_id: int,
     db: Session = Depends(get_db)
@@ -1058,7 +1133,9 @@ async def get_staff_training_status(
 
 
 @router_part2.get("/training/certifications/expiring", response_model=List[Dict[str, Any]], tags=["V9 - Training"])
+@limiter.limit("60/minute")
 async def get_expiring_certifications(
+    request: Request,
     venue_id: int,
     days: int = 30,
     db: Session = Depends(get_db)
@@ -1108,7 +1185,9 @@ async def activate_crisis_mode(
 
 
 @router_part2.post("/crisis/modes/{mode_id}/deactivate", response_model=SuccessResponse, tags=["V9 - Crisis Management"])
+@limiter.limit("30/minute")
 async def deactivate_crisis_mode(
+    request: Request,
     venue_id: int,
     deactivated_by_id: int,
     reason: str = "Manual deactivation",
@@ -1125,7 +1204,9 @@ async def deactivate_crisis_mode(
 
 
 @router_part2.get("/crisis/modes/active", response_model=Optional[CrisisModeResponse], tags=["V9 - Crisis Management"])
+@limiter.limit("60/minute")
 async def get_active_crisis_mode(
+    request: Request,
     venue_id: int,
     db: Session = Depends(get_db)
 ):
@@ -1155,7 +1236,9 @@ async def create_feature_flag(
 
 
 @router_part2.get("/platform/feature-flags/{flag_name}/check", response_model=Dict[str, Any], tags=["V9 - Platform"])
+@limiter.limit("60/minute")
 async def check_feature_flag(
+    request: Request,
     flag_name: str,
     venue_id: int,
     user_id: Optional[int] = None,
@@ -1212,7 +1295,9 @@ async def configure_white_label(
 
 
 @router_part2.get("/platform/white-label/{venue_id}", response_model=WhiteLabelResponse, tags=["V9 - Platform"])
+@limiter.limit("60/minute")
 async def get_white_label_config(
+    request: Request,
     venue_id: int,
     db: Session = Depends(get_db)
 ):
@@ -1226,7 +1311,9 @@ async def get_white_label_config(
 # ==================== QR - PAY AT TABLE ====================
 
 @router_part2.post("/qr/payment/session", response_model=QRPaymentSessionResponse, tags=["V9 - QR & Self-Service"])
+@limiter.limit("30/minute")
 async def create_qr_payment_session(
+    request: Request,
     data: QRPaymentSessionCreate,
     db: Session = Depends(get_db)
 ):
@@ -1247,7 +1334,9 @@ async def create_qr_payment_session(
 
 
 @router_part2.get("/qr/payment/session/{session_code}", response_model=QRPaymentSessionResponse, tags=["V9 - QR & Self-Service"])
+@limiter.limit("60/minute")
 async def get_payment_session(
+    request: Request,
     session_code: str,
     db: Session = Depends(get_db)
 ):
@@ -1259,7 +1348,9 @@ async def get_payment_session(
 
 
 @router_part2.post("/qr/payment/split", response_model=Dict[str, Any], tags=["V9 - QR & Self-Service"])
+@limiter.limit("30/minute")
 async def configure_split_payment(
+    request: Request,
     data: SplitPaymentConfig,
     db: Session = Depends(get_db)
 ):
@@ -1273,7 +1364,9 @@ async def configure_split_payment(
 
 
 @router_part2.post("/qr/payment/pay", response_model=Dict[str, Any], tags=["V9 - QR & Self-Service"])
+@limiter.limit("30/minute")
 async def record_payment(
+    request: Request,
     data: PaymentRecord,
     db: Session = Depends(get_db)
 ):
@@ -1291,7 +1384,9 @@ async def record_payment(
 # ==================== QR - REORDER ====================
 
 @router_part2.post("/qr/reorder/session", response_model=ReorderSessionResponse, tags=["V9 - QR & Self-Service"])
+@limiter.limit("30/minute")
 async def create_reorder_session(
+    request: Request,
     data: ReorderSessionCreate,
     db: Session = Depends(get_db)
 ):
@@ -1312,7 +1407,9 @@ async def create_reorder_session(
 
 
 @router_part2.get("/qr/reorder/{session_code}/items", response_model=Dict[str, Any], tags=["V9 - QR & Self-Service"])
+@limiter.limit("60/minute")
 async def get_reorder_items(
+    request: Request,
     session_code: str,
     db: Session = Depends(get_db)
 ):
@@ -1324,7 +1421,9 @@ async def get_reorder_items(
 
 
 @router_part2.post("/qr/reorder/confirm", response_model=Dict[str, Any], tags=["V9 - QR & Self-Service"])
+@limiter.limit("30/minute")
 async def confirm_reorder(
+    request: Request,
     data: ReorderConfirm,
     db: Session = Depends(get_db)
 ):
@@ -1340,7 +1439,9 @@ async def confirm_reorder(
 # ==================== QR - TABLE QR CODES ====================
 
 @router_part2.post("/qr/table/generate", response_model=TableQRResponse, tags=["V9 - QR & Self-Service"])
+@limiter.limit("30/minute")
 async def generate_table_qr(
+    request: Request,
     data: TableQRGenerate,
     db: Session = Depends(get_db)
 ):
@@ -1457,7 +1558,7 @@ async def generate_nra_file(export_id: int):
                 venue_vat = venue.vat_number
             elif hasattr(venue, 'eik') and venue.eik:
                 venue_vat = venue.eik
-            
+
             if not venue_vat:
                 raise ValueError(
                     f"Venue {venue.name} does not have a tax ID (EIK/BULSTAT) configured. "
@@ -1496,7 +1597,7 @@ async def generate_nra_file(export_id: int):
             for order in orders:
                 transaction = ET.SubElement(transactions, "TRANSACTION")
 
-                # UNP - Unique sale number (УНП)
+                # UNP - Unique sale number
                 unp = f"{venue_vat[:9]}-{order.id:010d}-{order.created_at.strftime('%Y%m%d%H%M%S')}"
                 ET.SubElement(transaction, "UNP").text = unp
 

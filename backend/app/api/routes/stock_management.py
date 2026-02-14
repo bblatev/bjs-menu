@@ -16,8 +16,10 @@ from datetime import datetime, date, timedelta, timezone
 from decimal import Decimal
 from typing import List, Optional
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Query, Request
 from pydantic import BaseModel
+
+from app.core.rate_limit import limiter
 from sqlalchemy import func, and_
 
 from app.db.session import DbSession
@@ -115,7 +117,9 @@ class CancelReservationRequest(BaseModel):
 # ==================== STOCK OVERVIEW ====================
 
 @router.get("/overview")
+@limiter.limit("60/minute")
 def get_stock_overview(
+    request: Request,
     db: DbSession,
     location_id: Optional[int] = None,
 ):
@@ -201,7 +205,9 @@ def get_stock_overview(
 # ==================== STOCK ALERTS ====================
 
 @router.get("/alerts")
+@limiter.limit("60/minute")
 def get_stock_alerts(
+    request: Request,
     db: DbSession,
     location_id: int = Query(1),
 ):
@@ -297,9 +303,11 @@ def get_stock_alerts(
 # ==================== TRANSFERS ====================
 
 @router.post("/transfers")
+@limiter.limit("30/minute")
 def create_transfer(
+    request: Request,
     db: DbSession,
-    request: StockTransferRequest,
+    transfer_request: StockTransferRequest,
 ):
     """
     Transfer stock between locations.
@@ -308,11 +316,11 @@ def create_transfer(
     """
     stock_service = StockDeductionService(db)
     result = stock_service.transfer_stock(
-        product_id=request.product_id,
-        quantity=Decimal(str(request.quantity)),
-        from_location_id=request.from_location_id,
-        to_location_id=request.to_location_id,
-        notes=request.notes,
+        product_id=transfer_request.product_id,
+        quantity=Decimal(str(transfer_request.quantity)),
+        from_location_id=transfer_request.from_location_id,
+        to_location_id=transfer_request.to_location_id,
+        notes=transfer_request.notes,
     )
 
     if not result.get("success"):
@@ -322,9 +330,11 @@ def create_transfer(
 
 
 @router.post("/transfers/bulk")
+@limiter.limit("30/minute")
 def create_bulk_transfer(
+    request: Request,
     db: DbSession,
-    request: BulkTransferRequest,
+    bulk_request: BulkTransferRequest,
 ):
     """
     Transfer multiple products between locations in a single operation.
@@ -334,13 +344,13 @@ def create_bulk_transfer(
     results = []
     errors = []
 
-    for item in request.items:
+    for item in bulk_request.items:
         result = stock_service.transfer_stock(
             product_id=item.product_id,
             quantity=Decimal(str(item.quantity)),
-            from_location_id=request.from_location_id,
-            to_location_id=request.to_location_id,
-            notes=request.notes,
+            from_location_id=bulk_request.from_location_id,
+            to_location_id=bulk_request.to_location_id,
+            notes=bulk_request.notes,
         )
         if result.get("success"):
             results.append(result)
@@ -357,7 +367,9 @@ def create_bulk_transfer(
 
 
 @router.get("/transfers/history")
+@limiter.limit("60/minute")
 def get_transfer_history(
+    request: Request,
     db: DbSession,
     location_id: Optional[int] = None,
     limit: int = Query(50, le=500),
@@ -396,9 +408,11 @@ def get_transfer_history(
 # ==================== ADJUSTMENTS ====================
 
 @router.post("/adjustments")
+@limiter.limit("30/minute")
 def create_adjustment(
+    request: Request,
     db: DbSession,
-    request: StockAdjustmentRequest,
+    adjustment_request: StockAdjustmentRequest,
 ):
     """
     Create a stock adjustment (recount, damage, theft, loss).
@@ -406,10 +420,10 @@ def create_adjustment(
     """
     stock_service = StockDeductionService(db)
     result = stock_service.adjust_stock(
-        product_id=request.product_id,
-        new_qty=Decimal(str(request.new_quantity)),
-        location_id=request.location_id,
-        reason=f"{request.adjustment_type}: {request.reason}",
+        product_id=adjustment_request.product_id,
+        new_qty=Decimal(str(adjustment_request.new_quantity)),
+        location_id=adjustment_request.location_id,
+        reason=f"{adjustment_request.adjustment_type}: {adjustment_request.reason}",
     )
 
     if not result.get("success"):
@@ -419,7 +433,9 @@ def create_adjustment(
 
 
 @router.get("/adjustments/history")
+@limiter.limit("60/minute")
 def get_adjustment_history(
+    request: Request,
     db: DbSession,
     location_id: Optional[int] = None,
     limit: int = Query(50, le=500),
@@ -453,9 +469,11 @@ def get_adjustment_history(
 # ==================== WASTE WITH STOCK INTEGRATION ====================
 
 @router.post("/waste")
+@limiter.limit("30/minute")
 def record_waste(
+    request: Request,
     db: DbSession,
-    request: WasteRecordRequest,
+    waste_request: WasteRecordRequest,
 ):
     """
     Record waste and automatically deduct from stock.
@@ -464,11 +482,11 @@ def record_waste(
     """
     stock_service = StockDeductionService(db)
     result = stock_service.deduct_for_waste(
-        product_id=request.product_id,
-        quantity=Decimal(str(request.quantity)),
-        unit=request.unit,
-        location_id=request.location_id,
-        reason=f"{request.category}: {request.reason or 'No reason'}",
+        product_id=waste_request.product_id,
+        quantity=Decimal(str(waste_request.quantity)),
+        unit=waste_request.unit,
+        location_id=waste_request.location_id,
+        reason=f"{waste_request.category}: {waste_request.reason or 'No reason'}",
     )
 
     if not result.get("success"):
@@ -480,7 +498,9 @@ def record_waste(
 # ==================== SHRINKAGE / THEFT DETECTION ====================
 
 @router.get("/shrinkage")
+@limiter.limit("60/minute")
 def get_shrinkage_analysis(
+    request: Request,
     db: DbSession,
     location_id: int = Query(1),
     days: int = Query(30, le=365),
@@ -510,7 +530,9 @@ def get_shrinkage_analysis(
 # ==================== COST TRACKING ====================
 
 @router.get("/cost-analysis")
+@limiter.limit("60/minute")
 def get_cost_analysis(
+    request: Request,
     db: DbSession,
     location_id: int = Query(1),
     method: str = Query("weighted_average", description="fifo, weighted_average, or last_cost"),
@@ -612,7 +634,9 @@ def get_cost_analysis(
 # ==================== MOVEMENT HISTORY ====================
 
 @router.get("/movements")
+@limiter.limit("60/minute")
 def get_all_movements(
+    request: Request,
     db: DbSession,
     location_id: Optional[int] = None,
     product_id: Optional[int] = None,
@@ -670,7 +694,9 @@ def get_all_movements(
 # ==================== STOCK VALUATION REPORT ====================
 
 @router.get("/valuation")
+@limiter.limit("60/minute")
 def get_stock_valuation(
+    request: Request,
     db: DbSession,
     location_id: Optional[int] = None,
 ):
@@ -727,9 +753,11 @@ def get_stock_valuation(
 # ==================== AI SHELF SCANNER ====================
 
 @router.post("/ai-scan")
+@limiter.limit("30/minute")
 def ai_shelf_scan(
+    request: Request,
     db: DbSession,
-    request: AIShelfScanRequest,
+    scan_request: AIShelfScanRequest,
 ):
     """
     AI-powered shelf scanning for inventory counting.
@@ -745,8 +773,8 @@ def ai_shelf_scan(
     """
     # Create an inventory session for this scan
     session = InventorySession(
-        location_id=request.location_id,
-        notes=f"AI Shelf Scan - {request.shelf_section or 'Full shelf'} - {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M')}",
+        location_id=scan_request.location_id,
+        notes=f"AI Shelf Scan - {scan_request.shelf_section or 'Full shelf'} - {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M')}",
     )
     db.add(session)
     db.flush()
@@ -762,12 +790,12 @@ def ai_shelf_scan(
     except Exception:
         pass
 
-    if ai_available and (request.image_data or request.image_url):
+    if ai_available and (scan_request.image_data or scan_request.image_url):
         try:
             # Use AI to detect products in the image
             recognition_result = ai_service.recognize(
-                image_data=request.image_data,
-                image_url=request.image_url,
+                image_data=scan_request.image_data,
+                image_url=scan_request.image_url,
             )
 
             for detection in recognition_result.get("detections", []):
@@ -799,7 +827,7 @@ def ai_shelf_scan(
                     # Get current stock for comparison
                     current_stock = db.query(StockOnHand).filter(
                         StockOnHand.product_id == product.id,
-                        StockOnHand.location_id == request.location_id,
+                        StockOnHand.location_id == scan_request.location_id,
                     ).first()
 
                     detected_items.append({
@@ -821,7 +849,7 @@ def ai_shelf_scan(
         for product in products:
             current_stock = db.query(StockOnHand).filter(
                 StockOnHand.product_id == product.id,
-                StockOnHand.location_id == request.location_id,
+                StockOnHand.location_id == scan_request.location_id,
             ).first()
 
             detected_items.append({
@@ -839,8 +867,8 @@ def ai_shelf_scan(
 
     return {
         "session_id": session.id,
-        "location_id": request.location_id,
-        "shelf_section": request.shelf_section,
+        "location_id": scan_request.location_id,
+        "shelf_section": scan_request.shelf_section,
         "ai_available": ai_available,
         "detected_items": detected_items,
         "total_detected": len([i for i in detected_items if i["detected_qty"] is not None]),
@@ -850,7 +878,9 @@ def ai_shelf_scan(
 
 
 @router.post("/ai-scan/{session_id}/commit")
+@limiter.limit("30/minute")
 def commit_ai_scan(
+    request: Request,
     db: DbSession,
     session_id: int,
 ):
@@ -925,7 +955,9 @@ def commit_ai_scan(
 
 
 @router.put("/ai-scan/{session_id}/lines/{line_id}")
+@limiter.limit("30/minute")
 def update_scan_line(
+    request: Request,
     db: DbSession,
     session_id: int,
     line_id: int,
@@ -956,7 +988,9 @@ def update_scan_line(
 # ==================== STOCK AVAILABILITY CHECK ====================
 
 @router.get("/availability")
+@limiter.limit("60/minute")
 def check_menu_availability(
+    request: Request,
     db: DbSession,
     location_id: int = Query(1),
 ):
@@ -978,7 +1012,9 @@ def check_menu_availability(
 # ==================== PAR LEVEL MANAGEMENT ====================
 
 @router.get("/par-levels")
+@limiter.limit("60/minute")
 def get_par_levels(
+    request: Request,
     db: DbSession,
     location_id: int = Query(1),
     period: str = Query("week", description="week, month, or quarter"),
@@ -1049,7 +1085,9 @@ def get_par_levels(
 # ==================== VARIANCE ANALYSIS ====================
 
 @router.get("/variance")
+@limiter.limit("60/minute")
 def get_variance_analysis(
+    request: Request,
     db: DbSession,
     location_id: int = Query(1),
     period: str = Query("week", description="week, month, or quarter"),
@@ -1081,7 +1119,9 @@ def get_variance_analysis(
 # ==================== SMART PAR CALCULATION ====================
 
 @router.post("/calculate-par/{product_id}")
+@limiter.limit("30/minute")
 def calculate_smart_par(
+    request: Request,
     db: DbSession,
     product_id: int,
     location_id: int = Query(1),
@@ -1112,9 +1152,11 @@ def calculate_smart_par(
 
 
 @router.post("/recalculate-all-pars")
+@limiter.limit("30/minute")
 def recalculate_all_pars(
+    request: Request,
     db: DbSession,
-    request: BulkParRequest,
+    par_request: BulkParRequest,
 ):
     """
     Recalculate PAR levels for ALL active products using smart formula.
@@ -1122,20 +1164,22 @@ def recalculate_all_pars(
     """
     stock_service = StockDeductionService(db)
     return stock_service.bulk_recalculate_pars(
-        location_id=request.location_id,
-        lookback_days=request.lookback_days,
-        safety_factor=request.safety_factor,
-        order_cycle_days=request.order_cycle_days,
-        auto_apply=request.auto_apply,
+        location_id=par_request.location_id,
+        lookback_days=par_request.lookback_days,
+        safety_factor=par_request.safety_factor,
+        order_cycle_days=par_request.order_cycle_days,
+        auto_apply=par_request.auto_apply,
     )
 
 
 # ==================== STOCK RESERVATION ====================
 
 @router.post("/reserve")
+@limiter.limit("30/minute")
 def reserve_stock(
+    request: Request,
     db: DbSession,
-    request: ReserveStockRequest,
+    reserve_request: ReserveStockRequest,
 ):
     """
     Reserve stock for an in-progress order.
@@ -1145,9 +1189,9 @@ def reserve_stock(
     """
     stock_service = StockDeductionService(db)
     result = stock_service.reserve_for_order(
-        order_items=request.order_items,
-        location_id=request.location_id,
-        reference_id=request.reference_id,
+        order_items=reserve_request.order_items,
+        location_id=reserve_request.location_id,
+        reference_id=reserve_request.reference_id,
     )
     if not result.get("success"):
         raise HTTPException(status_code=400, detail=result.get("errors", "Reservation failed"))
@@ -1155,23 +1199,27 @@ def reserve_stock(
 
 
 @router.post("/cancel-reservation")
+@limiter.limit("30/minute")
 def cancel_reservation(
+    request: Request,
     db: DbSession,
-    request: CancelReservationRequest,
+    cancel_request: CancelReservationRequest,
 ):
     """Cancel stock reservations and release reserved stock back to available pool."""
     stock_service = StockDeductionService(db)
     return stock_service.cancel_reservation(
-        reference_id=request.reference_id,
-        reference_type=request.reference_type,
-        location_id=request.location_id,
+        reference_id=cancel_request.reference_id,
+        reference_type=cancel_request.reference_type,
+        location_id=cancel_request.location_id,
     )
 
 
 # ==================== MULTI-LOCATION AGGREGATION ====================
 
 @router.get("/aggregate")
+@limiter.limit("60/minute")
 def get_aggregate_stock(
+    request: Request,
     db: DbSession,
 ):
     """
@@ -1183,7 +1231,9 @@ def get_aggregate_stock(
 
 
 @router.get("/transfer-suggestions")
+@limiter.limit("60/minute")
 def get_transfer_suggestions(
+    request: Request,
     db: DbSession,
     location_id: Optional[int] = None,
 ):

@@ -3,7 +3,7 @@ Missing Features Implementation
 Comprehensive endpoints for features identified as missing or incomplete
 """
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy.orm import Session
 from typing import List, Optional, Dict
 from datetime import datetime, date, timedelta
@@ -13,6 +13,7 @@ import json
 
 from app.db.session import get_db
 from app.core.rbac import get_current_user
+from app.core.rate_limit import limiter
 from app.models import (
     StaffUser, StaffShift, Table, Venue, PayrollEntry
 )
@@ -120,7 +121,9 @@ class BudgetVarianceRequest(BaseModel):
 # ===================== STAFF/PAYROLL ENDPOINTS =====================
 
 @router.post("/payroll/overtime-rules", summary="Create overtime calculation rules")
+@limiter.limit("30/minute")
 def create_overtime_rules(
+    request: Request,
     rule: OvertimeRuleCreate,
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(get_current_user)
@@ -152,7 +155,9 @@ def create_overtime_rules(
 
 
 @router.get("/payroll/overtime-rules", summary="Get overtime calculation rules")
+@limiter.limit("60/minute")
 def get_overtime_rules(
+    request: Request,
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(get_current_user)
 ):
@@ -180,7 +185,9 @@ def get_overtime_rules(
 
 
 @router.post("/shifts/swap-request", summary="Request shift swap")
+@limiter.limit("30/minute")
 def request_shift_swap(
+    request: Request,
     swap: ShiftSwapRequest,
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(get_current_user)
@@ -233,8 +240,10 @@ def request_shift_swap(
 
 
 @router.post("/staff/time-off", summary="Submit time off request")
+@limiter.limit("30/minute")
 def submit_time_off_request(
-    request: TimeOffRequest,
+    request: Request,
+    time_off: TimeOffRequest,
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(get_current_user)
 ):
@@ -253,15 +262,15 @@ def submit_time_off_request(
     3. System updates availability calendar
     4. Scheduling adjusted accordingly
     """
-    staff = db.query(StaffUser).filter(StaffUser.id == request.staff_id).first()
+    staff = db.query(StaffUser).filter(StaffUser.id == time_off.staff_id).first()
     if not staff:
         raise HTTPException(status_code=404, detail="Staff not found")
 
     # Calculate total days
-    total_days = (request.end_date - request.start_date).days + 1
+    total_days = (time_off.end_date - time_off.start_date).days + 1
 
     # Check available balance (for vacation type)
-    if request.request_type == "vacation":
+    if time_off.request_type == "vacation":
         # Would check vacation_balance from staff record
         available_days = getattr(staff, 'vacation_days_remaining', 20)
         if total_days > available_days:
@@ -271,13 +280,13 @@ def submit_time_off_request(
             )
 
     time_off_data = {
-        "staff_id": request.staff_id,
-        "start_date": request.start_date.isoformat(),
-        "end_date": request.end_date.isoformat(),
-        "type": request.request_type,
-        "reason": request.reason,
+        "staff_id": time_off.staff_id,
+        "start_date": time_off.start_date.isoformat(),
+        "end_date": time_off.end_date.isoformat(),
+        "type": time_off.request_type,
+        "reason": time_off.reason,
         "total_days": total_days,
-        "hours_requested": request.hours_requested or (total_days * 8),
+        "hours_requested": time_off.hours_requested or (total_days * 8),
         "status": "pending",
         "submitted_at": datetime.now().isoformat()
     }
@@ -290,7 +299,9 @@ def submit_time_off_request(
 
 
 @router.post("/staff/bonus", summary="Add staff bonus/commission")
+@limiter.limit("30/minute")
 def add_staff_bonus(
+    request: Request,
     bonus: BonusCreate,
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(get_current_user)
@@ -343,7 +354,9 @@ def add_staff_bonus(
 
 
 @router.get("/payroll/tax-report", summary="Generate tax report")
+@limiter.limit("60/minute")
 def generate_tax_report(
+    request: Request,
     year: int = Query(..., description="Tax year"),
     quarter: Optional[int] = Query(None, ge=1, le=4, description="Quarter (1-4)"),
     db: Session = Depends(get_db),
@@ -460,7 +473,9 @@ def generate_tax_report(
 # ===================== RECIPE/KITCHEN ENDPOINTS =====================
 
 @router.post("/recipes/{recipe_id}/allergens", summary="Set recipe allergens")
+@limiter.limit("30/minute")
 def set_recipe_allergens(
+    request: Request,
     recipe_id: int,
     allergen_info: AllergenInfo,
     db: Session = Depends(get_db)
@@ -486,7 +501,8 @@ def set_recipe_allergens(
 
 
 @router.get("/recipes/{recipe_id}/allergens", summary="Get recipe allergens")
-def get_recipe_allergens(recipe_id: int, db: Session = Depends(get_db)):
+@limiter.limit("60/minute")
+def get_recipe_allergens(request: Request, recipe_id: int, db: Session = Depends(get_db)):
     """Get allergen information for a recipe"""
     # Would fetch from Recipe model or RecipeAllergen table
     return {
@@ -499,7 +515,9 @@ def get_recipe_allergens(recipe_id: int, db: Session = Depends(get_db)):
 
 
 @router.post("/recipes/{recipe_id}/nutrition", summary="Set nutritional info")
+@limiter.limit("30/minute")
 def set_nutritional_info(
+    request: Request,
     recipe_id: int,
     nutrition: NutritionalInfo,
     db: Session = Depends(get_db)
@@ -518,7 +536,8 @@ def set_nutritional_info(
 
 
 @router.get("/recipes/{recipe_id}/nutrition", summary="Get nutritional info")
-def get_nutritional_info(recipe_id: int, db: Session = Depends(get_db)):
+@limiter.limit("60/minute")
+def get_nutritional_info(request: Request, recipe_id: int, db: Session = Depends(get_db)):
     """Get nutritional information for a recipe"""
     return {
         "recipe_id": recipe_id,
@@ -542,7 +561,9 @@ def get_nutritional_info(recipe_id: int, db: Session = Depends(get_db)):
 
 
 @router.post("/recipes/{recipe_id}/scale", summary="Scale recipe")
+@limiter.limit("30/minute")
 def scale_recipe(
+    request: Request,
     recipe_id: int,
     target_servings: int = Query(..., gt=0, description="Target number of servings"),
     db: Session = Depends(get_db)
@@ -573,7 +594,9 @@ def scale_recipe(
 
 
 @router.get("/kitchen/prep-list", summary="Generate prep list")
+@limiter.limit("60/minute")
 def generate_prep_list(
+    request: Request,
     date_for: date = Query(..., description="Date to generate prep for"),
     shift: Optional[str] = Query(None, description="morning, afternoon, evening"),
     db: Session = Depends(get_db),
@@ -638,7 +661,9 @@ def generate_prep_list(
 # ===================== CUSTOMER ENDPOINTS =====================
 
 @router.post("/customers/feedback", summary="Submit customer feedback")
+@limiter.limit("30/minute")
 def submit_customer_feedback(
+    request: Request,
     feedback: CustomerFeedback,
     db: Session = Depends(get_db)
 ):
@@ -682,7 +707,9 @@ def submit_customer_feedback(
 
 
 @router.get("/customers/feedback/summary", summary="Get feedback summary")
+@limiter.limit("60/minute")
 def get_feedback_summary(
+    request: Request,
     start_date: Optional[date] = None,
     end_date: Optional[date] = None,
     db: Session = Depends(get_db),
@@ -724,7 +751,9 @@ def get_feedback_summary(
 
 
 @router.get("/customers/birthdays", summary="Get upcoming birthdays")
+@limiter.limit("60/minute")
 def get_upcoming_birthdays(
+    request: Request,
     days_ahead: int = Query(7, ge=1, le=30, description="Days to look ahead"),
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(get_current_user)
@@ -785,7 +814,9 @@ def get_upcoming_birthdays(
 
 
 @router.post("/customers/segments", summary="Create customer segment")
+@limiter.limit("30/minute")
 def create_customer_segment(
+    request: Request,
     segment: CustomerSegment,
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(get_current_user)
@@ -812,7 +843,9 @@ def create_customer_segment(
 
 
 @router.get("/customers/segments/{segment_id}/members", summary="Get segment members")
+@limiter.limit("60/minute")
 def get_segment_members(
+    request: Request,
     segment_id: int,
     skip: int = 0,
     limit: int = 100,
@@ -842,8 +875,10 @@ def get_segment_members(
 # ===================== FINANCIAL ENDPOINTS =====================
 
 @router.post("/financial/profit-loss", summary="Generate P&L statement")
+@limiter.limit("30/minute")
 def generate_profit_loss_statement(
-    request: ProfitLossRequest,
+    request: Request,
+    pl_request: ProfitLossRequest,
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(get_current_user)
 ):
@@ -864,8 +899,8 @@ def generate_profit_loss_statement(
     return {
         "report_type": "Profit & Loss Statement",
         "period": {
-            "start": request.start_date.isoformat(),
-            "end": request.end_date.isoformat()
+            "start": pl_request.start_date.isoformat(),
+            "end": pl_request.end_date.isoformat()
         },
         "revenue": {
             "food_sales": 85000.00,
@@ -928,7 +963,9 @@ def generate_profit_loss_statement(
 
 
 @router.get("/financial/budget-variance", summary="Budget variance analysis")
+@limiter.limit("60/minute")
 def get_budget_variance(
+    request: Request,
     budget_id: int = Query(..., description="Budget ID to analyze"),
     period: str = Query("month", description="Period: day, week, month, quarter"),
     db: Session = Depends(get_db),
@@ -995,7 +1032,9 @@ def get_budget_variance(
 
 
 @router.get("/financial/cash-flow", summary="Cash flow report")
+@limiter.limit("60/minute")
 def get_cash_flow_report(
+    request: Request,
     start_date: date = Query(..., description="Report start date"),
     end_date: date = Query(..., description="Report end date"),
     db: Session = Depends(get_db),
@@ -1051,7 +1090,9 @@ def get_cash_flow_report(
 # ===================== TABLE MANAGEMENT ENDPOINTS =====================
 
 @router.get("/tables/real-time-status", summary="Get real-time table status")
+@limiter.limit("60/minute")
 def get_real_time_table_status(
+    request: Request,
     floor_id: Optional[int] = None,
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(get_current_user)
@@ -1105,7 +1146,9 @@ def get_real_time_table_status(
 
 
 @router.get("/tables/wait-time-estimate", summary="Estimate wait time")
+@limiter.limit("60/minute")
 def estimate_wait_time(
+    request: Request,
     party_size: int = Query(..., ge=1, le=20, description="Number of guests"),
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(get_current_user)
@@ -1153,7 +1196,9 @@ def estimate_wait_time(
 
 
 @router.post("/tables/auto-assign", summary="Auto-assign table")
+@limiter.limit("30/minute")
 def auto_assign_table(
+    request: Request,
     party_size: int = Query(..., ge=1, le=20, description="Number of guests"),
     preferences: Optional[Dict] = None,
     db: Session = Depends(get_db),

@@ -10,7 +10,7 @@ Implements:
 5. Recipe Scaling - Scale recipes for different batch sizes
 """
 
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Request
 from sqlalchemy.orm import Session
 from typing import List, Optional, Dict
 from pydantic import BaseModel
@@ -20,6 +20,7 @@ from pathlib import Path
 
 from app.db.session import get_db
 from app.core.rbac import get_current_user
+from app.core.rate_limit import limiter
 from app.models import (
     MenuItem, StaffUser, StockItem, StockBatch
 )
@@ -387,7 +388,9 @@ ALLERGEN_DEFINITIONS = {
 # =============================================================================
 
 @router.post("/daypart-pricing", response_model=DaypartPricingResponse, tags=["Daypart Pricing"])
+@limiter.limit("30/minute")
 async def create_daypart_pricing(
+    request: Request,
     data: DaypartPricingCreate,
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(require_manager)
@@ -458,7 +461,9 @@ async def create_daypart_pricing(
 
 
 @router.get("/daypart-pricing", response_model=List[DaypartPricingResponse], tags=["Daypart Pricing"])
+@limiter.limit("60/minute")
 async def list_daypart_pricing(
+    request: Request,
     active_only: bool = False,
     currently_active_only: bool = False,
     db: Session = Depends(get_db),
@@ -501,7 +506,9 @@ async def list_daypart_pricing(
 
 
 @router.get("/daypart-pricing/check-price/{item_id}", response_model=MenuItemPriceCheck, tags=["Daypart Pricing"])
+@limiter.limit("60/minute")
 async def check_daypart_price(
+    request: Request,
     item_id: int,
     check_time: Optional[datetime] = None,
     db: Session = Depends(get_db),
@@ -569,7 +576,9 @@ async def check_daypart_price(
 
 
 @router.delete("/daypart-pricing/{rule_id}", tags=["Daypart Pricing"])
+@limiter.limit("30/minute")
 async def delete_daypart_pricing(
+    request: Request,
     rule_id: int,
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(require_manager)
@@ -587,7 +596,9 @@ async def delete_daypart_pricing(
 
 
 @router.patch("/daypart-pricing/{rule_id}/toggle", tags=["Daypart Pricing"])
+@limiter.limit("30/minute")
 async def toggle_daypart_pricing(
+    request: Request,
     rule_id: int,
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(require_manager)
@@ -609,7 +620,9 @@ async def toggle_daypart_pricing(
 # =============================================================================
 
 @router.post("/items/{item_id}/photos/upload", response_model=PhotoUploadResponse, tags=["Menu Photos"])
+@limiter.limit("30/minute")
 async def upload_menu_item_photo(
+    request: Request,
     item_id: int,
     file: UploadFile = File(...),
     is_primary: bool = False,
@@ -733,7 +746,9 @@ async def upload_menu_item_photo(
 
 
 @router.get("/items/{item_id}/photos", tags=["Menu Photos"])
+@limiter.limit("60/minute")
 async def get_menu_item_photos(
+    request: Request,
     item_id: int,
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(get_current_user)
@@ -759,7 +774,9 @@ async def get_menu_item_photos(
 
 
 @router.delete("/items/{item_id}/photos/{photo_id}", tags=["Menu Photos"])
+@limiter.limit("30/minute")
 async def delete_menu_item_photo(
+    request: Request,
     item_id: int,
     photo_id: str,
     db: Session = Depends(get_db),
@@ -804,7 +821,9 @@ async def delete_menu_item_photo(
 # =============================================================================
 
 @router.get("/allergen-matrix", response_model=AllergenMatrixResponse, tags=["Allergen Matrix"])
+@limiter.limit("60/minute")
 async def get_allergen_matrix(
+    request: Request,
     category_id: Optional[int] = None,
     include_empty: bool = False,
     language: str = "en",
@@ -888,7 +907,9 @@ async def get_allergen_matrix(
 
 
 @router.put("/items/{item_id}/allergen-matrix", tags=["Allergen Matrix"])
+@limiter.limit("30/minute")
 async def update_item_allergens_matrix(
+    request: Request,
     item_id: int,
     allergens: Dict[str, str],  # {allergen_code: severity}
     db: Session = Depends(get_db),
@@ -947,7 +968,9 @@ async def update_item_allergens_matrix(
 # =============================================================================
 
 @router.post("/batches/with-shelf-life", response_model=BatchShelfLifeResponse, tags=["Batch Shelf Life"])
+@limiter.limit("30/minute")
 async def create_batch_with_shelf_life(
+    request: Request,
     data: BatchShelfLifeCreate,
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(get_current_user)
@@ -1057,7 +1080,9 @@ async def create_batch_with_shelf_life(
 
 
 @router.post("/prepared-batches", response_model=PreparedBatchResponse, tags=["Batch Shelf Life"])
+@limiter.limit("30/minute")
 async def create_prepared_batch(
+    request: Request,
     data: PreparedBatchCreate,
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(get_current_user)
@@ -1153,7 +1178,9 @@ async def create_prepared_batch(
 
 
 @router.get("/prepared-batches", tags=["Batch Shelf Life"])
+@limiter.limit("60/minute")
 async def list_prepared_batches(
+    request: Request,
     status: Optional[str] = None,  # active, used, expired, discarded
     expiring_soon: bool = False,  # Within 4 hours
     db: Session = Depends(get_db),
@@ -1209,7 +1236,9 @@ async def list_prepared_batches(
 # =============================================================================
 
 @router.post("/recipes/scale", response_model=RecipeScaleResponse, tags=["Recipe Scaling"])
+@limiter.limit("30/minute")
 async def scale_recipe(
+    request: Request,
     data: RecipeScaleRequest,
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(get_current_user)
@@ -1333,7 +1362,9 @@ async def scale_recipe(
 
 
 @router.get("/recipes/{item_id}/scaling-presets", tags=["Recipe Scaling"])
+@limiter.limit("60/minute")
 async def get_recipe_scaling_presets(
+    request: Request,
     item_id: int,
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(get_current_user)

@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import { API_URL, getAuthHeaders } from '@/lib/api';
 import { getVenueId } from '@/lib/auth';
 
+import { toast } from '@/lib/toast';
 interface Reservation {
   id: number;
   guest_name: string;
@@ -190,11 +191,11 @@ export default function ReservationsPage() {
         loadReservations();
       } else {
         const errorData = await response.json().catch(() => ({}));
-        alert(errorData.detail || 'Failed to save reservation');
+        toast.error(errorData.detail || 'Failed to save reservation');
       }
     } catch (err) {
       console.error('Error saving reservation:', err);
-      alert('Failed to save reservation. Please try again.');
+      toast.error('Failed to save reservation. Please try again.');
     }
   };
 
@@ -372,7 +373,7 @@ export default function ReservationsPage() {
       });
       if (response.ok) {
         const data = await response.json();
-        alert(`Auto-assigned ${data.assigned_count} tables with ${data.optimization_score}% efficiency`);
+        toast.success(`Auto-assigned ${data.assigned_count} tables with ${data.optimization_score}% efficiency`);
         loadReservations();
       }
     } catch (err) {
@@ -433,7 +434,7 @@ export default function ReservationsPage() {
       if (response.ok) {
         setShowRefundModal(false);
         setSelectedReservationForRefund(null);
-        alert('Refund processed successfully');
+        toast.success('Refund processed successfully');
         loadReservations();
       }
     } catch (err) {

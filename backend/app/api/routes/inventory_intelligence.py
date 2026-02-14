@@ -9,7 +9,7 @@ from datetime import datetime, date, timedelta, timezone
 from decimal import Decimal
 from typing import List, Optional, Dict, Any
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Query, Request
 from pydantic import BaseModel, Field
 from sqlalchemy import func, and_, case, text, desc, asc
 
@@ -19,6 +19,8 @@ from app.models.product import Product
 from app.models.location import Location
 from app.models.recipe import Recipe, RecipeLine
 from app.models.restaurant import Check, CheckItem
+
+from app.core.rate_limit import limiter
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -171,7 +173,9 @@ class CycleCountScheduleResponse(BaseModel):
 # ==================== ENDPOINTS ====================
 
 @router.get("/abc-analysis", response_model=ABCAnalysisResponse)
+@limiter.limit("60/minute")
 def get_abc_analysis(
+    request: Request,
     db: DbSession,
     location_id: int = Query(1),
     period_days: int = Query(90, ge=7, le=365),
@@ -281,7 +285,9 @@ def get_abc_analysis(
 
 
 @router.get("/turnover", response_model=TurnoverResponse)
+@limiter.limit("60/minute")
 def get_inventory_turnover(
+    request: Request,
     db: DbSession,
     location_id: int = Query(1),
     period_days: int = Query(90, ge=7, le=365),
@@ -371,7 +377,9 @@ def get_inventory_turnover(
 
 
 @router.get("/dead-stock", response_model=DeadStockResponse)
+@limiter.limit("60/minute")
 def get_dead_stock(
+    request: Request,
     db: DbSession,
     location_id: int = Query(1),
     threshold_days: int = Query(30, ge=7, le=365),
@@ -469,7 +477,9 @@ def get_dead_stock(
 
 
 @router.get("/cogs", response_model=COGSResponse)
+@limiter.limit("60/minute")
 def get_cogs_report(
+    request: Request,
     db: DbSession,
     location_id: int = Query(1),
     period_start: date = Query(default=None),
@@ -597,7 +607,9 @@ def get_cogs_report(
 
 
 @router.get("/food-cost-variance", response_model=FoodCostVarianceResponse)
+@limiter.limit("60/minute")
 def get_food_cost_variance(
+    request: Request,
     db: DbSession,
     location_id: int = Query(1),
     period_start: date = Query(default=None),
@@ -725,7 +737,9 @@ def get_food_cost_variance(
 
 
 @router.get("/eoq/{product_id}", response_model=EOQResponse)
+@limiter.limit("60/minute")
 def calculate_eoq(
+    request: Request,
     db: DbSession,
     product_id: int,
     ordering_cost: float = Query(25.0, ge=1, description="Cost per order placement"),
@@ -798,7 +812,9 @@ def calculate_eoq(
 
 
 @router.post("/snapshots", response_model=SnapshotResponse)
+@limiter.limit("30/minute")
 def create_inventory_snapshot(
+    request: Request,
     db: DbSession,
     data: SnapshotCreate,
 ):
@@ -871,7 +887,9 @@ def create_inventory_snapshot(
 
 
 @router.get("/snapshots", response_model=List[SnapshotResponse])
+@limiter.limit("60/minute")
 def list_snapshots(
+    request: Request,
     db: DbSession,
     location_id: int = Query(1),
     limit: int = Query(20, ge=1, le=100),
@@ -895,7 +913,9 @@ def list_snapshots(
 
 
 @router.get("/snapshots/compare", response_model=SnapshotCompareResponse)
+@limiter.limit("60/minute")
 def compare_snapshots(
+    request: Request,
     db: DbSession,
     snapshot_a_id: int = Query(...),
     snapshot_b_id: int = Query(...),
@@ -986,7 +1006,9 @@ def compare_snapshots(
 
 
 @router.get("/cycle-count-schedule", response_model=CycleCountScheduleResponse)
+@limiter.limit("60/minute")
 def get_cycle_count_schedule(
+    request: Request,
     db: DbSession,
     location_id: int = Query(1),
     period_days: int = Query(90, ge=30, le=365),
@@ -999,7 +1021,7 @@ def get_cycle_count_schedule(
     Dead items: count quarterly
     """
     # First run ABC analysis (pass explicit values, not Query defaults)
-    abc_response = get_abc_analysis(db, location_id=location_id, period_days=period_days, a_threshold=0.80, b_threshold=0.95)
+    abc_response = get_abc_analysis(request, db, location_id=location_id, period_days=period_days, a_threshold=0.80, b_threshold=0.95)
 
     today = date.today()
 
@@ -1051,7 +1073,7 @@ def get_cycle_count_schedule(
         ))
 
     # Add dead stock as quarterly
-    dead_response = get_dead_stock(db, location_id=location_id, threshold_days=60)  # type: ignore[arg-type]
+    dead_response = get_dead_stock(request, db, location_id=location_id, threshold_days=60)  # type: ignore[arg-type]
     dead_pids = {i.product_id for i in dead_response.items}
     existing_pids = {i.product_id for i in schedule}
     for di in dead_response.items:

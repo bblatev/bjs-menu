@@ -192,7 +192,7 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
         response.headers["Content-Security-Policy"] = (
             "default-src 'self'; "
-            "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://js.stripe.com; "
+            "script-src 'self' 'unsafe-inline' https://js.stripe.com; "
             "style-src 'self' 'unsafe-inline'; "
             "img-src 'self' data: blob: https://api.qrserver.com; "
             "connect-src 'self' ws: wss: https://api.stripe.com https://menu.bjs.bar; "
@@ -454,6 +454,7 @@ app = FastAPI(
     description="Backend API for inventory scanning and management",
     version="1.0.0",
     lifespan=lifespan,
+    redirect_slashes=False,
     docs_url="/docs" if settings.debug else None,
     redoc_url="/redoc" if settings.debug else None,
 )
@@ -505,10 +506,11 @@ def health_check():
 
 @app.get("/health/ready")
 def readiness_check():
-    """Readiness probe with database connectivity check."""
+    """Readiness probe with database, Redis, and WebSocket connectivity check."""
     checks = {
         "database": "unknown",
         "websocket_manager": "unknown",
+        "redis": "unknown",
     }
 
     # Check database connectivity
@@ -521,6 +523,22 @@ def readiness_check():
         logger.error(f"Database health check failed: {e}")
         checks["database"] = f"unhealthy: {str(e)}"
 
+    # Check Redis connectivity
+    try:
+        import redis
+        redis_url = getattr(settings, 'redis_url', None)
+        if redis_url:
+            r = redis.from_url(redis_url, socket_connect_timeout=2)
+            r.ping()
+            checks["redis"] = "healthy"
+        else:
+            checks["redis"] = "not configured"
+    except ImportError:
+        checks["redis"] = "not installed"
+    except Exception as e:
+        logger.error(f"Redis health check failed: {e}")
+        checks["redis"] = f"unhealthy: {str(e)}"
+
     # Check WebSocket manager
     try:
         connection_count = ws_manager.get_connection_count()
@@ -529,9 +547,10 @@ def readiness_check():
         logger.error(f"WebSocket manager health check failed: {e}")
         checks["websocket_manager"] = f"unhealthy: {str(e)}"
 
-    # Determine overall status
+    # Determine overall status (redis "not configured"/"not installed" counts as OK)
     all_healthy = all(
-        c.startswith("healthy") for c in checks.values()
+        c.startswith("healthy") or c in ("not configured", "not installed")
+        for c in checks.values()
     )
 
     return {

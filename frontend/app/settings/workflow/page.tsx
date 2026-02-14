@@ -7,6 +7,7 @@ import { Button, Card, CardBody } from '@/components/ui';
 
 import { API_URL, getAuthHeaders } from '@/lib/api';
 
+import { toast } from '@/lib/toast';
 export default function WorkflowSettingsPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -73,11 +74,11 @@ export default function WorkflowSettingsPage() {
       });
 
       if (response.ok) {
-        alert('Настройките са запазени успешно! / Settings saved successfully!');
+        toast.success('Настройките са запазени успешно! / Settings saved successfully!');
       }
     } catch (err) {
       console.error('Error saving settings:', err);
-      alert('Грешка при запазване / Failed to save settings');
+      toast.error('Грешка при запазване / Failed to save settings');
     } finally {
       setSaving(false);
     }

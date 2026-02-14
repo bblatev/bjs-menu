@@ -2,7 +2,7 @@
 External Integrations API Endpoints
 Connect to accounting systems, suppliers, and third-party services
 """
-from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks
+from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks, Request
 from sqlalchemy.orm import Session
 from typing import List, Optional, Dict, Any
 from datetime import date, datetime
@@ -10,6 +10,7 @@ from pydantic import BaseModel, Field
 
 from app.db.session import get_db
 from app.core.rbac import get_current_user
+from app.core.rate_limit import limiter
 from app.models import StaffUser
 from app.services.external_integrations import (
     integration_manager,
@@ -75,7 +76,8 @@ class WebhookConfig(BaseModel):
 # =============================================================================
 
 @router.get("/accounting/available", response_model=Dict[str, Any])
-async def list_available_accounting_integrations():
+@limiter.limit("60/minute")
+async def list_available_accounting_integrations(request: Request):
     """List available accounting integrations."""
     return {
         "integrations": [
@@ -112,7 +114,9 @@ async def list_available_accounting_integrations():
 
 
 @router.post("/accounting/connect", response_model=Dict[str, Any])
+@limiter.limit("30/minute")
 async def connect_accounting_integration(
+    request: Request,
     credentials: AccountingCredentialsRequest,
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(get_current_user)
@@ -155,7 +159,9 @@ async def connect_accounting_integration(
 
 
 @router.get("/accounting/status", response_model=Dict[str, Any])
+@limiter.limit("60/minute")
 async def get_accounting_status(
+    request: Request,
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(get_current_user)
 ):
@@ -174,8 +180,10 @@ async def get_accounting_status(
 
 
 @router.post("/accounting/export", response_model=Dict[str, Any])
+@limiter.limit("30/minute")
 async def export_to_accounting(
-    request: ExportRequest,
+    request: Request,
+    export_request: ExportRequest,
     integration_type: str,
     background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
@@ -192,21 +200,23 @@ async def export_to_accounting(
     result = await integration_manager.export_to_accounting(
         venue_id=current_user.venue_id,
         integration_type=int_type,
-        start_date=request.start_date,
-        end_date=request.end_date,
-        export_type=request.export_type
+        start_date=export_request.start_date,
+        end_date=export_request.end_date,
+        export_type=export_request.export_type
     )
 
     return {
         "status": "success" if result.success else "failed",
-        "export_type": request.export_type,
-        "period": f"{request.start_date} to {request.end_date}",
+        "export_type": export_request.export_type,
+        "period": f"{export_request.start_date} to {export_request.end_date}",
         "result": result.to_dict()
     }
 
 
 @router.delete("/accounting/{integration_type}", response_model=Dict[str, Any])
+@limiter.limit("30/minute")
 async def disconnect_accounting(
+    request: Request,
     integration_type: str,
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(get_current_user)
@@ -224,7 +234,9 @@ async def disconnect_accounting(
 # =============================================================================
 
 @router.get("/suppliers/integrations", response_model=Dict[str, Any])
+@limiter.limit("60/minute")
 async def list_supplier_integrations(
+    request: Request,
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(get_current_user)
 ):
@@ -243,8 +255,10 @@ async def list_supplier_integrations(
 
 
 @router.post("/suppliers/connect", response_model=Dict[str, Any])
+@limiter.limit("30/minute")
 async def connect_supplier_integration(
-    request: SupplierIntegrationRequest,
+    request: Request,
+    supplier_request: SupplierIntegrationRequest,
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(get_current_user)
 ):
@@ -252,22 +266,22 @@ async def connect_supplier_integration(
     Connect to a supplier integration.
     """
     try:
-        integration_type = IntegrationType(request.integration_type)
+        integration_type = IntegrationType(supplier_request.integration_type)
     except ValueError:
         raise HTTPException(status_code=400, detail="Invalid integration type")
 
     creds = IntegrationCredentials(
-        api_key=request.api_key,
-        api_secret=request.api_secret
+        api_key=supplier_request.api_key,
+        api_secret=supplier_request.api_secret
     )
 
     key = integration_manager.register_integration(
         venue_id=current_user.venue_id,
         integration_type=integration_type,
         credentials=creds,
-        supplier_id=request.supplier_id,
-        supplier_name=request.supplier_name,
-        base_url=request.base_url
+        supplier_id=supplier_request.supplier_id,
+        supplier_name=supplier_request.supplier_name,
+        base_url=supplier_request.base_url
     )
 
     # Test connection
@@ -278,16 +292,18 @@ async def connect_supplier_integration(
 
     return {
         "integration_key": key,
-        "supplier_name": request.supplier_name,
-        "type": request.integration_type,
+        "supplier_name": supplier_request.supplier_name,
+        "type": supplier_request.integration_type,
         "connected": result.success,
         "test_result": result.to_dict()
     }
 
 
 @router.post("/suppliers/send-order", response_model=Dict[str, Any])
+@limiter.limit("30/minute")
 async def send_supplier_order(
-    request: SupplierOrderRequest,
+    request: Request,
+    order_request: SupplierOrderRequest,
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(get_current_user)
 ):
@@ -295,28 +311,30 @@ async def send_supplier_order(
     Send a purchase order to a supplier.
     """
     order_data = {
-        "order_id": request.order_id,
-        "items": request.items,
-        "delivery_date": request.delivery_date.isoformat() if request.delivery_date else None,
-        "notes": request.notes,
+        "order_id": order_request.order_id,
+        "items": order_request.items,
+        "delivery_date": order_request.delivery_date.isoformat() if order_request.delivery_date else None,
+        "notes": order_request.notes,
         "venue_id": current_user.venue_id
     }
 
     result = await integration_manager.send_supplier_order(
         venue_id=current_user.venue_id,
-        supplier_integration_key=request.supplier_integration_key,
+        supplier_integration_key=order_request.supplier_integration_key,
         order_data=order_data
     )
 
     return {
         "status": "sent" if result.success else "failed",
-        "order_id": request.order_id,
+        "order_id": order_request.order_id,
         "result": result.to_dict()
     }
 
 
 @router.get("/suppliers/{integration_key}/catalog", response_model=Dict[str, Any])
+@limiter.limit("60/minute")
 async def get_supplier_catalog(
+    request: Request,
     integration_key: str,
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(get_current_user)
@@ -336,7 +354,9 @@ async def get_supplier_catalog(
 # =============================================================================
 
 @router.get("/webhooks", response_model=Dict[str, Any])
+@limiter.limit("60/minute")
 async def list_webhooks(
+    request: Request,
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(get_current_user)
 ):
@@ -361,7 +381,9 @@ async def list_webhooks(
 
 
 @router.post("/webhooks", response_model=Dict[str, Any])
+@limiter.limit("30/minute")
 async def create_webhook(
+    request: Request,
     config: WebhookConfig,
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(get_current_user)
@@ -378,7 +400,9 @@ async def create_webhook(
 
 
 @router.delete("/webhooks/{webhook_id}", response_model=Dict[str, Any])
+@limiter.limit("30/minute")
 async def delete_webhook(
+    request: Request,
     webhook_id: str,
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(get_current_user)
@@ -392,7 +416,9 @@ async def delete_webhook(
 
 
 @router.post("/webhooks/{webhook_id}/test", response_model=Dict[str, Any])
+@limiter.limit("30/minute")
 async def test_webhook(
+    request: Request,
     webhook_id: str,
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(get_current_user)
@@ -414,7 +440,9 @@ async def test_webhook(
 # =============================================================================
 
 @router.post("/sync/full", response_model=Dict[str, Any])
+@limiter.limit("30/minute")
 async def full_sync(
+    request: Request,
     background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(get_current_user)
@@ -440,7 +468,9 @@ async def full_sync(
 
 
 @router.get("/sync/status", response_model=Dict[str, Any])
+@limiter.limit("60/minute")
 async def get_sync_status(
+    request: Request,
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(get_current_user)
 ):
@@ -458,7 +488,9 @@ async def get_sync_status(
 # =============================================================================
 
 @router.get("/oauth/{provider}/authorize", response_model=Dict[str, Any])
+@limiter.limit("60/minute")
 async def get_oauth_url(
+    request: Request,
     provider: str,
     redirect_uri: str,
     db: Session = Depends(get_db),
@@ -494,7 +526,9 @@ async def get_oauth_url(
 
 
 @router.post("/oauth/{provider}/callback", response_model=Dict[str, Any])
+@limiter.limit("30/minute")
 async def handle_oauth_callback(
+    request: Request,
     provider: str,
     code: str,
     state: str,

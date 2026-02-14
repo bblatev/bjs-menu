@@ -5,9 +5,10 @@ Visual email campaign builder with templates, segmentation, and tracking.
 
 from typing import Optional, List
 from datetime import datetime, timezone
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel, EmailStr
 
+from app.core.rate_limit import limiter
 from app.services.email_campaign_service import (
     get_email_campaign_service,
     CampaignStatus,
@@ -141,7 +142,8 @@ class CampaignStatsResponse(BaseModel):
 # ============================================================================
 
 @router.post("/templates", response_model=TemplateResponse)
-async def create_template(request: CreateTemplateRequest):
+@limiter.limit("30/minute")
+async def create_template(request: Request, template_request: CreateTemplateRequest):
     """
     Create a new email template.
 
@@ -158,21 +160,22 @@ async def create_template(request: CreateTemplateRequest):
     """
     service = get_email_campaign_service()
 
-    blocks = [block.model_dump() for block in request.blocks]
+    blocks = [block.model_dump() for block in template_request.blocks]
 
     template = service.create_template(
-        name=request.name,
-        subject=request.subject,
-        preview_text=request.preview_text,
+        name=template_request.name,
+        subject=template_request.subject,
+        preview_text=template_request.preview_text,
         blocks=blocks,
-        global_styles=request.global_styles,
+        global_styles=template_request.global_styles,
     )
 
     return _template_to_response(template)
 
 
 @router.get("/templates", response_model=List[TemplateResponse])
-async def list_templates():
+@limiter.limit("60/minute")
+async def list_templates(request: Request):
     """List all email templates."""
     service = get_email_campaign_service()
     templates = service.list_templates()
@@ -181,7 +184,8 @@ async def list_templates():
 
 
 @router.get("/templates/{template_id}", response_model=TemplateResponse)
-async def get_template(template_id: str):
+@limiter.limit("60/minute")
+async def get_template(request: Request, template_id: str):
     """Get a specific template."""
     service = get_email_campaign_service()
     template = service.get_template(template_id)
@@ -193,21 +197,22 @@ async def get_template(template_id: str):
 
 
 @router.put("/templates/{template_id}", response_model=TemplateResponse)
-async def update_template(template_id: str, request: UpdateTemplateRequest):
+@limiter.limit("30/minute")
+async def update_template(request: Request, template_id: str, update_request: UpdateTemplateRequest):
     """Update a template."""
     service = get_email_campaign_service()
 
     updates = {}
-    if request.name is not None:
-        updates["name"] = request.name
-    if request.subject is not None:
-        updates["subject"] = request.subject
-    if request.preview_text is not None:
-        updates["preview_text"] = request.preview_text
-    if request.blocks is not None:
-        updates["blocks"] = [block.model_dump() for block in request.blocks]
-    if request.global_styles is not None:
-        updates["global_styles"] = request.global_styles
+    if update_request.name is not None:
+        updates["name"] = update_request.name
+    if update_request.subject is not None:
+        updates["subject"] = update_request.subject
+    if update_request.preview_text is not None:
+        updates["preview_text"] = update_request.preview_text
+    if update_request.blocks is not None:
+        updates["blocks"] = [block.model_dump() for block in update_request.blocks]
+    if update_request.global_styles is not None:
+        updates["global_styles"] = update_request.global_styles
 
     template = service.update_template(template_id, **updates)
 
@@ -218,7 +223,8 @@ async def update_template(template_id: str, request: UpdateTemplateRequest):
 
 
 @router.delete("/templates/{template_id}")
-async def delete_template(template_id: str):
+@limiter.limit("30/minute")
+async def delete_template(request: Request, template_id: str):
     """Delete a template."""
     service = get_email_campaign_service()
 
@@ -229,7 +235,8 @@ async def delete_template(template_id: str):
 
 
 @router.post("/templates/{template_id}/preview")
-async def preview_template(template_id: str, variables: dict = {}):
+@limiter.limit("30/minute")
+async def preview_template(request: Request, template_id: str, variables: dict = {}):
     """
     Preview a rendered template with variables.
 
@@ -256,7 +263,8 @@ async def preview_template(template_id: str, variables: dict = {}):
 # ============================================================================
 
 @router.post("/segments", response_model=SegmentResponse)
-async def create_segment(request: CreateSegmentRequest):
+@limiter.limit("30/minute")
+async def create_segment(request: Request, segment_request: CreateSegmentRequest):
     """
     Create a customer segment.
 
@@ -269,20 +277,21 @@ async def create_segment(request: CreateSegmentRequest):
     """
     service = get_email_campaign_service()
 
-    rules = [rule.model_dump() for rule in request.rules]
+    rules = [rule.model_dump() for rule in segment_request.rules]
 
     segment = service.create_segment(
-        name=request.name,
-        description=request.description,
+        name=segment_request.name,
+        description=segment_request.description,
         rules=rules,
-        rule_logic=request.rule_logic,
+        rule_logic=segment_request.rule_logic,
     )
 
     return _segment_to_response(segment)
 
 
 @router.get("/segments", response_model=List[SegmentResponse])
-async def list_segments():
+@limiter.limit("60/minute")
+async def list_segments(request: Request):
     """List all customer segments."""
     service = get_email_campaign_service()
     segments = service.list_segments()
@@ -291,7 +300,8 @@ async def list_segments():
 
 
 @router.get("/segments/{segment_id}", response_model=SegmentResponse)
-async def get_segment(segment_id: str):
+@limiter.limit("60/minute")
+async def get_segment(request: Request, segment_id: str):
     """Get a specific segment."""
     service = get_email_campaign_service()
     segment = service.get_segment(segment_id)
@@ -303,7 +313,8 @@ async def get_segment(segment_id: str):
 
 
 @router.delete("/segments/{segment_id}")
-async def delete_segment(segment_id: str):
+@limiter.limit("30/minute")
+async def delete_segment(request: Request, segment_id: str):
     """Delete a segment."""
     service = get_email_campaign_service()
 
@@ -318,24 +329,27 @@ async def delete_segment(segment_id: str):
 # ============================================================================
 
 @router.post("/campaigns", response_model=CampaignResponse)
-async def create_campaign(request: CreateCampaignRequest):
+@limiter.limit("30/minute")
+async def create_campaign(request: Request, campaign_request: CreateCampaignRequest):
     """Create a new email campaign."""
     service = get_email_campaign_service()
 
     campaign = service.create_campaign(
-        name=request.name,
-        subject=request.subject,
-        preview_text=request.preview_text,
-        template_id=request.template_id,
-        segment_id=request.segment_id,
-        venue_id=request.venue_id,
+        name=campaign_request.name,
+        subject=campaign_request.subject,
+        preview_text=campaign_request.preview_text,
+        template_id=campaign_request.template_id,
+        segment_id=campaign_request.segment_id,
+        venue_id=campaign_request.venue_id,
     )
 
     return _campaign_to_response(campaign)
 
 
 @router.get("/campaigns", response_model=List[CampaignResponse])
+@limiter.limit("60/minute")
 async def list_campaigns(
+    request: Request,
     status: Optional[str] = None,
     venue_id: Optional[int] = None,
 ):
@@ -355,7 +369,8 @@ async def list_campaigns(
 
 
 @router.get("/campaigns/{campaign_id}", response_model=CampaignResponse)
-async def get_campaign(campaign_id: str):
+@limiter.limit("60/minute")
+async def get_campaign(request: Request, campaign_id: str):
     """Get a specific campaign."""
     service = get_email_campaign_service()
     campaign = service.get_campaign(campaign_id)
@@ -367,21 +382,22 @@ async def get_campaign(campaign_id: str):
 
 
 @router.put("/campaigns/{campaign_id}", response_model=CampaignResponse)
-async def update_campaign(campaign_id: str, request: UpdateCampaignRequest):
+@limiter.limit("30/minute")
+async def update_campaign(request: Request, campaign_id: str, campaign_update: UpdateCampaignRequest):
     """Update a campaign."""
     service = get_email_campaign_service()
 
     updates = {}
-    if request.name is not None:
-        updates["name"] = request.name
-    if request.subject is not None:
-        updates["subject"] = request.subject
-    if request.preview_text is not None:
-        updates["preview_text"] = request.preview_text
-    if request.template_id is not None:
-        updates["template_id"] = request.template_id
-    if request.segment_id is not None:
-        updates["segment_id"] = request.segment_id
+    if campaign_update.name is not None:
+        updates["name"] = campaign_update.name
+    if campaign_update.subject is not None:
+        updates["subject"] = campaign_update.subject
+    if campaign_update.preview_text is not None:
+        updates["preview_text"] = campaign_update.preview_text
+    if campaign_update.template_id is not None:
+        updates["template_id"] = campaign_update.template_id
+    if campaign_update.segment_id is not None:
+        updates["segment_id"] = campaign_update.segment_id
 
     campaign = service.update_campaign(campaign_id, **updates)
 
@@ -392,7 +408,8 @@ async def update_campaign(campaign_id: str, request: UpdateCampaignRequest):
 
 
 @router.delete("/campaigns/{campaign_id}")
-async def delete_campaign(campaign_id: str):
+@limiter.limit("30/minute")
+async def delete_campaign(request: Request, campaign_id: str):
     """Delete a campaign."""
     service = get_email_campaign_service()
 
@@ -403,12 +420,13 @@ async def delete_campaign(campaign_id: str):
 
 
 @router.post("/campaigns/{campaign_id}/schedule", response_model=CampaignResponse)
-async def schedule_campaign(campaign_id: str, request: ScheduleCampaignRequest):
+@limiter.limit("30/minute")
+async def schedule_campaign(request: Request, campaign_id: str, schedule_request: ScheduleCampaignRequest):
     """Schedule a campaign for future sending."""
     service = get_email_campaign_service()
 
     try:
-        scheduled_at = datetime.fromisoformat(request.scheduled_at.replace("Z", "+00:00"))
+        scheduled_at = datetime.fromisoformat(schedule_request.scheduled_at.replace("Z", "+00:00"))
     except ValueError:
         raise HTTPException(status_code=400, detail="Invalid datetime format. Use ISO format.")
 
@@ -424,7 +442,8 @@ async def schedule_campaign(campaign_id: str, request: ScheduleCampaignRequest):
 
 
 @router.post("/campaigns/{campaign_id}/send")
-async def send_campaign(campaign_id: str):
+@limiter.limit("30/minute")
+async def send_campaign(request: Request, campaign_id: str):
     """Send a campaign immediately."""
     service = get_email_campaign_service()
 
@@ -437,7 +456,8 @@ async def send_campaign(campaign_id: str):
 
 
 @router.post("/campaigns/{campaign_id}/test")
-async def test_send_campaign(campaign_id: str, request: TestSendRequest):
+@limiter.limit("30/minute")
+async def test_send_campaign(request: Request, campaign_id: str, test_request: TestSendRequest):
     """
     Send a test campaign to specific email addresses.
 
@@ -445,10 +465,10 @@ async def test_send_campaign(campaign_id: str, request: TestSendRequest):
     """
     service = get_email_campaign_service()
 
-    if not request.emails:
+    if not test_request.emails:
         raise HTTPException(status_code=400, detail="At least one email is required")
 
-    result = await service.send_campaign(campaign_id, test_emails=request.emails)
+    result = await service.send_campaign(campaign_id, test_emails=test_request.emails)
 
     if not result.get("success"):
         raise HTTPException(status_code=400, detail=result.get("error", "Failed to send"))
@@ -457,7 +477,8 @@ async def test_send_campaign(campaign_id: str, request: TestSendRequest):
 
 
 @router.get("/campaigns/{campaign_id}/stats", response_model=CampaignStatsResponse)
-async def get_campaign_stats(campaign_id: str):
+@limiter.limit("60/minute")
+async def get_campaign_stats(request: Request, campaign_id: str):
     """Get campaign statistics (opens, clicks, bounces, etc.)."""
     service = get_email_campaign_service()
 
@@ -474,7 +495,8 @@ async def get_campaign_stats(campaign_id: str):
 # ============================================================================
 
 @router.get("/block-types")
-async def get_block_types():
+@limiter.limit("60/minute")
+async def get_block_types(request: Request):
     """Get available template block types."""
     return {
         "types": [

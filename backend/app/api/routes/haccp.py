@@ -3,10 +3,11 @@
 from datetime import datetime, timezone
 from typing import List, Optional
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Query, Request
 from pydantic import BaseModel
 from sqlalchemy import func
 
+from app.core.rate_limit import limiter
 from app.db.session import DbSession
 from app.models.operations import HACCPTemperatureLog, HACCPSafetyCheck
 
@@ -46,7 +47,8 @@ class SafetyCheck(BaseModel):
 
 
 @router.get("/dashboard")
-def get_haccp_dashboard(db: DbSession):
+@limiter.limit("60/minute")
+def get_haccp_dashboard(request: Request, db: DbSession):
     """Get HACCP dashboard data."""
     total_checks = db.query(func.count(HACCPSafetyCheck.id)).scalar() or 0
     completed_checks = (
@@ -118,7 +120,8 @@ def get_haccp_dashboard(db: DbSession):
 
 
 @router.get("/temperature-logs")
-def get_temperature_logs(db: DbSession):
+@limiter.limit("60/minute")
+def get_temperature_logs(request: Request, db: DbSession):
     """Get temperature logs."""
     logs = (
         db.query(HACCPTemperatureLog)
@@ -141,7 +144,8 @@ def get_temperature_logs(db: DbSession):
 
 
 @router.post("/temperature-logs")
-def create_temperature_log(log: TemperatureLog, db: DbSession):
+@limiter.limit("30/minute")
+def create_temperature_log(request: Request, log: TemperatureLog, db: DbSession):
     """Create a temperature log entry."""
     db_log = HACCPTemperatureLog(
         location=log.location,
@@ -166,19 +170,20 @@ class CreateSafetyCheckRequest(BaseModel):
 
 
 @router.post("/safety-checks")
-def create_safety_check(request: CreateSafetyCheckRequest, db: DbSession):
+@limiter.limit("30/minute")
+def create_safety_check(request: Request, check_data: CreateSafetyCheckRequest, db: DbSession):
     """Create a new HACCP safety check."""
-    notes = request.notes or ""
-    if request.items:
-        item_lines = [f"{it.get('task', '')}: {it.get('status', '')}" for it in request.items]
+    notes = check_data.notes or ""
+    if check_data.items:
+        item_lines = [f"{it.get('task', '')}: {it.get('status', '')}" for it in check_data.items]
         notes = "; ".join(item_lines) + (f" | {notes}" if notes else "")
 
     check = HACCPSafetyCheck(
-        name=request.check_type,
-        category=request.check_type,
+        name=check_data.check_type,
+        category=check_data.check_type,
         status="completed",
         completed_at=datetime.now(timezone.utc),
-        completed_by=request.checked_by,
+        completed_by=check_data.checked_by,
         due_date=datetime.now(timezone.utc),
         notes=notes,
     )
@@ -189,7 +194,8 @@ def create_safety_check(request: CreateSafetyCheckRequest, db: DbSession):
 
 
 @router.get("/safety-checks")
-def get_safety_checks(db: DbSession):
+@limiter.limit("60/minute")
+def get_safety_checks(request: Request, db: DbSession):
     """Get safety checks."""
     checks = (
         db.query(HACCPSafetyCheck)
@@ -219,7 +225,9 @@ def get_safety_checks(db: DbSession):
 
 
 @router.post("/safety-checks/{check_id}/complete")
+@limiter.limit("30/minute")
 def complete_safety_check(
+    request: Request,
     check_id: str,
     db: DbSession,
     result: str = Query(...),
@@ -242,7 +250,8 @@ def complete_safety_check(
 
 
 @router.get("/checks")
-def get_haccp_checks(db: DbSession):
+@limiter.limit("60/minute")
+def get_haccp_checks(request: Request, db: DbSession):
     """Get HACCP safety checks."""
     checks = (
         db.query(HACCPSafetyCheck)
@@ -269,7 +278,8 @@ def get_haccp_checks(db: DbSession):
 
 
 @router.get("/logs")
-def get_haccp_logs(db: DbSession):
+@limiter.limit("60/minute")
+def get_haccp_logs(request: Request, db: DbSession):
     """Get HACCP compliance logs."""
     logs = (
         db.query(HACCPTemperatureLog)

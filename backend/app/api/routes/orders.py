@@ -8,7 +8,7 @@ from datetime import datetime, timezone
 from decimal import Decimal
 from typing import Optional, List
 
-from fastapi import APIRouter, HTTPException, Query, status
+from fastapi import APIRouter, HTTPException, Query, Request, status
 from fastapi.responses import Response, StreamingResponse
 
 from app.core.rbac import CurrentUser, RequireManager
@@ -26,12 +26,15 @@ from app.schemas.order import (
     PurchaseOrderResponse,
 )
 from app.services.order_service import generate_pdf, generate_whatsapp_text, generate_xlsx
+from app.core.rate_limit import limiter
 
 router = APIRouter()
 
 
 @router.get("/suggestions", response_model=OrderSuggestionsResponse)
+@limiter.limit("60/minute")
 def get_order_suggestions(
+    request: Request,
     db: DbSession,
     current_user: CurrentUser,
     location_id: int = Query(..., description="Location to check stock for"),
@@ -103,14 +106,17 @@ def get_order_suggestions(
 
 
 @router.get("/stats")
-def get_order_stats_summary(db: DbSession):
+@limiter.limit("60/minute")
+def get_order_stats_summary(request: Request, db: DbSession):
     """Get order statistics."""
     total = db.query(PurchaseOrder).filter(PurchaseOrder.not_deleted()).count()
     return {"total_orders": total, "pending": 0, "in_progress": 0, "completed": 0, "total_revenue": 0}
 
 
 @router.get("/", response_model=List[PurchaseOrderResponse])
+@limiter.limit("60/minute")
 def list_orders(
+    request: Request,
     db: DbSession,
     current_user: CurrentUser,
     supplier_id: Optional[int] = Query(None),
@@ -128,28 +134,32 @@ def list_orders(
 # Guest table ordering routes - must be defined BEFORE /{order_id} catch-all
 # to prevent the path parameter from intercepting /table/{token} requests
 @router.get("/table/{token}")
-def get_table_orders_proxy(token: str, db: DbSession, status_filter: Optional[str] = Query(None, alias="status"), limit: int = 20):
+@limiter.limit("60/minute")
+def get_table_orders_proxy(request: Request, token: str, db: DbSession, status_filter: Optional[str] = Query(None, alias="status"), limit: int = 20):
     """Proxy to guest orders - get orders for a table (no auth required)."""
     from app.api.routes.guest_orders import get_table_orders
     return get_table_orders(db=db, token=token, status=status_filter, limit=limit)
 
 
 @router.get("/table/{token}/payment-summary")
-def get_table_payment_summary_proxy(token: str, db: DbSession):
+@limiter.limit("60/minute")
+def get_table_payment_summary_proxy(request: Request, token: str, db: DbSession):
     """Proxy to guest orders - get payment summary (no auth required)."""
     from app.api.routes.guest_orders import get_table_payment_summary
     return get_table_payment_summary(db=db, token=token)
 
 
 @router.post("/table/{token}/pay-all")
-def pay_all_table_orders_proxy(token: str, db: DbSession, payment_method: str = Query("card"), tip_percent: Optional[int] = Query(None), tip_amount: Optional[float] = Query(None)):
+@limiter.limit("30/minute")
+def pay_all_table_orders_proxy(request: Request, token: str, db: DbSession, payment_method: str = Query("card"), tip_percent: Optional[int] = Query(None), tip_amount: Optional[float] = Query(None)):
     """Proxy to guest orders - pay all table orders (no auth required)."""
     from app.api.routes.guest_orders import pay_all_table_orders
     return pay_all_table_orders(db=db, token=token, payment_method=payment_method, tip_percent=tip_percent, tip_amount=tip_amount)
 
 
 @router.get("/{order_id}", response_model=PurchaseOrderResponse)
-def get_order(order_id: int, db: DbSession, current_user: CurrentUser):
+@limiter.limit("60/minute")
+def get_order(request: Request, order_id: int, db: DbSession, current_user: CurrentUser):
     """Get a specific purchase order."""
     order = db.query(PurchaseOrder).filter(PurchaseOrder.id == order_id, PurchaseOrder.not_deleted()).first()
     if not order:
@@ -158,29 +168,30 @@ def get_order(order_id: int, db: DbSession, current_user: CurrentUser):
 
 
 @router.post("/", response_model=PurchaseOrderResponse, status_code=status.HTTP_201_CREATED)
-def create_order(request: PurchaseOrderCreate, db: DbSession, current_user: RequireManager):
+@limiter.limit("30/minute")
+def create_order(request: Request, order_data: PurchaseOrderCreate, db: DbSession, current_user: RequireManager):
     """Create a new purchase order."""
     # Verify supplier and location exist
-    supplier = db.query(Supplier).filter(Supplier.id == request.supplier_id).first()
+    supplier = db.query(Supplier).filter(Supplier.id == order_data.supplier_id).first()
     if not supplier:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Supplier not found")
 
-    location = db.query(Location).filter(Location.id == request.location_id).first()
+    location = db.query(Location).filter(Location.id == order_data.location_id).first()
     if not location:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Location not found")
 
     # Create order
     order = PurchaseOrder(
-        supplier_id=request.supplier_id,
-        location_id=request.location_id,
-        notes=request.notes,
+        supplier_id=order_data.supplier_id,
+        location_id=order_data.location_id,
+        notes=order_data.notes,
         created_by=current_user.user_id,
     )
     db.add(order)
     db.flush()
 
     # Add lines
-    for line_data in request.lines:
+    for line_data in order_data.lines:
         # Verify product exists
         product = db.query(Product).filter(Product.id == line_data.product_id).first()
         if not product:
@@ -203,14 +214,16 @@ def create_order(request: PurchaseOrderCreate, db: DbSession, current_user: Requ
 
 
 @router.post("/from-suggestions", response_model=list[PurchaseOrderResponse])
+@limiter.limit("30/minute")
 def create_orders_from_suggestions(
-    request: CreateOrdersFromSuggestions,
+    request: Request,
+    suggestions_data: CreateOrdersFromSuggestions,
     db: DbSession,
     current_user: RequireManager,
 ):
     """Create purchase orders from order suggestions."""
     # Get suggestions
-    suggestions_response = get_order_suggestions(db=db, current_user=current_user, location_id=request.location_id)
+    suggestions_response = get_order_suggestions(request=request, db=db, current_user=current_user, location_id=suggestions_data.location_id)
 
     created_orders = []
 
@@ -218,13 +231,13 @@ def create_orders_from_suggestions(
         if supplier_id == 0:
             continue  # Skip products without supplier
 
-        if request.supplier_ids and supplier_id not in request.supplier_ids:
+        if suggestions_data.supplier_ids and supplier_id not in suggestions_data.supplier_ids:
             continue
 
         # Create order for this supplier
         order = PurchaseOrder(
             supplier_id=supplier_id,
-            location_id=request.location_id,
+            location_id=suggestions_data.location_id,
             created_by=current_user.user_id,
         )
         db.add(order)
@@ -250,7 +263,8 @@ def create_orders_from_suggestions(
 
 
 @router.get("/{order_id}/export/whatsapp")
-def export_order_whatsapp(order_id: int, db: DbSession, current_user: CurrentUser):
+@limiter.limit("60/minute")
+def export_order_whatsapp(request: Request, order_id: int, db: DbSession, current_user: CurrentUser):
     """Export purchase order as WhatsApp-ready text."""
     order = db.query(PurchaseOrder).filter(PurchaseOrder.id == order_id).first()
     if not order:
@@ -261,7 +275,8 @@ def export_order_whatsapp(order_id: int, db: DbSession, current_user: CurrentUse
 
 
 @router.get("/{order_id}/export/pdf")
-def export_order_pdf(order_id: int, db: DbSession, current_user: CurrentUser):
+@limiter.limit("60/minute")
+def export_order_pdf(request: Request, order_id: int, db: DbSession, current_user: CurrentUser):
     """Export purchase order as PDF."""
     order = db.query(PurchaseOrder).filter(PurchaseOrder.id == order_id).first()
     if not order:
@@ -276,7 +291,8 @@ def export_order_pdf(order_id: int, db: DbSession, current_user: CurrentUser):
 
 
 @router.get("/{order_id}/export/xlsx")
-def export_order_xlsx(order_id: int, db: DbSession, current_user: CurrentUser):
+@limiter.limit("60/minute")
+def export_order_xlsx(request: Request, order_id: int, db: DbSession, current_user: CurrentUser):
     """Export purchase order as Excel file."""
     order = db.query(PurchaseOrder).filter(PurchaseOrder.id == order_id).first()
     if not order:
@@ -291,7 +307,9 @@ def export_order_xlsx(order_id: int, db: DbSession, current_user: CurrentUser):
 
 
 @router.put("/{order_id}/status")
+@limiter.limit("30/minute")
 def update_order_status(
+    request: Request,
     order_id: int,
     db: DbSession,
     current_user: RequireManager,
@@ -363,9 +381,11 @@ class ReceivingRequest(PydanticBaseModel):
 
 
 @router.post("/{order_id}/receive")
+@limiter.limit("30/minute")
 def receive_order(
+    request: Request,
     order_id: int,
-    request: ReceivingRequest,
+    receiving_data: ReceivingRequest,
     db: DbSession,
     current_user: RequireManager,
 ):
@@ -397,7 +417,7 @@ def receive_order(
             "received_qty": line.received_qty,
             "unit_cost": line.unit_cost,
         }
-        for line in request.lines
+        for line in receiving_data.lines
     ]
     stock_result = stock_service.receive_purchase_order(
         po_lines=po_lines,
@@ -408,7 +428,7 @@ def receive_order(
 
     # Create inventory batches if expiration dates provided
     batches_created = []
-    for line in request.lines:
+    for line in receiving_data.lines:
         if line.batch_number or line.expiration_date:
             try:
                 from app.models.advanced_features import InventoryBatch
@@ -443,8 +463,8 @@ def receive_order(
         order.status = POStatus.RECEIVED
         order.received_at = datetime.now(timezone.utc)
 
-    if request.notes:
-        order.notes = (order.notes or "") + f"\nReceived: {request.notes}"
+    if receiving_data.notes:
+        order.notes = (order.notes or "") + f"\nReceived: {receiving_data.notes}"
 
     db.commit()
     db.refresh(order)

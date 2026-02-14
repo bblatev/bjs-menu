@@ -11,6 +11,7 @@ import logging
 
 from app.db.session import get_db
 from app.core.rbac import get_current_user
+from app.core.rate_limit import limiter
 from app.services.bulgarian_payments import (
     get_borica_service, get_epay_service
 )
@@ -56,8 +57,10 @@ class PaymentStatusRequest(BaseModel):
 # =============================================================================
 
 @router.post("/borica/create")
+@limiter.limit("30/minute")
 async def create_borica_payment(
-    request: BoricaPaymentRequest,
+    request: Request,
+    payment_data: BoricaPaymentRequest,
     current_user=Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
@@ -69,12 +72,12 @@ async def create_borica_payment(
     borica = get_borica_service()
 
     result = borica.create_payment(
-        amount=request.amount,
-        order_id=request.order_id,
-        description=request.description,
-        customer_email=request.customer_email,
-        success_url=request.success_url,
-        fail_url=request.fail_url
+        amount=payment_data.amount,
+        order_id=payment_data.order_id,
+        description=payment_data.description,
+        customer_email=payment_data.customer_email,
+        success_url=payment_data.success_url,
+        fail_url=payment_data.fail_url
     )
 
     if not result.success:
@@ -89,6 +92,7 @@ async def create_borica_payment(
 
 
 @router.post("/borica/callback")
+@limiter.limit("30/minute")
 async def borica_callback(
     request: Request,
     background_tasks: BackgroundTasks,
@@ -133,8 +137,10 @@ async def borica_callback(
 
 
 @router.post("/borica/refund")
+@limiter.limit("30/minute")
 async def refund_borica_payment(
-    request: RefundRequest,
+    request: Request,
+    refund_data: RefundRequest,
     current_user=Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
@@ -149,9 +155,9 @@ async def refund_borica_payment(
 
     borica = get_borica_service()
     result = borica.refund(
-        original_transaction_id=request.transaction_id,
-        amount=request.amount,
-        reason=request.reason
+        original_transaction_id=refund_data.transaction_id,
+        amount=refund_data.amount,
+        reason=refund_data.reason
     )
 
     if not result.success:
@@ -170,8 +176,10 @@ async def refund_borica_payment(
 # =============================================================================
 
 @router.post("/epay/create")
+@limiter.limit("30/minute")
 async def create_epay_payment(
-    request: EPayPaymentRequest,
+    request: Request,
+    payment_data: EPayPaymentRequest,
     current_user=Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
@@ -183,11 +191,11 @@ async def create_epay_payment(
     epay = get_epay_service()
 
     result = epay.create_payment(
-        amount=request.amount,
-        invoice_id=request.invoice_id,
-        description=request.description,
-        customer_email=request.customer_email,
-        expiration_minutes=request.expiration_minutes
+        amount=payment_data.amount,
+        invoice_id=payment_data.invoice_id,
+        description=payment_data.description,
+        customer_email=payment_data.customer_email,
+        expiration_minutes=payment_data.expiration_minutes
     )
 
     if not result.success:
@@ -204,6 +212,7 @@ async def create_epay_payment(
 
 
 @router.post("/epay/notify")
+@limiter.limit("30/minute")
 async def epay_notification(
     request: Request,
     background_tasks: BackgroundTasks,
@@ -266,8 +275,10 @@ async def epay_notification(
 
 
 @router.post("/epay/status")
+@limiter.limit("30/minute")
 async def check_epay_status(
-    request: PaymentStatusRequest,
+    request: Request,
+    status_data: PaymentStatusRequest,
     current_user=Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
@@ -275,10 +286,10 @@ async def check_epay_status(
     Check ePay payment status
     """
     epay = get_epay_service()
-    result = epay.check_payment_status(request.invoice_id)
+    result = epay.check_payment_status(status_data.invoice_id)
 
     return {
-        "invoice_id": request.invoice_id,
+        "invoice_id": status_data.invoice_id,
         "status": result.status,
         "transaction_id": result.transaction_id,
         "success": result.success
@@ -290,7 +301,8 @@ async def check_epay_status(
 # =============================================================================
 
 @router.get("/methods")
-async def get_bulgarian_payment_methods():
+@limiter.limit("60/minute")
+async def get_bulgarian_payment_methods(request: Request):
     """
     Get available Bulgarian payment methods
     """
@@ -332,7 +344,8 @@ async def get_bulgarian_payment_methods():
 
 
 @router.get("/borica/supported-cards")
-async def get_borica_supported_cards():
+@limiter.limit("60/minute")
+async def get_borica_supported_cards(request: Request):
     """
     Get Borica supported card types
     """

@@ -2,7 +2,7 @@
 Staff Advanced Features API Endpoints
 Shift swapping, time-off, labor forecasting, commissions, training, performance
 """
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy.orm import Session
 from sqlalchemy import and_, or_
 from typing import List, Optional
@@ -11,6 +11,7 @@ from pydantic import BaseModel, ConfigDict
 
 from app.db.session import get_db
 from app.core.rbac import get_current_user
+from app.core.rate_limit import limiter
 from app.models import (
     StaffUser, StaffShift, ShiftStatus,
     ShiftTradeRequest, StaffRole
@@ -140,7 +141,9 @@ class TrainingProgress(BaseModel):
 # ========== SHIFT SWAPPING ENDPOINTS ==========
 
 @router.post("/shift-trades", response_model=ShiftTradeResponse)
+@limiter.limit("30/minute")
 async def create_shift_trade_request(
+    request: Request,
     data: ShiftTradeCreate,
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(get_current_user)
@@ -210,7 +213,9 @@ async def create_shift_trade_request(
 
 
 @router.get("/shift-trades", response_model=List[ShiftTradeResponse])
+@limiter.limit("60/minute")
 async def list_shift_trades(
+    request: Request,
     status_filter: Optional[str] = None,
     my_requests: bool = False,
     available_for_me: bool = False,
@@ -254,7 +259,9 @@ async def list_shift_trades(
 
 
 @router.post("/shift-trades/{trade_id}/accept")
+@limiter.limit("30/minute")
 async def accept_shift_trade(
+    request: Request,
     trade_id: int,
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(get_current_user)
@@ -293,7 +300,9 @@ async def accept_shift_trade(
 
 
 @router.post("/shift-trades/{trade_id}/approve")
+@limiter.limit("30/minute")
 async def approve_shift_trade(
+    request: Request,
     trade_id: int,
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(require_manager)
@@ -323,7 +332,9 @@ async def approve_shift_trade(
 
 
 @router.post("/shift-trades/{trade_id}/reject")
+@limiter.limit("30/minute")
 async def reject_shift_trade(
+    request: Request,
     trade_id: int,
     reason: str,
     db: Session = Depends(get_db),
@@ -349,7 +360,9 @@ async def reject_shift_trade(
 
 
 @router.delete("/shift-trades/{trade_id}")
+@limiter.limit("30/minute")
 async def cancel_shift_trade(
+    request: Request,
     trade_id: int,
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(get_current_user)
@@ -376,7 +389,9 @@ async def cancel_shift_trade(
 # ========== TIME-OFF MANAGEMENT ==========
 
 @router.post("/time-off")
+@limiter.limit("30/minute")
 async def request_time_off(
+    request: Request,
     data: TimeOffRequestCreate,
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(get_current_user)
@@ -409,7 +424,9 @@ async def request_time_off(
 
 
 @router.get("/time-off")
+@limiter.limit("60/minute")
 async def list_time_off_requests(
+    request: Request,
     staff_id: Optional[int] = None,
     status_filter: Optional[str] = None,
     db: Session = Depends(get_db),
@@ -450,7 +467,9 @@ async def list_time_off_requests(
 
 
 @router.post("/time-off/{request_id}/approve")
+@limiter.limit("30/minute")
 async def approve_time_off(
+    request: Request,
     request_id: int,
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(require_manager)
@@ -475,7 +494,9 @@ async def approve_time_off(
 
 
 @router.post("/time-off/{request_id}/deny")
+@limiter.limit("30/minute")
 async def deny_time_off(
+    request: Request,
     request_id: int,
     reason: Optional[str] = None,
     db: Session = Depends(get_db),
@@ -504,7 +525,9 @@ async def deny_time_off(
 # ========== LABOR COST FORECASTING ==========
 
 @router.get("/labor-forecast")
+@limiter.limit("60/minute")
 async def get_labor_forecast(
+    request: Request,
     start_date: date,
     end_date: date,
     db: Session = Depends(get_db),

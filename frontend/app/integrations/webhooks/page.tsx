@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Link from 'next/link';
 
+import { toast } from '@/lib/toast';
 interface Webhook {
   id: number;
   name: string;
@@ -133,7 +134,7 @@ export default function WebhooksPage() {
   };
 
   const handleTestWebhook = async (webhook: Webhook) => {
-    alert(`Sending test event to ${webhook.url}...`);
+    toast.info(`Sending test event to ${webhook.url}...`);
     // Would call API to send test
   };
 

@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { API_URL } from '@/lib/api';
 import Link from 'next/link';
 
+import { toast } from '@/lib/toast';
 interface DailyReconciliation {
   id: number;
   business_date: string;
@@ -137,11 +138,11 @@ export default function DailyClosePage() {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (response.ok) {
-        alert('Daily close completed successfully!');
+        toast.success('Daily close completed successfully!');
         loadDailyData();
       } else {
         const error = await response.json();
-        alert(error.detail || 'Error completing daily close');
+        toast.error(error.detail || 'Error completing daily close');
       }
     } catch (error) {
       console.error('Error completing daily close:', error);

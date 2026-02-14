@@ -6,6 +6,7 @@ import { motion, AnimatePresence } from "framer-motion";
 
 import { API_URL, getAuthHeaders } from '@/lib/api';
 
+import { toast } from '@/lib/toast';
 interface ManagerAlert {
   id: number;
   name: string;
@@ -119,10 +120,10 @@ export default function ManagerAlertsPage() {
         loadAlerts();
       } else {
         const err = await response.json();
-        alert(err.detail || "Error creating alert");
+        toast.error(err.detail || "Error creating alert");
       }
     } catch (error) {
-      alert("Error creating alert");
+      toast.error("Error creating alert");
     }
   };
 
@@ -163,10 +164,10 @@ export default function ManagerAlertsPage() {
         loadAlerts();
       } else {
         const err = await response.json();
-        alert(err.detail || "Error updating alert");
+        toast.error(err.detail || "Error updating alert");
       }
     } catch (error) {
-      alert("Error updating alert");
+      toast.error("Error updating alert");
     }
   };
 
@@ -182,10 +183,10 @@ export default function ManagerAlertsPage() {
       if (response.ok) {
         loadAlerts();
       } else {
-        alert("Error deleting alert");
+        toast.error("Error deleting alert");
       }
     } catch (error) {
-      alert("Error deleting alert");
+      toast.error("Error deleting alert");
     }
   };
 
@@ -223,15 +224,15 @@ export default function ManagerAlertsPage() {
       if (response.ok) {
         const result = await response.json();
         if (result.triggered_count > 0) {
-          window.alert(`Test sent! Would notify:\n${result.alerts.map((a: { phones: string[]; emails: string[] }) =>
+          toast.info(`Test sent! Would notify:\n${result.alerts.map((a: { phones: string[]; emails: string[] }) =>
             `- ${a.phones.join(", ")} ${a.emails.join(", ")}`
           ).join("\n")}`);
         } else {
-          window.alert("Alert not triggered (may be on cooldown or threshold not met)");
+          toast.success("Alert not triggered (may be on cooldown or threshold not met)");
         }
       }
     } catch (error) {
-      window.alert("Error testing alert");
+      toast.error("Error testing alert");
     } finally {
       setTestingAlert(null);
     }

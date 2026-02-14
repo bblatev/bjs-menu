@@ -5,6 +5,7 @@ import { motion } from "framer-motion";
 
 import { API_URL, getAuthHeaders } from '@/lib/api';
 
+import { toast } from '@/lib/toast';
 interface PayrollEntry {
   id: number;
   staff_id: number;
@@ -178,7 +179,7 @@ export default function PayrollPage() {
         loadPayrollData(selectedPeriod);
       }
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'Failed to approve entry');
+      toast.error(err instanceof Error ? err.message : 'Failed to approve entry');
     }
   };
 
@@ -199,7 +200,7 @@ export default function PayrollPage() {
         loadPayrollData(selectedPeriod);
       }
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'Failed to mark as paid');
+      toast.error(err instanceof Error ? err.message : 'Failed to mark as paid');
     }
   };
 
@@ -226,10 +227,10 @@ export default function PayrollPage() {
         throw new Error('Failed to generate payroll');
       }
       const result = await response.json();
-      alert(`Generated ${result.created} entries, skipped ${result.skipped} existing`);
+      toast.error(`Generated ${result.created} entries, skipped ${result.skipped} existing`);
       loadPayrollData(selectedPeriod);
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'Failed to generate payroll');
+      toast.error(err instanceof Error ? err.message : 'Failed to generate payroll');
     }
   };
 
@@ -256,7 +257,7 @@ export default function PayrollPage() {
           loadPayrollData(selectedPeriod);
         }
       } catch (err) {
-        alert(err instanceof Error ? err.message : 'Failed to approve all entries');
+        toast.error(err instanceof Error ? err.message : 'Failed to approve all entries');
       }
     }
   };
@@ -284,7 +285,7 @@ export default function PayrollPage() {
           loadPayrollData(selectedPeriod);
         }
       } catch (err) {
-        alert(err instanceof Error ? err.message : 'Failed to mark all as paid');
+        toast.error(err instanceof Error ? err.message : 'Failed to mark all as paid');
       }
     }
   };
@@ -337,7 +338,7 @@ export default function PayrollPage() {
         loadPayrollData(selectedPeriod);
       }
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'Failed to save entry');
+      toast.error(err instanceof Error ? err.message : 'Failed to save entry');
     }
   };
 

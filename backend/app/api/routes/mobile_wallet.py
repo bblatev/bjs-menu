@@ -4,8 +4,10 @@ Apple Pay and Google Pay payment handling via Stripe.
 """
 
 from typing import Optional, List
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel
+
+from app.core.rate_limit import limiter
 
 from app.services.mobile_wallet_service import (
     get_mobile_wallet_service,
@@ -70,7 +72,8 @@ class PaymentResponse(BaseModel):
 # ============================================================================
 
 @router.post("/sessions")
-async def create_payment_session(request: CreateSessionRequest):
+@limiter.limit("30/minute")
+async def create_payment_session(request: Request, session_data: CreateSessionRequest):
     """
     Create a payment session for Apple Pay or Google Pay.
 
@@ -85,23 +88,24 @@ async def create_payment_session(request: CreateSessionRequest):
     """
     service = get_mobile_wallet_service()
 
-    if request.amount <= 0:
+    if session_data.amount <= 0:
         raise HTTPException(status_code=400, detail="Amount must be positive")
 
     session = service.create_payment_session(
-        order_id=request.order_id,
-        amount=request.amount,
-        currency=request.currency,
-        venue_id=request.venue_id,
-        description=request.description,
-        metadata=request.metadata,
+        order_id=session_data.order_id,
+        amount=session_data.amount,
+        currency=session_data.currency,
+        venue_id=session_data.venue_id,
+        description=session_data.description,
+        metadata=session_data.metadata,
     )
 
     return session
 
 
 @router.post("/confirm", response_model=PaymentResponse)
-async def confirm_payment(request: ConfirmPaymentRequest):
+@limiter.limit("30/minute")
+async def confirm_payment(request: Request, confirm_data: ConfirmPaymentRequest):
     """
     Confirm a wallet payment completed successfully.
 
@@ -111,12 +115,12 @@ async def confirm_payment(request: ConfirmPaymentRequest):
     service = get_mobile_wallet_service()
 
     payment = service.confirm_payment(
-        payment_id=request.payment_id,
-        wallet_type=request.wallet_type,
-        payment_method_id=request.payment_method_id,
-        card_brand=request.card_brand,
-        card_last4=request.card_last4,
-        customer_email=request.customer_email,
+        payment_id=confirm_data.payment_id,
+        wallet_type=confirm_data.wallet_type,
+        payment_method_id=confirm_data.payment_method_id,
+        card_brand=confirm_data.card_brand,
+        card_last4=confirm_data.card_last4,
+        customer_email=confirm_data.customer_email,
     )
 
     if not payment:
@@ -126,7 +130,8 @@ async def confirm_payment(request: ConfirmPaymentRequest):
 
 
 @router.post("/{payment_id}/cancel")
-async def cancel_payment(payment_id: str, reason: str = ""):
+@limiter.limit("30/minute")
+async def cancel_payment(request: Request, payment_id: str, reason: str = ""):
     """Cancel a pending wallet payment."""
     service = get_mobile_wallet_service()
 
@@ -147,7 +152,8 @@ async def cancel_payment(payment_id: str, reason: str = ""):
 # ============================================================================
 
 @router.get("/payments/{payment_id}", response_model=PaymentResponse)
-async def get_payment(payment_id: str):
+@limiter.limit("60/minute")
+async def get_payment(request: Request, payment_id: str):
     """Get a wallet payment by ID."""
     service = get_mobile_wallet_service()
 
@@ -160,7 +166,8 @@ async def get_payment(payment_id: str):
 
 
 @router.get("/payments/order/{order_id}", response_model=List[PaymentResponse])
-async def get_payments_by_order(order_id: str):
+@limiter.limit("60/minute")
+async def get_payments_by_order(request: Request, order_id: str):
     """Get all wallet payments for an order."""
     service = get_mobile_wallet_service()
 
@@ -170,7 +177,9 @@ async def get_payments_by_order(order_id: str):
 
 
 @router.get("/payments", response_model=List[PaymentResponse])
+@limiter.limit("60/minute")
 async def list_payments(
+    request: Request,
     wallet_type: Optional[str] = None,
     status: Optional[str] = None,
     limit: int = 50,
@@ -202,7 +211,8 @@ async def list_payments(
 # ============================================================================
 
 @router.get("/config")
-async def get_default_configuration():
+@limiter.limit("60/minute")
+async def get_default_configuration(request: Request):
     """Get default wallet configuration."""
     return {
         "venue_id": 0,
@@ -217,7 +227,8 @@ async def get_default_configuration():
 
 
 @router.get("/config/{venue_id}")
-async def get_configuration(venue_id: int):
+@limiter.limit("60/minute")
+async def get_configuration(request: Request, venue_id: int):
     """Get wallet configuration for a venue."""
     service = get_mobile_wallet_service()
 
@@ -236,33 +247,35 @@ async def get_configuration(venue_id: int):
 
 
 @router.put("/config")
-async def update_default_configuration(request: UpdateConfigRequest):
+@limiter.limit("30/minute")
+async def update_default_configuration(request: Request, config_data: UpdateConfigRequest):
     """Update default wallet configuration (venue_id=0)."""
-    return await update_configuration(0, request)
+    return await update_configuration(request, 0, config_data)
 
 
 @router.put("/config/{venue_id}")
-async def update_configuration(venue_id: int, request: UpdateConfigRequest):
+@limiter.limit("30/minute")
+async def update_configuration(request: Request, venue_id: int, config_data: UpdateConfigRequest):
     """Update wallet configuration for a venue."""
     service = get_mobile_wallet_service()
 
     updates = {}
-    if request.apple_pay_enabled is not None:
-        updates["apple_pay_enabled"] = request.apple_pay_enabled
-    if request.google_pay_enabled is not None:
-        updates["google_pay_enabled"] = request.google_pay_enabled
-    if request.link_enabled is not None:
-        updates["link_enabled"] = request.link_enabled
-    if request.merchant_name is not None:
-        updates["merchant_name"] = request.merchant_name
-    if request.merchant_country is not None:
-        updates["merchant_country"] = request.merchant_country
-    if request.merchant_currency is not None:
-        updates["merchant_currency"] = request.merchant_currency
-    if request.apple_pay_merchant_id is not None:
-        updates["apple_pay_merchant_id"] = request.apple_pay_merchant_id
-    if request.supported_networks is not None:
-        updates["supported_networks"] = request.supported_networks
+    if config_data.apple_pay_enabled is not None:
+        updates["apple_pay_enabled"] = config_data.apple_pay_enabled
+    if config_data.google_pay_enabled is not None:
+        updates["google_pay_enabled"] = config_data.google_pay_enabled
+    if config_data.link_enabled is not None:
+        updates["link_enabled"] = config_data.link_enabled
+    if config_data.merchant_name is not None:
+        updates["merchant_name"] = config_data.merchant_name
+    if config_data.merchant_country is not None:
+        updates["merchant_country"] = config_data.merchant_country
+    if config_data.merchant_currency is not None:
+        updates["merchant_currency"] = config_data.merchant_currency
+    if config_data.apple_pay_merchant_id is not None:
+        updates["apple_pay_merchant_id"] = config_data.apple_pay_merchant_id
+    if config_data.supported_networks is not None:
+        updates["supported_networks"] = config_data.supported_networks
 
     config = service.update_configuration(venue_id, **updates)
 
@@ -276,7 +289,8 @@ async def update_configuration(venue_id: int, request: UpdateConfigRequest):
 
 
 @router.get("/client-config/{venue_id}")
-async def get_client_config(venue_id: int):
+@limiter.limit("60/minute")
+async def get_client_config(request: Request, venue_id: int):
     """
     Get client-side configuration for Stripe PaymentRequest.
 
@@ -293,7 +307,8 @@ async def get_client_config(venue_id: int):
 # ============================================================================
 
 @router.get("/stats")
-async def get_stats():
+@limiter.limit("60/minute")
+async def get_stats(request: Request):
     """Get wallet payment statistics."""
     service = get_mobile_wallet_service()
 
@@ -305,7 +320,8 @@ async def get_stats():
 # ============================================================================
 
 @router.get("/wallet-types")
-async def get_wallet_types():
+@limiter.limit("60/minute")
+async def get_wallet_types(request: Request):
     """Get supported wallet types."""
     return {
         "types": [

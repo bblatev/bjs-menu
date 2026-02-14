@@ -1,19 +1,21 @@
 """Loyalty program API routes (gift cards at /gift-cards)."""
 
 from typing import List, Optional
-from fastapi import APIRouter, Query, HTTPException
+from fastapi import APIRouter, Query, HTTPException, Request
 from pydantic import BaseModel
 from sqlalchemy import func
 
 from app.db.session import DbSession
 from app.models.marketing import LoyaltyProgram, CustomerLoyalty
 from app.models.customer import Customer
+from app.core.rate_limit import limiter
 
 router = APIRouter()
 
 
 @router.get("/program")
-def get_loyalty_program(db: DbSession):
+@limiter.limit("60/minute")
+def get_loyalty_program(request: Request, db: DbSession):
     """Get loyalty program details."""
     program = db.query(LoyaltyProgram).filter(
         LoyaltyProgram.is_active == True  # noqa: E712
@@ -47,14 +49,15 @@ class CreateLoyaltyProgramRequest(BaseModel):
 
 
 @router.post("/program")
-def create_loyalty_program(request: CreateLoyaltyProgramRequest, db: DbSession):
+@limiter.limit("30/minute")
+def create_loyalty_program(request: Request, body: CreateLoyaltyProgramRequest, db: DbSession):
     """Create or update a loyalty program."""
     # Check if one already exists
     existing = db.query(LoyaltyProgram).first()
     if existing:
-        existing.name = request.name
-        existing.points_per_dollar = request.points_per_dollar
-        existing.points_to_dollar = request.redemption_rate
+        existing.name = body.name
+        existing.points_per_dollar = body.points_per_dollar
+        existing.points_to_dollar = body.redemption_rate
         db.commit()
         db.refresh(existing)
         return {
@@ -65,9 +68,9 @@ def create_loyalty_program(request: CreateLoyaltyProgramRequest, db: DbSession):
         }
 
     program = LoyaltyProgram(
-        name=request.name,
-        points_per_dollar=request.points_per_dollar,
-        points_to_dollar=request.redemption_rate,
+        name=body.name,
+        points_per_dollar=body.points_per_dollar,
+        points_to_dollar=body.redemption_rate,
         is_active=True,
     )
     db.add(program)
@@ -95,7 +98,8 @@ class LoyaltyMember(BaseModel):
 
 
 @router.post("/members")
-def add_loyalty_member(data: dict, db: DbSession):
+@limiter.limit("30/minute")
+def add_loyalty_member(request: Request, data: dict, db: DbSession):
     """Add a customer to the loyalty program."""
     customer_id = data.get("customer_id")
     if not customer_id:
@@ -122,7 +126,8 @@ def add_loyalty_member(data: dict, db: DbSession):
 
 
 @router.get("/members")
-def get_loyalty_members(db: DbSession):
+@limiter.limit("60/minute")
+def get_loyalty_members(request: Request, db: DbSession):
     """Get loyalty program members."""
     rows = (
         db.query(CustomerLoyalty, Customer)

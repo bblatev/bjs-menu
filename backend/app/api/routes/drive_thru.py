@@ -2,11 +2,12 @@
 Drive-Thru Order Module API Endpoints
 Complete drive-thru ordering with lane management and queue tracking
 """
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.orm import Session
 from typing import List, Optional
 from datetime import datetime
 
+from app.core.rate_limit import limiter
 from app.db.session import get_db
 from app.core.rbac import get_current_user
 from app.models import (
@@ -22,7 +23,9 @@ router = APIRouter()
 
 
 @router.post("/orders", response_model=DriveThruOrderResponse)
+@limiter.limit("30/minute")
 async def create_drive_thru_order(
+    request: Request,
     data: DriveThruOrderCreate,
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(get_current_user)
@@ -133,7 +136,9 @@ async def create_drive_thru_order(
 
 
 @router.get("/orders", response_model=List[DriveThruOrderResponse])
+@limiter.limit("60/minute")
 async def list_drive_thru_orders(
+    request: Request,
     lane: Optional[str] = None,
     status: Optional[str] = None,
     db: Session = Depends(get_db),
@@ -172,7 +177,9 @@ async def list_drive_thru_orders(
 
 
 @router.get("/orders/{order_id}", response_model=DriveThruOrderResponse)
+@limiter.limit("60/minute")
 async def get_drive_thru_order(
+    request: Request,
     order_id: int,
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(get_current_user)
@@ -191,7 +198,9 @@ async def get_drive_thru_order(
 
 
 @router.put("/orders/{order_id}/status")
+@limiter.limit("30/minute")
 async def update_drive_thru_status(
+    request: Request,
     order_id: int,
     status: str,
     db: Session = Depends(get_db),
@@ -247,7 +256,9 @@ async def update_drive_thru_status(
 
 
 @router.put("/orders/{order_id}/lane")
+@limiter.limit("30/minute")
 async def change_drive_thru_lane(
+    request: Request,
     order_id: int,
     new_lane: str,
     db: Session = Depends(get_db),
@@ -282,7 +293,9 @@ async def change_drive_thru_lane(
 
 
 @router.get("/queue/{venue_id}")
+@limiter.limit("60/minute")
 async def get_drive_thru_queue(
+    request: Request,
     venue_id: int,
     db: Session = Depends(get_db)
 ):
@@ -322,7 +335,9 @@ async def get_drive_thru_queue(
 
 
 @router.get("/stats")
+@limiter.limit("60/minute")
 async def get_drive_thru_stats(
+    request: Request,
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(get_current_user)
 ):

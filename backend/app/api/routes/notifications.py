@@ -1,10 +1,11 @@
 """Notifications API routes."""
 
 from typing import List, Optional, Dict
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel
 from sqlalchemy import select
 
+from app.core.rate_limit import limiter
 from app.db.session import DbSession
 from app.models.operations import (
     Notification as NotificationModel,
@@ -44,7 +45,8 @@ class Notification(BaseModel):
 
 
 @router.get("/preferences")
-async def get_notification_preferences(db: DbSession, current_user: CurrentUser):
+@limiter.limit("60/minute")
+async def get_notification_preferences(request: Request, db: DbSession, current_user: CurrentUser):
     """Get notification preferences."""
     stmt = select(NotificationPreferenceModel).where(
         NotificationPreferenceModel.user_id == current_user.user_id
@@ -61,7 +63,9 @@ async def get_notification_preferences(db: DbSession, current_user: CurrentUser)
 
 
 @router.put("/preferences")
+@limiter.limit("30/minute")
 async def update_notification_preferences(
+    request: Request,
     preferences: List[NotificationPreference],
     db: DbSession,
     current_user: CurrentUser,
@@ -90,7 +94,8 @@ async def update_notification_preferences(
 
 
 @router.put("/alerts/config")
-async def update_all_alert_config(data: dict, db: DbSession, current_user: CurrentUser):
+@limiter.limit("30/minute")
+async def update_all_alert_config(request: Request, data: dict, db: DbSession, current_user: CurrentUser):
     """Update overall alert configuration."""
     configs = db.query(AlertConfigModel).all()
     if not configs:
@@ -125,7 +130,8 @@ async def update_all_alert_config(data: dict, db: DbSession, current_user: Curre
 
 
 @router.get("/alerts/config")
-async def get_alert_configs(db: DbSession, current_user: CurrentUser):
+@limiter.limit("60/minute")
+async def get_alert_configs(request: Request, db: DbSession, current_user: CurrentUser):
     """Get alert configurations."""
     stmt = select(AlertConfigModel)
     results = db.execute(stmt).scalars().all()
@@ -144,7 +150,8 @@ async def get_alert_configs(db: DbSession, current_user: CurrentUser):
 
 
 @router.get("/alerts/config/{config_id}")
-async def get_alert_config(config_id: str, db: DbSession, current_user: CurrentUser):
+@limiter.limit("60/minute")
+async def get_alert_config(request: Request, config_id: str, db: DbSession, current_user: CurrentUser):
     """Get a specific alert configuration."""
     cfg = db.get(AlertConfigModel, int(config_id))
     if not cfg:
@@ -161,7 +168,9 @@ async def get_alert_config(config_id: str, db: DbSession, current_user: CurrentU
 
 
 @router.put("/alerts/config/{config_id}")
+@limiter.limit("30/minute")
 async def update_alert_config(
+    request: Request,
     config_id: str,
     config: AlertConfig,
     db: DbSession,
@@ -185,7 +194,8 @@ async def update_alert_config(
 
 
 @router.api_route("/test/all-channels", methods=["GET", "POST"])
-async def test_all_channels(db: DbSession, current_user: CurrentUser):
+@limiter.limit("30/minute")
+async def test_all_channels(request: Request, db: DbSession, current_user: CurrentUser):
     """Send test notification to all channels."""
     # Retrieve the user's enabled channels from their preferences
     stmt = select(NotificationPreferenceModel).where(
@@ -211,7 +221,8 @@ async def test_all_channels(db: DbSession, current_user: CurrentUser):
 
 
 @router.get("/")
-async def get_notifications(db: DbSession, current_user: CurrentUser):
+@limiter.limit("60/minute")
+async def get_notifications(request: Request, db: DbSession, current_user: CurrentUser):
     """Get user notifications."""
     stmt = (
         select(NotificationModel)
@@ -235,7 +246,9 @@ async def get_notifications(db: DbSession, current_user: CurrentUser):
 
 
 @router.post("/{notification_id}/read")
+@limiter.limit("30/minute")
 async def mark_notification_read(
+    request: Request,
     notification_id: str,
     db: DbSession,
     current_user: CurrentUser,

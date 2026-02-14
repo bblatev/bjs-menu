@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import Link from 'next/link';
 import { API_URL } from '@/lib/api';
 
+import { toast } from '@/lib/toast';
 interface AutoReorderRule {
   id: number;
   stock_item_id: number;
@@ -117,7 +118,7 @@ export default function AutoReorderPage() {
         resetForm();
       } else {
         const error = await response.json();
-        alert(error.detail || 'Error creating rule');
+        toast.error(error.detail || 'Error creating rule');
       }
     } catch (error) {
       console.error('Error creating rule:', error);
@@ -168,7 +169,7 @@ export default function AutoReorderPage() {
       });
       if (response.ok) {
         const result = await response.json();
-        alert(`Auto-reorder executed: ${result.purchase_orders_created || 0} POs created`);
+        toast.success(`Auto-reorder executed: ${result.purchase_orders_created || 0} POs created`);
         loadData();
       }
     } catch (error) {

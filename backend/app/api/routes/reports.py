@@ -8,7 +8,7 @@ from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 from typing import Optional, List
 
-from fastapi import APIRouter, Query, Body
+from fastapi import APIRouter, Query, Body, Request
 from fastapi.responses import StreamingResponse
 
 from app.core.rbac import CurrentUser, OptionalCurrentUser
@@ -16,12 +16,15 @@ from app.db.session import DbSession
 from app.models.location import Location
 from app.models.product import Product
 from app.models.stock import StockMovement, StockOnHand
+from app.core.rate_limit import limiter
 
 router = APIRouter()
 
 
 @router.get("/sales")
+@limiter.limit("60/minute")
 def get_sales_report(
+    request: Request,
     db: DbSession,
     current_user: OptionalCurrentUser = None,
     start_date: Optional[str] = Query(None),
@@ -44,7 +47,9 @@ def get_sales_report(
 
 
 @router.get("/staff")
+@limiter.limit("60/minute")
 def get_staff_report(
+    request: Request,
     db: DbSession,
     current_user: OptionalCurrentUser = None,
 ):
@@ -58,7 +63,9 @@ def get_staff_report(
 
 
 @router.get("/staff-performance")
+@limiter.limit("60/minute")
 def get_staff_performance_report(
+    request: Request,
     db: DbSession,
     current_user: OptionalCurrentUser = None,
 ):
@@ -72,7 +79,9 @@ def get_staff_performance_report(
 
 
 @router.get("/kitchen")
+@limiter.limit("60/minute")
 def get_kitchen_report(
+    request: Request,
     db: DbSession,
     current_user: OptionalCurrentUser = None,
 ):
@@ -94,7 +103,9 @@ def get_kitchen_report(
 
 
 @router.get("/inventory")
+@limiter.limit("60/minute")
 def get_inventory_report(
+    request: Request,
     db: DbSession,
     current_user: OptionalCurrentUser = None,
 ):
@@ -112,7 +123,9 @@ def get_inventory_report(
 
 
 @router.get("/customers")
+@limiter.limit("60/minute")
 def get_customers_report(
+    request: Request,
     db: DbSession,
     current_user: OptionalCurrentUser = None,
 ):
@@ -124,7 +137,9 @@ def get_customers_report(
 
 
 @router.get("/customer-insights")
+@limiter.limit("60/minute")
 def get_customer_insights_report(
+    request: Request,
     db: DbSession,
     current_user: OptionalCurrentUser = None,
 ):
@@ -139,7 +154,9 @@ def get_customer_insights_report(
 
 
 @router.get("/stock-valuation")
+@limiter.limit("60/minute")
 def get_stock_valuation(
+    request: Request,
     db: DbSession,
     current_user: OptionalCurrentUser = None,
     location_id: Optional[int] = Query(None),
@@ -188,7 +205,9 @@ def get_stock_valuation(
 
 
 @router.get("/consumption")
+@limiter.limit("60/minute")
 def get_consumption_report(
+    request: Request,
     db: DbSession,
     current_user: OptionalCurrentUser = None,
     location_id: Optional[int] = Query(None),
@@ -248,7 +267,9 @@ def get_consumption_report(
 
 
 @router.get("/movement-summary")
+@limiter.limit("60/minute")
 def get_movement_summary(
+    request: Request,
     db: DbSession,
     current_user: CurrentUser,
     location_id: Optional[int] = Query(None),
@@ -294,7 +315,9 @@ def get_movement_summary(
 
 
 @router.get("/low-stock")
+@limiter.limit("60/minute")
 def get_low_stock_report(
+    request: Request,
     db: DbSession,
     current_user: CurrentUser,
     location_id: int = Query(...),
@@ -362,7 +385,9 @@ def get_low_stock_report(
 # ==================== ADDITIONAL REPORT ENDPOINTS ====================
 
 @router.get("/food-costs")
+@limiter.limit("60/minute")
 def get_food_costs_report(
+    request: Request,
     db: DbSession,
     location_id: Optional[int] = Query(None),
     start_date: Optional[str] = Query(None),
@@ -393,7 +418,9 @@ def get_food_costs_report(
 
 
 @router.get("/labor-costs")
+@limiter.limit("60/minute")
 def get_labor_costs_report(
+    request: Request,
     db: DbSession,
     location_id: Optional[int] = Query(None),
     start_date: Optional[str] = Query(None),
@@ -423,7 +450,9 @@ def get_labor_costs_report(
 
 
 @router.get("/sales/detailed")
+@limiter.limit("60/minute")
 def get_detailed_sales_report(
+    request: Request,
     db: DbSession,
     location_id: Optional[int] = Query(None),
     start_date: Optional[str] = Query(None),
@@ -455,7 +484,9 @@ def get_detailed_sales_report(
 
 
 @router.get("/server-performance")
+@limiter.limit("60/minute")
 def get_server_performance_report(
+    request: Request,
     db: DbSession,
     location_id: Optional[int] = Query(None),
 ):
@@ -469,7 +500,9 @@ def get_server_performance_report(
 
 
 @router.get("/voids-comps")
+@limiter.limit("60/minute")
 def get_voids_comps_report(
+    request: Request,
     db: DbSession,
     location_id: Optional[int] = Query(None),
 ):
@@ -489,7 +522,9 @@ def get_voids_comps_report(
 
 
 @router.get("/product-mix")
+@limiter.limit("60/minute")
 def get_product_mix_report(
+    request: Request,
     db: DbSession,
     location_id: Optional[int] = Query(None),
 ):
@@ -505,7 +540,9 @@ def get_product_mix_report(
 
 
 @router.get("/trends")
+@limiter.limit("60/minute")
 def get_trends_report(
+    request: Request,
     db: DbSession,
     location_id: Optional[int] = Query(None),
     period: str = Query("week"),
@@ -526,7 +563,9 @@ def get_trends_report(
 
 
 @router.get("/stock")
+@limiter.limit("60/minute")
 def get_stock_report(
+    request: Request,
     db: DbSession,
     current_user: OptionalCurrentUser = None,
     location_id: Optional[int] = Query(None),
@@ -536,7 +575,9 @@ def get_stock_report(
 
 
 @router.get("/financial")
+@limiter.limit("60/minute")
 def get_financial_report(
+    request: Request,
     db: DbSession,
     current_user: OptionalCurrentUser = None,
     start_date: Optional[str] = Query(None),
@@ -551,7 +592,9 @@ def get_financial_report(
 
 
 @router.get("/transactions")
+@limiter.limit("60/minute")
 def get_transactions_report(
+    request: Request,
     db: DbSession,
     current_user: OptionalCurrentUser = None,
     start_date: Optional[str] = Query(None),
@@ -565,7 +608,9 @@ def get_transactions_report(
 # ==================== TURNOVER AT BASE PRICES ====================
 
 @router.get("/turnover-base-prices")
+@limiter.limit("60/minute")
 def get_turnover_base_prices_report(
+    request: Request,
     db: DbSession,
     start_date: Optional[str] = Query(None, description="Start date YYYY-MM-DD"),
     end_date: Optional[str] = Query(None, description="End date YYYY-MM-DD"),
@@ -750,7 +795,9 @@ def get_turnover_base_prices_report(
 
 
 @router.post("/export/{report_type}")
+@limiter.limit("30/minute")
 def export_report(
+    request: Request,
     db: DbSession,
     current_user: CurrentUser,
     report_type: str,

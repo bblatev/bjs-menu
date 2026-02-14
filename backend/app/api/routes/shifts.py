@@ -3,7 +3,8 @@
 from datetime import date as date_type
 from typing import List, Optional
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Query, Request
+from app.core.rate_limit import limiter
 from pydantic import BaseModel
 from sqlalchemy import func
 
@@ -61,7 +62,8 @@ def _row_to_shift(row: ShiftSchedule) -> dict:
 # ==================== Staff Endpoints ====================
 
 @router.get("/staff")
-def get_staff(db: DbSession):
+@limiter.limit("60/minute")
+def get_staff(request: Request, db: DbSession):
     """Get all staff members (derived from shift_schedules)."""
     # Build a distinct list of staff from the shift_schedules table.
     rows = (
@@ -91,7 +93,9 @@ def get_staff(db: DbSession):
 # ==================== Shift Endpoints ====================
 
 @router.get("/shifts")
+@limiter.limit("60/minute")
 def get_shifts(
+    request: Request,
     db: DbSession,
     date: str = Query(None),
     staff_id: str = Query(None),
@@ -110,7 +114,8 @@ def get_shifts(
 
 
 @router.get("/shifts/{shift_id}")
-def get_shift(shift_id: str, db: DbSession):
+@limiter.limit("60/minute")
+def get_shift(request: Request, shift_id: str, db: DbSession):
     """Get a specific shift."""
     row = db.query(ShiftSchedule).filter(ShiftSchedule.id == int(shift_id)).first()
     if not row:
@@ -119,7 +124,8 @@ def get_shift(shift_id: str, db: DbSession):
 
 
 @router.post("/shifts")
-def create_shift(shift: Shift, db: DbSession):
+@limiter.limit("30/minute")
+def create_shift(request: Request, shift: Shift, db: DbSession):
     """Create a new shift."""
     shift_date = date_type.fromisoformat(shift.date) if isinstance(shift.date, str) else shift.date
     row = ShiftSchedule(
@@ -140,7 +146,8 @@ def create_shift(shift: Shift, db: DbSession):
 
 
 @router.put("/shifts/{shift_id}")
-def update_shift(shift_id: str, shift: Shift, db: DbSession):
+@limiter.limit("30/minute")
+def update_shift(request: Request, shift_id: str, shift: Shift, db: DbSession):
     """Update a shift."""
     row = db.query(ShiftSchedule).filter(ShiftSchedule.id == int(shift_id)).first()
     if not row:
@@ -162,7 +169,8 @@ def update_shift(shift_id: str, shift: Shift, db: DbSession):
 
 
 @router.delete("/shifts/{shift_id}")
-def delete_shift(shift_id: str, db: DbSession):
+@limiter.limit("30/minute")
+def delete_shift(request: Request, shift_id: str, db: DbSession):
     """Delete a shift."""
     row = db.query(ShiftSchedule).filter(ShiftSchedule.id == int(shift_id)).first()
     if not row:
@@ -212,7 +220,8 @@ def _upsert_json_setting(db: DbSession, category: str, key: str, value):
 
 
 @router.get("/catering/events")
-async def get_catering_events(db: DbSession):
+@limiter.limit("60/minute")
+async def get_catering_events(request: Request, db: DbSession):
     """Get catering events."""
     stored = _get_json_setting(db, CATERING_CATEGORY, "events")
     if stored and isinstance(stored, list):
@@ -221,7 +230,8 @@ async def get_catering_events(db: DbSession):
 
 
 @router.post("/catering/events")
-async def create_catering_event(data: dict, db: DbSession):
+@limiter.limit("30/minute")
+async def create_catering_event(request: Request, data: dict, db: DbSession):
     """Create a catering event."""
     events = _get_json_setting(db, CATERING_CATEGORY, "events") or []
     new_id = str(len(events) + 1)
@@ -232,7 +242,8 @@ async def create_catering_event(data: dict, db: DbSession):
 
 
 @router.get("/catering/packages")
-async def get_catering_packages(db: DbSession):
+@limiter.limit("60/minute")
+async def get_catering_packages(request: Request, db: DbSession):
     """Get catering packages."""
     stored = _get_json_setting(db, CATERING_CATEGORY, "packages")
     if stored and isinstance(stored, list):
@@ -241,7 +252,8 @@ async def get_catering_packages(db: DbSession):
 
 
 @router.post("/catering/packages")
-async def create_catering_package(data: dict, db: DbSession):
+@limiter.limit("30/minute")
+async def create_catering_package(request: Request, data: dict, db: DbSession):
     """Create a catering package."""
     packages = _get_json_setting(db, CATERING_CATEGORY, "packages") or []
     new_id = str(len(packages) + 1)
@@ -252,7 +264,8 @@ async def create_catering_package(data: dict, db: DbSession):
 
 
 @router.get("/catering/staff")
-async def get_catering_staff(db: DbSession):
+@limiter.limit("60/minute")
+async def get_catering_staff(request: Request, db: DbSession):
     """Get staff available for catering events."""
     stored = _get_json_setting(db, CATERING_CATEGORY, "staff")
     if stored and isinstance(stored, list):
@@ -263,7 +276,8 @@ async def get_catering_staff(db: DbSession):
 # ==================== SMS MARKETING ====================
 
 @router.get("/sms/campaigns")
-async def get_sms_campaigns(db: DbSession):
+@limiter.limit("60/minute")
+async def get_sms_campaigns(request: Request, db: DbSession):
     """Get SMS marketing campaigns."""
     stored = _get_json_setting(db, SMS_CATEGORY, "campaigns")
     if stored and isinstance(stored, list):
@@ -272,7 +286,8 @@ async def get_sms_campaigns(db: DbSession):
 
 
 @router.post("/sms/campaigns")
-async def create_sms_campaign(data: dict, db: DbSession):
+@limiter.limit("30/minute")
+async def create_sms_campaign(request: Request, data: dict, db: DbSession):
     """Create an SMS campaign."""
     campaigns = _get_json_setting(db, SMS_CATEGORY, "campaigns") or []
     new_id = str(len(campaigns) + 1)
@@ -288,7 +303,8 @@ async def create_sms_campaign(data: dict, db: DbSession):
 
 
 @router.get("/sms/stats")
-async def get_sms_stats(db: DbSession):
+@limiter.limit("60/minute")
+async def get_sms_stats(request: Request, db: DbSession):
     """Get SMS marketing statistics."""
     campaigns = _get_json_setting(db, SMS_CATEGORY, "campaigns") or []
     total_sent = sum(c.get("sent", 0) for c in campaigns)
@@ -313,7 +329,8 @@ async def get_sms_stats(db: DbSession):
 
 
 @router.post("/sms/campaigns/{campaign_id}/send")
-async def send_sms_campaign(campaign_id: str, db: DbSession):
+@limiter.limit("30/minute")
+async def send_sms_campaign(request: Request, campaign_id: str, db: DbSession):
     """Send an SMS campaign."""
     campaigns = _get_json_setting(db, SMS_CATEGORY, "campaigns") or []
     for c in campaigns:

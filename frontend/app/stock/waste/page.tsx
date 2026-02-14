@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { API_URL } from '@/lib/api';
 
+import { toast } from '@/lib/toast';
 interface WasteRecord {
   id: number;
   item_id: number;
@@ -139,7 +140,7 @@ export default function WasteManagementPage() {
 
   const handleRecordWaste = async () => {
     if (!selectedStockItemId || newRecord.quantity <= 0) {
-      alert('Please select an item and enter quantity');
+      toast.error('Please select an item and enter quantity');
       return;
     }
 
@@ -169,7 +170,7 @@ export default function WasteManagementPage() {
       setShowModal(false);
       loadData();
     } catch (error: any) {
-      alert(error.message || 'Error recording waste');
+      toast.error(error.message || 'Error recording waste');
     }
   };
 

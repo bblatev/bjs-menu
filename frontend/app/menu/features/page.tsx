@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { API_URL } from "@/lib/api";
 
+import { toast } from '@/lib/toast';
 // Types
 interface MultiLang {
   bg: string;
@@ -264,7 +265,7 @@ export default function MenuFeaturesPage() {
         loadTabData();
       }
     } catch (error) {
-      alert("Error creating variant");
+      toast.error("Error creating variant");
     }
   };
 
@@ -287,7 +288,7 @@ export default function MenuFeaturesPage() {
         loadTabData();
       }
     } catch (error) {
-      alert("Error creating tag");
+      toast.error("Error creating tag");
     }
   };
 
@@ -313,7 +314,7 @@ export default function MenuFeaturesPage() {
         loadTabData();
       }
     } catch (error) {
-      alert("Error creating combo");
+      toast.error("Error creating combo");
     }
   };
 
@@ -339,7 +340,7 @@ export default function MenuFeaturesPage() {
         loadTabData();
       }
     } catch (error) {
-      alert("Error creating upsell");
+      toast.error("Error creating upsell");
     }
   };
 
@@ -367,7 +368,7 @@ export default function MenuFeaturesPage() {
         loadTabData();
       }
     } catch (error) {
-      alert("Error creating offer");
+      toast.error("Error creating offer");
     }
   };
 
@@ -391,7 +392,7 @@ export default function MenuFeaturesPage() {
         loadTabData();
       }
     } catch (error) {
-      alert("Error creating 86 record");
+      toast.error("Error creating 86 record");
     }
   };
 
@@ -406,7 +407,7 @@ export default function MenuFeaturesPage() {
       });
       loadTabData();
     } catch (error) {
-      alert("Error removing 86 record");
+      toast.error("Error removing 86 record");
     }
   };
 
@@ -431,10 +432,10 @@ export default function MenuFeaturesPage() {
         loadTabData();
       } else {
         const err = await res.json();
-        alert(err.detail || "Error creating board");
+        toast.error(err.detail || "Error creating board");
       }
     } catch (error) {
-      alert("Error creating digital board");
+      toast.error("Error creating digital board");
     }
   };
 

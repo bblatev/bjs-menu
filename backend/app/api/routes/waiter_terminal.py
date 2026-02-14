@@ -8,7 +8,7 @@ Comprehensive waiter/bartender POS functionality including:
 - Payment processing (cash, card, split tender)
 - Table management and floor plan
 """
-from fastapi import APIRouter, Depends, HTTPException, status, Query
+from fastapi import APIRouter, Depends, HTTPException, status, Query, Request
 from sqlalchemy.orm import Session
 from sqlalchemy import func, and_, or_
 from typing import List, Optional, Dict, Any
@@ -17,6 +17,7 @@ from decimal import Decimal
 from pydantic import BaseModel, Field
 from enum import Enum
 
+from app.core.rate_limit import limiter
 from app.db.session import get_db
 from app.core.rbac import get_current_user
 from app.core.rbac import RequireManager
@@ -299,8 +300,10 @@ class QuickActionResponse(BaseModel):
 # ============================================================================
 
 @router.post("/orders", response_model=WaiterOrderResponse)
+@limiter.limit("30/minute")
 async def create_waiter_order(
-    request: WaiterOrderCreate,
+    request: Request,
+    body: WaiterOrderCreate,
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(get_current_user)
 ):
@@ -310,7 +313,7 @@ async def create_waiter_order(
     """
     # Verify table exists and is in waiter's venue
     table = db.query(Table).filter(
-        Table.id == request.table_id,
+        Table.id == body.table_id,
         Table.venue_id == current_user.venue_id
     ).first()
 
@@ -319,15 +322,15 @@ async def create_waiter_order(
 
     # Get or create active session for table
     session = db.query(TableSession).filter(
-        TableSession.table_id == request.table_id,
+        TableSession.table_id == body.table_id,
         TableSession.status == "active"
     ).first()
 
     if not session:
         session = TableSession(
-            table_id=request.table_id,
+            table_id=body.table_id,
             venue_id=current_user.venue_id,
-            guest_count=request.guest_count,
+            guest_count=body.guest_count,
             waiter_id=current_user.id,
             status="active",
             started_at=datetime.utcnow()
@@ -346,14 +349,14 @@ async def create_waiter_order(
 
     order = Order(
         order_number=order_number,
-        table_id=request.table_id,
+        table_id=body.table_id,
         session_id=session.id,
         station_id=station_id,
         venue_id=current_user.venue_id,
         waiter_id=current_user.id,
-        status="new" if request.send_to_kitchen else "draft",
-        notes=request.notes,
-        guest_count=request.guest_count,
+        status="new" if body.send_to_kitchen else "draft",
+        notes=body.notes,
+        guest_count=body.guest_count,
         total=0.0,
         subtotal=0.0,
         tax=0.0,
@@ -370,7 +373,7 @@ async def create_waiter_order(
     subtotal = 0.0
     order_items = []
 
-    for item_data in request.items:
+    for item_data in body.items:
         menu_item = db.query(MenuItem).filter(
             MenuItem.id == item_data.menu_item_id
         ).first()
@@ -396,8 +399,8 @@ async def create_waiter_order(
             course=item_data.course.value if item_data.course else None,
             modifiers_text=",".join(item_data.modifiers) if item_data.modifiers else None,
             special_instructions=item_data.special_instructions,
-            status="pending" if request.send_to_kitchen else "draft",
-            fired=request.fire_immediately
+            status="pending" if body.send_to_kitchen else "draft",
+            fired=body.fire_immediately
         )
         db.add(order_item)
         order_items.append({
@@ -409,7 +412,7 @@ async def create_waiter_order(
             "seat": item_data.seat_number,
             "course": item_data.course.value if item_data.course else None,
             "modifiers": item_data.modifiers,
-            "status": "pending" if request.send_to_kitchen else "draft"
+            "status": "pending" if body.send_to_kitchen else "draft"
         })
 
     # Calculate tax (assuming 10% for now - should come from venue settings)
@@ -440,9 +443,11 @@ async def create_waiter_order(
 
 
 @router.post("/orders/{order_id}/items", response_model=QuickActionResponse)
+@limiter.limit("30/minute")
 async def add_items_to_order(
+    request: Request,
     order_id: int,
-    request: AddItemsRequest,
+    body: AddItemsRequest,
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(get_current_user)
 ):
@@ -459,7 +464,7 @@ async def add_items_to_order(
         raise HTTPException(status_code=400, detail="Cannot add items to closed order")
 
     added_items = []
-    for item_data in request.items:
+    for item_data in body.items:
         menu_item = db.query(MenuItem).filter(
             MenuItem.id == item_data.menu_item_id
         ).first()
@@ -479,7 +484,7 @@ async def add_items_to_order(
             course=item_data.course.value if item_data.course else None,
             modifiers_text=",".join(item_data.modifiers) if item_data.modifiers else None,
             special_instructions=item_data.special_instructions,
-            status="pending" if request.send_to_kitchen else "draft"
+            status="pending" if body.send_to_kitchen else "draft"
         )
         db.add(order_item)
         added_items.append(menu_item.name)
@@ -503,9 +508,11 @@ async def add_items_to_order(
 
 
 @router.post("/orders/{order_id}/fire-course", response_model=QuickActionResponse)
+@limiter.limit("30/minute")
 async def fire_course(
+    request: Request,
     order_id: int,
-    request: FireCourseRequest,
+    body: FireCourseRequest,
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(get_current_user)
 ):
@@ -521,11 +528,11 @@ async def fire_course(
     # Update items in this course
     items = db.query(OrderItem).filter(
         OrderItem.order_id == order_id,
-        OrderItem.course == request.course.value
+        OrderItem.course == body.course.value
     ).all()
 
     if not items:
-        raise HTTPException(status_code=400, detail=f"No items in {request.course.value} course")
+        raise HTTPException(status_code=400, detail=f"No items in {body.course.value} course")
 
     for item in items:
         item.fired = True
@@ -536,39 +543,43 @@ async def fire_course(
 
     return QuickActionResponse(
         success=True,
-        message=f"Fired {len(items)} items in {request.course.value} course",
+        message=f"Fired {len(items)} items in {body.course.value} course",
         data={"items_fired": len(items)}
     )
 
 
 @router.post("/orders/{order_id}/hold-course", response_model=QuickActionResponse)
+@limiter.limit("30/minute")
 async def hold_course(
+    request: Request,
     order_id: int,
-    request: HoldCourseRequest,
+    body: HoldCourseRequest,
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(get_current_user)
 ):
     """Hold a course from firing"""
     items = db.query(OrderItem).filter(
         OrderItem.order_id == order_id,
-        OrderItem.course == request.course.value,
+        OrderItem.course == body.course.value,
         OrderItem.fired == False
     ).all()
 
     for item in items:
         item.status = "held"
-        item.hold_reason = request.reason
+        item.hold_reason = body.reason
 
     db.commit()
 
     return QuickActionResponse(
         success=True,
-        message=f"Held {len(items)} items in {request.course.value} course"
+        message=f"Held {len(items)} items in {body.course.value} course"
     )
 
 
 @router.post("/orders/{order_id}/fire-all", response_model=QuickActionResponse)
+@limiter.limit("30/minute")
 async def fire_all_items(
+    request: Request,
     order_id: int,
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(get_current_user)
@@ -597,7 +608,9 @@ async def fire_all_items(
 
 
 @router.get("/orders/{order_id}/by-seat")
+@limiter.limit("60/minute")
 async def get_order_by_seat(
+    request: Request,
     order_id: int,
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(get_current_user)
@@ -631,8 +644,10 @@ async def get_order_by_seat(
 # ============================================================================
 
 @router.post("/tabs", response_model=TabResponse)
+@limiter.limit("30/minute")
 async def open_tab(
-    request: OpenTabRequest,
+    request: Request,
+    body: OpenTabRequest,
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(get_current_user)
 ):
@@ -648,11 +663,11 @@ async def open_tab(
         waiter_id=current_user.id,
         status="active",
         started_at=datetime.utcnow(),
-        customer_name=request.customer_name,
-        card_last_four=request.card_last_four,
-        pre_auth_amount=request.pre_auth_amount,
+        customer_name=body.customer_name,
+        card_last_four=body.card_last_four,
+        pre_auth_amount=body.pre_auth_amount,
         is_bar_tab=True,
-        notes=request.notes
+        notes=body.notes
     )
     db.add(session)
     db.commit()
@@ -660,9 +675,9 @@ async def open_tab(
 
     return TabResponse(
         tab_id=session.id,
-        customer_name=request.customer_name,
-        card_last_four=request.card_last_four,
-        pre_auth_amount=request.pre_auth_amount,
+        customer_name=body.customer_name,
+        card_last_four=body.card_last_four,
+        pre_auth_amount=body.pre_auth_amount,
         current_total=0.0,
         items=[],
         status="open",
@@ -672,7 +687,9 @@ async def open_tab(
 
 
 @router.get("/tabs", response_model=List[TabResponse])
+@limiter.limit("60/minute")
 async def list_open_tabs(
+    request: Request,
     search: Optional[str] = None,
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(get_current_user)
@@ -730,9 +747,11 @@ async def list_open_tabs(
 
 
 @router.post("/tabs/{tab_id}/items", response_model=QuickActionResponse)
+@limiter.limit("30/minute")
 async def add_to_tab(
+    request: Request,
     tab_id: int,
-    request: AddToTabRequest,
+    body: AddToTabRequest,
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(get_current_user)
 ):
@@ -765,7 +784,7 @@ async def add_to_tab(
         db.flush()
 
     # Add items
-    for item_data in request.items:
+    for item_data in body.items:
         menu_item = db.query(MenuItem).filter(MenuItem.id == item_data.menu_item_id).first()
         if menu_item:
             price = float(menu_item.price)
@@ -783,14 +802,16 @@ async def add_to_tab(
 
     return QuickActionResponse(
         success=True,
-        message=f"Added {len(request.items)} items to tab"
+        message=f"Added {len(body.items)} items to tab"
     )
 
 
 @router.post("/tabs/{tab_id}/transfer", response_model=QuickActionResponse)
+@limiter.limit("30/minute")
 async def transfer_tab(
+    request: Request,
     tab_id: int,
-    request: TransferTabRequest,
+    body: TransferTabRequest,
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(get_current_user)
 ):
@@ -806,7 +827,7 @@ async def transfer_tab(
         raise HTTPException(status_code=404, detail="Tab not found")
 
     table = db.query(Table).filter(
-        Table.id == request.table_id,
+        Table.id == body.table_id,
         Table.venue_id == current_user.venue_id
     ).first()
 
@@ -814,13 +835,13 @@ async def transfer_tab(
         raise HTTPException(status_code=404, detail="Table not found")
 
     # Update tab to link to table
-    tab.table_id = request.table_id
+    tab.table_id = body.table_id
     tab.is_bar_tab = False
 
     # Update all orders to reference the table
     orders = db.query(Order).filter(Order.session_id == tab_id).all()
     for order in orders:
-        order.table_id = request.table_id
+        order.table_id = body.table_id
 
     db.commit()
 
@@ -831,9 +852,11 @@ async def transfer_tab(
 
 
 @router.post("/tabs/{tab_id}/close", response_model=QuickActionResponse)
+@limiter.limit("30/minute")
 async def close_tab(
+    request: Request,
     tab_id: int,
-    request: CloseTabRequest,
+    body: CloseTabRequest,
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(get_current_user)
 ):
@@ -850,15 +873,15 @@ async def close_tab(
     # Calculate total
     orders = db.query(Order).filter(Order.session_id == tab_id).all()
     subtotal = sum(float(o.total or 0) for o in orders)
-    total = subtotal + request.tip_amount
+    total = subtotal + body.tip_amount
 
     # Create payment record
     payment = Payment(
         venue_id=current_user.venue_id,
         session_id=tab_id,
         amount=total,
-        tip=request.tip_amount,
-        payment_method=request.payment_method.value,
+        tip=body.tip_amount,
+        payment_method=body.payment_method.value,
         status="completed",
         processed_by=current_user.id,
         processed_at=datetime.utcnow()
@@ -878,7 +901,7 @@ async def close_tab(
     return QuickActionResponse(
         success=True,
         message=f"Tab closed. Total charged: ${total:.2f}",
-        data={"total": total, "tip": request.tip_amount}
+        data={"total": total, "tip": body.tip_amount}
     )
 
 
@@ -887,7 +910,9 @@ async def close_tab(
 # ============================================================================
 
 @router.get("/checks/{order_id}", response_model=CheckResponse)
+@limiter.limit("60/minute")
 async def get_check(
+    request: Request,
     order_id: int,
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(get_current_user)
@@ -948,7 +973,9 @@ async def get_check(
 
 
 @router.post("/checks/{order_id}/split-by-seat", response_model=List[CheckResponse])
+@limiter.limit("30/minute")
 async def split_by_seat(
+    request: Request,
     order_id: int,
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(get_current_user)
@@ -1035,9 +1062,11 @@ async def split_by_seat(
 
 
 @router.post("/checks/{order_id}/split-even")
+@limiter.limit("30/minute")
 async def split_even(
+    request: Request,
     order_id: int,
-    request: SplitEvenRequest,
+    body: SplitEvenRequest,
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(get_current_user)
 ):
@@ -1051,23 +1080,25 @@ async def split_even(
         raise HTTPException(status_code=404, detail="Order not found")
 
     total = float(order.total or 0)
-    split_amount = total / request.num_ways
+    split_amount = total / body.num_ways
 
     return {
         "original_total": total,
-        "num_ways": request.num_ways,
+        "num_ways": body.num_ways,
         "amount_per_person": round(split_amount, 2),
         "checks": [
             {"check_number": f"{order.order_number}-{i+1}", "amount": round(split_amount, 2)}
-            for i in range(request.num_ways)
+            for i in range(body.num_ways)
         ]
     }
 
 
 @router.post("/checks/{order_id}/split-items")
+@limiter.limit("30/minute")
 async def split_by_items(
+    request: Request,
     order_id: int,
-    request: SplitByItemRequest,
+    body: SplitByItemRequest,
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(get_current_user)
 ):
@@ -1082,7 +1113,7 @@ async def split_by_items(
 
     # Get items to move
     items_to_move = db.query(OrderItem).filter(
-        OrderItem.id.in_(request.item_ids),
+        OrderItem.id.in_(body.item_ids),
         OrderItem.order_id == order_id
     ).all()
 
@@ -1090,8 +1121,8 @@ async def split_by_items(
         raise HTTPException(status_code=400, detail="No valid items to move")
 
     # Create new order or use existing
-    if request.to_check_id:
-        target_order = db.query(Order).filter(Order.id == request.to_check_id).first()
+    if body.to_check_id:
+        target_order = db.query(Order).filter(Order.id == body.to_check_id).first()
         if not target_order:
             raise HTTPException(status_code=404, detail="Target check not found")
     else:
@@ -1135,14 +1166,16 @@ async def split_by_items(
 
 
 @router.post("/checks/merge")
+@limiter.limit("30/minute")
 async def merge_checks(
-    request: MergeChecksRequest,
+    request: Request,
+    body: MergeChecksRequest,
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(get_current_user)
 ):
     """Merge multiple checks into one"""
     orders = db.query(Order).filter(
-        Order.id.in_(request.check_ids),
+        Order.id.in_(body.check_ids),
         Order.venue_id == current_user.venue_id
     ).all()
 
@@ -1180,14 +1213,16 @@ async def merge_checks(
 # ============================================================================
 
 @router.post("/payments", response_model=QuickActionResponse)
+@limiter.limit("30/minute")
 async def process_payment(
-    request: PaymentRequest,
+    request: Request,
+    body: PaymentRequest,
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(get_current_user)
 ):
     """Process a payment for a check"""
     order = db.query(Order).filter(
-        Order.id == request.check_id,
+        Order.id == body.check_id,
         Order.venue_id == current_user.venue_id
     ).first()
 
@@ -1199,18 +1234,18 @@ async def process_payment(
     paid = sum(float(p.amount) for p in existing_payments)
     balance = float(order.total or 0) - paid
 
-    if request.amount > balance + 0.01:  # Allow small rounding
+    if body.amount > balance + 0.01:  # Allow small rounding
         raise HTTPException(status_code=400, detail=f"Payment exceeds balance. Balance due: ${balance:.2f}")
 
     # Create payment
     payment = Payment(
         venue_id=current_user.venue_id,
         order_id=order.id,
-        amount=request.amount,
-        tip=request.tip_amount,
-        payment_method=request.payment_method.value,
-        card_last_four=request.card_last_four,
-        auth_code=request.auth_code,
+        amount=body.amount,
+        tip=body.tip_amount,
+        payment_method=body.payment_method.value,
+        card_last_four=body.card_last_four,
+        auth_code=body.auth_code,
         status="completed",
         processed_by=current_user.id,
         processed_at=datetime.utcnow()
@@ -1218,21 +1253,21 @@ async def process_payment(
     db.add(payment)
 
     # Check if fully paid
-    new_balance = balance - request.amount
+    new_balance = balance - body.amount
     if new_balance <= 0.01:
         order.status = "paid"
 
     db.commit()
 
-    change = max(0, request.amount - balance) if request.payment_method == PaymentMethod.CASH else 0
+    change = max(0, body.amount - balance) if body.payment_method == PaymentMethod.CASH else 0
 
     return QuickActionResponse(
         success=True,
-        message=f"Payment of ${request.amount:.2f} processed",
+        message=f"Payment of ${body.amount:.2f} processed",
         data={
             "payment_id": payment.id,
-            "amount": request.amount,
-            "tip": request.tip_amount,
+            "amount": body.amount,
+            "tip": body.tip_amount,
             "change": change,
             "balance_remaining": max(0, new_balance),
             "fully_paid": new_balance <= 0.01
@@ -1241,24 +1276,26 @@ async def process_payment(
 
 
 @router.post("/payments/split-tender", response_model=QuickActionResponse)
+@limiter.limit("30/minute")
 async def split_tender_payment(
-    request: SplitTenderRequest,
+    request: Request,
+    body: SplitTenderRequest,
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(get_current_user)
 ):
     """Process split payment across multiple tenders"""
     order = db.query(Order).filter(
-        Order.id == request.check_id,
+        Order.id == body.check_id,
         Order.venue_id == current_user.venue_id
     ).first()
 
     if not order:
         raise HTTPException(status_code=404, detail="Check not found")
 
-    total_paying = sum(p.amount for p in request.payments)
+    total_paying = sum(p.amount for p in body.payments)
 
     # Process each payment
-    for payment_req in request.payments:
+    for payment_req in body.payments:
         payment = Payment(
             venue_id=current_user.venue_id,
             order_id=order.id,
@@ -1283,15 +1320,17 @@ async def split_tender_payment(
 
     return QuickActionResponse(
         success=True,
-        message=f"Split payment of ${total_paying:.2f} across {len(request.payments)} tenders",
+        message=f"Split payment of ${total_paying:.2f} across {len(body.payments)} tenders",
         data={"total_paid": total_paid}
     )
 
 
 @router.post("/checks/{check_id}/discount", response_model=QuickActionResponse)
+@limiter.limit("30/minute")
 async def apply_discount(
+    request: Request,
     check_id: int,
-    request: ApplyDiscountRequest,
+    body: ApplyDiscountRequest,
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(get_current_user)
 ):
@@ -1305,9 +1344,9 @@ async def apply_discount(
         raise HTTPException(status_code=404, detail="Check not found")
 
     # Check if manager approval needed (for discounts > 10%)
-    if request.discount_type == "percent" and request.discount_value > 10:
+    if body.discount_type == "percent" and body.discount_value > 10:
         if current_user.role not in [StaffRole.ADMIN, StaffRole.MANAGER]:
-            if not request.manager_pin:
+            if not body.manager_pin:
                 raise HTTPException(status_code=403, detail="Manager PIN required for discounts over 10%")
             # Verify manager PIN
             managers = db.query(StaffUser).filter(
@@ -1317,7 +1356,7 @@ async def apply_discount(
             ).all()
             valid = False
             for mgr in managers:
-                if verify_pin(request.manager_pin, mgr.pin_code):
+                if verify_pin(body.manager_pin, mgr.pin_code):
                     valid = True
                     break
             if not valid:
@@ -1325,13 +1364,13 @@ async def apply_discount(
 
     # Calculate discount
     subtotal = float(order.subtotal or 0)
-    if request.discount_type == "percent":
-        discount = subtotal * (request.discount_value / 100)
+    if body.discount_type == "percent":
+        discount = subtotal * (body.discount_value / 100)
     else:
-        discount = request.discount_value
+        discount = body.discount_value
 
     order.discount = discount
-    order.discount_reason = request.reason
+    order.discount_reason = body.reason
     order.total = subtotal + float(order.tax or 0) - discount
 
     db.commit()
@@ -1344,9 +1383,11 @@ async def apply_discount(
 
 
 @router.post("/checks/{check_id}/auto-gratuity", response_model=QuickActionResponse)
+@limiter.limit("30/minute")
 async def apply_auto_gratuity(
+    request: Request,
     check_id: int,
-    request: AutoGratuityRequest,
+    body: AutoGratuityRequest,
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(get_current_user)
 ):
@@ -1360,7 +1401,7 @@ async def apply_auto_gratuity(
         raise HTTPException(status_code=404, detail="Check not found")
 
     subtotal = float(order.subtotal or 0)
-    gratuity = subtotal * (request.gratuity_percent / 100)
+    gratuity = subtotal * (body.gratuity_percent / 100)
 
     order.auto_gratuity = gratuity
     order.total = subtotal + float(order.tax or 0) - float(order.discount or 0) + gratuity
@@ -1369,15 +1410,17 @@ async def apply_auto_gratuity(
 
     return QuickActionResponse(
         success=True,
-        message=f"Applied {request.gratuity_percent}% auto-gratuity (${gratuity:.2f})",
+        message=f"Applied {body.gratuity_percent}% auto-gratuity (${gratuity:.2f})",
         data={"gratuity": gratuity, "new_total": order.total}
     )
 
 
 @router.post("/items/{item_id}/void", response_model=QuickActionResponse)
+@limiter.limit("30/minute")
 async def void_item(
+    request: Request,
     item_id: int,
-    request: VoidItemRequest,
+    body: VoidItemRequest,
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(get_current_user)
 ):
@@ -1389,7 +1432,7 @@ async def void_item(
 
     # Verify manager approval
     if current_user.role not in [StaffRole.ADMIN, StaffRole.MANAGER]:
-        if not request.manager_pin:
+        if not body.manager_pin:
             raise HTTPException(status_code=403, detail="Manager PIN required to void items")
         managers = db.query(StaffUser).filter(
             StaffUser.venue_id == current_user.venue_id,
@@ -1398,7 +1441,7 @@ async def void_item(
         ).all()
         valid = False
         for mgr in managers:
-            if verify_pin(request.manager_pin, mgr.pin_code):
+            if verify_pin(body.manager_pin, mgr.pin_code):
                 valid = True
                 break
         if not valid:
@@ -1406,7 +1449,7 @@ async def void_item(
 
     # Void item
     item.status = "voided"
-    item.void_reason = request.reason
+    item.void_reason = body.reason
     item.voided_by = current_user.id
     item.voided_at = datetime.utcnow()
 
@@ -1431,9 +1474,11 @@ async def void_item(
 
 
 @router.post("/items/{item_id}/comp", response_model=QuickActionResponse)
+@limiter.limit("30/minute")
 async def comp_item(
+    request: Request,
     item_id: int,
-    request: CompItemRequest,
+    body: CompItemRequest,
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(get_current_user)
 ):
@@ -1445,7 +1490,7 @@ async def comp_item(
 
     # Verify manager approval
     if current_user.role not in [StaffRole.ADMIN, StaffRole.MANAGER]:
-        if not request.manager_pin:
+        if not body.manager_pin:
             raise HTTPException(status_code=403, detail="Manager PIN required to comp items")
         managers = db.query(StaffUser).filter(
             StaffUser.venue_id == current_user.venue_id,
@@ -1454,7 +1499,7 @@ async def comp_item(
         ).all()
         valid = False
         for mgr in managers:
-            if verify_pin(request.manager_pin, mgr.pin_code):
+            if verify_pin(body.manager_pin, mgr.pin_code):
                 valid = True
                 break
         if not valid:
@@ -1463,7 +1508,7 @@ async def comp_item(
     # Comp item
     original_price = float(item.total_price)
     item.total_price = 0
-    item.comp_reason = request.reason
+    item.comp_reason = body.reason
     item.comped_by = current_user.id
     item.comped_at = datetime.utcnow()
 
@@ -1492,7 +1537,9 @@ async def comp_item(
 # ============================================================================
 
 @router.get("/floor-plan", response_model=List[TableStatusResponse])
+@limiter.limit("60/minute")
 async def get_floor_plan(
+    request: Request,
     section: Optional[str] = None,
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(get_current_user)
@@ -1546,7 +1593,9 @@ async def get_floor_plan(
 
 
 @router.post("/tables/{table_id}/seat", response_model=QuickActionResponse)
+@limiter.limit("30/minute")
 async def seat_table(
+    request: Request,
     table_id: int,
     guest_count: int = Query(default=2, ge=1, le=20),
     db: Session = Depends(get_db),
@@ -1590,9 +1639,11 @@ async def seat_table(
 
 
 @router.post("/tables/{table_id}/transfer", response_model=QuickActionResponse)
+@limiter.limit("30/minute")
 async def transfer_table(
+    request: Request,
     table_id: int,
-    request: TransferTableRequest,
+    body: TransferTableRequest,
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(get_current_user)
 ):
@@ -1606,14 +1657,14 @@ async def transfer_table(
         raise HTTPException(status_code=404, detail="No active session for this table")
 
     new_waiter = db.query(StaffUser).filter(
-        StaffUser.id == request.to_waiter_id,
+        StaffUser.id == body.to_waiter_id,
         StaffUser.venue_id == current_user.venue_id
     ).first()
 
     if not new_waiter:
         raise HTTPException(status_code=404, detail="Waiter not found")
 
-    session.waiter_id = request.to_waiter_id
+    session.waiter_id = body.to_waiter_id
     db.commit()
 
     return QuickActionResponse(
@@ -1623,7 +1674,9 @@ async def transfer_table(
 
 
 @router.post("/tables/{table_id}/clear", response_model=QuickActionResponse)
+@limiter.limit("30/minute")
 async def clear_table(
+    request: Request,
     table_id: int,
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(get_current_user)
@@ -1657,7 +1710,9 @@ async def clear_table(
 
 
 @router.get("/my-tables", response_model=List[TableStatusResponse])
+@limiter.limit("60/minute")
 async def get_my_tables(
+    request: Request,
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(get_current_user)
 ):
@@ -1702,7 +1757,9 @@ async def get_my_tables(
 # ============================================================================
 
 @router.post("/quick-reorder/{item_id}", response_model=QuickActionResponse)
+@limiter.limit("30/minute")
 async def quick_reorder(
+    request: Request,
     item_id: int,
     quantity: int = 1,
     db: Session = Depends(get_db),
@@ -1744,7 +1801,9 @@ async def quick_reorder(
 
 
 @router.get("/menu/quick", response_model=List[Dict[str, Any]])
+@limiter.limit("60/minute")
 async def get_quick_menu(
+    request: Request,
     category: Optional[str] = None,
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(get_current_user)
@@ -1802,7 +1861,9 @@ async def get_quick_menu(
 
 
 @router.post("/checks/{check_id}/print", response_model=QuickActionResponse)
+@limiter.limit("30/minute")
 async def print_check(
+    request: Request,
     check_id: int,
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(get_current_user)

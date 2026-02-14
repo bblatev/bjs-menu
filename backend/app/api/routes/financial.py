@@ -2,10 +2,12 @@
 
 from datetime import datetime
 from typing import List, Optional
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Query, Request
 from pydantic import BaseModel, Field
 from sqlalchemy import func
 
+from app.core.rbac import CurrentUser, RequireManager
+from app.core.rate_limit import limiter
 from app.db.session import DbSession
 from app.models.operations import (
     Budget as BudgetModel,
@@ -20,7 +22,8 @@ router = APIRouter()
 
 
 @router.get("/accounts/")
-def get_financial_accounts(db: DbSession):
+@limiter.limit("60/minute")
+def get_financial_accounts(request: Request, db: DbSession, current_user: CurrentUser):
     """Get financial accounts from GL codes."""
     codes = db.query(GLCode).order_by(GLCode.id).all()
     accounts = [
@@ -31,7 +34,8 @@ def get_financial_accounts(db: DbSession):
 
 
 @router.get("/transactions/")
-def get_financial_transactions(db: DbSession):
+@limiter.limit("60/minute")
+def get_financial_transactions(request: Request, db: DbSession, current_user: CurrentUser):
     """Get financial transactions from invoices."""
     invoices = db.query(Invoice).order_by(Invoice.created_at.desc()).limit(50).all()
     transactions = [
@@ -49,7 +53,8 @@ def get_financial_transactions(db: DbSession):
 
 
 @router.get("/financial-alerts/")
-def get_financial_alerts(db: DbSession):
+@limiter.limit("60/minute")
+def get_financial_alerts(request: Request, db: DbSession, current_user: RequireManager):
     """Get financial alerts from risk alerts and manager alerts."""
     risk_alerts = db.query(RiskAlert).filter(
         RiskAlert.status == "open"
@@ -77,7 +82,8 @@ def get_financial_alerts(db: DbSession):
 
 
 @router.get("/bank-accounts")
-def get_bank_accounts(db: DbSession):
+@limiter.limit("60/minute")
+def get_bank_accounts(request: Request, db: DbSession, current_user: RequireManager):
     """Get bank accounts from app settings."""
     from app.models.operations import AppSetting
     setting = db.query(AppSetting).filter(
@@ -90,7 +96,8 @@ def get_bank_accounts(db: DbSession):
 
 
 @router.get("/bank-reconciliation")
-def get_bank_reconciliation(db: DbSession):
+@limiter.limit("60/minute")
+def get_bank_reconciliation(request: Request, db: DbSession, current_user: RequireManager):
     """Get bank reconciliation data."""
     recs = db.query(ReconciliationModel).order_by(
         ReconciliationModel.date.desc()
@@ -109,7 +116,8 @@ def get_bank_reconciliation(db: DbSession):
 
 
 @router.get("/reports/financial")
-def get_financial_reports(db: DbSession):
+@limiter.limit("60/minute")
+def get_financial_reports(request: Request, db: DbSession, current_user: RequireManager):
     """Get financial reports from daily metrics."""
     metrics = db.query(DailyMetrics).order_by(DailyMetrics.date.desc()).limit(30).all()
     revenue = sum(float(m.total_revenue or 0) for m in metrics)
@@ -131,7 +139,8 @@ def get_financial_reports(db: DbSession):
 
 
 @router.get("/chart-of-accounts")
-def get_chart_of_accounts(db: DbSession):
+@limiter.limit("60/minute")
+def get_chart_of_accounts(request: Request, db: DbSession, current_user: CurrentUser):
     """Get chart of accounts from GL codes."""
     codes = db.query(GLCode).order_by(GLCode.code).all()
     accounts = [
@@ -142,7 +151,8 @@ def get_chart_of_accounts(db: DbSession):
 
 
 @router.get("/daily-close")
-def get_daily_close(db: DbSession):
+@limiter.limit("60/minute")
+def get_daily_close(request: Request, db: DbSession, current_user: CurrentUser):
     """Get daily close sessions."""
     recs = db.query(ReconciliationModel).order_by(ReconciliationModel.date.desc()).limit(30).all()
     sessions = [
@@ -183,14 +193,16 @@ def _budget_to_dict(b: BudgetModel) -> dict:
 
 
 @router.get("/budgets")
-async def get_budgets(db: DbSession):
+@limiter.limit("60/minute")
+async def get_budgets(request: Request, db: DbSession, current_user: RequireManager):
     """Get all budgets."""
     budgets = db.query(BudgetModel).order_by(BudgetModel.id).all()
     return [_budget_to_dict(b) for b in budgets]
 
 
 @router.get("/budget-variance/{period}")
-async def get_budget_variance(period: str, db: DbSession):
+@limiter.limit("60/minute")
+async def get_budget_variance(request: Request, period: str, db: DbSession, current_user: RequireManager):
     """Get budget variance for a period."""
     budgets = db.query(BudgetModel).all()
     result = []
@@ -210,7 +222,8 @@ async def get_budget_variance(period: str, db: DbSession):
 
 
 @router.get("/budget-variance")
-async def get_budget_variance_default(db: DbSession):
+@limiter.limit("60/minute")
+async def get_budget_variance_default(request: Request, db: DbSession, current_user: RequireManager):
     """Get budget variance for the current period."""
     budgets = db.query(BudgetModel).all()
     result = []
@@ -246,7 +259,8 @@ def _reconciliation_to_dict(r: ReconciliationModel) -> dict:
 
 
 @router.get("/daily-reconciliation/{date}")
-async def get_daily_reconciliation(date: str, db: DbSession):
+@limiter.limit("60/minute")
+async def get_daily_reconciliation(request: Request, date: str, db: DbSession, current_user: CurrentUser):
     """Get daily reconciliation for a specific date."""
     from datetime import datetime as dt
     try:
@@ -260,7 +274,8 @@ async def get_daily_reconciliation(date: str, db: DbSession):
 
 
 @router.get("/daily-reconciliation")
-async def get_daily_reconciliation_list(db: DbSession):
+@limiter.limit("60/minute")
+async def get_daily_reconciliation_list(request: Request, db: DbSession, current_user: CurrentUser):
     """Get daily reconciliation sessions list."""
     recs = db.query(ReconciliationModel).order_by(ReconciliationModel.date.desc()).limit(30).all()
     sessions = [
@@ -281,7 +296,8 @@ async def get_daily_reconciliation_list(db: DbSession):
 
 
 @router.post("/daily-reconciliation/{rec_id}/cash-count")
-async def submit_cash_count(rec_id: str, db: DbSession):
+@limiter.limit("30/minute")
+async def submit_cash_count(request: Request, rec_id: str, db: DbSession, current_user: CurrentUser):
     """Submit cash count for daily reconciliation."""
     rec = db.query(ReconciliationModel).filter(ReconciliationModel.id == int(rec_id)).first()
     if not rec:
@@ -290,7 +306,8 @@ async def submit_cash_count(rec_id: str, db: DbSession):
 
 
 @router.post("/daily-reconciliation/{rec_id}/complete")
-async def complete_reconciliation(rec_id: str, db: DbSession):
+@limiter.limit("30/minute")
+async def complete_reconciliation(request: Request, rec_id: str, db: DbSession, current_user: RequireManager):
     """Complete daily reconciliation."""
     from datetime import datetime, timezone
     rec = db.query(ReconciliationModel).filter(ReconciliationModel.id == int(rec_id)).first()
@@ -309,7 +326,8 @@ class CreateFinancialAccountRequest(BaseModel):
 
 
 @router.post("/accounts/")
-async def create_financial_account(data: CreateFinancialAccountRequest, db: DbSession):
+@limiter.limit("30/minute")
+async def create_financial_account(request: Request, data: CreateFinancialAccountRequest, db: DbSession, current_user: RequireManager):
     """Create a financial account (GL code)."""
     existing = db.query(GLCode).filter(GLCode.code == data.code).first()
     if existing:
@@ -322,7 +340,8 @@ async def create_financial_account(data: CreateFinancialAccountRequest, db: DbSe
 
 
 @router.post("/transactions/")
-async def create_financial_transaction(data: dict, db: DbSession):
+@limiter.limit("30/minute")
+async def create_financial_transaction(request: Request, data: dict, db: DbSession, current_user: RequireManager):
     """Create a financial transaction (invoice record)."""
     inv = Invoice(
         supplier_id=data.get("account_id", data.get("supplier_id", 1)),
@@ -337,7 +356,8 @@ async def create_financial_transaction(data: dict, db: DbSession):
 
 
 @router.post("/budgets")
-async def create_budget(budget: dict, db: DbSession):
+@limiter.limit("30/minute")
+async def create_budget(request: Request, budget: dict, db: DbSession, current_user: RequireManager):
     """Create a new budget."""
     new_budget = BudgetModel(
         name=budget.get("name", ""),

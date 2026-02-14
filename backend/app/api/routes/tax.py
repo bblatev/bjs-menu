@@ -3,12 +3,13 @@
 from datetime import datetime, timezone
 from typing import List, Optional
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Query, Request
 from pydantic import BaseModel
 from sqlalchemy import func
 
 from app.db.session import DbSession
 from app.models.operations import TaxFiling as TaxFilingModel
+from app.core.rate_limit import limiter
 
 router = APIRouter()
 
@@ -60,14 +61,16 @@ def _filing_to_schema(filing: TaxFilingModel) -> TaxFiling:
 
 
 @router.get("/filings")
-async def get_tax_filings(db: DbSession, year: int = Query(2026)):
+@limiter.limit("60/minute")
+async def get_tax_filings(request: Request, db: DbSession, year: int = Query(2026)):
     """Get tax filings for a year."""
     filings = db.query(TaxFilingModel).filter(TaxFilingModel.year == year).all()
     return [_filing_to_schema(f) for f in filings]
 
 
 @router.get("/summary")
-async def get_tax_summary(db: DbSession):
+@limiter.limit("60/minute")
+async def get_tax_summary(request: Request, db: DbSession):
     """Get tax summary."""
     # Aggregate from all filings to build the summary
     result = db.query(
@@ -104,7 +107,8 @@ async def get_tax_summary(db: DbSession):
 
 
 @router.post("/filings/{filing_id}/file")
-async def file_tax_return(filing_id: str, db: DbSession):
+@limiter.limit("30/minute")
+async def file_tax_return(request: Request, filing_id: str, db: DbSession):
     """Mark a tax filing as filed."""
     try:
         numeric_id = int(filing_id)

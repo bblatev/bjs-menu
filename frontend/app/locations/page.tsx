@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 
 import { API_URL, getAuthHeaders } from '@/lib/api';
 
+import { toast } from '@/lib/toast';
 interface Location {
   id: number;
   name: string;
@@ -181,10 +182,10 @@ export default function MultiLocationPage() {
         throw new Error('Failed to sync menu');
       }
 
-      alert('Menu synced successfully!');
+      toast.error('Menu synced successfully!');
       setShowSyncModal(false);
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'Failed to sync menu');
+      toast.error(err instanceof Error ? err.message : 'Failed to sync menu');
     }
   };
 
@@ -204,7 +205,7 @@ export default function MultiLocationPage() {
         throw new Error('Failed to create location');
       }
 
-      alert('Location created!');
+      toast.error('Location created!');
       setShowAddModal(false);
       setNewLocation({
         name: '',
@@ -220,7 +221,7 @@ export default function MultiLocationPage() {
       });
       loadData();
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'Failed to create location');
+      toast.error(err instanceof Error ? err.message : 'Failed to create location');
     }
   };
 

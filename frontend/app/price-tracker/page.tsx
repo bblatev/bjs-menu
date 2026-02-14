@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 
 import { API_URL, getAuthHeaders } from '@/lib/api';
 
+import { toast } from '@/lib/toast';
 interface PriceAlert {
   id: number;
   itemName: string;
@@ -291,7 +292,7 @@ export default function PriceTrackerPage() {
     } catch (err) {
       console.error('Error creating alert rule:', err);
       // Show error to user but still close modal
-      alert('Failed to create alert rule. Please try again.');
+      toast.error('Failed to create alert rule. Please try again.');
     }
   };
 

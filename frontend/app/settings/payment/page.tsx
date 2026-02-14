@@ -6,6 +6,7 @@ import { Button, Input, Card, CardBody, Badge } from '@/components/ui';
 
 import { API_URL, getAuthHeaders } from '@/lib/api';
 
+import { toast } from '@/lib/toast';
 export default function SettingsPaymentPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -89,11 +90,11 @@ export default function SettingsPaymentPage() {
       });
 
       if (response.ok) {
-        alert('Payment settings saved successfully!');
+        toast.success('Payment settings saved successfully!');
       }
     } catch (err) {
       console.error('Error saving settings:', err);
-      alert('Failed to save settings');
+      toast.error('Failed to save settings');
     } finally {
       setSaving(false);
     }

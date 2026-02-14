@@ -3,7 +3,7 @@ Allergen & Nutrition API Endpoints
 Complete allergen tracking, nutrition info, and HACCP compliance
 """
 
-from fastapi import APIRouter, Depends, HTTPException, status, Query
+from fastapi import APIRouter, Depends, HTTPException, Request, status, Query
 from sqlalchemy.orm import Session
 from typing import List, Optional
 from pydantic import BaseModel
@@ -12,6 +12,7 @@ from datetime import datetime
 from app.db.session import get_db
 from app.core.rbac import get_current_user
 from app.services.allergen_nutrition_service import AllergenNutritionService
+from app.core.rate_limit import limiter
 
 
 router = APIRouter()
@@ -73,9 +74,11 @@ class FilterMenuRequest(BaseModel):
 # ========== ALLERGEN ENDPOINTS ==========
 
 @router.post("/items/{menu_item_id}/allergens")
+@limiter.limit("30/minute")
 async def set_item_allergens(
+    request: Request,
     menu_item_id: int,
-    request: SetAllergensRequest,
+    body: SetAllergensRequest,
     db: Session = Depends(get_db),
     current_user = Depends(get_current_user)
 ):
@@ -90,9 +93,9 @@ async def set_item_allergens(
     
     result = service.set_item_allergens(
         menu_item_id=menu_item_id,
-        allergens=request.allergens,
-        may_contain=request.may_contain,
-        cross_contamination_risk=request.cross_contamination_risk,
+        allergens=body.allergens,
+        may_contain=body.may_contain,
+        cross_contamination_risk=body.cross_contamination_risk,
         staff_id=current_user.id if current_user else None
     )
     
@@ -106,7 +109,9 @@ async def set_item_allergens(
 
 
 @router.get("/items/{menu_item_id}/allergens")
+@limiter.limit("60/minute")
 async def get_item_allergens(
+    request: Request,
     menu_item_id: int,
     language: str = "en",
     db: Session = Depends(get_db)
@@ -125,9 +130,11 @@ async def get_item_allergens(
 
 
 @router.post("/orders/{order_id}/check-allergens")
+@limiter.limit("30/minute")
 async def check_order_allergens(
+    request: Request,
     order_id: int,
-    request: CheckAllergenRequest,
+    body: CheckAllergenRequest,
     language: str = "en",
     db: Session = Depends(get_db)
 ):
@@ -140,7 +147,7 @@ async def check_order_allergens(
     
     result = service.check_order_allergens(
         order_id=order_id,
-        customer_allergens=request.customer_allergens,
+        customer_allergens=body.customer_allergens,
         language=language
     )
     
@@ -156,9 +163,11 @@ async def check_order_allergens(
 # ========== NUTRITION ENDPOINTS ==========
 
 @router.post("/items/{menu_item_id}/nutrition")
+@limiter.limit("30/minute")
 async def set_nutrition_info(
+    request: Request,
     menu_item_id: int,
-    request: SetNutritionRequest,
+    body: SetNutritionRequest,
     db: Session = Depends(get_db),
     current_user = Depends(get_current_user)
 ):
@@ -171,18 +180,18 @@ async def set_nutrition_info(
     
     result = service.set_nutrition_info(
         menu_item_id=menu_item_id,
-        serving_size=request.serving_size,
-        calories=request.calories,
-        protein_g=request.protein_g,
-        carbs_g=request.carbs_g,
-        fat_g=request.fat_g,
-        fiber_g=request.fiber_g,
-        sugar_g=request.sugar_g,
-        sodium_mg=request.sodium_mg,
-        saturated_fat_g=request.saturated_fat_g,
-        cholesterol_mg=request.cholesterol_mg,
-        vitamins=request.vitamins,
-        minerals=request.minerals,
+        serving_size=body.serving_size,
+        calories=body.calories,
+        protein_g=body.protein_g,
+        carbs_g=body.carbs_g,
+        fat_g=body.fat_g,
+        fiber_g=body.fiber_g,
+        sugar_g=body.sugar_g,
+        sodium_mg=body.sodium_mg,
+        saturated_fat_g=body.saturated_fat_g,
+        cholesterol_mg=body.cholesterol_mg,
+        vitamins=body.vitamins,
+        minerals=body.minerals,
         staff_id=current_user.id if current_user else None
     )
     
@@ -196,7 +205,9 @@ async def set_nutrition_info(
 
 
 @router.get("/items/{menu_item_id}/nutrition")
+@limiter.limit("60/minute")
 async def get_nutrition_info(
+    request: Request,
     menu_item_id: int,
     include_recommendations: bool = True,
     db: Session = Depends(get_db)
@@ -207,7 +218,9 @@ async def get_nutrition_info(
 
 
 @router.get("/orders/{order_id}/nutrition")
+@limiter.limit("60/minute")
 async def calculate_order_nutrition(
+    request: Request,
     order_id: int,
     db: Session = Depends(get_db)
 ):
@@ -227,9 +240,11 @@ async def calculate_order_nutrition(
 # ========== DIETARY TAGS ENDPOINTS ==========
 
 @router.post("/items/{menu_item_id}/dietary")
+@limiter.limit("30/minute")
 async def set_dietary_tags(
+    request: Request,
     menu_item_id: int,
-    request: SetDietaryTagsRequest,
+    body: SetDietaryTagsRequest,
     db: Session = Depends(get_db),
     current_user = Depends(get_current_user)
 ):
@@ -242,8 +257,8 @@ async def set_dietary_tags(
     
     result = service.set_dietary_tags(
         menu_item_id=menu_item_id,
-        dietary_types=request.dietary_types,
-        certifications=request.certifications,
+        dietary_types=body.dietary_types,
+        certifications=body.certifications,
         staff_id=current_user.id if current_user else None
     )
     
@@ -257,8 +272,10 @@ async def set_dietary_tags(
 
 
 @router.post("/menu/filter")
+@limiter.limit("30/minute")
 async def filter_menu_by_dietary(
-    request: FilterMenuRequest,
+    request: Request,
+    body: FilterMenuRequest,
     venue_id: int = Query(1, description="Venue ID"),
     db: Session = Depends(get_db),
     current_user = Depends(get_current_user)
@@ -271,16 +288,18 @@ async def filter_menu_by_dietary(
 
     return service.filter_menu_by_dietary(
         venue_id=actual_venue_id,
-        dietary_requirements=request.dietary_requirements,
-        allergen_exclusions=request.allergen_exclusions
+        dietary_requirements=body.dietary_requirements,
+        allergen_exclusions=body.allergen_exclusions
     )
 
 
 # ========== HACCP COMPLIANCE ENDPOINTS ==========
 
 @router.post("/haccp/temperature")
+@limiter.limit("30/minute")
 async def log_temperature_check(
-    request: LogTemperatureRequest,
+    request: Request,
+    body: LogTemperatureRequest,
     venue_id: int = Query(1, description="Venue ID"),
     db: Session = Depends(get_db),
     current_user = Depends(get_current_user)
@@ -297,20 +316,22 @@ async def log_temperature_check(
 
     result = service.log_temperature_check(
         venue_id=actual_venue_id,
-        equipment_id=request.equipment_id,
-        equipment_type=request.equipment_type,
-        temperature_c=request.temperature_c,
-        is_acceptable=request.is_acceptable,
+        equipment_id=body.equipment_id,
+        equipment_type=body.equipment_type,
+        temperature_c=body.temperature_c,
+        is_acceptable=body.is_acceptable,
         staff_id=current_user.id if current_user else None,
-        notes=request.notes
+        notes=body.notes
     )
 
     return result
 
 
 @router.post("/haccp/event")
+@limiter.limit("30/minute")
 async def log_haccp_event(
-    request: LogHACCPEventRequest,
+    request: Request,
+    body: LogHACCPEventRequest,
     venue_id: int = Query(1, description="Venue ID"),
     db: Session = Depends(get_db),
     current_user = Depends(get_current_user)
@@ -327,19 +348,21 @@ async def log_haccp_event(
 
     result = service.log_haccp_event(
         venue_id=actual_venue_id,
-        event_type=request.event_type,
-        description=request.description,
+        event_type=body.event_type,
+        description=body.description,
         staff_id=current_user.id if current_user else None,
-        is_compliant=request.is_compliant,
-        corrective_action=request.corrective_action,
-        attachments=request.attachments
+        is_compliant=body.is_compliant,
+        corrective_action=body.corrective_action,
+        attachments=body.attachments
     )
 
     return result
 
 
 @router.get("/haccp/report")
+@limiter.limit("60/minute")
 async def get_haccp_report(
+    request: Request,
     start_date: datetime,
     end_date: datetime,
     venue_id: int = Query(1, description="Venue ID"),
@@ -358,7 +381,9 @@ async def get_haccp_report(
 # ========== UTILITY ENDPOINTS ==========
 
 @router.get("/allergen-list")
+@limiter.limit("60/minute")
 async def get_allergen_list(
+    request: Request,
     language: str = "en"
 ):
     """Get list of all 14 major allergens with translations"""
@@ -376,7 +401,8 @@ async def get_allergen_list(
 
 
 @router.get("/dietary-types")
-async def get_dietary_types():
+@limiter.limit("60/minute")
+async def get_dietary_types(request: Request):
     """Get list of all dietary types"""
     return {
         "dietary_types": [

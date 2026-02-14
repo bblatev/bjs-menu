@@ -3,7 +3,7 @@ Tab Management API Endpoints - Database-backed implementation
 Provides full tab management functionality for restaurant operations
 """
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy.orm import Session
 from sqlalchemy import func
 from typing import List, Optional, Dict, Any
@@ -12,6 +12,7 @@ from datetime import datetime, timedelta
 
 from app.db.session import get_db
 from app.core.rbac import get_current_user
+from app.core.rate_limit import limiter
 from app.models import StaffUser, MenuItem
 from app.models.core_business_models import Tab, TabItem, TabPayment, TabStatus
 
@@ -143,7 +144,9 @@ def format_tab_response(tab: Tab, include_items: bool = True) -> Dict:
 
 @router.get("")
 @router.get("/", include_in_schema=False)
+@limiter.limit("60/minute")
 async def list_tabs(
+    request: Request,
     status_filter: Optional[str] = Query(None, alias="status"),
     table_id: Optional[int] = None,
     limit: int = Query(default=50, le=100),
@@ -187,7 +190,9 @@ async def list_tabs(
 
 
 @router.get("/stats")
+@limiter.limit("60/minute")
 async def get_tab_stats(
+    request: Request,
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(get_current_user)
 ):
@@ -247,7 +252,9 @@ async def get_tab_stats(
 
 
 @router.get("/expiring")
+@limiter.limit("60/minute")
 async def get_expiring_tabs(
+    request: Request,
     minutes_before: int = Query(default=30, ge=1, le=1440),
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(get_current_user)
@@ -277,7 +284,9 @@ async def get_expiring_tabs(
 
 @router.post("")
 @router.post("/", include_in_schema=False)
+@limiter.limit("30/minute")
 async def open_tab(
+    request: Request,
     data: TabOpenRequest,
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(get_current_user)
@@ -316,7 +325,9 @@ async def open_tab(
 
 
 @router.get("/{tab_id}")
+@limiter.limit("60/minute")
 async def get_tab(
+    request: Request,
     tab_id: int,
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(get_current_user)
@@ -334,7 +345,9 @@ async def get_tab(
 
 
 @router.post("/{tab_id}/items")
+@limiter.limit("30/minute")
 async def add_items_to_tab(
+    request: Request,
     tab_id: int,
     data: TabAddItemsRequest,
     db: Session = Depends(get_db),
@@ -410,7 +423,9 @@ async def add_items_to_tab(
 
 
 @router.delete("/{tab_id}/items/{item_id}")
+@limiter.limit("30/minute")
 async def void_item_from_tab(
+    request: Request,
     tab_id: int,
     item_id: int,
     data: TabVoidItemRequest,
@@ -464,7 +479,9 @@ async def void_item_from_tab(
 
 
 @router.post("/{tab_id}/payments")
+@limiter.limit("30/minute")
 async def add_payment_to_tab(
+    request: Request,
     tab_id: int,
     data: TabPaymentRequest,
     db: Session = Depends(get_db),
@@ -509,7 +526,9 @@ async def add_payment_to_tab(
 
 
 @router.post("/{tab_id}/close")
+@limiter.limit("30/minute")
 async def close_tab(
+    request: Request,
     tab_id: int,
     data: TabCloseRequest,
     db: Session = Depends(get_db),
@@ -565,7 +584,9 @@ async def close_tab(
 
 
 @router.post("/{tab_id}/transfer")
+@limiter.limit("30/minute")
 async def transfer_tab(
+    request: Request,
     tab_id: int,
     data: TabTransferRequest,
     db: Session = Depends(get_db),
@@ -601,7 +622,9 @@ async def transfer_tab(
 
 
 @router.post("/{tab_id}/void")
+@limiter.limit("30/minute")
 async def void_tab(
+    request: Request,
     tab_id: int,
     reason: str = Query(..., min_length=1),
     db: Session = Depends(get_db),

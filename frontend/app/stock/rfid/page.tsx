@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { API_URL, getAuthHeaders } from '@/lib/api';
 
+import { toast } from '@/lib/toast';
 interface RFIDTag {
   id: number;
   tag_id: string;
@@ -147,11 +148,11 @@ export default function RFIDPage() {
 
       const data = await res.json();
       if (res.ok) {
-        alert(`Scan recorded: ${data.tag_name || data.tag_id}`);
+        toast.success(`Scan recorded: ${data.tag_name || data.tag_id}`);
         loadTags();
         setScanForm({ ...scanForm, tag_id: "" });
       } else {
-        alert(`Scan failed: ${data.message || data.detail}`);
+        toast.error(`Scan failed: ${data.message || data.detail}`);
       }
     } catch (err) {
       console.error("Failed to scan:", err);

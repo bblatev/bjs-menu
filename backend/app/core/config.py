@@ -32,6 +32,9 @@ class Settings(BaseSettings):
     # Database - defaults to relative path for Docker, override via env for local dev
     database_url: str = "sqlite:///./data/bjsbar.db"
 
+    # Redis - optional, used for caching and session storage
+    redis_url: Optional[str] = None
+
     # Security
     secret_key: str = "change-me-in-production"
     algorithm: str = "HS256"

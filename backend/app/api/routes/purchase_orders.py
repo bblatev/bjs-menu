@@ -3,7 +3,8 @@
 from datetime import datetime, timezone
 from decimal import Decimal
 from typing import List, Optional
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Query, Request
+from app.core.rate_limit import limiter
 from pydantic import BaseModel, model_validator
 
 from app.db.session import DbSession
@@ -120,7 +121,9 @@ def _po_to_response(po: PurchaseOrderModel, db) -> dict:
 # --- API Endpoints ---
 
 @router.get("/")
+@limiter.limit("60/minute")
 def get_purchase_orders(
+    request: Request,
     db: DbSession,
     status: Optional[str] = None,
     supplier_id: Optional[int] = None,
@@ -141,22 +144,23 @@ def get_purchase_orders(
 
 
 @router.post("/")
-def create_purchase_order(db: DbSession, request: CreatePORequest):
+@limiter.limit("30/minute")
+def create_purchase_order(request: Request, db: DbSession = None, body: CreatePORequest = None):
     """Create a new purchase order."""
-    supplier = db.query(Supplier).filter(Supplier.id == request.supplier_id).first()
+    supplier = db.query(Supplier).filter(Supplier.id == body.supplier_id).first()
     if not supplier:
         raise HTTPException(status_code=404, detail="Supplier not found")
 
     po = PurchaseOrderModel(
-        supplier_id=request.supplier_id,
-        location_id=request.location_id,
+        supplier_id=body.supplier_id,
+        location_id=body.location_id,
         status=POStatus.DRAFT,
-        notes=request.notes,
+        notes=body.notes,
     )
     db.add(po)
     db.flush()
 
-    for item in request.items:
+    for item in body.items:
         line = PurchaseOrderLine(
             po_id=po.id,
             product_id=item["product_id"],
@@ -171,7 +175,8 @@ def create_purchase_order(db: DbSession, request: CreatePORequest):
 
 
 @router.get("/approvals/")
-def get_approvals(db: DbSession):
+@limiter.limit("60/minute")
+def get_approvals(request: Request, db: DbSession):
     """Get purchase orders pending approval (status=draft or sent)."""
     pending = db.query(PurchaseOrderModel).filter(
         PurchaseOrderModel.status.in_([POStatus.DRAFT, POStatus.SENT])
@@ -199,7 +204,8 @@ def get_approvals(db: DbSession):
 
 
 @router.get("/grns/")
-def get_grns(db: DbSession):
+@limiter.limit("60/minute")
+def get_grns(request: Request, db: DbSession):
     """Get goods received notes (received purchase orders)."""
     received = db.query(PurchaseOrderModel).filter(
         PurchaseOrderModel.status == POStatus.RECEIVED
@@ -241,7 +247,8 @@ def get_grns(db: DbSession):
 
 
 @router.get("/invoices/")
-def get_invoices(db: DbSession):
+@limiter.limit("60/minute")
+def get_invoices(request: Request, db: DbSession):
     """Get invoices linked to purchase orders (received POs as invoiceable items)."""
     received = db.query(PurchaseOrderModel).filter(
         PurchaseOrderModel.status == POStatus.RECEIVED
@@ -293,7 +300,8 @@ def get_invoices(db: DbSession):
 
 
 @router.get("/three-way-matches/")
-def get_three_way_matches(db: DbSession):
+@limiter.limit("60/minute")
+def get_three_way_matches(request: Request, db: DbSession):
     """Get three-way match data (PO vs received vs invoiced)."""
     pos = db.query(PurchaseOrderModel).order_by(PurchaseOrderModel.created_at.desc()).limit(50).all()
 
@@ -339,7 +347,8 @@ def get_three_way_matches(db: DbSession):
 
 
 @router.post("/{po_id}/approve")
-def approve_purchase_order(db: DbSession, po_id: int):
+@limiter.limit("30/minute")
+def approve_purchase_order(request: Request, db: DbSession, po_id: int):
     """Approve a purchase order (transition from DRAFT to SENT)."""
     po = db.query(PurchaseOrderModel).filter(PurchaseOrderModel.id == po_id).first()
     if not po:
@@ -353,7 +362,8 @@ def approve_purchase_order(db: DbSession, po_id: int):
 
 
 @router.post("/{po_id}/reject")
-def reject_purchase_order(db: DbSession, po_id: int):
+@limiter.limit("30/minute")
+def reject_purchase_order(request: Request, db: DbSession, po_id: int):
     """Reject/cancel a purchase order."""
     po = db.query(PurchaseOrderModel).filter(PurchaseOrderModel.id == po_id).first()
     if not po:
@@ -366,7 +376,8 @@ def reject_purchase_order(db: DbSession, po_id: int):
 
 
 @router.post("/approvals/{approval_id}/approve")
-def approve_approval(db: DbSession, approval_id: int):
+@limiter.limit("30/minute")
+def approve_approval(request: Request, db: DbSession, approval_id: int):
     """Approve an approval request (same as approving the PO)."""
     po = db.query(PurchaseOrderModel).filter(PurchaseOrderModel.id == approval_id).first()
     if not po:
@@ -378,7 +389,8 @@ def approve_approval(db: DbSession, approval_id: int):
 
 
 @router.post("/approvals/{approval_id}/reject")
-def reject_approval(db: DbSession, approval_id: int):
+@limiter.limit("30/minute")
+def reject_approval(request: Request, db: DbSession, approval_id: int):
     """Reject an approval request."""
     po = db.query(PurchaseOrderModel).filter(PurchaseOrderModel.id == approval_id).first()
     if not po:
@@ -389,10 +401,12 @@ def reject_approval(db: DbSession, approval_id: int):
 
 
 @router.post("/{po_id}/receive", response_model=ReceiveGoodsResponse)
+@limiter.limit("30/minute")
 def receive_purchase_order(
-    db: DbSession,
-    po_id: int,
-    request: ReceiveGoodsRequest = None,
+    request: Request,
+    db: DbSession = None,
+    po_id: int = None,
+    body: ReceiveGoodsRequest = None,
 ):
     """
     Receive goods from a purchase order.
@@ -417,8 +431,8 @@ def receive_purchase_order(
 
     for line in lines:
         qty_to_receive = line.qty
-        if request and request.received_quantities:
-            qty_to_receive = Decimal(str(request.received_quantities.get(str(line.id), line.qty)))
+        if body and body.received_quantities:
+            qty_to_receive = Decimal(str(body.received_quantities.get(str(line.id), line.qty)))
         if qty_to_receive <= 0:
             continue
 
@@ -458,8 +472,8 @@ def receive_purchase_order(
 
     po.status = POStatus.RECEIVED
     po.received_at = datetime.now(timezone.utc)
-    if request and request.notes:
-        po.notes = (po.notes or "") + f"\nReceived: {request.notes}"
+    if body and body.notes:
+        po.notes = (po.notes or "") + f"\nReceived: {body.notes}"
     db.commit()
 
     return ReceiveGoodsResponse(
@@ -472,7 +486,8 @@ def receive_purchase_order(
 
 
 @router.put("/{po_id}")
-def update_purchase_order(db: DbSession, po_id: int, data: dict = None):
+@limiter.limit("30/minute")
+def update_purchase_order(request: Request, db: DbSession = None, po_id: int = None, data: dict = None):
     """Update a purchase order."""
     from fastapi import Body
     po = db.query(PurchaseOrderModel).filter(PurchaseOrderModel.id == po_id).first()
@@ -493,7 +508,8 @@ def update_purchase_order(db: DbSession, po_id: int, data: dict = None):
 
 
 @router.get("/{po_id}")
-def get_purchase_order(db: DbSession, po_id: int):
+@limiter.limit("60/minute")
+def get_purchase_order(request: Request, db: DbSession, po_id: int):
     """Get a specific purchase order."""
     po = db.query(PurchaseOrderModel).filter(PurchaseOrderModel.id == po_id).first()
     if not po:

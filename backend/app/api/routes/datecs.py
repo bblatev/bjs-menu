@@ -4,13 +4,14 @@ Supports all Datecs printer models with auto-detection
 
 Models: FP-650, FP-700, FP-800, FP-2000, BC-50MX, DP-series, WP-50, FMP-10
 """
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy.orm import Session
 from typing import List, Optional
 from pydantic import BaseModel, Field
 from decimal import Decimal
 from enum import Enum
 
+from app.core.rate_limit import limiter
 from app.db.session import get_db
 from app.core.rbac import get_current_user
 from app.models import Order, StaffUser
@@ -110,7 +111,9 @@ class PrinterConfigRequest(BaseModel):
 # =============================================================================
 
 @router.get("/status")
+@limiter.limit("60/minute")
 async def get_printer_status(
+    request: Request,
     current_user: StaffUser = Depends(get_current_user)
 ):
     """
@@ -132,7 +135,9 @@ async def get_printer_status(
 
 
 @router.get("/models")
+@limiter.limit("60/minute")
 async def list_supported_models(
+    request: Request,
     current_user: StaffUser = Depends(get_current_user)
 ):
     """List all supported Datecs printer models"""
@@ -165,7 +170,9 @@ def _get_vat_description(vat: VATGroup) -> str:
 
 
 @router.post("/configure")
+@limiter.limit("30/minute")
 async def configure_printer(
+    request: Request,
     config: PrinterConfigRequest,
     current_user: StaffUser = Depends(require_manager)
 ):
@@ -209,8 +216,10 @@ async def configure_printer(
 # =============================================================================
 
 @router.post("/receipt")
+@limiter.limit("30/minute")
 async def print_fiscal_receipt(
-    request: PrintReceiptRequest,
+    request: Request,
+    receipt_request: PrintReceiptRequest,
     current_user: StaffUser = Depends(get_current_user)
 ):
     """
@@ -227,14 +236,14 @@ async def print_fiscal_receipt(
             "quantity": item.quantity,
             "vat_group": item.vat_group
         }
-        for item in request.items
+        for item in receipt_request.items
     ]
 
     result = await service.print_receipt(
         items=items,
-        payment_type=request.payment.type,
-        payment_amount=request.payment.amount,
-        operator=request.operator
+        payment_type=receipt_request.payment.type,
+        payment_amount=receipt_request.payment.amount,
+        operator=receipt_request.operator
     )
 
     if not result.get("success"):
@@ -247,7 +256,9 @@ async def print_fiscal_receipt(
 
 
 @router.post("/receipt/order/{order_id}")
+@limiter.limit("30/minute")
 async def print_order_receipt(
+    request: Request,
     order_id: int,
     payment_type: str = Query(default="cash", pattern="^(cash|card)$"),
     db: Session = Depends(get_db),
@@ -298,7 +309,9 @@ async def print_order_receipt(
 
 
 @router.post("/receipt/void")
+@limiter.limit("30/minute")
 async def void_current_receipt(
+    request: Request,
     current_user: StaffUser = Depends(get_current_user)
 ):
     """Void/cancel the current open receipt"""
@@ -315,7 +328,9 @@ async def void_current_receipt(
 
 
 @router.post("/receipt/duplicate")
+@limiter.limit("30/minute")
 async def print_duplicate_receipt(
+    request: Request,
     current_user: StaffUser = Depends(get_current_user)
 ):
     """Print duplicate of last receipt"""
@@ -336,7 +351,9 @@ async def print_duplicate_receipt(
 # =============================================================================
 
 @router.post("/report/x")
+@limiter.limit("30/minute")
 async def print_x_report(
+    request: Request,
     current_user: StaffUser = Depends(require_manager)
 ):
     """
@@ -357,7 +374,9 @@ async def print_x_report(
 
 
 @router.post("/report/z")
+@limiter.limit("30/minute")
 async def print_z_report(
+    request: Request,
     current_user: StaffUser = Depends(require_manager)
 ):
     """
@@ -383,8 +402,10 @@ async def print_z_report(
 # =============================================================================
 
 @router.post("/cash/in")
+@limiter.limit("30/minute")
 async def cash_in(
-    request: CashOperationRequest,
+    request: Request,
+    cash_request: CashOperationRequest,
     current_user: StaffUser = Depends(require_manager)
 ):
     """
@@ -393,7 +414,7 @@ async def cash_in(
     Records cash deposit into the register.
     """
     service = get_datecs_service()
-    result = await service.cash_in(Decimal(str(request.amount)))
+    result = await service.cash_in(Decimal(str(cash_request.amount)))
 
     if not result.get("success") and result.get("error"):
         raise HTTPException(
@@ -401,12 +422,14 @@ async def cash_in(
             detail=result.get("error", "Cash in failed")
         )
 
-    return {"success": True, "amount": request.amount, "operation": "cash_in"}
+    return {"success": True, "amount": cash_request.amount, "operation": "cash_in"}
 
 
 @router.post("/cash/out")
+@limiter.limit("30/minute")
 async def cash_out(
-    request: CashOperationRequest,
+    request: Request,
+    cash_request: CashOperationRequest,
     current_user: StaffUser = Depends(require_manager)
 ):
     """
@@ -415,7 +438,7 @@ async def cash_out(
     Records cash withdrawal from the register.
     """
     service = get_datecs_service()
-    result = await service.cash_out(Decimal(str(request.amount)))
+    result = await service.cash_out(Decimal(str(cash_request.amount)))
 
     if not result.get("success") and result.get("error"):
         raise HTTPException(
@@ -423,7 +446,7 @@ async def cash_out(
             detail=result.get("error", "Cash out failed")
         )
 
-    return {"success": True, "amount": request.amount, "operation": "cash_out"}
+    return {"success": True, "amount": cash_request.amount, "operation": "cash_out"}
 
 
 # =============================================================================
@@ -431,8 +454,10 @@ async def cash_out(
 # =============================================================================
 
 @router.post("/payment/card")
+@limiter.limit("30/minute")
 async def process_card_payment(
-    request: CardPaymentRequest,
+    request: Request,
+    card_request: CardPaymentRequest,
     current_user: StaffUser = Depends(get_current_user)
 ):
     """
@@ -443,8 +468,8 @@ async def process_card_payment(
     """
     service = get_datecs_service()
     result = await service.process_card_payment(
-        amount=Decimal(str(request.amount)),
-        reference=request.reference or ""
+        amount=Decimal(str(card_request.amount)),
+        reference=card_request.reference or ""
     )
 
     if not result.get("success"):
@@ -457,7 +482,9 @@ async def process_card_payment(
 
 
 @router.post("/payment/card/order/{order_id}")
+@limiter.limit("30/minute")
 async def process_order_card_payment(
+    request: Request,
     order_id: int,
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(get_current_user)
@@ -529,8 +556,10 @@ async def process_order_card_payment(
 # =============================================================================
 
 @router.post("/kitchen-ticket")
+@limiter.limit("30/minute")
 async def print_kitchen_ticket(
-    request: PrintKitchenTicketRequest,
+    request: Request,
+    ticket_request: PrintKitchenTicketRequest,
     current_user: StaffUser = Depends(get_current_user)
 ):
     """
@@ -546,14 +575,14 @@ async def print_kitchen_ticket(
             "quantity": item.quantity,
             "notes": item.notes
         }
-        for item in request.items
+        for item in ticket_request.items
     ]
 
     result = await service.print_kitchen_ticket(
-        order_number=request.order_number,
-        table=request.table,
+        order_number=ticket_request.order_number,
+        table=ticket_request.table,
         items=items,
-        notes=request.notes or ""
+        notes=ticket_request.notes or ""
     )
 
     if not result.get("success"):
@@ -566,7 +595,9 @@ async def print_kitchen_ticket(
 
 
 @router.post("/kitchen-ticket/order/{order_id}")
+@limiter.limit("30/minute")
 async def print_order_kitchen_ticket(
+    request: Request,
     order_id: int,
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(get_current_user)
@@ -599,7 +630,9 @@ async def print_order_kitchen_ticket(
 
 
 @router.post("/non-fiscal")
+@limiter.limit("30/minute")
 async def print_non_fiscal_text(
+    request: Request,
     lines: List[str],
     title: str = "",
     current_user: StaffUser = Depends(get_current_user)
@@ -626,7 +659,9 @@ async def print_non_fiscal_text(
 # =============================================================================
 
 @router.get("/diagnostics")
+@limiter.limit("60/minute")
 async def get_diagnostics(
+    request: Request,
     current_user: StaffUser = Depends(require_manager)
 ):
     """

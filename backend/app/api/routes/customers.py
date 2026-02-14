@@ -2,9 +2,10 @@
 
 from typing import List, Optional
 from datetime import datetime, date, timedelta, timezone
-from fastapi import APIRouter, HTTPException, Body, Query
+from fastapi import APIRouter, HTTPException, Body, Query, Request
 from pydantic import BaseModel, field_validator
 
+from app.core.rate_limit import limiter
 from app.core.sanitize import sanitize_text
 from sqlalchemy import func, or_, String
 
@@ -99,7 +100,9 @@ def _customer_to_dict(customer: Customer) -> dict:
 # ============== Customer CRUD ==============
 
 @router.get("/customers/")
+@limiter.limit("60/minute")
 def list_customers(
+    request: Request,
     db: DbSession,
     search: Optional[str] = None,
     tag: Optional[str] = None,
@@ -143,7 +146,8 @@ def list_customers(
 
 
 @router.get("/customers/{customer_id}")
-def get_customer(db: DbSession, customer_id: int):
+@limiter.limit("60/minute")
+def get_customer(request: Request, db: DbSession, customer_id: int):
     """Get a specific customer."""
     customer = db.query(Customer).filter(Customer.id == customer_id, Customer.not_deleted()).first()
     if not customer:
@@ -152,7 +156,8 @@ def get_customer(db: DbSession, customer_id: int):
 
 
 @router.post("/customers/")
-def create_customer(db: DbSession, data: CustomerCreate):
+@limiter.limit("30/minute")
+def create_customer(request: Request, db: DbSession, data: CustomerCreate):
     """Create a new customer."""
     # Check if phone already exists
     existing = db.query(Customer).filter(Customer.phone == data.phone, Customer.not_deleted()).first()
@@ -193,7 +198,8 @@ def create_customer(db: DbSession, data: CustomerCreate):
 
 
 @router.put("/customers/{customer_id}")
-def update_customer(db: DbSession, customer_id: int, data: CustomerUpdate):
+@limiter.limit("30/minute")
+def update_customer(request: Request, db: DbSession, customer_id: int, data: CustomerUpdate):
     """Update a customer."""
     customer = db.query(Customer).filter(Customer.id == customer_id, Customer.not_deleted()).first()
     if not customer:
@@ -239,7 +245,8 @@ def update_customer(db: DbSession, customer_id: int, data: CustomerUpdate):
 
 
 @router.delete("/customers/{customer_id}")
-def delete_customer(db: DbSession, customer_id: int):
+@limiter.limit("30/minute")
+def delete_customer(request: Request, db: DbSession, customer_id: int):
     """Soft-delete a customer."""
     customer = db.query(Customer).filter(Customer.id == customer_id, Customer.not_deleted()).first()
     if not customer:
@@ -253,7 +260,8 @@ def delete_customer(db: DbSession, customer_id: int):
 # ============== Customer Orders ==============
 
 @router.get("/customers/{customer_id}/orders")
-def get_customer_orders(db: DbSession, customer_id: int, limit: int = Query(20, le=100)):
+@limiter.limit("60/minute")
+def get_customer_orders(request: Request, db: DbSession, customer_id: int, limit: int = Query(20, le=100)):
     """Get order history for a customer from guest orders."""
     from app.models.restaurant import GuestOrder
     customer = db.query(Customer).filter(Customer.id == customer_id).first()
@@ -292,7 +300,9 @@ def get_customer_orders(db: DbSession, customer_id: int, limit: int = Query(20, 
 # ============== CRM Features ==============
 
 @router.get("/crm/customers/upcoming-events")
+@limiter.limit("60/minute")
 def get_upcoming_events(
+    request: Request,
     db: DbSession,
     days: int = Query(30, le=90),
 ):
@@ -343,7 +353,8 @@ def get_upcoming_events(
 
 
 @router.get("/crm/customers/segments")
-def get_customer_segments(db: DbSession):
+@limiter.limit("60/minute")
+def get_customer_segments(request: Request, db: DbSession):
     """Get customer segment statistics."""
 
     segments = ["Champions", "Loyal", "Potential", "New", "At Risk", "Lost"]
@@ -365,7 +376,8 @@ def get_customer_segments(db: DbSession):
 
 
 @router.get("/crm/customers/stats")
-def get_customer_stats(db: DbSession):
+@limiter.limit("60/minute")
+def get_customer_stats(request: Request, db: DbSession):
     """Get overall customer statistics."""
 
     total = db.query(Customer).filter(Customer.not_deleted()).count()

@@ -6,6 +6,7 @@ import Link from 'next/link';
 
 import { API_URL, getAuthHeaders } from '@/lib/api';
 
+import { toast } from '@/lib/toast';
 interface WaitlistEntry {
   id: number;
   guest_name: string;
@@ -126,14 +127,14 @@ export default function WaitlistPage() {
           vip: false,
         });
         loadData();
-        alert('Guest added to waitlist successfully!');
+        toast.success('Guest added to waitlist successfully!');
       } else {
         const errorData = await response.json();
-        alert(`Error: ${errorData.detail || 'Failed to add to waitlist'}`);
+        toast.error(`Error: ${errorData.detail || 'Failed to add to waitlist'}`);
       }
     } catch (err) {
       console.error('Error adding to waitlist:', err);
-      alert('Failed to add guest to waitlist');
+      toast.error('Failed to add guest to waitlist');
     }
   };
 
@@ -153,11 +154,11 @@ export default function WaitlistPage() {
           audioRef.current.play().catch(() => {});
         }
         loadData();
-        alert('SMS notification sent!');
+        toast.error('SMS notification sent!');
       }
     } catch (err) {
       console.error('Error sending notification:', err);
-      alert('Failed to send notification');
+      toast.error('Failed to send notification');
     }
   };
 
@@ -176,11 +177,11 @@ export default function WaitlistPage() {
       if (response.ok) {
         loadData();
         const entry = entries.find((e) => e.id === entryId);
-        alert(`Guest ${entry?.guest_name} seated at ${tableId}`);
+        toast.success(`Guest ${entry?.guest_name} seated at ${tableId}`);
       }
     } catch (err) {
       console.error('Error seating guest:', err);
-      alert('Failed to seat guest');
+      toast.error('Failed to seat guest');
     }
   };
 

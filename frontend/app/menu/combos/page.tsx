@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
 import { API_URL } from '@/lib/api';
 
+import { toast } from '@/lib/toast';
 interface MultiLang {
   bg: string;
   en: string;
@@ -176,11 +177,11 @@ export default function MenuCombosPage() {
         resetForm();
       } else {
         const error = await response.json();
-        alert(error.detail || 'Error saving combo');
+        toast.error(error.detail || 'Error saving combo');
       }
     } catch (error) {
       console.error('Error saving combo:', error);
-      alert('Error saving combo');
+      toast.error('Error saving combo');
     }
   };
 
@@ -199,11 +200,11 @@ export default function MenuCombosPage() {
       if (response.ok) {
         loadData();
       } else {
-        alert('Error deleting combo');
+        toast.error('Error deleting combo');
       }
     } catch (error) {
       console.error('Error deleting combo:', error);
-      alert('Error deleting combo');
+      toast.error('Error deleting combo');
     }
   };
 
@@ -317,7 +318,7 @@ export default function MenuCombosPage() {
       if (response.ok) {
         loadData();
       } else {
-        alert('Error toggling combo availability');
+        toast.error('Error toggling combo availability');
       }
     } catch (error) {
       console.error('Error toggling availability:', error);
@@ -337,7 +338,7 @@ export default function MenuCombosPage() {
       if (response.ok) {
         loadData();
       } else {
-        alert('Error toggling combo featured status');
+        toast.error('Error toggling combo featured status');
       }
     } catch (error) {
       console.error('Error toggling featured:', error);

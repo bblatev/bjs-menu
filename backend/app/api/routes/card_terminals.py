@@ -4,9 +4,10 @@ Hardware card terminal integration via Stripe Terminal.
 """
 
 from typing import Optional, List
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel
 
+from app.core.rate_limit import limiter
 from app.services.card_terminal_service import (
     get_card_terminal_service,
     TerminalType,
@@ -101,7 +102,8 @@ class PaymentResponse(BaseModel):
 # ============================================================================
 
 @router.post("/terminals", response_model=TerminalResponse)
-async def register_terminal(request: RegisterTerminalRequest):
+@limiter.limit("30/minute")
+async def register_terminal(request: Request, data: RegisterTerminalRequest):
     """
     Register a new card terminal.
 
@@ -111,23 +113,25 @@ async def register_terminal(request: RegisterTerminalRequest):
     service = get_card_terminal_service()
 
     try:
-        terminal_type = TerminalType(request.terminal_type)
+        terminal_type = TerminalType(data.terminal_type)
     except ValueError:
-        raise HTTPException(status_code=400, detail=f"Invalid terminal type: {request.terminal_type}")
+        raise HTTPException(status_code=400, detail=f"Invalid terminal type: {data.terminal_type}")
 
     terminal = service.register_terminal(
-        name=request.name,
+        name=data.name,
         terminal_type=terminal_type,
-        registration_code=request.registration_code,
-        venue_id=request.venue_id,
-        location_id=request.location_id,
+        registration_code=data.registration_code,
+        venue_id=data.venue_id,
+        location_id=data.location_id,
     )
 
     return _terminal_to_response(terminal)
 
 
 @router.get("/terminals", response_model=List[TerminalResponse])
+@limiter.limit("60/minute")
 async def list_terminals(
+    request: Request,
     venue_id: Optional[int] = None,
     status: Optional[str] = None,
 ):
@@ -147,7 +151,8 @@ async def list_terminals(
 
 
 @router.get("/terminals/{terminal_id}", response_model=TerminalResponse)
-async def get_terminal(terminal_id: str):
+@limiter.limit("60/minute")
+async def get_terminal(request: Request, terminal_id: str):
     """Get a specific terminal."""
     service = get_card_terminal_service()
 
@@ -160,15 +165,16 @@ async def get_terminal(terminal_id: str):
 
 
 @router.put("/terminals/{terminal_id}", response_model=TerminalResponse)
-async def update_terminal(terminal_id: str, request: UpdateTerminalRequest):
+@limiter.limit("30/minute")
+async def update_terminal(request: Request, terminal_id: str, data: UpdateTerminalRequest):
     """Update terminal information."""
     service = get_card_terminal_service()
 
     updates = {}
-    if request.name is not None:
-        updates["name"] = request.name
-    if request.location_id is not None:
-        updates["location_id"] = request.location_id
+    if data.name is not None:
+        updates["name"] = data.name
+    if data.location_id is not None:
+        updates["location_id"] = data.location_id
 
     terminal = service.update_terminal(terminal_id, **updates)
 
@@ -179,7 +185,8 @@ async def update_terminal(terminal_id: str, request: UpdateTerminalRequest):
 
 
 @router.delete("/terminals/{terminal_id}")
-async def delete_terminal(terminal_id: str):
+@limiter.limit("30/minute")
+async def delete_terminal(request: Request, terminal_id: str):
     """Delete a terminal registration."""
     service = get_card_terminal_service()
 
@@ -190,7 +197,9 @@ async def delete_terminal(terminal_id: str):
 
 
 @router.post("/terminals/{terminal_id}/status")
+@limiter.limit("30/minute")
 async def update_terminal_status(
+    request: Request,
     terminal_id: str,
     status: str,
     ip_address: Optional[str] = None,
@@ -220,7 +229,8 @@ async def update_terminal_status(
 # ============================================================================
 
 @router.post("/connection-token")
-async def create_connection_token(location_id: Optional[str] = None):
+@limiter.limit("30/minute")
+async def create_connection_token(request: Request, location_id: Optional[str] = None):
     """
     Create a connection token for the terminal SDK.
 
@@ -242,7 +252,8 @@ async def create_connection_token(location_id: Optional[str] = None):
 # ============================================================================
 
 @router.post("/payments")
-async def create_payment(request: CreatePaymentRequest):
+@limiter.limit("30/minute")
+async def create_payment(request: Request, data: CreatePaymentRequest):
     """
     Create a payment intent for terminal payment.
 
@@ -251,16 +262,16 @@ async def create_payment(request: CreatePaymentRequest):
     """
     service = get_card_terminal_service()
 
-    if request.amount <= 0:
+    if data.amount <= 0:
         raise HTTPException(status_code=400, detail="Amount must be positive")
 
     result = service.create_payment_intent(
-        terminal_id=request.terminal_id,
-        order_id=request.order_id,
-        amount=request.amount,
-        currency=request.currency,
-        description=request.description,
-        metadata=request.metadata,
+        terminal_id=data.terminal_id,
+        order_id=data.order_id,
+        amount=data.amount,
+        currency=data.currency,
+        description=data.description,
+        metadata=data.metadata,
     )
 
     if "error" in result:
@@ -270,7 +281,8 @@ async def create_payment(request: CreatePaymentRequest):
 
 
 @router.post("/payments/process", response_model=PaymentResponse)
-async def process_payment(request: ProcessPaymentRequest):
+@limiter.limit("30/minute")
+async def process_payment(request: Request, data: ProcessPaymentRequest):
     """
     Process a terminal payment after card read.
 
@@ -279,17 +291,17 @@ async def process_payment(request: ProcessPaymentRequest):
     service = get_card_terminal_service()
 
     try:
-        entry_mode = PaymentEntryMode(request.entry_mode)
+        entry_mode = PaymentEntryMode(data.entry_mode)
     except ValueError:
-        raise HTTPException(status_code=400, detail=f"Invalid entry mode: {request.entry_mode}")
+        raise HTTPException(status_code=400, detail=f"Invalid entry mode: {data.entry_mode}")
 
     payment = service.process_payment(
-        payment_id=request.payment_id,
+        payment_id=data.payment_id,
         entry_mode=entry_mode,
-        card_brand=request.card_brand,
-        card_last4=request.card_last4,
-        cardholder_name=request.cardholder_name,
-        auth_code=request.auth_code,
+        card_brand=data.card_brand,
+        card_last4=data.card_last4,
+        cardholder_name=data.cardholder_name,
+        auth_code=data.auth_code,
     )
 
     if not payment:
@@ -299,7 +311,8 @@ async def process_payment(request: ProcessPaymentRequest):
 
 
 @router.post("/payments/{payment_id}/cancel")
-async def cancel_payment(payment_id: str, reason: str = ""):
+@limiter.limit("30/minute")
+async def cancel_payment(request: Request, payment_id: str, reason: str = ""):
     """Cancel a pending terminal payment."""
     service = get_card_terminal_service()
 
@@ -316,7 +329,8 @@ async def cancel_payment(payment_id: str, reason: str = ""):
 
 
 @router.get("/payments/{payment_id}", response_model=PaymentResponse)
-async def get_payment(payment_id: str):
+@limiter.limit("60/minute")
+async def get_payment(request: Request, payment_id: str):
     """Get a terminal payment by ID."""
     service = get_card_terminal_service()
 
@@ -329,7 +343,9 @@ async def get_payment(payment_id: str):
 
 
 @router.get("/payments", response_model=List[PaymentResponse])
+@limiter.limit("60/minute")
 async def list_payments(
+    request: Request,
     terminal_id: Optional[str] = None,
     status: Optional[str] = None,
     entry_mode: Optional[str] = None,
@@ -361,7 +377,8 @@ async def list_payments(
 
 
 @router.get("/payments/order/{order_id}", response_model=List[PaymentResponse])
-async def get_payments_by_order(order_id: str):
+@limiter.limit("60/minute")
+async def get_payments_by_order(request: Request, order_id: str):
     """Get terminal payments for an order."""
     service = get_card_terminal_service()
 
@@ -375,11 +392,12 @@ async def get_payments_by_order(order_id: str):
 # ============================================================================
 
 @router.post("/terminals/{terminal_id}/display")
-async def display_message(terminal_id: str, request: DisplayMessageRequest):
+@limiter.limit("30/minute")
+async def display_message(request: Request, terminal_id: str, data: DisplayMessageRequest):
     """Display a message on the terminal screen."""
     service = get_card_terminal_service()
 
-    success = service.display_message(terminal_id, request.message)
+    success = service.display_message(terminal_id, data.message)
 
     if not success:
         raise HTTPException(status_code=400, detail="Terminal not available")
@@ -388,7 +406,8 @@ async def display_message(terminal_id: str, request: DisplayMessageRequest):
 
 
 @router.post("/terminals/{terminal_id}/clear")
-async def clear_display(terminal_id: str):
+@limiter.limit("30/minute")
+async def clear_display(request: Request, terminal_id: str):
     """Clear the terminal display."""
     service = get_card_terminal_service()
 
@@ -401,15 +420,16 @@ async def clear_display(terminal_id: str):
 
 
 @router.post("/terminals/{terminal_id}/cart")
-async def set_cart_display(terminal_id: str, request: CartDisplayRequest):
+@limiter.limit("30/minute")
+async def set_cart_display(request: Request, terminal_id: str, data: CartDisplayRequest):
     """Set the cart/line items display on the terminal."""
     service = get_card_terminal_service()
 
     success = service.set_reader_display(
         terminal_id,
-        request.items,
-        request.total,
-        request.currency,
+        data.items,
+        data.total,
+        data.currency,
     )
 
     if not success:
@@ -423,7 +443,8 @@ async def set_cart_display(terminal_id: str, request: CartDisplayRequest):
 # ============================================================================
 
 @router.get("/stats")
-async def get_stats():
+@limiter.limit("60/minute")
+async def get_stats(request: Request):
     """Get terminal payment statistics."""
     service = get_card_terminal_service()
 
@@ -435,7 +456,8 @@ async def get_stats():
 # ============================================================================
 
 @router.get("/terminal-types")
-async def get_terminal_types():
+@limiter.limit("60/minute")
+async def get_terminal_types(request: Request):
     """Get supported terminal types."""
     return {
         "types": [
@@ -480,7 +502,8 @@ async def get_terminal_types():
 
 
 @router.get("/entry-modes")
-async def get_entry_modes():
+@limiter.limit("60/minute")
+async def get_entry_modes(request: Request):
     """Get payment entry modes."""
     return {
         "modes": [

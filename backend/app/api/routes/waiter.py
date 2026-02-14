@@ -5,10 +5,11 @@ import logging
 from typing import List, Optional
 from datetime import datetime, timezone
 from decimal import Decimal
-from fastapi import APIRouter, HTTPException, Query, Body, BackgroundTasks
+from fastapi import APIRouter, HTTPException, Query, Body, BackgroundTasks, Request
 from pydantic import BaseModel
 
 from app.db.session import DbSession
+from app.core.rate_limit import limiter
 from app.models.restaurant import Table, MenuItem, Check, CheckItem, CheckPayment, KitchenOrder
 from app.models.hardware import WaiterCall as WaiterCallModel
 from app.services.stock_deduction_service import StockDeductionService
@@ -194,7 +195,8 @@ def recalculate_check(check: Check, db: DbSession):
 # ============== ROUTES ==============
 
 @router.get("/sections")
-def get_sections(db: DbSession):
+@limiter.limit("60/minute")
+def get_sections(request: Request, db: DbSession):
     """Get all floor sections/zones."""
     tables = db.query(Table).all()
     sections = {}
@@ -212,14 +214,16 @@ def get_sections(db: DbSession):
 
 
 @router.get("/floor-plan")
-def get_floor_plan(db: DbSession):
+@limiter.limit("60/minute")
+def get_floor_plan(request: Request, db: DbSession):
     """Get all tables with status."""
     tables = db.query(Table).order_by(Table.number).all()
     return [table_to_response(t, db) for t in tables]
 
 
 @router.get("/menu/quick")
-def get_quick_menu(db: DbSession):
+@limiter.limit("60/minute")
+def get_quick_menu(request: Request, db: DbSession):
     """Get menu items for quick ordering."""
     items = db.query(MenuItem).filter(MenuItem.available == True).all()
     return [
@@ -235,7 +239,8 @@ def get_quick_menu(db: DbSession):
 
 
 @router.get("/tables")
-def get_tables(db: DbSession):
+@limiter.limit("60/minute")
+def get_tables(request: Request, db: DbSession):
     """Get all tables (alias for floor-plan)."""
     tables = db.query(Table).order_by(Table.number).all()
     table_list = [table_to_response(t, db) for t in tables]
@@ -243,7 +248,8 @@ def get_tables(db: DbSession):
 
 
 @router.get("/menu")
-def get_menu(db: DbSession):
+@limiter.limit("60/minute")
+def get_menu(request: Request, db: DbSession):
     """Get menu items (alias for menu/quick)."""
     items = db.query(MenuItem).filter(MenuItem.available == True).all()
     item_list = [
@@ -260,14 +266,16 @@ def get_menu(db: DbSession):
 
 
 @router.get("/checks")
-def get_all_checks(db: DbSession):
+@limiter.limit("60/minute")
+def get_all_checks(request: Request, db: DbSession):
     """Get all active checks."""
     checks = db.query(Check).filter(Check.status == "open").all()
     return {"checks": [check_to_response(c) for c in checks], "total": len(checks)}
 
 
 @router.get("/orders/stats")
-def get_waiter_order_stats(db: DbSession):
+@limiter.limit("60/minute")
+def get_waiter_order_stats(request: Request, db: DbSession):
     """Get order/check statistics."""
     from sqlalchemy import func
 
@@ -292,7 +300,9 @@ def get_waiter_order_stats(db: DbSession):
 
 
 @router.post("/tables/{table_id}/seat")
+@limiter.limit("30/minute")
 def seat_table(
+    request: Request,
     db: DbSession,
     table_id: int,
     guest_count: int = Query(2),
@@ -328,7 +338,8 @@ def seat_table(
 
 
 @router.post("/tables/{table_id}/clear")
-def clear_table(db: DbSession, table_id: int):
+@limiter.limit("30/minute")
+def clear_table(request: Request, db: DbSession, table_id: int):
     """Clear a table after payment."""
     table = db.query(Table).filter(Table.id == table_id).first()
     if not table:
@@ -350,7 +361,8 @@ def clear_table(db: DbSession, table_id: int):
 
 
 @router.get("/checks/{check_id}")
-def get_check(db: DbSession, check_id: int):
+@limiter.limit("60/minute")
+def get_check(request: Request, db: DbSession, check_id: int):
     """Get check details."""
     check = db.query(Check).filter(Check.id == check_id).first()
     if not check:
@@ -360,7 +372,8 @@ def get_check(db: DbSession, check_id: int):
 
 
 @router.get("/orders")
-def list_orders(db: DbSession, status: Optional[str] = None, limit: int = 50):
+@limiter.limit("60/minute")
+def list_orders(request: Request, db: DbSession, status: Optional[str] = None, limit: int = 50):
     """List all orders/checks."""
     query = db.query(Check)
     if status:
@@ -375,7 +388,8 @@ def list_orders(db: DbSession, status: Optional[str] = None, limit: int = 50):
 
 
 @router.post("/orders")
-def create_order(db: DbSession, order: OrderCreate):
+@limiter.limit("30/minute")
+def create_order(request: Request, db: DbSession, order: OrderCreate):
     """Create a new order."""
     table = db.query(Table).filter(Table.id == order.table_id).first()
     if not table:
@@ -467,7 +481,8 @@ def create_order(db: DbSession, order: OrderCreate):
 
 
 @router.post("/orders/{check_id}/fire-course")
-def fire_course(db: DbSession, check_id: int, course: str = "main"):
+@limiter.limit("30/minute")
+def fire_course(request: Request, db: DbSession, check_id: int, course: str = "main"):
     """Fire a course to the kitchen."""
     check = db.query(Check).filter(Check.id == check_id).first()
     if not check:
@@ -486,16 +501,17 @@ def fire_course(db: DbSession, check_id: int, course: str = "main"):
 
 
 @router.post("/checks/{check_id}/discount")
-def apply_discount(db: DbSession, check_id: int, request: DiscountRequest):
+@limiter.limit("30/minute")
+def apply_discount(request: Request, db: DbSession, check_id: int, body: DiscountRequest):
     """Apply discount to check."""
     check = db.query(Check).filter(Check.id == check_id).first()
     if not check:
         raise HTTPException(status_code=404, detail="Check not found")
 
-    if request.discount_type == "percent":
-        check.discount = check.subtotal * Decimal(str(request.discount_value / 100))
+    if body.discount_type == "percent":
+        check.discount = check.subtotal * Decimal(str(body.discount_value / 100))
     else:
-        check.discount = Decimal(str(request.discount_value))
+        check.discount = Decimal(str(body.discount_value))
 
     recalculate_check(check, db)
 
@@ -503,7 +519,8 @@ def apply_discount(db: DbSession, check_id: int, request: DiscountRequest):
 
 
 @router.post("/items/{item_id}/void")
-def void_item(db: DbSession, item_id: int, request: VoidRequest):
+@limiter.limit("30/minute")
+def void_item(request: Request, db: DbSession, item_id: int, body: VoidRequest):
     """Void an item from check and return stock to inventory."""
     item = db.query(CheckItem).filter(CheckItem.id == item_id).first()
     if not item:
@@ -525,7 +542,7 @@ def void_item(db: DbSession, item_id: int, request: VoidRequest):
 
     item.status = "voided"
     item.voided_at = datetime.now(timezone.utc)
-    item.void_reason = request.reason
+    item.void_reason = body.reason
 
     # Recalculate check
     if check:
@@ -539,7 +556,8 @@ def void_item(db: DbSession, item_id: int, request: VoidRequest):
 
 
 @router.post("/checks/{check_id}/split-even")
-def split_check_even(db: DbSession, check_id: int, data: dict = Body(None), num_ways: int = Query(None)):
+@limiter.limit("30/minute")
+def split_check_even(request: Request, db: DbSession, check_id: int, data: dict = Body(None), num_ways: int = Query(None)):
     """Split check evenly. Accepts num_ways from body or query param."""
     ways = num_ways
     if data and "num_ways" in data:
@@ -563,7 +581,8 @@ def split_check_even(db: DbSession, check_id: int, data: dict = Body(None), num_
 
 
 @router.post("/checks/{check_id}/split-by-seat")
-def split_check_by_seat(db: DbSession, check_id: int):
+@limiter.limit("30/minute")
+def split_check_by_seat(request: Request, db: DbSession, check_id: int):
     """Split check by seat."""
     check = db.query(Check).filter(Check.id == check_id).first()
     if not check:
@@ -602,7 +621,8 @@ def split_check_by_seat(db: DbSession, check_id: int):
 
 
 @router.post("/payments")
-def process_payment(db: DbSession, payment: PaymentRequest):
+@limiter.limit("30/minute")
+def process_payment(request: Request, db: DbSession, payment: PaymentRequest):
     """Process a payment."""
     check = db.query(Check).filter(Check.id == payment.check_id).first()
     if not check:
@@ -635,7 +655,8 @@ def process_payment(db: DbSession, payment: PaymentRequest):
 
 
 @router.post("/checks/{check_id}/print")
-def print_check(db: DbSession, check_id: int):
+@limiter.limit("30/minute")
+def print_check(request: Request, db: DbSession, check_id: int):
     """Print check (non-fiscal)."""
     check = db.query(Check).filter(Check.id == check_id).first()
     if not check:
@@ -653,7 +674,8 @@ class WaiterCallCreate(BaseModel):
 
 
 @router.get("/calls")
-def list_waiter_calls(db: DbSession, status: Optional[str] = None):
+@limiter.limit("60/minute")
+def list_waiter_calls(request: Request, db: DbSession, status: Optional[str] = None):
     """List all waiter calls."""
     query = db.query(WaiterCallModel)
     if status:
@@ -677,7 +699,8 @@ def list_waiter_calls(db: DbSession, status: Optional[str] = None):
 
 
 @router.post("/calls")
-def create_waiter_call(db: DbSession, call: WaiterCallCreate, background_tasks: BackgroundTasks):
+@limiter.limit("30/minute")
+def create_waiter_call(request: Request, db: DbSession, call: WaiterCallCreate, background_tasks: BackgroundTasks):
     """Create a new waiter call (e.g., from guest tablet)."""
     # Get table info
     table = db.query(Table).filter(Table.id == call.table_id).first()
@@ -711,7 +734,8 @@ def create_waiter_call(db: DbSession, call: WaiterCallCreate, background_tasks: 
 
 
 @router.post("/calls/{call_id}/acknowledge")
-def acknowledge_call(db: DbSession, call_id: int):
+@limiter.limit("30/minute")
+def acknowledge_call(request: Request, db: DbSession, call_id: int):
     """Acknowledge a waiter call."""
     call = db.query(WaiterCallModel).filter(WaiterCallModel.id == call_id).first()
     if not call:
@@ -730,7 +754,8 @@ def acknowledge_call(db: DbSession, call_id: int):
 
 
 @router.post("/calls/{call_id}/complete")
-def complete_call(db: DbSession, call_id: int):
+@limiter.limit("30/minute")
+def complete_call(request: Request, db: DbSession, call_id: int):
     """Mark a waiter call as completed."""
     call = db.query(WaiterCallModel).filter(WaiterCallModel.id == call_id).first()
     if not call:
@@ -749,7 +774,8 @@ def complete_call(db: DbSession, call_id: int):
 
 
 @router.delete("/calls/{call_id}")
-def dismiss_call(db: DbSession, call_id: int):
+@limiter.limit("30/minute")
+def dismiss_call(request: Request, db: DbSession, call_id: int):
     """Dismiss/delete a waiter call."""
     call = db.query(WaiterCallModel).filter(WaiterCallModel.id == call_id).first()
     if not call:
@@ -769,7 +795,8 @@ class TransferCheckRequest(BaseModel):
 
 
 @router.post("/checks/{check_id}/transfer")
-def transfer_check(db: DbSession, check_id: int, request: TransferCheckRequest):
+@limiter.limit("30/minute")
+def transfer_check(request: Request, db: DbSession, check_id: int, body: TransferCheckRequest):
     """Transfer check or specific items to another table.
 
     If items_to_transfer is None or empty, transfers the entire check.
@@ -784,22 +811,22 @@ def transfer_check(db: DbSession, check_id: int, request: TransferCheckRequest):
         raise HTTPException(status_code=400, detail="Can only transfer open checks")
 
     # Get destination table
-    dest_table = db.query(Table).filter(Table.id == request.to_table_id).first()
+    dest_table = db.query(Table).filter(Table.id == body.to_table_id).first()
     if not dest_table:
         raise HTTPException(status_code=404, detail="Destination table not found")
 
     # Get or create check on destination table
     dest_check = db.query(Check).filter(
-        Check.table_id == request.to_table_id,
+        Check.table_id == body.to_table_id,
         Check.status == "open"
     ).first()
 
-    transfer_all = not request.items_to_transfer
+    transfer_all = not body.items_to_transfer
 
     if transfer_all:
         # Transfer entire check - just update the table_id
         old_table_id = source_check.table_id
-        source_check.table_id = request.to_table_id
+        source_check.table_id = body.to_table_id
 
         # Update source table status
         old_table = db.query(Table).filter(Table.id == old_table_id).first()
@@ -816,14 +843,14 @@ def transfer_check(db: DbSession, check_id: int, request: TransferCheckRequest):
             "message": "Check transferred successfully",
             "check_id": source_check.id,
             "from_table_id": old_table_id,
-            "to_table_id": request.to_table_id,
+            "to_table_id": body.to_table_id,
             "items_transferred": len(source_check.items),
         }
     else:
         # Transfer specific items
         if not dest_check:
             dest_check = Check(
-                table_id=request.to_table_id,
+                table_id=body.to_table_id,
                 status="open",
                 guest_count=1,
                 opened_at=datetime.now(timezone.utc),
@@ -837,7 +864,7 @@ def transfer_check(db: DbSession, check_id: int, request: TransferCheckRequest):
             db.flush()
 
         items_transferred = 0
-        for item_id in request.items_to_transfer:
+        for item_id in body.items_to_transfer:
             item = db.query(CheckItem).filter(
                 CheckItem.id == item_id,
                 CheckItem.check_id == check_id
@@ -868,6 +895,6 @@ def transfer_check(db: DbSession, check_id: int, request: TransferCheckRequest):
             "message": f"Transferred {items_transferred} items",
             "from_check_id": check_id,
             "to_check_id": dest_check.id,
-            "to_table_id": request.to_table_id,
+            "to_table_id": body.to_table_id,
             "items_transferred": items_transferred,
         }

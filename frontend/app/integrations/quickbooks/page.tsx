@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import Link from 'next/link';
 
+import { toast } from '@/lib/toast';
 interface SyncLog {
   id: number;
   sync_type: string;
@@ -98,7 +99,7 @@ export default function QuickBooksIntegrationPage() {
     try {
       // Would call API
       await new Promise(resolve => setTimeout(resolve, 2000));
-      alert(`${syncType} sync completed successfully!`);
+      toast.success(`${syncType} sync completed successfully!`);
       loadIntegrationData();
     } catch (error) {
       console.error('Sync error:', error);
@@ -322,7 +323,7 @@ export default function QuickBooksIntegrationPage() {
               { label: 'Sync Sales', icon: '💰', action: () => handleSync('Sales') },
               { label: 'Sync Purchases', icon: '🛒', action: () => handleSync('Purchases') },
               { label: 'Sync Inventory', icon: '📦', action: () => handleSync('Inventory') },
-              { label: 'Test Connection', icon: '🔌', action: () => alert('Connection test successful!') },
+              { label: 'Test Connection', icon: '🔌', action: () => toast.info('Connection test successful!') },
             ].map((item, index) => (
               <motion.button
                 key={item.label}

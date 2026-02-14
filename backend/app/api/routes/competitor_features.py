@@ -3,7 +3,7 @@ Competitor Features API Endpoints
 Toast, TouchBistro, iiko feature parity
 """
 
-from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File
+from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File, Request
 from sqlalchemy.orm import Session
 from sqlalchemy import func
 from typing import List, Optional
@@ -14,6 +14,7 @@ import uuid
 import logging
 import re
 
+from app.core.rate_limit import limiter
 from app.db.session import get_db
 from app.core.rbac import get_current_user
 from app.models import StaffUser, MenuItem, StockItem, Supplier, PurchaseOrder, PurchaseOrderItem
@@ -294,8 +295,10 @@ class ParLevelConfigResponse(BaseModel):
 # =============================================================================
 
 @router.post("/menu-engineering/report", response_model=MenuEngineeringReportResponse)
+@limiter.limit("30/minute")
 async def generate_menu_engineering_report(
-    request: DateRangeRequest,
+    request: Request,
+    body: DateRangeRequest,
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(require_manager)
 ):
@@ -303,8 +306,8 @@ async def generate_menu_engineering_report(
     service = MenuEngineeringService(db)
     report = service.generate_engineering_report(
         venue_id=current_user.venue_id,
-        period_start=request.period_start,
-        period_end=request.period_end,
+        period_start=body.period_start,
+        period_end=body.period_end,
         generated_by=current_user.id
     )
     if not report:
@@ -313,7 +316,9 @@ async def generate_menu_engineering_report(
 
 
 @router.get("/menu-engineering/reports", response_model=List[MenuEngineeringReportResponse])
+@limiter.limit("60/minute")
 async def list_menu_engineering_reports(
+    request: Request,
     skip: int = 0,
     limit: int = 20,
     db: Session = Depends(get_db),
@@ -327,7 +332,9 @@ async def list_menu_engineering_reports(
 
 
 @router.get("/menu-engineering/item/{menu_item_id}/profitability")
+@limiter.limit("60/minute")
 async def get_item_profitability(
+    request: Request,
     menu_item_id: int,
     period_start: date,
     period_end: date,
@@ -352,7 +359,9 @@ async def get_item_profitability(
 # =============================================================================
 
 @router.get("/86/config")
+@limiter.limit("60/minute")
 async def get_86_config(
+    request: Request,
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(get_current_user)
 ):
@@ -372,7 +381,9 @@ async def get_86_config(
 
 
 @router.put("/86/config")
+@limiter.limit("30/minute")
 async def update_86_config(
+    request: Request,
     config_data: Item86ConfigUpdate,
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(require_manager)
@@ -395,7 +406,9 @@ async def update_86_config(
 
 
 @router.post("/86/check", response_model=List[Item86LogResponse])
+@limiter.limit("30/minute")
 async def check_86_status(
+    request: Request,
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(get_current_user)
 ):
@@ -406,7 +419,9 @@ async def check_86_status(
 
 
 @router.post("/86/item/{menu_item_id}", response_model=Item86LogResponse)
+@limiter.limit("30/minute")
 async def manual_86_item(
+    request: Request,
     menu_item_id: int,
     reason: Optional[str] = None,
     db: Session = Depends(get_db),
@@ -426,7 +441,9 @@ async def manual_86_item(
 
 
 @router.post("/86/item/{menu_item_id}/restore", response_model=Item86LogResponse)
+@limiter.limit("30/minute")
 async def restore_86_item(
+    request: Request,
     menu_item_id: int,
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(get_current_user)
@@ -444,7 +461,9 @@ async def restore_86_item(
 
 
 @router.get("/86/logs", response_model=List[Item86LogResponse])
+@limiter.limit("60/minute")
 async def get_86_logs(
+    request: Request,
     menu_item_id: Optional[int] = None,
     days: int = 7,
     db: Session = Depends(get_db),
@@ -470,7 +489,9 @@ async def get_86_logs(
 # =============================================================================
 
 @router.post("/forecast/generate")
+@limiter.limit("30/minute")
 async def generate_forecasts(
+    request: Request,
     forecast_date: date,
     days_history: int = 30,
     db: Session = Depends(get_db),
@@ -500,7 +521,9 @@ async def generate_forecasts(
 
 
 @router.get("/forecast/items", response_model=List[DemandForecastResponse])
+@limiter.limit("60/minute")
 async def get_item_forecasts(
+    request: Request,
     forecast_date: date,
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(get_current_user)
@@ -514,7 +537,9 @@ async def get_item_forecasts(
 
 
 @router.get("/forecast/ingredients", response_model=List[IngredientForecastResponse])
+@limiter.limit("60/minute")
 async def get_ingredient_forecasts(
+    request: Request,
     forecast_date: date,
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(get_current_user)
@@ -528,7 +553,9 @@ async def get_ingredient_forecasts(
 
 
 @router.get("/forecast/stockouts")
+@limiter.limit("60/minute")
 async def get_predicted_stockouts(
+    request: Request,
     days_ahead: int = 7,
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(get_current_user)
@@ -550,7 +577,9 @@ async def get_predicted_stockouts(
 # =============================================================================
 
 @router.post("/auto-po/rules", status_code=status.HTTP_201_CREATED)
+@limiter.limit("30/minute")
 async def create_auto_po_rule(
+    request: Request,
     rule_data: AutoPORuleCreate,
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(require_manager)
@@ -567,7 +596,9 @@ async def create_auto_po_rule(
 
 
 @router.get("/auto-po/rules")
+@limiter.limit("60/minute")
 async def list_auto_po_rules(
+    request: Request,
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(get_current_user)
 ):
@@ -579,7 +610,9 @@ async def list_auto_po_rules(
 
 
 @router.post("/auto-po/generate", response_model=List[SuggestedPOResponse])
+@limiter.limit("30/minute")
 async def generate_suggested_orders(
+    request: Request,
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(require_manager)
 ):
@@ -590,7 +623,9 @@ async def generate_suggested_orders(
 
 
 @router.get("/auto-po/suggestions", response_model=List[SuggestedPOResponse])
+@limiter.limit("60/minute")
 async def list_suggested_orders(
+    request: Request,
     status_filter: Optional[str] = "pending",
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(get_current_user)
@@ -607,7 +642,9 @@ async def list_suggested_orders(
 
 
 @router.post("/auto-po/suggestions/{suggestion_id}/approve")
+@limiter.limit("30/minute")
 async def approve_suggested_order(
+    request: Request,
     suggestion_id: int,
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(require_manager)
@@ -627,7 +664,9 @@ async def approve_suggested_order(
 # =============================================================================
 
 @router.get("/food-cost/item/{menu_item_id}", response_model=FoodCostResponse)
+@limiter.limit("60/minute")
 async def calculate_item_food_cost(
+    request: Request,
     menu_item_id: int,
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(get_current_user)
@@ -643,7 +682,9 @@ async def calculate_item_food_cost(
 
 
 @router.post("/food-cost/calculate-all")
+@limiter.limit("30/minute")
 async def calculate_all_food_costs(
+    request: Request,
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(require_manager)
 ):
@@ -682,7 +723,9 @@ async def calculate_all_food_costs(
 
 
 @router.get("/food-cost/snapshot")
+@limiter.limit("60/minute")
 async def get_food_cost_snapshot(
+    request: Request,
     snapshot_date: date,
     period_type: str = "daily",
     db: Session = Depends(get_db),
@@ -699,7 +742,9 @@ async def get_food_cost_snapshot(
 
 
 @router.get("/food-cost/trend")
+@limiter.limit("60/minute")
 async def get_food_cost_trend(
+    request: Request,
     days: int = 30,
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(get_current_user)
@@ -721,7 +766,9 @@ async def get_food_cost_trend(
 # =============================================================================
 
 @router.get("/supplier-performance/{supplier_id}", response_model=SupplierPerformanceResponse)
+@limiter.limit("60/minute")
 async def get_supplier_performance(
+    request: Request,
     supplier_id: int,
     period_start: date,
     period_end: date,
@@ -740,7 +787,9 @@ async def get_supplier_performance(
 
 
 @router.get("/supplier-performance/ranking")
+@limiter.limit("60/minute")
 async def get_supplier_ranking(
+    request: Request,
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(get_current_user)
 ):
@@ -765,7 +814,9 @@ async def get_supplier_ranking(
 
 
 @router.post("/supplier-issues", status_code=status.HTTP_201_CREATED)
+@limiter.limit("30/minute")
 async def report_supplier_issue(
+    request: Request,
     issue_data: SupplierIssueCreate,
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(get_current_user)
@@ -781,7 +832,9 @@ async def report_supplier_issue(
 
 
 @router.get("/supplier-issues")
+@limiter.limit("60/minute")
 async def list_supplier_issues(
+    request: Request,
     supplier_id: Optional[int] = None,
     status_filter: Optional[str] = None,
     db: Session = Depends(get_db),
@@ -805,7 +858,9 @@ async def list_supplier_issues(
 # =============================================================================
 
 @router.post("/par-levels/{stock_item_id}/calculate", response_model=ParLevelConfigResponse)
+@limiter.limit("30/minute")
 async def calculate_par_levels(
+    request: Request,
     stock_item_id: int,
     historical_days: int = 30,
     safety_days: int = 2,
@@ -830,7 +885,9 @@ async def calculate_par_levels(
 
 
 @router.get("/par-levels", response_model=List[ParLevelConfigResponse])
+@limiter.limit("60/minute")
 async def list_par_levels(
+    request: Request,
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(get_current_user)
 ):
@@ -842,7 +899,9 @@ async def list_par_levels(
 
 
 @router.get("/par-levels/alerts")
+@limiter.limit("60/minute")
 async def get_par_level_alerts(
+    request: Request,
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(get_current_user)
 ):
@@ -872,7 +931,9 @@ async def get_par_level_alerts(
 # =============================================================================
 
 @router.post("/waste", response_model=WasteLogResponse, status_code=status.HTTP_201_CREATED)
+@limiter.limit("30/minute")
 async def log_waste(
+    request: Request,
     waste_data: WasteLogCreate,
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(get_current_user)
@@ -888,7 +949,9 @@ async def log_waste(
 
 
 @router.get("/waste/logs", response_model=List[WasteLogResponse])
+@limiter.limit("60/minute")
 async def list_waste_logs(
+    request: Request,
     days: int = 7,
     waste_type: Optional[str] = None,
     db: Session = Depends(get_db),
@@ -909,7 +972,9 @@ async def list_waste_logs(
 
 
 @router.get("/waste/analytics", response_model=WasteAnalyticsResponse)
+@limiter.limit("60/minute")
 async def get_waste_analytics(
+    request: Request,
     analytics_date: date,
     period_type: str = "daily",
     db: Session = Depends(get_db),
@@ -926,7 +991,9 @@ async def get_waste_analytics(
 
 
 @router.get("/waste/summary")
+@limiter.limit("60/minute")
 async def get_waste_summary(
+    request: Request,
     days: int = 30,
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(get_current_user)
@@ -964,9 +1031,11 @@ async def get_waste_summary(
 # =============================================================================
 
 @router.post("/recipes/{menu_item_id}/scale", response_model=RecipeScaleResponse)
+@limiter.limit("30/minute")
 async def scale_recipe(
+    request: Request,
     menu_item_id: int,
-    request: RecipeScaleRequest,
+    body: RecipeScaleRequest,
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(get_current_user)
 ):
@@ -975,9 +1044,9 @@ async def scale_recipe(
     result = service.scale_recipe(
         venue_id=current_user.venue_id,
         menu_item_id=menu_item_id,
-        target_yield=request.target_yield,
+        target_yield=body.target_yield,
         created_by=current_user.id,
-        purpose=request.purpose
+        purpose=body.purpose
     )
 
     if not result:
@@ -987,7 +1056,9 @@ async def scale_recipe(
 
 
 @router.get("/recipes/scale-logs")
+@limiter.limit("60/minute")
 async def list_recipe_scale_logs(
+    request: Request,
     menu_item_id: Optional[int] = None,
     days: int = 30,
     db: Session = Depends(get_db),
@@ -1012,8 +1083,10 @@ async def list_recipe_scale_logs(
 # =============================================================================
 
 @router.post("/stock-takes", response_model=StockTakeResponse, status_code=status.HTTP_201_CREATED)
+@limiter.limit("30/minute")
 async def create_stock_take(
-    request: StockTakeCreate,
+    request: Request,
+    body: StockTakeCreate,
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(require_manager)
 ):
@@ -1022,13 +1095,15 @@ async def create_stock_take(
     stock_take = service.create_stock_take(
         venue_id=current_user.venue_id,
         created_by=current_user.id,
-        **request.dict()
+        **body.dict()
     )
     return stock_take
 
 
 @router.get("/stock-takes", response_model=List[StockTakeResponse])
+@limiter.limit("60/minute")
 async def list_stock_takes(
+    request: Request,
     status_filter: Optional[str] = None,
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(get_current_user)
@@ -1045,7 +1120,9 @@ async def list_stock_takes(
 
 
 @router.get("/stock-takes/{stock_take_id}")
+@limiter.limit("60/minute")
 async def get_stock_take(
+    request: Request,
     stock_take_id: int,
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(get_current_user)
@@ -1070,7 +1147,9 @@ async def get_stock_take(
 
 
 @router.post("/stock-takes/{stock_take_id}/start")
+@limiter.limit("30/minute")
 async def start_stock_take(
+    request: Request,
     stock_take_id: int,
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(get_current_user)
@@ -1092,9 +1171,11 @@ async def start_stock_take(
 
 
 @router.post("/stock-takes/items/{item_id}/count")
+@limiter.limit("30/minute")
 async def record_count(
+    request: Request,
     item_id: int,
-    request: CountRecordRequest,
+    body: CountRecordRequest,
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(get_current_user)
 ):
@@ -1102,9 +1183,9 @@ async def record_count(
     service = StockTakingService(db)
     item = service.record_count(
         stock_take_item_id=item_id,
-        counted_quantity=request.counted_quantity,
+        counted_quantity=body.counted_quantity,
         counted_by=current_user.id,
-        location=request.location
+        location=body.location
     )
 
     if not item:
@@ -1114,7 +1195,9 @@ async def record_count(
 
 
 @router.post("/stock-takes/{stock_take_id}/complete")
+@limiter.limit("30/minute")
 async def complete_stock_take(
+    request: Request,
     stock_take_id: int,
     apply_adjustments: bool = True,
     db: Session = Depends(get_db),
@@ -1135,7 +1218,9 @@ async def complete_stock_take(
 
 
 @router.get("/stock-takes/{stock_take_id}/variance-report")
+@limiter.limit("60/minute")
 async def get_variance_report(
+    request: Request,
     stock_take_id: int,
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(get_current_user)
@@ -1212,7 +1297,9 @@ class InvoiceResponse(BaseModel):
 
 
 @router.post("/invoices/upload", response_model=InvoiceResponse)
+@limiter.limit("30/minute")
 async def upload_invoice(
+    request: Request,
     file: UploadFile = File(...),
     supplier_id: Optional[int] = None,
     auto_process: bool = True,
@@ -1512,7 +1599,7 @@ def _parse_invoice_text(text: str) -> dict:
             result['invoice_date'] = date_parser.parse(dates_found[0], dayfirst=True).date()
             if len(dates_found) > 1:
                 result['due_date'] = date_parser.parse(dates_found[1], dayfirst=True).date()
-        except:
+        except (ValueError, TypeError, OverflowError):
             pass
 
     # Extract monetary amounts
@@ -1634,9 +1721,11 @@ def _match_invoice_item_to_stock(
 
 
 @router.post("/invoices/{invoice_id}/process", response_model=InvoiceResponse)
+@limiter.limit("30/minute")
 async def process_invoice(
+    request: Request,
     invoice_id: int,
-    request: InvoiceProcessRequest = InvoiceProcessRequest(),
+    body: InvoiceProcessRequest = InvoiceProcessRequest(),
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(get_current_user)
 ):
@@ -1650,7 +1739,7 @@ async def process_invoice(
         raise HTTPException(status_code=404, detail="Invoice not found")
 
     # Check if already processed
-    if invoice.ocr_status == 'completed' and not request.force_reprocess:
+    if invoice.ocr_status == 'completed' and not body.force_reprocess:
         raise HTTPException(
             status_code=400,
             detail="Invoice already processed. Set force_reprocess=true to reprocess."
@@ -1675,9 +1764,11 @@ async def process_invoice(
 
 
 @router.post("/invoices/{invoice_id}/verify", response_model=InvoiceResponse)
+@limiter.limit("30/minute")
 async def verify_invoice(
+    request: Request,
     invoice_id: int,
-    request: InvoiceVerifyRequest,
+    body: InvoiceVerifyRequest,
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(get_current_user)
 ):
@@ -1691,22 +1782,22 @@ async def verify_invoice(
         raise HTTPException(status_code=404, detail="Invoice not found")
 
     # Update with verified data
-    if request.supplier_id is not None:
-        invoice.supplier_id = request.supplier_id
-    if request.invoice_number is not None:
-        invoice.invoice_number_extracted = request.invoice_number
-    if request.invoice_date is not None:
-        invoice.invoice_date_extracted = request.invoice_date
-    if request.subtotal is not None:
-        invoice.subtotal_extracted = request.subtotal
-    if request.tax is not None:
-        invoice.tax_extracted = request.tax
-    if request.total is not None:
-        invoice.total_extracted = request.total
-    if request.line_items is not None:
-        invoice.line_items_extracted = request.line_items
-    if request.notes is not None:
-        invoice.notes = request.notes
+    if body.supplier_id is not None:
+        invoice.supplier_id = body.supplier_id
+    if body.invoice_number is not None:
+        invoice.invoice_number_extracted = body.invoice_number
+    if body.invoice_date is not None:
+        invoice.invoice_date_extracted = body.invoice_date
+    if body.subtotal is not None:
+        invoice.subtotal_extracted = body.subtotal
+    if body.tax is not None:
+        invoice.tax_extracted = body.tax
+    if body.total is not None:
+        invoice.total_extracted = body.total
+    if body.line_items is not None:
+        invoice.line_items_extracted = body.line_items
+    if body.notes is not None:
+        invoice.notes = body.notes
 
     invoice.verification_status = 'verified'
     invoice.verified_by = current_user.id
@@ -1719,9 +1810,11 @@ async def verify_invoice(
 
 
 @router.post("/invoices/{invoice_id}/match-po")
+@limiter.limit("30/minute")
 async def match_invoice_to_po(
+    request: Request,
     invoice_id: int,
-    request: InvoiceMatchRequest,
+    body: InvoiceMatchRequest,
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(get_current_user)
 ):
@@ -1735,7 +1828,7 @@ async def match_invoice_to_po(
         raise HTTPException(status_code=404, detail="Invoice not found")
 
     po = db.query(PurchaseOrder).filter(
-        PurchaseOrder.id == request.purchase_order_id,
+        PurchaseOrder.id == body.purchase_order_id,
         PurchaseOrder.venue_id == current_user.venue_id
     ).first()
 
@@ -1822,7 +1915,9 @@ async def match_invoice_to_po(
 
 
 @router.post("/invoices/{invoice_id}/create-matching-rule")
+@limiter.limit("30/minute")
 async def create_matching_rule_from_invoice(
+    request: Request,
     invoice_id: int,
     line_item_index: int,
     stock_item_id: int,
@@ -1882,7 +1977,9 @@ async def create_matching_rule_from_invoice(
 
 
 @router.get("/invoices")
+@limiter.limit("60/minute")
 async def list_invoices(
+    request: Request,
     status_filter: Optional[str] = None,
     days: int = 30,
     db: Session = Depends(get_db),
@@ -1903,7 +2000,9 @@ async def list_invoices(
 
 
 @router.get("/invoices/{invoice_id}")
+@limiter.limit("60/minute")
 async def get_invoice(
+    request: Request,
     invoice_id: int,
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(get_current_user)

@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { API_URL, getAuthHeaders } from '@/lib/api';
 
+import { toast } from '@/lib/toast';
 interface Ingredient {
   id: number;
   name: string;
@@ -157,7 +158,7 @@ export default function BarRecipesPage() {
 
   const handleAddRecipe = async () => {
     if (!newRecipe.name.trim()) {
-      alert('Please enter a recipe name');
+      toast.success('Please enter a recipe name');
       return;
     }
 
@@ -208,10 +209,10 @@ export default function BarRecipesPage() {
         }
       } else {
         const err = await response.json();
-        alert(err.detail || 'Failed to add recipe');
+        toast.error(err.detail || 'Failed to add recipe');
       }
     } catch (err) {
-      alert('Error adding recipe');
+      toast.error('Error adding recipe');
     }
   };
 

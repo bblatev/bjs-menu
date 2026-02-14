@@ -6,6 +6,7 @@ import { motion, AnimatePresence } from "framer-motion";
 
 import { API_URL, getAuthHeaders } from '@/lib/api';
 
+import { toast } from '@/lib/toast';
 interface Table {
   id: number;
   number: string;
@@ -115,10 +116,10 @@ export default function SubtablesPage() {
         loadData();
       } else {
         const err = await response.json();
-        alert(err.detail || "Error creating subtable");
+        toast.error(err.detail || "Error creating subtable");
       }
     } catch (error) {
-      alert("Error creating subtable");
+      toast.error("Error creating subtable");
     }
   };
 
@@ -141,10 +142,10 @@ export default function SubtablesPage() {
         loadData();
       } else {
         const err = await response.json();
-        alert(err.detail || "Error creating subtables");
+        toast.error(err.detail || "Error creating subtables");
       }
     } catch (error) {
-      alert("Error creating subtables");
+      toast.error("Error creating subtables");
     }
   };
 
@@ -185,7 +186,7 @@ export default function SubtablesPage() {
       });
       loadData();
     } catch (error) {
-      alert("Cannot delete occupied subtable");
+      toast.error("Cannot delete occupied subtable");
     }
   };
 
@@ -202,10 +203,10 @@ export default function SubtablesPage() {
         loadData();
       } else {
         const err = await response.json();
-        alert(err.detail || "Error merging subtables");
+        toast.error(err.detail || "Error merging subtables");
       }
     } catch (error) {
-      alert("Error merging subtables");
+      toast.error("Error merging subtables");
     }
   };
 

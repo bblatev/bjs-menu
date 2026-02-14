@@ -3,10 +3,11 @@
 from datetime import timedelta
 from typing import Optional
 from datetime import datetime, timezone
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel
 from sqlalchemy import func
 
+from app.core.rate_limit import limiter
 from app.db.session import DbSession
 from app.models.restaurant import KitchenOrder, GuestOrder, MenuItem, Table, Check
 
@@ -85,48 +86,72 @@ class KitchenStats(BaseModel):
 
 
 @router.get("/stats")
+@limiter.limit("60/minute")
 def get_kitchen_stats(
+    request: Request,
     db: DbSession,
     location_id: Optional[int] = None,
 ):
     """Get kitchen statistics for dashboard."""
-    status_counts = {"new": 0, "in_progress": 0, "ready": 0, "completed": 0}
+    from sqlalchemy import func, case
 
-    # Get kitchen orders from database
-    db_query = db.query(KitchenOrder)
+    # Single aggregate query for status counts
+    base_filter = []
     if location_id:
-        db_query = db_query.filter(KitchenOrder.location_id == location_id)
-    db_orders = db_query.all()
+        base_filter.append(KitchenOrder.location_id == location_id)
+
+    status_rows = (
+        db.query(KitchenOrder.status, func.count(KitchenOrder.id))
+        .filter(*base_filter)
+        .group_by(KitchenOrder.status)
+        .all()
+    )
 
     db_status_map = {"pending": "new", "cooking": "in_progress", "ready": "ready", "completed": "completed"}
-    for ko in db_orders:
-        mapped_status = db_status_map.get(ko.status, "new")
-        if mapped_status in status_counts:
-            status_counts[mapped_status] += 1
+    status_counts = {"new": 0, "in_progress": 0, "ready": 0, "completed": 0}
+    total_count = 0
+    for db_status, cnt in status_rows:
+        mapped = db_status_map.get(db_status, "new")
+        if mapped in status_counts:
+            status_counts[mapped] += cnt
+        total_count += cnt
 
     active_count = status_counts["new"] + status_counts["in_progress"]
-    total_count = len(db_orders)
+
+    # Single query for priority counts
+    priority_counts = (
+        db.query(
+            func.count(case((KitchenOrder.priority >= 1, 1))).label("rush"),
+            func.count(case((KitchenOrder.priority >= 2, 1))).label("vip"),
+        )
+        .filter(*base_filter)
+        .first()
+    )
 
     # Count 86'd items (unavailable menu items)
-    items_86_count = db.query(MenuItem).filter(MenuItem.available == False).count()
+    items_86_count = db.query(func.count(MenuItem.id)).filter(MenuItem.available == False).scalar()
+
+    avg_cook = _compute_avg_cook_time(db, location_id)
 
     return {
         "total_tickets": total_count,
         "active_tickets": active_count,
-        "avg_cook_time_minutes": _compute_avg_cook_time(db, location_id),
+        "avg_cook_time_minutes": avg_cook,
         "bumped_today": status_counts["completed"],
         "active_alerts": 0,
         "orders_by_status": status_counts,
         "items_86_count": items_86_count,
-        "rush_orders_today": db.query(KitchenOrder).filter(KitchenOrder.priority >= 1).count(),
-        "vip_orders_today": db.query(KitchenOrder).filter(KitchenOrder.priority >= 2).count(),
-        "avg_prep_time_minutes": _compute_avg_cook_time(db, location_id),
+        "rush_orders_today": priority_counts.rush if priority_counts else 0,
+        "vip_orders_today": priority_counts.vip if priority_counts else 0,
+        "avg_prep_time_minutes": avg_cook,
         "orders_completed_today": status_counts["completed"],
     }
 
 
 @router.get("/orders/active")
+@limiter.limit("60/minute")
 def get_active_orders(
+    request: Request,
     db: DbSession,
     location_id: Optional[int] = None,
 ):
@@ -161,7 +186,9 @@ def get_active_orders(
 
 
 @router.get("/queue")
+@limiter.limit("60/minute")
 def get_kitchen_queue(
+    request: Request,
     db: DbSession,
     location_id: Optional[int] = None,
 ):
@@ -200,7 +227,9 @@ def get_kitchen_queue(
 
 
 @router.get("/tickets")
+@limiter.limit("60/minute")
 def get_kitchen_tickets(
+    request: Request,
     db: DbSession,
     location_id: Optional[int] = None,
     status: Optional[str] = None,
@@ -277,7 +306,9 @@ def get_kitchen_tickets(
 
 
 @router.post("/tickets/{ticket_id}/bump")
+@limiter.limit("30/minute")
 def bump_ticket(
+    request: Request,
     db: DbSession,
     ticket_id: str,
 ):
@@ -312,7 +343,9 @@ def bump_ticket(
 
 
 @router.post("/tickets/{ticket_id}/start")
+@limiter.limit("30/minute")
 def start_ticket(
+    request: Request,
     db: DbSession,
     ticket_id: str,
 ):
@@ -347,7 +380,9 @@ def start_ticket(
 
 
 @router.post("/tickets/{ticket_id}/recall")
+@limiter.limit("30/minute")
 def recall_ticket(
+    request: Request,
     db: DbSession,
     ticket_id: str,
 ):
@@ -380,7 +415,9 @@ def recall_ticket(
 
 
 @router.post("/tickets/{ticket_id}/void")
+@limiter.limit("30/minute")
 def void_ticket(
+    request: Request,
     db: DbSession,
     ticket_id: str,
     reason: Optional[str] = None,
@@ -412,7 +449,9 @@ def void_ticket(
 
 
 @router.post("/tickets/{ticket_id}/priority")
+@limiter.limit("30/minute")
 def set_ticket_priority(
+    request: Request,
     db: DbSession,
     ticket_id: str,
     priority: int = 0,
@@ -442,7 +481,9 @@ def set_ticket_priority(
 
 
 @router.post("/fire-course")
+@limiter.limit("30/minute")
 def fire_course(
+    request: Request,
     db: DbSession,
     ticket_id: Optional[str] = None,
     course: str = "main",
@@ -453,7 +494,9 @@ def fire_course(
 
 
 @router.get("/expo")
+@limiter.limit("60/minute")
 def get_expo_tickets(
+    request: Request,
     db: DbSession,
     location_id: Optional[int] = None,
 ):
@@ -478,7 +521,9 @@ def get_expo_tickets(
 
 @router.get("/86")
 @router.get("/86/list")
+@limiter.limit("60/minute")
 def get_86_items(
+    request: Request,
     db: DbSession,
     location_id: Optional[int] = None,
 ):
@@ -499,7 +544,9 @@ def get_86_items(
 
 
 @router.post("/86/{item_id}")
+@limiter.limit("30/minute")
 def mark_item_86(
+    request: Request,
     db: DbSession,
     item_id: int,
     name: Optional[str] = None,
@@ -517,7 +564,9 @@ def mark_item_86(
 
 
 @router.delete("/86/{item_id}")
+@limiter.limit("30/minute")
 def unmark_item_86(
+    request: Request,
     db: DbSession,
     item_id: int,
 ):
@@ -539,7 +588,9 @@ class Item86Request(BaseModel):
 
 
 @router.post("/86")
+@limiter.limit("30/minute")
 def add_86_item(
+    request: Request,
     db: DbSession,
     data: Optional[Item86Request] = None,
     item_id: Optional[int] = None,
@@ -555,7 +606,9 @@ def add_86_item(
 
 
 @router.get("/")
+@limiter.limit("60/minute")
 def get_all_alerts(
+    request: Request,
     db: DbSession,
     active_only: bool = True,
     location_id: Optional[int] = None,
@@ -634,7 +687,9 @@ def get_all_alerts(
 
 
 @router.get("/alerts/cook-time")
+@limiter.limit("60/minute")
 def get_cook_time_alerts(
+    request: Request,
     db: DbSession,
     location_id: Optional[int] = None,
 ):
@@ -679,7 +734,9 @@ def _station_to_dict(s, load: int = 0) -> dict:
 
 
 @router.get("/stations")
+@limiter.limit("60/minute")
 def get_kitchen_stations(
+    request: Request,
     db: DbSession,
     location_id: Optional[int] = None,
 ):
@@ -733,7 +790,9 @@ class StationUpdate(BaseModel):
 
 
 @router.post("/stations")
+@limiter.limit("30/minute")
 def create_kitchen_station(
+    request: Request,
     db: DbSession,
     data: StationCreate,
 ):
@@ -786,7 +845,9 @@ def _resolve_station(db, station_id: str):
 
 
 @router.put("/stations/{station_id}")
+@limiter.limit("30/minute")
 def update_kitchen_station(
+    request: Request,
     db: DbSession,
     station_id: str,
     data: StationUpdate,
@@ -822,7 +883,9 @@ def update_kitchen_station(
 
 
 @router.delete("/stations/{station_id}")
+@limiter.limit("30/minute")
 def delete_kitchen_station(
+    request: Request,
     db: DbSession,
     station_id: str,
 ):
@@ -838,7 +901,9 @@ def delete_kitchen_station(
 
 
 @router.post("/order/{order_id}/start")
+@limiter.limit("30/minute")
 def start_order_preparation(
+    request: Request,
     db: DbSession,
     order_id: int,
 ):
@@ -852,7 +917,9 @@ def start_order_preparation(
 
 
 @router.post("/order/{order_id}/complete")
+@limiter.limit("30/minute")
 def complete_order(
+    request: Request,
     db: DbSession,
     order_id: int,
 ):
@@ -866,7 +933,9 @@ def complete_order(
 
 
 @router.post("/order/{order_id}/ready")
+@limiter.limit("30/minute")
 def mark_order_ready(
+    request: Request,
     db: DbSession,
     order_id: int,
 ):
@@ -880,7 +949,9 @@ def mark_order_ready(
 
 
 @router.post("/item/{item_id}/available")
+@limiter.limit("30/minute")
 def mark_item_available(
+    request: Request,
     db: DbSession,
     item_id: int,
 ):
@@ -895,7 +966,9 @@ def mark_item_available(
 # ==================== WORKFLOW MODES (Gap 11) ====================
 
 @router.get("/requests/pending")
+@limiter.limit("60/minute")
 def get_pending_requests(
+    request: Request,
     db: DbSession,
     location_id: Optional[int] = None,
 ):
@@ -933,7 +1006,9 @@ def get_pending_requests(
 
 
 @router.post("/requests/{request_id}/confirm")
+@limiter.limit("30/minute")
 def confirm_request(
+    request: Request,
     db: DbSession,
     request_id: int,
     staff_id: Optional[int] = None,
@@ -966,7 +1041,9 @@ def confirm_request(
 
 
 @router.post("/requests/{request_id}/reject")
+@limiter.limit("30/minute")
 def reject_request(
+    request: Request,
     db: DbSession,
     request_id: int,
     reason: Optional[str] = None,
@@ -997,7 +1074,9 @@ def reject_request(
 
 
 @router.post("/requests/{request_id}/modify")
+@limiter.limit("30/minute")
 def modify_request(
+    request: Request,
     db: DbSession,
     request_id: int,
     items: Optional[list] = None,
@@ -1029,7 +1108,9 @@ def modify_request(
 
 
 @router.get("/workflow/settings")
+@limiter.limit("60/minute")
 def get_workflow_settings(
+    request: Request,
     db: DbSession,
     location_id: Optional[int] = None,
 ):
@@ -1051,7 +1132,9 @@ def get_workflow_settings(
 
 
 @router.put("/workflow/settings")
+@limiter.limit("30/minute")
 def update_workflow_settings(
+    request: Request,
     db: DbSession,
     default_mode: Optional[str] = None,
     confirmation_timeout: Optional[int] = None,
@@ -1084,7 +1167,9 @@ def update_workflow_settings(
 
 
 @router.post("/order/create")
+@limiter.limit("30/minute")
 def create_kitchen_order(
+    request: Request,
     db: DbSession,
     check_id: Optional[int] = None,
     table_number: Optional[str] = None,
@@ -1131,7 +1216,8 @@ def create_kitchen_order(
 
 
 @router.post("/rush/{order_id}")
-def set_rush_priority(order_id: int, db: DbSession):
+@limiter.limit("30/minute")
+def set_rush_priority(request: Request, order_id: int, db: DbSession):
     """Mark an order as rush priority."""
     order = db.query(KitchenOrder).filter(KitchenOrder.id == order_id).first()
     if not order:
@@ -1142,7 +1228,8 @@ def set_rush_priority(order_id: int, db: DbSession):
 
 
 @router.post("/vip/{order_id}")
-def set_vip_priority(order_id: int, db: DbSession):
+@limiter.limit("30/minute")
+def set_vip_priority(request: Request, order_id: int, db: DbSession):
     """Mark an order as VIP priority."""
     order = db.query(KitchenOrder).filter(KitchenOrder.id == order_id).first()
     if not order:
@@ -1155,7 +1242,8 @@ def set_vip_priority(order_id: int, db: DbSession):
 # ==================== DISPLAY (merged from kitchen_display.py) ====================
 
 @router.get("/display/stations")
-async def get_display_stations(db: DbSession):
+@limiter.limit("60/minute")
+async def get_display_stations(request: Request, db: DbSession):
     """Get KDS display stations."""
     from app.models.advanced_features import KitchenStation
     stations = db.query(KitchenStation).filter(KitchenStation.is_active == True).order_by(KitchenStation.id).all()
@@ -1181,7 +1269,8 @@ async def get_display_stations(db: DbSession):
 
 
 @router.get("/display/tickets")
-async def get_display_tickets(db: DbSession, station: str = None):
+@limiter.limit("60/minute")
+async def get_display_tickets(request: Request, db: DbSession, station: str = None):
     """Get KDS display tickets."""
     query = db.query(KitchenOrder).filter(
         KitchenOrder.status.in_(["pending", "cooking"])
@@ -1208,7 +1297,8 @@ async def get_display_tickets(db: DbSession, station: str = None):
 # ==================== ALERTS (merged from kitchen_alerts.py) ====================
 
 @router.get("/alerts/summary")
-async def get_kitchen_alerts_summary(db: DbSession):
+@limiter.limit("60/minute")
+async def get_kitchen_alerts_summary(request: Request, db: DbSession):
     """Get kitchen alerts (overdue orders, temp warnings)."""
     from app.models.operations import HACCPTemperatureLog
     alerts = []
@@ -1242,7 +1332,8 @@ async def get_kitchen_alerts_summary(db: DbSession):
 
 
 @router.get("/alerts/statistics")
-async def get_kitchen_alert_stats(db: DbSession):
+@limiter.limit("60/minute")
+async def get_kitchen_alert_stats(request: Request, db: DbSession):
     """Get kitchen alert statistics."""
     from app.models.operations import HACCPTemperatureLog
     cutoff = datetime.now(timezone.utc) - timedelta(minutes=15)
@@ -1272,7 +1363,8 @@ async def get_kitchen_alert_stats(db: DbSession):
 # ==================== LOCALIZATION (proxy to kds-localization) ====================
 
 @router.get("/localization/stations")
-async def get_localization_stations():
+@limiter.limit("60/minute")
+async def get_localization_stations(request: Request):
     """Get KDS stations with localization settings - proxy to kds-localization service."""
     from app.services.kds_localization_service import (
         get_kds_localization_service,
@@ -1310,7 +1402,8 @@ async def get_localization_stations():
 
 
 @router.get("/localization/translations")
-async def get_localization_translations():
+@limiter.limit("60/minute")
+async def get_localization_translations(request: Request):
     """Get all translations - proxy to kds-localization service."""
     from app.services.kds_localization_service import (
         get_kds_localization_service,
@@ -1335,7 +1428,8 @@ async def get_localization_translations():
 
 
 @router.get("/localization/languages")
-async def get_localization_languages():
+@limiter.limit("60/minute")
+async def get_localization_languages(request: Request):
     """Get supported KDS languages - proxy to kds-localization service."""
     from app.services.kds_localization_service import (
         get_kds_localization_service,
@@ -1349,7 +1443,8 @@ async def get_localization_languages():
 
 
 @router.put("/localization/stations/{station_id}")
-async def update_localization_station(station_id: str, updates: dict):
+@limiter.limit("30/minute")
+async def update_localization_station(request: Request, station_id: str, updates: dict):
     """Update station localization settings - proxy to kds-localization service."""
     from app.services.kds_localization_service import (
         get_kds_localization_service,
@@ -1367,7 +1462,8 @@ async def update_localization_station(station_id: str, updates: dict):
 
 
 @router.put("/localization/translations/{key}")
-async def update_localization_translation(key: str, body: dict):
+@limiter.limit("30/minute")
+async def update_localization_translation(request: Request, key: str, body: dict):
     """Update a single translation - proxy to kds-localization service."""
     from app.services.kds_localization_service import (
         get_kds_localization_service,

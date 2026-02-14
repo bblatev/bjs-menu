@@ -6,6 +6,7 @@ import axios from 'axios';
 
 import { API_URL, WS_URL, getAuthHeaders } from '@/lib/api';
 
+import { toast } from '@/lib/toast';
 export default function KitchenStationPage() {
   const params = useParams();
   const router = useRouter();
@@ -79,7 +80,7 @@ export default function KitchenStationPage() {
       );
       loadOrders(token);
     } catch (err) {
-      alert('Failed to update order status');
+      toast.error('Failed to update order status');
     }
   };
 
@@ -92,12 +93,12 @@ export default function KitchenStationPage() {
         { headers: { Authorization: `Bearer ${token}` } }
       );
       if (response.data.success) {
-        alert(`Receipt printed! Number: ${response.data.receipt_number || 'N/A'}`);
+        toast.success(`Receipt printed! Number: ${response.data.receipt_number || 'N/A'}`);
       } else {
-        alert(`Print failed: ${response.data.error || 'Unknown error'}`);
+        toast.error(`Print failed: ${response.data.error || 'Unknown error'}`);
       }
     } catch (err: any) {
-      alert(`Print error: ${err.response?.data?.detail || err.message}`);
+      toast.error(`Print error: ${err.response?.data?.detail || err.message}`);
     } finally {
       setPrinting(null);
     }
@@ -112,12 +113,12 @@ export default function KitchenStationPage() {
         { headers: { Authorization: `Bearer ${token}` } }
       );
       if (response.data.success) {
-        alert('Kitchen ticket printed!');
+        toast.success('Kitchen ticket printed!');
       } else {
-        alert(`Print failed: ${response.data.error || 'Unknown error'}`);
+        toast.error(`Print failed: ${response.data.error || 'Unknown error'}`);
       }
     } catch (err: any) {
-      alert(`Print error: ${err.response?.data?.detail || err.message}`);
+      toast.error(`Print error: ${err.response?.data?.detail || err.message}`);
     } finally {
       setPrinting(null);
     }

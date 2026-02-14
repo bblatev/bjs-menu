@@ -108,7 +108,7 @@ class TrueOfflineService:
         try:
             urllib.request.urlopen('https://www.google.com', timeout=2)
             return True
-        except:
+        except Exception:
             pass
 
         return False
@@ -129,7 +129,7 @@ class TrueOfflineService:
                 response = requests.get(endpoint, timeout=3)
                 if response.status_code in [200, 404]:  # 404 is ok, means we reached the server
                     return True
-            except:
+            except Exception:
                 continue
 
         # If all gateways are unreachable, mark as offline
@@ -140,7 +140,7 @@ class TrueOfflineService:
         try:
             self.db.execute("SELECT 1")
             return True
-        except:
+        except Exception:
             return False
     
     def _check_replica_database(self) -> bool:
@@ -151,7 +151,7 @@ class TrueOfflineService:
             from sqlalchemy import text
             result = self.db.execute(text("SELECT 1 AS health_check"))
             return result.scalar() == 1
-        except:
+        except Exception:
             return False
     
     def _check_fiscal_service(self) -> bool:
@@ -170,7 +170,7 @@ class TrueOfflineService:
                 response = requests.get(endpoint, timeout=2)
                 if response.status_code == 200:
                     return True
-            except:
+            except Exception:
                 continue
 
         # Fiscal service might be optional for some operations
@@ -192,7 +192,7 @@ class TrueOfflineService:
                 response = requests.head(endpoint, timeout=2)
                 if response.status_code in [200, 401, 403]:  # Service is up, even if auth fails
                     available_count += 1
-            except:
+            except Exception:
                 continue
 
         # Consider cloud services "available" if at least one responds
@@ -528,7 +528,7 @@ class TrueOfflineService:
             )
             self.db.add(sync_log)
             self.db.commit()
-        except:
+        except Exception:
             pass
 
         queue = self._get_all_pending_transactions()
@@ -538,7 +538,7 @@ class TrueOfflineService:
             try:
                 sync_log.transactions_queued = len(queue)
                 self.db.commit()
-            except:
+            except Exception:
                 pass
 
         # Sort by sequence number to maintain order
@@ -628,7 +628,7 @@ class TrueOfflineService:
             )
             self.db.add(completed_log)
             self.db.commit()
-        except:
+        except Exception:
             pass
 
         return results

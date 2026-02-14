@@ -1,9 +1,10 @@
 """Cloud kitchen, delivery, and drive-thru v6 routes."""
 
 from typing import Optional
-from fastapi import APIRouter
+from fastapi import APIRouter, Request
 from pydantic import BaseModel, Field
 
+from app.core.rate_limit import limiter
 from app.db.session import DbSession
 from app.models.operations import AppSetting
 
@@ -23,7 +24,8 @@ def _get_setting_list(db: DbSession, category: str, key: str = "default") -> lis
 
 # Cloud Kitchen
 @router.get("/{venue_id}/cloud-kitchen/brands")
-async def get_cloud_kitchen_brands(venue_id: str, db: DbSession):
+@limiter.limit("60/minute")
+async def get_cloud_kitchen_brands(request: Request, venue_id: int, db: DbSession):
     """Get virtual brands for cloud kitchen."""
     return _get_setting_list(db, "cloud_kitchen_brands", venue_id)
 
@@ -35,7 +37,8 @@ class CreateCloudKitchenBrandRequest(BaseModel):
 
 
 @router.post("/{venue_id}/cloud-kitchen/brands")
-async def create_cloud_kitchen_brand(venue_id: str, data: CreateCloudKitchenBrandRequest, db: DbSession):
+@limiter.limit("30/minute")
+async def create_cloud_kitchen_brand(request: Request, venue_id: int, data: CreateCloudKitchenBrandRequest, db: DbSession):
     """Create a virtual brand for cloud kitchen."""
     row = db.query(AppSetting).filter(
         AppSetting.category == "cloud_kitchen_brands",
@@ -59,20 +62,23 @@ async def create_cloud_kitchen_brand(venue_id: str, data: CreateCloudKitchenBran
 
 
 @router.get("/{venue_id}/cloud-kitchen/stations")
-async def get_cloud_kitchen_stations(venue_id: str, db: DbSession):
+@limiter.limit("60/minute")
+async def get_cloud_kitchen_stations(request: Request, venue_id: int, db: DbSession):
     """Get cloud kitchen stations."""
     return _get_setting_list(db, "cloud_kitchen_stations", venue_id)
 
 
 # Delivery
 @router.get("/{venue_id}/delivery/platforms")
-async def get_delivery_platforms(venue_id: str, db: DbSession):
+@limiter.limit("60/minute")
+async def get_delivery_platforms(request: Request, venue_id: int, db: DbSession):
     """Get delivery platform integrations."""
     return _get_setting_list(db, "delivery_platforms", venue_id)
 
 
 @router.get("/{venue_id}/delivery/orders")
-async def get_delivery_orders(venue_id: str, db: DbSession):
+@limiter.limit("60/minute")
+async def get_delivery_orders(request: Request, venue_id: int, db: DbSession):
     """Get delivery orders."""
     from app.models.delivery import DeliveryOrder
     orders = db.query(DeliveryOrder).order_by(DeliveryOrder.id.desc()).limit(50).all()
@@ -90,13 +96,15 @@ async def get_delivery_orders(venue_id: str, db: DbSession):
 
 
 @router.get("/{venue_id}/delivery/zones")
-async def get_delivery_zones(venue_id: str, db: DbSession):
+@limiter.limit("60/minute")
+async def get_delivery_zones(request: Request, venue_id: int, db: DbSession):
     """Get delivery zones."""
     return _get_setting_list(db, "delivery_zones", venue_id)
 
 
 @router.get("/{venue_id}/delivery/drivers")
-async def get_delivery_drivers(venue_id: str, db: DbSession):
+@limiter.limit("60/minute")
+async def get_delivery_drivers(request: Request, venue_id: int, db: DbSession):
     """Get delivery drivers from staff with driver role."""
     from app.models.staff import StaffUser
     drivers = db.query(StaffUser).filter(
@@ -110,19 +118,22 @@ async def get_delivery_drivers(venue_id: str, db: DbSession):
 
 # Drive-Thru
 @router.get("/{venue_id}/drive-thru/lanes")
-async def get_drive_thru_lanes(venue_id: str, db: DbSession):
+@limiter.limit("60/minute")
+async def get_drive_thru_lanes(request: Request, venue_id: int, db: DbSession):
     """Get drive-thru lanes."""
     return _get_setting_list(db, "drive_thru_lanes", venue_id)
 
 
 @router.get("/{venue_id}/drive-thru/vehicles")
-async def get_drive_thru_vehicles(venue_id: str, db: DbSession):
+@limiter.limit("60/minute")
+async def get_drive_thru_vehicles(request: Request, venue_id: int, db: DbSession):
     """Get vehicles in drive-thru queue from app settings."""
     return _get_setting_list(db, "drive_thru_vehicles", venue_id)
 
 
 @router.get("/{venue_id}/drive-thru/stats")
-async def get_drive_thru_stats(venue_id: str, db: DbSession, start: str = None, end: str = None):
+@limiter.limit("60/minute")
+async def get_drive_thru_stats(request: Request, venue_id: int, db: DbSession, start: str = None, end: str = None):
     """Get drive-thru statistics from guest orders with drive-thru order_type."""
     from app.models.restaurant import GuestOrder
     from sqlalchemy import func as sqlfunc
@@ -140,7 +151,8 @@ async def get_drive_thru_stats(venue_id: str, db: DbSession, start: str = None, 
 
 
 @router.get("/{venue_id}/delivery/stats")
-async def get_delivery_stats(venue_id: str, db: DbSession, start: str = None, end: str = None):
+@limiter.limit("60/minute")
+async def get_delivery_stats(request: Request, venue_id: int, db: DbSession, start: str = None, end: str = None):
     """Get delivery statistics."""
     from app.models.delivery import DeliveryOrder
     from sqlalchemy import func as sqlfunc
@@ -167,7 +179,8 @@ async def get_delivery_stats(venue_id: str, db: DbSession, start: str = None, en
 
 
 @router.get("/{venue_id}/cloud-kitchen/performance")
-async def get_cloud_kitchen_performance(venue_id: str, db: DbSession, start: str = None, end: str = None):
+@limiter.limit("60/minute")
+async def get_cloud_kitchen_performance(request: Request, venue_id: int, db: DbSession, start: str = None, end: str = None):
     """Get cloud kitchen performance metrics."""
     from app.models.delivery import DeliveryOrder
     from sqlalchemy import func as sqlfunc

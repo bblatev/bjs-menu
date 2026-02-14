@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 
 import { API_URL, getAuthHeaders } from '@/lib/api';
 
+import { toast } from '@/lib/toast';
 interface VIPCustomer {
   id: number;
   name: string;
@@ -194,13 +195,13 @@ export default function VIPManagementPage() {
         body: JSON.stringify(vipSettings),
       });
       if (res.ok) {
-        alert('Settings saved successfully');
+        toast.success('Settings saved successfully');
       } else {
-        alert('Failed to save settings');
+        toast.error('Failed to save settings');
       }
     } catch (err) {
       console.error('Error saving VIP settings:', err);
-      alert('Failed to save settings');
+      toast.error('Failed to save settings');
     }
   };
 
@@ -281,11 +282,11 @@ export default function VIPManagementPage() {
           loadData();
         } else {
           const error = await res.json();
-          alert(error.detail || 'Failed to save surprise');
+          toast.error(error.detail || 'Failed to save surprise');
         }
       } catch (err) {
         console.error('Error saving surprise:', err);
-        alert('Failed to save surprise');
+        toast.error('Failed to save surprise');
       }
     }
   };

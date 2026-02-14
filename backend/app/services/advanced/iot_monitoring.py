@@ -228,6 +228,24 @@ class IoTMonitoringService:
         self.db.refresh(maintenance)
         return maintenance
 
+    def resolve_maintenance(
+        self,
+        maintenance_id: int,
+        action_taken: str = "",
+    ) -> PredictiveMaintenance:
+        """Resolve a maintenance prediction with action taken."""
+        maintenance = self.db.get(PredictiveMaintenance, maintenance_id)
+        if not maintenance:
+            raise ValueError(f"Maintenance {maintenance_id} not found")
+
+        maintenance.acknowledged = True
+        maintenance.action_taken = action_taken
+        maintenance.resolved_at = datetime.now(timezone.utc)
+
+        self.db.commit()
+        self.db.refresh(maintenance)
+        return maintenance
+
     def record_maintenance(
         self,
         sensor_id: int,

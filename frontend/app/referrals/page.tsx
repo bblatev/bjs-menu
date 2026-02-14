@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 
 import { API_URL, getAuthHeaders } from '@/lib/api';
 
+import { toast } from '@/lib/toast';
 interface Referral {
   id: number;
   referrerName: string;
@@ -255,7 +256,7 @@ export default function ReferralsPage() {
         loadData();
       } else {
         const error = await res.json();
-        alert(error.detail || 'Failed to create campaign');
+        toast.error(error.detail || 'Failed to create campaign');
       }
     } catch (err) {
       console.error('Error creating campaign:', err);
@@ -276,15 +277,15 @@ export default function ReferralsPage() {
 
       if (res.ok) {
         const data = await res.json();
-        alert(data.message || `Successfully sent ${bulkSendForm.channel === 'email' ? 'emails' : 'SMS messages'} to customers`);
+        toast.error(data.message || `Successfully sent ${bulkSendForm.channel === 'email' ? 'emails' : 'SMS messages'} to customers`);
         setShowBulkSendModal(false);
       } else {
         const error = await res.json();
-        alert(error.detail || 'Failed to send invites');
+        toast.error(error.detail || 'Failed to send invites');
       }
     } catch (err) {
       console.error('Error sending bulk invites:', err);
-      alert('Failed to send invites');
+      toast.error('Failed to send invites');
     }
   };
 
@@ -294,7 +295,7 @@ export default function ReferralsPage() {
 
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text);
-    alert('Copied to clipboard!');
+    toast.success('Copied to clipboard!');
   };
 
   const filteredReferrals = referrals.filter(r => {
@@ -1026,13 +1027,13 @@ export default function ReferralsPage() {
                       body: JSON.stringify(settings),
                     });
                     if (res.ok) {
-                      alert('Settings saved successfully');
+                      toast.success('Settings saved successfully');
                     } else {
-                      alert('Failed to save settings');
+                      toast.error('Failed to save settings');
                     }
                   } catch (err) {
                     console.error('Error saving settings:', err);
-                    alert('Failed to save settings');
+                    toast.error('Failed to save settings');
                   }
                 }}
                 className="px-8 py-3 bg-green-500 text-gray-900 rounded-xl hover:bg-green-600 font-medium"

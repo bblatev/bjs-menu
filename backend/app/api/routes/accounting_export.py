@@ -11,11 +11,12 @@ Provides export endpoints for AtomS3 and other Bulgarian accounting software:
 from typing import Optional, List
 from datetime import datetime, date
 from decimal import Decimal
-from fastapi import APIRouter, HTTPException, Query, Response
+from fastapi import APIRouter, HTTPException, Query, Request, Response
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 from io import BytesIO
 
+from app.core.rate_limit import limiter
 from app.db.session import DbSession
 from app.models.restaurant import Check, CheckItem, CheckPayment
 from app.models.invoice import Invoice, InvoiceLine
@@ -34,7 +35,8 @@ router = APIRouter()
 # ============== Endpoints ==============
 
 @router.get("/formats")
-def list_export_formats():
+@limiter.limit("60/minute")
+def list_export_formats(request: Request):
     """List available export formats."""
     return {
         "formats": [
@@ -62,7 +64,8 @@ def list_export_formats():
 
 
 @router.get("/gl-accounts")
-def get_gl_chart_of_accounts():
+@limiter.limit("60/minute")
+def get_gl_chart_of_accounts(request: Request):
     """Get GL chart of accounts for Bulgarian accounting."""
     accounts = []
     for key, account in AtomS3ExportService.GL_ACCOUNTS.items():
@@ -81,7 +84,8 @@ def get_gl_chart_of_accounts():
 
 
 @router.get("/gl-accounts/download")
-def download_gl_chart_of_accounts():
+@limiter.limit("60/minute")
+def download_gl_chart_of_accounts(request: Request):
     """Download GL chart of accounts as CSV."""
     csv_content = AtomS3ExportService.export_gl_chart_of_accounts()
 
@@ -95,7 +99,9 @@ def download_gl_chart_of_accounts():
 
 
 @router.get("/sales-journal")
+@limiter.limit("60/minute")
 def export_sales_journal(
+    request: Request,
     db: DbSession,
     start_date: Optional[str] = Query(None, description="Start date YYYY-MM-DD"),
     end_date: Optional[str] = Query(None, description="End date YYYY-MM-DD"),
@@ -206,7 +212,9 @@ def export_sales_journal(
 
 
 @router.get("/sales-journal/preview")
+@limiter.limit("60/minute")
 def preview_sales_journal(
+    request: Request,
     db: DbSession,
     start_date: Optional[str] = Query(None),
     end_date: Optional[str] = Query(None),
@@ -274,7 +282,9 @@ def preview_sales_journal(
 
 
 @router.get("/purchase-journal")
+@limiter.limit("60/minute")
 def export_purchase_journal(
+    request: Request,
     db: DbSession,
     start_date: Optional[str] = Query(None),
     end_date: Optional[str] = Query(None),
@@ -360,7 +370,9 @@ def export_purchase_journal(
 
 
 @router.get("/vat-declaration")
+@limiter.limit("60/minute")
 def get_vat_declaration_data(
+    request: Request,
     db: DbSession,
     month: Optional[int] = Query(None, ge=1, le=12),
     year: Optional[int] = Query(None, ge=2020, le=2100),
@@ -461,7 +473,8 @@ def get_vat_declaration_data(
 
 
 @router.get("/atoms3/settings")
-def get_atoms3_settings():
+@limiter.limit("60/minute")
+def get_atoms3_settings(request: Request):
     """Get AtomS3 export settings and mappings."""
     return {
         "gl_account_mappings": {
@@ -493,7 +506,8 @@ def get_atoms3_settings():
 
 
 @router.get("/exports")
-def get_exports(db: DbSession):
+@limiter.limit("60/minute")
+def get_exports(request: Request, db: DbSession):
     """Get list of accounting exports."""
     from app.models.operations import AppSetting
     import json

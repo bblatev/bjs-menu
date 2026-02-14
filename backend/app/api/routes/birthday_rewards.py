@@ -5,8 +5,10 @@ Automated reward triggers for customer birthdays and special occasions.
 
 from typing import Optional, List
 from datetime import date
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel
+
+from app.core.rate_limit import limiter
 
 from app.services.birthday_rewards_service import (
     get_birthday_rewards_service,
@@ -106,7 +108,8 @@ class RewardResponse(BaseModel):
 # ============================================================================
 
 @router.post("/rules", response_model=RuleResponse)
-async def create_rule(request: CreateRuleRequest):
+@limiter.limit("30/minute")
+async def create_rule(request: Request, body: CreateRuleRequest):
     """
     Create a reward rule for automatic occasion-based rewards.
 
@@ -116,34 +119,36 @@ async def create_rule(request: CreateRuleRequest):
     service = get_birthday_rewards_service()
 
     try:
-        occasion_type = OccasionType(request.occasion_type)
+        occasion_type = OccasionType(body.occasion_type)
     except ValueError:
-        raise HTTPException(status_code=400, detail=f"Invalid occasion type: {request.occasion_type}")
+        raise HTTPException(status_code=400, detail=f"Invalid occasion type: {body.occasion_type}")
 
     try:
-        reward_type = RewardType(request.reward_type)
+        reward_type = RewardType(body.reward_type)
     except ValueError:
-        raise HTTPException(status_code=400, detail=f"Invalid reward type: {request.reward_type}")
+        raise HTTPException(status_code=400, detail=f"Invalid reward type: {body.reward_type}")
 
     rule = service.create_rule(
-        name=request.name,
+        name=body.name,
         occasion_type=occasion_type,
         reward_type=reward_type,
-        reward_value=request.reward_value,
-        reward_item_id=request.reward_item_id,
-        valid_days_before=request.valid_days_before,
-        valid_days_after=request.valid_days_after,
-        min_visits=request.min_visits,
-        min_spend=request.min_spend,
-        message_template=request.message_template,
-        venue_id=request.venue_id,
+        reward_value=body.reward_value,
+        reward_item_id=body.reward_item_id,
+        valid_days_before=body.valid_days_before,
+        valid_days_after=body.valid_days_after,
+        min_visits=body.min_visits,
+        min_spend=body.min_spend,
+        message_template=body.message_template,
+        venue_id=body.venue_id,
     )
 
     return _rule_to_response(rule)
 
 
 @router.get("/rules", response_model=List[RuleResponse])
+@limiter.limit("60/minute")
 async def list_rules(
+    request: Request,
     occasion_type: Optional[str] = None,
     is_active: Optional[bool] = None,
 ):
@@ -163,7 +168,8 @@ async def list_rules(
 
 
 @router.get("/rules/{rule_id}", response_model=RuleResponse)
-async def get_rule(rule_id: str):
+@limiter.limit("60/minute")
+async def get_rule(request: Request, rule_id: str):
     """Get a specific rule."""
     service = get_birthday_rewards_service()
 
@@ -176,27 +182,28 @@ async def get_rule(rule_id: str):
 
 
 @router.put("/rules/{rule_id}", response_model=RuleResponse)
-async def update_rule(rule_id: str, request: UpdateRuleRequest):
+@limiter.limit("30/minute")
+async def update_rule(request: Request, rule_id: str, body: UpdateRuleRequest):
     """Update a reward rule."""
     service = get_birthday_rewards_service()
 
     updates = {}
-    if request.name is not None:
-        updates["name"] = request.name
-    if request.reward_value is not None:
-        updates["reward_value"] = request.reward_value
-    if request.valid_days_before is not None:
-        updates["valid_days_before"] = request.valid_days_before
-    if request.valid_days_after is not None:
-        updates["valid_days_after"] = request.valid_days_after
-    if request.min_visits is not None:
-        updates["min_visits"] = request.min_visits
-    if request.min_spend is not None:
-        updates["min_spend"] = request.min_spend
-    if request.message_template is not None:
-        updates["message_template"] = request.message_template
-    if request.is_active is not None:
-        updates["is_active"] = request.is_active
+    if body.name is not None:
+        updates["name"] = body.name
+    if body.reward_value is not None:
+        updates["reward_value"] = body.reward_value
+    if body.valid_days_before is not None:
+        updates["valid_days_before"] = body.valid_days_before
+    if body.valid_days_after is not None:
+        updates["valid_days_after"] = body.valid_days_after
+    if body.min_visits is not None:
+        updates["min_visits"] = body.min_visits
+    if body.min_spend is not None:
+        updates["min_spend"] = body.min_spend
+    if body.message_template is not None:
+        updates["message_template"] = body.message_template
+    if body.is_active is not None:
+        updates["is_active"] = body.is_active
 
     rule = service.update_rule(rule_id, **updates)
 
@@ -207,7 +214,8 @@ async def update_rule(rule_id: str, request: UpdateRuleRequest):
 
 
 @router.post("/rules/{rule_id}/toggle")
-async def toggle_rule(rule_id: str, is_active: bool):
+@limiter.limit("30/minute")
+async def toggle_rule(request: Request, rule_id: str, is_active: bool):
     """Enable or disable a rule."""
     service = get_birthday_rewards_service()
 
@@ -224,7 +232,8 @@ async def toggle_rule(rule_id: str, is_active: bool):
 
 
 @router.delete("/rules/{rule_id}")
-async def delete_rule(rule_id: str):
+@limiter.limit("30/minute")
+async def delete_rule(request: Request, rule_id: str):
     """Delete a reward rule."""
     service = get_birthday_rewards_service()
 
@@ -239,56 +248,59 @@ async def delete_rule(rule_id: str):
 # ============================================================================
 
 @router.post("/customers/birthday")
-async def set_customer_birthday(request: SetBirthdayRequest):
+@limiter.limit("30/minute")
+async def set_customer_birthday(request: Request, body: SetBirthdayRequest):
     """Set a customer's birthday."""
     service = get_birthday_rewards_service()
 
     try:
-        birthday = date.fromisoformat(request.birthday)
+        birthday = date.fromisoformat(body.birthday)
     except ValueError:
         raise HTTPException(status_code=400, detail="Invalid date format. Use YYYY-MM-DD")
 
-    occasion = service.set_customer_birthday(request.customer_id, birthday)
+    occasion = service.set_customer_birthday(body.customer_id, birthday)
 
     return {
         "success": True,
-        "customer_id": request.customer_id,
+        "customer_id": body.customer_id,
         "occasion_type": occasion.occasion_type.value,
         "occasion_date": occasion.occasion_date.isoformat(),
     }
 
 
 @router.post("/customers/anniversary")
-async def set_customer_anniversary(request: SetAnniversaryRequest):
+@limiter.limit("30/minute")
+async def set_customer_anniversary(request: Request, body: SetAnniversaryRequest):
     """Set a customer's anniversary date."""
     service = get_birthday_rewards_service()
 
     try:
-        anniversary = date.fromisoformat(request.anniversary_date)
+        anniversary = date.fromisoformat(body.anniversary_date)
     except ValueError:
         raise HTTPException(status_code=400, detail="Invalid date format. Use YYYY-MM-DD")
 
     try:
-        occasion_type = OccasionType(request.occasion_type)
+        occasion_type = OccasionType(body.occasion_type)
     except ValueError:
-        raise HTTPException(status_code=400, detail=f"Invalid occasion type: {request.occasion_type}")
+        raise HTTPException(status_code=400, detail=f"Invalid occasion type: {body.occasion_type}")
 
     occasion = service.set_customer_anniversary(
-        request.customer_id,
+        body.customer_id,
         anniversary,
         occasion_type,
     )
 
     return {
         "success": True,
-        "customer_id": request.customer_id,
+        "customer_id": body.customer_id,
         "occasion_type": occasion.occasion_type.value,
         "occasion_date": occasion.occasion_date.isoformat(),
     }
 
 
 @router.get("/customers/{customer_id}/occasions")
-async def get_customer_occasions(customer_id: int):
+@limiter.limit("60/minute")
+async def get_customer_occasions(request: Request, customer_id: int):
     """Get all occasions for a customer."""
     service = get_birthday_rewards_service()
 
@@ -312,7 +324,8 @@ async def get_customer_occasions(customer_id: int):
 # ============================================================================
 
 @router.get("/upcoming")
-async def get_upcoming_occasions(days_ahead: int = 7):
+@limiter.limit("60/minute")
+async def get_upcoming_occasions(request: Request, days_ahead: int = 7):
     """Get customers with upcoming occasions."""
     service = get_birthday_rewards_service()
 
@@ -326,7 +339,8 @@ async def get_upcoming_occasions(days_ahead: int = 7):
 
 
 @router.post("/check-and-issue")
-async def check_and_issue_rewards():
+@limiter.limit("30/minute")
+async def check_and_issue_rewards(request: Request):
     """
     Check for upcoming occasions and automatically issue rewards.
 
@@ -344,7 +358,9 @@ async def check_and_issue_rewards():
 # ============================================================================
 
 @router.get("/rewards", response_model=None)
+@limiter.limit("60/minute")
 async def list_customer_rewards(
+    request: Request,
     customer_id: Optional[int] = None,
     status: Optional[str] = None,
     include_expired: bool = False,
@@ -371,7 +387,8 @@ async def list_customer_rewards(
 
 
 @router.get("/rewards/{reward_id}", response_model=RewardResponse)
-async def get_reward(reward_id: str):
+@limiter.limit("60/minute")
+async def get_reward(request: Request, reward_id: str):
     """Get a specific reward."""
     service = get_birthday_rewards_service()
 
@@ -384,7 +401,8 @@ async def get_reward(reward_id: str):
 
 
 @router.post("/rewards/validate")
-async def validate_reward(request: ValidateRewardRequest):
+@limiter.limit("30/minute")
+async def validate_reward(request: Request, body: ValidateRewardRequest):
     """
     Validate a reward code.
 
@@ -392,13 +410,14 @@ async def validate_reward(request: ValidateRewardRequest):
     """
     service = get_birthday_rewards_service()
 
-    result = service.validate_reward(request.code)
+    result = service.validate_reward(body.code)
 
     return result
 
 
 @router.post("/rewards/claim")
-async def claim_reward(request: ClaimRewardRequest):
+@limiter.limit("30/minute")
+async def claim_reward(request: Request, body: ClaimRewardRequest):
     """
     Claim a reward.
 
@@ -406,10 +425,10 @@ async def claim_reward(request: ClaimRewardRequest):
     """
     service = get_birthday_rewards_service()
 
-    reward = service.claim_reward(request.code, request.order_id)
+    reward = service.claim_reward(body.code, body.order_id)
 
     if not reward:
-        validation = service.validate_reward(request.code)
+        validation = service.validate_reward(body.code)
         raise HTTPException(
             status_code=400,
             detail=validation.get("error", "Invalid reward"),
@@ -428,7 +447,8 @@ async def claim_reward(request: ClaimRewardRequest):
 # ============================================================================
 
 @router.get("/stats")
-async def get_stats():
+@limiter.limit("60/minute")
+async def get_stats(request: Request):
     """Get birthday rewards statistics."""
     service = get_birthday_rewards_service()
 
@@ -440,7 +460,8 @@ async def get_stats():
 # ============================================================================
 
 @router.get("/occasion-types")
-async def get_occasion_types():
+@limiter.limit("60/minute")
+async def get_occasion_types(request: Request):
     """Get available occasion types."""
     return {
         "types": [
@@ -453,7 +474,8 @@ async def get_occasion_types():
 
 
 @router.get("/reward-types")
-async def get_reward_types():
+@limiter.limit("60/minute")
+async def get_reward_types(request: Request):
     """Get available reward types."""
     return {
         "types": [

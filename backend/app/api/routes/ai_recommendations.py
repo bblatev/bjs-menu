@@ -2,13 +2,14 @@
 
 from __future__ import annotations
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Query, Request
 from typing import List, Optional
 from datetime import datetime, timedelta
 from pydantic import BaseModel
 
 from app.db.session import DbSession
 from app.core.rbac import CurrentUser, OptionalCurrentUser
+from app.core.rate_limit import limiter
 
 router = APIRouter()
 
@@ -43,7 +44,9 @@ class RecommendationFeedback(BaseModel):
 # ==================== ENDPOINTS ====================
 
 @router.get("/recommendations/personalized", response_model=PersonalizedRecommendationsResponse)
+@limiter.limit("60/minute")
 def get_personalized_recommendations(
+    request: Request,
     db: DbSession,
     cart_items: Optional[str] = Query(None, description="Comma-separated list of item IDs in cart"),
     limit: int = Query(20, ge=1, le=50),
@@ -74,7 +77,9 @@ def get_personalized_recommendations(
 
 
 @router.get("/recommendations/user-based", response_model=List[RecommendationItem])
+@limiter.limit("60/minute")
 def get_user_based_recommendations(
+    request: Request,
     db: DbSession, current_user: CurrentUser = None,
     limit: int = Query(10, ge=1, le=50),
 ):
@@ -83,7 +88,9 @@ def get_user_based_recommendations(
 
 
 @router.get("/recommendations/item-based/{item_id}", response_model=List[RecommendationItem])
+@limiter.limit("60/minute")
 def get_item_based_recommendations(
+    request: Request,
     item_id: int, db: DbSession,
     limit: int = Query(5, ge=1, le=20),
 ):
@@ -92,7 +99,9 @@ def get_item_based_recommendations(
 
 
 @router.get("/recommendations/weather", response_model=List[RecommendationItem])
+@limiter.limit("60/minute")
 def get_weather_recommendations(
+    request: Request,
     db: DbSession,
     limit: int = Query(10, ge=1, le=20),
 ):
@@ -101,7 +110,9 @@ def get_weather_recommendations(
 
 
 @router.get("/recommendations/time-based", response_model=List[RecommendationItem])
+@limiter.limit("60/minute")
 def get_time_based_recommendations(
+    request: Request,
     db: DbSession,
     limit: int = Query(10, ge=1, le=20),
 ):
@@ -110,7 +121,9 @@ def get_time_based_recommendations(
 
 
 @router.get("/recommendations/cart-based", response_model=List[RecommendationItem])
+@limiter.limit("60/minute")
 def get_cart_based_recommendations(
+    request: Request,
     db: DbSession,
     cart_items: str = Query(..., description="Comma-separated list of item IDs"),
     limit: int = Query(5, ge=1, le=20),
@@ -124,7 +137,9 @@ def get_cart_based_recommendations(
 
 
 @router.get("/recommendations/popular", response_model=List[RecommendationItem])
+@limiter.limit("60/minute")
 def get_popular_items(
+    request: Request,
     db: DbSession,
     days: int = Query(30, ge=1, le=90, description="Days to look back"),
     limit: int = Query(10, ge=1, le=50),
@@ -152,7 +167,9 @@ def get_popular_items(
 
 
 @router.post("/recommendations/feedback")
+@limiter.limit("30/minute")
 def record_recommendation_feedback(
+    request: Request,
     feedback: RecommendationFeedback, db: DbSession,
 ):
     """Record feedback on recommendation to improve quality."""
@@ -160,7 +177,9 @@ def record_recommendation_feedback(
 
 
 @router.get("/recommendations/analytics")
+@limiter.limit("60/minute")
 def get_recommendation_analytics(
+    request: Request,
     db: DbSession,
     days: int = Query(30, ge=1, le=90),
 ):
@@ -179,7 +198,9 @@ def get_recommendation_analytics(
 # ==================== ADVANCED AI ENDPOINTS ====================
 
 @router.get("/recommendations/trending", response_model=List[RecommendationItem])
+@limiter.limit("60/minute")
 def get_trending_items(
+    request: Request,
     db: DbSession,
     trend_window: int = Query(7, ge=1, le=14),
     comparison_window: int = Query(30, ge=14, le=90),
@@ -190,7 +211,9 @@ def get_trending_items(
 
 
 @router.get("/recommendations/segment-based", response_model=List[RecommendationItem])
+@limiter.limit("60/minute")
 def get_segment_based_recommendations(
+    request: Request,
     db: DbSession, current_user: CurrentUser = None,
     limit: int = Query(10, ge=1, le=20),
 ):
@@ -199,7 +222,9 @@ def get_segment_based_recommendations(
 
 
 @router.get("/recommendations/seasonal", response_model=List[RecommendationItem])
+@limiter.limit("60/minute")
 def get_seasonal_recommendations(
+    request: Request,
     db: DbSession,
     limit: int = Query(10, ge=1, le=20),
 ):
@@ -208,7 +233,9 @@ def get_seasonal_recommendations(
 
 
 @router.get("/recommendations/similar/{item_id}", response_model=List[RecommendationItem])
+@limiter.limit("60/minute")
 def get_similar_items(
+    request: Request,
     item_id: int, db: DbSession,
     limit: int = Query(10, ge=1, le=20),
 ):
@@ -217,7 +244,9 @@ def get_similar_items(
 
 
 @router.get("/recommendations/discover", response_model=List[RecommendationItem])
+@limiter.limit("60/minute")
 def get_diversity_recommendations(
+    request: Request,
     db: DbSession,
     exclude_items: Optional[str] = Query(None, description="Comma-separated item IDs to exclude"),
     limit: int = Query(10, ge=1, le=20),
@@ -227,7 +256,9 @@ def get_diversity_recommendations(
 
 
 @router.get("/recommendations/new-items", response_model=List[RecommendationItem])
+@limiter.limit("60/minute")
 def get_new_items(
+    request: Request,
     db: DbSession,
     days: int = Query(14, ge=1, le=60, description="Days since item was added"),
     limit: int = Query(10, ge=1, le=20),
@@ -237,7 +268,9 @@ def get_new_items(
 
 
 @router.get("/recommendations/complete")
+@limiter.limit("60/minute")
 def get_complete_recommendations(
+    request: Request,
     db: DbSession,
     cart_items: Optional[str] = Query(None, description="Comma-separated cart item IDs"),
     viewed_items: Optional[str] = Query(None, description="Comma-separated recently viewed item IDs"),
@@ -262,7 +295,9 @@ def get_complete_recommendations(
 
 
 @router.get("/recommendations/explain/{item_id}")
+@limiter.limit("60/minute")
 def get_recommendation_explanation(
+    request: Request,
     item_id: int, db: DbSession,
     recommendation_type: str = Query(..., description="Type of recommendation"),
 ):

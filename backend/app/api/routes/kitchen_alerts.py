@@ -1,9 +1,10 @@
 """Kitchen alerts routes (backward compat for /kitchen-alerts/ prefix)."""
 
 from datetime import datetime, timezone, timedelta
-from fastapi import APIRouter
+from fastapi import APIRouter, Request
 from sqlalchemy import func
 
+from app.core.rate_limit import limiter
 from app.db.session import DbSession
 from app.models.restaurant import KitchenOrder
 from app.models.operations import HACCPTemperatureLog
@@ -12,7 +13,8 @@ router = APIRouter()
 
 
 @router.get("/")
-async def get_kitchen_alerts(db: DbSession, active_only: bool = False):
+@limiter.limit("60/minute")
+async def get_kitchen_alerts(request: Request, db: DbSession, active_only: bool = False):
     """Get kitchen alerts (overdue orders, temp warnings)."""
     alerts = []
     cutoff = datetime.now(timezone.utc) - timedelta(minutes=15)
@@ -47,7 +49,8 @@ async def get_kitchen_alerts(db: DbSession, active_only: bool = False):
 
 
 @router.get("/stats")
-async def get_kitchen_alert_stats(db: DbSession):
+@limiter.limit("60/minute")
+async def get_kitchen_alert_stats(request: Request, db: DbSession):
     """Get kitchen alert statistics."""
     cutoff = datetime.now(timezone.utc) - timedelta(minutes=15)
     overdue_count = db.query(func.count(KitchenOrder.id)).filter(

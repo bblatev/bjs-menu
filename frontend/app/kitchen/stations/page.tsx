@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { API_URL } from '@/lib/api';
 
+import { toast } from '@/lib/toast';
 interface Station {
   id: string;
   name: string;
@@ -161,7 +162,7 @@ export default function KitchenStationsPage() {
 
       handleCloseModal();
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'Failed to save station');
+      toast.error(err instanceof Error ? err.message : 'Failed to save station');
     }
   };
 
@@ -184,7 +185,7 @@ export default function KitchenStationsPage() {
 
         setStations(prev => prev.filter(s => s.id !== stationId));
       } catch (err) {
-        alert(err instanceof Error ? err.message : 'Failed to delete station');
+        toast.error(err instanceof Error ? err.message : 'Failed to delete station');
       }
     }
   };
@@ -216,7 +217,7 @@ export default function KitchenStationsPage() {
         s.id === stationId ? { ...updatedStation, id: updatedStation.station_id || updatedStation.id } : s
       ));
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'Failed to toggle station status');
+      toast.error(err instanceof Error ? err.message : 'Failed to toggle station status');
     }
   };
 

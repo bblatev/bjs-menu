@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
 import { API_URL } from '@/lib/api';
 
+import { toast } from '@/lib/toast';
 interface Promotion {
   id: string;
   name: string;
@@ -143,11 +144,11 @@ export default function MarketingPromotionsPage() {
         closeModal();
       } else {
         const error = await response.json();
-        alert(error.detail || 'Error creating promotion');
+        toast.error(error.detail || 'Error creating promotion');
       }
     } catch (error) {
       console.error('Error creating promotion:', error);
-      alert('Error creating promotion');
+      toast.error('Error creating promotion');
     }
   };
 
@@ -169,11 +170,11 @@ export default function MarketingPromotionsPage() {
         closeModal();
       } else {
         const error = await response.json();
-        alert(error.detail || 'Error updating promotion');
+        toast.error(error.detail || 'Error updating promotion');
       }
     } catch (error) {
       console.error('Error updating promotion:', error);
-      alert('Error updating promotion');
+      toast.error('Error updating promotion');
     }
   };
 
@@ -191,11 +192,11 @@ export default function MarketingPromotionsPage() {
         if (response.ok) {
           loadPromotions();
         } else {
-          alert('Error deleting promotion');
+          toast.error('Error deleting promotion');
         }
       } catch (error) {
         console.error('Error deleting promotion:', error);
-        alert('Error deleting promotion');
+        toast.error('Error deleting promotion');
       }
     }
   };
@@ -213,11 +214,11 @@ export default function MarketingPromotionsPage() {
       if (response.ok) {
         loadPromotions();
       } else {
-        alert('Error toggling promotion status');
+        toast.error('Error toggling promotion status');
       }
     } catch (error) {
       console.error('Error toggling promotion status:', error);
-      alert('Error toggling promotion status');
+      toast.error('Error toggling promotion status');
     }
   };
 

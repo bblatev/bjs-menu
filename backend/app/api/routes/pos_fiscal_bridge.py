@@ -1,7 +1,8 @@
 """POS Fiscal Bridge routes."""
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Request
 
+from app.core.rate_limit import limiter
 from app.db.session import DbSession
 from app.models.operations import AppSetting
 
@@ -20,7 +21,8 @@ def _get_bridge_config(db: DbSession) -> dict:
 
 
 @router.get("/status")
-async def get_bridge_status(db: DbSession):
+@limiter.limit("60/minute")
+async def get_bridge_status(request: Request, db: DbSession):
     """Get POS fiscal bridge status."""
     config = _get_bridge_config(db)
     return {
@@ -35,7 +37,8 @@ async def get_bridge_status(db: DbSession):
 
 
 @router.post("/receipt")
-async def print_receipt(data: dict, db: DbSession):
+@limiter.limit("30/minute")
+async def print_receipt(request: Request, data: dict, db: DbSession):
     """Print a fiscal receipt."""
     config = _get_bridge_config(db)
     if not config.get("connected"):
@@ -44,13 +47,15 @@ async def print_receipt(data: dict, db: DbSession):
 
 
 @router.post("/drawer")
-async def open_drawer():
+@limiter.limit("30/minute")
+async def open_drawer(request: Request):
     """Open cash drawer."""
     return {"success": True}
 
 
 @router.post("/card-payment")
-async def process_card_payment(data: dict, db: DbSession):
+@limiter.limit("30/minute")
+async def process_card_payment(request: Request, data: dict, db: DbSession):
     """Process card payment through fiscal device."""
     config = _get_bridge_config(db)
     if not config.get("connected"):
@@ -59,6 +64,7 @@ async def process_card_payment(data: dict, db: DbSession):
 
 
 @router.post("/report")
-async def print_report(data: dict):
+@limiter.limit("30/minute")
+async def print_report(request: Request, data: dict):
     """Print a fiscal report (X or Z report)."""
     return {"success": True, "report_type": data.get("type", "x")}

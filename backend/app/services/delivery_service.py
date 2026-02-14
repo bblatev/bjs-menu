@@ -188,7 +188,7 @@ class DeliveryAggregatorService:
         return order
 
     async def _notify_platform_status(self, order: DeliveryOrder) -> None:
-        """Notify delivery platform of status change."""
+        """Notify delivery platform of status change via their API."""
         integration = self.db.query(DeliveryIntegration).filter(
             DeliveryIntegration.id == order.integration_id
         ).first()
@@ -196,9 +196,47 @@ class DeliveryAggregatorService:
         if not integration or not integration.api_key:
             return
 
-        # Platform-specific status update
-        # This would call the appropriate platform API
-        pass
+        status_payload = {
+            "order_id": order.platform_order_id,
+            "status": order.status.value,
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+        }
+
+        platform_urls = {
+            DeliveryPlatform.UBER_EATS: "https://api.uber.com/v1/eats/orders/{order_id}/status",
+            DeliveryPlatform.DOORDASH: "https://openapi.doordash.com/drive/v2/deliveries/{order_id}",
+            DeliveryPlatform.WOLT: "https://restaurant-api.wolt.com/v1/orders/{order_id}/status",
+            DeliveryPlatform.GLOVO: "https://storeapi.glovoapp.com/webhook/stores/orders/{order_id}",
+            DeliveryPlatform.DELIVEROO: "https://api.deliveroo.com/order/v1/orders/{order_id}/status",
+        }
+
+        url_template = platform_urls.get(order.platform)
+        if not url_template:
+            return
+
+        url = url_template.format(order_id=order.platform_order_id)
+
+        try:
+            async with httpx.AsyncClient(timeout=10.0) as client:
+                response = await client.put(
+                    url,
+                    json=status_payload,
+                    headers={
+                        "Authorization": f"Bearer {integration.api_key}",
+                        "Content-Type": "application/json",
+                    },
+                )
+                if response.status_code >= 400:
+                    import logging
+                    logging.getLogger(__name__).warning(
+                        f"Platform status update failed for {order.platform.value}: "
+                        f"{response.status_code} {response.text[:200]}"
+                    )
+        except httpx.RequestError as e:
+            import logging
+            logging.getLogger(__name__).warning(
+                f"Platform status update request failed for {order.platform.value}: {e}"
+            )
 
 
 class MenuSyncService:
@@ -344,19 +382,58 @@ class MenuSyncService:
         product_id: int,
         is_available: bool
     ) -> None:
-        """Update availability on a specific platform."""
-        # Get platform item ID
+        """Update item availability on a specific delivery platform."""
         mapping = self.db.query(DeliveryPlatformMapping).filter(
             DeliveryPlatformMapping.integration_id == integration.id,
             DeliveryPlatformMapping.product_id == product_id
         ).first()
 
-        if not mapping:
+        if not mapping or not integration.api_key:
             return
 
-        # This would call the platform API
-        # Platform-specific implementation needed
-        pass
+        availability_payload = {
+            "item_id": mapping.platform_item_id,
+            "is_available": is_available,
+        }
+
+        platform_urls = {
+            DeliveryPlatform.UBER_EATS: "https://api.uber.com/v1/eats/stores/{store_id}/menus/items/{item_id}",
+            DeliveryPlatform.DOORDASH: "https://openapi.doordash.com/drive/v2/menus/items/{item_id}/availability",
+            DeliveryPlatform.WOLT: "https://restaurant-api.wolt.com/v1/restaurants/{store_id}/items/{item_id}/availability",
+            DeliveryPlatform.GLOVO: "https://storeapi.glovoapp.com/webhook/stores/{store_id}/products/{item_id}",
+            DeliveryPlatform.DELIVEROO: "https://api.deliveroo.com/menu/v1/items/{item_id}/availability",
+        }
+
+        url_template = platform_urls.get(integration.platform)
+        if not url_template:
+            return
+
+        url = url_template.format(
+            store_id=integration.store_id or "",
+            item_id=mapping.platform_item_id,
+        )
+
+        try:
+            async with httpx.AsyncClient(timeout=10.0) as client:
+                response = await client.patch(
+                    url,
+                    json=availability_payload,
+                    headers={
+                        "Authorization": f"Bearer {integration.api_key}",
+                        "Content-Type": "application/json",
+                    },
+                )
+                if response.status_code >= 400:
+                    import logging
+                    logging.getLogger(__name__).warning(
+                        f"Availability update failed for {integration.platform.value}: "
+                        f"{response.status_code}"
+                    )
+        except httpx.RequestError as e:
+            import logging
+            logging.getLogger(__name__).warning(
+                f"Availability update request failed for {integration.platform.value}: {e}"
+            )
 
 
 class DeliveryWebhookHandler:

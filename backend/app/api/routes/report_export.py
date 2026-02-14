@@ -2,7 +2,8 @@
 
 from __future__ import annotations
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Request
+from app.core.rate_limit import limiter
 from fastapi.responses import StreamingResponse
 from typing import Optional, List
 from datetime import datetime, timedelta
@@ -122,20 +123,22 @@ def create_pdf_export(data: list, headers: list, title: str = "Report") -> Bytes
 # ==================== ENDPOINTS ====================
 
 @router.post("/export/sales")
+@limiter.limit("30/minute")
 def export_sales_report(
-    request: ReportExportRequest,
-    db: DbSession,
+    request: Request,
+    body: ReportExportRequest = None,
+    db: DbSession = None,
     current_user: OptionalCurrentUser = None,
 ):
     """Export sales report to PDF/Excel/CSV."""
     headers = ["Date", "Orders", "Revenue", "Avg Order Value", "Items Sold"]
     data = [["2024-01-01", "150", "7500.00", "50.00", "450"], ["2024-01-02", "175", "8750.00", "50.00", "525"]]
 
-    if request.format == "pdf":
+    if body.format == "pdf":
         output = create_pdf_export(data, headers, "Sales Report")
         media_type = "application/pdf"
         filename = f"sales_report_{datetime.utcnow().strftime('%Y%m%d')}.pdf"
-    elif request.format == "excel":
+    elif body.format == "excel":
         output = create_excel_export(data, headers, "Sales Report")
         media_type = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
         filename = f"sales_report_{datetime.utcnow().strftime('%Y%m%d')}.xlsx"
@@ -148,15 +151,16 @@ def export_sales_report(
 
 
 @router.post("/export/labor-costs")
-def export_labor_cost_report(request: ReportExportRequest, db: DbSession, current_user: OptionalCurrentUser = None):
+@limiter.limit("30/minute")
+def export_labor_cost_report(request: Request, body: ReportExportRequest = None, db: DbSession = None, current_user: OptionalCurrentUser = None):
     """Export labor cost report."""
     headers = ["Staff Name", "Role", "Hours", "Regular Pay", "Overtime Pay", "Total Pay", "Revenue Generated"]
     data = []
-    if request.format == "pdf":
+    if body.format == "pdf":
         output = create_pdf_export(data, headers, "Labor Cost Report")
         media_type = "application/pdf"
         filename = f"labor_cost_report_{datetime.utcnow().strftime('%Y%m%d')}.pdf"
-    elif request.format == "excel":
+    elif body.format == "excel":
         output = create_excel_export(data, headers, "Labor Costs")
         media_type = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
         filename = f"labor_cost_report_{datetime.utcnow().strftime('%Y%m%d')}.xlsx"
@@ -168,15 +172,16 @@ def export_labor_cost_report(request: ReportExportRequest, db: DbSession, curren
 
 
 @router.post("/export/food-costs")
-def export_food_cost_report(request: ReportExportRequest, db: DbSession, current_user: OptionalCurrentUser = None):
+@limiter.limit("30/minute")
+def export_food_cost_report(request: Request, body: ReportExportRequest = None, db: DbSession = None, current_user: OptionalCurrentUser = None):
     """Export food cost report."""
     headers = ["Item Name", "Category", "Qty Sold", "Selling Price", "Food Cost", "Food Cost %", "Profit Margin %", "Total Revenue"]
     data = []
-    if request.format == "pdf":
+    if body.format == "pdf":
         output = create_pdf_export(data, headers, "Food Cost Report")
         media_type = "application/pdf"
         filename = f"food_cost_report_{datetime.utcnow().strftime('%Y%m%d')}.pdf"
-    elif request.format == "excel":
+    elif body.format == "excel":
         output = create_excel_export(data, headers, "Food Costs")
         media_type = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
         filename = f"food_cost_report_{datetime.utcnow().strftime('%Y%m%d')}.xlsx"
@@ -188,30 +193,35 @@ def export_food_cost_report(request: ReportExportRequest, db: DbSession, current
 
 
 @router.post("/scheduled")
-def create_scheduled_report(config: ScheduledReportConfig, db: DbSession, current_user: OptionalCurrentUser = None):
+@limiter.limit("30/minute")
+def create_scheduled_report(request: Request, config: ScheduledReportConfig = None, db: DbSession = None, current_user: OptionalCurrentUser = None):
     """Create a scheduled report."""
     return {"id": 1, "created_at": datetime.utcnow().isoformat(), "last_run": None, "next_run": (datetime.utcnow() + timedelta(days=1)).isoformat(), **config.model_dump()}
 
 
 @router.get("/scheduled")
-def list_scheduled_reports(db: DbSession, current_user: OptionalCurrentUser = None):
+@limiter.limit("60/minute")
+def list_scheduled_reports(request: Request, db: DbSession = None, current_user: OptionalCurrentUser = None):
     """List all scheduled reports."""
     return []
 
 
 @router.put("/scheduled/{report_id}")
-def update_scheduled_report(report_id: int, config: ScheduledReportConfig, db: DbSession, current_user: OptionalCurrentUser = None):
+@limiter.limit("30/minute")
+def update_scheduled_report(request: Request, report_id: int, config: ScheduledReportConfig = None, db: DbSession = None, current_user: OptionalCurrentUser = None):
     """Update a scheduled report."""
     return {"id": report_id, **config.model_dump()}
 
 
 @router.delete("/scheduled/{report_id}")
-def delete_scheduled_report(report_id: int, db: DbSession, current_user: OptionalCurrentUser = None):
+@limiter.limit("30/minute")
+def delete_scheduled_report(request: Request, report_id: int, db: DbSession = None, current_user: OptionalCurrentUser = None):
     """Delete a scheduled report."""
     return {"success": True, "message": "Scheduled report deleted"}
 
 
 @router.post("/scheduled/{report_id}/run")
-def run_scheduled_report_now(report_id: int, db: DbSession, current_user: OptionalCurrentUser = None):
+@limiter.limit("30/minute")
+def run_scheduled_report_now(request: Request, report_id: int, db: DbSession = None, current_user: OptionalCurrentUser = None):
     """Manually trigger a scheduled report."""
     return {"success": True, "message": "Report queued for generation"}

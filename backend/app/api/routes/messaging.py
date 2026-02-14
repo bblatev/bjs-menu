@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Query, Request
 from sqlalchemy import func, or_
 from typing import List, Optional
 from datetime import datetime
@@ -10,6 +10,7 @@ from pydantic import BaseModel
 
 from app.db.session import DbSession
 from app.core.rbac import CurrentUser, OptionalCurrentUser
+from app.core.rate_limit import limiter
 
 router = APIRouter()
 
@@ -44,7 +45,8 @@ _next_msg_id = 1
 
 
 @router.post("/", response_model=MessageResponse)
-def send_message(data: MessageCreate, db: DbSession, current_user: CurrentUser = None):
+@limiter.limit("30/minute")
+def send_message(request: Request, data: MessageCreate, db: DbSession, current_user: CurrentUser = None):
     """Send a message to a staff member, role, or broadcast to all."""
     global _next_msg_id
     now = datetime.utcnow().isoformat()
@@ -61,7 +63,8 @@ def send_message(data: MessageCreate, db: DbSession, current_user: CurrentUser =
 
 
 @router.get("/inbox", response_model=List[MessageResponse])
-def get_inbox(db: DbSession, current_user: OptionalCurrentUser = None, unread_only: bool = False, priority: Optional[str] = None, limit: int = 50, offset: int = 0):
+@limiter.limit("60/minute")
+def get_inbox(request: Request, db: DbSession, current_user: OptionalCurrentUser = None, unread_only: bool = False, priority: Optional[str] = None, limit: int = 50, offset: int = 0):
     """Get messages for current user (direct + role-based + broadcast)."""
     filtered = list(_messages)
     if unread_only:
@@ -72,20 +75,23 @@ def get_inbox(db: DbSession, current_user: OptionalCurrentUser = None, unread_on
 
 
 @router.get("/sent", response_model=List[MessageResponse])
-def get_sent_messages(db: DbSession, current_user: OptionalCurrentUser = None, limit: int = 50, offset: int = 0):
+@limiter.limit("60/minute")
+def get_sent_messages(request: Request, db: DbSession, current_user: OptionalCurrentUser = None, limit: int = 50, offset: int = 0):
     """Get sent messages."""
     return [MessageResponse(**m) for m in _messages[offset: offset + limit]]
 
 
 @router.get("/unread-count")
-def get_unread_count(db: DbSession, current_user: OptionalCurrentUser = None):
+@limiter.limit("60/minute")
+def get_unread_count(request: Request, db: DbSession, current_user: OptionalCurrentUser = None):
     """Get count of unread messages."""
     count = sum(1 for m in _messages if not m["read"])
     return {"unread_count": count}
 
 
 @router.get("/{message_id}", response_model=MessageResponse)
-def get_message(message_id: int, db: DbSession, current_user: OptionalCurrentUser = None):
+@limiter.limit("60/minute")
+def get_message(request: Request, message_id: int, db: DbSession, current_user: OptionalCurrentUser = None):
     """Get a specific message."""
     for m in _messages:
         if m["id"] == message_id:
@@ -94,7 +100,8 @@ def get_message(message_id: int, db: DbSession, current_user: OptionalCurrentUse
 
 
 @router.put("/{message_id}/read")
-def mark_as_read(message_id: int, db: DbSession, current_user: OptionalCurrentUser = None):
+@limiter.limit("30/minute")
+def mark_as_read(request: Request, message_id: int, db: DbSession, current_user: OptionalCurrentUser = None):
     """Mark a message as read."""
     for m in _messages:
         if m["id"] == message_id:
@@ -105,7 +112,8 @@ def mark_as_read(message_id: int, db: DbSession, current_user: OptionalCurrentUs
 
 
 @router.put("/mark-all-read")
-def mark_all_as_read(db: DbSession, current_user: OptionalCurrentUser = None):
+@limiter.limit("30/minute")
+def mark_all_as_read(request: Request, db: DbSession, current_user: OptionalCurrentUser = None):
     """Mark all messages as read."""
     now = datetime.utcnow().isoformat()
     for m in _messages:
@@ -116,7 +124,8 @@ def mark_all_as_read(db: DbSession, current_user: OptionalCurrentUser = None):
 
 
 @router.delete("/{message_id}")
-def delete_message(message_id: int, db: DbSession, current_user: OptionalCurrentUser = None):
+@limiter.limit("30/minute")
+def delete_message(request: Request, message_id: int, db: DbSession, current_user: OptionalCurrentUser = None):
     """Delete a message."""
     global _messages
     original_len = len(_messages)
@@ -127,7 +136,8 @@ def delete_message(message_id: int, db: DbSession, current_user: OptionalCurrent
 
 
 @router.post("/broadcast")
-def broadcast_message(db: DbSession, current_user: OptionalCurrentUser = None, subject: str = "", body: str = "", priority: str = "normal"):
+@limiter.limit("30/minute")
+def broadcast_message(request: Request, db: DbSession, current_user: OptionalCurrentUser = None, subject: str = "", body: str = "", priority: str = "normal"):
     """Broadcast a message to all staff."""
     global _next_msg_id
     now = datetime.utcnow().isoformat()
@@ -144,7 +154,8 @@ def broadcast_message(db: DbSession, current_user: OptionalCurrentUser = None, s
 
 
 @router.get("/staff-list")
-def get_staff_for_messaging(db: DbSession, current_user: OptionalCurrentUser = None):
+@limiter.limit("60/minute")
+def get_staff_for_messaging(request: Request, db: DbSession, current_user: OptionalCurrentUser = None):
     """Get list of staff members for messaging."""
     from app.models.staff import StaffUser
     staff = db.query(StaffUser).filter(StaffUser.is_active == True).order_by(StaffUser.full_name).all()

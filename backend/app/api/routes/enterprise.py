@@ -2,11 +2,12 @@
 
 from datetime import datetime, timedelta, timezone
 from typing import List, Optional
-from fastapi import APIRouter, HTTPException, UploadFile, File, Form
+from fastapi import APIRouter, HTTPException, UploadFile, File, Form, Request
 from pydantic import BaseModel
 from enum import Enum
 
 from app.core.file_utils import sanitize_filename
+from app.core.rate_limit import limiter
 from app.db.session import DbSession
 from app.models.hardware import (
     Integration as IntegrationModel,
@@ -202,7 +203,8 @@ def _save_config(db, store_id: str, data: dict, name: str = ""):
 # ==================== MULTI-LOCATION ====================
 
 @router.get("/locations")
-def get_enterprise_locations(db: DbSession):
+@limiter.limit("60/minute")
+def get_enterprise_locations(request: Request, db: DbSession):
     """Get all locations for enterprise/multi-location setup."""
     from app.models.location import Location
     locations = db.query(Location).all()
@@ -222,7 +224,8 @@ def get_enterprise_locations(db: DbSession):
 
 
 @router.get("/consolidated")
-def get_consolidated_report(db: DbSession):
+@limiter.limit("60/minute")
+def get_consolidated_report(request: Request, db: DbSession):
     """Get consolidated enterprise report across all locations."""
     from sqlalchemy import func, Numeric as SaNumeric
     from app.models.location import Location
@@ -280,7 +283,9 @@ def get_consolidated_report(db: DbSession):
 # ==================== INTEGRATIONS ====================
 
 @router.get("/integrations/marketplace")
+@limiter.limit("60/minute")
 def get_integrations_marketplace(
+    request: Request,
     db: DbSession,
     category: Optional[str] = None,
 ):
@@ -292,7 +297,8 @@ def get_integrations_marketplace(
 
 
 @router.get("/integrations/")
-def list_integrations(db: DbSession):
+@limiter.limit("60/minute")
+def list_integrations(request: Request, db: DbSession):
     """List all available integrations with connection status."""
     # Get connected integrations from database
     connected = db.query(IntegrationModel).filter(IntegrationModel.status == "connected").all()
@@ -310,7 +316,8 @@ def list_integrations(db: DbSession):
 
 
 @router.get("/integrations/connected")
-def get_connected_integrations(db: DbSession):
+@limiter.limit("60/minute")
+def get_connected_integrations(request: Request, db: DbSession):
     """Get only connected integrations."""
     connected = db.query(IntegrationModel).filter(IntegrationModel.status == "connected").all()
 
@@ -328,7 +335,9 @@ def get_connected_integrations(db: DbSession):
 
 
 @router.post("/integrations/connections/")
+@limiter.limit("30/minute")
 def connect_integration(
+    request: Request,
     db: DbSession,
     connection: IntegrationConnection,
 ):
@@ -362,7 +371,9 @@ def connect_integration(
 
 
 @router.delete("/integrations/connections/{integration_id}")
+@limiter.limit("30/minute")
 def disconnect_integration(
+    request: Request,
     db: DbSession,
     integration_id: str,
 ):
@@ -378,7 +389,8 @@ def disconnect_integration(
 # ==================== THROTTLING ====================
 
 @router.get("/throttling/status")
-def get_throttle_status(db: DbSession, location_id: Optional[int] = None):
+@limiter.limit("60/minute")
+def get_throttle_status(request: Request, db: DbSession, location_id: Optional[int] = None):
     """Get current throttling status."""
     # Get the first active rule for max_orders_per_hour
     rule = db.query(ThrottleRuleModel).filter(ThrottleRuleModel.active == True).order_by(ThrottleRuleModel.priority.desc()).first()
@@ -396,7 +408,8 @@ def get_throttle_status(db: DbSession, location_id: Optional[int] = None):
 
 
 @router.get("/throttling/rules")
-def get_throttle_rules(db: DbSession, location_id: Optional[int] = None):
+@limiter.limit("60/minute")
+def get_throttle_rules(request: Request, db: DbSession, location_id: Optional[int] = None):
     """Get throttling rules."""
     rules = db.query(ThrottleRuleModel).all()
 
@@ -414,8 +427,11 @@ def get_throttle_rules(db: DbSession, location_id: Optional[int] = None):
 
 
 @router.post("/throttling/rules")
+@limiter.limit("30/minute")
 @router.post("/throttling/rules/")
+@limiter.limit("30/minute")
 def create_throttle_rule(
+    request: Request,
     db: DbSession,
     rule: ThrottleRuleCreate,
 ):
@@ -444,7 +460,9 @@ def create_throttle_rule(
 
 
 @router.put("/throttling/rules/{rule_id}")
+@limiter.limit("30/minute")
 def update_throttle_rule(
+    request: Request,
     db: DbSession,
     rule_id: int,
     rule: ThrottleRuleCreate,
@@ -474,7 +492,8 @@ def update_throttle_rule(
 
 
 @router.delete("/throttling/rules/{rule_id}")
-def delete_throttle_rule(db: DbSession, rule_id: int):
+@limiter.limit("30/minute")
+def delete_throttle_rule(request: Request, db: DbSession, rule_id: int):
     """Delete a throttling rule."""
     rule = db.query(ThrottleRuleModel).filter(ThrottleRuleModel.id == rule_id).first()
     if rule:
@@ -484,7 +503,9 @@ def delete_throttle_rule(db: DbSession, rule_id: int):
 
 
 @router.post("/throttling/snooze")
+@limiter.limit("30/minute")
 def snooze_throttling(
+    request: Request,
     db: DbSession,
     minutes: int = 30,
 ):
@@ -498,7 +519,8 @@ def snooze_throttling(
 
 
 @router.post("/throttling/resume")
-def resume_throttling(db: DbSession):
+@limiter.limit("30/minute")
+def resume_throttling(request: Request, db: DbSession):
     """Resume throttling after snooze."""
     ts = _load_config(db, "enterprise_throttle", _DEFAULT_THROTTLE_STATUS)
     ts["snoozed_until"] = None
@@ -509,7 +531,8 @@ def resume_throttling(db: DbSession):
 # ==================== HOTEL PMS ====================
 
 @router.get("/hotel-pms/connection")
-def get_hotel_connection(db: DbSession):
+@limiter.limit("60/minute")
+def get_hotel_connection(request: Request, db: DbSession):
     """Get hotel PMS connection status."""
     # Check if we have a hotel-pms integration connected
     integration = db.query(IntegrationModel).filter(
@@ -531,7 +554,9 @@ def get_hotel_connection(db: DbSession):
 
 
 @router.post("/hotel-pms/connect")
+@limiter.limit("30/minute")
 def connect_hotel_pms(
+    request: Request,
     db: DbSession,
     hotel_name: str,
     pms_type: str,
@@ -577,7 +602,8 @@ def connect_hotel_pms(
 
 
 @router.post("/hotel-pms/disconnect")
-def disconnect_hotel_pms(db: DbSession):
+@limiter.limit("30/minute")
+def disconnect_hotel_pms(request: Request, db: DbSession):
     """Disconnect from hotel PMS."""
     integration = db.query(IntegrationModel).filter(IntegrationModel.category == "hotel-pms").first()
     if integration:
@@ -588,7 +614,9 @@ def disconnect_hotel_pms(db: DbSession):
 
 
 @router.get("/hotel-pms/guests")
+@limiter.limit("60/minute")
 def get_hotel_guests(
+    request: Request,
     db: DbSession,
     room_number: Optional[str] = None,
     vip_only: bool = False,
@@ -616,7 +644,8 @@ def get_hotel_guests(
 
 
 @router.post("/hotel-pms/sync-guests")
-def sync_hotel_guests(db: DbSession):
+@limiter.limit("30/minute")
+def sync_hotel_guests(request: Request, db: DbSession):
     """Sync guests from hotel PMS.
 
     In production, this would call the actual PMS API to fetch current guests.
@@ -636,7 +665,8 @@ def sync_hotel_guests(db: DbSession):
 
 
 @router.get("/hotel-pms/charges")
-def get_hotel_charges(db: DbSession):
+@limiter.limit("60/minute")
+def get_hotel_charges(request: Request, db: DbSession):
     """Get recent hotel room charges from guest orders linked to rooms."""
     from app.models.restaurant import GuestOrder
     # Find guest orders linked to hotel rooms (table_token starts with 'room-' convention)
@@ -659,7 +689,9 @@ def get_hotel_charges(db: DbSession):
 
 
 @router.post("/hotel-pms/charges")
+@limiter.limit("30/minute")
 def post_hotel_charge(
+    request: Request,
     db: DbSession,
     charge: HotelCharge,
 ):
@@ -706,7 +738,8 @@ def post_hotel_charge(
 # ==================== OFFLINE MODE ====================
 
 @router.get("/offline/connectivity")
-def get_offline_status(db: DbSession):
+@limiter.limit("60/minute")
+def get_offline_status(request: Request, db: DbSession):
     """Get offline/online connectivity status."""
     pending_count = db.query(OfflineQueueModel).filter(OfflineQueueModel.status == "pending").count()
 
@@ -720,7 +753,8 @@ def get_offline_status(db: DbSession):
 
 
 @router.get("/offline/sync-queue")
-def get_sync_queue(db: DbSession):
+@limiter.limit("60/minute")
+def get_sync_queue(request: Request, db: DbSession):
     """Get pending sync queue items."""
     items = db.query(OfflineQueueModel).filter(OfflineQueueModel.status == "pending").all()
 
@@ -737,7 +771,8 @@ def get_sync_queue(db: DbSession):
 
 
 @router.post("/offline/sync")
-def trigger_sync(db: DbSession):
+@limiter.limit("30/minute")
+def trigger_sync(request: Request, db: DbSession):
     """Trigger a sync of offline data."""
     pending_items = db.query(OfflineQueueModel).filter(OfflineQueueModel.status == "pending").all()
     synced_count = len(pending_items)
@@ -756,7 +791,9 @@ def trigger_sync(db: DbSession):
 
 
 @router.post("/offline/queue")
+@limiter.limit("30/minute")
 def add_to_sync_queue(
+    request: Request,
     db: DbSession,
     item_type: str,
     data: dict,
@@ -783,13 +820,16 @@ def add_to_sync_queue(
 # ==================== MOBILE APP ====================
 
 @router.get("/mobile-app")
-def get_mobile_app_config(db: DbSession):
+@limiter.limit("60/minute")
+def get_mobile_app_config(request: Request, db: DbSession):
     """Get mobile app configuration."""
     return _load_config(db, "enterprise_mobile_app", _DEFAULT_MOBILE_CONFIG)
 
 
 @router.put("/mobile-app")
+@limiter.limit("30/minute")
 def update_mobile_app_config(
+    request: Request,
     db: DbSession,
     config: MobileAppConfig,
 ):
@@ -800,7 +840,9 @@ def update_mobile_app_config(
 
 
 @router.post("/mobile-app/build")
+@limiter.limit("30/minute")
 def trigger_mobile_build(
+    request: Request,
     db: DbSession,
     platform: str = "both",  # ios, android, both
 ):
@@ -826,7 +868,9 @@ def trigger_mobile_build(
 # ==================== INVOICE OCR ====================
 
 @router.post("/invoice-ocr/upload")
+@limiter.limit("30/minute")
 async def upload_invoice_for_ocr(
+    request: Request,
     db: DbSession,
     file: UploadFile = File(...),
 ):
@@ -859,7 +903,9 @@ async def upload_invoice_for_ocr(
 
 
 @router.get("/invoice-ocr/jobs")
+@limiter.limit("60/minute")
 def get_ocr_jobs(
+    request: Request,
     db: DbSession,
     status: Optional[str] = None,
 ):
@@ -884,7 +930,8 @@ def get_ocr_jobs(
 
 
 @router.get("/invoice-ocr/jobs/{job_id}")
-def get_ocr_job(db: DbSession, job_id: int):
+@limiter.limit("60/minute")
+def get_ocr_job(request: Request, db: DbSession, job_id: int):
     """Get a specific OCR job."""
     job = db.query(OCRJobModel).filter(OCRJobModel.id == job_id).first()
     if not job:

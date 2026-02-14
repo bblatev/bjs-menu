@@ -8,6 +8,7 @@ from pydantic import BaseModel, Field
 from typing import Optional, List
 import logging
 
+from app.core.rate_limit import limiter
 from app.db.session import get_db
 from app.core.rbac import get_current_user
 from app.services.delivery_integrations import (
@@ -84,7 +85,9 @@ class CreateDeliveryRequest(BaseModel):
 # =============================================================================
 
 @router.get("/orders")
+@limiter.limit("60/minute")
 async def get_all_delivery_orders(
+    request: Request,
     current_user=Depends(get_current_user)
 ):
     """
@@ -101,7 +104,9 @@ async def get_all_delivery_orders(
 
 
 @router.get("/reservations")
+@limiter.limit("60/minute")
 async def get_all_reservations(
+    request: Request,
     date: str,
     current_user=Depends(get_current_user)
 ):
@@ -120,9 +125,11 @@ async def get_all_reservations(
 
 
 @router.post("/orders/{platform}/accept")
+@limiter.limit("30/minute")
 async def accept_platform_order(
+    request: Request,
     platform: str,
-    request: AcceptOrderRequest,
+    body: AcceptOrderRequest,
     background_tasks: BackgroundTasks,
     current_user=Depends(get_current_user),
     db: Session = Depends(get_db)
@@ -131,34 +138,36 @@ async def accept_platform_order(
     Accept an order from a delivery platform
     """
     manager = get_delivery_manager()
-    result = await manager.accept_order(platform, request.order_id, request.prep_time_minutes)
+    result = await manager.accept_order(platform, body.order_id, body.prep_time_minutes)
 
     if not result.success:
         raise HTTPException(status_code=400, detail=result.error_message)
 
     # Sync order to local database in background
-    background_tasks.add_task(_sync_delivery_order, db, platform, request.order_id)
+    background_tasks.add_task(_sync_delivery_order, db, platform, body.order_id)
 
     return {
         "success": True,
         "platform": platform,
-        "order_id": request.order_id,
+        "order_id": body.order_id,
         "status": "accepted",
-        "prep_time_minutes": request.prep_time_minutes
+        "prep_time_minutes": body.prep_time_minutes
     }
 
 
 @router.post("/orders/{platform}/cancel")
+@limiter.limit("30/minute")
 async def cancel_platform_order(
+    request: Request,
     platform: str,
-    request: CancelOrderRequest,
+    body: CancelOrderRequest,
     current_user=Depends(get_current_user)
 ):
     """
     Cancel an order from a delivery platform
     """
     manager = get_delivery_manager()
-    result = await manager.cancel_order(platform, request.order_id, request.reason)
+    result = await manager.cancel_order(platform, body.order_id, body.reason)
 
     if not result.success:
         raise HTTPException(status_code=400, detail=result.error_message)
@@ -166,22 +175,24 @@ async def cancel_platform_order(
     return {
         "success": True,
         "platform": platform,
-        "order_id": request.order_id,
+        "order_id": body.order_id,
         "status": "cancelled"
     }
 
 
 @router.post("/reservations/{platform}/confirm")
+@limiter.limit("30/minute")
 async def confirm_platform_reservation(
+    request: Request,
     platform: str,
-    request: ConfirmReservationRequest,
+    body: ConfirmReservationRequest,
     current_user=Depends(get_current_user)
 ):
     """
     Confirm a reservation from a platform
     """
     manager = get_delivery_manager()
-    result = await manager.confirm_reservation(platform, request.reservation_id)
+    result = await manager.confirm_reservation(platform, body.reservation_id)
 
     if not result.success:
         raise HTTPException(status_code=400, detail=result.error_message)
@@ -189,7 +200,7 @@ async def confirm_platform_reservation(
     return {
         "success": True,
         "platform": platform,
-        "reservation_id": request.reservation_id,
+        "reservation_id": body.reservation_id,
         "status": "confirmed"
     }
 
@@ -199,7 +210,9 @@ async def confirm_platform_reservation(
 # =============================================================================
 
 @router.get("/ubereats/orders")
+@limiter.limit("60/minute")
 async def get_ubereats_orders(
+    request: Request,
     current_user=Depends(get_current_user)
 ):
     """Get active UberEats orders"""
@@ -213,13 +226,15 @@ async def get_ubereats_orders(
 
 
 @router.post("/ubereats/orders/accept")
+@limiter.limit("30/minute")
 async def accept_ubereats_order(
-    request: AcceptOrderRequest,
+    request: Request,
+    body: AcceptOrderRequest,
     current_user=Depends(get_current_user)
 ):
     """Accept an UberEats order"""
     service = get_uber_eats_service()
-    result = await service.accept_order(request.order_id, request.prep_time_minutes)
+    result = await service.accept_order(body.order_id, body.prep_time_minutes)
 
     if not result.success:
         raise HTTPException(status_code=400, detail=result.error_message)
@@ -228,13 +243,15 @@ async def accept_ubereats_order(
 
 
 @router.post("/ubereats/orders/deny")
+@limiter.limit("30/minute")
 async def deny_ubereats_order(
-    request: DenyOrderRequest,
+    request: Request,
+    body: DenyOrderRequest,
     current_user=Depends(get_current_user)
 ):
     """Deny an UberEats order"""
     service = get_uber_eats_service()
-    result = await service.deny_order(request.order_id, request.reason)
+    result = await service.deny_order(body.order_id, body.reason)
 
     if not result.success:
         raise HTTPException(status_code=400, detail=result.error_message)
@@ -243,13 +260,15 @@ async def deny_ubereats_order(
 
 
 @router.post("/ubereats/orders/status")
+@limiter.limit("30/minute")
 async def update_ubereats_status(
-    request: UpdateStatusRequest,
+    request: Request,
+    body: UpdateStatusRequest,
     current_user=Depends(get_current_user)
 ):
     """Update UberEats order status"""
     service = get_uber_eats_service()
-    result = await service.update_order_status(request.order_id, request.status)
+    result = await service.update_order_status(body.order_id, body.status)
 
     if not result.success:
         raise HTTPException(status_code=400, detail=result.error_message)
@@ -258,8 +277,10 @@ async def update_ubereats_status(
 
 
 @router.post("/ubereats/store/status")
+@limiter.limit("30/minute")
 async def set_ubereats_store_status(
-    request: StoreStatusRequest,
+    request: Request,
+    body: StoreStatusRequest,
     current_user=Depends(get_current_user)
 ):
     """Set UberEats store online/offline"""
@@ -267,7 +288,7 @@ async def set_ubereats_store_status(
         raise HTTPException(status_code=403, detail="Insufficient permissions")
 
     service = get_uber_eats_service()
-    result = await service.set_store_status(request.is_open)
+    result = await service.set_store_status(body.is_open)
 
     if not result.success:
         raise HTTPException(status_code=400, detail=result.error_message)
@@ -276,6 +297,7 @@ async def set_ubereats_store_status(
 
 
 @router.post("/ubereats/webhook")
+@limiter.limit("30/minute")
 async def ubereats_webhook(
     request: Request,
     background_tasks: BackgroundTasks,
@@ -309,7 +331,9 @@ async def ubereats_webhook(
 # =============================================================================
 
 @router.get("/doordash/orders")
+@limiter.limit("60/minute")
 async def get_doordash_orders(
+    request: Request,
     current_user=Depends(get_current_user)
 ):
     """Get active DoorDash orders"""
@@ -323,13 +347,15 @@ async def get_doordash_orders(
 
 
 @router.post("/doordash/orders/accept")
+@limiter.limit("30/minute")
 async def accept_doordash_order(
-    request: AcceptOrderRequest,
+    request: Request,
+    body: AcceptOrderRequest,
     current_user=Depends(get_current_user)
 ):
     """Accept a DoorDash order"""
     service = get_doordash_service()
-    result = await service.accept_order(request.order_id, request.prep_time_minutes)
+    result = await service.accept_order(body.order_id, body.prep_time_minutes)
 
     if not result.success:
         raise HTTPException(status_code=400, detail=result.error_message)
@@ -338,13 +364,15 @@ async def accept_doordash_order(
 
 
 @router.post("/doordash/orders/cancel")
+@limiter.limit("30/minute")
 async def cancel_doordash_order(
-    request: CancelOrderRequest,
+    request: Request,
+    body: CancelOrderRequest,
     current_user=Depends(get_current_user)
 ):
     """Cancel a DoorDash order"""
     service = get_doordash_service()
-    result = await service.cancel_order(request.order_id, request.reason)
+    result = await service.cancel_order(body.order_id, body.reason)
 
     if not result.success:
         raise HTTPException(status_code=400, detail=result.error_message)
@@ -353,13 +381,15 @@ async def cancel_doordash_order(
 
 
 @router.post("/doordash/orders/status")
+@limiter.limit("30/minute")
 async def update_doordash_status(
-    request: UpdateStatusRequest,
+    request: Request,
+    body: UpdateStatusRequest,
     current_user=Depends(get_current_user)
 ):
     """Update DoorDash order status"""
     service = get_doordash_service()
-    result = await service.update_order_status(request.order_id, request.status)
+    result = await service.update_order_status(body.order_id, body.status)
 
     if not result.success:
         raise HTTPException(status_code=400, detail=result.error_message)
@@ -368,8 +398,10 @@ async def update_doordash_status(
 
 
 @router.post("/doordash/drive/quote")
+@limiter.limit("30/minute")
 async def get_doordash_quote(
-    request: DeliveryQuoteRequest,
+    request: Request,
+    body: DeliveryQuoteRequest,
     current_user=Depends(get_current_user)
 ):
     """Get DoorDash Drive delivery quote"""
@@ -377,9 +409,9 @@ async def get_doordash_quote(
 
     service = get_doordash_service()
     result = await service.get_delivery_quote(
-        request.pickup_address,
-        request.dropoff_address,
-        Decimal(str(request.order_value))
+        body.pickup_address,
+        body.dropoff_address,
+        Decimal(str(body.order_value))
     )
 
     if not result.success:
@@ -389,8 +421,10 @@ async def get_doordash_quote(
 
 
 @router.post("/doordash/drive/create")
+@limiter.limit("30/minute")
 async def create_doordash_delivery(
-    request: CreateDeliveryRequest,
+    request: Request,
+    body: CreateDeliveryRequest,
     current_user=Depends(get_current_user)
 ):
     """Create a DoorDash Drive delivery"""
@@ -398,11 +432,11 @@ async def create_doordash_delivery(
 
     service = get_doordash_service()
     result = await service.create_delivery(
-        request.pickup_address,
-        request.dropoff_address,
-        request.dropoff_phone,
-        Decimal(str(request.order_value)),
-        request.items
+        body.pickup_address,
+        body.dropoff_address,
+        body.dropoff_phone,
+        Decimal(str(body.order_value)),
+        body.items
     )
 
     if not result.success:
@@ -412,6 +446,7 @@ async def create_doordash_delivery(
 
 
 @router.post("/doordash/webhook")
+@limiter.limit("30/minute")
 async def doordash_webhook(
     request: Request,
     background_tasks: BackgroundTasks,
@@ -445,7 +480,9 @@ async def doordash_webhook(
 # =============================================================================
 
 @router.get("/opentable/reservations")
+@limiter.limit("60/minute")
 async def get_opentable_reservations(
+    request: Request,
     date: Optional[str] = None,
     status: Optional[str] = None,
     current_user=Depends(get_current_user)
@@ -461,7 +498,9 @@ async def get_opentable_reservations(
 
 
 @router.get("/opentable/reservations/{reservation_id}")
+@limiter.limit("60/minute")
 async def get_opentable_reservation(
+    request: Request,
     reservation_id: str,
     current_user=Depends(get_current_user)
 ):
@@ -476,13 +515,15 @@ async def get_opentable_reservation(
 
 
 @router.post("/opentable/reservations/confirm")
+@limiter.limit("30/minute")
 async def confirm_opentable_reservation(
-    request: ConfirmReservationRequest,
+    request: Request,
+    body: ConfirmReservationRequest,
     current_user=Depends(get_current_user)
 ):
     """Confirm an OpenTable reservation"""
     service = get_opentable_service()
-    result = await service.confirm_reservation(request.reservation_id)
+    result = await service.confirm_reservation(body.reservation_id)
 
     if not result.success:
         raise HTTPException(status_code=400, detail=result.error_message)
@@ -491,13 +532,15 @@ async def confirm_opentable_reservation(
 
 
 @router.post("/opentable/reservations/cancel")
+@limiter.limit("30/minute")
 async def cancel_opentable_reservation(
-    request: CancelReservationRequest,
+    request: Request,
+    body: CancelReservationRequest,
     current_user=Depends(get_current_user)
 ):
     """Cancel an OpenTable reservation"""
     service = get_opentable_service()
-    result = await service.cancel_reservation(request.reservation_id, request.reason)
+    result = await service.cancel_reservation(body.reservation_id, body.reason)
 
     if not result.success:
         raise HTTPException(status_code=400, detail=result.error_message)
@@ -506,13 +549,15 @@ async def cancel_opentable_reservation(
 
 
 @router.post("/opentable/reservations/seat")
+@limiter.limit("30/minute")
 async def seat_opentable_reservation(
-    request: SeatReservationRequest,
+    request: Request,
+    body: SeatReservationRequest,
     current_user=Depends(get_current_user)
 ):
     """Mark OpenTable reservation as seated"""
     service = get_opentable_service()
-    result = await service.seat_reservation(request.reservation_id, request.table_id)
+    result = await service.seat_reservation(body.reservation_id, body.table_id)
 
     if not result.success:
         raise HTTPException(status_code=400, detail=result.error_message)
@@ -521,13 +566,15 @@ async def seat_opentable_reservation(
 
 
 @router.post("/opentable/reservations/complete")
+@limiter.limit("30/minute")
 async def complete_opentable_reservation(
-    request: ConfirmReservationRequest,
+    request: Request,
+    body: ConfirmReservationRequest,
     current_user=Depends(get_current_user)
 ):
     """Mark OpenTable reservation as completed"""
     service = get_opentable_service()
-    result = await service.complete_reservation(request.reservation_id)
+    result = await service.complete_reservation(body.reservation_id)
 
     if not result.success:
         raise HTTPException(status_code=400, detail=result.error_message)
@@ -536,6 +583,7 @@ async def complete_opentable_reservation(
 
 
 @router.post("/opentable/webhook")
+@limiter.limit("30/minute")
 async def opentable_webhook(
     request: Request,
     background_tasks: BackgroundTasks,
@@ -569,7 +617,9 @@ async def opentable_webhook(
 # =============================================================================
 
 @router.get("/resy/reservations")
+@limiter.limit("60/minute")
 async def get_resy_reservations(
+    request: Request,
     date: Optional[str] = None,
     current_user=Depends(get_current_user)
 ):
@@ -584,7 +634,9 @@ async def get_resy_reservations(
 
 
 @router.get("/resy/reservations/{reservation_id}")
+@limiter.limit("60/minute")
 async def get_resy_reservation(
+    request: Request,
     reservation_id: str,
     current_user=Depends(get_current_user)
 ):
@@ -599,13 +651,15 @@ async def get_resy_reservation(
 
 
 @router.post("/resy/reservations/confirm")
+@limiter.limit("30/minute")
 async def confirm_resy_reservation(
-    request: ConfirmReservationRequest,
+    request: Request,
+    body: ConfirmReservationRequest,
     current_user=Depends(get_current_user)
 ):
     """Confirm a Resy reservation"""
     service = get_resy_service()
-    result = await service.confirm_reservation(request.reservation_id)
+    result = await service.confirm_reservation(body.reservation_id)
 
     if not result.success:
         raise HTTPException(status_code=400, detail=result.error_message)
@@ -614,13 +668,15 @@ async def confirm_resy_reservation(
 
 
 @router.post("/resy/reservations/cancel")
+@limiter.limit("30/minute")
 async def cancel_resy_reservation(
-    request: CancelReservationRequest,
+    request: Request,
+    body: CancelReservationRequest,
     current_user=Depends(get_current_user)
 ):
     """Cancel a Resy reservation"""
     service = get_resy_service()
-    result = await service.cancel_reservation(request.reservation_id, request.reason)
+    result = await service.cancel_reservation(body.reservation_id, body.reason)
 
     if not result.success:
         raise HTTPException(status_code=400, detail=result.error_message)
@@ -629,7 +685,9 @@ async def cancel_resy_reservation(
 
 
 @router.post("/resy/reservations/seat")
+@limiter.limit("30/minute")
 async def seat_resy_reservation(
+    request: Request,
     reservation_id: str,
     table_number: str,
     current_user=Depends(get_current_user)
@@ -645,13 +703,15 @@ async def seat_resy_reservation(
 
 
 @router.post("/resy/reservations/noshow")
+@limiter.limit("30/minute")
 async def resy_noshow(
-    request: ConfirmReservationRequest,
+    request: Request,
+    body: ConfirmReservationRequest,
     current_user=Depends(get_current_user)
 ):
     """Mark Resy reservation as no-show"""
     service = get_resy_service()
-    result = await service.no_show(request.reservation_id)
+    result = await service.no_show(body.reservation_id)
 
     if not result.success:
         raise HTTPException(status_code=400, detail=result.error_message)
@@ -660,7 +720,9 @@ async def resy_noshow(
 
 
 @router.get("/resy/availability")
+@limiter.limit("60/minute")
 async def get_resy_availability(
+    request: Request,
     date: str,
     party_size: int = 2,
     current_user=Depends(get_current_user)
@@ -676,6 +738,7 @@ async def get_resy_availability(
 
 
 @router.post("/resy/webhook")
+@limiter.limit("30/minute")
 async def resy_webhook(
     request: Request,
     background_tasks: BackgroundTasks,
@@ -709,7 +772,8 @@ async def resy_webhook(
 # =============================================================================
 
 @router.get("/platforms")
-async def get_platform_info():
+@limiter.limit("60/minute")
+async def get_platform_info(request: Request):
     """Get available delivery and reservation platforms"""
     return {
         "delivery_platforms": [

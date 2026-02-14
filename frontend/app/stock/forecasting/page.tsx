@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import AdminLayout from '@/components/AdminLayout';
 import { API_URL, getAuthHeaders } from '@/lib/api';
 
+import { toast } from '@/lib/toast';
 interface ForecastItem {
   id: number;
   item_name: string;
@@ -296,7 +297,7 @@ export default function DemandForecastingPage() {
 
   const generateBulkOrder = () => {
     const itemsToOrder = filteredItems.filter(item => item.recommended_order > 0);
-    alert(`Генериране на поръчка за ${itemsToOrder.length} артикула...`);
+    toast.success(`Генериране на поръчка за ${itemsToOrder.length} артикула...`);
   };
 
   return (

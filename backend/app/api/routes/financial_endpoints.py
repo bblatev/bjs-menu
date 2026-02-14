@@ -2,7 +2,7 @@
 Financial API Endpoints
 Chart of Accounts, Journal Entries, Bank Reconciliation, Budgets, Daily Close
 """
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy.orm import Session
 from typing import Optional, List
 from datetime import date
@@ -10,6 +10,7 @@ from pydantic import BaseModel, Field
 
 from app.db.session import get_db
 from app.models import StaffUser
+from app.core.rate_limit import limiter
 from app.services.financial_service import (
     get_chart_of_accounts_service,
     get_journal_entry_service,
@@ -116,7 +117,9 @@ class CashCountRecord(BaseModel):
 # ========================= CHART OF ACCOUNTS =========================
 
 @router.get("/chart-of-accounts")
+@limiter.limit("60/minute")
 async def get_chart_of_accounts(
+    request: Request,
     account_type: Optional[str] = None,
     active_only: bool = True,
     db: Session = Depends(get_db),
@@ -132,7 +135,9 @@ async def get_chart_of_accounts(
 
 
 @router.post("/chart-of-accounts")
+@limiter.limit("30/minute")
 async def create_account(
+    request: Request,
     data: AccountCreate,
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(require_admin)
@@ -149,7 +154,9 @@ async def create_account(
 
 
 @router.get("/chart-of-accounts/{account_id}/balance")
+@limiter.limit("60/minute")
 async def get_account_balance(
+    request: Request,
     account_id: int,
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(require_manager)
@@ -165,7 +172,9 @@ async def get_account_balance(
 # ========================= JOURNAL ENTRIES =========================
 
 @router.get("/journal-entries")
+@limiter.limit("60/minute")
 async def get_journal_entries(
+    request: Request,
     start_date: Optional[date] = None,
     end_date: Optional[date] = None,
     limit: int = Query(50, ge=1, le=200),
@@ -185,7 +194,9 @@ async def get_journal_entries(
 
 
 @router.post("/journal-entries")
+@limiter.limit("30/minute")
 async def create_journal_entry(
+    request: Request,
     data: JournalEntryCreate,
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(require_manager)
@@ -209,7 +220,9 @@ async def create_journal_entry(
 # ========================= BANK ACCOUNTS & RECONCILIATION =========================
 
 @router.get("/bank-accounts")
+@limiter.limit("60/minute")
 async def get_bank_accounts(
+    request: Request,
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(require_manager)
 ):
@@ -233,7 +246,9 @@ async def get_bank_accounts(
 
 
 @router.post("/bank-accounts")
+@limiter.limit("30/minute")
 async def create_bank_account(
+    request: Request,
     data: BankAccountCreate,
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(require_admin)
@@ -247,7 +262,9 @@ async def create_bank_account(
 
 
 @router.post("/bank-accounts/{bank_account_id}/import-transactions")
+@limiter.limit("30/minute")
 async def import_bank_transactions(
+    request: Request,
     bank_account_id: int,
     transactions: List[BankTransactionImport],
     db: Session = Depends(get_db),
@@ -262,7 +279,9 @@ async def import_bank_transactions(
 
 
 @router.post("/bank-reconciliation")
+@limiter.limit("30/minute")
 async def start_reconciliation(
+    request: Request,
     data: ReconciliationStart,
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(require_manager)
@@ -276,7 +295,9 @@ async def start_reconciliation(
 
 
 @router.get("/bank-reconciliation/{reconciliation_id}")
+@limiter.limit("60/minute")
 async def get_reconciliation(
+    request: Request,
     reconciliation_id: int,
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(require_manager)
@@ -300,7 +321,9 @@ async def get_reconciliation(
 
 
 @router.post("/bank-reconciliation/{reconciliation_id}/match")
+@limiter.limit("30/minute")
 async def match_transaction(
+    request: Request,
     reconciliation_id: int,
     data: TransactionMatch,
     db: Session = Depends(get_db),
@@ -315,7 +338,9 @@ async def match_transaction(
 
 
 @router.post("/bank-reconciliation/{reconciliation_id}/complete")
+@limiter.limit("30/minute")
 async def complete_reconciliation(
+    request: Request,
     reconciliation_id: int,
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(require_manager)
@@ -331,7 +356,9 @@ async def complete_reconciliation(
 # ========================= BUDGETS =========================
 
 @router.get("/budgets")
+@limiter.limit("60/minute")
 async def get_budgets(
+    request: Request,
     status: Optional[str] = None,
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(require_manager)
@@ -357,7 +384,9 @@ async def get_budgets(
 
 
 @router.post("/budgets")
+@limiter.limit("30/minute")
 async def create_budget(
+    request: Request,
     data: BudgetCreate,
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(require_manager)
@@ -376,7 +405,9 @@ async def create_budget(
 
 
 @router.get("/budget-variance/{budget_id}")
+@limiter.limit("60/minute")
 async def get_budget_variance(
+    request: Request,
     budget_id: int,
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(require_manager)
@@ -392,7 +423,9 @@ async def get_budget_variance(
 # ========================= DAILY CLOSE =========================
 
 @router.post("/daily-close")
+@limiter.limit("30/minute")
 async def start_daily_close(
+    request: Request,
     business_date: date,
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(require_manager)
@@ -407,7 +440,9 @@ async def start_daily_close(
 
 
 @router.get("/daily-reconciliation/{business_date}")
+@limiter.limit("60/minute")
 async def get_daily_reconciliation(
+    request: Request,
     business_date: date,
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(require_manager)
@@ -432,7 +467,9 @@ async def get_daily_reconciliation(
 
 
 @router.post("/daily-reconciliation/{reconciliation_id}/cash-count")
+@limiter.limit("30/minute")
 async def record_cash_count(
+    request: Request,
     reconciliation_id: int,
     data: CashCountRecord,
     db: Session = Depends(get_db),
@@ -448,7 +485,9 @@ async def record_cash_count(
 
 
 @router.post("/daily-reconciliation/{reconciliation_id}/complete")
+@limiter.limit("30/minute")
 async def complete_daily_close(
+    request: Request,
     reconciliation_id: int,
     notes: Optional[str] = None,
     db: Session = Depends(get_db),

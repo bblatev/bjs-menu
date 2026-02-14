@@ -22,6 +22,7 @@ from pydantic import BaseModel, ConfigDict
 import secrets
 
 from app.db.session import get_db
+from app.core.rate_limit import limiter
 from app.models import (
     Table, Menu, MenuItem, MenuCategory, Order, OrderItem,
     Venue, ModifierGroup, ModifierOption
@@ -127,6 +128,7 @@ class WaiterCallRequest(BaseModel):
 # =============================================================================
 
 @router.post("/session/start", response_model=SessionResponse)
+@limiter.limit("30/minute")
 async def start_session(
     data: SessionStartRequest,
     request: Request,
@@ -203,7 +205,9 @@ async def start_session(
 
 
 @router.get("/session/validate")
+@limiter.limit("60/minute")
 async def validate_session(
+    request: Request,
     session_token: str,
     db: Session = Depends(get_db)
 ):
@@ -220,7 +224,9 @@ async def validate_session(
 
 
 @router.post("/session/close")
+@limiter.limit("30/minute")
 async def close_session(
+    request: Request,
     session_token: str,
     db: Session = Depends(get_db)
 ):
@@ -239,7 +245,9 @@ async def close_session(
 # =============================================================================
 
 @router.get("/menu", response_model=List[dict])
+@limiter.limit("60/minute")
 async def get_menu(
+    request: Request,
     session_token: str,
     category_id: Optional[int] = None,
     search: Optional[str] = None,
@@ -371,7 +379,9 @@ async def get_menu(
 
 
 @router.get("/menu/item/{item_id}")
+@limiter.limit("60/minute")
 async def get_menu_item_detail(
+    request: Request,
     item_id: int,
     session_token: str,
     db: Session = Depends(get_db)
@@ -448,7 +458,9 @@ async def get_menu_item_detail(
 # =============================================================================
 
 @router.post("/cart/add", response_model=CartItemResponse)
+@limiter.limit("30/minute")
 async def add_to_cart(
+    request: Request,
     data: CartItemRequest,
     session_token: str,
     db: Session = Depends(get_db)
@@ -522,7 +534,9 @@ async def add_to_cart(
 
 
 @router.get("/cart", response_model=List[CartItemResponse])
+@limiter.limit("60/minute")
 async def get_cart(
+    request: Request,
     session_token: str,
     db: Session = Depends(get_db)
 ):
@@ -554,7 +568,9 @@ async def get_cart(
 
 
 @router.put("/cart/{item_id}")
+@limiter.limit("30/minute")
 async def update_cart_item(
+    request: Request,
     item_id: int,
     quantity: int,
     session_token: str,
@@ -585,7 +601,9 @@ async def update_cart_item(
 
 
 @router.delete("/cart/{item_id}")
+@limiter.limit("30/minute")
 async def remove_from_cart(
+    request: Request,
     item_id: int,
     session_token: str,
     db: Session = Depends(get_db)
@@ -609,7 +627,9 @@ async def remove_from_cart(
 
 
 @router.delete("/cart")
+@limiter.limit("30/minute")
 async def clear_cart(
+    request: Request,
     session_token: str,
     db: Session = Depends(get_db)
 ):
@@ -630,7 +650,9 @@ async def clear_cart(
 # =============================================================================
 
 @router.post("/order/place", response_model=PlaceOrderResponse)
+@limiter.limit("30/minute")
 async def place_order(
+    request: Request,
     session_token: str,
     db: Session = Depends(get_db)
 ):
@@ -719,7 +741,9 @@ async def place_order(
 
 
 @router.get("/order/status/{order_id}", response_model=OrderStatusResponse)
+@limiter.limit("60/minute")
 async def get_order_status(
+    request: Request,
     order_id: int,
     session_token: str,
     db: Session = Depends(get_db)
@@ -764,7 +788,9 @@ async def get_order_status(
 
 
 @router.get("/orders", response_model=List[dict])
+@limiter.limit("60/minute")
 async def get_session_orders(
+    request: Request,
     session_token: str,
     db: Session = Depends(get_db)
 ):
@@ -803,7 +829,9 @@ async def get_session_orders(
 # =============================================================================
 
 @router.post("/waiter/call")
+@limiter.limit("30/minute")
 async def call_waiter(
+    request: Request,
     data: WaiterCallRequest,
     session_token: str,
     db: Session = Depends(get_db)
@@ -843,7 +871,9 @@ async def call_waiter(
 
 
 @router.get("/waiter/calls")
+@limiter.limit("60/minute")
 async def get_waiter_calls(
+    request: Request,
     session_token: str,
     db: Session = Depends(get_db)
 ):
@@ -872,7 +902,9 @@ async def get_waiter_calls(
 # =============================================================================
 
 @router.post("/favorites/{menu_item_id}")
+@limiter.limit("30/minute")
 async def add_favorite(
+    request: Request,
     menu_item_id: int,
     session_token: str,
     db: Session = Depends(get_db)
@@ -906,7 +938,9 @@ async def add_favorite(
 
 
 @router.delete("/favorites/{menu_item_id}")
+@limiter.limit("30/minute")
 async def remove_favorite(
+    request: Request,
     menu_item_id: int,
     session_token: str,
     db: Session = Depends(get_db)
@@ -930,7 +964,9 @@ async def remove_favorite(
 
 
 @router.get("/favorites")
+@limiter.limit("60/minute")
 async def get_favorites(
+    request: Request,
     session_token: str,
     db: Session = Depends(get_db)
 ):
@@ -967,7 +1003,9 @@ async def get_favorites(
 # =============================================================================
 
 @router.get("/notifications")
+@limiter.limit("60/minute")
 async def get_notifications(
+    request: Request,
     session_token: str,
     unread_only: bool = False,
     db: Session = Depends(get_db)
@@ -1001,7 +1039,9 @@ async def get_notifications(
 
 
 @router.post("/notifications/{notification_id}/read")
+@limiter.limit("30/minute")
 async def mark_notification_read(
+    request: Request,
     notification_id: int,
     session_token: str,
     db: Session = Depends(get_db)

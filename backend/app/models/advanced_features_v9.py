@@ -837,7 +837,7 @@ class GuestPreference(Base):
     last_updated = Column(DateTime(timezone=True), server_default=func.now())
     updated_by = Column(Integer, ForeignKey("staff_users.id"), nullable=True)
     
-    customer = relationship("Customer", backref="preferences")
+    customer = relationship("Customer", backref="guest_preferences")
 
 
 class CustomerLifetimeValue(Base):
@@ -882,7 +882,7 @@ class CustomerLifetimeValue(Base):
     
     last_calculated = Column(DateTime(timezone=True), server_default=func.now())
     
-    customer = relationship("Customer", backref="lifetime_value")
+    customer = relationship("Customer", backref="clv_calculations")
     venue = relationship("Venue", backref="customer_clv")
 
 

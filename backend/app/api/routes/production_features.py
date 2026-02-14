@@ -9,7 +9,7 @@ Exposes new production-ready features:
 - Anti-theft risk analysis
 """
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy.orm import Session
 from typing import Optional, List
 from datetime import datetime, timedelta
@@ -20,6 +20,7 @@ from app.core.rbac import get_current_user
 from app.models import StaffUser
 from app.core.feature_flags import get_flags, is_enabled
 from app.core.rbac_policy import RBACPolicy, Permission, require_permission
+from app.core.rate_limit import limiter
 
 router = APIRouter()
 
@@ -29,7 +30,9 @@ router = APIRouter()
 # ============================================================================
 
 @router.get("/flags")
+@limiter.limit("60/minute")
 async def get_feature_flags(
+    request: Request,
     current_user: StaffUser = Depends(get_current_user)
 ):
     """
@@ -47,7 +50,9 @@ async def get_feature_flags(
 
 
 @router.get("/flags/{flag_name}")
+@limiter.limit("60/minute")
 async def get_feature_flag(
+    request: Request,
     flag_name: str,
     current_user: StaffUser = Depends(get_current_user)
 ):
@@ -72,7 +77,9 @@ async def get_feature_flag(
 # ============================================================================
 
 @router.get("/ledger/status")
+@limiter.limit("60/minute")
 async def get_ledger_status(
+    request: Request,
     current_user: StaffUser = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
@@ -100,7 +107,9 @@ async def get_ledger_status(
 
 
 @router.get("/ledger/integrity")
+@limiter.limit("60/minute")
 async def verify_ledger_integrity(
+    request: Request,
     current_user: StaffUser = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
@@ -115,7 +124,9 @@ async def verify_ledger_integrity(
 
 
 @router.post("/ledger/record")
+@limiter.limit("30/minute")
 async def record_payment(
+    request: Request,
     amount: float,
     payment_method: str,
     order_id: Optional[int] = None,
@@ -164,7 +175,9 @@ async def record_payment(
 # ============================================================================
 
 @router.get("/sync/status/{terminal_id}")
+@limiter.limit("60/minute")
 async def get_terminal_sync_status(
+    request: Request,
     terminal_id: str,
     current_user: StaffUser = Depends(get_current_user),
     db: Session = Depends(get_db)
@@ -180,7 +193,9 @@ async def get_terminal_sync_status(
 
 
 @router.post("/sync/heartbeat")
+@limiter.limit("30/minute")
 async def record_terminal_heartbeat(
+    request: Request,
     terminal_id: str,
     is_online: bool = True,
     current_user: StaffUser = Depends(get_current_user),
@@ -199,7 +214,9 @@ async def record_terminal_heartbeat(
 
 
 @router.get("/sync/menu-version")
+@limiter.limit("60/minute")
 async def get_current_menu_version(
+    request: Request,
     current_user: StaffUser = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
@@ -223,7 +240,9 @@ async def get_current_menu_version(
 
 
 @router.post("/sync/check-menu-update")
+@limiter.limit("30/minute")
 async def check_menu_update(
+    request: Request,
     terminal_version: int,
     current_user: StaffUser = Depends(get_current_user),
     db: Session = Depends(get_db)
@@ -243,7 +262,9 @@ async def check_menu_update(
 # ============================================================================
 
 @router.get("/security/risk-analysis/{staff_user_id}")
+@limiter.limit("60/minute")
 async def analyze_staff_risk(
+    request: Request,
     staff_user_id: int,
     period_days: int = 30,
     current_user: StaffUser = Depends(get_current_user),
@@ -274,7 +295,9 @@ async def analyze_staff_risk(
 
 
 @router.post("/security/evidence-packet")
+@limiter.limit("30/minute")
 async def generate_evidence_packet(
+    request: Request,
     staff_user_id: int,
     incident_type: str,
     start_date: str,
@@ -323,7 +346,9 @@ async def generate_evidence_packet(
 # ============================================================================
 
 @router.get("/rbac/permissions")
+@limiter.limit("60/minute")
 async def get_user_permissions(
+    request: Request,
     current_user: StaffUser = Depends(get_current_user)
 ):
     """Get current user's permissions."""
@@ -344,7 +369,9 @@ async def get_user_permissions(
 
 
 @router.get("/rbac/check/{permission}")
+@limiter.limit("60/minute")
 async def check_permission(
+    request: Request,
     permission: str,
     current_user: StaffUser = Depends(get_current_user)
 ):
@@ -374,7 +401,9 @@ async def check_permission(
 # ============================================================================
 
 @router.post("/cash/variance")
+@limiter.limit("30/minute")
 async def record_cash_variance(
+    request: Request,
     expected_cents: int,
     actual_cents: int,
     shift_id: Optional[int] = None,
@@ -420,7 +449,9 @@ async def record_cash_variance(
 
 
 @router.get("/cash/alerts")
+@limiter.limit("60/minute")
 async def get_cash_variance_alerts(
+    request: Request,
     resolved: Optional[bool] = None,
     severity: Optional[str] = None,
     limit: int = 50,

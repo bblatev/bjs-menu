@@ -5,6 +5,7 @@ import { motion } from 'framer-motion';
 import AdminLayout from '@/components/AdminLayout';
 import { API_URL, getAuthHeaders } from '@/lib/api';
 
+import { toast } from '@/lib/toast';
 interface Integration {
   type: string;
   name: string;
@@ -78,7 +79,7 @@ export default function AccountingIntegrationsPage() {
       
       if (res.ok) {
         await fetchData();
-        alert('Integration connected successfully!');
+        toast.success('Integration connected successfully!');
       }
     } catch {
       // Connection failed

@@ -2,9 +2,10 @@
 
 from typing import List, Optional
 from datetime import datetime, timedelta, timezone
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, Query, Request
 from sqlalchemy import func
 
+from app.core.rate_limit import limiter
 from app.db.session import DbSession
 from app.models.restaurant import MenuItem as MenuItemModel, GuestOrder
 
@@ -102,7 +103,9 @@ def _build_engineering_items(db: DbSession, days: int = 30):
 
 
 @router.get("/analysis")
+@limiter.limit("60/minute")
 def get_menu_analysis(
+    request: Request,
     db: DbSession,
     days: int = Query(30),
 ):
@@ -136,7 +139,9 @@ def get_menu_analysis(
 
 
 @router.get("/items")
+@limiter.limit("60/minute")
 def get_menu_items(
+    request: Request,
     db: DbSession,
     days: int = Query(30),
     category: Optional[str] = None,
@@ -151,7 +156,9 @@ def get_menu_items(
 
 
 @router.get("/categories")
+@limiter.limit("60/minute")
 def get_category_analysis(
+    request: Request,
     db: DbSession,
     days: int = Query(30),
 ):
@@ -210,7 +217,9 @@ def get_category_analysis(
 
 
 @router.get("/pricing-recommendations")
+@limiter.limit("60/minute")
 def get_pricing_recommendations(
+    request: Request,
     db: DbSession,
     days: int = Query(30),
 ):

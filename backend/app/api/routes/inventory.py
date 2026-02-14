@@ -7,11 +7,12 @@ from datetime import datetime, timezone
 from decimal import Decimal
 from typing import Optional, List
 
-from fastapi import APIRouter, HTTPException, Query, status
+from fastapi import APIRouter, HTTPException, Query, Request, status
 
 logger = logging.getLogger("inventory")
 
 from app.core.rbac import CurrentUser, OptionalCurrentUser
+from app.core.rate_limit import limiter
 from app.db.session import DbSession
 from app.models.inventory import CountMethod, InventoryLine, InventorySession, SessionStatus
 from app.models.location import Location
@@ -31,7 +32,9 @@ router = APIRouter()
 
 # Stock and movements endpoints (public)
 @router.get("/stock")
+@limiter.limit("60/minute")
 def get_stock_levels(
+    request: Request,
     db: DbSession,
     location_id: Optional[int] = Query(None),
 ):
@@ -58,7 +61,9 @@ def get_stock_levels(
 
 
 @router.get("/movements")
+@limiter.limit("60/minute")
 def get_stock_movements(
+    request: Request,
     db: DbSession,
     location_id: Optional[int] = Query(None),
     limit: int = Query(50, le=500),
@@ -88,7 +93,9 @@ def get_stock_movements(
 
 
 @router.get("/sessions", response_model=List[InventorySessionResponse])
+@limiter.limit("60/minute")
 def list_sessions(
+    request: Request,
     db: DbSession,
     current_user: OptionalCurrentUser = None,
     location_id: Optional[int] = Query(None),
@@ -104,7 +111,8 @@ def list_sessions(
 
 
 @router.get("/sessions/{session_id}", response_model=InventorySessionResponse)
-def get_session(session_id: int, db: DbSession, current_user: CurrentUser):
+@limiter.limit("60/minute")
+def get_session(request: Request, session_id: int, db: DbSession, current_user: CurrentUser):
     """Get a specific inventory session with lines."""
     session = db.query(InventorySession).filter(InventorySession.id == session_id).first()
     if not session:
@@ -113,27 +121,29 @@ def get_session(session_id: int, db: DbSession, current_user: CurrentUser):
 
 
 @router.post("/sessions", response_model=InventorySessionResponse, status_code=status.HTTP_201_CREATED)
-def create_session(request: InventorySessionCreate, db: DbSession, current_user: CurrentUser):
+@limiter.limit("30/minute")
+def create_session(request: Request, session_data: InventorySessionCreate, db: DbSession, current_user: CurrentUser):
     """Create a new inventory session."""
     # Verify location exists
-    location = db.query(Location).filter(Location.id == request.location_id).first()
+    location = db.query(Location).filter(Location.id == session_data.location_id).first()
     if not location:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Location not found")
 
     session = InventorySession(
-        location_id=request.location_id,
-        notes=request.notes,
+        location_id=session_data.location_id,
+        notes=session_data.notes,
         created_by=current_user.user_id,
     )
     db.add(session)
     db.commit()
     db.refresh(session)
-    logger.info(f"Inventory session created: ID={session.id}, location={request.location_id}, user={current_user.user_id}")
+    logger.info(f"Inventory session created: ID={session.id}, location={session_data.location_id}, user={current_user.user_id}")
     return session
 
 
 @router.post("/sessions/{session_id}/lines", response_model=InventoryLineResponse, status_code=status.HTTP_201_CREATED)
-def add_line(session_id: int, request: InventoryLineCreate, db: DbSession, current_user: CurrentUser):
+@limiter.limit("30/minute")
+def add_line(request: Request, session_id: int, line_data: InventoryLineCreate, db: DbSession, current_user: CurrentUser):
     """Add a line to an inventory session."""
     session = db.query(InventorySession).filter(InventorySession.id == session_id).first()
     if not session:
@@ -145,22 +155,22 @@ def add_line(session_id: int, request: InventoryLineCreate, db: DbSession, curre
         )
 
     # Verify product exists
-    product = db.query(Product).filter(Product.id == request.product_id).first()
+    product = db.query(Product).filter(Product.id == line_data.product_id).first()
     if not product:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Product not found")
 
     # Check if line for this product already exists in session
     existing_line = (
         db.query(InventoryLine)
-        .filter(InventoryLine.session_id == session_id, InventoryLine.product_id == request.product_id)
+        .filter(InventoryLine.session_id == session_id, InventoryLine.product_id == line_data.product_id)
         .first()
     )
 
     if existing_line:
         # Update existing line (add to count)
-        existing_line.counted_qty += request.counted_qty
-        existing_line.method = request.method
-        existing_line.confidence = request.confidence
+        existing_line.counted_qty += line_data.counted_qty
+        existing_line.method = line_data.method
+        existing_line.confidence = line_data.confidence
         existing_line.counted_at = datetime.now(timezone.utc)
         db.commit()
         db.refresh(existing_line)
@@ -169,11 +179,11 @@ def add_line(session_id: int, request: InventoryLineCreate, db: DbSession, curre
     # Create new line
     line = InventoryLine(
         session_id=session_id,
-        product_id=request.product_id,
-        counted_qty=request.counted_qty,
-        method=request.method,
-        confidence=request.confidence,
-        photo_id=request.photo_id,
+        product_id=line_data.product_id,
+        counted_qty=line_data.counted_qty,
+        method=line_data.method,
+        confidence=line_data.confidence,
+        photo_id=line_data.photo_id,
     )
     db.add(line)
     db.commit()
@@ -182,10 +192,12 @@ def add_line(session_id: int, request: InventoryLineCreate, db: DbSession, curre
 
 
 @router.put("/sessions/{session_id}/lines/{line_id}", response_model=InventoryLineResponse)
+@limiter.limit("30/minute")
 def update_line(
+    request: Request,
     session_id: int,
     line_id: int,
-    request: InventoryLineUpdate,
+    line_update: InventoryLineUpdate,
     db: DbSession,
     current_user: CurrentUser,
 ):
@@ -207,7 +219,7 @@ def update_line(
     if not line:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Line not found")
 
-    update_data = request.model_dump(exclude_unset=True)
+    update_data = line_update.model_dump(exclude_unset=True)
     for field, value in update_data.items():
         setattr(line, field, value)
     line.counted_at = datetime.now(timezone.utc)
@@ -218,7 +230,8 @@ def update_line(
 
 
 @router.delete("/sessions/{session_id}/lines/{line_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_line(session_id: int, line_id: int, db: DbSession, current_user: CurrentUser):
+@limiter.limit("30/minute")
+def delete_line(request: Request, session_id: int, line_id: int, db: DbSession, current_user: CurrentUser):
     """Delete a line from an inventory session."""
     session = db.query(InventorySession).filter(InventorySession.id == session_id).first()
     if not session:
@@ -242,7 +255,8 @@ def delete_line(session_id: int, line_id: int, db: DbSession, current_user: Curr
 
 
 @router.post("/sessions/{session_id}/commit", response_model=InventorySessionCommitResponse)
-def commit_session(session_id: int, db: DbSession, current_user: CurrentUser):
+@limiter.limit("30/minute")
+def commit_session(request: Request, session_id: int, db: DbSession, current_user: CurrentUser):
     """
     Commit an inventory session.
 

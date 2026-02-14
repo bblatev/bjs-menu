@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { API_URL } from '@/lib/api';
 
+import { toast } from '@/lib/toast';
 interface StaffMember {
   id: number;
   name: string;
@@ -258,11 +259,11 @@ export default function StaffSchedulesPage() {
         loadShifts();
       } else {
         const error = await response.json();
-        alert(error.detail || 'Failed to save shift');
+        toast.error(error.detail || 'Failed to save shift');
       }
     } catch (error) {
       console.error('Error saving shift:', error);
-      alert('Failed to save shift');
+      toast.error('Failed to save shift');
     }
   };
 
@@ -284,11 +285,11 @@ export default function StaffSchedulesPage() {
         setShowShiftModal(false);
       } else {
         const error = await response.json();
-        alert(error.detail || 'Failed to delete shift');
+        toast.error(error.detail || 'Failed to delete shift');
       }
     } catch (error) {
       console.error('Error deleting shift:', error);
-      alert('Failed to delete shift');
+      toast.error('Failed to delete shift');
     }
   };
 
@@ -311,14 +312,14 @@ export default function StaffSchedulesPage() {
 
       if (response.ok) {
         loadShifts();
-        alert('Shifts copied from last week successfully!');
+        toast.success('Shifts copied from last week successfully!');
       } else {
         const error = await response.json();
-        alert(error.detail || 'Failed to copy shifts');
+        toast.error(error.detail || 'Failed to copy shifts');
       }
     } catch (error) {
       console.error('Error copying shifts:', error);
-      alert('Failed to copy shifts');
+      toast.error('Failed to copy shifts');
     }
   };
 
@@ -343,15 +344,15 @@ export default function StaffSchedulesPage() {
       );
 
       if (response.ok) {
-        alert('Schedule published! Staff will be notified.');
+        toast.info('Schedule published! Staff will be notified.');
         loadShifts();
       } else {
         const error = await response.json();
-        alert(error.detail || 'Failed to publish schedule');
+        toast.error(error.detail || 'Failed to publish schedule');
       }
     } catch (error) {
       console.error('Error publishing schedule:', error);
-      alert('Failed to publish schedule');
+      toast.error('Failed to publish schedule');
     }
   };
 

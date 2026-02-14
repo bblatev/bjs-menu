@@ -16,7 +16,10 @@ pool_config = {}
 if settings.database_url.startswith("sqlite"):
     connect_args = {"check_same_thread": False}
     # SQLite doesn't support connection pooling the same way
-    pool_config = {"pool_pre_ping": True}
+    pool_config = {
+        "pool_pre_ping": True,
+        "pool_recycle": 1800,  # Recycle connections every 30 minutes
+    }
 else:
     # PostgreSQL/MySQL connection pooling configuration
     pool_config = {

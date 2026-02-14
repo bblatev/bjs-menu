@@ -2,13 +2,14 @@
 Automatic Discount / Happy Hour API Endpoints
 Time-based automatic discounts that apply based on day/time
 """
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.orm import Session
 from typing import List
 from datetime import datetime
 
 from app.db.session import get_db
 from app.core.rbac import get_current_user
+from app.core.rate_limit import limiter
 from app.models import StaffUser, AutoDiscount
 from app.schemas import AutoDiscountCreate, AutoDiscountResponse, AutoDiscountType
 
@@ -73,7 +74,9 @@ def calculate_discount(
 
 
 @router.post("/", response_model=AutoDiscountResponse)
+@limiter.limit("30/minute")
 async def create_auto_discount(
+    request: Request,
     data: AutoDiscountCreate,
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(get_current_user)
@@ -112,7 +115,9 @@ async def create_auto_discount(
 
 
 @router.get("/", response_model=List[AutoDiscountResponse])
+@limiter.limit("60/minute")
 async def list_auto_discounts(
+    request: Request,
     active_only: bool = False,
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(get_current_user)
@@ -129,7 +134,9 @@ async def list_auto_discounts(
 
 
 @router.get("/active", response_model=List[AutoDiscountResponse])
+@limiter.limit("60/minute")
 async def get_currently_active_discounts(
+    request: Request,
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(get_current_user)
 ):
@@ -145,7 +152,9 @@ async def get_currently_active_discounts(
 
 
 @router.get("/{discount_id}", response_model=AutoDiscountResponse)
+@limiter.limit("60/minute")
 async def get_auto_discount(
+    request: Request,
     discount_id: int,
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(get_current_user)
@@ -163,7 +172,9 @@ async def get_auto_discount(
 
 
 @router.put("/{discount_id}", response_model=AutoDiscountResponse)
+@limiter.limit("30/minute")
 async def update_auto_discount(
+    request: Request,
     discount_id: int,
     data: AutoDiscountCreate,
     db: Session = Depends(get_db),
@@ -202,7 +213,9 @@ async def update_auto_discount(
 
 
 @router.put("/{discount_id}/toggle")
+@limiter.limit("30/minute")
 async def toggle_auto_discount(
+    request: Request,
     discount_id: int,
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(get_current_user)
@@ -226,7 +239,9 @@ async def toggle_auto_discount(
 
 
 @router.delete("/{discount_id}")
+@limiter.limit("30/minute")
 async def delete_auto_discount(
+    request: Request,
     discount_id: int,
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(get_current_user)
@@ -250,7 +265,9 @@ async def delete_auto_discount(
 
 
 @router.post("/calculate-order-discount")
+@limiter.limit("30/minute")
 async def calculate_order_discount(
+    request: Request,
     item_prices: List[dict],  # [{"item_id": 1, "category_id": 1, "price": 10.00}, ...]
     order_total: float = None,
     db: Session = Depends(get_db),

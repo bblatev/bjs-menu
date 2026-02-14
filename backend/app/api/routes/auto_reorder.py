@@ -8,13 +8,14 @@ data as /inventory-complete/auto-reorder/*.
 from typing import Optional
 from decimal import Decimal
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Query, Request
 from pydantic import BaseModel
 from sqlalchemy import func
 
 from app.db.session import DbSession
 from app.models.stock import StockOnHand
 from app.models.product import Product
+from app.core.rate_limit import limiter
 
 router = APIRouter()
 
@@ -22,7 +23,8 @@ router = APIRouter()
 # ==================== AUTO-REORDER RULES ====================
 
 @router.get("/")
-def get_auto_reorder_overview(db: DbSession, location_id: int = Query(1)):
+@limiter.limit("60/minute")
+def get_auto_reorder_overview(request: Request, db: DbSession, location_id: int = Query(1)):
     """Get auto-reorder overview: rules, alerts, and recent history."""
     rules = _get_rules(db, location_id)
     alerts = _get_alerts(db, location_id)
@@ -37,19 +39,22 @@ def get_auto_reorder_overview(db: DbSession, location_id: int = Query(1)):
 
 
 @router.get("/rules")
-def get_auto_reorder_rules(db: DbSession, location_id: int = Query(1)):
+@limiter.limit("60/minute")
+def get_auto_reorder_rules(request: Request, db: DbSession, location_id: int = Query(1)):
     """Get auto-reorder rules based on PAR levels."""
     return _get_rules(db, location_id)
 
 
 @router.get("/alerts")
-def get_auto_reorder_alerts(db: DbSession, location_id: int = Query(1)):
+@limiter.limit("60/minute")
+def get_auto_reorder_alerts(request: Request, db: DbSession, location_id: int = Query(1)):
     """Get items that need reordering."""
     return _get_alerts(db, location_id)
 
 
 @router.get("/history")
-def get_auto_reorder_history(db: DbSession, location_id: int = Query(1)):
+@limiter.limit("60/minute")
+def get_auto_reorder_history(request: Request, db: DbSession, location_id: int = Query(1)):
     """Get auto-reorder execution history from purchase orders triggered by low stock."""
     from app.models.order import PurchaseOrder, PurchaseOrderLine
 
@@ -84,20 +89,22 @@ class AutoReorderRuleRequest(BaseModel):
 
 
 @router.post("/rules")
-def create_auto_reorder_rule(request: AutoReorderRuleRequest, db: DbSession):
+@limiter.limit("30/minute")
+def create_auto_reorder_rule(request: Request, body: AutoReorderRuleRequest, db: DbSession):
     """Create an auto-reorder rule."""
-    product = db.query(Product).filter(Product.id == request.stock_item_id).first()
+    product = db.query(Product).filter(Product.id == body.stock_item_id).first()
     if not product:
         raise HTTPException(status_code=404, detail="Item not found")
-    product.min_stock = request.reorder_point
-    if request.reorder_quantity:
-        product.par_level = request.reorder_point + request.reorder_quantity
+    product.min_stock = body.reorder_point
+    if body.reorder_quantity:
+        product.par_level = body.reorder_point + body.reorder_quantity
     db.commit()
     return {"success": True, "id": product.id}
 
 
 @router.post("/process")
-def process_auto_reorder(db: DbSession, location_id: int = Query(1)):
+@limiter.limit("30/minute")
+def process_auto_reorder(request: Request, db: DbSession, location_id: int = Query(1)):
     """Process auto-reorder for all items below reorder point."""
     stock_items = db.query(StockOnHand).filter(
         StockOnHand.location_id == location_id,

@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
 import { API_URL } from '@/lib/api';
 
+import { toast } from '@/lib/toast';
 interface PricingRule {
   id: number;
   name: string;
@@ -149,11 +150,11 @@ export default function DynamicPricingPage() {
         resetForm();
       } else {
         const error = await response.json();
-        alert(error.detail || 'Error saving pricing rule');
+        toast.error(error.detail || 'Error saving pricing rule');
       }
     } catch (error) {
       console.error('Error saving pricing rule:', error);
-      alert('Error saving pricing rule');
+      toast.error('Error saving pricing rule');
     }
   };
 
@@ -171,11 +172,11 @@ export default function DynamicPricingPage() {
         if (response.ok) {
           loadRules();
         } else {
-          alert('Error deleting pricing rule');
+          toast.error('Error deleting pricing rule');
         }
       } catch (error) {
         console.error('Error deleting pricing rule:', error);
-        alert('Error deleting pricing rule');
+        toast.error('Error deleting pricing rule');
       }
     }
   };
@@ -249,11 +250,11 @@ export default function DynamicPricingPage() {
       if (response.ok) {
         loadRules();
       } else {
-        alert('Error toggling rule status');
+        toast.error('Error toggling rule status');
       }
     } catch (error) {
       console.error('Error toggling rule status:', error);
-      alert('Error toggling rule status');
+      toast.error('Error toggling rule status');
     }
   };
 

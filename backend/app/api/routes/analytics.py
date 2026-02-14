@@ -2,10 +2,11 @@
 
 from typing import List, Optional
 from datetime import datetime, date, timedelta, timezone
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Query, Request
 from sqlalchemy import func, and_
 from sqlalchemy.orm import joinedload
 
+from app.core.rate_limit import limiter
 from app.db.session import DbSession
 from app.models.pos import PosSalesLine
 from app.models.restaurant import GuestOrder
@@ -101,7 +102,8 @@ def _compute_food_cost_kpi(db, today_start, yesterday_start, location_id):
 # ==================== STUB ENDPOINTS ====================
 
 @router.get("/labor")
-def get_labor_analytics(db: DbSession):
+@limiter.limit("60/minute")
+def get_labor_analytics(request: Request, db: DbSession):
     """Get labor analytics."""
     from app.models.operations import PayrollEntry, ShiftSchedule
     # Compute from actual payroll and shift data
@@ -118,7 +120,8 @@ def get_labor_analytics(db: DbSession):
 
 
 @router.get("/video")
-def get_video_analytics(db: DbSession):
+@limiter.limit("60/minute")
+def get_video_analytics(request: Request, db: DbSession):
     """Get video analytics config from app settings."""
     from app.models.operations import AppSetting
     setting = db.query(AppSetting).filter(
@@ -131,7 +134,8 @@ def get_video_analytics(db: DbSession):
 
 
 @router.get("/theft")
-def get_theft_analytics(db: DbSession):
+@limiter.limit("60/minute")
+def get_theft_analytics(request: Request, db: DbSession):
     """Get theft/risk analytics from risk alerts."""
     from app.models.operations import RiskAlert
     alerts = db.query(RiskAlert).order_by(RiskAlert.created_at.desc()).limit(50).all()
@@ -154,7 +158,8 @@ def get_theft_analytics(db: DbSession):
 
 
 @router.get("/rfm/dashboard")
-def get_rfm_dashboard(db: DbSession):
+@limiter.limit("60/minute")
+def get_rfm_dashboard(request: Request, db: DbSession):
     """Get RFM analysis dashboard from customer data."""
     from app.models.customer import Customer
     customers = db.query(Customer).all()
@@ -169,7 +174,8 @@ def get_rfm_dashboard(db: DbSession):
 
 
 @router.get("/forecasting")
-def get_forecasting_analytics(db: DbSession):
+@limiter.limit("60/minute")
+def get_forecasting_analytics(request: Request, db: DbSession):
     """Get sales forecasting analytics from forecast data."""
     forecasts = db.query(SalesForecast).order_by(SalesForecast.forecast_date.desc()).limit(30).all()
     daily_forecast = [
@@ -192,7 +198,9 @@ def get_forecasting_analytics(db: DbSession):
 # Dashboard
 
 @router.get("/dashboard")
+@limiter.limit("60/minute")
 def get_dashboard_stats(
+    request: Request,
     db: DbSession,
     location_id: Optional[int] = None,
 ):
@@ -292,7 +300,9 @@ def get_dashboard_stats(
 
 
 @router.get("/dashboard/kpis")
+@limiter.limit("60/minute")
 def get_dashboard_kpis(
+    request: Request,
     db: DbSession,
     location_id: Optional[int] = None,
 ):
@@ -349,7 +359,9 @@ def get_dashboard_kpis(
 
 
 @router.get("/sales")
+@limiter.limit("60/minute")
 def get_sales_analytics(
+    request: Request,
     db: DbSession,
     location_id: Optional[int] = None,
     period: str = "today",
@@ -454,7 +466,9 @@ def get_sales_analytics(
 # Menu Engineering
 
 @router.get("/menu-engineering/", response_model=MenuEngineeringReport)
+@limiter.limit("60/minute")
 def get_menu_engineering_report(
+    request: Request,
     db: DbSession,
     location_id: Optional[int] = None,
     days: int = 30,
@@ -493,7 +507,8 @@ def get_menu_engineering_report(
 
 
 @router.get("/menu-engineering/{product_id}", response_model=MenuAnalysisResponse)
-def get_product_analysis(db: DbSession, product_id: int):
+@limiter.limit("60/minute")
+def get_product_analysis(request: Request, db: DbSession, product_id: int):
     """Get menu engineering analysis for a specific product."""
     analysis = db.query(MenuAnalysis).filter(
         MenuAnalysis.product_id == product_id
@@ -508,7 +523,9 @@ def get_product_analysis(db: DbSession, product_id: int):
 # Server Performance
 
 @router.get("/server-performance/", response_model=ServerPerformanceReport)
+@limiter.limit("60/minute")
 def get_server_performance_report(
+    request: Request,
     db: DbSession,
     location_id: Optional[int] = None,
     start_date: Optional[date] = None,
@@ -547,7 +564,9 @@ def get_server_performance_report(
 
 
 @router.get("/server-performance/{user_id}", response_model=List[ServerPerformanceResponse])
+@limiter.limit("60/minute")
 def get_server_metrics(
+    request: Request,
     db: DbSession,
     user_id: int,
     days: int = 30,
@@ -564,7 +583,9 @@ def get_server_metrics(
 # Daily Metrics
 
 @router.get("/daily-metrics/", response_model=List[DailyMetricsResponse])
+@limiter.limit("60/minute")
 def get_daily_metrics(
+    request: Request,
     db: DbSession,
     location_id: Optional[int] = None,
     start_date: Optional[date] = None,
@@ -588,7 +609,9 @@ def get_daily_metrics(
 
 
 @router.post("/daily-metrics/calculate")
+@limiter.limit("30/minute")
 def calculate_daily_metrics(
+    request: Request,
     db: DbSession,
     target_date: Optional[date] = None,
     location_id: Optional[int] = None,
@@ -613,7 +636,9 @@ def calculate_daily_metrics(
 
 
 @router.get("/metrics-trend/{metric_name}", response_model=MetricsTrend)
+@limiter.limit("60/minute")
 def get_metric_trend(
+    request: Request,
     db: DbSession,
     metric_name: str,
     location_id: Optional[int] = None,
@@ -659,18 +684,20 @@ def get_metric_trend(
 # Conversational AI
 
 @router.post("/chat/", response_model=ConversationalQueryResponse)
+@limiter.limit("30/minute")
 async def chat_query(
+    request: Request,
     db: DbSession,
-    request: ConversationalQueryRequest,
+    body: ConversationalQueryRequest,
     user_id: Optional[int] = None,
 ):
     """Process a natural language analytics query."""
     service = ConversationalAIService(db)
     result = await service.process_query(
-        query_text=request.query,
+        query_text=body.query,
         user_id=user_id,
-        location_id=request.location_id,
-        conversation_id=request.conversation_id
+        location_id=body.location_id,
+        conversation_id=body.conversation_id
     )
 
     return ConversationalQueryResponse(
@@ -686,7 +713,8 @@ async def chat_query(
 
 
 @router.get("/chat/history/{conversation_id}", response_model=ConversationHistory)
-def get_conversation_history(db: DbSession, conversation_id: str):
+@limiter.limit("60/minute")
+def get_conversation_history(request: Request, db: DbSession, conversation_id: str):
     """Get conversation history."""
     service = ConversationalAIService(db)
     messages = service.get_conversation_history(conversation_id)
@@ -698,7 +726,8 @@ def get_conversation_history(db: DbSession, conversation_id: str):
 
 
 @router.post("/chat/feedback")
-def submit_query_feedback(db: DbSession, feedback: QueryFeedback):
+@limiter.limit("30/minute")
+def submit_query_feedback(request: Request, db: DbSession, feedback: QueryFeedback):
     """Submit feedback on a query response."""
     service = ConversationalAIService(db)
     service.provide_feedback(feedback.query_id, feedback.was_helpful)
@@ -708,7 +737,9 @@ def submit_query_feedback(db: DbSession, feedback: QueryFeedback):
 # Benchmarks
 
 @router.get("/benchmarks/", response_model=List[BenchmarkResponse])
+@limiter.limit("60/minute")
 def list_benchmarks(
+    request: Request,
     db: DbSession,
     category: Optional[str] = None,
     skip: int = Query(0, ge=0, description="Number of records to skip"),
@@ -722,7 +753,9 @@ def list_benchmarks(
 
 
 @router.get("/benchmarks/compare", response_model=PerformanceReport)
+@limiter.limit("60/minute")
 def compare_to_benchmarks(
+    request: Request,
     db: DbSession,
     location_id: int,
 ):
@@ -790,7 +823,9 @@ def compare_to_benchmarks(
 # Scale / Bottle Weights
 
 @router.get("/bottle-weights/", response_model=List[BottleWeightResponse])
+@limiter.limit("60/minute")
 def list_bottle_weights(
+    request: Request,
     db: DbSession,
     search: Optional[str] = None,
     skip: int = 0,
@@ -806,7 +841,8 @@ def list_bottle_weights(
 
 
 @router.get("/bottle-weights/{product_id}", response_model=BottleWeightResponse)
-def get_bottle_weight(db: DbSession, product_id: int):
+@limiter.limit("60/minute")
+def get_bottle_weight(request: Request, db: DbSession, product_id: int):
     """Get bottle weight for a product."""
     service = BottleWeightDatabaseService(db)
     weight = service.get_bottle_weight(product_id=product_id)
@@ -818,7 +854,9 @@ def get_bottle_weight(db: DbSession, product_id: int):
 
 
 @router.post("/bottle-weights/", response_model=BottleWeightResponse)
+@limiter.limit("30/minute")
 def create_bottle_weight(
+    request: Request,
     db: DbSession,
     weight: BottleWeightCreate,
 ):
@@ -837,7 +875,8 @@ def create_bottle_weight(
 
 
 @router.get("/bottle-weights/missing/", response_model=List[dict])
-def get_products_without_weights(db: DbSession):
+@limiter.limit("60/minute")
+def get_products_without_weights(request: Request, db: DbSession):
     """Get products that don't have bottle weight data."""
     service = BottleWeightDatabaseService(db)
     products = service.get_products_without_weights()
@@ -845,7 +884,8 @@ def get_products_without_weights(db: DbSession):
 
 
 @router.post("/bottle-weights/import")
-def import_bottle_weights(db: DbSession, data: List[dict]):
+@limiter.limit("30/minute")
+def import_bottle_weights(request: Request, db: DbSession, data: List[dict]):
     """Import bottle weights from WISK format."""
     service = BottleWeightDatabaseService(db)
     result = service.import_from_wisk_format(data)
@@ -855,7 +895,9 @@ def import_bottle_weights(db: DbSession, data: List[dict]):
 # Scale Readings
 
 @router.post("/scale/reading", response_model=ScaleReadingResponse)
+@limiter.limit("30/minute")
 def process_scale_reading(
+    request: Request,
     db: DbSession,
     reading: ScaleReadingRequest,
 ):
@@ -876,7 +918,9 @@ def process_scale_reading(
 
 
 @router.post("/scale/visual-estimate", response_model=ScaleReadingResponse)
+@limiter.limit("30/minute")
 def record_visual_estimate(
+    request: Request,
     db: DbSession,
     estimate: VisualEstimateRequest,
 ):
@@ -895,7 +939,9 @@ def record_visual_estimate(
 
 
 @router.post("/scale/inventory-count", response_model=InventoryCountResponse)
+@limiter.limit("30/minute")
 def count_inventory_with_scale(
+    request: Request,
     db: DbSession,
     count: InventoryCountRequest,
 ):
@@ -916,14 +962,16 @@ def count_inventory_with_scale(
 
 
 @router.get("/scale/session-summary/{session_id}")
-def get_scale_session_summary(db: DbSession, session_id: int):
+@limiter.limit("60/minute")
+def get_scale_session_summary(request: Request, db: DbSession, session_id: int):
     """Get summary of inventory session with scale readings."""
     service = InventoryCountingService(db)
     return service.get_session_summary(session_id)
 
 
 @router.get("/scale-integration")
-def get_scale_integration_status(db: DbSession):
+@limiter.limit("60/minute")
+def get_scale_integration_status(request: Request, db: DbSession):
     """Get scale integration status and connected devices."""
     from app.models.operations import AppSetting
     setting = db.query(AppSetting).filter(
@@ -946,7 +994,8 @@ def get_scale_integration_status(db: DbSession):
 
 
 @router.get("/menu-analysis")
-def get_menu_analysis(db: DbSession):
+@limiter.limit("60/minute")
+def get_menu_analysis(request: Request, db: DbSession):
     """Get menu analysis and engineering insights."""
     from app.models.restaurant import MenuItem
     items = db.query(MenuItem).all()

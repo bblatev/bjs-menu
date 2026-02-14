@@ -5,6 +5,7 @@ import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 import { API_URL } from "@/lib/api";
 
+import { toast } from '@/lib/toast';
 interface MultiLang {
   bg: string;
   en: string;
@@ -202,10 +203,10 @@ export default function MenuPage() {
         loadData();
       } else {
         const err = await response.json();
-        alert(err.detail || "Error creating item");
+        toast.error(err.detail || "Error creating item");
       }
     } catch (error) {
-      alert("Error creating item");
+      toast.error("Error creating item");
     }
   };
 
@@ -242,10 +243,10 @@ export default function MenuPage() {
         loadData();
       } else {
         const err = await response.json();
-        alert(err.detail || "Error updating item");
+        toast.error(err.detail || "Error updating item");
       }
     } catch (error) {
-      alert("Error updating item");
+      toast.error("Error updating item");
     }
   };
 
@@ -266,10 +267,10 @@ export default function MenuPage() {
       if (response.ok) {
         loadData();
       } else {
-        alert("Error deleting item");
+        toast.error("Error deleting item");
       }
     } catch (error) {
-      alert("Error deleting item");
+      toast.error("Error deleting item");
     }
   };
 
@@ -362,10 +363,10 @@ export default function MenuPage() {
         loadData();
       } else {
         const err = await response.json();
-        alert(err.detail || "Error creating category");
+        toast.error(err.detail || "Error creating category");
       }
     } catch (error) {
-      alert("Error creating category");
+      toast.error("Error creating category");
     }
   };
 
@@ -399,17 +400,17 @@ export default function MenuPage() {
         loadData();
       } else {
         const err = await response.json();
-        alert(err.detail || "Error updating category");
+        toast.error(err.detail || "Error updating category");
       }
     } catch (error) {
-      alert("Error updating category");
+      toast.error("Error updating category");
     }
   };
 
   const handleDeleteCategory = async (categoryId: number) => {
     const itemsInCategory = items.filter(i => i.category_id === categoryId).length;
     if (itemsInCategory > 0) {
-      alert(`Cannot delete category with ${itemsInCategory} items. Delete items first.`);
+      toast.error(`Cannot delete category with ${itemsInCategory} items. Delete items first.`);
       return;
     }
     if (!confirm("Are you sure you want to delete this category?")) return;
@@ -432,10 +433,10 @@ export default function MenuPage() {
         }
       } else {
         const err = await response.json();
-        alert(err.detail || "Error deleting category");
+        toast.error(err.detail || "Error deleting category");
       }
     } catch (error) {
-      alert("Error deleting category");
+      toast.error("Error deleting category");
     }
   };
 
@@ -506,10 +507,10 @@ export default function MenuPage() {
         loadModifiers(selectedItemForModifiers.id);
       } else {
         const err = await response.json();
-        alert(err.detail || "Error creating modifier group");
+        toast.error(err.detail || "Error creating modifier group");
       }
     } catch (error) {
-      alert("Error creating modifier group");
+      toast.error("Error creating modifier group");
     }
   };
 
@@ -543,10 +544,10 @@ export default function MenuPage() {
         loadModifiers(selectedItemForModifiers.id);
       } else {
         const err = await response.json();
-        alert(err.detail || "Error updating modifier group");
+        toast.error(err.detail || "Error updating modifier group");
       }
     } catch (error) {
-      alert("Error updating modifier group");
+      toast.error("Error updating modifier group");
     }
   };
 
@@ -567,10 +568,10 @@ export default function MenuPage() {
       if (response.ok) {
         loadModifiers(selectedItemForModifiers.id);
       } else {
-        alert("Error deleting modifier group");
+        toast.error("Error deleting modifier group");
       }
     } catch (error) {
-      alert("Error deleting modifier group");
+      toast.error("Error deleting modifier group");
     }
   };
 
@@ -631,10 +632,10 @@ export default function MenuPage() {
         loadModifiers(selectedItemForModifiers.id);
       } else {
         const err = await response.json();
-        alert(err.detail || "Error creating option");
+        toast.error(err.detail || "Error creating option");
       }
     } catch (error) {
-      alert("Error creating option");
+      toast.error("Error creating option");
     }
   };
 
@@ -666,10 +667,10 @@ export default function MenuPage() {
         loadModifiers(selectedItemForModifiers.id);
       } else {
         const err = await response.json();
-        alert(err.detail || "Error updating option");
+        toast.error(err.detail || "Error updating option");
       }
     } catch (error) {
-      alert("Error updating option");
+      toast.error("Error updating option");
     }
   };
 
@@ -690,10 +691,10 @@ export default function MenuPage() {
       if (response.ok) {
         loadModifiers(selectedItemForModifiers.id);
       } else {
-        alert("Error deleting option");
+        toast.error("Error deleting option");
       }
     } catch (error) {
-      alert("Error deleting option");
+      toast.error("Error deleting option");
     }
   };
 

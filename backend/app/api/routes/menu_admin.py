@@ -2,13 +2,14 @@
 
 from __future__ import annotations
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Query, Request
 from typing import List, Optional, Dict
 from datetime import datetime
 from pydantic import BaseModel, Field
 
 from app.db.session import DbSession
 from app.core.rbac import CurrentUser, OptionalCurrentUser
+from app.core.rate_limit import limiter
 from app.models.restaurant import MenuItem, MenuCategory, ModifierGroup, ModifierOption
 
 router = APIRouter()
@@ -108,7 +109,8 @@ class ModifierGroupUpdateSchema(BaseModel):
 # ==================== CATEGORIES ====================
 
 @router.get("/categories", response_model=List[CategoryResponse])
-def list_categories(db: DbSession, current_user: OptionalCurrentUser = None):
+@limiter.limit("60/minute")
+def list_categories(request: Request, db: DbSession, current_user: OptionalCurrentUser = None):
     """List all menu categories."""
     categories = db.query(MenuCategory).filter(
         MenuCategory.active == True,
@@ -128,7 +130,8 @@ def list_categories(db: DbSession, current_user: OptionalCurrentUser = None):
 
 
 @router.post("/categories", response_model=CategoryResponse, status_code=201)
-def create_category(data: CategoryCreate, db: DbSession, current_user: CurrentUser = None):
+@limiter.limit("30/minute")
+def create_category(request: Request, data: CategoryCreate, db: DbSession, current_user: CurrentUser = None):
     """Create new menu category (manager only)."""
     category = MenuCategory(
         name_bg=data.name_bg,
@@ -146,7 +149,8 @@ def create_category(data: CategoryCreate, db: DbSession, current_user: CurrentUs
 
 
 @router.put("/categories/{category_id}", response_model=CategoryResponse)
-def update_category(category_id: int, data: CategoryUpdate, db: DbSession, current_user: CurrentUser = None):
+@limiter.limit("30/minute")
+def update_category(request: Request, category_id: int, data: CategoryUpdate, db: DbSession, current_user: CurrentUser = None):
     """Update menu category (manager only)."""
     category = db.query(MenuCategory).filter(MenuCategory.id == category_id).first()
     if not category:
@@ -170,7 +174,8 @@ def update_category(category_id: int, data: CategoryUpdate, db: DbSession, curre
 
 
 @router.delete("/categories/{category_id}", status_code=204)
-def delete_category(category_id: int, db: DbSession, current_user: CurrentUser = None):
+@limiter.limit("30/minute")
+def delete_category(request: Request, category_id: int, db: DbSession, current_user: CurrentUser = None):
     """Delete menu category (manager only)."""
     category = db.query(MenuCategory).filter(MenuCategory.id == category_id).first()
     if not category:
@@ -188,7 +193,8 @@ def delete_category(category_id: int, db: DbSession, current_user: CurrentUser =
 # ==================== MENU ITEMS ====================
 
 @router.get("/items", response_model=List[MenuItemResponse])
-def list_items(db: DbSession, current_user: OptionalCurrentUser = None, category: Optional[str] = None):
+@limiter.limit("60/minute")
+def list_items(request: Request, db: DbSession, current_user: OptionalCurrentUser = None, category: Optional[str] = None):
     """List all menu items, optionally filtered by category."""
     query = db.query(MenuItem).filter(MenuItem.not_deleted())
 
@@ -209,7 +215,8 @@ def list_items(db: DbSession, current_user: OptionalCurrentUser = None, category
 
 
 @router.get("/items/{item_id}", response_model=MenuItemResponse)
-def get_item(item_id: int, db: DbSession, current_user: OptionalCurrentUser = None):
+@limiter.limit("60/minute")
+def get_item(request: Request, item_id: int, db: DbSession, current_user: OptionalCurrentUser = None):
     """Get menu item by ID."""
     item = db.query(MenuItem).filter(MenuItem.id == item_id, MenuItem.not_deleted()).first()
     if not item:
@@ -225,7 +232,8 @@ def get_item(item_id: int, db: DbSession, current_user: OptionalCurrentUser = No
 
 
 @router.post("/items", response_model=MenuItemResponse, status_code=201)
-def create_item(data: MenuItemCreate, db: DbSession, current_user: CurrentUser = None):
+@limiter.limit("30/minute")
+def create_item(request: Request, data: MenuItemCreate, db: DbSession, current_user: CurrentUser = None):
     """Create new menu item (manager only)."""
     item = MenuItem(
         category=data.category,
@@ -251,7 +259,8 @@ def create_item(data: MenuItemCreate, db: DbSession, current_user: CurrentUser =
 
 
 @router.put("/items/{item_id}", response_model=MenuItemResponse)
-def update_item(item_id: int, data: MenuItemUpdate, db: DbSession, current_user: CurrentUser = None):
+@limiter.limit("30/minute")
+def update_item(request: Request, item_id: int, data: MenuItemUpdate, db: DbSession, current_user: CurrentUser = None):
     """Update menu item (manager only)."""
     item = db.query(MenuItem).filter(MenuItem.id == item_id, MenuItem.not_deleted()).first()
     if not item:
@@ -287,7 +296,8 @@ def update_item(item_id: int, data: MenuItemUpdate, db: DbSession, current_user:
 
 
 @router.delete("/items/{item_id}", status_code=204)
-def delete_item(item_id: int, db: DbSession, current_user: CurrentUser = None):
+@limiter.limit("30/minute")
+def delete_item(request: Request, item_id: int, db: DbSession, current_user: CurrentUser = None):
     """Delete menu item (manager only)."""
     item = db.query(MenuItem).filter(MenuItem.id == item_id, MenuItem.not_deleted()).first()
     if not item:
@@ -298,7 +308,8 @@ def delete_item(item_id: int, db: DbSession, current_user: CurrentUser = None):
 
 
 @router.patch("/items/{item_id}/toggle-available")
-def toggle_item_availability(item_id: int, db: DbSession, current_user: OptionalCurrentUser = None):
+@limiter.limit("30/minute")
+def toggle_item_availability(request: Request, item_id: int, db: DbSession, current_user: OptionalCurrentUser = None):
     """Toggle item availability (any staff)."""
     item = db.query(MenuItem).filter(MenuItem.id == item_id, MenuItem.not_deleted()).first()
     if not item:
@@ -312,7 +323,8 @@ def toggle_item_availability(item_id: int, db: DbSession, current_user: Optional
 # ==================== MODIFIER GROUPS ====================
 
 @router.get("/items/{item_id}/modifiers")
-def list_item_modifiers(item_id: int, db: DbSession, current_user: OptionalCurrentUser = None):
+@limiter.limit("60/minute")
+def list_item_modifiers(request: Request, item_id: int, db: DbSession, current_user: OptionalCurrentUser = None):
     """List all modifier groups for a menu item."""
     from app.models.restaurant import MenuItemModifierGroup
 
@@ -350,7 +362,8 @@ def list_item_modifiers(item_id: int, db: DbSession, current_user: OptionalCurre
 
 
 @router.post("/modifiers", status_code=201)
-def create_modifier_group(data: ModifierGroupCreateSchema, db: DbSession, current_user: CurrentUser = None):
+@limiter.limit("30/minute")
+def create_modifier_group(request: Request, data: ModifierGroupCreateSchema, db: DbSession, current_user: CurrentUser = None):
     """Create a new modifier group (manager only)."""
     group = ModifierGroup(
         name=data.name,
@@ -373,7 +386,8 @@ def create_modifier_group(data: ModifierGroupCreateSchema, db: DbSession, curren
 
 
 @router.put("/modifiers/{group_id}")
-def update_modifier_group(group_id: int, data: ModifierGroupUpdateSchema, db: DbSession, current_user: CurrentUser = None):
+@limiter.limit("30/minute")
+def update_modifier_group(request: Request, group_id: int, data: ModifierGroupUpdateSchema, db: DbSession, current_user: CurrentUser = None):
     """Update a modifier group (manager only)."""
     group = db.query(ModifierGroup).filter(ModifierGroup.id == group_id).first()
     if not group:
@@ -394,7 +408,8 @@ def update_modifier_group(group_id: int, data: ModifierGroupUpdateSchema, db: Db
 
 
 @router.delete("/modifiers/{group_id}", status_code=204)
-def delete_modifier_group(group_id: int, db: DbSession, current_user: CurrentUser = None):
+@limiter.limit("30/minute")
+def delete_modifier_group(request: Request, group_id: int, db: DbSession, current_user: CurrentUser = None):
     """Delete a modifier group and all its options (manager only)."""
     group = db.query(ModifierGroup).filter(ModifierGroup.id == group_id).first()
     if not group:
@@ -409,7 +424,8 @@ def delete_modifier_group(group_id: int, db: DbSession, current_user: CurrentUse
 # ==================== MODIFIER OPTIONS ====================
 
 @router.post("/modifiers/{group_id}/options", status_code=201)
-def create_modifier_option(group_id: int, data: ModifierOptionCreateSchema, db: DbSession, current_user: CurrentUser = None):
+@limiter.limit("30/minute")
+def create_modifier_option(request: Request, group_id: int, data: ModifierOptionCreateSchema, db: DbSession, current_user: CurrentUser = None):
     """Create a new option in a modifier group (manager only)."""
     group = db.query(ModifierGroup).filter(ModifierGroup.id == group_id).first()
     if not group:
@@ -429,7 +445,8 @@ def create_modifier_option(group_id: int, data: ModifierOptionCreateSchema, db: 
 
 
 @router.put("/modifiers/options/{option_id}")
-def update_modifier_option(option_id: int, data: ModifierOptionUpdateSchema, db: DbSession, current_user: CurrentUser = None):
+@limiter.limit("30/minute")
+def update_modifier_option(request: Request, option_id: int, data: ModifierOptionUpdateSchema, db: DbSession, current_user: CurrentUser = None):
     """Update a modifier option (manager only)."""
     option = db.query(ModifierOption).filter(ModifierOption.id == option_id).first()
     if not option:
@@ -450,7 +467,8 @@ def update_modifier_option(option_id: int, data: ModifierOptionUpdateSchema, db:
 
 
 @router.delete("/modifiers/options/{option_id}", status_code=204)
-def delete_modifier_option(option_id: int, db: DbSession, current_user: CurrentUser = None):
+@limiter.limit("30/minute")
+def delete_modifier_option(request: Request, option_id: int, db: DbSession, current_user: CurrentUser = None):
     """Delete a modifier option (manager only)."""
     option = db.query(ModifierOption).filter(ModifierOption.id == option_id).first()
     if not option:
@@ -461,7 +479,8 @@ def delete_modifier_option(option_id: int, db: DbSession, current_user: CurrentU
 
 
 @router.patch("/modifiers/options/{option_id}/toggle-available")
-def toggle_modifier_option_availability(option_id: int, db: DbSession, current_user: OptionalCurrentUser = None):
+@limiter.limit("30/minute")
+def toggle_modifier_option_availability(request: Request, option_id: int, db: DbSession, current_user: OptionalCurrentUser = None):
     """Toggle modifier option availability (any staff)."""
     option = db.query(ModifierOption).filter(ModifierOption.id == option_id).first()
     if not option:
@@ -481,7 +500,8 @@ class BulkPriceUpdateRequest(BaseModel):
 
 
 @router.post("/bulk-price-update")
-def bulk_update_prices(data: BulkPriceUpdateRequest, db: DbSession, current_user: CurrentUser = None):
+@limiter.limit("30/minute")
+def bulk_update_prices(request: Request, data: BulkPriceUpdateRequest, db: DbSession, current_user: CurrentUser = None):
     """Bulk update menu item prices."""
     updated_count = 0
 

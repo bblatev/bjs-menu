@@ -2,16 +2,18 @@
 
 import json
 
-from fastapi import APIRouter, Body
+from fastapi import APIRouter, Body, Request
 
 from app.db.session import DbSession
 from app.models.operations import AppSetting
+from app.core.rate_limit import limiter
 
 router = APIRouter()
 
 
 @router.get("/manufacturers")
-async def get_manufacturers(db: DbSession):
+@limiter.limit("60/minute")
+async def get_manufacturers(request: Request, db: DbSession):
     """Get supported fiscal printer manufacturers."""
     setting = db.query(AppSetting).filter(
         AppSetting.category == "fiscal_printers",
@@ -25,7 +27,8 @@ async def get_manufacturers(db: DbSession):
 
 
 @router.get("/models")
-async def get_models(db: DbSession, manufacturer: str = None):
+@limiter.limit("60/minute")
+async def get_models(request: Request, db: DbSession, manufacturer: str = None):
     """Get fiscal printer models."""
     setting = db.query(AppSetting).filter(
         AppSetting.category == "fiscal_printers",
@@ -42,7 +45,8 @@ async def get_models(db: DbSession, manufacturer: str = None):
 
 
 @router.get("/connection-types")
-async def get_connection_types(db: DbSession):
+@limiter.limit("60/minute")
+async def get_connection_types(request: Request, db: DbSession):
     """Get supported connection types."""
     setting = db.query(AppSetting).filter(
         AppSetting.category == "fiscal_printers",
@@ -56,7 +60,8 @@ async def get_connection_types(db: DbSession):
 
 
 @router.post("/configure")
-async def configure_printer(db: DbSession, config: dict = Body(...)):
+@limiter.limit("30/minute")
+async def configure_printer(request: Request, db: DbSession, config: dict = Body(...)):
     """Configure a fiscal printer."""
     setting = db.query(AppSetting).filter(
         AppSetting.category == "fiscal_printers",

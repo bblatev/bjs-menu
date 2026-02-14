@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { API_URL } from '@/lib/api';
 
+import { toast } from '@/lib/toast';
 interface TipPool {
   id: number;
   date: string;
@@ -199,11 +200,11 @@ export default function TipsManagerPage() {
         loadTipStats();
       } else {
         const error = await response.json();
-        alert(error.detail || 'Failed to create tip pool');
+        toast.error(error.detail || 'Failed to create tip pool');
       }
     } catch (error) {
       console.error('Error creating tip pool:', error);
-      alert('Failed to create tip pool');
+      toast.error('Failed to create tip pool');
     }
   };
 

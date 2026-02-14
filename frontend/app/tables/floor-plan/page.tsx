@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { API_URL, getAuthHeaders } from '@/lib/api';
 
+import { toast } from '@/lib/toast';
 // ============================================================================
 // Types
 // ============================================================================
@@ -162,10 +163,10 @@ export default function FloorPlanEditor() {
         });
       }
 
-      alert('Floor plan saved successfully!');
+      toast.success('Floor plan saved successfully!');
     } catch (error) {
       console.error('Error saving floor plan:', error);
-      alert('Failed to save floor plan');
+      toast.error('Failed to save floor plan');
     } finally {
       setSaving(false);
     }

@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { API_URL } from '@/lib/api';
 
+import { toast } from '@/lib/toast';
 interface StaffUser {
   id: number;
   full_name: string;
@@ -207,11 +208,11 @@ export default function StaffManagementPage() {
         setSelectedAreas([]);
       } else {
         const error = await response.json();
-        alert(error.detail || "Failed to save assignments");
+        toast.error(error.detail || "Failed to save assignments");
       }
     } catch (error) {
       console.error("Error saving assignments:", error);
-      alert("Failed to save assignments");
+      toast.error("Failed to save assignments");
     }
   };
 
@@ -243,7 +244,7 @@ export default function StaffManagementPage() {
 
     // Validate PIN only if provided
     if (!editingStaff && formData.pin_code && formData.pin_code.length < 4) {
-      alert("PIN must be at least 4 digits (or leave empty)");
+      toast.success("PIN must be at least 4 digits (or leave empty)");
       return;
     }
 
@@ -305,7 +306,7 @@ export default function StaffManagementPage() {
     } catch (error) {
       console.error("Error saving staff:", error);
       const message = error instanceof Error ? error.message : "Error saving staff user";
-      alert(message);
+      toast.error(message);
     }
   };
 

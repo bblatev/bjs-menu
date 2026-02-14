@@ -18,7 +18,7 @@ Features:
 12. Inventory Reconciliation
 """
 
-from fastapi import APIRouter, HTTPException, Query, BackgroundTasks
+from fastapi import APIRouter, HTTPException, Query, BackgroundTasks, Request
 from sqlalchemy.orm import Session
 from sqlalchemy import func, or_
 from typing import List, Optional
@@ -27,6 +27,7 @@ from datetime import datetime, date, timedelta
 import uuid
 import random
 
+from app.core.rate_limit import limiter
 from app.db.session import DbSession
 from app.models.product import Product
 from app.models.location import Location
@@ -178,7 +179,9 @@ class UnitConversionResponse(BaseModel):
 # =============================================================================
 
 @router.post("/barcodes", response_model=BarcodeResponse, tags=["Barcode Management"])
+@limiter.limit("30/minute")
 def create_barcode(
+    request: Request,
     data: BarcodeCreate,
     db: DbSession,
 ):
@@ -240,7 +243,9 @@ def create_barcode(
 
 
 @router.get("/barcodes/scan/{barcode_value}", tags=["Barcode Management"])
+@limiter.limit("60/minute")
 def scan_barcode(
+    request: Request,
     barcode_value: str,
     db: DbSession,
 ):
@@ -292,7 +297,9 @@ def scan_barcode(
 
 
 @router.get("/barcodes/item/{item_id}", tags=["Barcode Management"])
+@limiter.limit("60/minute")
 def get_item_barcodes(
+    request: Request,
     item_id: int,
     db: DbSession,
 ):
@@ -320,7 +327,9 @@ def get_item_barcodes(
 # =============================================================================
 
 @router.post("/auto-reorder/rules", response_model=AutoReorderRuleResponse, tags=["Auto-Reorder"])
+@limiter.limit("30/minute")
 def create_auto_reorder_rule(
+    request: Request,
     data: AutoReorderRuleCreate,
     db: DbSession,
 ):
@@ -391,7 +400,9 @@ def create_auto_reorder_rule(
 
 
 @router.get("/auto-reorder/rules", tags=["Auto-Reorder"])
+@limiter.limit("60/minute")
 def list_auto_reorder_rules(
+    request: Request,
     active_only: bool = True,
     db: DbSession = None,
 ):
@@ -438,7 +449,9 @@ def list_auto_reorder_rules(
 
 
 @router.get("/auto-reorder/alerts", tags=["Auto-Reorder"])
+@limiter.limit("60/minute")
 def get_reorder_alerts(
+    request: Request,
     priority: Optional[str] = None,
     db: DbSession = None,
 ):
@@ -494,7 +507,9 @@ def get_reorder_alerts(
 
 
 @router.post("/auto-reorder/process", tags=["Auto-Reorder"])
+@limiter.limit("30/minute")
 def process_auto_reorders(
+    request: Request,
     background_tasks: BackgroundTasks,
     db: DbSession,
 ):
@@ -550,7 +565,9 @@ def process_auto_reorders(
 # =============================================================================
 
 @router.post("/batches", response_model=BatchResponse, tags=["FIFO/FEFO Tracking"])
+@limiter.limit("30/minute")
 def create_batch(
+    request: Request,
     data: BatchCreate,
     db: DbSession,
 ):
@@ -615,7 +632,9 @@ def create_batch(
 
 
 @router.get("/batches/item/{item_id}", tags=["FIFO/FEFO Tracking"])
+@limiter.limit("60/minute")
 def get_item_batches(
+    request: Request,
     item_id: int,
     include_depleted: bool = False,
     db: DbSession = None,
@@ -688,7 +707,9 @@ def get_item_batches(
 
 
 @router.post("/batches/consumption-plan", tags=["FIFO/FEFO Tracking"])
+@limiter.limit("30/minute")
 def get_consumption_plan(
+    request: Request,
     stock_item_id: int,
     quantity_needed: float,
     method: str = "fefo",
@@ -760,7 +781,9 @@ def get_consumption_plan(
 # =============================================================================
 
 @router.get("/forecasting/{item_id}", tags=["Demand Forecasting"])
+@limiter.limit("60/minute")
 def get_demand_forecast(
+    request: Request,
     item_id: int,
     forecast_days: int = 30,
     db: DbSession = None,
@@ -816,7 +839,9 @@ def get_demand_forecast(
 
 
 @router.get("/forecasting/bulk", tags=["Demand Forecasting"])
+@limiter.limit("60/minute")
 def get_bulk_forecasts(
+    request: Request,
     category_id: Optional[int] = None,
     forecast_days: int = 30,
     db: DbSession = None,
@@ -855,7 +880,9 @@ def get_bulk_forecasts(
 # =============================================================================
 
 @router.get("/aging/report", tags=["Stock Aging"])
+@limiter.limit("60/minute")
 def get_stock_aging_report(
+    request: Request,
     category_id: Optional[int] = None,
     db: DbSession = None,
 ):
@@ -962,7 +989,9 @@ def get_stock_aging_report(
 # =============================================================================
 
 @router.get("/shrinkage", tags=["Shrinkage Analysis"])
+@limiter.limit("60/minute")
 def list_shrinkage_records(
+    request: Request,
     limit: int = Query(100, ge=1, le=500),
     db: DbSession = None,
 ):
@@ -988,7 +1017,9 @@ def list_shrinkage_records(
 
 
 @router.post("/shrinkage/record", tags=["Shrinkage Analysis"])
+@limiter.limit("30/minute")
 def record_shrinkage(
+    request: Request,
     data: ShrinkageRecordCreate,
     db: DbSession,
 ):
@@ -1040,7 +1071,9 @@ def record_shrinkage(
 
 
 @router.get("/shrinkage/analysis", tags=["Shrinkage Analysis"])
+@limiter.limit("60/minute")
 def get_shrinkage_analysis(
+    request: Request,
     period_days: int = 30,
     db: DbSession = None,
 ):
@@ -1117,7 +1150,9 @@ def get_shrinkage_analysis(
 # =============================================================================
 
 @router.post("/cycle-counts/schedules", tags=["Cycle Counting"])
+@limiter.limit("30/minute")
 def create_cycle_count_schedule(
+    request: Request,
     data: CycleCountScheduleCreate,
     db: DbSession,
 ):
@@ -1156,7 +1191,9 @@ def create_cycle_count_schedule(
 
 
 @router.get("/cycle-counts/schedules", tags=["Cycle Counting"])
+@limiter.limit("60/minute")
 def list_cycle_count_schedules(
+    request: Request,
     db: DbSession,
 ):
     """List all cycle count schedules"""
@@ -1180,7 +1217,9 @@ def list_cycle_count_schedules(
 
 
 @router.post("/cycle-counts/generate-task", tags=["Cycle Counting"])
+@limiter.limit("30/minute")
 def generate_cycle_count_task(
+    request: Request,
     schedule_id: int,
     db: DbSession,
 ):
@@ -1235,7 +1274,9 @@ def generate_cycle_count_task(
 
 
 @router.get("/cycle-counts/tasks", tags=["Cycle Counting"])
+@limiter.limit("60/minute")
 def list_cycle_count_tasks(
+    request: Request,
     status: Optional[str] = None,
     db: DbSession = None,
 ):
@@ -1287,7 +1328,9 @@ def list_cycle_count_tasks(
 # =============================================================================
 
 @router.post("/unit-conversions", response_model=UnitConversionResponse, tags=["Unit Conversions"])
+@limiter.limit("30/minute")
 def create_unit_conversion(
+    request: Request,
     data: UnitConversionCreate,
     db: DbSession,
 ):
@@ -1318,7 +1361,9 @@ def create_unit_conversion(
 
 
 @router.get("/unit-conversions", tags=["Unit Conversions"])
+@limiter.limit("60/minute")
 def list_unit_conversions(
+    request: Request,
     stock_item_id: Optional[int] = None,
     db: DbSession = None,
 ):
@@ -1355,7 +1400,9 @@ def list_unit_conversions(
 
 
 @router.post("/unit-conversions/convert", tags=["Unit Conversions"])
+@limiter.limit("30/minute")
 def convert_units(
+    request: Request,
     quantity: float,
     from_unit: str,
     to_unit: str,
@@ -1417,7 +1464,9 @@ def convert_units(
 # =============================================================================
 
 @router.get("/reconciliation/sessions", tags=["Inventory Reconciliation"])
+@limiter.limit("60/minute")
 def list_reconciliation_sessions(
+    request: Request,
     limit: int = Query(50, ge=1, le=200),
     db: DbSession = None,
 ):
@@ -1453,7 +1502,9 @@ def list_reconciliation_sessions(
 
 
 @router.post("/reconciliation/start", tags=["Inventory Reconciliation"])
+@limiter.limit("30/minute")
 def start_reconciliation(
+    request: Request,
     category_id: Optional[int] = None,
     location_id: Optional[int] = None,
     db: DbSession = None,
@@ -1502,7 +1553,9 @@ def start_reconciliation(
 
 
 @router.post("/reconciliation/{session_id}/count", tags=["Inventory Reconciliation"])
+@limiter.limit("30/minute")
 def submit_count(
+    request: Request,
     session_id: int,
     stock_item_id: int,
     physical_quantity: float,
@@ -1592,7 +1645,9 @@ def submit_count(
 
 
 @router.get("/reconciliation/{session_id}/discrepancies", tags=["Inventory Reconciliation"])
+@limiter.limit("60/minute")
 def get_discrepancies(
+    request: Request,
     session_id: int,
     db: DbSession,
 ):
@@ -1647,7 +1702,9 @@ def get_discrepancies(
 
 
 @router.post("/reconciliation/{session_id}/complete", tags=["Inventory Reconciliation"])
+@limiter.limit("30/minute")
 def complete_reconciliation(
+    request: Request,
     session_id: int,
     apply_adjustments: bool = False,
     db: DbSession = None,
@@ -1718,7 +1775,9 @@ def complete_reconciliation(
 # =============================================================================
 
 @router.get("/warehouses/consolidated", tags=["Multi-Warehouse"])
+@limiter.limit("60/minute")
 def get_consolidated_inventory(
+    request: Request,
     db: DbSession,
 ):
     """Get consolidated inventory view across all warehouses"""
@@ -1769,7 +1828,9 @@ def get_consolidated_inventory(
 
 
 @router.get("/supplier-performance", tags=["Supplier Performance"])
+@limiter.limit("60/minute")
 def list_supplier_performance(
+    request: Request,
     db: DbSession,
 ):
     """List performance metrics for all suppliers"""
@@ -1790,7 +1851,9 @@ def list_supplier_performance(
 
 
 @router.get("/suppliers/{supplier_id}/performance", tags=["Supplier Performance"])
+@limiter.limit("60/minute")
 def get_supplier_performance(
+    request: Request,
     supplier_id: int,
     period_days: int = 90,
     db: DbSession = None,
@@ -1829,7 +1892,9 @@ def get_supplier_performance(
 
 
 @router.get("/suppliers/comparison", tags=["Supplier Performance"])
+@limiter.limit("60/minute")
 def compare_suppliers_for_item(
+    request: Request,
     stock_item_id: int,
     db: DbSession,
 ):

@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
 import { API_URL } from '@/lib/api';
 
+import { toast } from '@/lib/toast';
 interface NutritionInfo {
   calories: number;
   protein: number;
@@ -148,11 +149,11 @@ export default function AllergensNutritionPage() {
         resetForm();
       } else {
         const error = await response.json();
-        alert(error.detail || 'Error saving item');
+        toast.error(error.detail || 'Error saving item');
       }
     } catch (error) {
       console.error('Error saving item:', error);
-      alert('Error saving item');
+      toast.error('Error saving item');
     }
   };
 

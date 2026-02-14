@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { API_URL } from '@/lib/api';
 
+import { toast } from '@/lib/toast';
 interface StaffMember {
   id: number;
   name: string;
@@ -171,11 +172,11 @@ export default function StaffPerformancePage() {
         setShowGoalsModal(false);
       } else {
         const error = await response.json();
-        alert(error.detail || 'Failed to save goals');
+        toast.error(error.detail || 'Failed to save goals');
       }
     } catch (error) {
       console.error('Error saving goals:', error);
-      alert('Failed to save goals');
+      toast.error('Failed to save goals');
     }
   };
 

@@ -11,7 +11,7 @@ Complete REST API for:
 - Enhanced Quality Control
 """
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.orm import Session
 from typing import Optional, List
 from datetime import date
@@ -75,6 +75,7 @@ from app.services.purchase_order_advanced_service import (
     PartialDeliveryService,
     ConsolidatedPurchasingService,
 )
+from app.core.rate_limit import limiter
 
 
 router = APIRouter()
@@ -85,7 +86,9 @@ router = APIRouter()
 # =============================================================================
 
 @router.post("/returns", response_model=SupplierReturnResponse)
+@limiter.limit("30/minute")
 def create_supplier_return(
+    request: Request,
     data: SupplierReturnCreate,
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(get_current_user)
@@ -95,7 +98,9 @@ def create_supplier_return(
 
 
 @router.get("/returns", response_model=List[SupplierReturnResponse])
+@limiter.limit("60/minute")
 def list_supplier_returns(
+    request: Request,
     venue_id: int,
     supplier_id: Optional[int] = None,
     status: Optional[ReturnStatus] = None,
@@ -109,7 +114,9 @@ def list_supplier_returns(
 
 
 @router.get("/returns/{return_id}", response_model=SupplierReturnResponse)
+@limiter.limit("60/minute")
 def get_supplier_return(
+    request: Request,
     return_id: int,
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(get_current_user)
@@ -123,7 +130,9 @@ def get_supplier_return(
 
 
 @router.post("/returns/{return_id}/submit")
+@limiter.limit("30/minute")
 def submit_return_for_approval(
+    request: Request,
     return_id: int,
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(get_current_user)
@@ -136,7 +145,9 @@ def submit_return_for_approval(
 
 
 @router.post("/returns/{return_id}/approve")
+@limiter.limit("30/minute")
 def approve_return(
+    request: Request,
     return_id: int,
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(get_current_user)
@@ -149,7 +160,9 @@ def approve_return(
 
 
 @router.post("/returns/{return_id}/ship")
+@limiter.limit("30/minute")
 def ship_return(
+    request: Request,
     return_id: int,
     data: SupplierReturnShip,
     db: Session = Depends(get_db),
@@ -163,7 +176,9 @@ def ship_return(
 
 
 @router.post("/returns/{return_id}/confirm-receipt")
+@limiter.limit("30/minute")
 def confirm_supplier_receipt(
+    request: Request,
     return_id: int,
     data: SupplierReturnConfirmReceipt,
     db: Session = Depends(get_db),
@@ -181,7 +196,9 @@ def confirm_supplier_receipt(
 # =============================================================================
 
 @router.post("/credit-notes", response_model=SupplierCreditNoteResponse)
+@limiter.limit("30/minute")
 def create_credit_note(
+    request: Request,
     data: SupplierCreditNoteCreate,
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(get_current_user)
@@ -191,7 +208,9 @@ def create_credit_note(
 
 
 @router.get("/credit-notes", response_model=List[SupplierCreditNoteResponse])
+@limiter.limit("60/minute")
 def list_credit_notes(
+    request: Request,
     venue_id: int,
     supplier_id: Optional[int] = None,
     status: Optional[CreditNoteStatus] = None,
@@ -208,7 +227,9 @@ def list_credit_notes(
 
 
 @router.post("/credit-notes/{credit_note_id}/apply", response_model=CreditNoteApplicationResponse)
+@limiter.limit("30/minute")
 def apply_credit_note(
+    request: Request,
     credit_note_id: int,
     data: CreditNoteApplicationCreate,
     db: Session = Depends(get_db),
@@ -227,7 +248,9 @@ def apply_credit_note(
 # =============================================================================
 
 @router.post("/amendments", response_model=PurchaseOrderAmendmentResponse)
+@limiter.limit("30/minute")
 def create_amendment(
+    request: Request,
     data: PurchaseOrderAmendmentCreate,
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(get_current_user)
@@ -240,7 +263,9 @@ def create_amendment(
 
 
 @router.post("/amendments/{amendment_id}/approve")
+@limiter.limit("30/minute")
 def approve_amendment(
+    request: Request,
     amendment_id: int,
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(get_current_user)
@@ -253,7 +278,9 @@ def approve_amendment(
 
 
 @router.post("/amendments/{amendment_id}/apply")
+@limiter.limit("30/minute")
 def apply_amendment(
+    request: Request,
     amendment_id: int,
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(get_current_user)
@@ -267,7 +294,9 @@ def apply_amendment(
 
 
 @router.get("/purchase-orders/{po_id}/history", response_model=List[POVersionHistoryResponse])
+@limiter.limit("60/minute")
 def get_po_version_history(
+    request: Request,
     po_id: int,
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(get_current_user)
@@ -281,7 +310,9 @@ def get_po_version_history(
 # =============================================================================
 
 @router.post("/blanket-orders", response_model=BlanketPurchaseOrderResponse)
+@limiter.limit("30/minute")
 def create_blanket_order(
+    request: Request,
     data: BlanketPurchaseOrderCreate,
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(get_current_user)
@@ -291,7 +322,9 @@ def create_blanket_order(
 
 
 @router.get("/blanket-orders", response_model=List[BlanketPurchaseOrderResponse])
+@limiter.limit("60/minute")
 def list_blanket_orders(
+    request: Request,
     venue_id: int,
     supplier_id: Optional[int] = None,
     status: Optional[BlanketOrderStatus] = None,
@@ -311,7 +344,9 @@ def list_blanket_orders(
 
 
 @router.get("/blanket-orders/{blanket_id}", response_model=BlanketPurchaseOrderResponse)
+@limiter.limit("60/minute")
 def get_blanket_order(
+    request: Request,
     blanket_id: int,
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(get_current_user)
@@ -325,7 +360,9 @@ def get_blanket_order(
 
 
 @router.post("/blanket-orders/{blanket_id}/activate")
+@limiter.limit("30/minute")
 def activate_blanket_order(
+    request: Request,
     blanket_id: int,
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(get_current_user)
@@ -344,7 +381,9 @@ def activate_blanket_order(
 
 
 @router.post("/blanket-orders/{blanket_id}/releases", response_model=BlanketReleaseResponse)
+@limiter.limit("30/minute")
 def create_blanket_release(
+    request: Request,
     blanket_id: int,
     data: BlanketReleaseCreate,
     db: Session = Depends(get_db),
@@ -359,7 +398,9 @@ def create_blanket_release(
 
 
 @router.post("/blanket-orders/releases/{release_id}/convert-to-po")
+@limiter.limit("30/minute")
 def convert_release_to_po(
+    request: Request,
     release_id: int,
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(get_current_user)
@@ -377,7 +418,9 @@ def convert_release_to_po(
 # =============================================================================
 
 @router.post("/requisitions", response_model=PurchaseRequisitionResponse)
+@limiter.limit("30/minute")
 def create_requisition(
+    request: Request,
     data: PurchaseRequisitionCreate,
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(get_current_user)
@@ -387,7 +430,9 @@ def create_requisition(
 
 
 @router.get("/requisitions", response_model=List[PurchaseRequisitionResponse])
+@limiter.limit("60/minute")
 def list_requisitions(
+    request: Request,
     venue_id: int,
     status: Optional[RequisitionStatus] = None,
     requested_by: Optional[int] = None,
@@ -407,7 +452,9 @@ def list_requisitions(
 
 
 @router.get("/requisitions/{requisition_id}", response_model=PurchaseRequisitionResponse)
+@limiter.limit("60/minute")
 def get_requisition(
+    request: Request,
     requisition_id: int,
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(get_current_user)
@@ -421,7 +468,9 @@ def get_requisition(
 
 
 @router.post("/requisitions/{requisition_id}/submit")
+@limiter.limit("30/minute")
 def submit_requisition(
+    request: Request,
     requisition_id: int,
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(get_current_user)
@@ -434,7 +483,9 @@ def submit_requisition(
 
 
 @router.post("/requisitions/{requisition_id}/approve")
+@limiter.limit("30/minute")
 def approve_requisition(
+    request: Request,
     requisition_id: int,
     action: RequisitionApprovalAction,
     db: Session = Depends(get_db),
@@ -455,7 +506,9 @@ def approve_requisition(
 
 
 @router.post("/requisitions/{requisition_id}/convert-to-po")
+@limiter.limit("30/minute")
 def convert_requisition_to_po(
+    request: Request,
     requisition_id: int,
     data: RequisitionToPOConvert,
     db: Session = Depends(get_db),
@@ -475,7 +528,9 @@ def convert_requisition_to_po(
 # =============================================================================
 
 @router.post("/landed-costs", response_model=PurchaseOrderLandedCostResponse)
+@limiter.limit("30/minute")
 def create_landed_cost(
+    request: Request,
     data: PurchaseOrderLandedCostCreate,
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(get_current_user)
@@ -485,7 +540,9 @@ def create_landed_cost(
 
 
 @router.get("/landed-costs/{landed_cost_id}", response_model=PurchaseOrderLandedCostResponse)
+@limiter.limit("60/minute")
 def get_landed_cost(
+    request: Request,
     landed_cost_id: int,
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(get_current_user)
@@ -499,7 +556,9 @@ def get_landed_cost(
 
 
 @router.post("/landed-costs/{landed_cost_id}/calculate")
+@limiter.limit("30/minute")
 def calculate_landed_cost(
+    request: Request,
     landed_cost_id: int,
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(get_current_user)
@@ -513,7 +572,9 @@ def calculate_landed_cost(
 
 
 @router.post("/landed-costs/{landed_cost_id}/apply")
+@limiter.limit("30/minute")
 def apply_landed_cost(
+    request: Request,
     landed_cost_id: int,
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(get_current_user)
@@ -531,7 +592,9 @@ def apply_landed_cost(
 # =============================================================================
 
 @router.post("/payments", response_model=SupplierPaymentResponse)
+@limiter.limit("30/minute")
 def create_supplier_payment(
+    request: Request,
     data: SupplierPaymentCreate,
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(get_current_user)
@@ -541,7 +604,9 @@ def create_supplier_payment(
 
 
 @router.get("/payments", response_model=List[SupplierPaymentResponse])
+@limiter.limit("60/minute")
 def list_supplier_payments(
+    request: Request,
     venue_id: int,
     supplier_id: Optional[int] = None,
     status: Optional[str] = None,
@@ -561,7 +626,9 @@ def list_supplier_payments(
 
 
 @router.get("/supplier-balances/{supplier_id}", response_model=SupplierAccountBalanceResponse)
+@limiter.limit("60/minute")
 def get_supplier_balance(
+    request: Request,
     supplier_id: int,
     venue_id: int,
     db: Session = Depends(get_db),
@@ -573,7 +640,9 @@ def get_supplier_balance(
 
 
 @router.get("/aging-report", response_model=InvoiceAgingSnapshotResponse)
+@limiter.limit("60/minute")
 def get_aging_report(
+    request: Request,
     venue_id: int,
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(get_current_user)
@@ -583,7 +652,9 @@ def get_aging_report(
 
 
 @router.post("/payment-terms", response_model=PaymentTermsConfigResponse)
+@limiter.limit("30/minute")
 def create_payment_terms(
+    request: Request,
     data: PaymentTermsConfigCreate,
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(get_current_user)
@@ -609,7 +680,9 @@ def create_payment_terms(
 
 
 @router.get("/payment-terms", response_model=List[PaymentTermsConfigResponse])
+@limiter.limit("60/minute")
 def list_payment_terms(
+    request: Request,
     venue_id: int,
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(get_current_user)
@@ -627,7 +700,9 @@ def list_payment_terms(
 # =============================================================================
 
 @router.post("/qc/checklists", response_model=QualityControlChecklistResponse)
+@limiter.limit("30/minute")
 def create_qc_checklist(
+    request: Request,
     data: QualityControlChecklistCreate,
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(get_current_user)
@@ -637,7 +712,9 @@ def create_qc_checklist(
 
 
 @router.get("/qc/checklists", response_model=List[QualityControlChecklistResponse])
+@limiter.limit("60/minute")
 def list_qc_checklists(
+    request: Request,
     venue_id: int,
     category: Optional[str] = None,
     supplier_id: Optional[int] = None,
@@ -658,7 +735,9 @@ def list_qc_checklists(
 
 
 @router.post("/qc/inspections", response_model=QualityControlInspectionResponse)
+@limiter.limit("30/minute")
 def create_qc_inspection(
+    request: Request,
     data: QualityControlInspectionCreate,
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(get_current_user)
@@ -668,7 +747,9 @@ def create_qc_inspection(
 
 
 @router.get("/qc/inspections", response_model=List[QualityControlInspectionResponse])
+@limiter.limit("60/minute")
 def list_qc_inspections(
+    request: Request,
     venue_id: int,
     grn_id: Optional[int] = None,
     status: Optional[QCStatus] = None,
@@ -688,7 +769,9 @@ def list_qc_inspections(
 
 
 @router.put("/qc/inspections/{inspection_id}", response_model=QualityControlInspectionResponse)
+@limiter.limit("30/minute")
 def update_qc_inspection(
+    request: Request,
     inspection_id: int,
     data: QualityControlInspectionUpdate,
     db: Session = Depends(get_db),
@@ -702,7 +785,9 @@ def update_qc_inspection(
 
 
 @router.post("/qc/issues", response_model=QualityIssueResponse)
+@limiter.limit("30/minute")
 def create_quality_issue(
+    request: Request,
     data: QualityIssueCreate,
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(get_current_user)
@@ -712,7 +797,9 @@ def create_quality_issue(
 
 
 @router.get("/qc/issues", response_model=List[QualityIssueResponse])
+@limiter.limit("60/minute")
 def list_quality_issues(
+    request: Request,
     venue_id: int,
     supplier_id: Optional[int] = None,
     status: Optional[str] = None,
@@ -735,7 +822,9 @@ def list_quality_issues(
 
 
 @router.put("/qc/issues/{issue_id}", response_model=QualityIssueResponse)
+@limiter.limit("30/minute")
 def update_quality_issue(
+    request: Request,
     issue_id: int,
     data: QualityIssueUpdate,
     db: Session = Depends(get_db),
@@ -764,7 +853,9 @@ def update_quality_issue(
 # =============================================================================
 
 @router.post("/reorder-configs", response_model=StockReorderConfigResponse)
+@limiter.limit("30/minute")
 def create_reorder_config(
+    request: Request,
     data: StockReorderConfigCreate,
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(get_current_user)
@@ -774,7 +865,9 @@ def create_reorder_config(
 
 
 @router.get("/reorder-configs", response_model=List[StockReorderConfigResponse])
+@limiter.limit("60/minute")
 def list_reorder_configs(
+    request: Request,
     venue_id: int,
     stock_item_id: Optional[int] = None,
     db: Session = Depends(get_db),
@@ -792,7 +885,9 @@ def list_reorder_configs(
 
 
 @router.put("/reorder-configs/{config_id}", response_model=StockReorderConfigResponse)
+@limiter.limit("30/minute")
 def update_reorder_config(
+    request: Request,
     config_id: int,
     data: StockReorderConfigUpdate,
     db: Session = Depends(get_db),
@@ -813,7 +908,9 @@ def update_reorder_config(
 
 
 @router.post("/reorder-check")
+@limiter.limit("30/minute")
 def check_reorder_levels(
+    request: Request,
     venue_id: int,
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(get_current_user)
@@ -824,7 +921,9 @@ def check_reorder_levels(
 
 
 @router.get("/reorder-alerts", response_model=List[ReorderAlertResponse])
+@limiter.limit("60/minute")
 def list_reorder_alerts(
+    request: Request,
     venue_id: int,
     priority: Optional[str] = None,
     db: Session = Depends(get_db),
@@ -842,7 +941,9 @@ def list_reorder_alerts(
 
 
 @router.post("/reorder-alerts/{alert_id}/acknowledge")
+@limiter.limit("30/minute")
 def acknowledge_reorder_alert(
+    request: Request,
     alert_id: int,
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(get_current_user)
@@ -866,7 +967,9 @@ def acknowledge_reorder_alert(
 # =============================================================================
 
 @router.post("/delivery-schedules", response_model=PartialDeliveryScheduleResponse)
+@limiter.limit("30/minute")
 def create_delivery_schedule(
+    request: Request,
     data: PartialDeliveryScheduleCreate,
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(get_current_user)
@@ -876,7 +979,9 @@ def create_delivery_schedule(
 
 
 @router.get("/delivery-schedules", response_model=List[PartialDeliveryScheduleResponse])
+@limiter.limit("60/minute")
 def list_delivery_schedules(
+    request: Request,
     purchase_order_id: int,
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(get_current_user)
@@ -889,7 +994,9 @@ def list_delivery_schedules(
 
 
 @router.post("/backorders", response_model=BackorderTrackingResponse)
+@limiter.limit("30/minute")
 def create_backorder(
+    request: Request,
     data: BackorderTrackingCreate,
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(get_current_user)
@@ -899,7 +1006,9 @@ def create_backorder(
 
 
 @router.get("/backorders", response_model=List[BackorderTrackingResponse])
+@limiter.limit("60/minute")
 def list_backorders(
+    request: Request,
     venue_id: int,
     status: Optional[str] = None,
     purchase_order_id: Optional[int] = None,
@@ -917,7 +1026,9 @@ def list_backorders(
 
 
 @router.put("/backorders/{backorder_id}", response_model=BackorderTrackingResponse)
+@limiter.limit("30/minute")
 def update_backorder(
+    request: Request,
     backorder_id: int,
     data: BackorderTrackingUpdate,
     db: Session = Depends(get_db),
@@ -935,7 +1046,9 @@ def update_backorder(
 # =============================================================================
 
 @router.post("/consolidated-orders", response_model=ConsolidatedPurchaseOrderResponse)
+@limiter.limit("30/minute")
 def create_consolidated_order(
+    request: Request,
     data: ConsolidatedPurchaseOrderCreate,
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(get_current_user)
@@ -945,7 +1058,9 @@ def create_consolidated_order(
 
 
 @router.get("/consolidated-orders", response_model=List[ConsolidatedPurchaseOrderResponse])
+@limiter.limit("60/minute")
 def list_consolidated_orders(
+    request: Request,
     tenant_id: int,
     status: Optional[ConsolidatedOrderStatus] = None,
     supplier_id: Optional[int] = None,
@@ -965,7 +1080,9 @@ def list_consolidated_orders(
 
 
 @router.get("/consolidated-orders/{consolidated_id}", response_model=ConsolidatedPurchaseOrderResponse)
+@limiter.limit("60/minute")
 def get_consolidated_order(
+    request: Request,
     consolidated_id: int,
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(get_current_user)
@@ -981,7 +1098,9 @@ def get_consolidated_order(
 
 
 @router.post("/consolidated-orders/{consolidated_id}/submit")
+@limiter.limit("30/minute")
 def submit_consolidated_order(
+    request: Request,
     consolidated_id: int,
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(get_current_user)
@@ -1002,7 +1121,9 @@ def submit_consolidated_order(
 
 
 @router.post("/consolidated-orders/{consolidated_id}/distribute")
+@limiter.limit("30/minute")
 def distribute_consolidated_order(
+    request: Request,
     consolidated_id: int,
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(get_current_user)
@@ -1024,7 +1145,9 @@ def distribute_consolidated_order(
 # =============================================================================
 
 @router.post("/debit-notes", response_model=SupplierDebitNoteResponse)
+@limiter.limit("30/minute")
 def create_debit_note(
+    request: Request,
     data: SupplierDebitNoteCreate,
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(get_current_user)
@@ -1061,7 +1184,9 @@ def create_debit_note(
 
 
 @router.get("/debit-notes", response_model=List[SupplierDebitNoteResponse])
+@limiter.limit("60/minute")
 def list_debit_notes(
+    request: Request,
     venue_id: int,
     supplier_id: Optional[int] = None,
     status: Optional[str] = None,

@@ -4,7 +4,8 @@ Drag-and-drop report builder for creating custom reports.
 """
 
 from typing import Optional, List
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Request
+from app.core.rate_limit import limiter
 from pydantic import BaseModel
 
 from app.services.custom_report_builder_service import (
@@ -108,7 +109,8 @@ class ReportResponse(BaseModel):
 # ============================================================================
 
 @router.get("/data-sources")
-async def get_data_sources():
+@limiter.limit("60/minute")
+async def get_data_sources(request: Request):
     """
     Get available data sources for reports.
 
@@ -122,7 +124,8 @@ async def get_data_sources():
 
 
 @router.get("/data-sources/{source}/columns")
-async def get_columns(source: str):
+@limiter.limit("60/minute")
+async def get_columns(request: Request, source: str):
     """
     Get available columns for a data source.
 
@@ -160,7 +163,8 @@ async def get_columns(source: str):
 # ============================================================================
 
 @router.post("/reports", response_model=ReportResponse)
-async def create_report(request: CreateReportRequest):
+@limiter.limit("30/minute")
+async def create_report(request: Request, body: CreateReportRequest = None):
     """
     Create a new custom report.
 
@@ -169,36 +173,38 @@ async def create_report(request: CreateReportRequest):
     service = get_custom_report_builder_service()
 
     try:
-        data_source = DataSourceType(request.data_source)
+        data_source = DataSourceType(body.data_source)
     except ValueError:
-        raise HTTPException(status_code=400, detail=f"Invalid data source: {request.data_source}")
+        raise HTTPException(status_code=400, detail=f"Invalid data source: {body.data_source}")
 
     try:
-        chart_type = ChartType(request.chart_type)
+        chart_type = ChartType(body.chart_type)
     except ValueError:
         chart_type = ChartType.TABLE
 
-    columns = [col.model_dump() for col in request.columns]
-    filters = [flt.model_dump() for flt in request.filters]
-    groupings = [grp.model_dump() for grp in request.groupings]
+    columns = [col.model_dump() for col in body.columns]
+    filters = [flt.model_dump() for flt in body.filters]
+    groupings = [grp.model_dump() for grp in body.groupings]
 
     report = service.create_report(
-        name=request.name,
-        description=request.description,
+        name=body.name,
+        description=body.description,
         data_source=data_source,
         columns=columns,
         filters=filters,
         groupings=groupings,
         chart_type=chart_type,
-        chart_config=request.chart_config,
-        venue_id=request.venue_id,
+        chart_config=body.chart_config,
+        venue_id=body.venue_id,
     )
 
     return _report_to_response(report)
 
 
 @router.get("/reports", response_model=List[ReportResponse])
+@limiter.limit("60/minute")
 async def list_reports(
+    request: Request,
     venue_id: Optional[int] = None,
     owner_id: Optional[int] = None,
     include_public: bool = True,
@@ -216,7 +222,8 @@ async def list_reports(
 
 
 @router.get("/reports/{report_id}", response_model=ReportResponse)
-async def get_report(report_id: str):
+@limiter.limit("60/minute")
+async def get_report(request: Request, report_id: str):
     """Get a specific report."""
     service = get_custom_report_builder_service()
 
@@ -229,27 +236,28 @@ async def get_report(report_id: str):
 
 
 @router.put("/reports/{report_id}", response_model=ReportResponse)
-async def update_report(report_id: str, request: UpdateReportRequest):
+@limiter.limit("30/minute")
+async def update_report(request: Request, report_id: str, body: UpdateReportRequest = None):
     """Update a custom report."""
     service = get_custom_report_builder_service()
 
     updates = {}
-    if request.name is not None:
-        updates["name"] = request.name
-    if request.description is not None:
-        updates["description"] = request.description
-    if request.columns is not None:
-        updates["columns"] = [col.model_dump() for col in request.columns]
-    if request.filters is not None:
-        updates["filters"] = [flt.model_dump() for flt in request.filters]
-    if request.groupings is not None:
-        updates["groupings"] = [grp.model_dump() for grp in request.groupings]
-    if request.chart_type is not None:
-        updates["chart_type"] = request.chart_type
-    if request.chart_config is not None:
-        updates["chart_config"] = request.chart_config
-    if request.is_public is not None:
-        updates["is_public"] = request.is_public
+    if body.name is not None:
+        updates["name"] = body.name
+    if body.description is not None:
+        updates["description"] = body.description
+    if body.columns is not None:
+        updates["columns"] = [col.model_dump() for col in body.columns]
+    if body.filters is not None:
+        updates["filters"] = [flt.model_dump() for flt in body.filters]
+    if body.groupings is not None:
+        updates["groupings"] = [grp.model_dump() for grp in body.groupings]
+    if body.chart_type is not None:
+        updates["chart_type"] = body.chart_type
+    if body.chart_config is not None:
+        updates["chart_config"] = body.chart_config
+    if body.is_public is not None:
+        updates["is_public"] = body.is_public
 
     report = service.update_report(report_id, **updates)
 
@@ -260,7 +268,8 @@ async def update_report(report_id: str, request: UpdateReportRequest):
 
 
 @router.delete("/reports/{report_id}")
-async def delete_report(report_id: str):
+@limiter.limit("30/minute")
+async def delete_report(request: Request, report_id: str):
     """Delete a custom report."""
     service = get_custom_report_builder_service()
 
@@ -271,7 +280,8 @@ async def delete_report(report_id: str):
 
 
 @router.post("/reports/{report_id}/duplicate", response_model=ReportResponse)
-async def duplicate_report(report_id: str, new_name: str):
+@limiter.limit("30/minute")
+async def duplicate_report(request: Request, report_id: str, new_name: str):
     """Duplicate an existing report."""
     service = get_custom_report_builder_service()
 
@@ -288,7 +298,8 @@ async def duplicate_report(report_id: str, new_name: str):
 # ============================================================================
 
 @router.post("/reports/execute")
-async def execute_report(request: ExecuteReportRequest):
+@limiter.limit("30/minute")
+async def execute_report(request: Request, body: ExecuteReportRequest = None):
     """
     Execute an ad-hoc report without saving it.
 
@@ -298,21 +309,21 @@ async def execute_report(request: ExecuteReportRequest):
     service = get_custom_report_builder_service()
 
     try:
-        data_source = DataSourceType(request.data_source_id)
+        data_source = DataSourceType(body.data_source_id)
     except ValueError:
         raise HTTPException(
             status_code=400,
-            detail=f"Invalid data source: {request.data_source_id}",
+            detail=f"Invalid data source: {body.data_source_id}",
         )
 
     try:
-        chart_type = ChartType(request.chart_type)
+        chart_type = ChartType(body.chart_type)
     except ValueError:
         chart_type = ChartType.TABLE
 
-    columns = [col.model_dump() for col in request.columns]
-    filters = [flt.model_dump() for flt in request.filters]
-    groupings = [grp.model_dump() for grp in request.groupings]
+    columns = [col.model_dump() for col in body.columns]
+    filters = [flt.model_dump() for flt in body.filters]
+    groupings = [grp.model_dump() for grp in body.groupings]
 
     # Create a temporary report to execute
     temp_report = service.create_report(
@@ -322,13 +333,13 @@ async def execute_report(request: ExecuteReportRequest):
         filters=filters,
         groupings=groupings,
         chart_type=chart_type,
-        chart_config=request.chart_config,
+        chart_config=body.chart_config,
     )
 
     try:
         result = service.run_report(
             temp_report.report_id,
-            {"limit": request.limit, "sort_direction": request.sort_direction},
+            {"limit": body.limit, "sort_direction": body.sort_direction},
         )
 
         if "error" in result:
@@ -341,7 +352,8 @@ async def execute_report(request: ExecuteReportRequest):
 
 
 @router.post("/reports/{report_id}/run")
-async def run_report(report_id: str, request: RunReportRequest):
+@limiter.limit("30/minute")
+async def run_report(request: Request, report_id: str, body: RunReportRequest = None):
     """
     Execute a custom report and get results.
 
@@ -349,8 +361,8 @@ async def run_report(report_id: str, request: RunReportRequest):
     """
     service = get_custom_report_builder_service()
 
-    params = request.parameters.copy()
-    params["limit"] = request.limit
+    params = body.parameters.copy()
+    params["limit"] = body.limit
 
     result = service.run_report(report_id, params)
 
@@ -361,7 +373,8 @@ async def run_report(report_id: str, request: RunReportRequest):
 
 
 @router.get("/reports/{report_id}/preview")
-async def preview_report(report_id: str, limit: int = 10):
+@limiter.limit("60/minute")
+async def preview_report(request: Request, report_id: str, limit: int = 10):
     """Get a quick preview of report data."""
     service = get_custom_report_builder_service()
 
@@ -378,7 +391,8 @@ async def preview_report(report_id: str, limit: int = 10):
 # ============================================================================
 
 @router.get("/reports/{report_id}/export")
-async def export_report(report_id: str):
+@limiter.limit("60/minute")
+async def export_report(request: Request, report_id: str):
     """Export report definition as JSON."""
     service = get_custom_report_builder_service()
 
@@ -395,13 +409,14 @@ async def export_report(report_id: str):
 
 
 @router.post("/reports/import", response_model=ReportResponse)
-async def import_report(request: ImportReportRequest):
+@limiter.limit("30/minute")
+async def import_report(request: Request, body: ImportReportRequest = None):
     """Import a report from JSON definition."""
     service = get_custom_report_builder_service()
 
     report = service.import_report_definition(
-        request.json_data,
-        venue_id=request.venue_id,
+        body.json_data,
+        venue_id=body.venue_id,
     )
 
     if not report:
@@ -415,7 +430,8 @@ async def import_report(request: ImportReportRequest):
 # ============================================================================
 
 @router.get("/aggregations")
-async def get_aggregations():
+@limiter.limit("60/minute")
+async def get_aggregations(request: Request):
     """Get available aggregation functions."""
     return {
         "aggregations": [
@@ -430,7 +446,8 @@ async def get_aggregations():
 
 
 @router.get("/operators")
-async def get_operators():
+@limiter.limit("60/minute")
+async def get_operators(request: Request):
     """Get available filter operators."""
     return {
         "operators": [
@@ -452,7 +469,8 @@ async def get_operators():
 
 
 @router.get("/chart-types")
-async def get_chart_types():
+@limiter.limit("60/minute")
+async def get_chart_types(request: Request):
     """Get available chart/visualization types."""
     return {
         "types": [

@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import AdminLayout from '@/components/AdminLayout';
 import { API_URL, getAuthHeaders } from '@/lib/api';
 
+import { toast } from '@/lib/toast';
 interface SupplierMetrics {
   id: number;
   supplier_name: string;
@@ -315,7 +316,7 @@ export default function SupplierPerformancePage() {
   };
 
   const exportReport = () => {
-    alert('Експортиране на отчет за представянето на доставчиците...');
+    toast.success('Експортиране на отчет за представянето на доставчиците...');
   };
 
   return (

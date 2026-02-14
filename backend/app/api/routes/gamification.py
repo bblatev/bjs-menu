@@ -3,10 +3,11 @@
 from datetime import date, datetime
 from typing import List, Optional
 
-from fastapi import APIRouter, HTTPException, Query, status
+from fastapi import APIRouter, HTTPException, Query, Request, status
 from pydantic import BaseModel
 from sqlalchemy import func
 
+from app.core.rate_limit import limiter
 from app.db.session import DbSession
 from app.models.operations import Badge, Challenge, StaffAchievement, StaffPoints
 
@@ -50,7 +51,8 @@ class ChallengeCreate(BaseModel):
 # ===================== Badge Endpoints =====================
 
 @router.get("/badges")
-def get_badges(db: DbSession):
+@limiter.limit("60/minute")
+def get_badges(request: Request, db: DbSession):
     """Get all badges."""
     badges = db.query(Badge).order_by(Badge.created_at.desc()).all()
 
@@ -78,7 +80,8 @@ def get_badges(db: DbSession):
 
 
 @router.post("/badges")
-def create_badge(data: BadgeCreate, db: DbSession):
+@limiter.limit("30/minute")
+def create_badge(request: Request, data: BadgeCreate, db: DbSession):
     """Create a badge."""
     badge = Badge(
         name=data.name,
@@ -96,7 +99,8 @@ def create_badge(data: BadgeCreate, db: DbSession):
 
 
 @router.put("/badges/{badge_id}")
-def update_badge(badge_id: str, data: BadgeUpdate, db: DbSession):
+@limiter.limit("30/minute")
+def update_badge(request: Request, badge_id: str, data: BadgeUpdate, db: DbSession):
     """Update a badge."""
     badge = db.query(Badge).filter(Badge.id == int(badge_id)).first()
     if not badge:
@@ -115,7 +119,8 @@ def update_badge(badge_id: str, data: BadgeUpdate, db: DbSession):
 
 
 @router.api_route("/badges/{badge_id}/toggle-active", methods=["POST", "PATCH"])
-def toggle_badge(badge_id: str, db: DbSession):
+@limiter.limit("30/minute")
+def toggle_badge(request: Request, badge_id: str, db: DbSession):
     """Toggle badge active status."""
     badge = db.query(Badge).filter(Badge.id == int(badge_id)).first()
     if not badge:
@@ -133,7 +138,8 @@ def toggle_badge(badge_id: str, db: DbSession):
 # ===================== Challenge Endpoints =====================
 
 @router.get("/challenges")
-def get_challenges(db: DbSession):
+@limiter.limit("60/minute")
+def get_challenges(request: Request, db: DbSession):
     """Get active challenges."""
     challenges = db.query(Challenge).order_by(Challenge.created_at.desc()).all()
 
@@ -169,7 +175,8 @@ def get_challenges(db: DbSession):
 
 
 @router.post("/challenges")
-def create_challenge(data: ChallengeCreate, db: DbSession):
+@limiter.limit("30/minute")
+def create_challenge(request: Request, data: ChallengeCreate, db: DbSession):
     """Create a challenge."""
     challenge = Challenge(
         name=data.name,
@@ -189,7 +196,8 @@ def create_challenge(data: ChallengeCreate, db: DbSession):
 
 
 @router.api_route("/challenges/{challenge_id}/toggle-active", methods=["POST", "PATCH"])
-def toggle_challenge(challenge_id: str, db: DbSession):
+@limiter.limit("30/minute")
+def toggle_challenge(request: Request, challenge_id: str, db: DbSession):
     """Toggle challenge active status."""
     challenge = db.query(Challenge).filter(
         Challenge.id == int(challenge_id)
@@ -209,7 +217,8 @@ def toggle_challenge(challenge_id: str, db: DbSession):
 # ===================== Leaderboard Endpoint =====================
 
 @router.get("/leaderboard")
-def get_leaderboard(db: DbSession):
+@limiter.limit("60/minute")
+def get_leaderboard(request: Request, db: DbSession):
     """Get staff leaderboard."""
     staff_points = db.query(StaffPoints).order_by(
         StaffPoints.total_points.desc()
@@ -233,7 +242,9 @@ def get_leaderboard(db: DbSession):
 # ===================== Achievements Endpoint =====================
 
 @router.get("/achievements/recent")
+@limiter.limit("60/minute")
 def get_recent_achievements(
+    request: Request,
     db: DbSession,
     limit: int = Query(20, le=100),
 ):

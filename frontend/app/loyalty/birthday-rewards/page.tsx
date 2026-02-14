@@ -8,6 +8,7 @@ import { ErrorAlert, EmptyState } from '@/components/ui/ErrorAlert';
 
 import { API_URL, getAuthHeaders } from '@/lib/api';
 
+import { toast } from '@/lib/toast';
 interface RewardRule {
   rule_id: string;
   name: string;
@@ -198,7 +199,7 @@ export default function BirthdayRewardsPage() {
       });
       if (res.ok) {
         const data = await res.json();
-        alert(`Triggered ${data.rewards_sent || 0} new rewards!`);
+        toast.success(`Triggered ${data.rewards_sent || 0} new rewards!`);
         loadData();
       }
     } catch (error) {

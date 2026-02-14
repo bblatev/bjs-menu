@@ -25,6 +25,7 @@ from app.schemas.ai import (
     TrainingImageResponse, TrainingStatsResponse,
     RecognitionResult, RecognitionResponse
 )
+from app.models.inventory import InventorySession, InventoryLine, SessionStatus, CountMethod
 from app.services.ai.inference import run_inference
 from app.services.ai.feature_extraction import (
     extract_combined_features, find_best_match, compute_similarity,
@@ -150,8 +151,10 @@ async def shelf_scan(
 
 
 @router.post("/shelf-scan/review")
+@limiter.limit("30/minute")
 def review_shelf_scan(
-    request: ShelfScanReviewRequest,
+    request: Request,
+    review_request: ShelfScanReviewRequest,
     db: DbSession,
     current_user: CurrentUser,
 ):
@@ -162,7 +165,7 @@ def review_shelf_scan(
     this endpoint adds them as inventory lines.
     """
     # Verify session exists and is draft
-    session = db.query(InventorySession).filter(InventorySession.id == request.session_id).first()
+    session = db.query(InventorySession).filter(InventorySession.id == review_request.session_id).first()
     if not session:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Session not found")
     if session.status != SessionStatus.DRAFT:
@@ -174,50 +177,54 @@ def review_shelf_scan(
     lines_added = 0
     lines_updated = 0
 
-    for detection in request.detections:
-        if detection.product_id is None:
-            continue  # Skip unmatched detections
+    try:
+        for detection in review_request.detections:
+            if detection.product_id is None:
+                continue  # Skip unmatched detections
 
-        # Verify product exists
-        product = db.query(StockItem).filter(StockItem.id == detection.product_id).first()
-        if not product:
-            continue
+            # Verify product exists
+            product = db.query(StockItem).filter(StockItem.id == detection.product_id).first()
+            if not product:
+                continue
 
-        # Check if line already exists
-        existing_line = (
-            db.query(InventoryLine)
-            .filter(
-                InventoryLine.session_id == request.session_id,
-                InventoryLine.product_id == detection.product_id,
+            # Check if line already exists
+            existing_line = (
+                db.query(InventoryLine)
+                .filter(
+                    InventoryLine.session_id == review_request.session_id,
+                    InventoryLine.product_id == detection.product_id,
+                )
+                .first()
             )
-            .first()
-        )
 
-        if existing_line:
-            # Update existing line
-            existing_line.counted_qty += detection.count
-            existing_line.method = CountMethod.AI
-            existing_line.confidence = detection.confidence
-            existing_line.photo_id = request.photo_id
-            existing_line.counted_at = datetime.now(timezone.utc)
-            lines_updated += 1
-        else:
-            # Create new line
-            line = InventoryLine(
-                session_id=request.session_id,
-                product_id=detection.product_id,
-                counted_qty=detection.count,
-                method=CountMethod.AI,
-                confidence=detection.confidence,
-                photo_id=request.photo_id,
-            )
-            db.add(line)
-            lines_added += 1
+            if existing_line:
+                # Update existing line
+                existing_line.counted_qty += detection.count
+                existing_line.method = CountMethod.AI
+                existing_line.confidence = detection.confidence
+                existing_line.photo_id = review_request.photo_id
+                existing_line.counted_at = datetime.now(timezone.utc)
+                lines_updated += 1
+            else:
+                # Create new line
+                line = InventoryLine(
+                    session_id=review_request.session_id,
+                    product_id=detection.product_id,
+                    counted_qty=detection.count,
+                    method=CountMethod.AI,
+                    confidence=detection.confidence,
+                    photo_id=review_request.photo_id,
+                )
+                db.add(line)
+                lines_added += 1
 
-    db.commit()
+        db.commit()
+    except Exception:
+        db.rollback()
+        raise
 
     return {
-        "session_id": request.session_id,
+        "session_id": review_request.session_id,
         "lines_added": lines_added,
         "lines_updated": lines_updated,
     }
@@ -642,7 +649,9 @@ async def upload_training_video(
 
 
 @router.get("/training/status")
+@limiter.limit("60/minute")
 def get_training_status(
+    request: Request,
     db: DbSession = None,
 ):
     """Get AI training system status. No auth required."""
@@ -667,7 +676,9 @@ def get_training_status(
 
 
 @router.get("/training/stats", response_model=TrainingStatsResponse)
+@limiter.limit("60/minute")
 def get_training_stats(
+    request: Request,
     db: DbSession = None,
 ):
     """Get training statistics. No auth required."""
@@ -692,7 +703,9 @@ def get_training_stats(
 
 
 @router.get("/training/images")
+@limiter.limit("60/minute")
 def list_training_images(
+    request: Request,
     product_id: Optional[int] = None,
     skip: int = 0,
     limit: int = 100,
@@ -727,7 +740,9 @@ def list_training_images(
 
 
 @router.delete("/training/images/{image_id}")
+@limiter.limit("30/minute")
 def delete_training_image(
+    request: Request,
     image_id: int,
     db: DbSession,
     current_user: CurrentUser,
@@ -1074,7 +1089,9 @@ async def recognize_bottle(
 
 
 @router.post("/recognize-multi")
+@limiter.limit("30/minute")
 async def recognize_multi(
+    request: Request,
     image: UploadFile = File(..., description="Image with multiple bottles to recognize"),
     confidence_threshold: float = 0.60,
     detection_threshold: float = 0.10,
@@ -1411,7 +1428,9 @@ async def recognize_multi(
 
 
 @router.get("/status")
+@limiter.limit("60/minute")
 def get_ai_status(
+    request: Request,
     db: DbSession,
     current_user: CurrentUser = None,
 ):
@@ -1447,7 +1466,9 @@ def get_ai_status(
 
 
 @router.get("/stock-items")
+@limiter.limit("60/minute")
 def list_stock_items(
+    request: Request,
     skip: int = 0,
     limit: int = 100,
     db: DbSession = None,
@@ -1492,7 +1513,9 @@ def list_stock_items(
 
 
 @router.get("/stock-items/training-status")
+@limiter.limit("60/minute")
 def get_training_status(
+    request: Request,
     min_images: int = 10,
     db: DbSession = None,
 ):
@@ -1566,7 +1589,9 @@ def get_training_status(
 
 
 @router.post("/stock-items")
+@limiter.limit("30/minute")
 def create_stock_item(
+    request: Request,
     name: Annotated[str, Form()],
     sku: Annotated[str, Form()],
     unit: Annotated[str, Form()] = "bottle",
@@ -1603,7 +1628,9 @@ def create_stock_item(
 # ============= Training Pipeline Endpoints =============
 
 @router.post("/training/retrain/{product_id}")
+@limiter.limit("30/minute")
 def retrain_product(
+    request: Request,
     product_id: int,
     db: DbSession,
     extract_new: bool = True,
@@ -1623,7 +1650,9 @@ def retrain_product(
 
 
 @router.post("/training/retrain-all")
+@limiter.limit("30/minute")
 def retrain_all_products(
+    request: Request,
     db: DbSession,
     extract_new: bool = True,
 ):
@@ -1642,7 +1671,9 @@ def retrain_all_products(
 
 
 @router.get("/training/pipeline-stats")
+@limiter.limit("60/minute")
 def get_pipeline_stats(
+    request: Request,
     db: DbSession,
 ):
     """Get detailed training pipeline statistics."""
@@ -1653,7 +1684,9 @@ def get_pipeline_stats(
 
 
 @router.get("/accuracy/metrics")
+@limiter.limit("60/minute")
 def get_accuracy_metrics(
+    request: Request,
     db: DbSession,
     days: int = 30,
     source: Optional[str] = None,
@@ -1670,7 +1703,9 @@ def get_accuracy_metrics(
 
 
 @router.get("/accuracy/product/{product_id}")
+@limiter.limit("60/minute")
 def get_product_accuracy(
+    request: Request,
     product_id: int,
     db: DbSession,
     days: int = 30,
@@ -1683,7 +1718,9 @@ def get_product_accuracy(
 
 
 @router.get("/accuracy/confusions")
+@limiter.limit("60/minute")
 def get_confusion_matrix(
+    request: Request,
     db: DbSession,
     days: int = 30,
     min_samples: int = 3,
@@ -1700,7 +1737,9 @@ def get_confusion_matrix(
 
 
 @router.post("/accuracy/feedback")
+@limiter.limit("30/minute")
 def record_recognition_feedback(
+    request: Request,
     log_id: int,
     confirmed: bool,
     correction_product_id: Optional[int] = None,
@@ -1726,7 +1765,9 @@ def record_recognition_feedback(
 # ============= AI V2 Pipeline Endpoints (2-Stage: YOLO Detection + SKU Classification) =============
 
 @router.post("/v2/recognize")
+@limiter.limit("30/minute")
 async def recognize_bottle_v2(
+    request: Request,
     image: UploadFile = File(..., description="Image of shelf or bottle to recognize"),
     db: DbSession = None,
 ):
@@ -1862,7 +1903,9 @@ async def recognize_bottle_v2(
 
 
 @router.get("/v2/status")
+@limiter.limit("60/minute")
 def get_v2_status(
+    request: Request,
     db: DbSession = None,
 ):
     """Get AI V2 pipeline status and configuration."""
@@ -1896,7 +1939,9 @@ def get_v2_status(
 
 
 @router.get("/v2/active-learning-queue")
+@limiter.limit("60/minute")
 def get_active_learning_queue(
+    request: Request,
     skip: int = 0,
     limit: int = 50,
 ):
@@ -1931,7 +1976,9 @@ def get_active_learning_queue(
 
 
 @router.get("/v2/metrics")
+@limiter.limit("60/minute")
 def get_v2_metrics(
+    request: Request,
     window_minutes: int = 60,
 ):
     """
@@ -1952,7 +1999,9 @@ def get_v2_metrics(
 
 
 @router.post("/v2/active-learning/label")
+@limiter.limit("30/minute")
 def label_active_learning_item(
+    request: Request,
     item_id: str,
     sku_id: str,
     db: DbSession = None,

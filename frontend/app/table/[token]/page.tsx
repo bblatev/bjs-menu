@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useParams } from 'next/navigation';
 import { API_URL } from '@/lib/api';
 
+import { toast } from '@/lib/toast';
 interface MenuItem {
   id: number;
   name: string;
@@ -218,11 +219,11 @@ export default function TableOrderPage() {
         loadTableOrders();
       } else {
         const errorData = await response.json().catch(() => ({}));
-        alert(`Failed to place order: ${errorData.detail || 'Please try again.'}`);
+        toast.error(`Failed to place order: ${errorData.detail || 'Please try again.'}`);
       }
     } catch (err) {
       console.error('Error placing order:', err);
-      alert('Failed to place order. Please check your connection.');
+      toast.error('Failed to place order. Please check your connection.');
     } finally {
       setSubmitting(false);
     }
@@ -243,7 +244,7 @@ export default function TableOrderPage() {
   const processPayment = async () => {
     const balanceDue = paymentSummary?.balance_due || totalOrderedAmount;
     if (balanceDue <= 0) {
-      alert('No unpaid orders to process. Please place an order first.');
+      toast.error('No unpaid orders to process. Please place an order first.');
       return;
     }
     setProcessingPayment(true);
@@ -267,11 +268,11 @@ export default function TableOrderPage() {
         loadTableOrders();
       } else {
         const errorData = await response.json().catch(() => ({}));
-        alert(`Payment failed: ${errorData.detail || 'Please try again or ask your server.'}`);
+        toast.error(`Payment failed: ${errorData.detail || 'Please try again or ask your server.'}`);
       }
     } catch (err) {
       console.error('Error processing payment:', err);
-      alert('Payment failed. Please ask your server for assistance.');
+      toast.error('Payment failed. Please ask your server for assistance.');
     } finally {
       setProcessingPayment(false);
     }
@@ -293,10 +294,10 @@ export default function TableOrderPage() {
         setPaymentRequested(true);
         setShowPayment(false);
       } else {
-        alert('Failed to request payment. Please ask your server.');
+        toast.error('Failed to request payment. Please ask your server.');
       }
     } catch (err) {
-      alert('Failed to request payment. Please ask your server.');
+      toast.error('Failed to request payment. Please ask your server.');
     }
   };
 

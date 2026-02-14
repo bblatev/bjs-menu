@@ -6,6 +6,7 @@ import { Button, Input, Card, CardBody, Badge } from '@/components/ui';
 
 import { API_URL, getAuthHeaders } from '@/lib/api';
 
+import { toast } from '@/lib/toast';
 interface UserRole {
   id: string;
   name: string;
@@ -181,11 +182,11 @@ export default function SettingsSecurityPage() {
       });
 
       if (response.ok) {
-        alert('Security settings saved successfully!');
+        toast.success('Security settings saved successfully!');
       }
     } catch (err) {
       console.error('Error saving settings:', err);
-      alert('Failed to save settings');
+      toast.error('Failed to save settings');
     } finally {
       setSaving(false);
     }

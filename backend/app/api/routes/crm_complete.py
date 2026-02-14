@@ -8,7 +8,8 @@ Implements all features from Toast POS, iiko, and TouchBistro:
 - Birthday/Anniversary Rewards
 """
 
-from fastapi import APIRouter, Depends, HTTPException, Query, BackgroundTasks
+from fastapi import APIRouter, Depends, HTTPException, Query, BackgroundTasks, Request
+from app.core.rate_limit import limiter
 from sqlalchemy.orm import Session
 from sqlalchemy import func, or_, and_, desc
 from typing import List, Optional
@@ -193,8 +194,10 @@ class CustomerEnhancedResponse(BaseModel):
 # ============================================================================
 
 @router.post("/reviews", response_model=ReviewResponse, status_code=201)
+@limiter.limit("30/minute")
 async def create_review(
-    data: ReviewCreate,
+    request: Request,
+    data: ReviewCreate = None,
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(get_current_user)
 ):
@@ -257,7 +260,9 @@ async def create_review(
 
 
 @router.get("/reviews", response_model=List[ReviewResponse])
+@limiter.limit("60/minute")
 async def list_reviews(
+    request: Request,
     menu_item_id: Optional[int] = None,
     customer_id: Optional[int] = None,
     status: Optional[str] = None,
@@ -312,9 +317,11 @@ async def list_reviews(
 
 
 @router.put("/reviews/{review_id}/moderate", response_model=ReviewResponse)
+@limiter.limit("30/minute")
 async def moderate_review(
+    request: Request,
     review_id: int,
-    data: ReviewModerate,
+    data: ReviewModerate = None,
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(get_current_user)
 ):
@@ -366,7 +373,9 @@ async def moderate_review(
 
 
 @router.get("/reviews/stats")
+@limiter.limit("60/minute")
 async def get_review_stats(
+    request: Request,
     menu_item_id: Optional[int] = None,
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(get_current_user)
@@ -409,8 +418,10 @@ async def get_review_stats(
 # ============================================================================
 
 @router.post("/referral-programs", response_model=ReferralProgramResponse, status_code=201)
+@limiter.limit("30/minute")
 async def create_referral_program(
-    data: ReferralProgramCreate,
+    request: Request,
+    data: ReferralProgramCreate = None,
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(get_current_user)
 ):
@@ -435,7 +446,9 @@ async def create_referral_program(
 
 
 @router.get("/referral-programs", response_model=List[ReferralProgramResponse])
+@limiter.limit("60/minute")
 async def list_referral_programs(
+    request: Request,
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(get_current_user)
 ):
@@ -448,8 +461,10 @@ async def list_referral_programs(
 
 
 @router.post("/referrals", response_model=ReferralResponse, status_code=201)
+@limiter.limit("30/minute")
 async def create_referral(
-    data: ReferralCreate,
+    request: Request,
+    data: ReferralCreate = None,
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(get_current_user)
 ):
@@ -519,7 +534,9 @@ async def create_referral(
 
 
 @router.get("/referrals", response_model=List[ReferralResponse])
+@limiter.limit("60/minute")
 async def list_referrals(
+    request: Request,
     referrer_id: Optional[int] = None,
     status: Optional[str] = None,
     limit: int = Query(50, le=200),
@@ -568,7 +585,9 @@ async def list_referrals(
 
 
 @router.get("/referrals/stats")
+@limiter.limit("60/minute")
 async def get_referral_stats(
+    request: Request,
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(get_current_user)
 ):
@@ -606,9 +625,11 @@ async def get_referral_stats(
 # ============================================================================
 
 @router.post("/sms-campaigns", response_model=CampaignResponse, status_code=201)
+@limiter.limit("30/minute")
 async def create_sms_campaign(
-    data: CampaignCreate,
-    background_tasks: BackgroundTasks,
+    request: Request,
+    data: CampaignCreate = None,
+    background_tasks: BackgroundTasks = None,
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(get_current_user)
 ):
@@ -643,7 +664,9 @@ async def create_sms_campaign(
 
 
 @router.get("/sms-campaigns", response_model=List[CampaignResponse])
+@limiter.limit("60/minute")
 async def list_sms_campaigns(
+    request: Request,
     status: Optional[str] = None,
     limit: int = Query(50, le=200),
     offset: int = Query(0),
@@ -662,9 +685,11 @@ async def list_sms_campaigns(
 
 
 @router.post("/sms-campaigns/{campaign_id}/send")
+@limiter.limit("30/minute")
 async def send_sms_campaign(
+    request: Request,
     campaign_id: int,
-    background_tasks: BackgroundTasks,
+    background_tasks: BackgroundTasks = None,
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(get_current_user)
 ):
@@ -694,7 +719,9 @@ async def send_sms_campaign(
 # ============================================================================
 
 @router.get("/segments", response_model=List[CustomerSegmentResponse])
+@limiter.limit("60/minute")
 async def get_customer_segments(
+    request: Request,
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(get_current_user)
 ):
@@ -754,7 +781,9 @@ async def get_customer_segments(
 
 
 @router.post("/rfm/calculate")
+@limiter.limit("30/minute")
 async def calculate_rfm_scores(
+    request: Request,
     period_days: int = Query(365, description="Analysis period in days"),
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(get_current_user)
@@ -882,7 +911,9 @@ async def calculate_rfm_scores(
 
 
 @router.get("/customers/upcoming-events")
+@limiter.limit("60/minute")
 async def get_upcoming_events(
+    request: Request,
     days: int = Query(30, description="Look ahead days"),
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(get_current_user)

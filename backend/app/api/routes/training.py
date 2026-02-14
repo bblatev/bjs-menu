@@ -5,7 +5,8 @@ Allows staff to practice using the POS system without affecting real data.
 
 import json
 from typing import Optional, List
-from fastapi import APIRouter, HTTPException, Body
+from fastapi import APIRouter, HTTPException, Body, Request
+from app.core.rate_limit import limiter
 from pydantic import BaseModel
 
 from app.db.session import DbSession
@@ -97,7 +98,8 @@ class TrainingStatusResponse(BaseModel):
 # ============================================================================
 
 @router.post("/sessions/start", response_model=SessionResponse)
-async def start_training_session(request: StartSessionRequest):
+@limiter.limit("30/minute")
+async def start_training_session(request: Request, body: StartSessionRequest = None):
     """
     Start a training session for a user.
 
@@ -110,9 +112,9 @@ async def start_training_session(request: StartSessionRequest):
     service = get_training_service()
 
     session = service.start_training_session(
-        user_id=request.user_id,
-        terminal_id=request.terminal_id,
-        notes=request.notes,
+        user_id=body.user_id,
+        terminal_id=body.terminal_id,
+        notes=body.notes,
     )
 
     return SessionResponse(
@@ -128,14 +130,15 @@ async def start_training_session(request: StartSessionRequest):
 
 
 @router.post("/sessions/end")
-async def end_training_session(request: EndSessionRequest):
+@limiter.limit("30/minute")
+async def end_training_session(request: Request, body: EndSessionRequest = None):
     """End a training session."""
     service = get_training_service()
 
     session = service.end_training_session(
-        user_id=request.user_id,
-        session_id=request.session_id,
-        terminal_id=request.terminal_id,
+        user_id=body.user_id,
+        session_id=body.session_id,
+        terminal_id=body.terminal_id,
     )
 
     if not session:
@@ -156,7 +159,8 @@ async def end_training_session(request: EndSessionRequest):
 
 
 @router.get("/sessions/active")
-async def get_active_sessions():
+@limiter.limit("60/minute")
+async def get_active_sessions(request: Request):
     """Get all active training sessions."""
     service = get_training_service()
     sessions = service.get_all_active_sessions()
@@ -168,7 +172,8 @@ async def get_active_sessions():
 
 
 @router.get("/sessions/{session_id}/stats")
-async def get_session_stats(session_id: str):
+@limiter.limit("60/minute")
+async def get_session_stats(request: Request, session_id: str):
     """Get statistics for a training session."""
     service = get_training_service()
     stats = service.get_session_stats(session_id)
@@ -184,7 +189,8 @@ async def get_session_stats(session_id: str):
 # ============================================================================
 
 @router.get("/status/{user_id}", response_model=TrainingStatusResponse)
-async def check_training_status(user_id: int):
+@limiter.limit("60/minute")
+async def check_training_status(request: Request, user_id: int):
     """Check if a user is currently in training mode."""
     service = get_training_service()
 
@@ -206,7 +212,8 @@ async def check_training_status(user_id: int):
 
 
 @router.get("/terminal/{terminal_id}/status", response_model=TrainingStatusResponse)
-async def check_terminal_training_status(terminal_id: str):
+@limiter.limit("60/minute")
+async def check_terminal_training_status(request: Request, terminal_id: str):
     """Check if a terminal is currently in training mode."""
     service = get_training_service()
 
@@ -232,7 +239,8 @@ async def check_terminal_training_status(terminal_id: str):
 # ============================================================================
 
 @router.post("/orders", response_model=OrderResponse)
-async def create_training_order(request: CreateOrderRequest):
+@limiter.limit("30/minute")
+async def create_training_order(request: Request, body: CreateOrderRequest = None):
     """
     Create a training order.
 
@@ -251,12 +259,12 @@ async def create_training_order(request: CreateOrderRequest):
             "quantity": item.quantity,
             "modifiers": item.modifiers,
         }
-        for item in request.items
+        for item in body.items
     ]
 
     order = service.create_training_order(
-        user_id=request.user_id,
-        table_number=request.table_number,
+        user_id=body.user_id,
+        table_number=body.table_number,
         items=items,
     )
 
@@ -283,19 +291,20 @@ async def create_training_order(request: CreateOrderRequest):
 
 
 @router.post("/orders/pay")
-async def process_training_payment(request: ProcessPaymentRequest):
+@limiter.limit("30/minute")
+async def process_training_payment(request: Request, body: ProcessPaymentRequest = None):
     """Process a training payment."""
     service = get_training_service()
 
-    if not is_training_order(request.order_id):
+    if not is_training_order(body.order_id):
         raise HTTPException(
             status_code=400,
             detail="This endpoint is for training orders only (TR-* prefix)",
         )
 
     order = service.process_training_payment(
-        order_id=request.order_id,
-        payment_method=request.payment_method,
+        order_id=body.order_id,
+        payment_method=body.payment_method,
     )
 
     if not order:
@@ -312,19 +321,20 @@ async def process_training_payment(request: ProcessPaymentRequest):
 
 
 @router.post("/orders/void")
-async def void_training_order(request: VoidOrderRequest):
+@limiter.limit("30/minute")
+async def void_training_order(request: Request, body: VoidOrderRequest = None):
     """Void a training order."""
     service = get_training_service()
 
-    if not is_training_order(request.order_id):
+    if not is_training_order(body.order_id):
         raise HTTPException(
             status_code=400,
             detail="This endpoint is for training orders only (TR-* prefix)",
         )
 
     order = service.void_training_order(
-        order_id=request.order_id,
-        reason=request.reason,
+        order_id=body.order_id,
+        reason=body.reason,
     )
 
     if not order:
@@ -339,7 +349,8 @@ async def void_training_order(request: VoidOrderRequest):
 
 
 @router.get("/orders/{order_id}", response_model=OrderResponse)
-async def get_training_order(order_id: str):
+@limiter.limit("60/minute")
+async def get_training_order(request: Request, order_id: str):
     """Get a training order."""
     service = get_training_service()
 
@@ -375,7 +386,8 @@ async def get_training_order(order_id: str):
 # ============================================================================
 
 @router.post("/cleanup")
-async def cleanup_old_sessions(hours: int = 24):
+@limiter.limit("30/minute")
+async def cleanup_old_sessions(request: Request, hours: int = 24):
     """Clean up old training sessions and orders."""
     service = get_training_service()
     result = service.cleanup_old_sessions(hours=hours)
@@ -391,7 +403,8 @@ async def cleanup_old_sessions(hours: int = 24):
 # ============================================================================
 
 @router.get("/is-training/{order_id}")
-async def check_if_training_order(order_id: str):
+@limiter.limit("60/minute")
+async def check_if_training_order(request: Request, order_id: str):
     """Check if an order ID is a training order."""
     return {
         "order_id": order_id,
@@ -404,7 +417,8 @@ async def check_if_training_order(order_id: str):
 # ============================================================================
 
 @router.get("/config")
-async def get_training_config(db: DbSession):
+@limiter.limit("60/minute")
+async def get_training_config(request: Request, db: DbSession):
     """Get training mode configuration."""
     setting = db.query(AppSetting).filter(
         AppSetting.category == "training_config",
@@ -427,7 +441,8 @@ async def get_training_config(db: DbSession):
 
 
 @router.put("/config")
-async def update_training_config(db: DbSession, config: dict = Body(...)):
+@limiter.limit("30/minute")
+async def update_training_config(request: Request, db: DbSession, config: dict = Body(...)):
     """Update training mode configuration."""
     setting = db.query(AppSetting).filter(
         AppSetting.category == "training_config",
@@ -449,7 +464,8 @@ async def update_training_config(db: DbSession, config: dict = Body(...)):
 
 
 @router.get("/sessions")
-async def list_training_sessions(db: DbSession, limit: int = 20):
+@limiter.limit("60/minute")
+async def list_training_sessions(request: Request, db: DbSession, limit: int = 20):
     """List all training sessions."""
     service = get_training_service()
 
@@ -482,7 +498,8 @@ async def list_training_sessions(db: DbSession, limit: int = 20):
 
 
 @router.get("/stats")
-async def get_training_stats():
+@limiter.limit("60/minute")
+async def get_training_stats(request: Request):
     """Get training mode statistics."""
     service = get_training_service()
     all_sessions = list(service._sessions.values())

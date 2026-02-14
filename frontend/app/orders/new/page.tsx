@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { API_URL, getAuthHeaders } from '@/lib/api';
 
+import { toast } from '@/lib/toast';
 interface MenuItem {
   id: number;
   name: string;
@@ -147,11 +148,11 @@ export default function NewOrderPage() {
         router.push('/orders');
       } else {
         const errorData = await response.json().catch(() => ({}));
-        alert(errorData.message || 'Failed to create order. Please try again.');
+        toast.error(errorData.message || 'Failed to create order. Please try again.');
       }
     } catch (err) {
       console.error('Error creating order:', err);
-      alert('Failed to create order. Please check your connection and try again.');
+      toast.error('Failed to create order. Please check your connection and try again.');
     } finally {
       setSubmitting(false);
     }

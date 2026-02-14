@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { API_URL, getAuthHeaders, clearAuth } from '@/lib/api';
 
+import { toast } from '@/lib/toast';
 interface BarStats {
   totalSales: number;
   totalCost: number;
@@ -202,7 +203,7 @@ export default function BarManagementPage() {
       setIsQuickPourOpen(false);
       setQuickPour({ drink_name: '', type: 'sale', quantity: 1, notes: '' });
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'Failed to record pour');
+      toast.error(err instanceof Error ? err.message : 'Failed to record pour');
     }
   };
 

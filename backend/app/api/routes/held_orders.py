@@ -1,12 +1,13 @@
 """
 Held Orders / Bill Suspend & Resume API
 """
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.orm import Session
 from typing import List, Optional
 from datetime import datetime, timedelta
 from pydantic import BaseModel, ConfigDict
 
+from app.core.rate_limit import limiter
 from app.db.session import get_db
 from app.core.rbac import get_current_user
 from app.models import (
@@ -49,7 +50,9 @@ class HeldOrderResponse(BaseModel):
 
 
 @router.post("/", response_model=HeldOrderResponse)
+@limiter.limit("30/minute")
 def hold_order(
+    request: Request,
     data: HeldOrderCreate,
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(get_current_user)
@@ -79,7 +82,9 @@ def hold_order(
 
 
 @router.get("/", response_model=List[HeldOrderResponse])
+@limiter.limit("60/minute")
 def list_held_orders(
+    request: Request,
     status: Optional[str] = "held",
     table_id: Optional[int] = None,
     db: Session = Depends(get_db),
@@ -97,7 +102,9 @@ def list_held_orders(
 
 
 @router.get("/{held_order_id}", response_model=HeldOrderResponse)
+@limiter.limit("60/minute")
 def get_held_order(
+    request: Request,
     held_order_id: int,
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(get_current_user)
@@ -115,7 +122,9 @@ def get_held_order(
 
 
 @router.post("/{held_order_id}/resume")
+@limiter.limit("30/minute")
 def resume_held_order(
+    request: Request,
     held_order_id: int,
     target_table_id: Optional[int] = None,
     db: Session = Depends(get_db),
@@ -153,7 +162,9 @@ def resume_held_order(
 
 
 @router.post("/{held_order_id}/cancel")
+@limiter.limit("30/minute")
 def cancel_held_order(
+    request: Request,
     held_order_id: int,
     reason: Optional[str] = None,
     db: Session = Depends(get_db),

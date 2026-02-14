@@ -3,13 +3,14 @@ Serial/Batch Numbers API Endpoints
 Complete tracking, warranty management, and expiry handling
 """
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy.orm import Session
 from typing import List, Optional
 from datetime import datetime, date
 
 from app.db.session import get_db
 from app.services.serial_batch_service import SerialBatchService
+from app.core.rate_limit import limiter
 from pydantic import BaseModel, Field
 
 
@@ -107,7 +108,9 @@ class WriteoffRequest(BaseModel):
     summary="Register serial number",
     description="Register a new item with serial number for complete tracking"
 )
+@limiter.limit("30/minute")
 def create_serial_number(
+    request: Request,
     data: SerialNumberCreate,
     db: Session = Depends(get_db)
 ):
@@ -148,7 +151,9 @@ def create_serial_number(
     summary="Get serial number",
     description="Get complete details for a serial number"
 )
+@limiter.limit("60/minute")
 def get_serial_number(
+    request: Request,
     serial_number: str,
     db: Session = Depends(get_db)
 ):
@@ -179,7 +184,9 @@ def get_serial_number(
     summary="Get serial number history",
     description="Get complete history of events for a serial number"
 )
+@limiter.limit("60/minute")
 def get_serial_history(
+    request: Request,
     serial_number: str,
     db: Session = Depends(get_db)
 ):
@@ -212,7 +219,9 @@ def get_serial_history(
     summary="List serial numbers",
     description="List serial numbers with filters"
 )
+@limiter.limit("60/minute")
 def list_serial_numbers(
+    request: Request,
     stock_item_id: Optional[int] = None,
     status: Optional[str] = None,
     expiring_days: Optional[int] = Query(None, description="Find items expiring within N days"),
@@ -253,7 +262,9 @@ def list_serial_numbers(
     summary="Update serial number status",
     description="Update status of a serial number"
 )
+@limiter.limit("30/minute")
 def update_serial_status(
+    request: Request,
     serial_number: str,
     status: str = Query(..., description="New status: in_stock, sold, returned, expired, destroyed"),
     reason: Optional[str] = None,
@@ -298,7 +309,9 @@ def update_serial_status(
     summary="Move serial number",
     description="Move item to different location"
 )
+@limiter.limit("30/minute")
 def move_serial_number(
+    request: Request,
     serial_number: str,
     to_location: str,
     staff_id: int,
@@ -334,7 +347,9 @@ def move_serial_number(
     summary="Create batch",
     description="Create new batch tracking for items with expiry"
 )
+@limiter.limit("30/minute")
 def create_batch(
+    request: Request,
     data: BatchCreate,
     db: Session = Depends(get_db)
 ):
@@ -372,7 +387,9 @@ def create_batch(
     summary="List batches",
     description="List batches with filters"
 )
+@limiter.limit("60/minute")
 def list_batches(
+    request: Request,
     stock_item_id: Optional[int] = None,
     status: Optional[str] = None,
     expiring_days: Optional[int] = Query(None, description="Find batches expiring within N days"),
@@ -410,7 +427,9 @@ def list_batches(
     summary="Get expiring batches",
     description="Get batches that are expiring soon and need action"
 )
+@limiter.limit("60/minute")
 def get_expiring_batches(
+    request: Request,
     days: int = Query(7, description="Days until expiry"),
     venue_id: Optional[int] = None,
     db: Session = Depends(get_db)
@@ -438,7 +457,9 @@ def get_expiring_batches(
     summary="Writeoff batch",
     description="Manually writeoff expired or damaged batch"
 )
+@limiter.limit("30/minute")
 def writeoff_batch(
+    request: Request,
     batch_id: int,
     data: WriteoffRequest,
     db: Session = Depends(get_db)
@@ -481,7 +502,9 @@ def writeoff_batch(
     summary="Run auto-expiry",
     description="Automatically expire all batches past expiry date"
 )
+@limiter.limit("30/minute")
 def run_auto_expire(
+    request: Request,
     db: Session = Depends(get_db)
 ):
     """
@@ -511,7 +534,9 @@ def run_auto_expire(
     summary="Get batch items",
     description="Get all items in a specific batch"
 )
+@limiter.limit("60/minute")
 def get_batch_items(
+    request: Request,
     batch_number: str,
     db: Session = Depends(get_db)
 ):
@@ -543,7 +568,9 @@ def get_batch_items(
     summary="Get expiring warranties",
     description="Get items with warranties expiring soon"
 )
+@limiter.limit("60/minute")
 def get_expiring_warranties(
+    request: Request,
     days: int = Query(30, description="Days until warranty expiry"),
     db: Session = Depends(get_db)
 ):
@@ -571,7 +598,9 @@ def get_expiring_warranties(
     summary="Get batch report",
     description="Get comprehensive batch tracking report"
 )
+@limiter.limit("60/minute")
 def get_batch_report(
+    request: Request,
     venue_id: Optional[int] = None,
     start_date: Optional[date] = None,
     end_date: Optional[date] = None,

@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { API_URL } from '@/lib/api';
 
+import { toast } from '@/lib/toast';
 interface StockItem {
   id: number;
   name: string;
@@ -173,7 +174,7 @@ export default function StockCountsPage() {
       setShowCountModal(true);
       loadCounts();
     } catch (error: any) {
-      alert(error.message || 'Error creating count');
+      toast.error(error.message || 'Error creating count');
     }
   };
 
@@ -226,7 +227,7 @@ export default function StockCountsPage() {
       setActiveCount(null);
       loadCounts();
     } catch (error: any) {
-      alert(error.message || 'Error completing count');
+      toast.error(error.message || 'Error completing count');
     }
   };
 
@@ -245,7 +246,7 @@ export default function StockCountsPage() {
 
       loadCounts();
     } catch (error: any) {
-      alert(error.message || 'Error approving count');
+      toast.error(error.message || 'Error approving count');
     }
   };
 

@@ -8,6 +8,7 @@ import { ErrorAlert } from '@/components/ui/ErrorAlert';
 
 import { API_URL, getAuthHeaders } from '@/lib/api';
 
+import { toast } from '@/lib/toast';
 interface ScheduledReport {
   schedule_id: string;
   name: string;
@@ -180,7 +181,7 @@ export default function ScheduledReportsPage() {
         headers: getAuthHeaders(),
       });
       if (res.ok) {
-        alert('Report sent successfully!');
+        toast.success('Report sent successfully!');
         loadData();
       }
     } catch (error) {

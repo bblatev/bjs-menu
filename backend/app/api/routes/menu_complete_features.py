@@ -16,7 +16,7 @@ Features:
 
 from __future__ import annotations
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Query, Request
 from sqlalchemy import func, desc
 from typing import List, Optional, Dict
 from pydantic import BaseModel, ConfigDict
@@ -25,6 +25,7 @@ import uuid
 import io
 import base64
 
+from app.core.rate_limit import limiter
 from app.db.session import DbSession
 from app.core.rbac import CurrentUser, OptionalCurrentUser
 
@@ -284,7 +285,9 @@ _next_ids = {
 # =============================================================================
 
 @router.post("/items/{item_id}/variants", response_model=MenuItemVariantResponse)
+@limiter.limit("30/minute")
 def create_menu_item_variant(
+    request: Request,
     item_id: int,
     data: MenuItemVariantCreate,
     db: DbSession,
@@ -340,7 +343,9 @@ def create_menu_item_variant(
 
 
 @router.get("/items/{item_id}/variants")
+@limiter.limit("60/minute")
 def list_menu_item_variants(
+    request: Request,
     item_id: int,
     db: DbSession,
     current_user: CurrentUser = None,
@@ -384,7 +389,9 @@ def list_menu_item_variants(
 
 
 @router.put("/variants/{variant_id}", response_model=MenuItemVariantResponse)
+@limiter.limit("30/minute")
 def update_menu_item_variant(
+    request: Request,
     variant_id: int,
     data: MenuItemVariantCreate,
     db: DbSession,
@@ -425,7 +432,9 @@ def update_menu_item_variant(
 
 
 @router.delete("/variants/{variant_id}")
+@limiter.limit("30/minute")
 def delete_menu_item_variant(
+    request: Request,
     variant_id: int,
     db: DbSession,
     current_user: CurrentUser = None,
@@ -446,7 +455,9 @@ def delete_menu_item_variant(
 # =============================================================================
 
 @router.post("/combos", response_model=ComboResponse)
+@limiter.limit("30/minute")
 def create_combo(
+    request: Request,
     data: ComboCreate,
     db: DbSession,
     current_user: CurrentUser = None,
@@ -564,7 +575,9 @@ def create_combo(
 
 
 @router.get("/combos")
+@limiter.limit("60/minute")
 def list_combos(
+    request: Request,
     active_only: bool = True,
     available_now: bool = False,
     db: DbSession = None,
@@ -621,7 +634,9 @@ def list_combos(
 
 
 @router.delete("/combos/{combo_id}")
+@limiter.limit("30/minute")
 def delete_combo(
+    request: Request,
     combo_id: int,
     db: DbSession,
     current_user: CurrentUser = None,
@@ -644,7 +659,9 @@ def delete_combo(
 # =============================================================================
 
 @router.post("/tags", response_model=MenuTagResponse)
+@limiter.limit("30/minute")
 def create_menu_tag(
+    request: Request,
     data: MenuTagCreate,
     db: DbSession,
     current_user: CurrentUser = None,
@@ -674,7 +691,9 @@ def create_menu_tag(
 
 
 @router.get("/tags")
+@limiter.limit("60/minute")
 def list_menu_tags(
+    request: Request,
     db: DbSession,
     current_user: CurrentUser = None,
 ):
@@ -691,7 +710,9 @@ def list_menu_tags(
 
 
 @router.post("/items/{item_id}/tags/{tag_id}")
+@limiter.limit("30/minute")
 def add_tag_to_item(
+    request: Request,
     item_id: int,
     tag_id: int,
     db: DbSession,
@@ -729,7 +750,9 @@ def add_tag_to_item(
 
 
 @router.delete("/items/{item_id}/tags/{tag_id}")
+@limiter.limit("30/minute")
 def remove_tag_from_item(
+    request: Request,
     item_id: int,
     tag_id: int,
     db: DbSession,
@@ -745,7 +768,9 @@ def remove_tag_from_item(
 
 
 @router.get("/items/{item_id}/tags")
+@limiter.limit("60/minute")
 def get_item_tags(
+    request: Request,
     item_id: int,
     db: DbSession,
     current_user: CurrentUser = None,
@@ -777,7 +802,9 @@ def get_item_tags(
 # =============================================================================
 
 @router.get("/upsell-rules")
+@limiter.limit("60/minute")
 def list_upsell_rules(
+    request: Request,
     db: DbSession,
     current_user: CurrentUser = None,
 ):
@@ -805,7 +832,9 @@ def list_upsell_rules(
 
 
 @router.post("/upsell-rules")
+@limiter.limit("30/minute")
 def create_upsell_rule(
+    request: Request,
     data: UpsellRuleCreate,
     db: DbSession,
     current_user: CurrentUser = None,
@@ -845,7 +874,9 @@ def create_upsell_rule(
 
 
 @router.get("/upsell-suggestions/{item_id}")
+@limiter.limit("60/minute")
 def get_upsell_suggestions(
+    request: Request,
     item_id: int,
     db: DbSession,
     current_user: CurrentUser = None,
@@ -891,7 +922,9 @@ def get_upsell_suggestions(
 # =============================================================================
 
 @router.post("/limited-offers", response_model=LimitedTimeOfferResponse)
+@limiter.limit("30/minute")
 def create_limited_offer(
+    request: Request,
     data: LimitedTimeOfferCreate,
     db: DbSession,
     current_user: CurrentUser = None,
@@ -955,7 +988,9 @@ def create_limited_offer(
 
 
 @router.get("/limited-offers")
+@limiter.limit("60/minute")
 def list_limited_offers(
+    request: Request,
     active_only: bool = True,
     include_expired: bool = False,
     db: DbSession = None,
@@ -1006,7 +1041,9 @@ def list_limited_offers(
 # =============================================================================
 
 @router.post("/86", response_model=Item86Response)
+@limiter.limit("30/minute")
 def mark_item_86(
+    request: Request,
     data: Item86Request,
     db: DbSession,
     current_user: CurrentUser = None,
@@ -1073,7 +1110,9 @@ def mark_item_86(
 
 
 @router.get("/86")
+@limiter.limit("60/minute")
 def list_86_items(
+    request: Request,
     active_only: bool = True,
     db: DbSession = None,
     current_user: CurrentUser = None,
@@ -1119,7 +1158,9 @@ def list_86_items(
 
 
 @router.delete("/86/{item86_id}")
+@limiter.limit("30/minute")
 def restore_86_item(
+    request: Request,
     item86_id: int,
     db: DbSession,
     current_user: CurrentUser = None,
@@ -1154,7 +1195,9 @@ def restore_86_item(
 # =============================================================================
 
 @router.post("/digital-boards")
+@limiter.limit("30/minute")
 def create_digital_board(
+    request: Request,
     data: DigitalMenuBoardCreate,
     db: DbSession,
     current_user: CurrentUser = None,
@@ -1239,7 +1282,9 @@ def create_digital_board(
 
 
 @router.get("/digital-boards")
+@limiter.limit("60/minute")
 def list_digital_boards(
+    request: Request,
     db: DbSession,
     current_user: CurrentUser = None,
 ):
@@ -1262,7 +1307,9 @@ def list_digital_boards(
 
 
 @router.get("/digital-boards/{board_id}/content")
+@limiter.limit("60/minute")
 def get_digital_board_content(
+    request: Request,
     board_id: int,
     language: str = "en",
     db: DbSession = None,
@@ -1333,7 +1380,9 @@ def get_digital_board_content(
 # =============================================================================
 
 @router.get("/engineering/report", response_model=MenuEngineeringReport)
+@limiter.limit("60/minute")
 def get_menu_engineering_report(
+    request: Request,
     period_days: int = 30,
     category: Optional[str] = None,
     db: DbSession = None,
@@ -1482,7 +1531,9 @@ def get_menu_engineering_report(
 # =============================================================================
 
 @router.get("/qr-code")
+@limiter.limit("60/minute")
 def generate_menu_qr_code(
+    request: Request,
     table_number: Optional[str] = None,
     language: str = "en",
     db: DbSession = None,
@@ -1528,7 +1579,9 @@ def generate_menu_qr_code(
 
 
 @router.get("/qr-codes/bulk")
+@limiter.limit("60/minute")
 def generate_bulk_qr_codes(
+    request: Request,
     table_count: int = 20,
     start_number: int = 1,
     language: str = "en",

@@ -6,6 +6,7 @@ import { Button, Card, CardBody, Badge } from '@/components/ui';
 
 import { API_URL, getAuthHeaders } from '@/lib/api';
 
+import { toast } from '@/lib/toast';
 interface Manufacturer {
   id: string;
   name: string;
@@ -104,15 +105,15 @@ export default function FiscalPrintersPage() {
       });
 
       if (response.ok) {
-        alert(`Printer ${selectedPrinter.name} configured successfully!`);
+        toast.success(`Printer ${selectedPrinter.name} configured successfully!`);
         setSelectedPrinter(null);
       } else {
         const error = await response.json();
-        alert(`Failed to configure printer: ${error.detail || 'Unknown error'}`);
+        toast.error(`Failed to configure printer: ${error.detail || 'Unknown error'}`);
       }
     } catch (err) {
       console.error('Error configuring printer:', err);
-      alert('Failed to configure printer');
+      toast.error('Failed to configure printer');
     } finally {
       setConfiguring(false);
     }

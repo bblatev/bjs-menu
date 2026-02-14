@@ -7,6 +7,7 @@ import { Button, Card, CardBody } from '@/components/ui';
 
 import { API_URL, getAuthHeaders } from '@/lib/api';
 
+import { toast } from '@/lib/toast';
 interface PreviewEntry {
   document_number: string;
   document_date: string;
@@ -116,7 +117,7 @@ export default function AccountingExportPage() {
       }
     } catch (err) {
       console.error('Error exporting:', err);
-      alert('Грешка при експортиране / Export error');
+      toast.error('Грешка при експортиране / Export error');
     }
   };
 

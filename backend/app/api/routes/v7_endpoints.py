@@ -4,7 +4,7 @@ from app.models.core_business_models import SMSMessage
 BJS V7 API Endpoints - Complete Missing Features (150+ endpoints)
 """
 
-from fastapi import APIRouter, HTTPException, Query, Body, Depends
+from fastapi import APIRouter, HTTPException, Query, Body, Depends, Path, Request
 from sqlalchemy.orm import Session
 from sqlalchemy import func, or_
 from typing import List, Optional, Dict
@@ -12,6 +12,7 @@ from datetime import datetime, timedelta
 from enum import Enum
 from decimal import Decimal
 
+from app.core.rate_limit import limiter
 from app.db.session import get_db
 from app.models.missing_features_models import (
     SMSCampaign, SMSOptOut, CustomerRFMScore, RFMSegmentDefinition, CustomerVIPStatus, VIPTier as VIPTierModel, IngredientPriceHistory, EmployeeBreak, BreakPolicy, ShiftTradeRequest, SingleUsePromoCode, PromoCodeCampaign, CustomerReferral, MenuItemReview, MenuItemRatingAggregate, CustomerDisplay, CateringEvent, CateringInvoice, CateringOrderItem, DepositPolicy, PrepTimeModel, )
@@ -30,6 +31,21 @@ def require_manager(current_user = Depends(get_current_user)):
     if current_user.role not in ("admin", "owner", "manager"):
         raise HTTPException(status_code=403, detail="Manager access required")
     return current_user
+
+
+def verify_venue_access(venue_id: int, current_user) -> None:
+    """Verify the user has access to the specified venue.
+
+    Admins and owners can access any venue. Other roles are checked
+    against their assigned venue_id.
+    """
+    if not hasattr(current_user, 'role'):
+        return
+    if current_user.role in ("admin", "owner"):
+        return
+    user_venue = getattr(current_user, 'venue_id', None)
+    if user_venue is not None and user_venue != venue_id:
+        raise HTTPException(status_code=403, detail="Access denied for this venue")
 
 
 # Enums
@@ -87,24 +103,23 @@ class BlockType(str, Enum):
 # ============================================================================
 
 @router.post("/{venue_id}/deposits/policy")
+@limiter.limit("30/minute")
 async def configure_deposit_policy(
-    venue_id: str,
+    request: Request,
+    venue_id: int,
     policy_type: DepositPolicyType = Body(...),
     amount: float = Body(10.0),
     min_party_size: int = Body(6),
     refund_hours: int = Body(24),
     vip_exempt: bool = Body(False),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user=Depends(require_manager),
 ):
     """Configure deposit policy for a venue in database"""
-    try:
-        venue_id_int = int(venue_id)
-    except ValueError:
-        raise HTTPException(status_code=400, detail="Invalid venue_id format")
-
+    verify_venue_access(venue_id, current_user)
     # Check if policy already exists
     policy = db.query(DepositPolicy).filter(
-        DepositPolicy.venue_id == venue_id_int
+        DepositPolicy.venue_id == venue_id
     ).first()
 
     if policy:
@@ -118,7 +133,7 @@ async def configure_deposit_policy(
     else:
         # Create new policy
         policy = DepositPolicy(
-            venue_id=venue_id_int,
+            venue_id=venue_id,
             policy_type=policy_type.value,
             amount=Decimal(str(amount)),
             min_party_size=min_party_size,
@@ -142,23 +157,22 @@ async def configure_deposit_policy(
     }
 
 @router.post("/{venue_id}/deposits/calculate")
+@limiter.limit("30/minute")
 async def calculate_deposit(
-    venue_id: str,
+    request: Request,
+    venue_id: int,
     party_size: int = Body(...),
     estimated_spend: float = Body(0),
     is_special_event: bool = Body(False),
     is_vip: bool = Body(False),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user=Depends(require_manager),
 ):
     """Calculate deposit amount based on venue policy from database"""
-    try:
-        venue_id_int = int(venue_id)
-    except ValueError:
-        raise HTTPException(status_code=400, detail="Invalid venue_id format")
-
+    verify_venue_access(venue_id, current_user)
     # Get venue policy
     policy = db.query(DepositPolicy).filter(
-        DepositPolicy.venue_id == venue_id_int,
+        DepositPolicy.venue_id == venue_id,
         DepositPolicy.is_active == True
     ).first()
 
@@ -211,24 +225,27 @@ async def calculate_deposit(
     }
 
 @router.post("/{venue_id}/deposits")
+@limiter.limit("30/minute")
 async def create_deposit(
-    venue_id: str,
+    request: Request,
+    venue_id: int,
     reservation_id: str = Body(...),
     customer_id: str = Body(...),
     amount: float = Body(...),
     currency: str = Body("BGN"),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user=Depends(require_manager),
 ):
     """Create a new deposit in database"""
+    verify_venue_access(venue_id, current_user)
     try:
-        venue_id_int = int(venue_id)
         reservation_id_int = int(reservation_id)
         customer_id_int = int(customer_id)
     except ValueError:
         raise HTTPException(status_code=400, detail="Invalid ID format")
 
     deposit = ReservationDeposit(
-        venue_id=venue_id_int,
+        venue_id=venue_id,
         reservation_id=reservation_id_int,
         customer_id=customer_id_int,
         amount=Decimal(str(amount)),
@@ -249,13 +266,17 @@ async def create_deposit(
     }
 
 @router.post("/{venue_id}/deposits/{deposit_id}/confirm")
+@limiter.limit("30/minute")
 async def confirm_deposit_payment(
-    venue_id: str,
+    request: Request,
+    venue_id: int,
     deposit_id: str,
     payment_reference: str = Body(..., embed=True),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user=Depends(require_manager),
 ):
     """Confirm deposit payment in database"""
+    verify_venue_access(venue_id, current_user)
     try:
         deposit_id_int = int(deposit_id)
     except ValueError:
@@ -282,13 +303,17 @@ async def confirm_deposit_payment(
     }
 
 @router.post("/{venue_id}/deposits/{deposit_id}/apply")
+@limiter.limit("30/minute")
 async def apply_deposit_to_order(
-    venue_id: str,
+    request: Request,
+    venue_id: int,
     deposit_id: str,
     order_id: str = Body(..., embed=True),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user=Depends(require_manager),
 ):
     """Apply deposit to order in database"""
+    verify_venue_access(venue_id, current_user)
     try:
         deposit_id_int = int(deposit_id)
         order_id_int = int(order_id)
@@ -321,17 +346,20 @@ async def apply_deposit_to_order(
     }
 
 @router.post("/{venue_id}/deposits/{deposit_id}/refund")
+@limiter.limit("30/minute")
 async def process_deposit_refund(
-    venue_id: str,
+    request: Request,
+    venue_id: int,
     deposit_id: str,
     reservation_datetime: datetime = Body(...),
     reason: str = Body(""),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user=Depends(require_manager),
 ):
     """Process deposit refund in database"""
+    verify_venue_access(venue_id, current_user)
     try:
         deposit_id_int = int(deposit_id)
-        venue_id_int = int(venue_id)
     except ValueError:
         raise HTTPException(status_code=400, detail="Invalid ID format")
 
@@ -344,7 +372,7 @@ async def process_deposit_refund(
 
     # Get policy for refund cutoff
     policy = db.query(DepositPolicy).filter(
-        DepositPolicy.venue_id == venue_id_int,
+        DepositPolicy.venue_id == venue_id,
         DepositPolicy.is_active == True
     ).first()
 
@@ -379,17 +407,13 @@ async def process_deposit_refund(
 # ============================================================================
 
 @router.get("/{venue_id}/sms/templates")
-async def get_sms_templates(venue_id: str, db: Session = Depends(get_db)):
+@limiter.limit("60/minute")
+async def get_sms_templates(request: Request, venue_id: int, db: Session = Depends(get_db)):
     """Get SMS templates for a venue from database"""
-    try:
-        venue_id_int = int(venue_id)
-    except ValueError:
-        raise HTTPException(status_code=400, detail="Invalid venue_id format")
-
     # Query templates from database - include venue-specific and system defaults
     from app.models.missing_features_models import SMSTemplate
     templates = db.query(SMSTemplate).filter(
-        or_(SMSTemplate.venue_id == venue_id_int, SMSTemplate.is_system_template == True)
+        or_(SMSTemplate.venue_id == venue_id, SMSTemplate.is_system_template == True)
     ).all()
 
     return {
@@ -408,23 +432,22 @@ async def get_sms_templates(venue_id: str, db: Session = Depends(get_db)):
     }
 
 @router.post("/{venue_id}/sms/templates")
+@limiter.limit("30/minute")
 async def create_sms_template(
-    venue_id: str,
+    request: Request,
+    venue_id: int,
     name: str = Body(...),
     content: str = Body(...),
     language: str = Body("bg"),
     category: str = Body("general"),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user=Depends(require_manager),
 ):
     """Create SMS template in database"""
-    try:
-        venue_id_int = int(venue_id)
-    except ValueError:
-        raise HTTPException(status_code=400, detail="Invalid venue_id format")
-
+    verify_venue_access(venue_id, current_user)
     from app.models.missing_features_models import SMSTemplate
     template = SMSTemplate(
-        venue_id=venue_id_int,
+        venue_id=venue_id,
         name=name,
         content=content,
         language=language,
@@ -446,23 +469,26 @@ async def create_sms_template(
     }
 
 @router.post("/{venue_id}/sms/campaigns")
+@limiter.limit("30/minute")
 async def create_sms_campaign(
-    venue_id: str,
+    request: Request,
+    venue_id: int,
     name: str = Body(...),
     template_id: str = Body(...),
     campaign_type: CampaignType = Body(...),
     target_audience: Dict = Body(...),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user=Depends(require_manager),
 ):
     """Create SMS campaign in database"""
+    verify_venue_access(venue_id, current_user)
     try:
-        venue_id_int = int(venue_id)
         template_id_int = int(template_id)
     except ValueError:
         raise HTTPException(status_code=400, detail="Invalid ID format")
 
     campaign = SMSCampaign(
-        venue_id=venue_id_int,
+        venue_id=venue_id,
         name=name,
         template_id=template_id_int,
         campaign_type=campaign_type.value,
@@ -482,16 +508,13 @@ async def create_sms_campaign(
     }
 
 @router.post("/{venue_id}/sms/campaigns/estimate-audience")
-async def estimate_campaign_audience(venue_id: str, filters: Dict = Body(...), db: Session = Depends(get_db)):
+@limiter.limit("30/minute")
+async def estimate_campaign_audience(request: Request, venue_id: int, filters: Dict = Body(...), db: Session = Depends(get_db), current_user=Depends(require_manager)):
     """Estimate target audience size based on filters using actual customer data"""
-    try:
-        venue_id_int = int(venue_id)
-    except ValueError:
-        raise HTTPException(status_code=400, detail="Invalid venue_id format")
-
+    verify_venue_access(venue_id, current_user)
     # Query actual customer count from database
     query = db.query(func.count(Customer.id)).filter(
-        Customer.venue_id == venue_id_int,
+        Customer.venue_id == venue_id,
         Customer.is_active == True,
         Customer.marketing_consent == True
     )
@@ -517,7 +540,7 @@ async def estimate_campaign_audience(venue_id: str, filters: Dict = Body(...), d
     elif segment == "high_spenders":
         # Top 15% by total spent
         avg_spend = db.query(func.avg(Customer.total_spent)).filter(
-            Customer.venue_id == venue_id_int, Customer.is_active == True
+            Customer.venue_id == venue_id, Customer.is_active == True
         ).scalar() or 0
         query = query.filter(Customer.total_spent >= avg_spend * 2)
     elif segment == "loyalty_members":
@@ -530,7 +553,7 @@ async def estimate_campaign_audience(venue_id: str, filters: Dict = Body(...), d
 
     # Get opt-out count
     opt_out_count = db.query(func.count(SMSOptOut.id)).filter(
-        SMSOptOut.venue_id == venue_id_int
+        SMSOptOut.venue_id == venue_id
     ).scalar() or 0
 
     final_audience = max(0, estimated_recipients - opt_out_count)
@@ -546,13 +569,17 @@ async def estimate_campaign_audience(venue_id: str, filters: Dict = Body(...), d
     }
 
 @router.post("/{venue_id}/sms/campaigns/{campaign_id}/schedule")
+@limiter.limit("30/minute")
 async def schedule_sms_campaign(
-    venue_id: str,
+    request: Request,
+    venue_id: int,
     campaign_id: str,
     send_at: datetime = Body(..., embed=True),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user=Depends(require_manager),
 ):
     """Schedule SMS campaign in database"""
+    verify_venue_access(venue_id, current_user)
     try:
         campaign_id_int = int(campaign_id)
     except ValueError:
@@ -578,16 +605,19 @@ async def schedule_sms_campaign(
     }
 
 @router.post("/{venue_id}/sms/campaigns/{campaign_id}/send")
+@limiter.limit("30/minute")
 async def send_sms_campaign(
-    venue_id: str,
+    request: Request,
+    venue_id: int,
     campaign_id: str,
     test_mode: bool = Query(False),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user=Depends(require_manager),
 ):
     """Send SMS campaign using database"""
+    verify_venue_access(venue_id, current_user)
     try:
         campaign_id_int = int(campaign_id)
-        venue_id_int = int(venue_id)
     except ValueError:
         raise HTTPException(status_code=400, detail="Invalid ID format")
 
@@ -603,7 +633,7 @@ async def send_sms_campaign(
     segment = target_audience.get("segment", "all")
 
     query = db.query(func.count(Customer.id)).filter(
-        Customer.venue_id == venue_id_int,
+        Customer.venue_id == venue_id,
         Customer.is_active == True,
         Customer.marketing_consent == True,
         Customer.phone.isnot(None)
@@ -632,8 +662,10 @@ async def send_sms_campaign(
     }
 
 @router.get("/{venue_id}/sms/campaigns/{campaign_id}/analytics")
+@limiter.limit("60/minute")
 async def get_campaign_analytics(
-    venue_id: str,
+    request: Request,
+    venue_id: int,
     campaign_id: str,
     db: Session = Depends(get_db)
 ):
@@ -673,20 +705,19 @@ async def get_campaign_analytics(
     }
 
 @router.post("/{venue_id}/sms/opt-out")
+@limiter.limit("30/minute")
 async def handle_sms_opt_out(
-    venue_id: str,
+    request: Request,
+    venue_id: int,
     phone_number: str = Body(..., embed=True),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user=Depends(require_manager),
 ):
     """Handle SMS opt-out in database"""
-    try:
-        venue_id_int = int(venue_id)
-    except ValueError:
-        raise HTTPException(status_code=400, detail="Invalid venue_id format")
-
+    verify_venue_access(venue_id, current_user)
     # Check if already opted out
     existing = db.query(SMSOptOut).filter(
-        SMSOptOut.venue_id == venue_id_int,
+        SMSOptOut.venue_id == venue_id,
         SMSOptOut.phone_number == phone_number
     ).first()
 
@@ -694,7 +725,7 @@ async def handle_sms_opt_out(
         return {"status": "already_opted_out", "phone": phone_number}
 
     opt_out = SMSOptOut(
-        venue_id=venue_id_int,
+        venue_id=venue_id,
         phone_number=phone_number,
         opted_out_at=datetime.utcnow()
     )
@@ -710,16 +741,12 @@ async def handle_sms_opt_out(
 # ============================================================================
 
 @router.get("/{venue_id}/catering/packages")
-async def get_catering_packages(venue_id: str, db: Session = Depends(get_db)):
+@limiter.limit("60/minute")
+async def get_catering_packages(request: Request, venue_id: int, db: Session = Depends(get_db)):
     """Get catering packages from database"""
-    try:
-        venue_id_int = int(venue_id)
-    except ValueError:
-        raise HTTPException(status_code=400, detail="Invalid venue_id format")
-
     from app.models.missing_features_models import CateringPackage
     packages = db.query(CateringPackage).filter(
-        CateringPackage.venue_id == venue_id_int,
+        CateringPackage.venue_id == venue_id,
         CateringPackage.is_active == True
     ).all()
 
@@ -739,8 +766,10 @@ async def get_catering_packages(venue_id: str, db: Session = Depends(get_db)):
     }
 
 @router.post("/{venue_id}/catering/inquiries")
+@limiter.limit("30/minute")
 async def create_catering_inquiry(
-    venue_id: str,
+    request: Request,
+    venue_id: int,
     customer_id: str = Body(...),
     event_type: EventType = Body(...),
     event_name: str = Body(...),
@@ -751,17 +780,18 @@ async def create_catering_inquiry(
     contact_name: str = Body(...),
     contact_phone: str = Body(...),
     contact_email: str = Body(...),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user=Depends(require_manager),
 ):
     """Create catering inquiry in database"""
+    verify_venue_access(venue_id, current_user)
     try:
-        venue_id_int = int(venue_id)
         customer_id_int = int(customer_id)
     except ValueError:
         raise HTTPException(status_code=400, detail="Invalid ID format")
 
     event = CateringEvent(
-        venue_id=venue_id_int,
+        venue_id=venue_id,
         customer_id=customer_id_int,
         event_type=event_type.value,
         event_name=event_name,
@@ -783,16 +813,20 @@ async def create_catering_inquiry(
     return {"event_id": event.id, "status": event.status}
 
 @router.post("/{venue_id}/catering/events/{event_id}/quote")
+@limiter.limit("30/minute")
 async def generate_catering_quote(
-    venue_id: str,
+    request: Request,
+    venue_id: int,
     event_id: str,
     package_id: Optional[str] = Body(None),
     custom_items: Optional[List[Dict]] = Body(None),
     staff_count: int = Body(0),
     delivery_fee: float = Body(0),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user=Depends(require_manager),
 ):
     """Generate catering quote in database"""
+    verify_venue_access(venue_id, current_user)
     try:
         event_id_int = int(event_id)
     except ValueError:
@@ -851,8 +885,10 @@ async def generate_catering_quote(
     }
 
 @router.get("/{venue_id}/catering/events/{event_id}/kitchen-sheet")
+@limiter.limit("60/minute")
 async def get_kitchen_sheet(
-    venue_id: str,
+    request: Request,
+    venue_id: int,
     event_id: str,
     db: Session = Depends(get_db)
 ):
@@ -891,8 +927,10 @@ async def get_kitchen_sheet(
     }
 
 @router.get("/{venue_id}/catering/events/{event_id}/labels")
+@limiter.limit("60/minute")
 async def get_catering_labels(
-    venue_id: str,
+    request: Request,
+    venue_id: int,
     event_id: str,
     db: Session = Depends(get_db)
 ):
@@ -927,15 +965,18 @@ async def get_catering_labels(
     return {"labels": labels}
 
 @router.post("/{venue_id}/catering/events/{event_id}/invoice")
+@limiter.limit("30/minute")
 async def create_catering_invoice(
-    venue_id: str,
+    request: Request,
+    venue_id: int,
     event_id: str,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user=Depends(require_manager),
 ):
     """Create catering invoice in database"""
+    verify_venue_access(venue_id, current_user)
     try:
         event_id_int = int(event_id)
-        venue_id_int = int(venue_id)
     except ValueError:
         raise HTTPException(status_code=400, detail="Invalid ID format")
 
@@ -948,12 +989,12 @@ async def create_catering_invoice(
 
     # Generate invoice number
     invoice_count = db.query(func.count(CateringInvoice.id)).filter(
-        CateringInvoice.venue_id == venue_id_int
+        CateringInvoice.venue_id == venue_id
     ).scalar() or 0
-    invoice_number = f"CAT-{venue_id_int}-{invoice_count + 1:05d}"
+    invoice_number = f"CAT-{venue_id}-{invoice_count + 1:05d}"
 
     invoice = CateringInvoice(
-        venue_id=venue_id_int,
+        venue_id=venue_id,
         catering_event_id=event_id_int,
         invoice_number=invoice_number,
         subtotal=event.quoted_amount or Decimal("0"),
@@ -980,22 +1021,21 @@ async def create_catering_invoice(
 # ============================================================================
 
 @router.post("/{venue_id}/displays")
+@limiter.limit("30/minute")
 async def register_customer_display(
-    venue_id: str,
+    request: Request,
+    venue_id: int,
     terminal_id: str = Body(...),
     name: str = Body(...),
     language: str = Body("bg"),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user=Depends(require_manager),
 ):
     """Register customer display in database"""
-    try:
-        venue_id_int = int(venue_id)
-    except ValueError:
-        raise HTTPException(status_code=400, detail="Invalid venue_id format")
-
+    verify_venue_access(venue_id, current_user)
     # Check if display already exists
     existing = db.query(CustomerDisplay).filter(
-        CustomerDisplay.venue_id == venue_id_int,
+        CustomerDisplay.venue_id == venue_id,
         CustomerDisplay.terminal_id == terminal_id
     ).first()
 
@@ -1009,7 +1049,7 @@ async def register_customer_display(
         return {"display_id": existing.id, "name": existing.name}
 
     display = CustomerDisplay(
-        venue_id=venue_id_int,
+        venue_id=venue_id,
         terminal_id=terminal_id,
         name=name,
         language=language,
@@ -1026,13 +1066,17 @@ async def register_customer_display(
     return {"display_id": display.id, "name": display.name}
 
 @router.post("/{venue_id}/displays/{display_id}/order")
+@limiter.limit("30/minute")
 async def update_display_order(
-    venue_id: str,
+    request: Request,
+    venue_id: int,
     display_id: str,
     order_data: Dict = Body(...),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user=Depends(require_manager),
 ):
     """Update customer display with order info in database"""
+    verify_venue_access(venue_id, current_user)
     try:
         display_id_int = int(display_id)
     except ValueError:
@@ -1058,14 +1102,18 @@ async def update_display_order(
     }
 
 @router.post("/{venue_id}/displays/{display_id}/payment")
+@limiter.limit("30/minute")
 async def show_payment_screen(
-    venue_id: str,
+    request: Request,
+    venue_id: int,
     display_id: str,
     total: float = Body(...),
     payment_method: str = Body("card"),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user=Depends(require_manager),
 ):
     """Show payment screen on display in database"""
+    verify_venue_access(venue_id, current_user)
     try:
         display_id_int = int(display_id)
     except ValueError:
@@ -1091,13 +1139,17 @@ async def show_payment_screen(
     }
 
 @router.post("/{venue_id}/displays/{display_id}/survey")
+@limiter.limit("30/minute")
 async def show_survey(
-    venue_id: str,
+    request: Request,
+    venue_id: int,
     display_id: str,
     order_id: str = Body(..., embed=True),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user=Depends(require_manager),
 ):
     """Show survey on display in database"""
+    verify_venue_access(venue_id, current_user)
     try:
         display_id_int = int(display_id)
     except ValueError:
@@ -1122,17 +1174,18 @@ async def show_survey(
     }
 
 @router.post("/{venue_id}/displays/{display_id}/idle")
-async def show_idle_screen(venue_id: str, display_id: str, db: Session = Depends(get_db)):
+@limiter.limit("30/minute")
+async def show_idle_screen(request: Request, venue_id: int, display_id: str, db: Session = Depends(get_db), current_user=Depends(require_manager)):
     """Show idle screen on customer display from database"""
+    verify_venue_access(venue_id, current_user)
     try:
-        venue_id_int = int(venue_id)
         display_id_int = int(display_id)
     except ValueError:
         raise HTTPException(status_code=400, detail="Invalid venue_id or display_id format")
 
     # Query display from database
     display = db.query(CustomerDisplay).filter(
-        CustomerDisplay.venue_id == venue_id_int,
+        CustomerDisplay.venue_id == venue_id,
         CustomerDisplay.id == display_id_int,
         CustomerDisplay.is_active == True
     ).first()
@@ -1160,8 +1213,10 @@ async def show_idle_screen(venue_id: str, display_id: str, db: Session = Depends
 # ============================================================================
 
 @router.post("/{venue_id}/reviews")
+@limiter.limit("30/minute")
 async def create_menu_review(
-    venue_id: str,
+    request: Request,
+    venue_id: int,
     menu_item_id: str = Body(...),
     customer_id: str = Body(...),
     order_id: str = Body(...),
@@ -1172,11 +1227,12 @@ async def create_menu_review(
     presentation_rating: Optional[int] = Body(None),
     portion_rating: Optional[int] = Body(None),
     value_rating: Optional[int] = Body(None),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user=Depends(require_manager),
 ):
     """Create menu item review in database"""
+    verify_venue_access(venue_id, current_user)
     try:
-        venue_id_int = int(venue_id)
         menu_item_id_int = int(menu_item_id)
         customer_id_int = int(customer_id)
         order_id_int = int(order_id)
@@ -1188,7 +1244,7 @@ async def create_menu_review(
         raise HTTPException(status_code=400, detail="Rating must be between 1 and 5")
 
     review = MenuItemReview(
-        venue_id=venue_id_int,
+        venue_id=venue_id,
         menu_item_id=menu_item_id_int,
         customer_id=customer_id_int,
         order_id=order_id_int,
@@ -1232,10 +1288,10 @@ async def create_menu_review(
     return {"review_id": review.id, "rating": review.rating}
 
 @router.get("/{venue_id}/reviews/item/{menu_item_id}")
-async def get_item_reviews(venue_id: str, menu_item_id: str, page: int = Query(1), limit: int = Query(10), db: Session = Depends(get_db)):
+@limiter.limit("60/minute")
+async def get_item_reviews(request: Request, venue_id: int, menu_item_id: str, page: int = Query(1), limit: int = Query(10), db: Session = Depends(get_db)):
     """Get reviews for a menu item from database"""
     try:
-        venue_id_int = int(venue_id)
         menu_item_id_int = int(menu_item_id)
     except ValueError:
         raise HTTPException(status_code=400, detail="Invalid venue_id or menu_item_id format")
@@ -1244,14 +1300,14 @@ async def get_item_reviews(venue_id: str, menu_item_id: str, page: int = Query(1
 
     # Query reviews from database
     reviews = db.query(MenuItemReview).filter(
-        MenuItemReview.venue_id == venue_id_int,
+        MenuItemReview.venue_id == venue_id,
         MenuItemReview.menu_item_id == menu_item_id_int,
         MenuItemReview.status == "approved"
     ).order_by(MenuItemReview.created_at.desc()).offset(offset).limit(limit).all()
 
     # Get total count
     total = db.query(func.count(MenuItemReview.id)).filter(
-        MenuItemReview.venue_id == venue_id_int,
+        MenuItemReview.venue_id == venue_id,
         MenuItemReview.menu_item_id == menu_item_id_int,
         MenuItemReview.status == "approved"
     ).scalar() or 0
@@ -1289,12 +1345,16 @@ async def get_item_reviews(venue_id: str, menu_item_id: str, page: int = Query(1
     }
 
 @router.post("/{venue_id}/reviews/{review_id}/approve")
+@limiter.limit("30/minute")
 async def approve_review(
-    venue_id: str,
+    request: Request,
+    venue_id: int,
     review_id: str,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user=Depends(require_manager),
 ):
     """Approve a review in database"""
+    verify_venue_access(venue_id, current_user)
     try:
         review_id_int = int(review_id)
     except ValueError:
@@ -1316,13 +1376,17 @@ async def approve_review(
     return {"review_id": review.id, "is_approved": True}
 
 @router.post("/{venue_id}/reviews/{review_id}/respond")
+@limiter.limit("30/minute")
 async def respond_to_review(
-    venue_id: str,
+    request: Request,
+    venue_id: int,
     review_id: str,
     response: str = Body(..., embed=True),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user=Depends(require_manager),
 ):
     """Respond to a review in database"""
+    verify_venue_access(venue_id, current_user)
     try:
         review_id_int = int(review_id)
     except ValueError:
@@ -1344,13 +1408,17 @@ async def respond_to_review(
     return {"review_id": review.id, "response": review.response_text}
 
 @router.post("/{venue_id}/reviews/{review_id}/helpful")
+@limiter.limit("30/minute")
 async def vote_review_helpful(
-    venue_id: str,
+    request: Request,
+    venue_id: int,
     review_id: str,
     customer_id: str = Body(..., embed=True),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user=Depends(require_manager),
 ):
     """Vote review as helpful in database"""
+    verify_venue_access(venue_id, current_user)
     try:
         review_id_int = int(review_id)
     except ValueError:
@@ -1371,13 +1439,17 @@ async def vote_review_helpful(
     return {"review_id": review.id, "helpful_votes": review.helpful_count}
 
 @router.post("/{venue_id}/reviews/prompts")
+@limiter.limit("30/minute")
 async def get_review_prompts(
-    venue_id: str,
+    request: Request,
+    venue_id: int,
     order_id: str = Body(...),
     order_items: List[Dict] = Body(...),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user=Depends(require_manager),
 ):
     """Get review prompts for order items"""
+    verify_venue_access(venue_id, current_user)
     prompts = []
     for item in order_items:
         item_id = item.get("menu_item_id")
@@ -1399,24 +1471,27 @@ async def get_review_prompts(
 # ============================================================================
 
 @router.post("/{venue_id}/prep-time/record")
+@limiter.limit("30/minute")
 async def record_prep_time(
-    venue_id: str,
+    request: Request,
+    venue_id: int,
     menu_item_id: str = Body(...),
     actual_time: int = Body(...),
     order_complexity: int = Body(1),
     kitchen_load: float = Body(0.5),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user=Depends(require_manager),
 ):
     """Record actual prep time in database"""
+    verify_venue_access(venue_id, current_user)
     try:
-        venue_id_int = int(venue_id)
         menu_item_id_int = int(menu_item_id)
     except ValueError:
         raise HTTPException(status_code=400, detail="Invalid ID format")
 
     # Record the prep time
     record = PrepTimeModel(
-        venue_id=venue_id_int,
+        venue_id=venue_id,
         menu_item_id=menu_item_id_int,
         actual_time_seconds=actual_time,
         order_complexity=order_complexity,
@@ -1430,19 +1505,18 @@ async def record_prep_time(
     return {"recorded": True, "record_id": record.id}
 
 @router.post("/{venue_id}/prep-time/estimate")
+@limiter.limit("30/minute")
 async def estimate_prep_time(
-    venue_id: str,
+    request: Request,
+    venue_id: int,
     order_items: List[Dict] = Body(...),
     is_delivery: bool = Body(False),
     is_priority: bool = Body(False),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user=Depends(require_manager),
 ):
     """Estimate prep time from database historical data"""
-    try:
-        venue_id_int = int(venue_id)
-    except ValueError:
-        raise HTTPException(status_code=400, detail="Invalid venue_id format")
-
+    verify_venue_access(venue_id, current_user)
     total_time = 0
     item_estimates = []
 
@@ -1455,7 +1529,7 @@ async def estimate_prep_time(
                 item_id_int = int(item_id)
                 # Get average prep time from history
                 avg_time = db.query(func.avg(PrepTimeModel.actual_time_seconds)).filter(
-                    PrepTimeModel.venue_id == venue_id_int,
+                    PrepTimeModel.venue_id == venue_id,
                     PrepTimeModel.menu_item_id == item_id_int
                 ).scalar()
 
@@ -1490,18 +1564,17 @@ async def estimate_prep_time(
     }
 
 @router.post("/{venue_id}/prep-time/kitchen-load")
+@limiter.limit("30/minute")
 async def update_kitchen_load(
-    venue_id: str,
+    request: Request,
+    venue_id: int,
     active_orders: int = Body(...),
     max_capacity: int = Body(20),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user=Depends(require_manager),
 ):
     """Update kitchen load in database"""
-    try:
-        venue_id_int = int(venue_id)
-    except ValueError:
-        raise HTTPException(status_code=400, detail="Invalid venue_id format")
-
+    verify_venue_access(venue_id, current_user)
     load_factor = min(1.0, active_orders / max(1, max_capacity))
 
     # Calculate delay based on load
@@ -1533,26 +1606,25 @@ async def update_kitchen_load(
 # ============================================================================
 
 @router.post("/{venue_id}/promo-codes")
+@limiter.limit("30/minute")
 async def create_promo_code(
-    venue_id: str,
+    request: Request,
+    venue_id: int,
     code_type: PromoCodeType = Body(...),
     value: float = Body(...),
     code: Optional[str] = Body(None),
     min_order: float = Body(0),
     valid_days: int = Body(30),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user=Depends(require_manager),
 ):
     """Create single-use promo code in database"""
-    try:
-        venue_id_int = int(venue_id)
-    except ValueError:
-        raise HTTPException(status_code=400, detail="Invalid venue_id format")
-
+    verify_venue_access(venue_id, current_user)
     import secrets
     promo_code = code.upper() if code else secrets.token_hex(4).upper()
 
     promo = SingleUsePromoCode(
-        venue_id=venue_id_int,
+        venue_id=venue_id,
         code=promo_code,
         discount_type=code_type.value if code_type in [PromoCodeType.percentage, PromoCodeType.fixed_amount] else "percentage",
         discount_value=Decimal(str(value)),
@@ -1574,28 +1646,27 @@ async def create_promo_code(
     }
 
 @router.post("/{venue_id}/promo-codes/batch")
+@limiter.limit("30/minute")
 async def generate_promo_batch(
-    venue_id: str,
+    request: Request,
+    venue_id: int,
     name: str = Body(...),
     code_type: PromoCodeType = Body(...),
     value: float = Body(...),
     quantity: int = Body(...),
     prefix: str = Body(""),
     valid_days: int = Body(30),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user=Depends(require_manager),
 ):
     """Generate batch of promo codes in database"""
-    try:
-        venue_id_int = int(venue_id)
-    except ValueError:
-        raise HTTPException(status_code=400, detail="Invalid venue_id format")
-
+    verify_venue_access(venue_id, current_user)
     if quantity > 1000:
         raise HTTPException(status_code=400, detail="Maximum 1000 codes per batch")
 
     # Create batch campaign
     campaign = PromoCodeCampaign(
-        venue_id=venue_id_int,
+        venue_id=venue_id,
         name=name,
         discount_type=code_type.value,
         discount_value=Decimal(str(value)),
@@ -1618,7 +1689,7 @@ async def generate_promo_batch(
         promo_code = f"{prefix}{code_suffix}" if prefix else code_suffix
 
         promo = SingleUsePromoCode(
-            venue_id=venue_id_int,
+            venue_id=venue_id,
             campaign_id=campaign.id,
             code=promo_code,
             discount_type=code_type.value if code_type in [PromoCodeType.percentage, PromoCodeType.fixed_amount] else "percentage",
@@ -1640,16 +1711,13 @@ async def generate_promo_batch(
     }
 
 @router.post("/{venue_id}/promo-codes/validate")
-async def validate_promo_code(venue_id: str, code: str = Body(...), customer_id: Optional[str] = Body(None), order_total: float = Body(0), db: Session = Depends(get_db)):
+@limiter.limit("30/minute")
+async def validate_promo_code(request: Request, venue_id: int, code: str = Body(...), customer_id: Optional[str] = Body(None), order_total: float = Body(0), db: Session = Depends(get_db), current_user=Depends(require_manager)):
     """Validate a promo code from database"""
-    try:
-        venue_id_int = int(venue_id)
-    except ValueError:
-        raise HTTPException(status_code=400, detail="Invalid venue_id format")
-
+    verify_venue_access(venue_id, current_user)
     # Query the promo code from database
     promo = db.query(SingleUsePromoCode).filter(
-        SingleUsePromoCode.venue_id == venue_id_int,
+        SingleUsePromoCode.venue_id == venue_id,
         SingleUsePromoCode.code == code.upper()
     ).first()
 
@@ -1700,14 +1768,18 @@ async def validate_promo_code(venue_id: str, code: str = Body(...), customer_id:
     }
 
 @router.post("/{venue_id}/promo-codes/{code_id}/redeem")
+@limiter.limit("30/minute")
 async def redeem_promo_code(
-    venue_id: str,
+    request: Request,
+    venue_id: int,
     code_id: str,
     customer_id: str = Body(...),
     order_id: str = Body(...),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user=Depends(require_manager),
 ):
     """Redeem promo code in database"""
+    verify_venue_access(venue_id, current_user)
     try:
         code_id_int = int(code_id)
         customer_id_int = int(customer_id)
@@ -1736,8 +1808,10 @@ async def redeem_promo_code(
     return {"code_id": promo.id, "status": "redeemed"}
 
 @router.get("/{venue_id}/promo-codes/batch/{batch_id}/stats")
+@limiter.limit("60/minute")
 async def get_batch_stats(
-    venue_id: str,
+    request: Request,
+    venue_id: int,
     batch_id: str,
     db: Session = Depends(get_db)
 ):
@@ -1781,22 +1855,21 @@ async def get_batch_stats(
 # ============================================================================
 
 @router.post("/{venue_id}/referrals/configure")
+@limiter.limit("30/minute")
 async def configure_referral_program(
-    venue_id: str,
+    request: Request,
+    venue_id: int,
     referrer_reward: float = Body(10.0),
     referee_reward: float = Body(10.0),
     min_order: float = Body(20.0),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user=Depends(require_manager),
 ):
     """Configure referral program in database"""
-    try:
-        venue_id_int = int(venue_id)
-    except ValueError:
-        raise HTTPException(status_code=400, detail="Invalid venue_id format")
-
+    verify_venue_access(venue_id, current_user)
     # Check if program exists
     program = db.query(ReferralProgram).filter(
-        ReferralProgram.venue_id == venue_id_int
+        ReferralProgram.venue_id == venue_id
     ).first()
 
     if program:
@@ -1806,7 +1879,7 @@ async def configure_referral_program(
         program.is_active = True
     else:
         program = ReferralProgram(
-            venue_id=venue_id_int,
+            venue_id=venue_id,
             referrer_reward_type="credit",
             referrer_reward_value=Decimal(str(referrer_reward)),
             referee_reward_type="credit",
@@ -1828,27 +1901,28 @@ async def configure_referral_program(
     }
 
 @router.get("/{venue_id}/referrals/code/{customer_id}")
+@limiter.limit("60/minute")
 async def get_referral_code(
-    venue_id: str,
+    request: Request,
+    venue_id: int,
     customer_id: str,
     db: Session = Depends(get_db)
 ):
     """Get or create referral code in database"""
     try:
-        venue_id_int = int(venue_id)
         customer_id_int = int(customer_id)
     except ValueError:
         raise HTTPException(status_code=400, detail="Invalid ID format")
 
     # Check for existing referral code
     existing = db.query(CustomerReferral).filter(
-        CustomerReferral.venue_id == venue_id_int,
+        CustomerReferral.venue_id == venue_id,
         CustomerReferral.referrer_id == customer_id_int
     ).first()
 
     # Get program details
     program = db.query(ReferralProgram).filter(
-        ReferralProgram.venue_id == venue_id_int,
+        ReferralProgram.venue_id == venue_id,
         ReferralProgram.is_active == True
     ).first()
 
@@ -1873,16 +1947,19 @@ async def get_referral_code(
     }
 
 @router.post("/{venue_id}/referrals/apply")
+@limiter.limit("30/minute")
 async def apply_referral_code(
-    venue_id: str,
+    request: Request,
+    venue_id: int,
     referee_id: str = Body(...),
     referee_email: str = Body(...),
     code: str = Body(...),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user=Depends(require_manager),
 ):
     """Apply referral code in database"""
+    verify_venue_access(venue_id, current_user)
     try:
-        venue_id_int = int(venue_id)
         referee_id_int = int(referee_id)
     except ValueError:
         raise HTTPException(status_code=400, detail="Invalid ID format")
@@ -1899,7 +1976,7 @@ async def apply_referral_code(
 
     # Create referral record
     referral = CustomerReferral(
-        venue_id=venue_id_int,
+        venue_id=venue_id,
         referrer_id=referrer_id_int,
         referee_id=referee_id_int,
         referee_email=referee_email,
@@ -1918,17 +1995,20 @@ async def apply_referral_code(
     }
 
 @router.post("/{venue_id}/referrals/{referral_id}/complete")
+@limiter.limit("30/minute")
 async def complete_referral(
-    venue_id: str,
+    request: Request,
+    venue_id: int,
     referral_id: str,
     order_id: str = Body(...),
     order_amount: float = Body(...),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user=Depends(require_manager),
 ):
     """Complete referral in database"""
+    verify_venue_access(venue_id, current_user)
     try:
         referral_id_int = int(referral_id)
-        venue_id_int = int(venue_id)
     except ValueError:
         raise HTTPException(status_code=400, detail="Invalid ID format")
 
@@ -1941,7 +2021,7 @@ async def complete_referral(
 
     # Get program minimum order
     program = db.query(ReferralProgram).filter(
-        ReferralProgram.venue_id == venue_id_int,
+        ReferralProgram.venue_id == venue_id,
         ReferralProgram.is_active == True
     ).first()
 
@@ -1968,23 +2048,23 @@ async def complete_referral(
     }
 
 @router.get("/{venue_id}/referrals/stats/{customer_id}")
-async def get_referral_stats(venue_id: str, customer_id: str, db: Session = Depends(get_db)):
+@limiter.limit("60/minute")
+async def get_referral_stats(request: Request, venue_id: int, customer_id: str, db: Session = Depends(get_db)):
     """Get referral statistics for a customer from database"""
     try:
-        venue_id_int = int(venue_id)
         customer_id_int = int(customer_id)
     except ValueError:
         raise HTTPException(status_code=400, detail="Invalid venue_id or customer_id format")
 
     # Get the customer's referral code
     referral_code = db.query(CustomerReferral).filter(
-        CustomerReferral.venue_id == venue_id_int,
+        CustomerReferral.venue_id == venue_id,
         CustomerReferral.referrer_id == customer_id_int
     ).first()
 
     # Count referrals by this customer
     referrals = db.query(CustomerReferral).filter(
-        CustomerReferral.venue_id == venue_id_int,
+        CustomerReferral.venue_id == venue_id,
         CustomerReferral.referrer_id == customer_id_int
     ).all()
 
@@ -1994,7 +2074,7 @@ async def get_referral_stats(venue_id: str, customer_id: str, db: Session = Depe
 
     # Get program details
     program = db.query(ReferralProgram).filter(
-        ReferralProgram.venue_id == venue_id_int,
+        ReferralProgram.venue_id == venue_id,
         ReferralProgram.is_active == True
     ).first()
 
@@ -2027,19 +2107,18 @@ async def get_referral_stats(venue_id: str, customer_id: str, db: Session = Depe
 # ============================================================================
 
 @router.post("/{venue_id}/rfm/configure")
+@limiter.limit("30/minute")
 async def configure_rfm(
-    venue_id: str,
+    request: Request,
+    venue_id: int,
     recency_bins: List[int] = Body(None),
     frequency_bins: List[int] = Body(None),
     monetary_bins: List[float] = Body(None),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user=Depends(require_manager),
 ):
     """Configure RFM settings in database"""
-    try:
-        venue_id_int = int(venue_id)
-    except ValueError:
-        raise HTTPException(status_code=400, detail="Invalid venue_id format")
-
+    verify_venue_access(venue_id, current_user)
     # Default bins
     default_recency = recency_bins or [7, 30, 60, 90, 180]
     default_frequency = frequency_bins or [1, 3, 5, 10, 20]
@@ -2047,7 +2126,7 @@ async def configure_rfm(
 
     # Check for existing segment definitions
     existing = db.query(RFMSegmentDefinition).filter(
-        RFMSegmentDefinition.venue_id == venue_id_int
+        RFMSegmentDefinition.venue_id == venue_id
     ).first()
 
     if existing:
@@ -2056,7 +2135,7 @@ async def configure_rfm(
         existing.monetary_bins = default_monetary
     else:
         config = RFMSegmentDefinition(
-            venue_id=venue_id_int,
+            venue_id=venue_id,
             segment_name="default",
             recency_bins=default_recency,
             frequency_bins=default_frequency,
@@ -2076,15 +2155,18 @@ async def configure_rfm(
     }
 
 @router.post("/{venue_id}/rfm/calculate/{customer_id}")
+@limiter.limit("30/minute")
 async def calculate_customer_rfm(
-    venue_id: str,
+    request: Request,
+    venue_id: int,
     customer_id: str,
     orders: List[Dict] = Body(...),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user=Depends(require_manager),
 ):
     """Calculate and store customer RFM score in database"""
+    verify_venue_access(venue_id, current_user)
     try:
-        venue_id_int = int(venue_id)
         customer_id_int = int(customer_id)
     except ValueError:
         raise HTTPException(status_code=400, detail="Invalid ID format")
@@ -2151,7 +2233,7 @@ async def calculate_customer_rfm(
 
     # Store in database
     existing = db.query(CustomerRFMScore).filter(
-        CustomerRFMScore.venue_id == venue_id_int,
+        CustomerRFMScore.venue_id == venue_id,
         CustomerRFMScore.customer_id == customer_id_int
     ).first()
 
@@ -2167,7 +2249,7 @@ async def calculate_customer_rfm(
         existing.calculated_at = now
     else:
         rfm = CustomerRFMScore(
-            venue_id=venue_id_int,
+            venue_id=venue_id,
             customer_id=customer_id_int,
             recency_score=r_score,
             frequency_score=f_score,
@@ -2193,19 +2275,15 @@ async def calculate_customer_rfm(
     }
 
 @router.get("/{venue_id}/rfm/segments")
-async def get_rfm_segments(venue_id: str, db: Session = Depends(get_db)):
+@limiter.limit("60/minute")
+async def get_rfm_segments(request: Request, venue_id: int, db: Session = Depends(get_db)):
     """Get distribution of customers across RFM segments from database"""
-    try:
-        venue_id_int = int(venue_id)
-    except ValueError:
-        raise HTTPException(status_code=400, detail="Invalid venue_id format")
-
     # Query segment distribution from database
     segment_counts = db.query(
         CustomerRFMScore.segment,
         func.count(CustomerRFMScore.id).label('count')
     ).filter(
-        CustomerRFMScore.venue_id == venue_id_int
+        CustomerRFMScore.venue_id == venue_id
     ).group_by(CustomerRFMScore.segment).all()
 
     total_customers = sum(count for _, count in segment_counts)
@@ -2227,16 +2305,12 @@ async def get_rfm_segments(venue_id: str, db: Session = Depends(get_db)):
     }
 
 @router.get("/{venue_id}/rfm/segments/{segment}/customers")
-async def get_segment_customers(venue_id: str, segment: str, limit: int = Query(100), db: Session = Depends(get_db)):
+@limiter.limit("60/minute")
+async def get_segment_customers(request: Request, venue_id: int, segment: str, limit: int = Query(100), db: Session = Depends(get_db)):
     """Get customers in a specific RFM segment from database"""
-    try:
-        venue_id_int = int(venue_id)
-    except ValueError:
-        raise HTTPException(status_code=400, detail="Invalid venue_id format")
-
     # Query customers in segment from database
     customers = db.query(CustomerRFMScore).filter(
-        CustomerRFMScore.venue_id == venue_id_int,
+        CustomerRFMScore.venue_id == venue_id,
         CustomerRFMScore.segment == segment
     ).order_by(CustomerRFMScore.total_revenue.desc()).limit(limit).all()
 
@@ -2252,8 +2326,10 @@ async def get_segment_customers(venue_id: str, segment: str, limit: int = Query(
     ]
 
 @router.get("/{venue_id}/rfm/segments/{segment}/recommendations")
+@limiter.limit("60/minute")
 async def get_segment_recommendations(
-    venue_id: str,
+    request: Request,
+    venue_id: int,
     segment: str,
     db: Session = Depends(get_db)
 ):
@@ -2335,25 +2411,28 @@ async def get_segment_recommendations(
 # ============================================================================
 
 @router.post("/{venue_id}/price-tracker/record")
+@limiter.limit("30/minute")
 async def record_ingredient_price(
-    venue_id: str,
+    request: Request,
+    venue_id: int,
     ingredient_id: str = Body(...),
     supplier_id: str = Body(...),
     unit_price: float = Body(...),
     quantity: float = Body(1),
     unit: str = Body("kg"),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user=Depends(require_manager),
 ):
     """Record ingredient price in database"""
+    verify_venue_access(venue_id, current_user)
     try:
-        venue_id_int = int(venue_id)
         ingredient_id_int = int(ingredient_id)
         supplier_id_int = int(supplier_id)
     except ValueError:
         raise HTTPException(status_code=400, detail="Invalid ID format")
 
     record = IngredientPriceHistory(
-        venue_id=venue_id_int,
+        venue_id=venue_id,
         stock_item_id=ingredient_id_int,
         supplier_id=supplier_id_int,
         price=Decimal(str(unit_price)),
@@ -2369,22 +2448,25 @@ async def record_ingredient_price(
     return {"record_id": record.id, "unit_price": float(record.price)}
 
 @router.post("/{venue_id}/price-tracker/alerts")
+@limiter.limit("30/minute")
 async def create_price_alert(
-    venue_id: str,
+    request: Request,
+    venue_id: int,
     ingredient_id: str = Body(...),
     alert_type: str = Body(...),
     threshold_percentage: float = Body(10.0),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user=Depends(require_manager),
 ):
     """Create price alert in database"""
+    verify_venue_access(venue_id, current_user)
     try:
-        venue_id_int = int(venue_id)
         ingredient_id_int = int(ingredient_id)
     except ValueError:
         raise HTTPException(status_code=400, detail="Invalid ID format")
 
     alert = PriceAlert(
-        venue_id=venue_id_int,
+        venue_id=venue_id,
         stock_item_id=ingredient_id_int,
         alert_type=alert_type,
         threshold_percentage=Decimal(str(threshold_percentage)),
@@ -2399,10 +2481,10 @@ async def create_price_alert(
     return {"alert_id": alert.id}
 
 @router.get("/{venue_id}/price-tracker/{ingredient_id}/history")
-async def get_price_history(venue_id: str, ingredient_id: str, days: int = Query(90), db: Session = Depends(get_db)):
+@limiter.limit("60/minute")
+async def get_price_history(request: Request, venue_id: int, ingredient_id: str, days: int = Query(90), db: Session = Depends(get_db)):
     """Get price history for an ingredient from database"""
     try:
-        venue_id_int = int(venue_id)
         ingredient_id_int = int(ingredient_id)
     except ValueError:
         raise HTTPException(status_code=400, detail="Invalid venue_id or ingredient_id format")
@@ -2411,7 +2493,7 @@ async def get_price_history(venue_id: str, ingredient_id: str, days: int = Query
 
     # Query price history from database
     records = db.query(IngredientPriceHistory).filter(
-        IngredientPriceHistory.venue_id == venue_id_int,
+        IngredientPriceHistory.venue_id == venue_id,
         IngredientPriceHistory.stock_item_id == ingredient_id_int,
         IngredientPriceHistory.recorded_date >= cutoff.date()
     ).order_by(IngredientPriceHistory.recorded_date.asc()).all()
@@ -2475,14 +2557,15 @@ async def get_price_history(venue_id: str, ingredient_id: str, days: int = Query
     }
 
 @router.get("/{venue_id}/price-tracker/{ingredient_id}/compare")
+@limiter.limit("60/minute")
 async def compare_supplier_prices(
-    venue_id: str,
+    request: Request,
+    venue_id: int,
     ingredient_id: str,
     db: Session = Depends(get_db)
 ):
     """Compare prices across suppliers from database"""
     try:
-        venue_id_int = int(venue_id)
         ingredient_id_int = int(ingredient_id)
     except ValueError:
         raise HTTPException(status_code=400, detail="Invalid ID format")
@@ -2492,7 +2575,7 @@ async def compare_supplier_prices(
 
     # Get all suppliers for this ingredient
     supplier_ids = db.query(distinct(IngredientPriceHistory.supplier_id)).filter(
-        IngredientPriceHistory.venue_id == venue_id_int,
+        IngredientPriceHistory.venue_id == venue_id,
         IngredientPriceHistory.stock_item_id == ingredient_id_int
     ).all()
 
@@ -2500,7 +2583,7 @@ async def compare_supplier_prices(
     for (supplier_id,) in supplier_ids:
         # Get most recent price for this supplier
         latest = db.query(IngredientPriceHistory).filter(
-            IngredientPriceHistory.venue_id == venue_id_int,
+            IngredientPriceHistory.venue_id == venue_id,
             IngredientPriceHistory.stock_item_id == ingredient_id_int,
             IngredientPriceHistory.supplier_id == supplier_id
         ).order_by(IngredientPriceHistory.recorded_date.desc()).first()
@@ -2531,22 +2614,21 @@ async def compare_supplier_prices(
 # ============================================================================
 
 @router.post("/{venue_id}/breaks/policy")
+@limiter.limit("30/minute")
 async def configure_break_policy(
-    venue_id: str,
+    request: Request,
+    venue_id: int,
     min_shift_for_break: int = Body(4),
     meal_break_duration: int = Body(30),
     rest_break_duration: int = Body(10),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user=Depends(require_manager),
 ):
     """Configure break policy in database"""
-    try:
-        venue_id_int = int(venue_id)
-    except ValueError:
-        raise HTTPException(status_code=400, detail="Invalid venue_id format")
-
+    verify_venue_access(venue_id, current_user)
     # Check for existing policy
     policy = db.query(BreakPolicy).filter(
-        BreakPolicy.venue_id == venue_id_int
+        BreakPolicy.venue_id == venue_id
     ).first()
 
     if policy:
@@ -2555,7 +2637,7 @@ async def configure_break_policy(
         policy.rest_break_duration_minutes = rest_break_duration
     else:
         policy = BreakPolicy(
-            venue_id=venue_id_int,
+            venue_id=venue_id,
             min_shift_hours_for_break=min_shift_for_break,
             meal_break_duration_minutes=meal_break_duration,
             rest_break_duration_minutes=rest_break_duration,
@@ -2575,17 +2657,20 @@ async def configure_break_policy(
     }
 
 @router.post("/{venue_id}/breaks/schedule")
+@limiter.limit("30/minute")
 async def schedule_breaks(
-    venue_id: str,
+    request: Request,
+    venue_id: int,
     employee_id: str = Body(...),
     shift_id: str = Body(...),
     shift_start: datetime = Body(...),
     shift_end: datetime = Body(...),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user=Depends(require_manager),
 ):
     """Schedule breaks for a shift in database"""
+    verify_venue_access(venue_id, current_user)
     try:
-        venue_id_int = int(venue_id)
         employee_id_int = int(employee_id)
         shift_id_int = int(shift_id)
     except ValueError:
@@ -2593,7 +2678,7 @@ async def schedule_breaks(
 
     # Get break policy
     policy = db.query(BreakPolicy).filter(
-        BreakPolicy.venue_id == venue_id_int,
+        BreakPolicy.venue_id == venue_id,
         BreakPolicy.is_active == True
     ).first()
 
@@ -2608,7 +2693,7 @@ async def schedule_breaks(
         # Schedule meal break at midpoint
         midpoint = shift_start + (shift_end - shift_start) / 2
         meal_break = EmployeeBreak(
-            venue_id=venue_id_int,
+            venue_id=venue_id,
             staff_id=employee_id_int,
             shift_id=shift_id_int,
             break_type="meal",
@@ -2625,7 +2710,7 @@ async def schedule_breaks(
         # Schedule rest break before meal
         rest_time = shift_start + timedelta(hours=2)
         rest_break = EmployeeBreak(
-            venue_id=venue_id_int,
+            venue_id=venue_id,
             staff_id=employee_id_int,
             shift_id=shift_id_int,
             break_type="rest",
@@ -2652,12 +2737,16 @@ async def schedule_breaks(
     }
 
 @router.post("/{venue_id}/breaks/{break_id}/start")
+@limiter.limit("30/minute")
 async def start_break(
-    venue_id: str,
+    request: Request,
+    venue_id: int,
     break_id: str,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user=Depends(require_manager),
 ):
     """Start a break in database"""
+    verify_venue_access(venue_id, current_user)
     try:
         break_id_int = int(break_id)
     except ValueError:
@@ -2679,12 +2768,16 @@ async def start_break(
     return {"break_id": brk.id, "status": brk.status}
 
 @router.post("/{venue_id}/breaks/{break_id}/end")
+@limiter.limit("30/minute")
 async def end_break(
-    venue_id: str,
+    request: Request,
+    venue_id: int,
     break_id: str,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user=Depends(require_manager),
 ):
     """End a break in database"""
+    verify_venue_access(venue_id, current_user)
     try:
         break_id_int = int(break_id)
     except ValueError:
@@ -2709,10 +2802,10 @@ async def end_break(
     return {"break_id": brk.id, "status": brk.status}
 
 @router.get("/{venue_id}/breaks/employee/{employee_id}")
-async def get_employee_breaks(venue_id: str, employee_id: str, date: Optional[str] = Query(None), db: Session = Depends(get_db)):
+@limiter.limit("60/minute")
+async def get_employee_breaks(request: Request, venue_id: int, employee_id: str, date: Optional[str] = Query(None), db: Session = Depends(get_db)):
     """Get employee breaks for a date from database"""
     try:
-        venue_id_int = int(venue_id)
         employee_id_int = int(employee_id)
     except ValueError:
         raise HTTPException(status_code=400, detail="Invalid venue_id or employee_id format")
@@ -2723,7 +2816,7 @@ async def get_employee_breaks(venue_id: str, employee_id: str, date: Optional[st
 
     # Query breaks from database
     breaks = db.query(EmployeeBreak).filter(
-        EmployeeBreak.venue_id == venue_id_int,
+        EmployeeBreak.venue_id == venue_id,
         EmployeeBreak.staff_id == employee_id_int,
         EmployeeBreak.scheduled_start >= start_of_day,
         EmployeeBreak.scheduled_start < end_of_day
@@ -2749,23 +2842,22 @@ async def get_employee_breaks(venue_id: str, employee_id: str, date: Optional[st
 # ============================================================================
 
 @router.post("/{venue_id}/shift-trades/configure")
+@limiter.limit("30/minute")
 async def configure_shift_trading(
-    venue_id: str,
+    request: Request,
+    venue_id: int,
     allow_trading: bool = Body(True),
     require_manager_approval: bool = Body(True),
     min_notice_hours: int = Body(24),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user=Depends(require_manager),
 ):
     """Configure shift trading settings in database"""
-    try:
-        venue_id_int = int(venue_id)
-    except ValueError:
-        raise HTTPException(status_code=400, detail="Invalid venue_id format")
-
+    verify_venue_access(venue_id, current_user)
     from app.models.missing_features_models import ShiftTradingConfig
 
     config = db.query(ShiftTradingConfig).filter(
-        ShiftTradingConfig.venue_id == venue_id_int
+        ShiftTradingConfig.venue_id == venue_id
     ).first()
 
     if config:
@@ -2774,7 +2866,7 @@ async def configure_shift_trading(
         config.min_notice_hours = min_notice_hours
     else:
         config = ShiftTradingConfig(
-            venue_id=venue_id_int,
+            venue_id=venue_id,
             allow_trading=allow_trading,
             require_manager_approval=require_manager_approval,
             min_notice_hours=min_notice_hours,
@@ -2793,8 +2885,10 @@ async def configure_shift_trading(
     }
 
 @router.post("/{venue_id}/shift-trades")
+@limiter.limit("30/minute")
 async def request_shift_trade(
-    venue_id: str,
+    request: Request,
+    venue_id: int,
     requesting_employee_id: str = Body(...),
     target_employee_id: str = Body(...),
     shift_id: str = Body(...),
@@ -2802,11 +2896,12 @@ async def request_shift_trade(
     shift_start: datetime = Body(...),
     shift_end: datetime = Body(...),
     reason: str = Body(""),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user=Depends(require_manager),
 ):
     """Request shift trade in database"""
+    verify_venue_access(venue_id, current_user)
     try:
-        venue_id_int = int(venue_id)
         requester_id_int = int(requesting_employee_id)
         target_id_int = int(target_employee_id)
         shift_id_int = int(shift_id)
@@ -2816,14 +2911,14 @@ async def request_shift_trade(
     # Check trading config
     from app.models.missing_features_models import ShiftTradingConfig
     config = db.query(ShiftTradingConfig).filter(
-        ShiftTradingConfig.venue_id == venue_id_int,
+        ShiftTradingConfig.venue_id == venue_id,
         ShiftTradingConfig.is_active == True
     ).first()
 
     requires_approval = config.require_manager_approval if config else True
 
     trade = ShiftTradeRequest(
-        venue_id=venue_id_int,
+        venue_id=venue_id,
         requester_id=requester_id_int,
         target_employee_id=target_id_int,
         original_shift_id=shift_id_int,
@@ -2842,14 +2937,18 @@ async def request_shift_trade(
     return {"trade_id": trade.id, "status": trade.status}
 
 @router.post("/{venue_id}/shift-trades/{trade_id}/respond")
+@limiter.limit("30/minute")
 async def respond_to_trade(
-    venue_id: str,
+    request: Request,
+    venue_id: int,
     trade_id: str,
     employee_id: str = Body(...),
     accept: bool = Body(...),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user=Depends(require_manager),
 ):
     """Respond to shift trade in database"""
+    verify_venue_access(venue_id, current_user)
     try:
         trade_id_int = int(trade_id)
     except ValueError:
@@ -2878,14 +2977,18 @@ async def respond_to_trade(
     return {"trade_id": trade.id, "status": trade.status}
 
 @router.post("/{venue_id}/shift-trades/{trade_id}/manager-decision")
+@limiter.limit("30/minute")
 async def manager_trade_decision(
-    venue_id: str,
+    request: Request,
+    venue_id: int,
     trade_id: str,
     manager_id: str = Body(...),
     approve: bool = Body(...),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user=Depends(require_manager),
 ):
     """Manager decision on shift trade in database"""
+    verify_venue_access(venue_id, current_user)
     try:
         trade_id_int = int(trade_id)
         manager_id_int = int(manager_id)
@@ -2909,16 +3012,12 @@ async def manager_trade_decision(
     return {"trade_id": trade.id, "status": trade.status}
 
 @router.get("/{venue_id}/shift-trades/pending")
-async def get_pending_trades(venue_id: str, employee_id: Optional[str] = Query(None), for_manager: bool = Query(False), db: Session = Depends(get_db)):
+@limiter.limit("60/minute")
+async def get_pending_trades(request: Request, venue_id: int, employee_id: Optional[str] = Query(None), for_manager: bool = Query(False), db: Session = Depends(get_db)):
     """Get pending shift trades from database"""
-    try:
-        venue_id_int = int(venue_id)
-    except ValueError:
-        raise HTTPException(status_code=400, detail="Invalid venue_id format")
-
     # Build query for pending trades
     query = db.query(ShiftTradeRequest).filter(
-        ShiftTradeRequest.venue_id == venue_id_int,
+        ShiftTradeRequest.venue_id == venue_id,
         ShiftTradeRequest.status == "pending"
     )
 
@@ -2960,17 +3059,16 @@ async def get_pending_trades(venue_id: str, employee_id: Optional[str] = Query(N
 # ============================================================================
 
 @router.post("/{venue_id}/vip/configure")
+@limiter.limit("30/minute")
 async def configure_vip_program(
-    venue_id: str,
+    request: Request,
+    venue_id: int,
     tiers: Optional[Dict] = Body(None),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user=Depends(require_manager),
 ):
     """Configure VIP program tiers in database"""
-    try:
-        venue_id_int = int(venue_id)
-    except ValueError:
-        raise HTTPException(status_code=400, detail="Invalid venue_id format")
-
+    verify_venue_access(venue_id, current_user)
     default_tiers = tiers or {
         "silver": {"min_spend": 500, "min_visits": 5, "discount": 5},
         "gold": {"min_spend": 1500, "min_visits": 15, "discount": 10},
@@ -2981,7 +3079,7 @@ async def configure_vip_program(
     created_tiers = []
     for tier_name, tier_config in default_tiers.items():
         existing = db.query(VIPTierModel).filter(
-            VIPTierModel.venue_id == venue_id_int,
+            VIPTierModel.venue_id == venue_id,
             VIPTierModel.name == tier_name
         ).first()
 
@@ -2992,7 +3090,7 @@ async def configure_vip_program(
             created_tiers.append(existing)
         else:
             tier = VIPTierModel(
-                venue_id=venue_id_int,
+                venue_id=venue_id,
                 name=tier_name,
                 min_spend_required=Decimal(str(tier_config.get("min_spend", 0))),
                 min_visits_required=tier_config.get("min_visits", 0),
@@ -3014,16 +3112,19 @@ async def configure_vip_program(
     }
 
 @router.post("/{venue_id}/vip/assign")
+@limiter.limit("30/minute")
 async def assign_vip_status(
-    venue_id: str,
+    request: Request,
+    venue_id: int,
     customer_id: str = Body(...),
     tier: VIPTier = Body(...),
     assigned_by: str = Body(...),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user=Depends(require_manager),
 ):
     """Assign VIP status to customer in database"""
+    verify_venue_access(venue_id, current_user)
     try:
-        venue_id_int = int(venue_id)
         customer_id_int = int(customer_id)
         assigned_by_int = int(assigned_by)
     except ValueError:
@@ -3031,7 +3132,7 @@ async def assign_vip_status(
 
     # Get tier model
     tier_model = db.query(VIPTierModel).filter(
-        VIPTierModel.venue_id == venue_id_int,
+        VIPTierModel.venue_id == venue_id,
         VIPTierModel.name == tier.value
     ).first()
 
@@ -3040,7 +3141,7 @@ async def assign_vip_status(
 
     # Check for existing VIP status
     existing = db.query(CustomerVIPStatus).filter(
-        CustomerVIPStatus.venue_id == venue_id_int,
+        CustomerVIPStatus.venue_id == venue_id,
         CustomerVIPStatus.customer_id == customer_id_int
     ).first()
 
@@ -3051,7 +3152,7 @@ async def assign_vip_status(
         existing.is_active = True
     else:
         vip_status = CustomerVIPStatus(
-            venue_id=venue_id_int,
+            venue_id=venue_id,
             customer_id=customer_id_int,
             vip_tier_id=tier_model.id,
             assigned_by_id=assigned_by_int,
@@ -3065,25 +3166,28 @@ async def assign_vip_status(
     return {"customer_id": customer_id, "tier": tier.value}
 
 @router.put("/{venue_id}/vip/{customer_id}/preferences")
+@limiter.limit("30/minute")
 async def update_vip_preferences(
-    venue_id: str,
+    request: Request,
+    venue_id: int,
     customer_id: str,
     preferences: Optional[Dict] = Body(None),
     preferred_server: Optional[str] = Body(None),
     preferred_table: Optional[str] = Body(None),
     allergies: Optional[List[str]] = Body(None),
     notes: Optional[str] = Body(None),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user=Depends(require_manager),
 ):
     """Update VIP preferences in database"""
+    verify_venue_access(venue_id, current_user)
     try:
-        venue_id_int = int(venue_id)
         customer_id_int = int(customer_id)
     except ValueError:
         raise HTTPException(status_code=400, detail="Invalid ID format")
 
     vip_status = db.query(CustomerVIPStatus).filter(
-        CustomerVIPStatus.venue_id == venue_id_int,
+        CustomerVIPStatus.venue_id == venue_id,
         CustomerVIPStatus.customer_id == customer_id_int,
         CustomerVIPStatus.is_active == True
     ).first()
@@ -3114,17 +3218,17 @@ async def update_vip_preferences(
     return {"customer_id": customer_id, "updated": True}
 
 @router.get("/{venue_id}/vip/{customer_id}")
-async def check_vip_status(venue_id: str, customer_id: str, db: Session = Depends(get_db)):
+@limiter.limit("60/minute")
+async def check_vip_status(request: Request, venue_id: int, customer_id: str, db: Session = Depends(get_db)):
     """Check if customer is VIP and get their info from database"""
     try:
-        venue_id_int = int(venue_id)
         customer_id_int = int(customer_id)
     except ValueError:
         raise HTTPException(status_code=400, detail="Invalid venue_id or customer_id format")
 
     # Query VIP status from database
     vip_status = db.query(CustomerVIPStatus).filter(
-        CustomerVIPStatus.venue_id == venue_id_int,
+        CustomerVIPStatus.venue_id == venue_id,
         CustomerVIPStatus.customer_id == customer_id_int,
         CustomerVIPStatus.is_active == True
     ).first()
@@ -3160,23 +3264,26 @@ async def check_vip_status(venue_id: str, customer_id: str, db: Session = Depend
     }
 
 @router.post("/{venue_id}/vip/auto-upgrade")
+@limiter.limit("30/minute")
 async def auto_upgrade_vip(
-    venue_id: str,
+    request: Request,
+    venue_id: int,
     customer_id: str = Body(...),
     current_spend: float = Body(...),
     current_visits: int = Body(...),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user=Depends(require_manager),
 ):
     """Auto-upgrade VIP tier based on spend/visits in database"""
+    verify_venue_access(venue_id, current_user)
     try:
-        venue_id_int = int(venue_id)
         customer_id_int = int(customer_id)
     except ValueError:
         raise HTTPException(status_code=400, detail="Invalid ID format")
 
     # Get all tiers ordered by min spend
     tiers = db.query(VIPTierModel).filter(
-        VIPTierModel.venue_id == venue_id_int,
+        VIPTierModel.venue_id == venue_id,
         VIPTierModel.is_active == True
     ).order_by(VIPTierModel.min_spend_required.desc()).all()
 
@@ -3196,7 +3303,7 @@ async def auto_upgrade_vip(
 
     # Check current VIP status
     current_status = db.query(CustomerVIPStatus).filter(
-        CustomerVIPStatus.venue_id == venue_id_int,
+        CustomerVIPStatus.venue_id == venue_id,
         CustomerVIPStatus.customer_id == customer_id_int,
         CustomerVIPStatus.is_active == True
     ).first()
@@ -3219,7 +3326,7 @@ async def auto_upgrade_vip(
         current_status.assigned_date = datetime.utcnow()
     else:
         vip_status = CustomerVIPStatus(
-            venue_id=venue_id_int,
+            venue_id=venue_id,
             customer_id=customer_id_int,
             vip_tier_id=new_tier.id,
             assigned_date=datetime.utcnow(),

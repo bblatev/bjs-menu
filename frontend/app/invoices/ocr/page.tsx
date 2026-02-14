@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { API_URL, getAuthHeaders } from '@/lib/api';
 
+import { toast } from '@/lib/toast';
 interface OCRJob {
   id: number;
   original_filename: string;
@@ -199,7 +200,7 @@ export default function InvoiceOCRPage() {
       });
 
       if (response.ok) {
-        alert('Invoice approved and created!');
+        toast.success('Invoice approved and created!');
         loadJobs();
         setSelectedJob(null);
       } else {

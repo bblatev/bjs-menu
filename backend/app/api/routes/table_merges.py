@@ -1,12 +1,13 @@
 """
 Table Merge/Split API
 """
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.orm import Session
 from typing import List, Optional
 from datetime import datetime
 from pydantic import BaseModel, ConfigDict
 
+from app.core.rate_limit import limiter
 from app.db.session import get_db
 from app.core.rbac import get_current_user
 from app.models import (
@@ -45,7 +46,9 @@ class TableSplitRequest(BaseModel):
 
 # Merge Tables
 @router.post("/", response_model=TableMergeResponse)
+@limiter.limit("30/minute")
 def merge_tables(
+    request: Request,
     data: TableMergeCreate,
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(get_current_user)
@@ -114,7 +117,9 @@ def merge_tables(
 
 
 @router.get("/", response_model=List[TableMergeResponse])
+@limiter.limit("60/minute")
 def list_merges(
+    request: Request,
     active_only: bool = True,
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(get_current_user)
@@ -139,7 +144,9 @@ def list_merges(
 
 
 @router.post("/{merge_id}/unmerge")
+@limiter.limit("30/minute")
 def unmerge_tables(
+    request: Request,
     merge_id: int,
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(get_current_user)
@@ -181,7 +188,9 @@ def unmerge_tables(
 
 # Split Orders Between Tables
 @router.post("/split-order")
+@limiter.limit("30/minute")
 def split_order_to_table(
+    request: Request,
     data: TableSplitRequest,
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(get_current_user)
@@ -245,7 +254,9 @@ def split_order_to_table(
 
 
 @router.get("/table/{table_id}/merged-info")
+@limiter.limit("60/minute")
 def get_merge_info(
+    request: Request,
     table_id: int,
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(get_current_user)

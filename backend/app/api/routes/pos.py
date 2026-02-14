@@ -6,7 +6,7 @@ from datetime import datetime, timezone
 from decimal import Decimal
 from typing import Optional, List
 
-from fastapi import APIRouter, File, HTTPException, Query, UploadFile, status
+from fastapi import APIRouter, File, HTTPException, Query, Request, UploadFile, status
 
 from pydantic import BaseModel
 
@@ -20,6 +20,7 @@ from app.models.recipe import Recipe, RecipeLine
 from app.models.stock import MovementReason, StockMovement, StockOnHand
 from app.models.hardware import BarTab as BarTabModel
 from app.schemas.pos import PosConsumeResult, PosImportResult, PosSalesLineResponse
+from app.core.rate_limit import limiter
 
 router = APIRouter()
 
@@ -37,7 +38,8 @@ class BarTabItemAdd(BaseModel):
 
 
 @router.get("/status")
-def get_pos_status(db: DbSession):
+@limiter.limit("60/minute")
+def get_pos_status(request: Request, db: DbSession):
     """Get POS integration status."""
     # Count sales lines
     total_sales = db.query(PosSalesLine).count()
@@ -58,7 +60,8 @@ def get_pos_status(db: DbSession):
 
 
 @router.get("/menu")
-def get_pos_menu(db: DbSession):
+@limiter.limit("60/minute")
+def get_pos_menu(request: Request, db: DbSession):
     """Get menu items for POS terminal."""
     # Try MenuItem first, fallback to Product
     from app.models.restaurant import MenuItem
@@ -93,7 +96,8 @@ def get_pos_menu(db: DbSession):
 
 
 @router.get("/tables")
-def get_pos_tables(db: DbSession):
+@limiter.limit("60/minute")
+def get_pos_tables(request: Request, db: DbSession):
     """Get table status for POS terminal."""
     from app.models.restaurant import Table
     tables = db.query(Table).all()
@@ -112,7 +116,9 @@ def get_pos_tables(db: DbSession):
 
 
 @router.get("/sales", response_model=List[PosSalesLineResponse])
+@limiter.limit("60/minute")
 def list_sales_lines(
+    request: Request,
     db: DbSession,
     current_user: OptionalCurrentUser = None,
     processed: Optional[bool] = Query(None),
@@ -126,7 +132,9 @@ def list_sales_lines(
 
 
 @router.post("/import/csv", response_model=PosImportResult)
+@limiter.limit("30/minute")
 def import_pos_csv(
+    request: Request,
     db: DbSession,
     current_user: RequireManager,
     file: UploadFile = File(...),
@@ -231,7 +239,9 @@ def import_pos_csv(
 
 
 @router.post("/consume", response_model=PosConsumeResult)
+@limiter.limit("30/minute")
 def consume_sales(
+    request: Request,
     db: DbSession,
     current_user: RequireManager,
     location_id: Optional[int] = Query(None, description="Process only this location"),
@@ -308,7 +318,8 @@ def consume_sales(
 # ==================== BAR TABS (DATABASE) ====================
 
 @router.get("/bar-tabs")
-def list_bar_tabs(db: DbSession):
+@limiter.limit("60/minute")
+def list_bar_tabs(request: Request, db: DbSession):
     """List all open bar tabs."""
     tabs = db.query(BarTabModel).filter(BarTabModel.status == "open").all()
 
@@ -332,7 +343,8 @@ def list_bar_tabs(db: DbSession):
 
 
 @router.post("/bar-tabs")
-def create_bar_tab(db: DbSession, tab: BarTabCreate):
+@limiter.limit("30/minute")
+def create_bar_tab(request: Request, db: DbSession, tab: BarTabCreate):
     """Create a new bar tab."""
     new_tab = BarTabModel(
         customer_name=tab.customer_name,
@@ -364,7 +376,8 @@ def create_bar_tab(db: DbSession, tab: BarTabCreate):
 
 
 @router.get("/bar-tabs/{tab_id}")
-def get_bar_tab(db: DbSession, tab_id: int):
+@limiter.limit("60/minute")
+def get_bar_tab(request: Request, db: DbSession, tab_id: int):
     """Get a specific bar tab."""
     tab = db.query(BarTabModel).filter(BarTabModel.id == tab_id).first()
     if not tab:
@@ -385,7 +398,8 @@ def get_bar_tab(db: DbSession, tab_id: int):
 
 
 @router.post("/bar-tabs/{tab_id}/items")
-def add_item_to_tab(tab_id: int, item: BarTabItemAdd, db: DbSession):
+@limiter.limit("30/minute")
+def add_item_to_tab(request: Request, tab_id: int, item: BarTabItemAdd, db: DbSession):
     """Add item to bar tab."""
     from app.models.restaurant import MenuItem
 
@@ -430,7 +444,8 @@ def add_item_to_tab(tab_id: int, item: BarTabItemAdd, db: DbSession):
 
 
 @router.post("/bar-tabs/{tab_id}/close")
-def close_bar_tab(db: DbSession, tab_id: int, payment_method: str = Query("card")):
+@limiter.limit("30/minute")
+def close_bar_tab(request: Request, db: DbSession, tab_id: int, payment_method: str = Query("card")):
     """Close a bar tab."""
     tab = db.query(BarTabModel).filter(BarTabModel.id == tab_id).first()
     if not tab:
@@ -451,7 +466,8 @@ def close_bar_tab(db: DbSession, tab_id: int, payment_method: str = Query("card"
 
 
 @router.delete("/bar-tabs/{tab_id}")
-def void_bar_tab(db: DbSession, tab_id: int, reason: str = Query("voided")):
+@limiter.limit("30/minute")
+def void_bar_tab(request: Request, db: DbSession, tab_id: int, reason: str = Query("voided")):
     """Void/delete a bar tab."""
     tab = db.query(BarTabModel).filter(BarTabModel.id == tab_id).first()
     if not tab:

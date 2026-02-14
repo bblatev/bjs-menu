@@ -1,7 +1,7 @@
 """
 Staff Scheduling and Time Clock API Endpoints
 """
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.orm import Session
 from typing import Optional
 from datetime import date, datetime, time
@@ -10,6 +10,7 @@ from pydantic import BaseModel, Field
 from app.db.session import get_db
 from app.models import StaffUser
 from app.core.rbac import get_current_user
+from app.core.rate_limit import limiter
 from app.services.staff_scheduling_service import (
     get_shift_scheduling_service,
     get_time_clock_service
@@ -80,7 +81,9 @@ class PunchOut(BaseModel):
 # ========================= SHIFT DEFINITIONS =========================
 
 @router.get("/shift-definitions")
+@limiter.limit("60/minute")
 async def get_shift_definitions(
+    request: Request,
     active_only: bool = True,
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(require_manager)
@@ -94,7 +97,9 @@ async def get_shift_definitions(
 
 
 @router.post("/shift-definitions")
+@limiter.limit("30/minute")
 async def create_shift_definition(
+    request: Request,
     data: ShiftDefinitionCreate,
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(require_manager)
@@ -125,7 +130,9 @@ async def create_shift_definition(
 # ========================= SCHEDULES =========================
 
 @router.get("/schedules")
+@limiter.limit("60/minute")
 async def get_schedules(
+    request: Request,
     start_date: date,
     end_date: date,
     staff_id: Optional[int] = None,
@@ -143,7 +150,9 @@ async def get_schedules(
 
 
 @router.post("/schedules")
+@limiter.limit("30/minute")
 async def create_schedule(
+    request: Request,
     data: ScheduleCreate,
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(require_manager)
@@ -166,7 +175,9 @@ async def create_schedule(
 
 
 @router.post("/schedules/publish")
+@limiter.limit("30/minute")
 async def publish_schedules(
+    request: Request,
     start_date: date,
     end_date: date,
     db: Session = Depends(get_db),
@@ -182,7 +193,9 @@ async def publish_schedules(
 
 
 @router.post("/schedules/generate")
+@limiter.limit("30/minute")
 async def generate_schedules(
+    request: Request,
     start_date: date,
     end_date: date,
     db: Session = Depends(get_db),
@@ -202,7 +215,9 @@ async def generate_schedules(
 # ========================= AVAILABILITY =========================
 
 @router.get("/availability/{staff_id}")
+@limiter.limit("60/minute")
 async def get_staff_availability(
+    request: Request,
     staff_id: int,
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(get_current_user)
@@ -217,7 +232,9 @@ async def get_staff_availability(
 
 
 @router.post("/availability/{staff_id}")
+@limiter.limit("30/minute")
 async def set_staff_availability(
+    request: Request,
     staff_id: int,
     data: AvailabilitySet,
     db: Session = Depends(get_db),
@@ -251,7 +268,9 @@ async def set_staff_availability(
 # ========================= TIME CLOCK =========================
 
 @router.post("/time-clock/punch-in")
+@limiter.limit("30/minute")
 async def punch_in(
+    request: Request,
     data: PunchIn,
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(get_current_user)
@@ -271,7 +290,9 @@ async def punch_in(
 
 
 @router.post("/time-clock/punch-out")
+@limiter.limit("30/minute")
 async def punch_out(
+    request: Request,
     data: PunchOut,
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(get_current_user)
@@ -289,7 +310,9 @@ async def punch_out(
 
 
 @router.post("/time-clock/break/start")
+@limiter.limit("30/minute")
 async def start_break(
+    request: Request,
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(get_current_user)
 ):
@@ -302,7 +325,9 @@ async def start_break(
 
 
 @router.post("/time-clock/break/end")
+@limiter.limit("30/minute")
 async def end_break(
+    request: Request,
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(get_current_user)
 ):
@@ -315,7 +340,9 @@ async def end_break(
 
 
 @router.get("/time-clock/status")
+@limiter.limit("60/minute")
 async def get_clock_status(
+    request: Request,
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(get_current_user)
 ):
@@ -325,7 +352,9 @@ async def get_clock_status(
 
 
 @router.get("/time-clock/entries")
+@limiter.limit("60/minute")
 async def get_time_entries(
+    request: Request,
     start_date: date,
     end_date: date,
     staff_id: Optional[int] = None,
@@ -345,7 +374,9 @@ async def get_time_entries(
 # ========================= LABOR ANALYTICS =========================
 
 @router.get("/labor/analytics")
+@limiter.limit("60/minute")
 async def get_labor_analytics(
+    request: Request,
     start_date: date,
     end_date: date,
     db: Session = Depends(get_db),
@@ -361,7 +392,9 @@ async def get_labor_analytics(
 
 
 @router.get("/labor/cost-report")
+@limiter.limit("60/minute")
 async def get_labor_cost_report(
+    request: Request,
     start_date: date,
     end_date: date,
     db: Session = Depends(get_db),

@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import Link from 'next/link';
 import { API_URL } from '@/lib/api';
 
+import { toast } from '@/lib/toast';
 interface BankAccount {
   id: number;
   account_name: string;
@@ -135,11 +136,11 @@ export default function BankReconciliationPage() {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (response.ok) {
-        alert('Reconciliation completed successfully!');
+        toast.success('Reconciliation completed successfully!');
         setReconciliation(null);
       } else {
         const error = await response.json();
-        alert(error.detail || 'Error completing reconciliation');
+        toast.error(error.detail || 'Error completing reconciliation');
       }
     } catch (error) {
       console.error('Error completing reconciliation:', error);

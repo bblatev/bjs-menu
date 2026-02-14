@@ -3,23 +3,16 @@
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Request
 from pydantic import BaseModel
 
 from app.db.session import DbSession
 from app.models.operations import AppSetting
+from app.core.rate_limit import limiter
 
 router = APIRouter()
 
-from app.core.rbac import get_current_user
-
-def require_manager(current_user = Depends(get_current_user)):
-    """Require manager or above role."""
-    if not hasattr(current_user, 'role'):
-        return current_user
-    if current_user.role not in ("admin", "owner", "manager"):
-        raise HTTPException(status_code=403, detail="Manager access required")
-    return current_user
+from app.core.rbac import CurrentUser, RequireManager
 
 
 
@@ -119,7 +112,8 @@ def _get_all_for_category(db: DbSession, category: str) -> Dict[str, Any]:
 
 
 @router.get("/")
-async def get_all_settings(db: DbSession):
+@limiter.limit("60/minute")
+async def get_all_settings(request: Request, db: DbSession, current_user: CurrentUser):
     """Get all settings as a combined object."""
     general = _get_all_for_category(db, "general") or {
         "restaurant_name": "",
@@ -151,7 +145,8 @@ async def get_all_settings(db: DbSession):
 
 
 @router.put("/")
-async def update_all_settings(data: dict, db: DbSession):
+@limiter.limit("30/minute")
+async def update_all_settings(request: Request, data: dict, db: DbSession, current_user: RequireManager):
     """Update settings."""
     for category, values in data.items():
         if isinstance(values, dict):
@@ -160,7 +155,8 @@ async def update_all_settings(data: dict, db: DbSession):
 
 
 @router.get("/tax/")
-async def get_tax_settings(db: DbSession):
+@limiter.limit("60/minute")
+async def get_tax_settings(request: Request, db: DbSession, current_user: CurrentUser):
     """Get tax settings."""
     stored = _get_setting_value(db, "tax")
     if stored and isinstance(stored, dict):
@@ -169,7 +165,8 @@ async def get_tax_settings(db: DbSession):
 
 
 @router.get("/venue")
-async def get_venue_settings(db: DbSession):
+@limiter.limit("60/minute")
+async def get_venue_settings(request: Request, db: DbSession, current_user: CurrentUser):
     """Get venue settings."""
     stored = _get_setting_value(db, "venue")
     if stored and isinstance(stored, dict):
@@ -187,14 +184,16 @@ async def get_venue_settings(db: DbSession):
 
 
 @router.put("/venue")
-async def update_venue_settings(settings: VenueSettings, db: DbSession):
+@limiter.limit("30/minute")
+async def update_venue_settings(request: Request, settings: VenueSettings, db: DbSession, current_user: RequireManager):
     """Update venue settings."""
     _upsert_setting(db, "venue", settings.model_dump())
     return {"success": True}
 
 
 @router.get("/payment")
-async def get_payment_settings(db: DbSession):
+@limiter.limit("60/minute")
+async def get_payment_settings(request: Request, db: DbSession, current_user: CurrentUser):
     """Get payment settings."""
     stored = _get_setting_value(db, "payment")
     if stored and isinstance(stored, dict):
@@ -211,14 +210,16 @@ async def get_payment_settings(db: DbSession):
 
 
 @router.put("/payment")
-async def update_payment_settings(settings: PaymentSettings, db: DbSession):
+@limiter.limit("30/minute")
+async def update_payment_settings(request: Request, settings: PaymentSettings, db: DbSession, current_user: RequireManager):
     """Update payment settings."""
     _upsert_setting(db, "payment", settings.model_dump())
     return {"success": True}
 
 
 @router.get("/security")
-async def get_security_settings(db: DbSession):
+@limiter.limit("60/minute")
+async def get_security_settings(request: Request, db: DbSession, current_user: RequireManager):
     """Get security settings."""
     stored = _get_setting_value(db, "security")
     if stored and isinstance(stored, dict):
@@ -236,14 +237,16 @@ async def get_security_settings(db: DbSession):
 
 
 @router.put("/security")
-async def update_security_settings(settings: SecuritySettings, db: DbSession):
+@limiter.limit("30/minute")
+async def update_security_settings(request: Request, settings: SecuritySettings, db: DbSession, current_user: RequireManager):
     """Update security settings."""
     _upsert_setting(db, "security", settings.model_dump())
     return {"success": True}
 
 
 @router.get("/general")
-async def get_general_settings(db: DbSession):
+@limiter.limit("60/minute")
+async def get_general_settings(request: Request, db: DbSession, current_user: CurrentUser):
     """Get general settings."""
     stored = _get_setting_value(db, "general")
     if stored and isinstance(stored, dict):
@@ -261,14 +264,16 @@ async def get_general_settings(db: DbSession):
 
 
 @router.put("/general")
-async def update_general_settings(settings: GeneralSettings, db: DbSession):
+@limiter.limit("30/minute")
+async def update_general_settings(request: Request, settings: GeneralSettings, db: DbSession, current_user: RequireManager):
     """Update general settings."""
     _upsert_setting(db, "general", settings.model_dump())
     return {"success": True}
 
 
 @router.get("/fiscal")
-async def get_fiscal_settings(db: DbSession):
+@limiter.limit("60/minute")
+async def get_fiscal_settings(request: Request, db: DbSession, current_user: CurrentUser):
     """Get fiscal settings."""
     stored = _get_setting_value(db, "fiscal")
     if stored and isinstance(stored, dict):
@@ -283,7 +288,8 @@ async def get_fiscal_settings(db: DbSession):
 
 
 @router.put("/fiscal")
-async def update_fiscal_settings(settings: FiscalSettings, db: DbSession):
+@limiter.limit("30/minute")
+async def update_fiscal_settings(request: Request, settings: FiscalSettings, db: DbSession, current_user: RequireManager):
     """Update fiscal settings."""
     _upsert_setting(db, "fiscal", settings.model_dump())
     return {"success": True}

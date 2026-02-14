@@ -6,8 +6,10 @@ from datetime import datetime
 from decimal import Decimal
 from typing import List, Optional
 
-from fastapi import APIRouter, HTTPException, Query, status
+from fastapi import APIRouter, HTTPException, Query, Request, status
 from fastapi.responses import FileResponse
+
+from app.core.rate_limit import limiter
 
 from app.core.rbac import CurrentUser
 from app.db.session import DbSession
@@ -44,7 +46,9 @@ router = APIRouter()
 # ==================== Reconciliation Endpoints ====================
 
 @router.get("/results")
+@limiter.limit("60/minute")
 def get_reconciliation_results(
+    request: Request,
     db: DbSession,
     limit: int = 20,
 ):
@@ -71,8 +75,10 @@ def get_reconciliation_results(
 
 
 @router.post("/reconcile", response_model=ReconciliationSummary)
+@limiter.limit("30/minute")
 def run_reconciliation(
-    request: ReconcileRequest,
+    request: Request,
+    body: ReconcileRequest,
     db: DbSession,
     current_user: CurrentUser,
 ):
@@ -82,7 +88,7 @@ def run_reconciliation(
     """
     # Verify session exists and is committed
     session = db.query(InventorySession).filter(
-        InventorySession.id == request.session_id
+        InventorySession.id == body.session_id
     ).first()
 
     if not session:
@@ -99,19 +105,19 @@ def run_reconciliation(
 
     # Configure and run reconciliation
     config = ReconciliationConfig(
-        critical_threshold_qty=request.critical_threshold_qty,
-        critical_threshold_percent=request.critical_threshold_percent,
-        warning_threshold_qty=request.warning_threshold_qty,
-        warning_threshold_percent=request.warning_threshold_percent,
+        critical_threshold_qty=body.critical_threshold_qty,
+        critical_threshold_percent=body.critical_threshold_percent,
+        warning_threshold_qty=body.warning_threshold_qty,
+        warning_threshold_percent=body.warning_threshold_percent,
     )
 
     service = ReconciliationService(db, config)
-    service.reconcile_session(request.session_id, request.expected_source)
+    service.reconcile_session(body.session_id, body.expected_source)
 
     db.commit()
 
     # Return summary
-    summary = service.get_reconciliation_summary(request.session_id)
+    summary = service.get_reconciliation_summary(body.session_id)
 
     return ReconciliationSummary(
         session_id=summary["session_id"],
@@ -123,7 +129,7 @@ def run_reconciliation(
         results=[
             ReconciliationResultResponse(
                 id=r["id"],
-                session_id=request.session_id,
+                session_id=body.session_id,
                 product_id=r["product_id"],
                 product_name=r["product_name"],
                 product_barcode=r["product_barcode"],
@@ -143,7 +149,9 @@ def run_reconciliation(
 
 
 @router.get("/sessions/{session_id}/reconciliation", response_model=ReconciliationSummary)
-def get_reconciliation_results(
+@limiter.limit("60/minute")
+def get_session_reconciliation_results(
+    request: Request,
     session_id: int,
     db: DbSession,
     current_user: CurrentUser,
@@ -200,8 +208,10 @@ def get_reconciliation_results(
 # ==================== Reorder Endpoints ====================
 
 @router.post("/reorders/generate", response_model=ReorderSummary)
+@limiter.limit("30/minute")
 def generate_reorders(
-    request: GenerateReordersRequest,
+    request: Request,
+    body: GenerateReordersRequest,
     db: DbSession,
     current_user: CurrentUser,
 ):
@@ -211,7 +221,7 @@ def generate_reorders(
     """
     # Verify session exists
     session = db.query(InventorySession).filter(
-        InventorySession.id == request.session_id
+        InventorySession.id == body.session_id
     ).first()
 
     if not session:
@@ -222,18 +232,18 @@ def generate_reorders(
 
     # Configure and generate proposals
     config = ReorderConfig(
-        coverage_days=request.coverage_days,
-        use_par_level=request.use_par_level,
-        round_to_case=request.round_to_case,
+        coverage_days=body.coverage_days,
+        use_par_level=body.use_par_level,
+        round_to_case=body.round_to_case,
     )
 
     service = ReorderService(db, config)
-    service.generate_proposals(request.session_id)
+    service.generate_proposals(body.session_id)
 
     db.commit()
 
     # Return summary
-    summary = service.get_reorder_summary(request.session_id)
+    summary = service.get_reorder_summary(body.session_id)
 
     return ReorderSummary(
         session_id=summary["session_id"],
@@ -246,7 +256,9 @@ def generate_reorders(
 
 
 @router.get("/sessions/{session_id}/reorders", response_model=ReorderSummary)
+@limiter.limit("60/minute")
 def get_reorder_proposals(
+    request: Request,
     session_id: int,
     db: DbSession,
     current_user: CurrentUser,
@@ -309,9 +321,11 @@ def get_reorder_proposals(
 
 
 @router.put("/reorders/{proposal_id}", response_model=ReorderProposalResponse)
+@limiter.limit("30/minute")
 def update_reorder_proposal(
+    request: Request,
     proposal_id: int,
-    request: ReorderProposalUpdate,
+    body: ReorderProposalUpdate,
     db: DbSession,
     current_user: CurrentUser,
 ):
@@ -321,8 +335,8 @@ def update_reorder_proposal(
     try:
         proposal = service.update_proposal(
             proposal_id=proposal_id,
-            user_qty=request.user_qty,
-            included=request.included,
+            user_qty=body.user_qty,
+            included=body.included,
         )
         db.commit()
     except ValueError as e:
@@ -357,8 +371,10 @@ def update_reorder_proposal(
 # ==================== Order Draft Endpoints ====================
 
 @router.post("/order-drafts/generate", response_model=List[SupplierOrderDraftResponse])
+@limiter.limit("30/minute")
 def generate_order_drafts(
-    request: GenerateOrderDraftsRequest,
+    request: Request,
+    body: GenerateOrderDraftsRequest,
     db: DbSession,
     current_user: CurrentUser,
 ):
@@ -367,7 +383,7 @@ def generate_order_drafts(
     Groups proposals by supplier.
     """
     session = db.query(InventorySession).filter(
-        InventorySession.id == request.session_id
+        InventorySession.id == body.session_id
     ).first()
 
     if not session:
@@ -378,8 +394,8 @@ def generate_order_drafts(
 
     service = ExportService(db)
     drafts = service.create_order_drafts(
-        session_id=request.session_id,
-        requested_delivery_date=request.requested_delivery_date,
+        session_id=body.session_id,
+        requested_delivery_date=body.requested_delivery_date,
     )
 
     db.commit()
@@ -409,7 +425,9 @@ def generate_order_drafts(
 
 
 @router.get("/sessions/{session_id}/order-drafts", response_model=List[SupplierOrderDraftResponse])
+@limiter.limit("60/minute")
 def list_order_drafts(
+    request: Request,
     session_id: int,
     db: DbSession,
     current_user: CurrentUser,
@@ -454,7 +472,9 @@ def list_order_drafts(
 
 
 @router.get("/order-drafts/{draft_id}", response_model=SupplierOrderDraftDetail)
+@limiter.limit("60/minute")
 def get_order_draft(
+    request: Request,
     draft_id: int,
     db: DbSession,
     current_user: CurrentUser,
@@ -497,9 +517,11 @@ def get_order_draft(
 
 
 @router.put("/order-drafts/{draft_id}", response_model=SupplierOrderDraftResponse)
+@limiter.limit("30/minute")
 def update_order_draft(
+    request: Request,
     draft_id: int,
-    request: SupplierOrderDraftUpdate,
+    body: SupplierOrderDraftUpdate,
     db: DbSession,
     current_user: CurrentUser,
 ):
@@ -521,7 +543,7 @@ def update_order_draft(
             detail="Cannot update a sent order"
         )
 
-    update_data = request.model_dump(exclude_unset=True)
+    update_data = body.model_dump(exclude_unset=True)
     for field, value in update_data.items():
         setattr(draft, field, value)
 
@@ -552,9 +574,11 @@ def update_order_draft(
 # ==================== Export Endpoints ====================
 
 @router.post("/order-drafts/{draft_id}/export", response_model=ExportOrderResponse)
+@limiter.limit("30/minute")
 def export_order_draft(
+    request: Request,
     draft_id: int,
-    request: ExportOrderRequest,
+    body: ExportOrderRequest,
     db: DbSession,
     current_user: CurrentUser,
 ):
@@ -571,28 +595,30 @@ def export_order_draft(
 
     service = ExportService(db)
 
-    if request.format.lower() == "csv":
+    if body.format.lower() == "csv":
         file_path = service.export_to_csv(draft_id)
-    elif request.format.lower() == "pdf":
+    elif body.format.lower() == "pdf":
         file_path = service.export_to_pdf(draft_id)
     else:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Unsupported format: {request.format}. Use 'csv' or 'pdf'."
+            detail=f"Unsupported format: {body.format}. Use 'csv' or 'pdf'."
         )
 
     db.commit()
 
     return ExportOrderResponse(
         draft_id=draft_id,
-        format=request.format,
+        format=body.format,
         file_path=file_path,
-        download_url=f"/api/reconciliation/order-drafts/{draft_id}/download/{request.format}",
+        download_url=f"/api/reconciliation/order-drafts/{draft_id}/download/{body.format}",
     )
 
 
 @router.get("/order-drafts/{draft_id}/download/{format}")
+@limiter.limit("60/minute")
 def download_export(
+    request: Request,
     draft_id: int,
     format: str,
     db: DbSession,
@@ -635,7 +661,9 @@ def download_export(
 
 
 @router.get("/order-drafts/{draft_id}/email-template", response_model=EmailTemplateResponse)
+@limiter.limit("60/minute")
 def get_email_template(
+    request: Request,
     draft_id: int,
     db: DbSession,
     current_user: CurrentUser,
@@ -666,7 +694,9 @@ def get_email_template(
 
 
 @router.get("/order-drafts/{draft_id}/whatsapp")
+@limiter.limit("60/minute")
 def get_whatsapp_text(
+    request: Request,
     draft_id: int,
     db: DbSession,
     current_user: CurrentUser,
@@ -689,7 +719,9 @@ def get_whatsapp_text(
 
 
 @router.post("/order-drafts/{draft_id}/finalize", response_model=SupplierOrderDraftResponse)
+@limiter.limit("30/minute")
 def finalize_order_draft(
+    request: Request,
     draft_id: int,
     db: DbSession,
     current_user: CurrentUser,
@@ -728,7 +760,9 @@ def finalize_order_draft(
 
 
 @router.post("/order-drafts/{draft_id}/mark-sent", response_model=SupplierOrderDraftResponse)
+@limiter.limit("30/minute")
 def mark_order_sent(
+    request: Request,
     draft_id: int,
     db: DbSession,
     current_user: CurrentUser,

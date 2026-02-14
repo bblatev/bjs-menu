@@ -8,6 +8,7 @@ import { ErrorAlert } from '@/components/ui/ErrorAlert';
 
 import { API_URL, getAuthHeaders } from '@/lib/api';
 
+import { toast } from '@/lib/toast';
 interface Terminal {
   terminal_id: string;
   stripe_terminal_id?: string;
@@ -179,7 +180,7 @@ export default function CardTerminalsPage() {
       if (res.ok) {
         loadData();
         setShowPaymentModal(false);
-        alert('Payment created! Present card to terminal.');
+        toast.success('Payment created! Present card to terminal.');
       }
     } catch (error) {
       console.error('Error creating payment:', error);

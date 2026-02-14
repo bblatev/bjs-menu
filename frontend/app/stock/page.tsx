@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { API_URL } from '@/lib/api';
 
+import { toast } from '@/lib/toast';
 interface StockItem {
   id: number;
   name: string | { bg?: string; en?: string } | null;
@@ -265,7 +266,7 @@ export default function StockPage() {
         loadStock();
       }
     } catch {
-      alert("Error creating item");
+      toast.error("Error creating item");
     }
   };
 
@@ -293,7 +294,7 @@ export default function StockPage() {
         loadMovements();
       }
     } catch {
-      alert("Error recording movement");
+      toast.error("Error recording movement");
     }
   };
 
@@ -337,7 +338,7 @@ export default function StockPage() {
       const items = parseCSV(importData);
 
       if (items.length === 0) {
-        alert("No valid data to import");
+        toast.success("No valid data to import");
         return;
       }
 
@@ -358,10 +359,10 @@ export default function StockPage() {
         setImportResult(result);
         loadStock();
       } else {
-        alert("Import failed");
+        toast.error("Import failed");
       }
     } catch (error) {
-      alert("Error importing data");
+      toast.error("Error importing data");
     }
   };
 
@@ -395,7 +396,7 @@ export default function StockPage() {
         a.click();
       }
     } catch (error) {
-      alert("Error exporting data");
+      toast.error("Error exporting data");
     }
   };
 

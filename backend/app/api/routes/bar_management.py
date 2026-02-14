@@ -3,7 +3,8 @@ Bar Management API Endpoints
 Complete bar operations: pour costs, inventory, recipes, spillage, happy hours
 """
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
+from app.core.rate_limit import limiter
 from sqlalchemy.orm import Session
 from sqlalchemy import func, desc
 from typing import List, Optional, Dict
@@ -180,7 +181,9 @@ class RecipeResponse(BaseModel):
 # ========== BAR DASHBOARD ENDPOINTS ==========
 
 @router.get("/stats", response_model=BarStatsResponse)
+@limiter.limit("60/minute")
 async def get_bar_stats(
+    request: Request,
     period: str = Query("today", description="today, week, month"),
     db: Session = Depends(get_db),
     current_user=Depends(get_current_user)
@@ -277,7 +280,9 @@ async def get_bar_stats(
 
 
 @router.get("/top-drinks", response_model=List[TopDrinkResponse])
+@limiter.limit("60/minute")
 async def get_top_drinks(
+    request: Request,
     period: str = Query("today", description="today, week, month"),
     limit: int = Query(10, ge=1, le=50),
     db: Session = Depends(get_db),
@@ -339,7 +344,9 @@ async def get_top_drinks(
 
 
 @router.get("/inventory-alerts", response_model=List[InventoryAlertResponse])
+@limiter.limit("60/minute")
 async def get_inventory_alerts(
+    request: Request,
     db: Session = Depends(get_db),
     current_user=Depends(get_current_user)
 ):
@@ -385,7 +392,9 @@ async def get_inventory_alerts(
 
 
 @router.get("/recent-activity", response_model=List[RecentPourResponse])
+@limiter.limit("60/minute")
 async def get_recent_activity(
+    request: Request,
     limit: int = Query(20, ge=1, le=100),
     db: Session = Depends(get_db),
     current_user=Depends(get_current_user)
@@ -439,7 +448,9 @@ async def get_recent_activity(
 # ========== SPILLAGE ENDPOINTS ==========
 
 @router.get("/spillage/records", response_model=List[SpillageRecordResponse])
+@limiter.limit("60/minute")
 async def get_spillage_records(
+    request: Request,
     period: str = Query("week", description="today, week, month"),
     reason_filter: Optional[str] = None,
     db: Session = Depends(get_db),
@@ -462,8 +473,10 @@ async def get_spillage_records(
 
 
 @router.post("/spillage/records", response_model=SpillageRecordResponse)
+@limiter.limit("30/minute")
 async def create_spillage_record(
-    record: SpillageRecordCreate,
+    request: Request,
+    record: SpillageRecordCreate = None,
     db: Session = Depends(get_db),
     current_user=Depends(get_current_user)
 ):
@@ -484,7 +497,9 @@ async def create_spillage_record(
 
 
 @router.get("/spillage/stats")
+@limiter.limit("60/minute")
 async def get_spillage_stats(
+    request: Request,
     period: str = Query("week", description="today, week, month"),
     db: Session = Depends(get_db),
     current_user=Depends(get_current_user)
@@ -502,7 +517,9 @@ async def get_spillage_stats(
 
 
 @router.get("/spillage/variance", response_model=List[VarianceItemResponse])
+@limiter.limit("60/minute")
 async def get_inventory_variance(
+    request: Request,
     db: Session = Depends(get_db),
     current_user=Depends(get_current_user)
 ):
@@ -519,7 +536,9 @@ async def get_inventory_variance(
 # ========== HAPPY HOUR ENDPOINTS ==========
 
 @router.get("/happy-hours", response_model=List[HappyHourResponse])
+@limiter.limit("60/minute")
 async def get_happy_hours(
+    request: Request,
     db: Session = Depends(get_db),
     current_user=Depends(get_current_user)
 ):
@@ -565,7 +584,9 @@ async def get_happy_hours(
 
 
 @router.get("/happy-hours/stats")
+@limiter.limit("60/minute")
 async def get_happy_hour_stats(
+    request: Request,
     db: Session = Depends(get_db),
     current_user=Depends(get_current_user)
 ):
@@ -580,8 +601,10 @@ async def get_happy_hour_stats(
 
 
 @router.post("/happy-hours", response_model=HappyHourResponse)
+@limiter.limit("30/minute")
 async def create_happy_hour(
-    happy_hour: HappyHourCreate,
+    request: Request,
+    happy_hour: HappyHourCreate = None,
     db: Session = Depends(get_db),
     current_user=Depends(get_current_user)
 ):
@@ -606,9 +629,11 @@ async def create_happy_hour(
 
 
 @router.put("/happy-hours/{happy_hour_id}", response_model=HappyHourResponse)
+@limiter.limit("30/minute")
 async def update_happy_hour(
+    request: Request,
     happy_hour_id: int,
-    happy_hour: HappyHourCreate,
+    happy_hour: HappyHourCreate = None,
     db: Session = Depends(get_db),
     current_user=Depends(get_current_user)
 ):
@@ -633,7 +658,9 @@ async def update_happy_hour(
 
 
 @router.patch("/happy-hours/{happy_hour_id}/toggle")
+@limiter.limit("30/minute")
 async def toggle_happy_hour_status(
+    request: Request,
     happy_hour_id: int,
     db: Session = Depends(get_db),
     current_user=Depends(get_current_user)
@@ -645,7 +672,9 @@ async def toggle_happy_hour_status(
 # ========== RECIPE ENDPOINTS ==========
 
 @router.get("/recipes", response_model=List[RecipeResponse])
+@limiter.limit("60/minute")
 async def get_recipes(
+    request: Request,
     category: Optional[str] = None,
     search: Optional[str] = None,
     sort_by: str = Query("sales", description="name, profit, sales, rating"),
@@ -778,13 +807,15 @@ async def get_recipes(
 
 
 @router.get("/recipes/{recipe_id}", response_model=RecipeResponse)
+@limiter.limit("60/minute")
 async def get_recipe(
+    request: Request,
     recipe_id: int,
     db: Session = Depends(get_db),
     current_user=Depends(get_current_user)
 ):
     """Get a specific recipe"""
-    recipes = await get_recipes(db=db, current_user=current_user)
+    recipes = await get_recipes(request=request, db=db, current_user=current_user)
     for recipe in recipes:
         if recipe.id == recipe_id:
             return recipe
@@ -792,8 +823,10 @@ async def get_recipe(
 
 
 @router.post("/recipes", response_model=RecipeResponse)
+@limiter.limit("30/minute")
 async def create_recipe(
-    recipe: RecipeCreate,
+    request: Request,
+    recipe: RecipeCreate = None,
     db: Session = Depends(get_db),
     current_user=Depends(get_current_user)
 ):
@@ -826,9 +859,11 @@ async def create_recipe(
 
 
 @router.put("/recipes/{recipe_id}", response_model=RecipeResponse)
+@limiter.limit("30/minute")
 async def update_recipe(
+    request: Request,
     recipe_id: int,
-    recipe: RecipeCreate,
+    recipe: RecipeCreate = None,
     db: Session = Depends(get_db),
     current_user=Depends(get_current_user)
 ):
@@ -861,7 +896,9 @@ async def update_recipe(
 
 
 @router.delete("/recipes/{recipe_id}")
+@limiter.limit("30/minute")
 async def delete_recipe(
+    request: Request,
     recipe_id: int,
     db: Session = Depends(get_db),
     current_user=Depends(get_current_user)
@@ -873,7 +910,9 @@ async def delete_recipe(
 # ========== POUR COST ENDPOINTS ==========
 
 @router.get("/pour-costs/summary")
+@limiter.limit("60/minute")
 async def get_pour_cost_summary(
+    request: Request,
     period: str = Query("month", description="week, month, quarter"),
     db: Session = Depends(get_db),
     current_user=Depends(get_current_user)
@@ -961,7 +1000,9 @@ async def get_pour_cost_summary(
 
 
 @router.get("/bartender-performance")
+@limiter.limit("60/minute")
 async def get_bartender_performance(
+    request: Request,
     period: str = Query("today", description="today, week, month"),
     db: Session = Depends(get_db),
     current_user=Depends(get_current_user)

@@ -6,6 +6,7 @@ import { Button, Input, Card, CardBody, Badge } from '@/components/ui';
 
 import { API_URL, getAuthHeaders } from '@/lib/api';
 
+import { toast } from '@/lib/toast';
 export default function SettingsFiscalPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -92,11 +93,11 @@ export default function SettingsFiscalPage() {
       });
 
       if (response.ok) {
-        alert('Fiscal settings saved successfully!');
+        toast.success('Fiscal settings saved successfully!');
       }
     } catch (err) {
       console.error('Error saving settings:', err);
-      alert('Failed to save settings');
+      toast.error('Failed to save settings');
     } finally {
       setSaving(false);
     }
@@ -107,9 +108,9 @@ export default function SettingsFiscalPage() {
     try {
       // Simulate testing connection
       await new Promise(resolve => setTimeout(resolve, 2000));
-      alert('Connection test successful!');
+      toast.info('Connection test successful!');
     } catch (err) {
-      alert('Connection test failed');
+      toast.error('Connection test failed');
     } finally {
       setTesting(false);
     }

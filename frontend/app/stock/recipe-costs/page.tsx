@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import AdminLayout from '@/components/AdminLayout';
 import { API_URL, getAuthHeaders } from '@/lib/api';
 
+import { toast } from '@/lib/toast';
 interface Ingredient {
   id: number;
   name: string;
@@ -330,12 +331,12 @@ export default function RecipeCostsPage() {
   };
 
   const recalculateCosts = () => {
-    alert('Преизчисляване на разходите базирано на актуални цени на съставките...');
+    toast.success('Преизчисляване на разходите базирано на актуални цени на съставките...');
     fetchRecipeData();
   };
 
   const exportReport = () => {
-    alert('Експортиране на отчет за разходите на рецептите...');
+    toast.success('Експортиране на отчет за разходите на рецептите...');
   };
 
   return (

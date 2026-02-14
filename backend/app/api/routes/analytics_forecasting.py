@@ -2,12 +2,13 @@
 Analytics & Forecasting API Endpoints
 Demand forecasting, trend analysis, predictive analytics
 """
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Request
 from sqlalchemy.orm import Session
 from typing import List, Optional, Dict, Any
 from datetime import date, datetime, timedelta
 from pydantic import BaseModel, Field
 
+from app.core.rate_limit import limiter
 from app.db.session import get_db
 from app.core.rbac import get_current_user
 from app.models import StaffUser
@@ -53,7 +54,9 @@ class StockPredictionRequest(BaseModel):
 # =============================================================================
 
 @router.get("/forecast/demand", response_model=Dict[str, Any])
+@limiter.limit("60/minute")
 async def get_demand_forecast(
+    request: Request,
     forecast_days: int = 7,
     method: str = "ensemble",
     category_id: Optional[int] = None,
@@ -111,8 +114,10 @@ async def get_demand_forecast(
 
 
 @router.post("/forecast/custom", response_model=Dict[str, Any])
+@limiter.limit("30/minute")
 async def create_custom_forecast(
-    request: ForecastRequest,
+    request: Request,
+    forecast_request: ForecastRequest,
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(get_current_user)
 ):
@@ -127,27 +132,27 @@ async def create_custom_forecast(
         current_user.venue_id,
         start_date,
         end_date,
-        request.category_id,
-        request.item_ids
+        forecast_request.category_id,
+        forecast_request.item_ids
     )
 
     try:
-        forecast_method = ForecastMethod(request.method)
+        forecast_method = ForecastMethod(forecast_request.method)
     except ValueError:
         forecast_method = ForecastMethod.ENSEMBLE
 
     results = analytics_service.forecast_demand(
         historical_data=historical_data,
-        forecast_days=request.forecast_days,
+        forecast_days=forecast_request.forecast_days,
         method=forecast_method
     )
 
     return {
         "request": {
-            "item_ids": request.item_ids,
-            "category_id": request.category_id,
-            "forecast_days": request.forecast_days,
-            "method": request.method
+            "item_ids": forecast_request.item_ids,
+            "category_id": forecast_request.category_id,
+            "forecast_days": forecast_request.forecast_days,
+            "method": forecast_request.method
         },
         "forecasts": [
             {
@@ -169,7 +174,9 @@ async def create_custom_forecast(
 # =============================================================================
 
 @router.get("/trends/sales", response_model=Dict[str, Any])
+@limiter.limit("60/minute")
 async def get_sales_trends(
+    request: Request,
     start_date: date,
     end_date: date,
     group_by: str = "day",
@@ -199,8 +206,10 @@ async def get_sales_trends(
 
 
 @router.post("/trends/analyze", response_model=Dict[str, Any])
+@limiter.limit("30/minute")
 async def analyze_custom_trends(
-    request: TrendAnalysisRequest,
+    request: Request,
+    trend_request: TrendAnalysisRequest,
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(get_current_user)
 ):
@@ -208,35 +217,35 @@ async def analyze_custom_trends(
     Analyze trends for a custom metric.
     """
     # Get data based on metric type
-    if request.metric == "sales":
+    if trend_request.metric == "sales":
         data = _get_mock_sales_data(
             current_user.venue_id,
-            request.start_date,
-            request.end_date
+            trend_request.start_date,
+            trend_request.end_date
         )
-    elif request.metric == "orders":
+    elif trend_request.metric == "orders":
         data = _get_mock_order_data(
             current_user.venue_id,
-            request.start_date,
-            request.end_date
+            trend_request.start_date,
+            trend_request.end_date
         )
-    elif request.metric == "customers":
+    elif trend_request.metric == "customers":
         data = _get_mock_customer_data(
             current_user.venue_id,
-            request.start_date,
-            request.end_date
+            trend_request.start_date,
+            trend_request.end_date
         )
     else:
         data = []
 
     analysis = analytics_service.analyze_sales_trends(
         sales_data=data,
-        group_by=request.group_by
+        group_by=trend_request.group_by
     )
 
     return {
-        "metric": request.metric,
-        "period": f"{request.start_date} to {request.end_date}",
+        "metric": trend_request.metric,
+        "period": f"{trend_request.start_date} to {trend_request.end_date}",
         "analysis": analysis
     }
 
@@ -246,7 +255,9 @@ async def analyze_custom_trends(
 # =============================================================================
 
 @router.get("/predictions/stock-requirements", response_model=Dict[str, Any])
+@limiter.limit("60/minute")
 async def predict_stock_requirements(
+    request: Request,
     lead_time_days: int = 3,
     forecast_days: int = 14,
     db: Session = Depends(get_db),
@@ -293,8 +304,10 @@ async def predict_stock_requirements(
 
 
 @router.post("/predictions/reorder-suggestions", response_model=Dict[str, Any])
+@limiter.limit("30/minute")
 async def get_reorder_suggestions(
-    request: StockPredictionRequest,
+    request: Request,
+    stock_request: StockPredictionRequest,
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(get_current_user)
 ):
@@ -304,25 +317,25 @@ async def get_reorder_suggestions(
     current_stock = _get_mock_current_stock(current_user.venue_id)
 
     # Filter by item_ids if specified
-    if request.item_ids:
-        current_stock = [s for s in current_stock if s["item_id"] in request.item_ids]
+    if stock_request.item_ids:
+        current_stock = [s for s in current_stock if s["item_id"] in stock_request.item_ids]
 
     historical_data = _get_mock_historical_data(
         current_user.venue_id,
         datetime.now() - timedelta(days=90),
         datetime.now(),
-        item_ids=request.item_ids
+        item_ids=stock_request.item_ids
     )
 
     demand_forecast = analytics_service.forecast_demand(
         historical_data=historical_data,
-        forecast_days=request.forecast_days
+        forecast_days=stock_request.forecast_days
     )
 
     requirements = analytics_service.predict_stock_requirements(
         current_stock=current_stock,
         demand_forecast=demand_forecast,
-        lead_time_days=request.lead_time_days
+        lead_time_days=stock_request.lead_time_days
     )
 
     # Generate reorder suggestions
@@ -336,7 +349,7 @@ async def get_reorder_suggestions(
                 "suggested_quantity": req["suggested_order_quantity"],
                 "urgency": req["urgency"],
                 "order_by_date": (
-                    datetime.now() + timedelta(days=max(0, req["days_until_reorder"] - request.lead_time_days))
+                    datetime.now() + timedelta(days=max(0, req["days_until_reorder"] - stock_request.lead_time_days))
                 ).strftime("%Y-%m-%d"),
                 "expected_stockout_date": (
                     datetime.now() + timedelta(days=req["days_until_reorder"])
@@ -346,8 +359,8 @@ async def get_reorder_suggestions(
     return {
         "venue_id": current_user.venue_id,
         "parameters": {
-            "lead_time_days": request.lead_time_days,
-            "forecast_days": request.forecast_days
+            "lead_time_days": stock_request.lead_time_days,
+            "forecast_days": stock_request.forecast_days
         },
         "suggestions": suggestions
     }
@@ -358,7 +371,9 @@ async def get_reorder_suggestions(
 # =============================================================================
 
 @router.get("/dashboard/summary", response_model=Dict[str, Any])
+@limiter.limit("60/minute")
 async def get_analytics_dashboard(
+    request: Request,
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(get_current_user)
 ):

@@ -6,6 +6,7 @@ import { Button, Input, Card, CardBody } from '@/components/ui';
 
 import { API_URL, getAuthHeaders } from '@/lib/api';
 
+import { toast } from '@/lib/toast';
 const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 
 export default function SettingsVenuePage() {
@@ -80,11 +81,11 @@ export default function SettingsVenuePage() {
       });
 
       if (response.ok) {
-        alert('Venue settings saved successfully!');
+        toast.success('Venue settings saved successfully!');
       }
     } catch (err) {
       console.error('Error saving settings:', err);
-      alert('Failed to save settings');
+      toast.error('Failed to save settings');
     } finally {
       setSaving(false);
     }

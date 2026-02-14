@@ -7,6 +7,7 @@ import { Button, Card, CardBody, Badge } from '@/components/ui';
 
 import { API_URL, getAuthHeaders } from '@/lib/api';
 
+import { toast } from '@/lib/toast';
 interface StaffMember {
   id: number;
   full_name: string;
@@ -89,11 +90,11 @@ export default function StaffCommissionPage() {
         setEditingId(null);
       } else {
         const err = await response.json();
-        alert(err.detail || 'Failed to save');
+        toast.error(err.detail || 'Failed to save');
       }
     } catch (err) {
       console.error('Error saving commission:', err);
-      alert('Failed to save commission settings');
+      toast.error('Failed to save commission settings');
     } finally {
       setSaving(null);
     }

@@ -2,8 +2,10 @@
 Barcode Label Designer & Printer API Endpoints
 Microinvest Barcode Printer Pro feature parity
 """
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import StreamingResponse
+
+from app.core.rate_limit import limiter
 from sqlalchemy.orm import Session
 from typing import List, Optional, Dict, Any
 from datetime import datetime
@@ -170,13 +172,13 @@ def generate_label_image(template: Dict, item_data: Dict) -> bytes:
                 if "format" in element and value:
                     try:
                         value = element["format"].format(value=value)
-                    except:
+                    except (KeyError, ValueError, IndexError):
                         value = str(value)
 
                 font_size = element.get("font_size", 12)
                 try:
                     font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", font_size)
-                except:
+                except (IOError, OSError):
                     font = ImageFont.load_default()
 
                 draw.text((x, y), str(value), fill='black', font=font)
@@ -266,7 +268,9 @@ template_counter = 3
 # =============================================================================
 
 @router.get("/templates", response_model=List[LabelTemplateResponse])
+@limiter.limit("60/minute")
 async def list_label_templates(
+    request: Request,
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(get_current_user)
 ):
@@ -280,7 +284,9 @@ async def list_label_templates(
 
 
 @router.post("/templates", response_model=LabelTemplateResponse)
+@limiter.limit("30/minute")
 async def create_label_template(
+    request: Request,
     data: LabelTemplate,
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(require_manager)
@@ -304,7 +310,9 @@ async def create_label_template(
 
 
 @router.get("/templates/{template_id}", response_model=LabelTemplateResponse)
+@limiter.limit("60/minute")
 async def get_label_template(
+    request: Request,
     template_id: int,
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(get_current_user)
@@ -321,7 +329,9 @@ async def get_label_template(
 
 
 @router.put("/templates/{template_id}", response_model=LabelTemplateResponse)
+@limiter.limit("30/minute")
 async def update_label_template(
+    request: Request,
     template_id: int,
     data: LabelTemplate,
     db: Session = Depends(get_db),
@@ -342,7 +352,9 @@ async def update_label_template(
 
 
 @router.delete("/templates/{template_id}")
+@limiter.limit("30/minute")
 async def delete_label_template(
+    request: Request,
     template_id: int,
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(require_manager)
@@ -360,7 +372,9 @@ async def delete_label_template(
 
 
 @router.put("/templates/{template_id}/default")
+@limiter.limit("30/minute")
 async def set_default_template(
+    request: Request,
     template_id: int,
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(require_manager)
@@ -382,7 +396,9 @@ async def set_default_template(
 # =============================================================================
 
 @router.post("/barcode/generate")
+@limiter.limit("30/minute")
 async def generate_barcode(
+    request: Request,
     data: BarcodeGenerateRequest,
     current_user: StaffUser = Depends(get_current_user)
 ):
@@ -402,7 +418,9 @@ async def generate_barcode(
 
 
 @router.get("/barcode/{item_type}/{item_id}")
+@limiter.limit("60/minute")
 async def get_item_barcode(
+    request: Request,
     item_type: str,
     item_id: int,
     format: str = "code128",
@@ -438,7 +456,9 @@ async def get_item_barcode(
 # =============================================================================
 
 @router.post("/preview")
+@limiter.limit("30/minute")
 async def preview_label(
+    request: Request,
     data: LabelPreviewRequest,
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(get_current_user)
@@ -483,7 +503,9 @@ async def preview_label(
 
 
 @router.post("/print")
+@limiter.limit("30/minute")
 async def print_labels(
+    request: Request,
     data: PrintLabelRequest,
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(require_manager)
@@ -540,7 +562,9 @@ async def print_labels(
 
 
 @router.get("/printers")
+@limiter.limit("60/minute")
 async def list_available_printers(
+    request: Request,
     current_user: StaffUser = Depends(get_current_user)
 ):
     """
@@ -578,7 +602,9 @@ async def list_available_printers(
 # =============================================================================
 
 @router.post("/batch/generate-sku")
+@limiter.limit("30/minute")
 async def batch_generate_sku(
+    request: Request,
     item_type: str,
     prefix: str = "",
     db: Session = Depends(get_db),
@@ -616,7 +642,9 @@ async def batch_generate_sku(
 
 
 @router.post("/batch/print-all")
+@limiter.limit("30/minute")
 async def batch_print_all_labels(
+    request: Request,
     item_type: str,
     template_id: int,
     db: Session = Depends(get_db),

@@ -3,7 +3,7 @@ Telephone System Integration API Endpoints
 TouchSale feature: Integration with PBX systems (ELTA, Alcatel, Panasonic, Siemens, etc.)
 For caller ID lookup, automatic reservations, and customer recognition
 """
-from fastapi import APIRouter, Depends, HTTPException, WebSocket, WebSocketDisconnect
+from fastapi import APIRouter, Depends, HTTPException, WebSocket, WebSocketDisconnect, Request
 from sqlalchemy.orm import Session
 from typing import List, Optional, Dict, Any
 from datetime import datetime, timedelta
@@ -13,6 +13,7 @@ import json
 
 from app.db.session import get_db
 from app.core.rbac import get_current_user
+from app.core.rate_limit import limiter
 from app.models import StaffUser, Customer, Reservation
 
 
@@ -140,7 +141,9 @@ call_notification_sockets: Dict[str, WebSocket] = {}
 # =============================================================================
 
 @router.post("/config", response_model=PBXConnectionResponse)
+@limiter.limit("30/minute")
 async def create_pbx_connection(
+    request: Request,
     data: PBXConnectionConfig,
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(require_admin)
@@ -162,7 +165,9 @@ async def create_pbx_connection(
 
 
 @router.get("/config", response_model=List[PBXConnectionResponse])
+@limiter.limit("60/minute")
 async def list_pbx_connections(
+    request: Request,
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(require_manager)
 ):
@@ -176,7 +181,9 @@ async def list_pbx_connections(
 
 
 @router.put("/config/{config_id}", response_model=PBXConnectionResponse)
+@limiter.limit("30/minute")
 async def update_pbx_connection(
+    request: Request,
     config_id: int,
     data: PBXConnectionConfig,
     db: Session = Depends(get_db),
@@ -196,7 +203,9 @@ async def update_pbx_connection(
 
 
 @router.post("/config/{config_id}/connect")
+@limiter.limit("30/minute")
 async def connect_pbx(
+    request: Request,
     config_id: int,
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(require_admin)
@@ -223,7 +232,9 @@ async def connect_pbx(
 
 
 @router.post("/config/{config_id}/disconnect")
+@limiter.limit("30/minute")
 async def disconnect_pbx(
+    request: Request,
     config_id: int,
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(require_admin)
@@ -240,7 +251,9 @@ async def disconnect_pbx(
 
 
 @router.post("/config/{config_id}/test")
+@limiter.limit("30/minute")
 async def test_pbx_connection(
+    request: Request,
     config_id: int,
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(require_admin)
@@ -270,7 +283,9 @@ async def test_pbx_connection(
 # =============================================================================
 
 @router.get("/caller/{phone_number}", response_model=CallerInfo)
+@limiter.limit("60/minute")
 async def lookup_caller(
+    request: Request,
     phone_number: str,
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(get_current_user)
@@ -347,7 +362,9 @@ async def lookup_caller(
 # =============================================================================
 
 @router.post("/call/incoming")
+@limiter.limit("30/minute")
 async def handle_incoming_call(
+    request: Request,
     event: IncomingCallEvent,
     db: Session = Depends(get_db)
 ):
@@ -408,7 +425,9 @@ async def handle_incoming_call(
 
 
 @router.post("/call/{call_id}/answered")
+@limiter.limit("30/minute")
 async def mark_call_answered(
+    request: Request,
     call_id: int,
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(get_current_user)
@@ -431,7 +450,9 @@ async def mark_call_answered(
 
 
 @router.post("/call/{call_id}/ended")
+@limiter.limit("30/minute")
 async def mark_call_ended(
+    request: Request,
     call_id: int,
     duration_seconds: int,
     notes: Optional[str] = None,
@@ -464,7 +485,9 @@ async def mark_call_ended(
 # =============================================================================
 
 @router.post("/call/{call_id}/reservation")
+@limiter.limit("30/minute")
 async def create_reservation_from_call(
+    request: Request,
     call_id: int,
     data: QuickReservationRequest,
     db: Session = Depends(get_db),
@@ -533,7 +556,9 @@ async def create_reservation_from_call(
 # =============================================================================
 
 @router.get("/logs", response_model=List[CallLogEntry])
+@limiter.limit("60/minute")
 async def get_call_logs(
+    request: Request,
     direction: Optional[str] = None,
     status: Optional[str] = None,
     skip: int = 0,
@@ -557,7 +582,9 @@ async def get_call_logs(
 
 
 @router.get("/stats")
+@limiter.limit("60/minute")
 async def get_call_stats(
+    request: Request,
     days: int = 7,
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(require_manager)
@@ -648,7 +675,8 @@ async def websocket_call_notifications(
 # =============================================================================
 
 @router.get("/systems")
-async def get_supported_pbx_systems():
+@limiter.limit("60/minute")
+async def get_supported_pbx_systems(request: Request):
     """Get list of supported PBX systems"""
     return {
         "systems": [

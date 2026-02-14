@@ -10,6 +10,7 @@ from datetime import datetime, timedelta
 from fastapi import APIRouter, HTTPException, Request, Header, Body
 from pydantic import BaseModel
 
+from app.core.rate_limit import limiter
 from app.db.session import DbSession
 from app.models.operations import AppSetting
 from app.models.reservations import Reservation, ReservationStatus, BookingSource
@@ -81,8 +82,10 @@ class BookingStatusUpdate(BaseModel):
 # ============================================================================
 
 @router.post("/v3/CheckAvailability")
+@limiter.limit("30/minute")
 async def check_availability(
-    request: CheckAvailabilityRequest,
+    request: Request,
+    body: CheckAvailabilityRequest,
     x_goog_signature: Optional[str] = Header(None, alias="X-Goog-Signature"),
 ):
     """
@@ -94,12 +97,12 @@ async def check_availability(
     if not service:
         raise HTTPException(status_code=503, detail="Google Reserve not configured")
 
-    slot_time = datetime.fromtimestamp(request.slot.start_sec)
-    duration = request.slot.duration_sec // 60
+    slot_time = datetime.fromtimestamp(body.slot.start_sec)
+    duration = body.slot.duration_sec // 60
 
     result = await service.handle_check_availability(
         slot_time=slot_time,
-        party_size=request.party_size or 2,
+        party_size=body.party_size or 2,
         duration_minutes=duration,
     )
 
@@ -107,8 +110,10 @@ async def check_availability(
 
 
 @router.post("/v3/CreateBooking")
+@limiter.limit("30/minute")
 async def create_booking(
-    request: CreateBookingRequest,
+    request: Request,
+    body: CreateBookingRequest,
     x_goog_signature: Optional[str] = Header(None, alias="X-Goog-Signature"),
 ):
     """
@@ -120,14 +125,16 @@ async def create_booking(
     if not service:
         raise HTTPException(status_code=503, detail="Google Reserve not configured")
 
-    result = await service.handle_create_booking(request.dict())
+    result = await service.handle_create_booking(body.dict())
 
     return result
 
 
 @router.post("/v3/UpdateBooking")
+@limiter.limit("30/minute")
 async def update_booking(
-    request: UpdateBookingRequest,
+    request: Request,
+    body: UpdateBookingRequest,
     x_goog_signature: Optional[str] = Header(None, alias="X-Goog-Signature"),
 ):
     """
@@ -139,17 +146,19 @@ async def update_booking(
     if not service:
         raise HTTPException(status_code=503, detail="Google Reserve not configured")
 
-    booking_id = request.booking.get("booking_id")
+    booking_id = body.booking.get("booking_id")
     if not booking_id:
         raise HTTPException(status_code=400, detail="Missing booking_id")
 
-    result = await service.handle_update_booking(booking_id, request.dict())
+    result = await service.handle_update_booking(booking_id, body.dict())
 
     return result
 
 
 @router.post("/v3/GetBookingStatus")
+@limiter.limit("30/minute")
 async def get_booking_status(
+    request: Request,
     booking_id: str,
     x_goog_signature: Optional[str] = Header(None, alias="X-Goog-Signature"),
 ):
@@ -168,7 +177,9 @@ async def get_booking_status(
 
 
 @router.post("/v3/ListBookings")
+@limiter.limit("30/minute")
 async def list_bookings(
+    request: Request,
     user_id: str,
     x_goog_signature: Optional[str] = Header(None, alias="X-Goog-Signature"),
 ):
@@ -191,7 +202,8 @@ async def list_bookings(
 # ============================================================================
 
 @router.post("/availability/push")
-async def push_availability(request: PushAvailabilityRequest):
+@limiter.limit("30/minute")
+async def push_availability(request: Request, body: PushAvailabilityRequest):
     """
     Push availability updates to Google.
 
@@ -203,7 +215,7 @@ async def push_availability(request: PushAvailabilityRequest):
         raise HTTPException(status_code=503, detail="Google Reserve not configured")
 
     slots = []
-    for slot in request.slots:
+    for slot in body.slots:
         start = datetime.fromisoformat(slot.start_time)
         end = datetime.fromisoformat(slot.end_time)
         duration = int((end - start).total_seconds() / 60)
@@ -225,7 +237,8 @@ async def push_availability(request: PushAvailabilityRequest):
 
 
 @router.post("/booking/{booking_id}/status")
-async def update_booking_status(booking_id: str, request: BookingStatusUpdate):
+@limiter.limit("30/minute")
+async def update_booking_status(request: Request, booking_id: str, body: BookingStatusUpdate):
     """
     Update booking status and notify Google.
 
@@ -236,9 +249,9 @@ async def update_booking_status(booking_id: str, request: BookingStatusUpdate):
         raise HTTPException(status_code=503, detail="Google Reserve not configured")
 
     try:
-        status = BookingStatus(request.status)
+        status = BookingStatus(body.status)
     except ValueError:
-        raise HTTPException(status_code=400, detail=f"Invalid status: {request.status}")
+        raise HTTPException(status_code=400, detail=f"Invalid status: {body.status}")
 
     success = await service.push_booking_notification(booking_id, status)
 
@@ -254,7 +267,9 @@ async def update_booking_status(booking_id: str, request: BookingStatusUpdate):
 # ============================================================================
 
 @router.get("/feeds/merchant")
+@limiter.limit("60/minute")
 async def get_merchant_feed(
+    request: Request,
     name: str,
     phone: str,
     address: str,
@@ -287,7 +302,8 @@ async def get_merchant_feed(
 
 
 @router.get("/feeds/service")
-async def get_service_feed():
+@limiter.limit("60/minute")
+async def get_service_feed(request: Request):
     """
     Generate service feed for Google.
 
@@ -301,7 +317,9 @@ async def get_service_feed():
 
 
 @router.get("/feeds/availability")
+@limiter.limit("60/minute")
 async def get_availability_feed(
+    request: Request,
     days_ahead: int = 30,
     start_hour: int = 11,
     end_hour: int = 22,
@@ -367,7 +385,8 @@ async def get_availability_feed(
 # ============================================================================
 
 @router.get("/config")
-async def get_google_reserve_config(db: DbSession):
+@limiter.limit("60/minute")
+async def get_google_reserve_config(request: Request, db: DbSession):
     """Get Google Reserve configuration."""
     setting = db.query(AppSetting).filter(
         AppSetting.category == "google_reserve",
@@ -391,7 +410,8 @@ async def get_google_reserve_config(db: DbSession):
 
 
 @router.post("/bookings")
-async def create_google_reserve_booking(data: dict, db: DbSession):
+@limiter.limit("30/minute")
+async def create_google_reserve_booking(request: Request, data: dict, db: DbSession):
     """Create a Google Reserve booking."""
     from datetime import datetime as dt, timezone
     date_str = data.get("date", "2026-03-20")
@@ -421,7 +441,8 @@ async def create_google_reserve_booking(data: dict, db: DbSession):
 
 
 @router.get("/bookings")
-async def get_google_reserve_bookings(db: DbSession):
+@limiter.limit("60/minute")
+async def get_google_reserve_bookings(request: Request, db: DbSession):
     """Get Google Reserve bookings."""
     reservations = db.query(Reservation).filter(
         Reservation.source == BookingSource.GOOGLE,
@@ -443,7 +464,8 @@ async def get_google_reserve_bookings(db: DbSession):
 
 
 @router.get("/stats")
-async def get_google_reserve_stats(db: DbSession):
+@limiter.limit("60/minute")
+async def get_google_reserve_stats(request: Request, db: DbSession):
     """Get Google Reserve statistics."""
     from sqlalchemy import func
 
@@ -477,7 +499,8 @@ async def get_google_reserve_stats(db: DbSession):
 
 
 @router.get("/status")
-async def get_google_reserve_status():
+@limiter.limit("60/minute")
+async def get_google_reserve_status(request: Request):
     """Check Google Reserve configuration status."""
     service = get_google_reserve_service()
 

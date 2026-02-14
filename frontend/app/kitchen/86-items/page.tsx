@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { API_URL } from '@/lib/api';
 
+import { toast } from '@/lib/toast';
 interface Item86 {
   id: number;
   name: string;
@@ -127,7 +128,7 @@ export default function Items86Page() {
       }
     } catch (error) {
       console.error('Error removing 86 item:', error);
-      alert('Failed to remove item from 86 list');
+      toast.error('Failed to remove item from 86 list');
     }
   };
 
@@ -178,7 +179,7 @@ export default function Items86Page() {
       setNewItem({ item_id: 0, reason: '', estimated_return: '', notes: '' });
     } catch (error) {
       console.error('Error marking item as 86:', error);
-      alert('Failed to mark item as 86');
+      toast.error('Failed to mark item as 86');
     }
   };
 

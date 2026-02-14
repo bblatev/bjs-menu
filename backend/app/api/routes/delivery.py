@@ -4,6 +4,7 @@ from typing import List, Optional
 from datetime import datetime, date, timezone
 from fastapi import APIRouter, HTTPException, Query, Request, Header
 
+from app.core.rate_limit import limiter
 from app.db.session import DbSession
 from app.models.delivery import (
     DeliveryIntegration, DeliveryOrder, DeliveryPlatformMapping,
@@ -30,7 +31,8 @@ router = APIRouter()
 # Root endpoint
 
 @router.get("/")
-def get_delivery_status(db: DbSession):
+@limiter.limit("60/minute")
+def get_delivery_status(request: Request, db: DbSession):
     """Get delivery aggregator status overview."""
     service = DeliveryAggregatorService(db)
     integrations = service.get_all_integrations()
@@ -48,7 +50,8 @@ def get_delivery_status(db: DbSession):
 # Integrations
 
 @router.post("/orders/")
-def create_delivery_order(db: DbSession, data: dict = None):
+@limiter.limit("30/minute")
+def create_delivery_order(request: Request, db: DbSession, data: dict = None):
     """Create a delivery order."""
     from fastapi import Body
     if data is None:
@@ -77,7 +80,9 @@ def create_delivery_order(db: DbSession, data: dict = None):
 
 
 @router.get("/integrations/", response_model=List[DeliveryIntegrationResponse])
+@limiter.limit("60/minute")
 def list_integrations(
+    request: Request,
     db: DbSession,
     location_id: Optional[int] = None,
 ):
@@ -87,7 +92,8 @@ def list_integrations(
 
 
 @router.get("/integrations/{integration_id}", response_model=DeliveryIntegrationResponse)
-def get_integration(db: DbSession, integration_id: int):
+@limiter.limit("60/minute")
+def get_integration(request: Request, db: DbSession, integration_id: int):
     """Get integration by ID."""
     integration = db.query(DeliveryIntegration).filter(
         DeliveryIntegration.id == integration_id
@@ -98,7 +104,9 @@ def get_integration(db: DbSession, integration_id: int):
 
 
 @router.post("/integrations/", response_model=DeliveryIntegrationResponse)
+@limiter.limit("30/minute")
 def create_integration(
+    request: Request,
     db: DbSession,
     integration: DeliveryIntegrationCreate,
 ):
@@ -111,7 +119,9 @@ def create_integration(
 
 
 @router.put("/integrations/{integration_id}", response_model=DeliveryIntegrationResponse)
+@limiter.limit("30/minute")
 def update_integration(
+    request: Request,
     db: DbSession,
     integration_id: int,
     integration: DeliveryIntegrationUpdate,
@@ -132,7 +142,8 @@ def update_integration(
 
 
 @router.delete("/integrations/{integration_id}")
-def delete_integration(db: DbSession, integration_id: int):
+@limiter.limit("30/minute")
+def delete_integration(request: Request, db: DbSession, integration_id: int):
     """Deactivate an integration."""
     integration = db.query(DeliveryIntegration).filter(
         DeliveryIntegration.id == integration_id
@@ -148,7 +159,9 @@ def delete_integration(db: DbSession, integration_id: int):
 # Orders
 
 @router.get("/orders/", response_model=List[DeliveryOrderResponse])
+@limiter.limit("60/minute")
 def list_orders(
+    request: Request,
     db: DbSession,
     location_id: Optional[int] = None,
     platform: Optional[str] = None,
@@ -176,7 +189,8 @@ def list_orders(
 
 
 @router.get("/orders/{order_id}", response_model=DeliveryOrderResponse)
-def get_order(db: DbSession, order_id: int):
+@limiter.limit("60/minute")
+def get_order(request: Request, db: DbSession, order_id: int):
     """Get delivery order by ID."""
     order = db.query(DeliveryOrder).filter(DeliveryOrder.id == order_id).first()
     if not order:
@@ -185,7 +199,9 @@ def get_order(db: DbSession, order_id: int):
 
 
 @router.post("/orders/{order_id}/accept", response_model=DeliveryOrderResponse)
+@limiter.limit("30/minute")
 async def accept_order(
+    request: Request,
     db: DbSession,
     order_id: int,
     accept: DeliveryOrderAccept,
@@ -204,7 +220,9 @@ async def accept_order(
 
 
 @router.post("/orders/{order_id}/reject")
+@limiter.limit("30/minute")
 async def reject_order(
+    request: Request,
     db: DbSession,
     order_id: int,
     reject: DeliveryOrderReject,
@@ -222,7 +240,9 @@ async def reject_order(
 
 
 @router.post("/orders/{order_id}/status", response_model=DeliveryOrderResponse)
+@limiter.limit("30/minute")
 async def update_order_status(
+    request: Request,
     db: DbSession,
     order_id: int,
     status_update: DeliveryOrderStatusUpdate,
@@ -237,7 +257,8 @@ async def update_order_status(
 
 
 @router.post("/orders/{order_id}/ready", response_model=DeliveryOrderResponse)
-async def mark_order_ready(db: DbSession, order_id: int):
+@limiter.limit("30/minute")
+async def mark_order_ready(request: Request, db: DbSession, order_id: int):
     """Mark order as ready for pickup."""
     service = DeliveryAggregatorService(db)
     try:
@@ -250,18 +271,21 @@ async def mark_order_ready(db: DbSession, order_id: int):
 # Menu Sync
 
 @router.post("/menu/sync", response_model=MenuSyncResponse)
-async def sync_menu(db: DbSession, request: MenuSyncRequest):
+@limiter.limit("30/minute")
+async def sync_menu(request: Request, db: DbSession, sync_request: MenuSyncRequest):
     """Sync menu to a delivery platform."""
     service = MenuSyncService(db)
     result = await service.sync_menu_to_platform(
-        integration_id=request.integration_id,
-        full_sync=request.full_sync
+        integration_id=sync_request.integration_id,
+        full_sync=sync_request.full_sync
     )
     return result
 
 
 @router.get("/menu/sync-history/{integration_id}", response_model=List[MenuSyncResponse])
+@limiter.limit("60/minute")
 def get_sync_history(
+    request: Request,
     db: DbSession,
     integration_id: int,
     limit: int = 10,
@@ -275,7 +299,9 @@ def get_sync_history(
 # Item Availability (86 items)
 
 @router.get("/availability/", response_model=List[ItemAvailabilityResponse])
+@limiter.limit("60/minute")
 def list_item_availability(
+    request: Request,
     db: DbSession,
     unavailable_only: bool = False,
 ):
@@ -287,7 +313,9 @@ def list_item_availability(
 
 
 @router.post("/availability/", response_model=ItemAvailabilityResponse)
+@limiter.limit("30/minute")
 async def update_item_availability(
+    request: Request,
     db: DbSession,
     update: ItemAvailabilityUpdate,
 ):
@@ -302,7 +330,9 @@ async def update_item_availability(
 
 
 @router.post("/availability/bulk")
+@limiter.limit("30/minute")
 async def bulk_update_availability(
+    request: Request,
     db: DbSession,
     updates: BulkAvailabilityUpdate,
 ):
@@ -324,7 +354,8 @@ async def bulk_update_availability(
 # Platform Mappings
 
 @router.get("/mappings/{integration_id}", response_model=List[PlatformMappingResponse])
-def list_platform_mappings(db: DbSession, integration_id: int):
+@limiter.limit("60/minute")
+def list_platform_mappings(request: Request, db: DbSession, integration_id: int):
     """List product-to-platform mappings."""
     return db.query(DeliveryPlatformMapping).filter(
         DeliveryPlatformMapping.integration_id == integration_id
@@ -332,7 +363,9 @@ def list_platform_mappings(db: DbSession, integration_id: int):
 
 
 @router.post("/mappings/", response_model=PlatformMappingResponse)
+@limiter.limit("30/minute")
 def create_platform_mapping(
+    request: Request,
     db: DbSession,
     mapping: PlatformMappingCreate,
 ):
@@ -345,7 +378,8 @@ def create_platform_mapping(
 
 
 @router.delete("/mappings/{mapping_id}")
-def delete_platform_mapping(db: DbSession, mapping_id: int):
+@limiter.limit("30/minute")
+def delete_platform_mapping(request: Request, db: DbSession, mapping_id: int):
     """Delete a platform mapping."""
     mapping = db.query(DeliveryPlatformMapping).filter(
         DeliveryPlatformMapping.id == mapping_id
@@ -359,6 +393,7 @@ def delete_platform_mapping(db: DbSession, mapping_id: int):
 # Webhooks
 
 @router.post("/webhook/{platform}", response_model=WebhookResponse)
+@limiter.limit("30/minute")
 async def handle_webhook(
     db: DbSession,
     platform: str,
@@ -396,7 +431,9 @@ async def handle_webhook(
 # Reports
 
 @router.get("/reports/summary", response_model=DeliverySummary)
+@limiter.limit("60/minute")
 def get_delivery_summary(
+    request: Request,
     db: DbSession,
     location_id: Optional[int] = None,
     start_date: Optional[date] = None,
@@ -412,7 +449,9 @@ def get_delivery_summary(
 
 
 @router.get("/reports/performance/{platform}", response_model=DeliveryPerformance)
+@limiter.limit("60/minute")
 def get_platform_performance(
+    request: Request,
     db: DbSession,
     platform: str,
     location_id: Optional[int] = None,

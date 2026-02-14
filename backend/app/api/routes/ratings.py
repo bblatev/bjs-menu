@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Query, Request
 from sqlalchemy import func
 from typing import Optional, List
 from datetime import date, datetime
@@ -10,6 +10,7 @@ from pydantic import BaseModel
 
 from app.db.session import DbSession
 from app.core.rbac import CurrentUser, OptionalCurrentUser
+from app.core.rate_limit import limiter
 
 router = APIRouter()
 
@@ -71,19 +72,21 @@ _next_service_id = 1
 # ==================== ITEM RATINGS ====================
 
 @router.post("/items", response_model=ItemRatingResponse, status_code=201)
-def rate_item(request: ItemRatingCreate, db: DbSession):
+@limiter.limit("30/minute")
+def rate_item(request: Request, body: ItemRatingCreate, db: DbSession):
     """Rate a menu item (public endpoint)."""
     global _next_item_id
-    if not 1 <= request.rating <= 5:
+    if not 1 <= body.rating <= 5:
         raise HTTPException(status_code=400, detail="Rating must be between 1 and 5")
-    rating = {"id": _next_item_id, "order_item_id": request.order_item_id, "item_id": None, "rating": request.rating, "comment": request.comment, "created_at": datetime.utcnow().isoformat()}
+    rating = {"id": _next_item_id, "order_item_id": body.order_item_id, "item_id": None, "rating": body.rating, "comment": body.comment, "created_at": datetime.utcnow().isoformat()}
     _item_ratings.append(rating)
     _next_item_id += 1
     return ItemRatingResponse(**rating)
 
 
 @router.get("/items", response_model=ItemRatingList)
-def get_item_ratings(db: DbSession, menu_item_id: Optional[int] = None, min_rating: Optional[int] = Query(None, ge=1, le=5), max_rating: Optional[int] = Query(None, ge=1, le=5), skip: int = Query(0, ge=0), limit: int = Query(50, ge=1, le=100)):
+@limiter.limit("60/minute")
+def get_item_ratings(request: Request, db: DbSession, menu_item_id: Optional[int] = None, min_rating: Optional[int] = Query(None, ge=1, le=5), max_rating: Optional[int] = Query(None, ge=1, le=5), skip: int = Query(0, ge=0), limit: int = Query(50, ge=1, le=100)):
     """Get all item ratings with optional filters."""
     filtered = list(_item_ratings)
     if menu_item_id:
@@ -99,7 +102,8 @@ def get_item_ratings(db: DbSession, menu_item_id: Optional[int] = None, min_rati
 
 
 @router.get("/items/{rating_id}", response_model=ItemRatingResponse)
-def get_item_rating(rating_id: int, db: DbSession):
+@limiter.limit("60/minute")
+def get_item_rating(request: Request, rating_id: int, db: DbSession):
     """Get a specific item rating by ID."""
     for r in _item_ratings:
         if r["id"] == rating_id:
@@ -108,7 +112,8 @@ def get_item_rating(rating_id: int, db: DbSession):
 
 
 @router.get("/items/menu/{menu_item_id}/stats", response_model=RatingStats)
-def get_menu_item_rating_stats(menu_item_id: int, db: DbSession):
+@limiter.limit("60/minute")
+def get_menu_item_rating_stats(request: Request, menu_item_id: int, db: DbSession):
     """Get rating statistics for a specific menu item."""
     ratings = [r for r in _item_ratings if r.get("item_id") == menu_item_id]
     if not ratings:
@@ -122,7 +127,8 @@ def get_menu_item_rating_stats(menu_item_id: int, db: DbSession):
 
 
 @router.put("/items/{rating_id}", response_model=ItemRatingResponse)
-def update_item_rating(rating_id: int, update_data: RatingUpdate, db: DbSession):
+@limiter.limit("30/minute")
+def update_item_rating(request: Request, rating_id: int, update_data: RatingUpdate, db: DbSession):
     """Update an item rating."""
     for r in _item_ratings:
         if r["id"] == rating_id:
@@ -137,7 +143,8 @@ def update_item_rating(rating_id: int, update_data: RatingUpdate, db: DbSession)
 
 
 @router.delete("/items/{rating_id}", status_code=204)
-def delete_item_rating(rating_id: int, db: DbSession):
+@limiter.limit("30/minute")
+def delete_item_rating(request: Request, rating_id: int, db: DbSession):
     """Delete an item rating."""
     global _item_ratings
     original_len = len(_item_ratings)
@@ -150,19 +157,21 @@ def delete_item_rating(rating_id: int, db: DbSession):
 # ==================== SERVICE RATINGS ====================
 
 @router.post("/service", response_model=ServiceRatingResponse, status_code=201)
-def rate_service(request: ServiceRatingCreate, db: DbSession):
+@limiter.limit("30/minute")
+def rate_service(request: Request, body: ServiceRatingCreate, db: DbSession):
     """Rate service (public endpoint)."""
     global _next_service_id
-    if not 1 <= request.rating <= 5:
+    if not 1 <= body.rating <= 5:
         raise HTTPException(status_code=400, detail="Rating must be between 1 and 5")
-    rating = {"id": _next_service_id, "rating": request.rating, "comment": request.comment, "created_at": datetime.utcnow().isoformat()}
+    rating = {"id": _next_service_id, "rating": body.rating, "comment": body.comment, "created_at": datetime.utcnow().isoformat()}
     _service_ratings.append(rating)
     _next_service_id += 1
     return ServiceRatingResponse(**rating)
 
 
 @router.get("/service", response_model=ServiceRatingList)
-def get_service_ratings(db: DbSession, table_id: Optional[int] = None, min_rating: Optional[int] = Query(None, ge=1, le=5), max_rating: Optional[int] = Query(None, ge=1, le=5), skip: int = Query(0, ge=0), limit: int = Query(50, ge=1, le=100)):
+@limiter.limit("60/minute")
+def get_service_ratings(request: Request, db: DbSession, table_id: Optional[int] = None, min_rating: Optional[int] = Query(None, ge=1, le=5), max_rating: Optional[int] = Query(None, ge=1, le=5), skip: int = Query(0, ge=0), limit: int = Query(50, ge=1, le=100)):
     """Get all service ratings with optional filters."""
     filtered = list(_service_ratings)
     if min_rating:
@@ -176,7 +185,8 @@ def get_service_ratings(db: DbSession, table_id: Optional[int] = None, min_ratin
 
 
 @router.get("/service/{rating_id}", response_model=ServiceRatingResponse)
-def get_service_rating(rating_id: int, db: DbSession):
+@limiter.limit("60/minute")
+def get_service_rating(request: Request, rating_id: int, db: DbSession):
     """Get a specific service rating by ID."""
     for r in _service_ratings:
         if r["id"] == rating_id:
@@ -185,7 +195,8 @@ def get_service_rating(rating_id: int, db: DbSession):
 
 
 @router.get("/service/stats", response_model=RatingStats)
-def get_service_rating_stats(db: DbSession, table_id: Optional[int] = None):
+@limiter.limit("60/minute")
+def get_service_rating_stats(request: Request, db: DbSession, table_id: Optional[int] = None):
     """Get overall service rating statistics."""
     ratings = list(_service_ratings)
     if not ratings:
@@ -199,7 +210,8 @@ def get_service_rating_stats(db: DbSession, table_id: Optional[int] = None):
 
 
 @router.put("/service/{rating_id}", response_model=ServiceRatingResponse)
-def update_service_rating(rating_id: int, update_data: RatingUpdate, db: DbSession):
+@limiter.limit("30/minute")
+def update_service_rating(request: Request, rating_id: int, update_data: RatingUpdate, db: DbSession):
     """Update a service rating."""
     for r in _service_ratings:
         if r["id"] == rating_id:
@@ -214,7 +226,8 @@ def update_service_rating(rating_id: int, update_data: RatingUpdate, db: DbSessi
 
 
 @router.delete("/service/{rating_id}", status_code=204)
-def delete_service_rating(rating_id: int, db: DbSession):
+@limiter.limit("30/minute")
+def delete_service_rating(request: Request, rating_id: int, db: DbSession):
     """Delete a service rating."""
     global _service_ratings
     original_len = len(_service_ratings)

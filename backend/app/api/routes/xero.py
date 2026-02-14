@@ -8,9 +8,11 @@ import logging
 from datetime import datetime, timezone
 from typing import List, Optional, Dict, Any
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Query, Request
 from pydantic import BaseModel, Field
 from sqlalchemy import text
+
+from app.core.rate_limit import limiter
 
 from app.db.session import DbSession
 
@@ -73,7 +75,8 @@ class XeroSettingsUpdate(BaseModel):
 # ==================== ENDPOINTS ====================
 
 @router.get("/status", response_model=XeroConnectionStatus)
-def get_xero_status(db: DbSession):
+@limiter.limit("60/minute")
+def get_xero_status(request: Request, db: DbSession):
     """Get Xero integration connection status."""
     try:
         row = db.execute(
@@ -97,7 +100,8 @@ def get_xero_status(db: DbSession):
 
 
 @router.post("/connect")
-def connect_xero(db: DbSession, data: XeroConnectRequest):
+@limiter.limit("30/minute")
+def connect_xero(request: Request, db: DbSession, data: XeroConnectRequest):
     """Initiate Xero OAuth2 connection.
 
     In production, this would exchange the authorization_code for tokens via Xero API.
@@ -144,7 +148,8 @@ def connect_xero(db: DbSession, data: XeroConnectRequest):
 
 
 @router.post("/disconnect")
-def disconnect_xero(db: DbSession, data: XeroDisconnectRequest):
+@limiter.limit("30/minute")
+def disconnect_xero(request: Request, db: DbSession, data: XeroDisconnectRequest):
     """Disconnect Xero integration."""
     if not data.confirm:
         raise HTTPException(status_code=400, detail="Confirmation required")
@@ -159,7 +164,8 @@ def disconnect_xero(db: DbSession, data: XeroDisconnectRequest):
 
 
 @router.post("/sync")
-def trigger_xero_sync(db: DbSession, data: XeroSyncRequest):
+@limiter.limit("30/minute")
+def trigger_xero_sync(request: Request, db: DbSession, data: XeroSyncRequest):
     """Trigger a manual Xero sync.
 
     In production, this would push/pull data to/from Xero API.
@@ -226,7 +232,8 @@ def trigger_xero_sync(db: DbSession, data: XeroSyncRequest):
 
 
 @router.get("/mappings", response_model=List[XeroAccountMapping])
-def get_account_mappings(db: DbSession):
+@limiter.limit("60/minute")
+def get_account_mappings(request: Request, db: DbSession):
     """Get Xero account mappings."""
     try:
         rows = db.execute(
@@ -249,7 +256,8 @@ def get_account_mappings(db: DbSession):
 
 
 @router.put("/mappings")
-def update_account_mappings(db: DbSession, data: XeroAccountMappingUpdate):
+@limiter.limit("30/minute")
+def update_account_mappings(request: Request, db: DbSession, data: XeroAccountMappingUpdate):
     """Update Xero account mappings."""
     try:
         # Upsert each mapping
@@ -283,7 +291,9 @@ def update_account_mappings(db: DbSession, data: XeroAccountMappingUpdate):
 
 
 @router.get("/sync-logs", response_model=List[XeroSyncLog])
+@limiter.limit("60/minute")
 def get_sync_logs(
+    request: Request,
     db: DbSession,
     limit: int = Query(20, ge=1, le=100),
 ):
@@ -309,7 +319,8 @@ def get_sync_logs(
 
 
 @router.put("/settings")
-def update_xero_settings(db: DbSession, data: XeroSettingsUpdate):
+@limiter.limit("30/minute")
+def update_xero_settings(request: Request, db: DbSession, data: XeroSettingsUpdate):
     """Update Xero sync settings."""
     try:
         db.execute(

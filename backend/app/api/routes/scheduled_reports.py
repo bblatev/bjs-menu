@@ -5,7 +5,7 @@ Manage automated report generation and email delivery.
 
 from typing import Optional, List
 from datetime import time
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel, EmailStr
 
 from app.services.scheduled_reports_service import (
@@ -14,6 +14,7 @@ from app.services.scheduled_reports_service import (
     ReportFormat,
     ReportType,
 )
+from app.core.rate_limit import limiter
 
 router = APIRouter()
 
@@ -81,7 +82,8 @@ class RunResponse(BaseModel):
 # ============================================================================
 
 @router.post("/schedules", response_model=ScheduleResponse)
-async def create_schedule(request: CreateScheduleRequest):
+@limiter.limit("30/minute")
+async def create_schedule(request: Request, body: CreateScheduleRequest):
     """
     Create a new report schedule.
 
@@ -93,45 +95,47 @@ async def create_schedule(request: CreateScheduleRequest):
     service = get_scheduled_reports_service()
 
     try:
-        report_type = ReportType(request.report_type)
+        report_type = ReportType(body.report_type)
     except ValueError:
-        raise HTTPException(status_code=400, detail=f"Invalid report type: {request.report_type}")
+        raise HTTPException(status_code=400, detail=f"Invalid report type: {body.report_type}")
 
     try:
-        frequency = ReportFrequency(request.frequency)
+        frequency = ReportFrequency(body.frequency)
     except ValueError:
-        raise HTTPException(status_code=400, detail=f"Invalid frequency: {request.frequency}")
+        raise HTTPException(status_code=400, detail=f"Invalid frequency: {body.frequency}")
 
     try:
-        format = ReportFormat(request.format)
+        format = ReportFormat(body.format)
     except ValueError:
         format = ReportFormat.PDF
 
     # Parse time
     try:
-        hour, minute = map(int, request.time_of_day.split(":"))
+        hour, minute = map(int, body.time_of_day.split(":"))
         time_of_day = time(hour, minute)
     except ValueError:
         time_of_day = time(6, 0)
 
     schedule = service.create_schedule(
-        name=request.name,
+        name=body.name,
         report_type=report_type,
         frequency=frequency,
         format=format,
-        recipients=request.recipients,
+        recipients=body.recipients,
         time_of_day=time_of_day,
-        day_of_week=request.day_of_week,
-        day_of_month=request.day_of_month,
-        venue_id=request.venue_id,
-        parameters=request.parameters,
+        day_of_week=body.day_of_week,
+        day_of_month=body.day_of_month,
+        venue_id=body.venue_id,
+        parameters=body.parameters,
     )
 
     return _schedule_to_response(schedule)
 
 
 @router.get("/schedules", response_model=List[ScheduleResponse])
+@limiter.limit("60/minute")
 async def list_schedules(
+    request: Request,
     venue_id: Optional[int] = None,
     is_active: Optional[bool] = None,
 ):
@@ -143,7 +147,8 @@ async def list_schedules(
 
 
 @router.get("/schedules/{schedule_id}", response_model=ScheduleResponse)
-async def get_schedule(schedule_id: str):
+@limiter.limit("60/minute")
+async def get_schedule(request: Request, schedule_id: str):
     """Get a specific report schedule."""
     service = get_scheduled_reports_service()
     schedule = service.get_schedule(schedule_id)
@@ -155,29 +160,30 @@ async def get_schedule(schedule_id: str):
 
 
 @router.put("/schedules/{schedule_id}", response_model=ScheduleResponse)
-async def update_schedule(schedule_id: str, request: UpdateScheduleRequest):
+@limiter.limit("30/minute")
+async def update_schedule(request: Request, schedule_id: str, body: UpdateScheduleRequest):
     """Update a report schedule."""
     service = get_scheduled_reports_service()
 
     updates = {}
-    if request.name is not None:
-        updates["name"] = request.name
-    if request.recipients is not None:
-        updates["recipients"] = request.recipients
-    if request.time_of_day is not None:
+    if body.name is not None:
+        updates["name"] = body.name
+    if body.recipients is not None:
+        updates["recipients"] = body.recipients
+    if body.time_of_day is not None:
         try:
-            hour, minute = map(int, request.time_of_day.split(":"))
+            hour, minute = map(int, body.time_of_day.split(":"))
             updates["time_of_day"] = time(hour, minute)
         except ValueError:
             pass
-    if request.day_of_week is not None:
-        updates["day_of_week"] = request.day_of_week
-    if request.day_of_month is not None:
-        updates["day_of_month"] = request.day_of_month
-    if request.parameters is not None:
-        updates["parameters"] = request.parameters
-    if request.is_active is not None:
-        updates["is_active"] = request.is_active
+    if body.day_of_week is not None:
+        updates["day_of_week"] = body.day_of_week
+    if body.day_of_month is not None:
+        updates["day_of_month"] = body.day_of_month
+    if body.parameters is not None:
+        updates["parameters"] = body.parameters
+    if body.is_active is not None:
+        updates["is_active"] = body.is_active
 
     schedule = service.update_schedule(schedule_id, **updates)
 
@@ -188,7 +194,8 @@ async def update_schedule(schedule_id: str, request: UpdateScheduleRequest):
 
 
 @router.delete("/schedules/{schedule_id}")
-async def delete_schedule(schedule_id: str):
+@limiter.limit("30/minute")
+async def delete_schedule(request: Request, schedule_id: str):
     """Delete a report schedule."""
     service = get_scheduled_reports_service()
 
@@ -199,7 +206,8 @@ async def delete_schedule(schedule_id: str):
 
 
 @router.post("/schedules/{schedule_id}/toggle")
-async def toggle_schedule(schedule_id: str, is_active: bool):
+@limiter.limit("30/minute")
+async def toggle_schedule(request: Request, schedule_id: str, is_active: bool):
     """Enable or disable a schedule."""
     service = get_scheduled_reports_service()
 
@@ -221,7 +229,8 @@ async def toggle_schedule(schedule_id: str, is_active: bool):
 # ============================================================================
 
 @router.post("/schedules/{schedule_id}/run", response_model=RunResponse)
-async def run_schedule_now(schedule_id: str):
+@limiter.limit("30/minute")
+async def run_schedule_now(request: Request, schedule_id: str):
     """Run a scheduled report immediately."""
     service = get_scheduled_reports_service()
 
@@ -234,7 +243,8 @@ async def run_schedule_now(schedule_id: str):
 
 
 @router.get("/schedules/{schedule_id}/history", response_model=List[RunResponse])
-async def get_schedule_history(schedule_id: str, limit: int = 20):
+@limiter.limit("60/minute")
+async def get_schedule_history(request: Request, schedule_id: str, limit: int = 20):
     """Get run history for a schedule."""
     service = get_scheduled_reports_service()
 
@@ -244,7 +254,8 @@ async def get_schedule_history(schedule_id: str, limit: int = 20):
 
 
 @router.get("/history", response_model=List[RunResponse])
-async def get_all_history(limit: int = 50):
+@limiter.limit("60/minute")
+async def get_all_history(request: Request, limit: int = 50):
     """Get run history for all schedules."""
     service = get_scheduled_reports_service()
 
@@ -258,7 +269,8 @@ async def get_all_history(limit: int = 50):
 # ============================================================================
 
 @router.get("/types")
-async def get_report_types():
+@limiter.limit("60/minute")
+async def get_report_types(request: Request):
     """Get available report types."""
     return {
         "types": [
@@ -329,7 +341,8 @@ async def get_report_types():
 # ============================================================================
 
 @router.post("/check-due")
-async def check_due_reports():
+@limiter.limit("30/minute")
+async def check_due_reports(request: Request):
     """
     Check and run any due reports.
 

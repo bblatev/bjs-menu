@@ -5,6 +5,7 @@ import Link from 'next/link';
 
 import { API_URL, getAuthHeaders } from '@/lib/api';
 
+import { toast } from '@/lib/toast';
 interface VarianceRecord {
   id: number;
   item_name: string;
@@ -450,7 +451,7 @@ export default function VarianceAnalysisPage() {
                 <button
                   onClick={() => {
                     setShowInvestigateModal(false);
-                    alert('Variance investigation saved');
+                    toast.success('Variance investigation saved');
                   }}
                   className="px-4 py-2 bg-primary-600 text-gray-900 rounded-lg hover:bg-primary-700"
                 >

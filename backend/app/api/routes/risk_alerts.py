@@ -8,12 +8,13 @@ from datetime import datetime, timezone
 from decimal import Decimal
 from typing import Optional, List
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Query, Request
 from pydantic import BaseModel
 from sqlalchemy import func
 
 from app.db.session import DbSession
 from app.models.operations import RiskAlert
+from app.core.rate_limit import limiter
 
 router = APIRouter()
 
@@ -146,7 +147,8 @@ def _row_to_case(staff_id: int, rows: List[RiskAlert]) -> dict:
 # ── Endpoints ─────────────────────────────────────────────────────────────────
 
 @router.get("/dashboard")
-async def get_risk_dashboard(db: DbSession):
+@limiter.limit("60/minute")
+async def get_risk_dashboard(request: Request, db: DbSession):
     """Get fraud detection dashboard overview."""
     # Build cases by grouping non-dismissed alerts by staff_id
     alerts = (
@@ -196,7 +198,9 @@ async def get_risk_dashboard(db: DbSession):
 
 
 @router.get("/alerts")
+@limiter.limit("60/minute")
 async def get_risk_alerts(
+    request: Request,
     db: DbSession,
     severity: Optional[str] = None,
     acknowledged: Optional[bool] = None,
@@ -217,7 +221,8 @@ async def get_risk_alerts(
 
 
 @router.get("/scores")
-async def get_risk_scores(db: DbSession):
+@limiter.limit("60/minute")
+async def get_risk_scores(request: Request, db: DbSession):
     """Get staff risk scores."""
     # Compute a risk score per staff member based on alert count and severity
     rows = (
@@ -263,7 +268,8 @@ async def get_risk_scores(db: DbSession):
 
 
 @router.get("/patterns")
-async def get_fraud_patterns(db: DbSession):
+@limiter.limit("60/minute")
+async def get_fraud_patterns(request: Request, db: DbSession):
     """Get detected fraud patterns."""
     # Group alerts by type to detect patterns
     rows = db.query(RiskAlert).order_by(RiskAlert.created_at.desc()).all()
@@ -308,7 +314,8 @@ async def get_fraud_patterns(db: DbSession):
 
 
 @router.post("/alerts/{alert_id}/acknowledge")
-async def acknowledge_risk_alert(alert_id: str, db: DbSession):
+@limiter.limit("30/minute")
+async def acknowledge_risk_alert(request: Request, alert_id: str, db: DbSession):
     """Acknowledge a risk alert."""
     alert = db.query(RiskAlert).filter(RiskAlert.id == int(alert_id)).first()
     if not alert:

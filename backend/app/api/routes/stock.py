@@ -49,7 +49,9 @@ router = APIRouter()
 # ==================== STUB ENDPOINTS ====================
 
 @router.get("/items")
+@limiter.limit("60/minute")
 def get_stock_items(
+    request: Request,
     db: DbSession,
     location_id: int = Query(1),
     search: Optional[str] = None,
@@ -94,7 +96,9 @@ def get_stock_items(
 
 
 @router.get("/transfers")
+@limiter.limit("60/minute")
 def get_stock_transfers(
+    request: Request,
     db: DbSession,
     location_id: Optional[int] = None,
     limit: int = Query(50, le=500),
@@ -125,7 +129,8 @@ def get_stock_transfers(
 
 
 @router.get("/forecasting")
-def get_stock_forecasting(db: DbSession, location_id: int = Query(1)):
+@limiter.limit("60/minute")
+def get_stock_forecasting(request: Request, db: DbSession, location_id: int = Query(1)):
     """Get stock forecasting data."""
     from app.models.analytics import SalesForecast
     forecasts = db.query(SalesForecast).filter(
@@ -154,7 +159,8 @@ def get_stock_forecasting(db: DbSession, location_id: int = Query(1)):
 
 
 @router.get("/forecasting/stats")
-def get_stock_forecasting_stats(db: DbSession, location_id: int = Query(1)):
+@limiter.limit("60/minute")
+def get_stock_forecasting_stats(request: Request, db: DbSession, location_id: int = Query(1)):
     """Get stock forecasting statistics."""
     from app.models.analytics import SalesForecast
     total = db.query(func.count(SalesForecast.id)).filter(
@@ -181,7 +187,8 @@ def get_stock_forecasting_stats(db: DbSession, location_id: int = Query(1)):
 
 
 @router.get("/aging")
-def get_stock_aging(db: DbSession, location_id: int = Query(1)):
+@limiter.limit("60/minute")
+def get_stock_aging(request: Request, db: DbSession, location_id: int = Query(1)):
     """Get stock aging report."""
     items = []
     total_value = Decimal("0")
@@ -221,7 +228,9 @@ def get_stock_aging(db: DbSession, location_id: int = Query(1)):
 # ==================== STOCK ITEMS ====================
 
 @router.get("/")
+@limiter.limit("60/minute")
 def list_stock(
+    request: Request,
     db: DbSession,
     search: Optional[str] = None,
     low_stock_only: bool = False,
@@ -267,7 +276,9 @@ def list_stock(
 
 
 @router.post("/")
+@limiter.limit("30/minute")
 def add_stock_item(
+    request: Request,
     db: DbSession,
     name: str = Query(...),
     quantity: float = Query(0),
@@ -320,7 +331,8 @@ def add_stock_item(
 # ==================== CATEGORIES ====================
 
 @router.get("/categories")
-def get_stock_categories(db: DbSession):
+@limiter.limit("60/minute")
+def get_stock_categories(request: Request, db: DbSession):
     """Get stock categories derived from product units and supplier groupings."""
     # Group products by unit type as a proxy for category
     unit_category_map = {
@@ -347,7 +359,9 @@ def get_stock_categories(db: DbSession):
 # ==================== MOVEMENTS ====================
 
 @router.get("/movements/")
+@limiter.limit("60/minute")
 def get_stock_movements(
+    request: Request,
     db: DbSession,
     location_id: Optional[int] = None,
     product_id: Optional[int] = None,
@@ -382,7 +396,9 @@ def get_stock_movements(
 
 
 @router.post("/movements/")
+@limiter.limit("30/minute")
 def record_stock_movement(
+    request: Request,
     db: DbSession,
     product_id: int = Query(...),
     quantity: float = Query(...),
@@ -430,7 +446,9 @@ def record_stock_movement(
 # ==================== ALERTS ====================
 
 @router.get("/alerts/")
+@limiter.limit("60/minute")
 def get_stock_alerts(
+    request: Request,
     db: DbSession,
     location_id: int = Query(1),
 ):
@@ -442,7 +460,9 @@ def get_stock_alerts(
 # ==================== BATCHES ====================
 
 @router.get("/batches")
+@limiter.limit("60/minute")
 def get_stock_batches(
+    request: Request,
     db: DbSession,
     location_id: int = Query(1),
 ):
@@ -478,7 +498,9 @@ def get_stock_batches(
 # ==================== EXPIRING ====================
 
 @router.get("/expiring")
+@limiter.limit("60/minute")
 def get_expiring_items(
+    request: Request,
     db: DbSession,
     days: int = Query(30),
     location_id: int = Query(1),
@@ -518,7 +540,9 @@ def get_expiring_items(
 # ==================== ADJUSTMENTS ====================
 
 @router.get("/adjustments")
+@limiter.limit("60/minute")
 def get_adjustments(
+    request: Request,
     db: DbSession,
     location_id: Optional[int] = None,
     limit: int = Query(50),
@@ -547,7 +571,9 @@ def get_adjustments(
 
 
 @router.post("/adjustments")
+@limiter.limit("30/minute")
 def create_adjustment(
+    request: Request,
     db: DbSession,
     data: dict = None,
 ):
@@ -603,7 +629,8 @@ def create_adjustment(
 
 
 @router.put("/adjustments/{adjustment_id}/approve")
-def approve_adjustment(db: DbSession, adjustment_id: int):
+@limiter.limit("30/minute")
+def approve_adjustment(request: Request, db: DbSession, adjustment_id: int):
     """Approve a stock adjustment."""
     return {"status": "approved", "adjustment_id": adjustment_id}
 
@@ -611,7 +638,9 @@ def approve_adjustment(db: DbSession, adjustment_id: int):
 # ==================== VALUATION ====================
 
 @router.get("/valuation")
+@limiter.limit("60/minute")
 def get_stock_valuation(
+    request: Request,
     db: DbSession,
     location_id: Optional[int] = None,
 ):
@@ -623,7 +652,9 @@ def get_stock_valuation(
 # ==================== WASTE ====================
 
 @router.get("/waste/records")
+@limiter.limit("60/minute")
 def get_waste_records(
+    request: Request,
     db: DbSession,
     location_id: int = Query(1),
     limit: int = Query(50),
@@ -653,7 +684,9 @@ def get_waste_records(
 
 
 @router.get("/waste/stats")
+@limiter.limit("60/minute")
 def get_waste_stats(
+    request: Request,
     db: DbSession,
     location_id: int = Query(1),
 ):
@@ -694,7 +727,8 @@ def get_waste_stats(
 
 
 @router.get("/waste/insights")
-def get_waste_insights(db: DbSession, location_id: int = Query(1)):
+@limiter.limit("60/minute")
+def get_waste_insights(request: Request, db: DbSession, location_id: int = Query(1)):
     """Get waste insights and recommendations."""
     from app.models.advanced_features import WasteTrackingEntry
     from sqlalchemy import func as sqlfunc
@@ -740,7 +774,9 @@ def get_waste_insights(db: DbSession, location_id: int = Query(1)):
 
 
 @router.post("/waste/records")
+@limiter.limit("30/minute")
 def record_waste(
+    request: Request,
     db: DbSession,
     stock_item_id: int = Query(...),
     quantity: float = Query(...),
@@ -764,7 +800,9 @@ def record_waste(
 # ==================== COUNTS ====================
 
 @router.get("/counts")
+@limiter.limit("60/minute")
 def get_stock_counts(
+    request: Request,
     db: DbSession,
     location_id: Optional[int] = None,
 ):
@@ -830,7 +868,9 @@ def get_stock_counts(
 
 
 @router.post("/counts")
+@limiter.limit("30/minute")
 def create_stock_count(
+    request: Request,
     db: DbSession,
     count_type: str = Query("full"),
     location: Optional[str] = None,
@@ -853,7 +893,8 @@ def create_stock_count(
 
 
 @router.get("/counts/{count_id}")
-def get_stock_count_items(db: DbSession, count_id: int):
+@limiter.limit("60/minute")
+def get_stock_count_items(request: Request, db: DbSession, count_id: int):
     """Get items for a specific count session."""
     session = db.query(InventorySession).filter(InventorySession.id == count_id).first()
     if not session:
@@ -882,7 +923,9 @@ def get_stock_count_items(db: DbSession, count_id: int):
 
 
 @router.put("/counts/{count_id}/items/{item_id}")
+@limiter.limit("30/minute")
 def update_count_item(
+    request: Request,
     db: DbSession,
     count_id: int,
     item_id: int,
@@ -904,7 +947,8 @@ def update_count_item(
 
 
 @router.put("/counts/{count_id}/complete")
-def complete_stock_count(db: DbSession, count_id: int):
+@limiter.limit("30/minute")
+def complete_stock_count(request: Request, db: DbSession, count_id: int):
     """Mark a stock count as completed (ready for approval)."""
     session = db.query(InventorySession).filter(InventorySession.id == count_id).first()
     if not session:
@@ -916,7 +960,8 @@ def complete_stock_count(db: DbSession, count_id: int):
 
 
 @router.put("/counts/{count_id}/approve")
-def approve_stock_count(db: DbSession, count_id: int):
+@limiter.limit("30/minute")
+def approve_stock_count(request: Request, db: DbSession, count_id: int):
     """Approve and commit a stock count (adjusts stock levels)."""
     from app.api.routes.inventory import commit_session
     # Reuse the existing commit logic
@@ -986,7 +1031,9 @@ def approve_stock_count(db: DbSession, count_id: int):
 # ==================== PAR LEVELS ====================
 
 @router.get("/par-levels")
+@limiter.limit("60/minute")
 def get_par_levels(
+    request: Request,
     db: DbSession,
     period: str = Query("week"),
     location_id: int = Query(1),
@@ -999,7 +1046,9 @@ def get_par_levels(
 # ==================== VARIANCE ====================
 
 @router.get("/variance/analysis")
+@limiter.limit("60/minute")
 def get_variance_analysis(
+    request: Request,
     db: DbSession,
     period: str = Query("week"),
     location_id: int = Query(1),
@@ -1073,7 +1122,8 @@ async def import_stock(request: Request, db: DbSession = None, file: UploadFile 
 
 
 @router.get("/export")
-def export_stock(db: DbSession, location_id: int = Query(1)):
+@limiter.limit("60/minute")
+def export_stock(request: Request, db: DbSession, location_id: int = Query(1)):
     """Export stock to CSV."""
     stock_items = db.query(StockOnHand).filter(
         StockOnHand.location_id == location_id
@@ -1108,7 +1158,9 @@ def export_stock(db: DbSession, location_id: int = Query(1)):
 # ==================== WASTE (root GET) ====================
 
 @router.get("/waste")
+@limiter.limit("60/minute")
 def get_waste_overview(
+    request: Request,
     db: DbSession,
     location_id: int = Query(1),
 ):
@@ -1151,7 +1203,8 @@ def get_waste_overview(
 # ==================== RECIPE COSTS ====================
 
 @router.get("/recipe-costs")
-def get_stock_recipe_costs(db: DbSession):
+@limiter.limit("60/minute")
+def get_stock_recipe_costs(request: Request, db: DbSession):
     """Get recipe cost analysis - proxy to /recipes/costs."""
     from app.models.recipe import Recipe, RecipeLine
 
@@ -1185,7 +1238,8 @@ def get_stock_recipe_costs(db: DbSession):
 
 
 @router.get("/recipe-costs/stats")
-def get_stock_recipe_cost_stats(db: DbSession):
+@limiter.limit("60/minute")
+def get_stock_recipe_cost_stats(request: Request, db: DbSession):
     """Get recipe cost statistics."""
     from app.models.recipe import Recipe, RecipeLine
 
@@ -1212,7 +1266,8 @@ def get_stock_recipe_cost_stats(db: DbSession):
 # ==================== SUPPLIER PERFORMANCE ====================
 
 @router.get("/supplier-performance")
-def get_stock_supplier_performance(db: DbSession):
+@limiter.limit("60/minute")
+def get_stock_supplier_performance(request: Request, db: DbSession):
     """Get supplier delivery and quality performance."""
     from app.models.supplier import Supplier
 
@@ -1235,7 +1290,8 @@ def get_stock_supplier_performance(db: DbSession):
 
 
 @router.get("/supplier-performance/stats")
-def get_stock_supplier_performance_stats(db: DbSession):
+@limiter.limit("60/minute")
+def get_stock_supplier_performance_stats(request: Request, db: DbSession):
     """Get supplier performance statistics."""
     from app.models.supplier import Supplier
 
@@ -1251,7 +1307,8 @@ def get_stock_supplier_performance_stats(db: DbSession):
 # ==================== TANKS (proxy to inventory-hardware) ====================
 
 @router.get("/tanks")
-def get_stock_tanks(db: DbSession, status: Optional[str] = Query(None)):
+@limiter.limit("60/minute")
+def get_stock_tanks(request: Request, db: DbSession, status: Optional[str] = Query(None)):
     """Get tanks under /stock prefix - proxy to inventory hardware tanks."""
     from app.models.hardware import Tank as TankModel
 

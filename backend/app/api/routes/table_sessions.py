@@ -1,12 +1,13 @@
 """
 Table Sessions & Guest Duration Tracking API
 """
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.orm import Session
 from typing import List, Optional
 from datetime import datetime, timedelta
 from pydantic import BaseModel, ConfigDict
 
+from app.core.rate_limit import limiter
 from app.db.session import get_db
 from app.core.rbac import get_current_user
 from app.models import (
@@ -51,7 +52,9 @@ class GuestDurationStats(BaseModel):
 
 # Session Management
 @router.post("/", response_model=TableSessionResponse)
+@limiter.limit("30/minute")
 def start_session(
+    request: Request,
     data: TableSessionCreate,
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(get_current_user)
@@ -93,7 +96,9 @@ def start_session(
 
 
 @router.get("/", response_model=List[TableSessionResponse])
+@limiter.limit("60/minute")
 def list_sessions(
+    request: Request,
     status: Optional[str] = None,
     table_id: Optional[int] = None,
     db: Session = Depends(get_db),
@@ -111,7 +116,9 @@ def list_sessions(
 
 
 @router.get("/active", response_model=List[TableSessionResponse])
+@limiter.limit("60/minute")
 def get_active_sessions(
+    request: Request,
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(get_current_user)
 ):
@@ -129,7 +136,9 @@ def get_active_sessions(
 
 
 @router.get("/{session_id}", response_model=TableSessionResponse)
+@limiter.limit("60/minute")
 def get_session(
+    request: Request,
     session_id: int,
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(get_current_user)
@@ -147,7 +156,9 @@ def get_session(
 
 
 @router.post("/{session_id}/end")
+@limiter.limit("30/minute")
 def end_session(
+    request: Request,
     session_id: int,
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(get_current_user)
@@ -209,7 +220,9 @@ def end_session(
 
 
 @router.patch("/{session_id}/guests")
+@limiter.limit("30/minute")
 def update_guest_count(
+    request: Request,
     session_id: int,
     guest_count: int,
     db: Session = Depends(get_db),
@@ -238,7 +251,9 @@ def update_guest_count(
 
 
 @router.get("/stats/duration", response_model=GuestDurationStats)
+@limiter.limit("60/minute")
 def get_duration_stats(
+    request: Request,
     days: int = 30,
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(get_current_user)
@@ -275,7 +290,9 @@ def get_duration_stats(
 
 
 @router.get("/table/{table_id}/history")
+@limiter.limit("60/minute")
 def get_table_history(
+    request: Request,
     table_id: int,
     limit: int = 50,
     db: Session = Depends(get_db),

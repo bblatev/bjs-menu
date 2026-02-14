@@ -8,6 +8,7 @@ from datetime import date, time, datetime
 from fastapi import APIRouter, HTTPException, Request, Header
 from pydantic import BaseModel
 
+from app.core.rate_limit import limiter
 from app.services.opentable_service import (
     get_opentable_service,
     ReservationStatus,
@@ -72,6 +73,7 @@ class GuestResponse(BaseModel):
 # ============================================================================
 
 @router.post("/webhook")
+@limiter.limit("30/minute")
 async def handle_webhook(
     request: Request,
     x_opentable_signature: Optional[str] = Header(None, alias="X-OpenTable-Signature"),
@@ -109,7 +111,8 @@ async def handle_webhook(
 # ============================================================================
 
 @router.post("/availability")
-async def push_availability(request: PushAvailabilityRequest):
+@limiter.limit("30/minute")
+async def push_availability(request: Request, body: PushAvailabilityRequest):
     """
     Push availability to OpenTable.
 
@@ -118,12 +121,12 @@ async def push_availability(request: PushAvailabilityRequest):
     service = get_opentable_service()
 
     try:
-        target_date = date.fromisoformat(request.date)
+        target_date = date.fromisoformat(body.date)
     except ValueError:
         raise HTTPException(status_code=400, detail="Invalid date format. Use YYYY-MM-DD")
 
     slots = []
-    for slot in request.slots:
+    for slot in body.slots:
         try:
             hour, minute = map(int, slot.time.split(":"))
             slot_time = time(hour, minute)
@@ -140,13 +143,14 @@ async def push_availability(request: PushAvailabilityRequest):
 
     return {
         "success": success,
-        "date": request.date,
+        "date": body.date,
         "slots_count": len(slots),
     }
 
 
 @router.get("/availability/{date_str}")
-async def get_availability(date_str: str):
+@limiter.limit("60/minute")
+async def get_availability(request: Request, date_str: str):
     """Get availability for a specific date."""
     service = get_opentable_service()
 
@@ -175,7 +179,9 @@ async def get_availability(date_str: str):
 # ============================================================================
 
 @router.get("/reservations", response_model=List[ReservationResponse])
+@limiter.limit("60/minute")
 async def list_reservations(
+    request: Request,
     date: Optional[str] = None,
     status: Optional[str] = None,
 ):
@@ -202,7 +208,8 @@ async def list_reservations(
 
 
 @router.get("/reservations/{reservation_id}", response_model=ReservationResponse)
-async def get_reservation(reservation_id: str):
+@limiter.limit("60/minute")
+async def get_reservation(request: Request, reservation_id: str):
     """Get a specific reservation."""
     service = get_opentable_service()
 
@@ -215,7 +222,8 @@ async def get_reservation(reservation_id: str):
 
 
 @router.put("/reservations/{reservation_id}/status", response_model=ReservationResponse)
-async def update_reservation_status(reservation_id: str, request: UpdateStatusRequest):
+@limiter.limit("30/minute")
+async def update_reservation_status(request: Request, reservation_id: str, body: UpdateStatusRequest):
     """
     Update reservation status.
 
@@ -225,14 +233,14 @@ async def update_reservation_status(reservation_id: str, request: UpdateStatusRe
     service = get_opentable_service()
 
     try:
-        status = ReservationStatus(request.status)
+        status = ReservationStatus(body.status)
     except ValueError:
-        raise HTTPException(status_code=400, detail=f"Invalid status: {request.status}")
+        raise HTTPException(status_code=400, detail=f"Invalid status: {body.status}")
 
     reservation = service.update_reservation_status(
         reservation_id,
         status,
-        table_id=request.table_id,
+        table_id=body.table_id,
     )
 
     if not reservation:
@@ -245,7 +253,8 @@ async def update_reservation_status(reservation_id: str, request: UpdateStatusRe
 
 
 @router.post("/reservations/{reservation_id}/seat")
-async def seat_reservation(reservation_id: str, table_id: str):
+@limiter.limit("30/minute")
+async def seat_reservation(request: Request, reservation_id: str, table_id: str):
     """Mark a reservation as seated at a specific table."""
     service = get_opentable_service()
 
@@ -269,7 +278,8 @@ async def seat_reservation(reservation_id: str, table_id: str):
 
 
 @router.post("/reservations/{reservation_id}/complete")
-async def complete_reservation(reservation_id: str):
+@limiter.limit("30/minute")
+async def complete_reservation(request: Request, reservation_id: str):
     """Mark a reservation as completed."""
     service = get_opentable_service()
 
@@ -291,7 +301,8 @@ async def complete_reservation(reservation_id: str):
 
 
 @router.post("/reservations/{reservation_id}/no-show")
-async def mark_no_show(reservation_id: str):
+@limiter.limit("30/minute")
+async def mark_no_show(request: Request, reservation_id: str):
     """Mark a reservation as no-show."""
     service = get_opentable_service()
 
@@ -317,7 +328,8 @@ async def mark_no_show(reservation_id: str):
 # ============================================================================
 
 @router.get("/guests", response_model=List[GuestResponse])
-async def list_guests(vip_only: bool = False):
+@limiter.limit("60/minute")
+async def list_guests(request: Request, vip_only: bool = False):
     """List OpenTable guests."""
     service = get_opentable_service()
 
@@ -327,7 +339,8 @@ async def list_guests(vip_only: bool = False):
 
 
 @router.get("/guests/{guest_id}", response_model=GuestResponse)
-async def get_guest(guest_id: str):
+@limiter.limit("60/minute")
+async def get_guest(request: Request, guest_id: str):
     """Get a specific guest."""
     service = get_opentable_service()
 
@@ -340,7 +353,8 @@ async def get_guest(guest_id: str):
 
 
 @router.post("/guests/{guest_id}/vip")
-async def toggle_guest_vip(guest_id: str, vip: bool = True):
+@limiter.limit("30/minute")
+async def toggle_guest_vip(request: Request, guest_id: str, vip: bool = True):
     """Mark or unmark a guest as VIP."""
     service = get_opentable_service()
 
@@ -361,7 +375,8 @@ async def toggle_guest_vip(guest_id: str, vip: bool = True):
 # ============================================================================
 
 @router.get("/config")
-async def get_config():
+@limiter.limit("60/minute")
+async def get_config(request: Request):
     """Get OpenTable integration configuration status."""
     service = get_opentable_service()
 
@@ -375,7 +390,8 @@ async def get_config():
 
 
 @router.get("/stats")
-async def get_opentable_stats():
+@limiter.limit("60/minute")
+async def get_opentable_stats(request: Request):
     """Get OpenTable statistics."""
     return {
         "total_reservations": 0,
@@ -392,7 +408,8 @@ async def get_opentable_stats():
 
 
 @router.get("/status")
-async def get_opentable_status():
+@limiter.limit("60/minute")
+async def get_opentable_status(request: Request):
     """Get OpenTable integration status."""
     return {
         "connected": False,
@@ -404,7 +421,8 @@ async def get_opentable_status():
 
 
 @router.post("/authenticate")
-async def authenticate():
+@limiter.limit("30/minute")
+async def authenticate(request: Request):
     """Authenticate with OpenTable API."""
     service = get_opentable_service()
 

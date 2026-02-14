@@ -1,9 +1,10 @@
 """Location routes."""
 
 from typing import Optional, List
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, HTTPException, Request, status
 from pydantic import BaseModel
 
+from app.core.rate_limit import limiter
 from app.core.rbac import CurrentUser, OptionalCurrentUser, RequireManager
 from app.db.session import DbSession
 from app.models.location import Location
@@ -47,7 +48,8 @@ class SyncMenuRequest(BaseModel):
 
 
 @router.get("/", response_model=list[LocationResponse])
-def list_locations(db: DbSession, current_user: OptionalCurrentUser = None, active_only: bool = True):
+@limiter.limit("60/minute")
+def list_locations(request: Request, db: DbSession, current_user: OptionalCurrentUser = None, active_only: bool = True):
     """List all locations."""
     query = db.query(Location)
     if active_only:
@@ -56,7 +58,8 @@ def list_locations(db: DbSession, current_user: OptionalCurrentUser = None, acti
 
 
 @router.get("/dashboard")
-def get_locations_dashboard(db: DbSession, current_user: OptionalCurrentUser = None):
+@limiter.limit("60/minute")
+def get_locations_dashboard(request: Request, db: DbSession, current_user: OptionalCurrentUser = None):
     """Get dashboard stats for all locations."""
     locations = db.query(Location).filter(Location.active == True).all()
 
@@ -70,7 +73,9 @@ def get_locations_dashboard(db: DbSession, current_user: OptionalCurrentUser = N
 
 
 @router.get("/reports/consolidated")
+@limiter.limit("60/minute")
 def get_consolidated_reports(
+    request: Request,
     db: DbSession,
     current_user: CurrentUser,
     date_range: Optional[str] = "today"
@@ -84,22 +89,25 @@ def get_consolidated_reports(
 
 
 @router.post("/sync-menu")
+@limiter.limit("30/minute")
 def sync_menu(
-    request: SyncMenuRequest,
+    request: Request,
+    sync_request: SyncMenuRequest,
     db: DbSession,
     current_user: RequireManager
 ):
     """Sync menu from master location to target locations."""
     return {
         "status": "ok",
-        "synced_locations": len(request.target_locations),
+        "synced_locations": len(sync_request.target_locations),
         "items_synced": 0,
         "message": "Menu sync completed successfully"
     }
 
 
 @router.get("/{location_id}", response_model=LocationResponse)
-def get_location(location_id: int, db: DbSession, current_user: CurrentUser):
+@limiter.limit("60/minute")
+def get_location(request: Request, location_id: int, db: DbSession, current_user: CurrentUser):
     """Get a specific location."""
     location = db.query(Location).filter(Location.id == location_id).first()
     if not location:
@@ -108,21 +116,22 @@ def get_location(location_id: int, db: DbSession, current_user: CurrentUser):
 
 
 @router.post("/", response_model=LocationResponse, status_code=status.HTTP_201_CREATED)
-def create_location(request: LocationCreate, db: DbSession, current_user: RequireManager):
+@limiter.limit("30/minute")
+def create_location(request: Request, location_data: LocationCreate, db: DbSession, current_user: RequireManager):
     """Create a new location (requires Manager role)."""
     # Check for duplicate name
-    existing = db.query(Location).filter(Location.name == request.name).first()
+    existing = db.query(Location).filter(Location.name == location_data.name).first()
     if existing:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Location '{request.name}' already exists",
+            detail=f"Location '{location_data.name}' already exists",
         )
 
     # If this is set as default, unset other defaults
-    if request.is_default:
+    if location_data.is_default:
         db.query(Location).filter(Location.is_default == True).update({"is_default": False})
 
-    location = Location(**request.model_dump())
+    location = Location(**location_data.model_dump())
     db.add(location)
     db.commit()
     db.refresh(location)
@@ -130,8 +139,9 @@ def create_location(request: LocationCreate, db: DbSession, current_user: Requir
 
 
 @router.put("/{location_id}", response_model=LocationResponse)
+@limiter.limit("30/minute")
 def update_location(
-    location_id: int, request: LocationUpdate, db: DbSession, current_user: RequireManager
+    request: Request, location_id: int, location_data: LocationUpdate, db: DbSession, current_user: RequireManager
 ):
     """Update a location (requires Manager role)."""
     location = db.query(Location).filter(Location.id == location_id).first()
@@ -139,21 +149,21 @@ def update_location(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Location not found")
 
     # Check for duplicate name if updating
-    if request.name and request.name != location.name:
-        existing = db.query(Location).filter(Location.name == request.name).first()
+    if location_data.name and location_data.name != location.name:
+        existing = db.query(Location).filter(Location.name == location_data.name).first()
         if existing:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Location '{request.name}' already exists",
+                detail=f"Location '{location_data.name}' already exists",
             )
 
     # If setting as default, unset other defaults
-    if request.is_default:
+    if location_data.is_default:
         db.query(Location).filter(Location.is_default == True, Location.id != location_id).update(
             {"is_default": False}
         )
 
-    update_data = request.model_dump(exclude_unset=True)
+    update_data = location_data.model_dump(exclude_unset=True)
     for field, value in update_data.items():
         setattr(location, field, value)
 

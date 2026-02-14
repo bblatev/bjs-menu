@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Request
 from sqlalchemy.orm import Session
 from typing import List
 import qrcode
@@ -9,6 +9,7 @@ from app.schemas import TableResponse, QRCodeRequest, QRCodeResponse, VenueStati
 from app.models import VenueStation, StaffUser
 from app.core.rbac import RequireOwner, get_current_user
 from app.core.config import settings
+from app.core.rate_limit import limiter
 
 # Alias: admin endpoints require owner-level access
 get_admin_user = get_current_user
@@ -22,7 +23,9 @@ router = APIRouter()
 
 
 @router.get("/tables", response_model=List[TableResponse])
+@limiter.limit("60/minute")
 def get_tables(
+    request: Request,
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(get_admin_user)
 ):
@@ -43,14 +46,16 @@ def get_tables(
 
 
 @router.post("/tables/qr", response_model=QRCodeResponse)
+@limiter.limit("30/minute")
 def generate_qr_code(
-    request: QRCodeRequest,
+    request: Request,
+    body: QRCodeRequest,
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(get_admin_user)
 ):
     """Generate QR code for table (admin only)."""
     table = db.query(TableModel).filter(
-        TableModel.id == request.table_id,
+        TableModel.id == body.table_id,
         TableModel.venue_id == current_user.venue_id
     ).first()
     
@@ -75,7 +80,7 @@ def generate_qr_code(
     qr.add_data(url)
     qr.make(fit=True)
     
-    if request.format == "svg":
+    if body.format == "svg":
         # SVG format
         import qrcode.image.svg
         factory = qrcode.image.svg.SvgPathImage
@@ -99,7 +104,9 @@ def generate_qr_code(
 
 
 @router.get("/stations", response_model=List[VenueStationResponse])
+@limiter.limit("60/minute")
 def get_stations(
+    request: Request,
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(get_admin_user)
 ):
@@ -117,7 +124,9 @@ def get_stations(
 
 
 @router.post("/import-sklad")
+@limiter.limit("30/minute")
 def import_sklad_products(
+    request: Request,
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(get_admin_user)
 ):

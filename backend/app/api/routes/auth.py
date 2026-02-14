@@ -5,8 +5,6 @@ import secrets
 import time
 from fastapi import APIRouter, HTTPException, Request, status
 from pydantic import BaseModel, Field
-from slowapi import Limiter
-from slowapi.util import get_remote_address
 
 logger = logging.getLogger("auth")
 
@@ -80,10 +78,9 @@ from app.schemas.auth import LoginRequest, PinLoginRequest, Token
 from app.schemas.user import UserCreate, UserResponse
 from app.services.audit_service import log_login
 
-router = APIRouter()
+from app.core.rate_limit import limiter
 
-# Rate limiter for auth endpoints (stricter limits)
-limiter = Limiter(key_func=get_remote_address)
+router = APIRouter()
 
 
 # Pydantic schemas for typed endpoints
@@ -241,7 +238,8 @@ def register(request: Request, user_create: UserCreate, db: DbSession):
 
 
 @router.get("/me", response_model=UserResponse)
-def get_current_user_info(current_user: CurrentUser, db: DbSession):
+@limiter.limit("60/minute")
+def get_current_user_info(request: Request, current_user: CurrentUser, db: DbSession):
     """Get current authenticated user info."""
     user = db.query(User).filter(User.id == current_user.user_id).first()
     if not user:
@@ -250,7 +248,8 @@ def get_current_user_info(current_user: CurrentUser, db: DbSession):
 
 
 @router.post("/me/pin")
-def set_user_pin(current_user: CurrentUser, db: DbSession, data: SetPinRequest):
+@limiter.limit("30/minute")
+def set_user_pin(request: Request, current_user: CurrentUser, db: DbSession, data: SetPinRequest):
     """Set or update PIN for current user.
 
     PIN must be 4-6 digits.
@@ -266,7 +265,8 @@ def set_user_pin(current_user: CurrentUser, db: DbSession, data: SetPinRequest):
 
 
 @router.delete("/me/pin")
-def clear_user_pin(current_user: CurrentUser, db: DbSession):
+@limiter.limit("30/minute")
+def clear_user_pin(request: Request, current_user: CurrentUser, db: DbSession):
     """Clear PIN for current user."""
     user = db.query(User).filter(User.id == current_user.user_id).first()
     if not user:

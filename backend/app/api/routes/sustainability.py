@@ -3,7 +3,7 @@ Sustainability API Endpoints
 Carbon footprint tracking, waste management, and sustainability reporting
 """
 
-from fastapi import APIRouter, Depends, Query, Body
+from fastapi import APIRouter, Depends, Query, Body, Request
 from sqlalchemy.orm import Session
 from typing import List, Optional
 from datetime import datetime, date, timedelta
@@ -12,6 +12,7 @@ from pydantic import BaseModel
 
 from app.db.session import get_db
 from app.services.sustainability_service import SustainabilityService
+from app.core.rate_limit import limiter
 
 
 
@@ -60,7 +61,9 @@ class SustainabilityReport(BaseModel):
 # ==================== ENDPOINTS ====================
 
 @router.get("/carbon-footprint/menu", response_model=List[CarbonFootprint])
+@limiter.limit("60/minute")
 def get_menu_carbon_footprints(
+    request: Request,
     venue_id: int,
     db: Session = Depends(get_db)
 ):
@@ -78,7 +81,9 @@ def get_menu_carbon_footprints(
 
 
 @router.get("/carbon-footprint/item/{item_id}", response_model=CarbonFootprint)
+@limiter.limit("60/minute")
 def get_item_carbon_footprint(
+    request: Request,
     item_id: int,
     db: Session = Depends(get_db)
 ):
@@ -95,7 +100,9 @@ def get_item_carbon_footprint(
 
 
 @router.get("/carbon-footprint/order/{order_id}", response_model=OrderFootprint)
+@limiter.limit("60/minute")
 def get_order_carbon_footprint(
+    request: Request,
     order_id: int,
     db: Session = Depends(get_db)
 ):
@@ -119,7 +126,9 @@ def get_order_carbon_footprint(
 
 
 @router.post("/waste/log")
+@limiter.limit("30/minute")
 def log_waste_event(
+    request: Request,
     waste: WasteLogRequest,
     db: Session = Depends(get_db)
 ):
@@ -152,7 +161,9 @@ def log_waste_event(
 
 
 @router.get("/waste/statistics")
+@limiter.limit("60/minute")
 def get_waste_statistics(
+    request: Request,
     venue_id: int,
     start_date: date = Query(...),
     end_date: date = Query(...),
@@ -179,7 +190,9 @@ def get_waste_statistics(
 
 
 @router.get("/report", response_model=SustainabilityReport)
+@limiter.limit("60/minute")
 def get_sustainability_report(
+    request: Request,
     venue_id: int,
     start_date: date = Query(...),
     end_date: date = Query(...),
@@ -206,7 +219,9 @@ def get_sustainability_report(
 
 
 @router.get("/vendors/sustainable")
+@limiter.limit("60/minute")
 def get_sustainable_vendors(
+    request: Request,
     venue_id: int,
     db: Session = Depends(get_db)
 ):
@@ -230,7 +245,9 @@ def get_sustainable_vendors(
 
 
 @router.post("/energy/log")
+@limiter.limit("30/minute")
 def log_energy_usage(
+    request: Request,
     venue_id: int,
     date: date = Body(...),
     kwh_used: float = Body(...),
@@ -263,7 +280,9 @@ def log_energy_usage(
 
 
 @router.get("/energy/statistics")
+@limiter.limit("60/minute")
 def get_energy_statistics(
+    request: Request,
     venue_id: int,
     start_date: date = Query(...),
     end_date: date = Query(...),
@@ -290,7 +309,9 @@ def get_energy_statistics(
 
 
 @router.get("/recommendations")
+@limiter.limit("60/minute")
 def get_sustainability_recommendations(
+    request: Request,
     venue_id: int,
     db: Session = Depends(get_db)
 ):
@@ -314,7 +335,9 @@ def get_sustainability_recommendations(
 
 
 @router.get("/dashboard")
+@limiter.limit("60/minute")
 def get_sustainability_dashboard(
+    request: Request,
     venue_id: int,
     db: Session = Depends(get_db)
 ):
@@ -359,7 +382,9 @@ def get_sustainability_dashboard(
 
 
 @router.get("/compare")
+@limiter.limit("60/minute")
 def compare_sustainability(
+    request: Request,
     venue_id: int,
     period1_start: date = Query(...),
     period1_end: date = Query(...),
@@ -417,7 +442,9 @@ def compare_sustainability(
 
 
 @router.get("/certificates")
+@limiter.limit("60/minute")
 def get_sustainability_certificates(
+    request: Request,
     venue_id: int,
     db: Session = Depends(get_db)
 ):

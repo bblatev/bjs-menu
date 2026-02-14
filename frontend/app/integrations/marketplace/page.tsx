@@ -5,6 +5,7 @@ import { motion } from 'framer-motion';
 import Link from 'next/link';
 import { API_URL, getAuthHeaders } from '@/lib/api';
 
+import { toast } from '@/lib/toast';
 interface Integration {
   id: string;
   name: string;
@@ -112,7 +113,7 @@ export default function IntegrationMarketplacePage() {
       });
 
       if (response.ok) {
-        alert(`Successfully connected to ${integration.name}!`);
+        toast.success(`Successfully connected to ${integration.name}!`);
         loadData();
         setSelectedIntegration(null);
       } else {

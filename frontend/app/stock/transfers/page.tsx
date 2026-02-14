@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { API_URL } from '@/lib/api';
 
+import { toast } from '@/lib/toast';
 interface Warehouse {
   id: number;
   name: string;
@@ -163,7 +164,7 @@ export default function StockTransfersPage() {
 
   const handleCreateTransfer = async () => {
     if (!newTransfer.from_warehouse_id || !newTransfer.to_warehouse_id || newTransfer.items.length === 0) {
-      alert('Please fill in all required fields');
+      toast.success('Please fill in all required fields');
       return;
     }
 
@@ -196,7 +197,7 @@ export default function StockTransfersPage() {
       setShowModal(false);
       loadData(); // Reload data
     } catch (error: any) {
-      alert(error.message || 'Error creating transfer');
+      toast.error(error.message || 'Error creating transfer');
     }
   };
 
@@ -229,7 +230,7 @@ export default function StockTransfersPage() {
       setShowDetailModal(null);
       loadData(); // Reload data
     } catch (error: any) {
-      alert(error.message || 'Error updating transfer');
+      toast.error(error.message || 'Error updating transfer');
     }
   };
 

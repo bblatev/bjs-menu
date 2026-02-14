@@ -6,6 +6,7 @@ import { Button, Input, Card, CardBody } from '@/components/ui';
 
 import { API_URL, getAuthHeaders } from '@/lib/api';
 
+import { toast } from '@/lib/toast';
 export default function SettingsGeneralPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -68,11 +69,11 @@ export default function SettingsGeneralPage() {
       });
 
       if (response.ok) {
-        alert('Settings saved successfully!');
+        toast.success('Settings saved successfully!');
       }
     } catch (err) {
       console.error('Error saving settings:', err);
-      alert('Failed to save settings');
+      toast.error('Failed to save settings');
     } finally {
       setSaving(false);
     }

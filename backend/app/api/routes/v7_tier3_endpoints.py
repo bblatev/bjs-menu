@@ -2,7 +2,7 @@
 BJS V7 API Endpoints - Tier 3 Enhancement Features
 """
 
-from fastapi import APIRouter, HTTPException, Query, Body, Depends
+from fastapi import APIRouter, HTTPException, Query, Body, Depends, Request
 from sqlalchemy.orm import Session
 from sqlalchemy import func
 from typing import List, Optional, Dict
@@ -10,6 +10,7 @@ from datetime import datetime, timedelta
 from decimal import Decimal
 from enum import Enum
 
+from app.core.rate_limit import limiter
 from app.db.session import get_db
 from app.models.missing_features_models import (
     GuestbookEntry, GuestbookVisit,
@@ -44,8 +45,10 @@ class BlockType(str, Enum):
 # ============================================================================
 
 @router.post("/{venue_id}/guestbook")
+@limiter.limit("30/minute")
 async def create_guest(
-    venue_id: str,
+    request: Request,
+    venue_id: int,
     first_name: str = Body(...),
     last_name: str = Body(...),
     email: str = Body(...),
@@ -56,13 +59,8 @@ async def create_guest(
     db: Session = Depends(get_db)
 ):
     """Create guest entry in database"""
-    try:
-        venue_id_int = int(venue_id)
-    except ValueError:
-        raise HTTPException(status_code=400, detail="Invalid venue_id format")
-
     guest = GuestbookEntry(
-        venue_id=venue_id_int,
+        venue_id=venue_id,
         first_name=first_name,
         last_name=last_name,
         email=email,
@@ -81,8 +79,10 @@ async def create_guest(
     return {"guest_id": guest.id, "name": f"{guest.first_name} {guest.last_name}"}
 
 @router.post("/{venue_id}/guestbook/{guest_id}/visit")
+@limiter.limit("30/minute")
 async def record_guest_visit(
-    venue_id: str,
+    request: Request,
+    venue_id: int,
     guest_id: str,
     party_size: int = Body(...),
     table_number: Optional[str] = Body(None),
@@ -91,7 +91,6 @@ async def record_guest_visit(
 ):
     """Record guest visit in database"""
     try:
-        venue_id_int = int(venue_id)
         guest_id_int = int(guest_id)
     except ValueError:
         raise HTTPException(status_code=400, detail="Invalid ID format")
@@ -105,7 +104,7 @@ async def record_guest_visit(
 
     visit = GuestbookVisit(
         guestbook_entry_id=guest_id_int,
-        venue_id=venue_id_int,
+        venue_id=venue_id,
         visit_date=datetime.utcnow(),
         party_size=party_size,
         table_number=table_number,
@@ -125,20 +124,17 @@ async def record_guest_visit(
     return {"visit_id": visit.id}
 
 @router.get("/{venue_id}/guestbook/search")
+@limiter.limit("60/minute")
 async def search_guests(
-    venue_id: str,
+    request: Request,
+    venue_id: int,
     query: Optional[str] = Query(None),
     tag: Optional[str] = Query(None),
     min_visits: Optional[int] = Query(None),
     db: Session = Depends(get_db)
 ):
     """Search guests in database"""
-    try:
-        venue_id_int = int(venue_id)
-    except ValueError:
-        raise HTTPException(status_code=400, detail="Invalid venue_id format")
-
-    q = db.query(GuestbookEntry).filter(GuestbookEntry.venue_id == venue_id_int)
+    q = db.query(GuestbookEntry).filter(GuestbookEntry.venue_id == venue_id)
 
     if query:
         search_term = f"%{query}%"
@@ -167,8 +163,10 @@ async def search_guests(
     }
 
 @router.get("/{venue_id}/guestbook/{guest_id}")
+@limiter.limit("60/minute")
 async def get_guest_history(
-    venue_id: str,
+    request: Request,
+    venue_id: int,
     guest_id: str,
     db: Session = Depends(get_db)
 ):
@@ -220,8 +218,10 @@ async def get_guest_history(
 # ============================================================================
 
 @router.post("/{venue_id}/fundraising/campaigns")
+@limiter.limit("30/minute")
 async def create_fundraising_campaign(
-    venue_id: str,
+    request: Request,
+    venue_id: int,
     charity_name: str = Body(...),
     charity_description: str = Body(...),
     charity_ein: str = Body(...),
@@ -231,13 +231,8 @@ async def create_fundraising_campaign(
     db: Session = Depends(get_db)
 ):
     """Create fundraising campaign in database"""
-    try:
-        venue_id_int = int(venue_id)
-    except ValueError:
-        raise HTTPException(status_code=400, detail="Invalid venue_id format")
-
     campaign = FundraisingCampaign(
-        venue_id=venue_id_int,
+        venue_id=venue_id,
         charity_name=charity_name,
         charity_description=charity_description,
         charity_ein=charity_ein,
@@ -257,8 +252,10 @@ async def create_fundraising_campaign(
     return {"campaign_id": campaign.id, "charity": campaign.charity_name}
 
 @router.post("/{venue_id}/fundraising/campaigns/{campaign_id}/activate")
+@limiter.limit("30/minute")
 async def activate_campaign(
-    venue_id: str,
+    request: Request,
+    venue_id: int,
     campaign_id: str,
     db: Session = Depends(get_db)
 ):
@@ -283,8 +280,10 @@ async def activate_campaign(
     return {"campaign_id": campaign.id, "status": campaign.status}
 
 @router.post("/{venue_id}/fundraising/roundup")
+@limiter.limit("30/minute")
 async def calculate_roundup(
-    venue_id: str,
+    request: Request,
+    venue_id: int,
     order_total: float = Body(...),
     db: Session = Depends(get_db)
 ):
@@ -304,8 +303,10 @@ async def calculate_roundup(
     }
 
 @router.post("/{venue_id}/fundraising/donate")
+@limiter.limit("30/minute")
 async def process_donation(
-    venue_id: str,
+    request: Request,
+    venue_id: int,
     order_id: str = Body(...),
     order_total: float = Body(...),
     donation_type: str = Body("roundup"),
@@ -314,14 +315,13 @@ async def process_donation(
 ):
     """Process donation in database"""
     try:
-        venue_id_int = int(venue_id)
         order_id_int = int(order_id)
     except ValueError:
         raise HTTPException(status_code=400, detail="Invalid ID format")
 
     # Get active campaign
     campaign = db.query(FundraisingCampaign).filter(
-        FundraisingCampaign.venue_id == venue_id_int,
+        FundraisingCampaign.venue_id == venue_id,
         FundraisingCampaign.status == "active"
     ).first()
 
@@ -339,7 +339,7 @@ async def process_donation(
         donation_amount = custom_amount or 0
 
     donation = FundraisingDonation(
-        venue_id=venue_id_int,
+        venue_id=venue_id,
         campaign_id=campaign.id,
         order_id=order_id_int,
         donation_amount=Decimal(str(donation_amount)),
@@ -359,8 +359,10 @@ async def process_donation(
     return {"donation_id": donation.id, "amount": float(donation.donation_amount)}
 
 @router.get("/{venue_id}/fundraising/campaigns/{campaign_id}/stats")
+@limiter.limit("60/minute")
 async def get_campaign_stats(
-    venue_id: str,
+    request: Request,
+    venue_id: int,
     campaign_id: str,
     db: Session = Depends(get_db)
 ):
@@ -404,8 +406,10 @@ async def get_campaign_stats(
 # ============================================================================
 
 @router.post("/{venue_id}/chargebacks")
+@limiter.limit("30/minute")
 async def record_chargeback(
-    venue_id: str,
+    request: Request,
+    venue_id: int,
     order_id: str = Body(...),
     transaction_id: str = Body(...),
     amount: float = Body(...),
@@ -418,7 +422,6 @@ async def record_chargeback(
 ):
     """Record chargeback in database"""
     try:
-        venue_id_int = int(venue_id)
         order_id_int = int(order_id)
     except ValueError:
         raise HTTPException(status_code=400, detail="Invalid ID format")
@@ -427,7 +430,7 @@ async def record_chargeback(
     response_due = datetime.utcnow() + timedelta(days=7)
 
     cb = ChargebackCase(
-        venue_id=venue_id_int,
+        venue_id=venue_id,
         order_id=order_id_int,
         transaction_id=transaction_id,
         amount=Decimal(str(amount)),
@@ -452,8 +455,10 @@ async def record_chargeback(
     }
 
 @router.get("/{venue_id}/chargebacks/evidence-required/{reason}")
+@limiter.limit("60/minute")
 async def get_required_evidence(
-    venue_id: str,
+    request: Request,
+    venue_id: int,
     reason: ChargebackReason,
     db: Session = Depends(get_db)
 ):
@@ -491,8 +496,10 @@ async def get_required_evidence(
     }
 
 @router.post("/{venue_id}/chargebacks/{chargeback_id}/evidence")
+@limiter.limit("30/minute")
 async def submit_chargeback_evidence(
-    venue_id: str,
+    request: Request,
+    venue_id: int,
     chargeback_id: str,
     evidence: List[Dict] = Body(...),
     db: Session = Depends(get_db)
@@ -529,8 +536,10 @@ async def submit_chargeback_evidence(
     return {"chargeback_id": cb.id, "status": cb.status}
 
 @router.post("/{venue_id}/chargebacks/{chargeback_id}/resolve")
+@limiter.limit("30/minute")
 async def resolve_chargeback(
-    venue_id: str,
+    request: Request,
+    venue_id: int,
     chargeback_id: str,
     won: bool = Body(...),
     notes: str = Body(""),
@@ -559,21 +568,18 @@ async def resolve_chargeback(
     return {"chargeback_id": cb.id, "status": cb.status}
 
 @router.get("/{venue_id}/chargebacks/analytics")
+@limiter.limit("60/minute")
 async def get_chargeback_analytics(
-    venue_id: str,
+    request: Request,
+    venue_id: int,
     days: int = Query(90),
     db: Session = Depends(get_db)
 ):
     """Get chargeback analytics from database"""
-    try:
-        venue_id_int = int(venue_id)
-    except ValueError:
-        raise HTTPException(status_code=400, detail="Invalid venue_id format")
-
     cutoff = datetime.utcnow() - timedelta(days=days)
 
     chargebacks = db.query(ChargebackCase).filter(
-        ChargebackCase.venue_id == venue_id_int,
+        ChargebackCase.venue_id == venue_id,
         ChargebackCase.created_at >= cutoff
     ).all()
 
@@ -605,20 +611,17 @@ async def get_chargeback_analytics(
 # ============================================================================
 
 @router.post("/{venue_id}/tax/configure")
+@limiter.limit("30/minute")
 async def configure_taxes(
-    venue_id: str,
+    request: Request,
+    venue_id: int,
     rates: Dict[str, float] = Body(...),
     db: Session = Depends(get_db)
 ):
     """Configure tax rates in database"""
-    try:
-        venue_id_int = int(venue_id)
-    except ValueError:
-        raise HTTPException(status_code=400, detail="Invalid venue_id format")
-
     # Check for existing config
     config = db.query(TaxConfiguration).filter(
-        TaxConfiguration.venue_id == venue_id_int
+        TaxConfiguration.venue_id == venue_id
     ).first()
 
     if config:
@@ -626,7 +629,7 @@ async def configure_taxes(
         config.updated_at = datetime.utcnow()
     else:
         config = TaxConfiguration(
-            venue_id=venue_id_int,
+            venue_id=venue_id,
             tax_rates=rates,
             is_active=True,
             created_at=datetime.utcnow()
@@ -642,8 +645,10 @@ async def configure_taxes(
     }
 
 @router.post("/{venue_id}/tax/summary")
+@limiter.limit("30/minute")
 async def generate_tax_summary(
-    venue_id: str,
+    request: Request,
+    venue_id: int,
     period_type: str = Body(...),
     period_start: datetime = Body(...),
     period_end: datetime = Body(...),
@@ -651,18 +656,13 @@ async def generate_tax_summary(
     db: Session = Depends(get_db)
 ):
     """Generate tax summary in database"""
-    try:
-        venue_id_int = int(venue_id)
-    except ValueError:
-        raise HTTPException(status_code=400, detail="Invalid venue_id format")
-
     # Calculate totals from sales data
     gross_sales = sum(float(s.get("total", 0)) for s in sales_data)
     tax_collected = sum(float(s.get("tax", 0)) for s in sales_data)
     net_sales = gross_sales - tax_collected
 
     summary = TaxSummary(
-        venue_id=venue_id_int,
+        venue_id=venue_id,
         period_type=period_type,
         period_start=period_start,
         period_end=period_end,
@@ -683,21 +683,18 @@ async def generate_tax_summary(
     }
 
 @router.get("/{venue_id}/tax/vat-return")
+@limiter.limit("60/minute")
 async def generate_vat_return(
-    venue_id: str,
+    request: Request,
+    venue_id: int,
     period_start: datetime = Query(...),
     period_end: datetime = Query(...),
     db: Session = Depends(get_db)
 ):
     """Generate VAT return data from database"""
-    try:
-        venue_id_int = int(venue_id)
-    except ValueError:
-        raise HTTPException(status_code=400, detail="Invalid venue_id format")
-
     # Get summaries for the period
     summaries = db.query(TaxSummary).filter(
-        TaxSummary.venue_id == venue_id_int,
+        TaxSummary.venue_id == venue_id,
         TaxSummary.period_start >= period_start,
         TaxSummary.period_end <= period_end
     ).all()
@@ -715,22 +712,19 @@ async def generate_vat_return(
     }
 
 @router.get("/{venue_id}/tax/export/{year}")
+@limiter.limit("60/minute")
 async def export_tax_data(
-    venue_id: str,
+    request: Request,
+    venue_id: int,
     year: int,
     db: Session = Depends(get_db)
 ):
     """Export tax data for year from database"""
-    try:
-        venue_id_int = int(venue_id)
-    except ValueError:
-        raise HTTPException(status_code=400, detail="Invalid venue_id format")
-
     year_start = datetime(year, 1, 1)
     year_end = datetime(year, 12, 31, 23, 59, 59)
 
     summaries = db.query(TaxSummary).filter(
-        TaxSummary.venue_id == venue_id_int,
+        TaxSummary.venue_id == venue_id,
         TaxSummary.period_start >= year_start,
         TaxSummary.period_end <= year_end
     ).order_by(TaxSummary.period_start).all()
@@ -764,8 +758,10 @@ async def export_tax_data(
 # ============================================================================
 
 @router.post("/{venue_id}/onboarding")
+@limiter.limit("30/minute")
 async def start_onboarding(
-    venue_id: str,
+    request: Request,
+    venue_id: int,
     employee_id: str = Body(...),
     employee_name: str = Body(...),
     position: str = Body(...),
@@ -775,7 +771,6 @@ async def start_onboarding(
 ):
     """Start employee onboarding in database"""
     try:
-        venue_id_int = int(venue_id)
         employee_id_int = int(employee_id)
         mentor_id_int = int(mentor_id) if mentor_id else None
     except ValueError:
@@ -804,7 +799,7 @@ async def start_onboarding(
         ])
 
     onboarding = EmployeeOnboarding(
-        venue_id=venue_id_int,
+        venue_id=venue_id,
         employee_id=employee_id_int,
         employee_name=employee_name,
         position=position,
@@ -823,8 +818,10 @@ async def start_onboarding(
     return {"onboarding_id": onboarding.id, "tasks": len(onboarding.assigned_tasks)}
 
 @router.post("/{venue_id}/onboarding/{onboarding_id}/complete-task")
+@limiter.limit("30/minute")
 async def complete_onboarding_task(
-    venue_id: str,
+    request: Request,
+    venue_id: int,
     onboarding_id: str,
     task_id: str = Body(...),
     data: Optional[Dict] = Body(None),
@@ -865,8 +862,10 @@ async def complete_onboarding_task(
     }
 
 @router.get("/{venue_id}/onboarding/{onboarding_id}/progress")
+@limiter.limit("60/minute")
 async def get_onboarding_progress(
-    venue_id: str,
+    request: Request,
+    venue_id: int,
     onboarding_id: str,
     db: Session = Depends(get_db)
 ):
@@ -910,8 +909,10 @@ async def get_onboarding_progress(
 # ============================================================================
 
 @router.post("/{venue_id}/menu-pairing/analyze")
+@limiter.limit("30/minute")
 async def analyze_menu_item(
-    venue_id: str,
+    request: Request,
+    venue_id: int,
     item_id: str = Body(...),
     name: str = Body(...),
     category: str = Body(...),
@@ -950,8 +951,10 @@ async def analyze_menu_item(
     }
 
 @router.post("/{venue_id}/menu-pairing/suggest")
+@limiter.limit("30/minute")
 async def get_pairing_suggestions(
-    venue_id: str,
+    request: Request,
+    venue_id: int,
     item_id: str = Body(...),
     available_items: List[Dict] = Body(...),
     max_suggestions: int = Body(5),
@@ -959,14 +962,13 @@ async def get_pairing_suggestions(
 ):
     """Get pairing suggestions for menu item"""
     try:
-        venue_id_int = int(venue_id)
         item_id_int = int(item_id)
     except ValueError:
         raise HTTPException(status_code=400, detail="Invalid ID format")
 
     # Check for manual pairings first
     manual_pairings = db.query(MenuPairingRule).filter(
-        MenuPairingRule.venue_id == venue_id_int,
+        MenuPairingRule.venue_id == venue_id,
         MenuPairingRule.primary_item_id == item_id_int,
         MenuPairingRule.is_active == True
     ).all()
@@ -998,8 +1000,10 @@ async def get_pairing_suggestions(
     return {"suggestions": suggestions[:max_suggestions]}
 
 @router.post("/{venue_id}/menu-pairing/manual")
+@limiter.limit("30/minute")
 async def create_manual_pairing(
-    venue_id: str,
+    request: Request,
+    venue_id: int,
     item_id: str = Body(...),
     paired_item_id: str = Body(...),
     pairing_type: str = Body(...),
@@ -1008,14 +1012,13 @@ async def create_manual_pairing(
 ):
     """Create manual menu pairing in database"""
     try:
-        venue_id_int = int(venue_id)
         item_id_int = int(item_id)
         paired_item_id_int = int(paired_item_id)
     except ValueError:
         raise HTTPException(status_code=400, detail="Invalid ID format")
 
     rule = MenuPairingRule(
-        venue_id=venue_id_int,
+        venue_id=venue_id,
         primary_item_id=item_id_int,
         paired_item_id=paired_item_id_int,
         pairing_type=pairing_type,
@@ -1036,21 +1039,18 @@ async def create_manual_pairing(
 # ============================================================================
 
 @router.post("/{venue_id}/third-party-gift-cards/configure")
+@limiter.limit("30/minute")
 async def configure_third_party_cards(
-    venue_id: str,
+    request: Request,
+    venue_id: int,
     accepted_providers: List[str] = Body(...),
     exchange_rates: Optional[Dict[str, float]] = Body(None),
     db: Session = Depends(get_db)
 ):
     """Configure third-party gift card providers in database"""
-    try:
-        venue_id_int = int(venue_id)
-    except ValueError:
-        raise HTTPException(status_code=400, detail="Invalid venue_id format")
-
     # Check for existing config
     config = db.query(ThirdPartyGiftCardConfig).filter(
-        ThirdPartyGiftCardConfig.venue_id == venue_id_int
+        ThirdPartyGiftCardConfig.venue_id == venue_id
     ).first()
 
     rates = exchange_rates or {p: 1.0 for p in accepted_providers}
@@ -1060,7 +1060,7 @@ async def configure_third_party_cards(
         config.exchange_rates = rates
     else:
         config = ThirdPartyGiftCardConfig(
-            venue_id=venue_id_int,
+            venue_id=venue_id,
             accepted_providers=accepted_providers,
             exchange_rates=rates,
             is_active=True,
@@ -1078,22 +1078,19 @@ async def configure_third_party_cards(
     }
 
 @router.post("/{venue_id}/third-party-gift-cards/verify")
+@limiter.limit("30/minute")
 async def verify_third_party_card(
-    venue_id: str,
+    request: Request,
+    venue_id: int,
     provider: str = Body(...),
     card_number: str = Body(...),
     pin: Optional[str] = Body(None),
     db: Session = Depends(get_db)
 ):
     """Verify third-party gift card"""
-    try:
-        venue_id_int = int(venue_id)
-    except ValueError:
-        raise HTTPException(status_code=400, detail="Invalid venue_id format")
-
     # Check if provider is configured
     config = db.query(ThirdPartyGiftCardConfig).filter(
-        ThirdPartyGiftCardConfig.venue_id == venue_id_int,
+        ThirdPartyGiftCardConfig.venue_id == venue_id,
         ThirdPartyGiftCardConfig.is_active == True
     ).first()
 
@@ -1119,8 +1116,10 @@ async def verify_third_party_card(
     }
 
 @router.post("/{venue_id}/third-party-gift-cards/redeem")
+@limiter.limit("30/minute")
 async def redeem_third_party_card(
-    venue_id: str,
+    request: Request,
+    venue_id: int,
     provider: str = Body(...),
     card_number: str = Body(...),
     pin: Optional[str] = Body(None),
@@ -1130,13 +1129,12 @@ async def redeem_third_party_card(
 ):
     """Redeem third-party gift card in database"""
     try:
-        venue_id_int = int(venue_id)
         order_id_int = int(order_id)
     except ValueError:
         raise HTTPException(status_code=400, detail="Invalid ID format")
 
     transaction = ThirdPartyGiftCardTransaction(
-        venue_id=venue_id_int,
+        venue_id=venue_id,
         provider=provider,
         card_number_masked=f"****{card_number[-4:]}",
         order_id=order_id_int,
@@ -1161,8 +1159,10 @@ async def redeem_third_party_card(
 # ============================================================================
 
 @router.post("/{venue_id}/table-blocks")
+@limiter.limit("30/minute")
 async def create_table_block(
-    venue_id: str,
+    request: Request,
+    venue_id: int,
     table_id: str = Body(...),
     block_type: BlockType = Body(...),
     start_time: datetime = Body(...),
@@ -1174,14 +1174,13 @@ async def create_table_block(
 ):
     """Create table block in database"""
     try:
-        venue_id_int = int(venue_id)
         table_id_int = int(table_id)
         created_by_int = int(created_by)
     except ValueError:
         raise HTTPException(status_code=400, detail="Invalid ID format")
 
     block = TableBlock(
-        venue_id=venue_id_int,
+        venue_id=venue_id,
         table_id=table_id_int,
         block_type=block_type.value,
         start_time=start_time,
@@ -1200,15 +1199,16 @@ async def create_table_block(
     return {"block_id": block.id}
 
 @router.get("/{venue_id}/table-blocks/{table_id}/availability")
+@limiter.limit("60/minute")
 async def get_table_availability(
-    venue_id: str,
+    request: Request,
+    venue_id: int,
     table_id: str,
     date: str = Query(...),
     db: Session = Depends(get_db)
 ):
     """Get table availability for a date from database"""
     try:
-        venue_id_int = int(venue_id)
         table_id_int = int(table_id)
         dt = datetime.fromisoformat(date)
     except ValueError:
@@ -1218,7 +1218,7 @@ async def get_table_availability(
     day_end = dt.replace(hour=23, minute=59, second=59)
 
     blocks = db.query(TableBlock).filter(
-        TableBlock.venue_id == venue_id_int,
+        TableBlock.venue_id == venue_id,
         TableBlock.table_id == table_id_int,
         TableBlock.status == "active",
         TableBlock.start_time <= day_end,
@@ -1243,8 +1243,10 @@ async def get_table_availability(
     }
 
 @router.post("/{venue_id}/table-blocks/check-conflicts")
+@limiter.limit("30/minute")
 async def check_table_conflicts(
-    venue_id: str,
+    request: Request,
+    venue_id: int,
     table_id: str = Body(...),
     start_time: datetime = Body(...),
     end_time: datetime = Body(...),
@@ -1252,13 +1254,12 @@ async def check_table_conflicts(
 ):
     """Check for table blocking conflicts in database"""
     try:
-        venue_id_int = int(venue_id)
         table_id_int = int(table_id)
     except ValueError:
         raise HTTPException(status_code=400, detail="Invalid ID format")
 
     conflicts = db.query(TableBlock).filter(
-        TableBlock.venue_id == venue_id_int,
+        TableBlock.venue_id == venue_id,
         TableBlock.table_id == table_id_int,
         TableBlock.status == "active",
         TableBlock.start_time < end_time,
@@ -1280,8 +1281,10 @@ async def check_table_conflicts(
     }
 
 @router.delete("/{venue_id}/table-blocks/{block_id}")
+@limiter.limit("30/minute")
 async def cancel_table_block(
-    venue_id: str,
+    request: Request,
+    venue_id: int,
     block_id: str,
     db: Session = Depends(get_db)
 ):
@@ -1307,20 +1310,17 @@ async def cancel_table_block(
     return {"block_id": block.id, "cancelled": True}
 
 @router.get("/{venue_id}/table-blocks")
+@limiter.limit("60/minute")
 async def get_all_table_blocks(
-    venue_id: str,
+    request: Request,
+    venue_id: int,
     start_date: datetime = Query(...),
     end_date: datetime = Query(...),
     db: Session = Depends(get_db)
 ):
     """Get all table blocks for a date range from database"""
-    try:
-        venue_id_int = int(venue_id)
-    except ValueError:
-        raise HTTPException(status_code=400, detail="Invalid venue_id format")
-
     blocks = db.query(TableBlock).filter(
-        TableBlock.venue_id == venue_id_int,
+        TableBlock.venue_id == venue_id,
         TableBlock.status == "active",
         TableBlock.start_time <= end_date,
         TableBlock.end_time >= start_date

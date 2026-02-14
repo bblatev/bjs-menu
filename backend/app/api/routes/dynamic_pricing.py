@@ -3,10 +3,11 @@ Dynamic Pricing API Endpoints
 Complete implementation of weather-based, time-based, and demand-based pricing
 """
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Body
+from fastapi import APIRouter, Depends, HTTPException, Query, Body, Request
+from app.core.rate_limit import limiter
 from sqlalchemy.orm import Session
 from typing import List, Optional, Dict
-from datetime import datetime, date, timedelta
+from datetime import datetime, date, timedelta, timezone
 from pydantic import BaseModel
 
 from app.db.session import get_db
@@ -84,36 +85,40 @@ class PricingAnalytics(BaseModel):
 # ==================== ENDPOINTS ====================
 
 @router.post("/calculate", response_model=PriceCalculationResponse)
+@limiter.limit("30/minute")
 def calculate_dynamic_price(
-    request: PriceCalculationRequest,
+    request: Request,
+    body: PriceCalculationRequest = None,
     db: Session = Depends(get_db)
 ):
     """
     Calculate dynamic price for an item with all adjustments
-    
+
     Applies:
     - Time-based pricing (happy hour, peak hours)
     - Weather-based adjustments
     - Demand-based pricing
     - Seasonal pricing
-    
+
     Returns detailed breakdown of all price adjustments
     """
     service = DynamicPricingService(db)
-    
+
     result = service.calculate_dynamic_price(
-        item_id=request.item_id,
-        venue_id=request.venue_id,
-        quantity=request.quantity,
+        item_id=body.item_id,
+        venue_id=body.venue_id,
+        quantity=body.quantity,
         current_time=datetime.now(),
-        weather_data=request.weather_data
+        weather_data=body.weather_data
     )
     
     return result
 
 
 @router.get("/item/{item_id}", response_model=PriceCalculationResponse)
+@limiter.limit("60/minute")
 def get_item_current_price(
+    request: Request,
     item_id: int,
     venue_id: int,
     quantity: int = 1,
@@ -134,7 +139,9 @@ def get_item_current_price(
 
 
 @router.get("/active-rules", response_model=List[ActivePricingRule])
+@limiter.limit("60/minute")
 def get_active_pricing_rules(
+    request: Request,
     venue_id: int,
     db: Session = Depends(get_db)
 ):
@@ -150,7 +157,9 @@ def get_active_pricing_rules(
 
 
 @router.get("/rules")
+@limiter.limit("60/minute")
 def list_pricing_rules(
+    request: Request,
     venue_id: int,
     active_only: bool = True,
     db: Session = Depends(get_db)
@@ -187,8 +196,10 @@ def list_pricing_rules(
 
 
 @router.post("/rules")
+@limiter.limit("30/minute")
 def create_pricing_rule(
-    rule: PricingRule,
+    request: Request,
+    rule: PricingRule = None,
     db: Session = Depends(get_db)
 ):
     """Create new pricing rule (admin only)"""
@@ -226,9 +237,11 @@ def create_pricing_rule(
 
 
 @router.put("/rules/{rule_id}")
+@limiter.limit("30/minute")
 def update_pricing_rule(
+    request: Request,
     rule_id: int,
-    rule: PricingRule,
+    rule: PricingRule = None,
     db: Session = Depends(get_db)
 ):
     """Update existing pricing rule (admin only)"""
@@ -267,7 +280,9 @@ def update_pricing_rule(
 
 
 @router.delete("/rules/{rule_id}")
+@limiter.limit("30/minute")
 def delete_pricing_rule(
+    request: Request,
     rule_id: int,
     db: Session = Depends(get_db)
 ):
@@ -290,7 +305,9 @@ def delete_pricing_rule(
 
 
 @router.post("/rules/{rule_id}/toggle")
+@limiter.limit("30/minute")
 def toggle_pricing_rule(
+    request: Request,
     rule_id: int,
     active: bool = Body(...),
     db: Session = Depends(get_db)
@@ -318,7 +335,9 @@ def toggle_pricing_rule(
 
 
 @router.get("/analytics", response_model=PricingAnalytics)
+@limiter.limit("60/minute")
 def get_pricing_analytics(
+    request: Request,
     venue_id: int,
     start_date: date = Query(...),
     end_date: date = Query(...),
@@ -345,7 +364,9 @@ def get_pricing_analytics(
 
 
 @router.get("/forecast")
+@limiter.limit("60/minute")
 def get_demand_forecast(
+    request: Request,
     venue_id: int,
     item_id: Optional[int] = None,
     forecast_days: int = Query(7, ge=1, le=30),
@@ -406,7 +427,9 @@ def get_demand_forecast(
 
 
 @router.get("/weather-impact")
+@limiter.limit("60/minute")
 def get_weather_impact(
+    request: Request,
     venue_id: int,
     db: Session = Depends(get_db)
 ):
@@ -523,7 +546,9 @@ def get_weather_impact(
 
 
 @router.get("/happy-hour")
+@limiter.limit("60/minute")
 def get_happy_hour_info(
+    request: Request,
     venue_id: int,
     db: Session = Depends(get_db)
 ):
@@ -562,7 +587,9 @@ def get_happy_hour_info(
 
 
 @router.post("/simulate")
+@limiter.limit("30/minute")
 def simulate_pricing(
+    request: Request,
     item_id: int,
     venue_id: int,
     hour: int = Query(..., ge=0, le=23),
@@ -615,7 +642,9 @@ def simulate_pricing(
 
 
 @router.get("/comparison")
+@limiter.limit("60/minute")
 def compare_pricing(
+    request: Request,
     venue_id: int,
     days: int = Query(7, ge=1, le=30),
     db: Session = Depends(get_db)
@@ -647,3 +676,89 @@ def compare_pricing(
         'percentage_increase': ((float(actual_revenue) / max(1, estimated_without_dynamic)) - 1) * 100,
         'note': 'Estimates based on historical patterns'
     }
+
+
+# ============================================================================
+# PRICE ADJUSTMENTS (active surge/discount records)
+# ============================================================================
+
+@router.get("/adjustments")
+@limiter.limit("60/minute")
+def list_price_adjustments(
+    request: Request,
+    location_id: int = Query(...),
+    active_only: bool = Query(False),
+    limit: int = Query(50, ge=1, le=200),
+    db: Session = Depends(get_db),
+):
+    """List dynamic price adjustments (active surge/discount records)."""
+    from app.models.advanced_features import DynamicPriceAdjustment
+
+    query = db.query(DynamicPriceAdjustment).filter(
+        DynamicPriceAdjustment.location_id == location_id
+    )
+    if active_only:
+        query = query.filter(DynamicPriceAdjustment.deactivated_at.is_(None))
+    adjustments = query.order_by(DynamicPriceAdjustment.activated_at.desc()).limit(limit).all()
+    return [
+        {
+            "id": a.id,
+            "rule_id": a.rule_id,
+            "location_id": a.location_id,
+            "activated_at": a.activated_at.isoformat() if a.activated_at else None,
+            "deactivated_at": a.deactivated_at.isoformat() if a.deactivated_at else None,
+            "original_price": float(a.original_price or 0),
+            "adjusted_price": float(a.adjusted_price or 0),
+            "trigger_value": a.trigger_value,
+            "orders_during_surge": a.orders_during_surge,
+            "additional_revenue": float(a.additional_revenue or 0),
+        }
+        for a in adjustments
+    ]
+
+
+@router.get("/adjustments/{adjustment_id}")
+@limiter.limit("60/minute")
+def get_price_adjustment(
+    request: Request,
+    adjustment_id: int,
+    db: Session = Depends(get_db),
+):
+    """Get a specific price adjustment."""
+    from app.models.advanced_features import DynamicPriceAdjustment
+
+    adjustment = db.get(DynamicPriceAdjustment, adjustment_id)
+    if not adjustment:
+        raise HTTPException(status_code=404, detail="Price adjustment not found")
+    return {
+        "id": adjustment.id,
+        "rule_id": adjustment.rule_id,
+        "location_id": adjustment.location_id,
+        "activated_at": adjustment.activated_at.isoformat() if adjustment.activated_at else None,
+        "deactivated_at": adjustment.deactivated_at.isoformat() if adjustment.deactivated_at else None,
+        "original_price": float(adjustment.original_price or 0),
+        "adjusted_price": float(adjustment.adjusted_price or 0),
+        "trigger_value": adjustment.trigger_value,
+        "orders_during_surge": adjustment.orders_during_surge,
+        "additional_revenue": float(adjustment.additional_revenue or 0),
+    }
+
+
+@router.post("/adjustments/{adjustment_id}/deactivate")
+@limiter.limit("30/minute")
+def deactivate_price_adjustment(
+    request: Request,
+    adjustment_id: int,
+    db: Session = Depends(get_db),
+):
+    """Deactivate an active price adjustment."""
+    from app.models.advanced_features import DynamicPriceAdjustment
+
+    adjustment = db.get(DynamicPriceAdjustment, adjustment_id)
+    if not adjustment:
+        raise HTTPException(status_code=404, detail="Price adjustment not found")
+    if adjustment.deactivated_at:
+        raise HTTPException(status_code=400, detail="Already deactivated")
+    adjustment.deactivated_at = datetime.now(timezone.utc)
+    db.commit()
+    return {"id": adjustment.id, "deactivated_at": adjustment.deactivated_at.isoformat()}

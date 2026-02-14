@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
 import { API_URL } from '@/lib/api';
 
+import { toast } from '@/lib/toast';
 interface DaypartSchedule {
   id: number;
   name: string;
@@ -136,11 +137,11 @@ export default function MenuSchedulingPage() {
         resetForm();
       } else {
         const error = await response.json();
-        alert(error.detail || 'Error saving daypart');
+        toast.error(error.detail || 'Error saving daypart');
       }
     } catch (error) {
       console.error('Error saving daypart:', error);
-      alert('Error saving daypart');
+      toast.error('Error saving daypart');
     }
   };
 
@@ -159,11 +160,11 @@ export default function MenuSchedulingPage() {
       if (response.ok) {
         loadData();
       } else {
-        alert('Error deleting daypart');
+        toast.error('Error deleting daypart');
       }
     } catch (error) {
       console.error('Error deleting daypart:', error);
-      alert('Error deleting daypart');
+      toast.error('Error deleting daypart');
     }
   };
 
@@ -226,7 +227,7 @@ export default function MenuSchedulingPage() {
       if (response.ok) {
         loadData();
       } else {
-        alert('Error toggling daypart status');
+        toast.error('Error toggling daypart status');
       }
     } catch (error) {
       console.error('Error toggling daypart active:', error);

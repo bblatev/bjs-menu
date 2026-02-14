@@ -2,13 +2,14 @@
 
 from __future__ import annotations
 
-from fastapi import APIRouter, HTTPException, UploadFile, File
+from fastapi import APIRouter, HTTPException, UploadFile, File, Request
 from typing import List, Optional, Dict
 from datetime import datetime
 from pydantic import BaseModel, Field
 
 from app.db.session import DbSession
 from app.core.rbac import CurrentUser, OptionalCurrentUser
+from app.core.rate_limit import limiter
 from app.models.restaurant import (
     MenuItem, MenuCategory, ModifierGroup, ModifierOption,
     ComboMeal, ComboItem,
@@ -105,7 +106,8 @@ _next_daypart_id = 1
 # ==================== PHOTO MANAGEMENT ====================
 
 @router.post("/items/{item_id}/photos", response_model=PhotoUploadResponse)
-async def upload_item_photo(item_id: int, file: UploadFile = File(...), db: DbSession = None, current_user: CurrentUser = None):
+@limiter.limit("30/minute")
+async def upload_item_photo(request: Request, item_id: int, file: UploadFile = File(...), db: DbSession = None, current_user: CurrentUser = None):
     """Upload a photo for a menu item."""
     item = db.query(MenuItem).filter(MenuItem.id == item_id, MenuItem.not_deleted()).first()
     if not item:
@@ -116,7 +118,8 @@ async def upload_item_photo(item_id: int, file: UploadFile = File(...), db: DbSe
 
 
 @router.get("/items/{item_id}/photos")
-def get_item_photos(item_id: int, db: DbSession = None, current_user: OptionalCurrentUser = None):
+@limiter.limit("60/minute")
+def get_item_photos(request: Request, item_id: int, db: DbSession = None, current_user: OptionalCurrentUser = None):
     """Get all photos for a menu item."""
     item = db.query(MenuItem).filter(MenuItem.id == item_id, MenuItem.not_deleted()).first()
     if not item:
@@ -125,7 +128,8 @@ def get_item_photos(item_id: int, db: DbSession = None, current_user: OptionalCu
 
 
 @router.delete("/items/{item_id}/photos/{photo_index}")
-def delete_item_photo(item_id: int, photo_index: int, db: DbSession = None, current_user: CurrentUser = None):
+@limiter.limit("30/minute")
+def delete_item_photo(request: Request, item_id: int, photo_index: int, db: DbSession = None, current_user: CurrentUser = None):
     """Delete a photo from a menu item."""
     item = db.query(MenuItem).filter(MenuItem.id == item_id, MenuItem.not_deleted()).first()
     if not item:
@@ -136,13 +140,15 @@ def delete_item_photo(item_id: int, photo_index: int, db: DbSession = None, curr
 # ==================== PRICE LEVELS ====================
 
 @router.get("/price-levels")
-def get_price_levels(db: DbSession = None, current_user: OptionalCurrentUser = None):
+@limiter.limit("60/minute")
+def get_price_levels(request: Request, db: DbSession = None, current_user: OptionalCurrentUser = None):
     """Get all price levels."""
     return {"price_levels": _price_levels}
 
 
 @router.post("/price-levels")
-def create_price_level(data: PriceLevelCreate, db: DbSession = None, current_user: CurrentUser = None):
+@limiter.limit("30/minute")
+def create_price_level(request: Request, data: PriceLevelCreate, db: DbSession = None, current_user: CurrentUser = None):
     """Create a new price level."""
     global _next_price_level_id
     now = datetime.utcnow().isoformat()
@@ -163,7 +169,8 @@ def create_price_level(data: PriceLevelCreate, db: DbSession = None, current_use
 
 
 @router.get("/price-levels/{price_level_id}")
-def get_price_level(price_level_id: int, db: DbSession = None, current_user: OptionalCurrentUser = None):
+@limiter.limit("60/minute")
+def get_price_level(request: Request, price_level_id: int, db: DbSession = None, current_user: OptionalCurrentUser = None):
     """Get a specific price level by ID."""
     for pl in _price_levels:
         if pl["id"] == price_level_id:
@@ -172,7 +179,8 @@ def get_price_level(price_level_id: int, db: DbSession = None, current_user: Opt
 
 
 @router.put("/price-levels/{price_level_id}")
-def update_price_level(price_level_id: int, data: PriceLevelUpdate, db: DbSession = None, current_user: CurrentUser = None):
+@limiter.limit("30/minute")
+def update_price_level(request: Request, price_level_id: int, data: PriceLevelUpdate, db: DbSession = None, current_user: CurrentUser = None):
     """Update an existing price level."""
     for pl in _price_levels:
         if pl["id"] == price_level_id:
@@ -192,7 +200,8 @@ def update_price_level(price_level_id: int, data: PriceLevelUpdate, db: DbSessio
 
 
 @router.delete("/price-levels/{price_level_id}")
-def delete_price_level(price_level_id: int, db: DbSession = None, current_user: CurrentUser = None):
+@limiter.limit("30/minute")
+def delete_price_level(request: Request, price_level_id: int, db: DbSession = None, current_user: CurrentUser = None):
     """Delete a price level."""
     global _price_levels
     original_len = len(_price_levels)
@@ -203,7 +212,8 @@ def delete_price_level(price_level_id: int, db: DbSession = None, current_user: 
 
 
 @router.patch("/price-levels/{price_level_id}/toggle-active")
-def toggle_price_level_active(price_level_id: int, db: DbSession = None, current_user: CurrentUser = None):
+@limiter.limit("30/minute")
+def toggle_price_level_active(request: Request, price_level_id: int, db: DbSession = None, current_user: CurrentUser = None):
     """Toggle price level active status."""
     for pl in _price_levels:
         if pl["id"] == price_level_id:
@@ -216,14 +226,16 @@ def toggle_price_level_active(price_level_id: int, db: DbSession = None, current
 # ==================== CROSS-SELLING ====================
 
 @router.get("/items/{item_id}/cross-sell")
-def get_cross_sell_suggestions(item_id: int, db: DbSession = None, current_user: OptionalCurrentUser = None):
+@limiter.limit("60/minute")
+def get_cross_sell_suggestions(request: Request, item_id: int, db: DbSession = None, current_user: OptionalCurrentUser = None):
     """Get cross-sell suggestions for an item."""
     suggestions = _cross_sell_map.get(item_id, [])
     return {"item_id": item_id, "suggestions": suggestions}
 
 
 @router.post("/items/{item_id}/cross-sell")
-def add_cross_sell_suggestion(item_id: int, data: CrossSellCreate, db: DbSession = None, current_user: CurrentUser = None):
+@limiter.limit("30/minute")
+def add_cross_sell_suggestion(request: Request, item_id: int, data: CrossSellCreate, db: DbSession = None, current_user: CurrentUser = None):
     """Add a cross-sell suggestion to an item."""
     item = db.query(MenuItem).filter(MenuItem.id == item_id, MenuItem.not_deleted()).first()
     if not item:
@@ -249,7 +261,8 @@ def add_cross_sell_suggestion(item_id: int, data: CrossSellCreate, db: DbSession
 
 
 @router.delete("/items/{item_id}/cross-sell/{suggested_item_id}")
-def remove_cross_sell_suggestion(item_id: int, suggested_item_id: int, db: DbSession = None, current_user: CurrentUser = None):
+@limiter.limit("30/minute")
+def remove_cross_sell_suggestion(request: Request, item_id: int, suggested_item_id: int, db: DbSession = None, current_user: CurrentUser = None):
     """Remove a cross-sell suggestion."""
     if item_id in _cross_sell_map:
         _cross_sell_map[item_id] = [s for s in _cross_sell_map[item_id] if s.get("item_id") != suggested_item_id]
@@ -259,13 +272,15 @@ def remove_cross_sell_suggestion(item_id: int, suggested_item_id: int, db: DbSes
 # ==================== DAYPARTS ====================
 
 @router.get("/dayparts")
-def get_dayparts(db: DbSession = None, current_user: OptionalCurrentUser = None):
+@limiter.limit("60/minute")
+def get_dayparts(request: Request, db: DbSession = None, current_user: OptionalCurrentUser = None):
     """Get all daypart schedules."""
     return _dayparts
 
 
 @router.post("/dayparts")
-def create_daypart(data: DaypartCreate, db: DbSession = None, current_user: CurrentUser = None):
+@limiter.limit("30/minute")
+def create_daypart(request: Request, data: DaypartCreate, db: DbSession = None, current_user: CurrentUser = None):
     """Create a new daypart schedule."""
     global _next_daypart_id
     daypart = {
@@ -287,7 +302,8 @@ def create_daypart(data: DaypartCreate, db: DbSession = None, current_user: Curr
 
 
 @router.delete("/dayparts/{daypart_id}")
-def delete_daypart(daypart_id: int, db: DbSession = None, current_user: CurrentUser = None):
+@limiter.limit("30/minute")
+def delete_daypart(request: Request, daypart_id: int, db: DbSession = None, current_user: CurrentUser = None):
     """Delete a daypart schedule."""
     global _dayparts
     original_len = len(_dayparts)
@@ -298,7 +314,8 @@ def delete_daypart(daypart_id: int, db: DbSession = None, current_user: CurrentU
 
 
 @router.patch("/dayparts/{daypart_id}/toggle-active")
-def toggle_daypart_active(daypart_id: int, db: DbSession = None, current_user: CurrentUser = None):
+@limiter.limit("30/minute")
+def toggle_daypart_active(request: Request, daypart_id: int, db: DbSession = None, current_user: CurrentUser = None):
     """Toggle daypart active status."""
     for d in _dayparts:
         if d["id"] == daypart_id:
@@ -310,7 +327,8 @@ def toggle_daypart_active(daypart_id: int, db: DbSession = None, current_user: C
 # ==================== COMBOS/BUNDLES ====================
 
 @router.get("/combos")
-def get_combos(db: DbSession = None, current_user: OptionalCurrentUser = None):
+@limiter.limit("60/minute")
+def get_combos(request: Request, db: DbSession = None, current_user: OptionalCurrentUser = None):
     """Get all combo meals."""
     combos = db.query(ComboMeal).order_by(ComboMeal.name).all()
 
@@ -340,7 +358,8 @@ def get_combos(db: DbSession = None, current_user: OptionalCurrentUser = None):
 
 
 @router.post("/combos")
-def create_combo(data: ComboCreateSchema, db: DbSession = None, current_user: CurrentUser = None):
+@limiter.limit("30/minute")
+def create_combo(request: Request, data: ComboCreateSchema, db: DbSession = None, current_user: CurrentUser = None):
     """Create a new combo meal."""
     combo = ComboMeal(
         name=data.name,
@@ -364,7 +383,8 @@ def create_combo(data: ComboCreateSchema, db: DbSession = None, current_user: Cu
 
 
 @router.delete("/combos/{combo_id}")
-def delete_combo(combo_id: int, db: DbSession = None, current_user: CurrentUser = None):
+@limiter.limit("30/minute")
+def delete_combo(request: Request, combo_id: int, db: DbSession = None, current_user: CurrentUser = None):
     """Delete a combo meal."""
     combo = db.query(ComboMeal).filter(ComboMeal.id == combo_id).first()
     if not combo:
@@ -377,7 +397,8 @@ def delete_combo(combo_id: int, db: DbSession = None, current_user: CurrentUser 
 
 
 @router.patch("/combos/{combo_id}/toggle-available")
-def toggle_combo_available(combo_id: int, db: DbSession = None, current_user: CurrentUser = None):
+@limiter.limit("30/minute")
+def toggle_combo_available(request: Request, combo_id: int, db: DbSession = None, current_user: CurrentUser = None):
     """Toggle combo availability."""
     combo = db.query(ComboMeal).filter(ComboMeal.id == combo_id).first()
     if not combo:
@@ -391,7 +412,8 @@ def toggle_combo_available(combo_id: int, db: DbSession = None, current_user: Cu
 # ==================== GLOBAL MODIFIERS ====================
 
 @router.get("/modifier-groups")
-def get_global_modifier_groups(db: DbSession = None, current_user: OptionalCurrentUser = None):
+@limiter.limit("60/minute")
+def get_global_modifier_groups(request: Request, db: DbSession = None, current_user: OptionalCurrentUser = None):
     """Get all modifier groups."""
     groups = db.query(ModifierGroup).order_by(ModifierGroup.sort_order, ModifierGroup.name).all()
 
@@ -419,7 +441,8 @@ def get_global_modifier_groups(db: DbSession = None, current_user: OptionalCurre
 
 
 @router.post("/modifier-groups")
-def create_global_modifier_group(data: GlobalModifierGroupCreate, db: DbSession = None, current_user: CurrentUser = None):
+@limiter.limit("30/minute")
+def create_global_modifier_group(request: Request, data: GlobalModifierGroupCreate, db: DbSession = None, current_user: CurrentUser = None):
     """Create a global modifier group."""
     group = ModifierGroup(
         name=data.name,
@@ -444,7 +467,8 @@ def create_global_modifier_group(data: GlobalModifierGroupCreate, db: DbSession 
 
 
 @router.post("/modifier-groups/{group_id}/options")
-def add_modifier_option(group_id: int, data: ModifierOptionCreate, db: DbSession = None, current_user: CurrentUser = None):
+@limiter.limit("30/minute")
+def add_modifier_option(request: Request, group_id: int, data: ModifierOptionCreate, db: DbSession = None, current_user: CurrentUser = None):
     """Add an option to a modifier group."""
     group = db.query(ModifierGroup).filter(ModifierGroup.id == group_id).first()
     if not group:
@@ -474,7 +498,8 @@ def add_modifier_option(group_id: int, data: ModifierOptionCreate, db: DbSession
 # ==================== CATEGORY ADVANCED ====================
 
 @router.put("/categories/reorder")
-def reorder_categories(data: CategoryReorderRequest, db: DbSession = None, current_user: CurrentUser = None):
+@limiter.limit("30/minute")
+def reorder_categories(request: Request, data: CategoryReorderRequest, db: DbSession = None, current_user: CurrentUser = None):
     """Reorder categories."""
     for cat_data in data.categories:
         category = db.query(MenuCategory).filter(MenuCategory.id == cat_data["id"]).first()
@@ -485,7 +510,8 @@ def reorder_categories(data: CategoryReorderRequest, db: DbSession = None, curre
 
 
 @router.patch("/categories/{category_id}/toggle-active")
-def toggle_category_active(category_id: int, db: DbSession = None, current_user: CurrentUser = None):
+@limiter.limit("30/minute")
+def toggle_category_active(request: Request, category_id: int, db: DbSession = None, current_user: CurrentUser = None):
     """Toggle category active status."""
     category = db.query(MenuCategory).filter(MenuCategory.id == category_id).first()
     if not category:
@@ -499,7 +525,8 @@ def toggle_category_active(category_id: int, db: DbSession = None, current_user:
 # ==================== ALLERGENS & NUTRITION ====================
 
 @router.get("/items-with-allergens")
-def get_items_with_allergens(db: DbSession = None, current_user: OptionalCurrentUser = None):
+@limiter.limit("60/minute")
+def get_items_with_allergens(request: Request, db: DbSession = None, current_user: OptionalCurrentUser = None):
     """Get all menu items with allergen info."""
     items = db.query(MenuItem).filter(MenuItem.not_deleted()).all()
 

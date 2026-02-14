@@ -4,9 +4,11 @@ from typing import Any, List, Optional, Union
 from decimal import Decimal
 from datetime import datetime, time, date, timezone
 
-from fastapi import APIRouter, Query, HTTPException, status
+from fastapi import APIRouter, Query, HTTPException, Request, status
 from pydantic import BaseModel
 from sqlalchemy import func
+
+from app.core.rate_limit import limiter
 
 from app.core.rbac import CurrentUser, OptionalCurrentUser, RequireManager
 from app.db.session import DbSession
@@ -82,7 +84,9 @@ class SpillageRecordCreate(BaseModel):
 # ==================== ROUTES ====================
 
 @router.get("/tabs")
+@limiter.limit("60/minute")
 def get_bar_tabs(
+    request: Request,
     db: DbSession,
     current_user: OptionalCurrentUser = None,
     status: Optional[str] = Query(None, description="Filter by status: open, closed, void"),
@@ -119,7 +123,9 @@ def get_bar_tabs(
 
 
 @router.get("/spillage/variance")
+@limiter.limit("60/minute")
 def get_spillage_variance(
+    request: Request,
     db: DbSession,
     current_user: OptionalCurrentUser = None,
     location_id: int = Query(1),
@@ -195,7 +201,9 @@ def get_spillage_variance(
 
 
 @router.get("/spillage/stats")
+@limiter.limit("60/minute")
 def get_spillage_stats(
+    request: Request,
     db: DbSession,
     current_user: OptionalCurrentUser = None,
     location_id: int = Query(1),
@@ -253,7 +261,9 @@ def get_spillage_stats(
 
 
 @router.get("/pour-costs/summary")
+@limiter.limit("60/minute")
 def get_pour_costs_summary(
+    request: Request,
     db: DbSession,
     current_user: OptionalCurrentUser = None,
     location_id: int = Query(1),
@@ -334,7 +344,9 @@ def get_pour_costs_summary(
 
 
 @router.get("/stats")
+@limiter.limit("60/minute")
 def get_bar_stats(
+    request: Request,
     db: DbSession,
     current_user: OptionalCurrentUser = None,
     period: str = Query("today"),
@@ -438,7 +450,9 @@ def get_bar_stats(
 
 
 @router.get("/top-drinks")
+@limiter.limit("60/minute")
 def get_top_drinks(
+    request: Request,
     db: DbSession,
     current_user: OptionalCurrentUser = None,
     period: str = Query("today"),
@@ -495,7 +509,9 @@ def get_top_drinks(
 
 
 @router.get("/inventory-alerts")
+@limiter.limit("60/minute")
 def get_inventory_alerts(
+    request: Request,
     db: DbSession,
     current_user: OptionalCurrentUser = None,
     location_id: int = Query(1),
@@ -547,7 +563,9 @@ def get_inventory_alerts(
 
 
 @router.get("/recent-activity")
+@limiter.limit("60/minute")
 def get_recent_activity(
+    request: Request,
     db: DbSession,
     current_user: OptionalCurrentUser = None,
     location_id: int = Query(1),
@@ -607,7 +625,9 @@ def get_recent_activity(
 
 
 @router.get("/spillage/records")
+@limiter.limit("60/minute")
 def get_spillage_records(
+    request: Request,
     db: DbSession,
     current_user: OptionalCurrentUser = None,
     location_id: int = Query(1),
@@ -643,7 +663,9 @@ def get_spillage_records(
 
 
 @router.post("/spillage/records")
+@limiter.limit("30/minute")
 def create_spillage_record(
+    request: Request,
     record: SpillageRecordCreate,
     db: DbSession,
     current_user: CurrentUser,
@@ -700,7 +722,9 @@ def create_spillage_record(
 # ==================== RECIPES (using real Recipe model) ====================
 
 @router.post("/recipes")
+@limiter.limit("30/minute")
 def create_bar_recipe(
+    request: Request,
     db: DbSession,
     data: dict = None,
     current_user: OptionalCurrentUser = None,
@@ -738,7 +762,9 @@ def create_bar_recipe(
 
 
 @router.get("/recipes")
+@limiter.limit("60/minute")
 def get_bar_recipes(
+    request: Request,
     db: DbSession,
     current_user: OptionalCurrentUser = None,
     category: Optional[str] = Query(None),
@@ -784,7 +810,9 @@ def get_bar_recipes(
 
 
 @router.get("/inventory")
+@limiter.limit("60/minute")
 def get_bar_inventory(
+    request: Request,
     db: DbSession,
     current_user: OptionalCurrentUser = None,
     location_id: int = Query(1),
@@ -819,7 +847,9 @@ def get_bar_inventory(
 
 
 @router.post("/inventory/count")
+@limiter.limit("30/minute")
 def record_inventory_count(
+    request: Request,
     counts: Union[List[dict], dict],
     db: DbSession,
     current_user: RequireManager,
@@ -932,7 +962,9 @@ def _happy_hour_to_dict(hh: HappyHour) -> dict:
 
 
 @router.get("/happy-hours")
+@limiter.limit("60/minute")
 def get_happy_hours(
+    request: Request,
     db: DbSession,
     current_user: OptionalCurrentUser = None,
     location_id: Optional[int] = Query(None),
@@ -949,7 +981,9 @@ def get_happy_hours(
 
 
 @router.get("/happy-hours/stats")
+@limiter.limit("60/minute")
 def get_happy_hours_stats(
+    request: Request,
     db: DbSession,
     current_user: OptionalCurrentUser = None,
     location_id: Optional[int] = Query(None),
@@ -980,7 +1014,9 @@ def get_happy_hours_stats(
 
 
 @router.get("/happy-hours/{happy_hour_id}")
+@limiter.limit("60/minute")
 def get_happy_hour(
+    request: Request,
     happy_hour_id: int,
     db: DbSession,
     current_user: CurrentUser,
@@ -993,7 +1029,9 @@ def get_happy_hour(
 
 
 @router.post("/happy-hours")
+@limiter.limit("30/minute")
 def create_happy_hour(
+    request: Request,
     data: HappyHourCreate,
     db: DbSession,
     current_user: RequireManager,
@@ -1033,7 +1071,9 @@ def create_happy_hour(
 
 
 @router.put("/happy-hours/{happy_hour_id}")
+@limiter.limit("30/minute")
 def update_happy_hour(
+    request: Request,
     happy_hour_id: int,
     data: HappyHourCreate,
     db: DbSession,
@@ -1074,7 +1114,9 @@ def update_happy_hour(
 
 
 @router.delete("/happy-hours/{happy_hour_id}")
+@limiter.limit("30/minute")
 def delete_happy_hour(
+    request: Request,
     happy_hour_id: int,
     db: DbSession,
     current_user: RequireManager,
@@ -1091,7 +1133,9 @@ def delete_happy_hour(
 
 
 @router.post("/happy-hours/{happy_hour_id}/toggle")
+@limiter.limit("30/minute")
 def toggle_happy_hour(
+    request: Request,
     happy_hour_id: int,
     db: DbSession,
     current_user: RequireManager,
@@ -1112,7 +1156,8 @@ def toggle_happy_hour(
 
 
 @router.get("/cocktails")
-def get_cocktails(db: DbSession, current_user: OptionalCurrentUser = None):
+@limiter.limit("60/minute")
+def get_cocktails(request: Request, db: DbSession, current_user: OptionalCurrentUser = None):
     """Get cocktail recipes list."""
     recipes = db.query(Recipe).order_by(Recipe.name).limit(50).all()
     results = []
@@ -1142,7 +1187,9 @@ def get_cocktails(db: DbSession, current_user: OptionalCurrentUser = None):
 # ==================== TANKS (proxy to inventory-hardware) ====================
 
 @router.get("/tanks")
+@limiter.limit("60/minute")
 def get_bar_tanks(
+    request: Request,
     db: DbSession,
     current_user: OptionalCurrentUser = None,
     status: Optional[str] = Query(None),
@@ -1188,10 +1235,12 @@ def get_bar_tanks(
 # ==================== POUR COSTS (root listing) ====================
 
 @router.get("/pour-costs")
+@limiter.limit("60/minute")
 def get_pour_costs(
+    request: Request,
     db: DbSession,
     current_user: OptionalCurrentUser = None,
     location_id: int = Query(1),
 ):
     """Get pour costs list - delegates to pour-costs/summary."""
-    return get_pour_costs_summary(db=db, current_user=current_user, location_id=location_id)
+    return get_pour_costs_summary(request=request, db=db, current_user=current_user, location_id=location_id)

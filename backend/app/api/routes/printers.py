@@ -2,8 +2,10 @@
 
 from datetime import datetime
 from typing import Optional, List
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Query, Request
 from pydantic import BaseModel
+
+from app.core.rate_limit import limiter
 
 from app.db.session import DbSession
 from app.models.restaurant import GuestOrder, Check, CheckItem, KitchenOrder, MenuItem
@@ -117,7 +119,8 @@ class PrintResult(BaseModel):
 # ============================================================================
 
 @router.post("/")
-async def create_printer(config: PrinterConfigRequest):
+@limiter.limit("30/minute")
+async def create_printer(request: Request, config: PrinterConfigRequest):
     """Create a new printer configuration."""
     manager = get_printer_manager()
     import time
@@ -160,7 +163,8 @@ async def create_printer(config: PrinterConfigRequest):
 
 
 @router.get("/", response_model=List[PrinterResponse])
-async def list_printers():
+@limiter.limit("60/minute")
+async def list_printers(request: Request):
     """List all configured printers."""
     manager = get_printer_manager()
     printers = manager.list_printers()
@@ -180,7 +184,8 @@ async def list_printers():
 
 
 @router.post("/{printer_id}", response_model=PrinterResponse)
-async def add_printer(printer_id: str, config: PrinterConfigRequest):
+@limiter.limit("30/minute")
+async def add_printer(request: Request, printer_id: str, config: PrinterConfigRequest):
     """Add a new printer configuration."""
     manager = get_printer_manager()
 
@@ -228,7 +233,8 @@ async def add_printer(printer_id: str, config: PrinterConfigRequest):
 
 
 @router.get("/{printer_id}", response_model=PrinterResponse)
-async def get_printer(printer_id: str):
+@limiter.limit("60/minute")
+async def get_printer(request: Request, printer_id: str):
     """Get a printer by ID."""
     manager = get_printer_manager()
     printer = manager.get_printer(printer_id)
@@ -248,7 +254,8 @@ async def get_printer(printer_id: str):
 
 
 @router.delete("/{printer_id}")
-async def remove_printer(printer_id: str):
+@limiter.limit("30/minute")
+async def remove_printer(request: Request, printer_id: str):
     """Remove a printer."""
     manager = get_printer_manager()
     printer = manager.get_printer(printer_id)
@@ -267,7 +274,8 @@ async def remove_printer(printer_id: str):
 # ============================================================================
 
 @router.post("/{printer_id}/test", response_model=PrintResult)
-async def test_printer(printer_id: str):
+@limiter.limit("30/minute")
+async def test_printer(request: Request, printer_id: str):
     """Print a test page."""
     manager = get_printer_manager()
     printer = manager.get_printer(printer_id)
@@ -284,7 +292,8 @@ async def test_printer(printer_id: str):
 
 
 @router.post("/{printer_id}/connect", response_model=PrintResult)
-async def connect_printer(printer_id: str):
+@limiter.limit("30/minute")
+async def connect_printer(request: Request, printer_id: str):
     """Connect to a printer."""
     manager = get_printer_manager()
     printer = manager.get_printer(printer_id)
@@ -301,7 +310,8 @@ async def connect_printer(printer_id: str):
 
 
 @router.post("/{printer_id}/disconnect", response_model=PrintResult)
-async def disconnect_printer(printer_id: str):
+@limiter.limit("30/minute")
+async def disconnect_printer(request: Request, printer_id: str):
     """Disconnect from a printer."""
     manager = get_printer_manager()
     printer = manager.get_printer(printer_id)
@@ -315,7 +325,8 @@ async def disconnect_printer(printer_id: str):
 
 
 @router.post("/{printer_id}/open-drawer", response_model=PrintResult)
-async def open_cash_drawer(printer_id: str):
+@limiter.limit("30/minute")
+async def open_cash_drawer(request: Request, printer_id: str):
     """Open the cash drawer."""
     manager = get_printer_manager()
     printer = manager.get_printer(printer_id)
@@ -336,24 +347,25 @@ async def open_cash_drawer(printer_id: str):
 # ============================================================================
 
 @router.post("/print/receipt", response_model=PrintResult)
-async def print_receipt(request: PrintReceiptRequest):
+@limiter.limit("30/minute")
+async def print_receipt(request: Request, receipt_request: PrintReceiptRequest):
     """Print a customer receipt."""
     manager = get_printer_manager()
-    printer = manager.get_printer(request.printer_id)
+    printer = manager.get_printer(receipt_request.printer_id)
 
     if not printer:
-        raise HTTPException(status_code=404, detail=f"Printer '{request.printer_id}' not found")
+        raise HTTPException(status_code=404, detail=f"Printer '{receipt_request.printer_id}' not found")
 
     # Build receipt object
     receipt = Receipt(
-        venue_name=request.venue_name,
-        venue_address=request.venue_address,
-        venue_phone=request.venue_phone,
-        venue_tax_id=request.venue_tax_id,
-        order_number=request.order_number,
-        table_number=request.table_number,
-        waiter_name=request.waiter_name,
-        order_type=request.order_type,
+        venue_name=receipt_request.venue_name,
+        venue_address=receipt_request.venue_address,
+        venue_phone=receipt_request.venue_phone,
+        venue_tax_id=receipt_request.venue_tax_id,
+        order_number=receipt_request.order_number,
+        table_number=receipt_request.table_number,
+        waiter_name=receipt_request.waiter_name,
+        order_type=receipt_request.order_type,
         items=[
             ReceiptItem(
                 name=item.name,
@@ -361,20 +373,20 @@ async def print_receipt(request: PrintReceiptRequest):
                 price=item.price,
                 modifiers=item.modifiers,
             )
-            for item in request.items
+            for item in receipt_request.items
         ],
-        subtotal=request.subtotal,
-        tax=request.tax,
-        tax_rate=request.tax_rate,
-        discount=request.discount,
-        discount_name=request.discount_name,
-        tip=request.tip,
-        total=request.total,
-        payment_method=request.payment_method,
-        amount_paid=request.amount_paid,
-        change=request.change,
-        footer_message=request.footer_message,
-        qr_code_data=request.qr_code_data,
+        subtotal=receipt_request.subtotal,
+        tax=receipt_request.tax,
+        tax_rate=receipt_request.tax_rate,
+        discount=receipt_request.discount,
+        discount_name=receipt_request.discount_name,
+        tip=receipt_request.tip,
+        total=receipt_request.total,
+        payment_method=receipt_request.payment_method,
+        amount_paid=receipt_request.amount_paid,
+        change=receipt_request.change,
+        footer_message=receipt_request.footer_message,
+        qr_code_data=receipt_request.qr_code_data,
     )
 
     success = await printer.print_receipt(receipt)
@@ -386,13 +398,14 @@ async def print_receipt(request: PrintReceiptRequest):
 
 
 @router.post("/print/kitchen", response_model=PrintResult)
-async def print_kitchen_ticket(request: PrintKitchenTicketRequest):
+@limiter.limit("30/minute")
+async def print_kitchen_ticket(request: Request, ticket_request: PrintKitchenTicketRequest):
     """Print a kitchen ticket."""
     manager = get_printer_manager()
-    printer = manager.get_printer(request.printer_id)
+    printer = manager.get_printer(ticket_request.printer_id)
 
     if not printer:
-        raise HTTPException(status_code=404, detail=f"Printer '{request.printer_id}' not found")
+        raise HTTPException(status_code=404, detail=f"Printer '{ticket_request.printer_id}' not found")
 
     items = [
         ReceiptItem(
@@ -401,19 +414,19 @@ async def print_kitchen_ticket(request: PrintKitchenTicketRequest):
             price=item.price,
             modifiers=item.modifiers,
         )
-        for item in request.items
+        for item in ticket_request.items
     ]
 
     success = await printer.print_kitchen_ticket(
-        order_number=request.order_number,
-        table_number=request.table_number,
+        order_number=ticket_request.order_number,
+        table_number=ticket_request.table_number,
         items=items,
-        waiter_name=request.waiter_name,
-        order_type=request.order_type,
-        notes=request.notes,
-        is_rush=request.is_rush,
-        is_vip=request.is_vip,
-        station=request.station,
+        waiter_name=ticket_request.waiter_name,
+        order_type=ticket_request.order_type,
+        notes=ticket_request.notes,
+        is_rush=ticket_request.is_rush,
+        is_vip=ticket_request.is_vip,
+        station=ticket_request.station,
     )
 
     if success:
@@ -427,7 +440,9 @@ async def print_kitchen_ticket(request: PrintKitchenTicketRequest):
 # ============================================================================
 
 @router.post("/print/order/{order_id}/receipt")
+@limiter.limit("30/minute")
 async def print_order_receipt(
+    request: Request,
     order_id: int,
     db: DbSession,
     printer_id: str = Query(...),
@@ -485,7 +500,9 @@ async def print_order_receipt(
 
 
 @router.post("/print/order/{order_id}/kitchen")
+@limiter.limit("30/minute")
 async def print_order_kitchen_tickets(
+    request: Request,
     order_id: int,
     db: DbSession,
     printer_id: str = Query(None),

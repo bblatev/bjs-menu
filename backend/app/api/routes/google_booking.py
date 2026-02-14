@@ -21,6 +21,7 @@ from dateutil import parser as date_parser
 import secrets
 import logging
 
+from app.core.rate_limit import limiter
 from app.db.session import get_db
 from app.models import Reservation, ReservationStatus, BookingSource, Table, Venue
 from app.schemas.reservations import (
@@ -133,7 +134,8 @@ def reservation_to_google_response(reservation: Reservation) -> GoogleBookingRes
 # ============================================================================
 
 @router.get("/health", response_model=GoogleHealthCheckResponse)
-async def health_check():
+@limiter.limit("60/minute")
+async def health_check(request: Request):
     """
     Health check endpoint for Google to verify server availability.
     Google will poll this endpoint to ensure the booking server is operational.
@@ -146,8 +148,10 @@ async def health_check():
 # ============================================================================
 
 @router.post("/v3/CheckAvailability", response_model=GoogleAvailabilityResponse)
+@limiter.limit("30/minute")
 async def check_availability(
-    request: GoogleAvailabilityRequest,
+    request: Request,
+    availability_data: GoogleAvailabilityRequest,
     db: Session = Depends(get_db),
 ):
     """
@@ -155,19 +159,19 @@ async def check_availability(
     Returns the number of available tables for the requested party size.
     """
     try:
-        slot_time = parse_google_datetime(request.slot.start_time)
-        duration_minutes = request.slot.duration_seconds // 60
+        slot_time = parse_google_datetime(availability_data.slot.start_time)
+        duration_minutes = availability_data.slot.duration_seconds // 60
 
         # Get all active tables that can accommodate the party
         suitable_tables = db.query(Table).filter(
             Table.venue_id == DEFAULT_VENUE_ID,
             Table.active == True,
-            Table.seats >= request.party_size
+            Table.seats >= availability_data.party_size
         ).all()
 
         if not suitable_tables:
             return GoogleAvailabilityResponse(
-                slot=request.slot,
+                slot=availability_data.slot,
                 count_available=0,
             )
 
@@ -192,7 +196,7 @@ async def check_availability(
         available_count = sum(1 for t in suitable_tables if t.id not in booked_table_ids)
 
         return GoogleAvailabilityResponse(
-            slot=request.slot,
+            slot=availability_data.slot,
             count_available=available_count,
         )
 
@@ -206,8 +210,10 @@ async def check_availability(
 # ============================================================================
 
 @router.post("/v3/CreateBooking", response_model=GoogleBookingResponse)
+@limiter.limit("30/minute")
 async def create_booking(
-    request: GoogleBookingRequest,
+    request: Request,
+    booking_data: GoogleBookingRequest,
     db: Session = Depends(get_db),
 ):
     """
@@ -217,21 +223,21 @@ async def create_booking(
     try:
         # Check for idempotency - if booking already exists with this token
         existing = db.query(Reservation).filter(
-            Reservation.external_booking_id == request.idempotency_token
+            Reservation.external_booking_id == booking_data.idempotency_token
         ).first()
 
         if existing:
             return reservation_to_google_response(existing)
 
         # Parse the slot time
-        slot_time = parse_google_datetime(request.slot.start_time)
-        duration_minutes = request.slot.duration_seconds // 60
+        slot_time = parse_google_datetime(booking_data.slot.start_time)
+        duration_minutes = booking_data.slot.duration_seconds // 60
 
         # Find an available table
         suitable_tables = db.query(Table).filter(
             Table.venue_id == DEFAULT_VENUE_ID,
             Table.active == True,
-            Table.seats >= request.party_size
+            Table.seats >= booking_data.party_size
         ).order_by(Table.seats.asc()).all()  # Prefer smaller tables
 
         # Check availability and find a table
@@ -260,7 +266,7 @@ async def create_booking(
             )
 
         # Create guest name from user info
-        guest_name = f"{request.user_information.given_name or ''} {request.user_information.family_name or ''}".strip()
+        guest_name = f"{booking_data.user_information.given_name or ''} {booking_data.user_information.family_name or ''}".strip()
         if not guest_name:
             guest_name = "Google Guest"
 
@@ -272,16 +278,16 @@ async def create_booking(
             venue_id=DEFAULT_VENUE_ID,
             table_id=available_table.id,
             guest_name=guest_name,
-            guest_email=request.user_information.email,
-            guest_phone=request.user_information.phone,
-            party_size=request.party_size,
+            guest_email=booking_data.user_information.email,
+            guest_phone=booking_data.user_information.phone,
+            party_size=booking_data.party_size,
             reservation_date=slot_time,
             duration_minutes=duration_minutes,
             status=ReservationStatus.confirmed,  # Auto-confirm Google bookings
             confirmed_at=datetime.utcnow(),
             booking_source=BookingSource.google,
             external_booking_id=booking_id,
-            special_requests=request.additional_request,
+            special_requests=booking_data.additional_request,
             confirmation_code=secrets.token_hex(4).upper(),
         )
 
@@ -306,8 +312,10 @@ async def create_booking(
 # ============================================================================
 
 @router.post("/v3/GetBookingStatus", response_model=GoogleBookingResponse)
+@limiter.limit("30/minute")
 async def get_booking_status(
-    request: GoogleBookingStatusRequest,
+    request: Request,
+    status_data: GoogleBookingStatusRequest,
     db: Session = Depends(get_db),
 ):
     """
@@ -315,13 +323,13 @@ async def get_booking_status(
     Called by Google to sync booking status.
     """
     reservation = db.query(Reservation).filter(
-        Reservation.external_booking_id == request.booking_id
+        Reservation.external_booking_id == status_data.booking_id
     ).first()
 
     if not reservation:
         # Try to find by internal ID
         try:
-            internal_id = int(request.booking_id)
+            internal_id = int(status_data.booking_id)
             reservation = db.query(Reservation).filter(
                 Reservation.id == internal_id,
                 Reservation.booking_source == BookingSource.google
@@ -340,8 +348,10 @@ async def get_booking_status(
 # ============================================================================
 
 @router.post("/v3/UpdateBooking", response_model=GoogleBookingResponse)
+@limiter.limit("30/minute")
 async def update_booking(
-    request: GoogleBookingUpdateRequest,
+    request: Request,
+    update_data: GoogleBookingUpdateRequest,
     db: Session = Depends(get_db),
 ):
     """
@@ -349,7 +359,7 @@ async def update_booking(
     Handles rescheduling and modifications from Google.
     """
     reservation = db.query(Reservation).filter(
-        Reservation.external_booking_id == request.booking.booking_id
+        Reservation.external_booking_id == update_data.booking.booking_id
     ).first()
 
     if not reservation:
@@ -357,28 +367,28 @@ async def update_booking(
 
     try:
         # Update fields based on the request
-        if request.booking.slot:
-            new_time = parse_google_datetime(request.booking.slot.start_time)
+        if update_data.booking.slot:
+            new_time = parse_google_datetime(update_data.booking.slot.start_time)
             reservation.reservation_date = new_time
-            reservation.duration_minutes = request.booking.slot.duration_seconds // 60
+            reservation.duration_minutes = update_data.booking.slot.duration_seconds // 60
 
-        if request.booking.party_size:
-            reservation.party_size = request.booking.party_size
+        if update_data.booking.party_size:
+            reservation.party_size = update_data.booking.party_size
 
-        if request.booking.user_information:
-            if request.booking.user_information.email:
-                reservation.guest_email = request.booking.user_information.email
-            if request.booking.user_information.phone:
-                reservation.guest_phone = request.booking.user_information.phone
-            if request.booking.user_information.given_name:
-                reservation.guest_name = f"{request.booking.user_information.given_name} {request.booking.user_information.family_name or ''}".strip()
+        if update_data.booking.user_information:
+            if update_data.booking.user_information.email:
+                reservation.guest_email = update_data.booking.user_information.email
+            if update_data.booking.user_information.phone:
+                reservation.guest_phone = update_data.booking.user_information.phone
+            if update_data.booking.user_information.given_name:
+                reservation.guest_name = f"{update_data.booking.user_information.given_name} {update_data.booking.user_information.family_name or ''}".strip()
 
         reservation.updated_at = datetime.utcnow()
 
         db.commit()
         db.refresh(reservation)
 
-        logger.info(f"Updated Google booking: {request.booking.booking_id}")
+        logger.info(f"Updated Google booking: {update_data.booking.booking_id}")
 
         return reservation_to_google_response(reservation)
 
@@ -393,8 +403,10 @@ async def update_booking(
 # ============================================================================
 
 @router.post("/v3/CancelBooking", response_model=GoogleBookingResponse)
+@limiter.limit("30/minute")
 async def cancel_booking(
-    request: GoogleCancelRequest,
+    request: Request,
+    cancel_data: GoogleCancelRequest,
     db: Session = Depends(get_db),
 ):
     """
@@ -402,7 +414,7 @@ async def cancel_booking(
     Called when user cancels through Google Maps.
     """
     reservation = db.query(Reservation).filter(
-        Reservation.external_booking_id == request.booking_id
+        Reservation.external_booking_id == cancel_data.booking_id
     ).first()
 
     if not reservation:
@@ -414,7 +426,7 @@ async def cancel_booking(
     db.commit()
     db.refresh(reservation)
 
-    logger.info(f"Cancelled Google booking: {request.booking_id}")
+    logger.info(f"Cancelled Google booking: {cancel_data.booking_id}")
 
     return reservation_to_google_response(reservation)
 
@@ -424,7 +436,9 @@ async def cancel_booking(
 # ============================================================================
 
 @router.get("/v3/ListBookings")
+@limiter.limit("60/minute")
 async def list_bookings(
+    request: Request,
     start_time: Optional[str] = None,
     end_time: Optional[str] = None,
     db: Session = Depends(get_db),
@@ -454,7 +468,8 @@ async def list_bookings(
 # ============================================================================
 
 @router.get("/feeds/services")
-async def get_services_feed(db: Session = Depends(get_db)):
+@limiter.limit("60/minute")
+async def get_services_feed(request: Request, db: Session = Depends(get_db)):
     """
     Returns the service feed for Google.
     Describes the booking service (table reservation).
@@ -481,7 +496,9 @@ async def get_services_feed(db: Session = Depends(get_db)):
 
 
 @router.get("/feeds/availability")
+@limiter.limit("60/minute")
 async def get_availability_feed(
+    request: Request,
     date: Optional[str] = None,
     days: int = 7,
     db: Session = Depends(get_db),
@@ -546,7 +563,8 @@ async def get_availability_feed(
 
 
 @router.get("/feeds/merchant")
-async def get_merchant_feed(db: Session = Depends(get_db)):
+@limiter.limit("60/minute")
+async def get_merchant_feed(request: Request, db: Session = Depends(get_db)):
     """
     Returns the merchant feed for Google Business Profile integration.
     """

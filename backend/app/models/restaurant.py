@@ -184,7 +184,7 @@ class MenuItem(Base, SoftDeleteMixin):
     category = Column(String(100), nullable=False)
 
     image_url = Column(String(500), nullable=True)
-    available = Column(Boolean, default=True)
+    available = Column(Boolean, default=True, index=True)
 
     prep_time_minutes = Column(Integer, nullable=True)
     station = Column(String(50), nullable=True)  # grill, fry, salad, bar
@@ -308,14 +308,14 @@ class KitchenOrder(Base, VersionMixin):
     check_id = Column(Integer, ForeignKey("checks.id"), nullable=True)
     table_number = Column(String(50), nullable=True)
 
-    status = Column(String(20), default="pending")  # pending, cooking, ready, completed, cancelled
-    priority = Column(Integer, default=0)
+    status = Column(String(20), default="pending", index=True)  # pending, cooking, ready, completed, cancelled
+    priority = Column(Integer, default=0, index=True)
 
     station = Column(String(50), nullable=True)
     course = Column(String(20), nullable=True)
 
     # Workflow mode support (Gap 11)
-    workflow_mode = Column(String(20), default="order")  # "order" (direct) or "request" (needs confirmation)
+    workflow_mode = Column(String(20), default="order", index=True)  # "order" (direct) or "request" (needs confirmation)
     is_confirmed = Column(Boolean, default=True)  # For request mode: needs manager/kitchen confirmation
     confirmed_by = Column(Integer, nullable=True)  # Staff ID who confirmed
     confirmed_at = Column(DateTime, nullable=True)
@@ -349,7 +349,7 @@ class GuestOrder(Base):
     table_token = Column(String(100), nullable=True)
     table_number = Column(String(50), nullable=True)
 
-    status = Column(String(20), default="received")  # received, confirmed, preparing, ready, served, cancelled
+    status = Column(String(20), default="received", index=True)  # received, confirmed, preparing, ready, served, cancelled
     order_type = Column(String(20), default="dine-in")  # dine-in, takeout, delivery
 
     subtotal = Column(Numeric(10, 2), default=Decimal("0"))

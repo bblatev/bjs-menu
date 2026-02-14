@@ -5,6 +5,7 @@ import Link from 'next/link';
 
 import { API_URL, getAuthHeaders } from '@/lib/api';
 
+import { toast } from '@/lib/toast';
 interface ParLevelItem {
   id: number;
   name: string;
@@ -117,16 +118,16 @@ export default function ParLevelsPage() {
   const categories = [...new Set(items.map(i => i.category))];
 
   const handleGeneratePO = (item: ParLevelItem) => {
-    alert(`Purchase Order generated for ${item.name}: ${item.reorder_quantity} ${item.unit} from ${item.supplier_name}`);
+    toast.success(`Purchase Order generated for ${item.name}: ${item.reorder_quantity} ${item.unit} from ${item.supplier_name}`);
   };
 
   const handleBulkReorder = () => {
     const reorderItems = items.filter(i => i.status === 'reorder' || i.status === 'critical');
     if (reorderItems.length === 0) {
-      alert('No items need reordering');
+      toast.success('No items need reordering');
       return;
     }
-    alert(`Generating ${reorderItems.length} purchase orders for items below reorder point`);
+    toast.success(`Generating ${reorderItems.length} purchase orders for items below reorder point`);
   };
 
   if (loading) {
@@ -459,7 +460,7 @@ export default function ParLevelsPage() {
               <button
                 onClick={() => {
                   setShowEditModal(false);
-                  alert('Par levels updated successfully');
+                  toast.success('Par levels updated successfully');
                 }}
                 className="px-4 py-2 bg-primary-600 text-gray-900 rounded-lg hover:bg-primary-700"
               >
@@ -523,7 +524,7 @@ export default function ParLevelsPage() {
               <button
                 onClick={() => {
                   setShowAutoReorderModal(false);
-                  alert('Auto-reorder rules saved');
+                  toast.success('Auto-reorder rules saved');
                 }}
                 className="px-4 py-2 bg-primary-600 text-gray-900 rounded-lg hover:bg-primary-700"
               >

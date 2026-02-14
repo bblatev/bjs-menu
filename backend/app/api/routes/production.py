@@ -3,7 +3,7 @@ Production Module API Endpoints
 Recipe management, production orders, cost calculation, batch tracking
 """
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy.orm import Session
 from typing import List, Optional, Dict
 from datetime import datetime, date
@@ -13,7 +13,7 @@ from app.db.session import get_db
 from app.services.production_service import ProductionService
 from pydantic import BaseModel, Field
 
-
+from app.core.rate_limit import limiter
 
 router = APIRouter()
 
@@ -122,7 +122,9 @@ class ProductionBatchResponse(BaseModel):
     summary="Create recipe",
     description="Create new recipe with ingredients and instructions"
 )
+@limiter.limit("30/minute")
 def create_recipe(
+    request: Request,
     data: RecipeCreate,
     db: Session = Depends(get_db)
 ):
@@ -206,7 +208,9 @@ def create_recipe(
     summary="Get recipe",
     description="Get recipe details with all ingredients"
 )
+@limiter.limit("60/minute")
 def get_recipe(
+    request: Request,
     recipe_id: int,
     db: Session = Depends(get_db)
 ):
@@ -240,7 +244,9 @@ def get_recipe(
     summary="List recipes",
     description="List all recipes with optional filters"
 )
+@limiter.limit("60/minute")
 def list_recipes(
+    request: Request,
     menu_item_id: Optional[int] = None,
     active: Optional[bool] = True,
     difficulty: Optional[str] = None,
@@ -292,7 +298,9 @@ def list_recipes(
     summary="Calculate recipe cost",
     description="Get detailed cost breakdown and pricing analysis"
 )
+@limiter.limit("60/minute")
 def calculate_recipe_cost(
+    request: Request,
     recipe_id: int,
     db: Session = Depends(get_db)
 ):
@@ -353,7 +361,9 @@ def calculate_recipe_cost(
     summary="Update recipe",
     description="Update recipe (creates new version if ingredients changed)"
 )
+@limiter.limit("30/minute")
 def update_recipe(
+    request: Request,
     recipe_id: int,
     updates: Dict,
     db: Session = Depends(get_db)
@@ -397,7 +407,9 @@ def update_recipe(
     summary="Create production order",
     description="Schedule production of a recipe"
 )
+@limiter.limit("30/minute")
 def create_production_order(
+    request: Request,
     data: ProductionOrderCreate,
     db: Session = Depends(get_db)
 ):
@@ -453,7 +465,9 @@ def create_production_order(
     summary="Start production",
     description="Start production order (deducts ingredients from stock)"
 )
+@limiter.limit("30/minute")
 def start_production(
+    request: Request,
     order_id: int,
     staff_id: int = Query(..., description="Staff member starting production"),
     db: Session = Depends(get_db)
@@ -505,7 +519,9 @@ def start_production(
     summary="Complete production",
     description="Complete production and create batch"
 )
+@limiter.limit("30/minute")
 def complete_production(
+    request: Request,
     order_id: int,
     actual_quantity: int = Query(..., gt=0, description="Actual quantity produced"),
     actual_cost: Optional[float] = Query(None, description="Actual cost if different"),
@@ -559,7 +575,9 @@ def complete_production(
     summary="List production orders",
     description="List production orders with filters"
 )
+@limiter.limit("60/minute")
 def list_production_orders(
+    request: Request,
     venue_id: Optional[int] = None,
     status: Optional[str] = None,
     recipe_id: Optional[int] = None,
@@ -620,7 +638,9 @@ def list_production_orders(
     summary="List production batches",
     description="List production batches with filters"
 )
+@limiter.limit("60/minute")
 def list_production_batches(
+    request: Request,
     venue_id: Optional[int] = None,
     status: Optional[str] = None,
     expiring_days: Optional[int] = Query(None, description="Get batches expiring within N days"),
@@ -679,7 +699,9 @@ def list_production_batches(
     summary="Get production report",
     description="Get production statistics for a period"
 )
+@limiter.limit("60/minute")
 def get_production_report(
+    request: Request,
     venue_id: int,
     start_date: date = Query(..., description="Report start date"),
     end_date: date = Query(..., description="Report end date"),

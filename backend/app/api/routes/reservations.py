@@ -2,10 +2,11 @@
 
 from typing import List, Optional, Union
 from datetime import date, time, datetime, timezone
-from fastapi import APIRouter, HTTPException, Query, BackgroundTasks
+from fastapi import APIRouter, HTTPException, Query, BackgroundTasks, Request
 from pydantic import BaseModel, Field, field_validator
 
 from app.core.sanitize import sanitize_text
+from app.core.rate_limit import limiter
 
 from app.db.session import DbSession
 from app.models.reservations import (
@@ -52,7 +53,9 @@ class FlexibleReservationCreate(BaseModel):
 # ==================== WAITLIST ROUTES (must be before /{reservation_id}) ====================
 
 @router.get("/waitlist", response_model=List[WaitlistResponse])
+@limiter.limit("60/minute")
 def list_waitlist_no_slash(
+    request: Request,
     db: DbSession,
     location_id: int = Query(1),
     status: Optional[str] = None,
@@ -71,7 +74,9 @@ def list_waitlist_no_slash(
 
 
 @router.get("/waitlist/", response_model=List[WaitlistResponse])
+@limiter.limit("60/minute")
 def list_waitlist(
+    request: Request,
     db: DbSession,
     location_id: int = Query(1),
     status: Optional[str] = None,
@@ -90,7 +95,9 @@ def list_waitlist(
 
 
 @router.post("/waitlist", response_model=WaitlistResponse)
+@limiter.limit("30/minute")
 async def add_to_waitlist_no_slash(
+    request: Request,
     db: DbSession,
     entry: WaitlistCreate,
 ):
@@ -105,7 +112,9 @@ async def add_to_waitlist_no_slash(
 
 
 @router.post("/waitlist/", response_model=WaitlistResponse)
+@limiter.limit("30/minute")
 async def add_to_waitlist(
+    request: Request,
     db: DbSession,
     entry: WaitlistCreate,
 ):
@@ -120,7 +129,8 @@ async def add_to_waitlist(
 
 
 @router.get("/waitlist/{waitlist_id}", response_model=WaitlistResponse)
-def get_waitlist_entry(db: DbSession, waitlist_id: int):
+@limiter.limit("60/minute")
+def get_waitlist_entry(request: Request, db: DbSession, waitlist_id: int):
     """Get waitlist entry."""
     entry = db.query(Waitlist).filter(Waitlist.id == waitlist_id).first()
     if not entry:
@@ -129,7 +139,9 @@ def get_waitlist_entry(db: DbSession, waitlist_id: int):
 
 
 @router.put("/waitlist/{waitlist_id}", response_model=WaitlistResponse)
+@limiter.limit("30/minute")
 def update_waitlist_entry(
+    request: Request,
     db: DbSession,
     waitlist_id: int,
     update: WaitlistUpdate,
@@ -148,7 +160,9 @@ def update_waitlist_entry(
 
 
 @router.post("/waitlist/{waitlist_id}/notify")
+@limiter.limit("30/minute")
 async def notify_waitlist_guest(
+    request: Request,
     db: DbSession,
     waitlist_id: int,
 ):
@@ -163,7 +177,9 @@ async def notify_waitlist_guest(
 
 
 @router.post("/waitlist/{waitlist_id}/seat", response_model=WaitlistResponse)
+@limiter.limit("30/minute")
 def seat_waitlist_guest(
+    request: Request,
     db: DbSession,
     waitlist_id: int,
     table_ids: Optional[List[int]] = None,
@@ -179,7 +195,9 @@ def seat_waitlist_guest(
 
 
 @router.post("/waitlist/{waitlist_id}/remove")
+@limiter.limit("30/minute")
 async def remove_from_waitlist(
+    request: Request,
     db: DbSession,
     waitlist_id: int,
     reason: Optional[str] = None,
@@ -197,7 +215,8 @@ async def remove_from_waitlist(
 # ==================== SETTINGS ROUTES ====================
 
 @router.get("/settings/{location_id}", response_model=ReservationSettingsResponse)
-def get_reservation_settings(db: DbSession, location_id: int):
+@limiter.limit("60/minute")
+def get_reservation_settings(request: Request, db: DbSession, location_id: int):
     """Get reservation settings for a location."""
     settings = db.query(ReservationSettings).filter(
         ReservationSettings.location_id == location_id
@@ -241,7 +260,9 @@ def get_reservation_settings(db: DbSession, location_id: int):
 
 
 @router.post("/settings/", response_model=ReservationSettingsResponse)
+@limiter.limit("30/minute")
 def create_reservation_settings(
+    request: Request,
     db: DbSession,
     settings: ReservationSettingsCreate,
 ):
@@ -256,7 +277,9 @@ def create_reservation_settings(
 # ==================== GUEST ROUTES ====================
 
 @router.get("/guests/search/", response_model=List[GuestHistoryResponse])
+@limiter.limit("60/minute")
 def search_guests(
+    request: Request,
     db: DbSession,
     q: str = Query(..., min_length=2),
 ):
@@ -274,7 +297,8 @@ def search_guests(
 
 
 @router.get("/guests/{customer_id}", response_model=GuestHistoryResponse)
-def get_guest_history(db: DbSession, customer_id: int):
+@limiter.limit("60/minute")
+def get_guest_history(request: Request, db: DbSession, customer_id: int):
     """Get guest history and preferences."""
     history = db.query(GuestHistory).filter(
         GuestHistory.customer_id == customer_id
@@ -287,7 +311,9 @@ def get_guest_history(db: DbSession, customer_id: int):
 
 
 @router.put("/guests/{customer_id}/notes", response_model=GuestHistoryResponse)
+@limiter.limit("30/minute")
 def update_guest_notes(
+    request: Request,
     db: DbSession,
     customer_id: int,
     notes: GuestNotesUpdate,
@@ -312,7 +338,9 @@ def update_guest_notes(
 # ==================== CALENDAR & AVAILABILITY ====================
 
 @router.get("/calendar/{location_id}", response_model=ReservationCalendar)
+@limiter.limit("60/minute")
 def get_reservation_calendar(
+    request: Request,
     db: DbSession,
     location_id: int,
     target_date: date = Query(...),
@@ -342,7 +370,9 @@ def get_reservation_calendar(
 # ==================== CHECK AVAILABILITY (must be before /{reservation_id}) ====================
 
 @router.get("/check-availability")
+@limiter.limit("60/minute")
 def check_availability_get(
+    request: Request,
     db: DbSession,
     date: Optional[str] = Query(None),
     time: Optional[str] = Query(None),
@@ -400,7 +430,9 @@ def check_availability_get(
 # ==================== RESERVATION CRUD ====================
 
 @router.get("/", response_model=List[ReservationResponse])
+@limiter.limit("60/minute")
 def list_reservations(
+    request: Request,
     db: DbSession,
     location_id: Optional[int] = Query(None),
     date_from: Optional[date] = None,
@@ -429,7 +461,9 @@ def list_reservations(
 
 
 @router.post("/", response_model=ReservationResponse)
+@limiter.limit("30/minute")
 async def create_reservation(
+    request: Request,
     db: DbSession,
     reservation: FlexibleReservationCreate,
     background_tasks: BackgroundTasks,
@@ -482,7 +516,8 @@ async def create_reservation(
 # ==================== RESERVATION BY ID (must be LAST) ====================
 
 @router.get("/{reservation_id}", response_model=ReservationResponse)
-def get_reservation(db: DbSession, reservation_id: int):
+@limiter.limit("60/minute")
+def get_reservation(request: Request, db: DbSession, reservation_id: int):
     """Get reservation by ID."""
     reservation = db.query(Reservation).filter(Reservation.id == reservation_id).first()
     if not reservation:
@@ -491,7 +526,9 @@ def get_reservation(db: DbSession, reservation_id: int):
 
 
 @router.put("/{reservation_id}", response_model=ReservationResponse)
+@limiter.limit("30/minute")
 def update_reservation(
+    request: Request,
     db: DbSession,
     reservation_id: int,
     reservation: ReservationUpdate,
@@ -510,7 +547,8 @@ def update_reservation(
 
 
 @router.post("/{reservation_id}/confirm", response_model=ReservationResponse)
-def confirm_reservation(db: DbSession, reservation_id: int):
+@limiter.limit("30/minute")
+def confirm_reservation(request: Request, db: DbSession, reservation_id: int):
     """Confirm a reservation."""
     reservation = db.query(Reservation).filter(Reservation.id == reservation_id).first()
     if not reservation:
@@ -524,7 +562,9 @@ def confirm_reservation(db: DbSession, reservation_id: int):
 
 
 @router.post("/{reservation_id}/seat", response_model=ReservationResponse)
+@limiter.limit("30/minute")
 def seat_reservation(
+    request: Request,
     db: DbSession,
     reservation_id: int,
     table_ids: Optional[List[int]] = None,
@@ -540,7 +580,8 @@ def seat_reservation(
 
 
 @router.post("/{reservation_id}/complete", response_model=ReservationResponse)
-def complete_reservation(db: DbSession, reservation_id: int):
+@limiter.limit("30/minute")
+def complete_reservation(request: Request, db: DbSession, reservation_id: int):
     """Mark reservation as completed."""
     reservation = db.query(Reservation).filter(Reservation.id == reservation_id).first()
     if not reservation:
@@ -554,7 +595,8 @@ def complete_reservation(db: DbSession, reservation_id: int):
 
 
 @router.post("/{reservation_id}/no-show", response_model=ReservationResponse)
-def mark_no_show(db: DbSession, reservation_id: int):
+@limiter.limit("30/minute")
+def mark_no_show(request: Request, db: DbSession, reservation_id: int):
     """Mark reservation as no-show."""
     reservation = db.query(Reservation).filter(Reservation.id == reservation_id).first()
     if not reservation:
@@ -568,7 +610,9 @@ def mark_no_show(db: DbSession, reservation_id: int):
 
 
 @router.post("/{reservation_id}/cancel", response_model=ReservationResponse)
+@limiter.limit("30/minute")
 async def cancel_reservation(
+    request: Request,
     db: DbSession,
     reservation_id: int,
     reason: Optional[str] = None,
@@ -584,7 +628,9 @@ async def cancel_reservation(
 
 
 @router.post("/{reservation_id}/send-reminder")
+@limiter.limit("30/minute")
 async def send_reservation_reminder(
+    request: Request,
     db: DbSession,
     reservation_id: int,
 ):
@@ -603,10 +649,12 @@ class StatusUpdateRequest(BaseModel):
 
 
 @router.put("/{reservation_id}/status")
+@limiter.limit("30/minute")
 def update_reservation_status(
+    request: Request,
     db: DbSession,
     reservation_id: int,
-    request: StatusUpdateRequest,
+    body: StatusUpdateRequest,
 ):
     """Update reservation status."""
     reservation = db.query(Reservation).filter(Reservation.id == reservation_id).first()
@@ -622,10 +670,10 @@ def update_reservation_status(
         'no_show': ReservationStatus.NO_SHOW,
     }
 
-    if request.status.lower() in status_map:
-        reservation.status = status_map[request.status.lower()]
+    if body.status.lower() in status_map:
+        reservation.status = status_map[body.status.lower()]
     else:
-        reservation.status = request.status
+        reservation.status = body.status
 
     db.commit()
     db.refresh(reservation)
@@ -633,7 +681,8 @@ def update_reservation_status(
 
 
 @router.delete("/{reservation_id}")
-def delete_reservation(db: DbSession, reservation_id: int):
+@limiter.limit("30/minute")
+def delete_reservation(request: Request, db: DbSession, reservation_id: int):
     """Delete a reservation."""
     reservation = db.query(Reservation).filter(Reservation.id == reservation_id).first()
     if not reservation:
@@ -682,7 +731,8 @@ class RefundRequest(BaseModel):
 
 
 @router.get("/{venue_id}/platforms")
-def get_platforms(db: DbSession, venue_id: int):
+@limiter.limit("60/minute")
+def get_platforms(request: Request, db: DbSession, venue_id: int):
     """Get connected platforms for a venue from integrations table."""
     from app.models.hardware import Integration
     KNOWN_PLATFORMS = [
@@ -705,7 +755,8 @@ def get_platforms(db: DbSession, venue_id: int):
 
 
 @router.post("/{venue_id}/platforms")
-def configure_platform(db: DbSession, venue_id: int, config: PlatformConfig):
+@limiter.limit("30/minute")
+def configure_platform(request: Request, db: DbSession, venue_id: int, config: PlatformConfig):
     """Configure a platform integration and persist to database."""
     from app.models.hardware import Integration
     integration_id = f"reservation_{config.platform_name.lower().replace(' ', '_')}"
@@ -731,20 +782,22 @@ def configure_platform(db: DbSession, venue_id: int, config: PlatformConfig):
 
 
 @router.post("/{venue_id}/deposits")
-def collect_deposit(venue_id: int, request: DepositRequest):
+@limiter.limit("30/minute")
+def collect_deposit(request: Request, venue_id: int, body: DepositRequest):
     """Collect a deposit for a reservation."""
     return {
         "success": True,
-        "reservation_id": request.reservation_id,
-        "amount": request.amount,
-        "payment_method": request.payment_method,
-        "transaction_id": f"txn_{request.reservation_id}_{int(datetime.now(timezone.utc).timestamp())}",
-        "message": f"Deposit of ${request.amount:.2f} collected successfully"
+        "reservation_id": body.reservation_id,
+        "amount": body.amount,
+        "payment_method": body.payment_method,
+        "transaction_id": f"txn_{body.reservation_id}_{int(datetime.now(timezone.utc).timestamp())}",
+        "message": f"Deposit of ${body.amount:.2f} collected successfully"
     }
 
 
 @router.post("/{venue_id}/external/sync")
-def sync_external_reservations(venue_id: int):
+@limiter.limit("30/minute")
+def sync_external_reservations(request: Request, venue_id: int):
     """Sync reservations from external platforms."""
     return {
         "success": True,
@@ -756,7 +809,9 @@ def sync_external_reservations(venue_id: int):
 
 
 @router.get("/{venue_id}/turn-times")
+@limiter.limit("60/minute")
 def get_turn_times(
+    request: Request,
     db: DbSession,
     venue_id: int,
     date: str = Query(None),
@@ -785,7 +840,9 @@ def get_turn_times(
 
 
 @router.get("/{venue_id}/party-size-optimization")
+@limiter.limit("60/minute")
 def get_party_size_optimization(
+    request: Request,
     db: DbSession,
     venue_id: int,
     date: str = Query(None),
@@ -829,16 +886,18 @@ def get_party_size_optimization(
 
 
 @router.post("/{venue_id}/auto-assign-tables")
+@limiter.limit("30/minute")
 def auto_assign_tables(
+    request: Request,
     db: DbSession,
     venue_id: int,
-    request: AutoAssignRequest,
+    body: AutoAssignRequest,
 ):
     """Auto-assign tables to reservations for a date."""
     from datetime import datetime as dt
 
     try:
-        target_date = dt.strptime(request.date, "%Y-%m-%d").date()
+        target_date = dt.strptime(body.date, "%Y-%m-%d").date()
     except ValueError:
         raise HTTPException(status_code=400, detail="Invalid date format")
 
@@ -892,7 +951,7 @@ def auto_assign_tables(
 
     return {
         "success": True,
-        "date": request.date,
+        "date": body.date,
         "assigned_count": assigned_count,
         "total_reservations": len(reservations),
         "optimization_score": efficiency,
@@ -901,7 +960,8 @@ def auto_assign_tables(
 
 
 @router.get("/{venue_id}/cancellation-policy")
-def get_cancellation_policies(db: DbSession, venue_id: int):
+@limiter.limit("60/minute")
+def get_cancellation_policies(request: Request, db: DbSession, venue_id: int):
     """Get cancellation policies for a venue."""
     from app.models.operations import AppSetting
     setting = db.query(AppSetting).filter(
@@ -913,7 +973,8 @@ def get_cancellation_policies(db: DbSession, venue_id: int):
 
 
 @router.post("/{venue_id}/cancellation-policy")
-def create_cancellation_policy(db: DbSession, venue_id: int, policy: CancellationPolicy):
+@limiter.limit("30/minute")
+def create_cancellation_policy(request: Request, db: DbSession, venue_id: int, policy: CancellationPolicy):
     """Create a cancellation policy."""
     from app.models.operations import AppSetting
     setting = db.query(AppSetting).filter(
@@ -946,7 +1007,9 @@ def create_cancellation_policy(db: DbSession, venue_id: int, policy: Cancellatio
 
 
 @router.post("/{venue_id}/reservations/{reservation_id}/refund")
+@limiter.limit("30/minute")
 def process_refund(
+    request: Request,
     db: DbSession,
     venue_id: int,
     reservation_id: int,
@@ -967,7 +1030,8 @@ def process_refund(
 
 
 @router.get("/{venue_id}/webhooks/logs")
-def get_webhook_logs(venue_id: int, limit: int = Query(50)):
+@limiter.limit("60/minute")
+def get_webhook_logs(request: Request, venue_id: int, limit: int = Query(50)):
     """Get webhook logs for a venue."""
     return {
         "logs": [],

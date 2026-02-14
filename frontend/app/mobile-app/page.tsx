@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { API_URL, getAuthHeaders } from '@/lib/api';
 
+import { toast } from '@/lib/toast';
 interface MobileApp {
   id: number;
   app_name: string;
@@ -130,10 +131,10 @@ export default function MobileAppBuilderPage() {
         headers: getAuthHeaders(),
         body: JSON.stringify(app)
       });
-      alert('App configuration saved!');
+      toast.success('App configuration saved!');
     } catch (error) {
       console.error('Error saving:', error);
-      alert('Configuration saved (demo mode)');
+      toast.error('Configuration saved (demo mode)');
     } finally {
       setSaving(false);
     }
@@ -178,7 +179,7 @@ export default function MobileAppBuilderPage() {
         }, 8000);
       }
 
-      alert('Build started! This usually takes 5-10 minutes.');
+      toast.success('Build started! This usually takes 5-10 minutes.');
     } catch (error) {
       console.error('Error starting build:', error);
     } finally {

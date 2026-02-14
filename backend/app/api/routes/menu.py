@@ -8,10 +8,11 @@ from typing import Optional, List
 from decimal import Decimal
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Query, Request
 from pydantic import BaseModel
 from sqlalchemy import func
 
+from app.core.rate_limit import limiter
 from app.db.session import DbSession
 from app.models.restaurant import (
     MenuItem, ModifierGroup, ModifierOption, MenuItemModifierGroup,
@@ -24,7 +25,8 @@ router = APIRouter()
 # ==================== MODIFIERS ====================
 
 @router.get("/modifiers")
-def get_menu_modifiers(db: DbSession):
+@limiter.limit("60/minute")
+def get_menu_modifiers(request: Request, db: DbSession):
     """Get modifier groups with their options."""
     groups = db.query(ModifierGroup).order_by(ModifierGroup.sort_order, ModifierGroup.name).all()
 
@@ -64,7 +66,8 @@ def get_menu_modifiers(db: DbSession):
 # ==================== COMBOS ====================
 
 @router.get("/combos")
-def get_menu_combos(db: DbSession):
+@limiter.limit("60/minute")
+def get_menu_combos(request: Request, db: DbSession):
     """Get combo meals with their items."""
     combos = db.query(ComboMeal).order_by(ComboMeal.name).all()
 
@@ -107,7 +110,8 @@ def get_menu_combos(db: DbSession):
 # ==================== ALLERGENS ====================
 
 @router.get("/allergens")
-def get_menu_allergens(db: DbSession):
+@limiter.limit("60/minute")
+def get_menu_allergens(request: Request, db: DbSession):
     """Get menu items with allergen information."""
     items = db.query(MenuItem).filter(
         MenuItem.available == True,
@@ -139,7 +143,8 @@ def get_menu_allergens(db: DbSession):
 # ==================== SCHEDULING ====================
 
 @router.get("/scheduling")
-def get_menu_scheduling(db: DbSession):
+@limiter.limit("60/minute")
+def get_menu_scheduling(request: Request, db: DbSession):
     """Get menu scheduling / daypart information."""
     categories = db.query(MenuCategory).filter(
         MenuCategory.active == True,
@@ -184,7 +189,8 @@ def get_menu_scheduling(db: DbSession):
 # ==================== INVENTORY (menu item stock status) ====================
 
 @router.get("/inventory")
-def get_menu_inventory(db: DbSession):
+@limiter.limit("60/minute")
+def get_menu_inventory(request: Request, db: DbSession):
     """Get menu item inventory/availability status."""
     items = db.query(MenuItem).filter(
         MenuItem.not_deleted(),

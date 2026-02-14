@@ -3,7 +3,7 @@ Enterprise Features API Endpoints
 Integration Marketplace, AI Invoice OCR, Mobile App Builder, Hotel PMS
 """
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.orm import Session
 from typing import List, Optional, Dict, Any
 from pydantic import BaseModel
@@ -11,6 +11,7 @@ from datetime import datetime
 
 from app.db.session import get_db
 from app.core.rbac import get_current_user
+from app.core.rate_limit import limiter
 from app.models import StaffUser
 
 
@@ -96,7 +97,9 @@ class FBCreditCreate(BaseModel):
 # ==================== INTEGRATION MARKETPLACE ====================
 
 @router.get("/marketplace/integrations")
+@limiter.limit("60/minute")
 async def list_marketplace_integrations(
+    request: Request,
     category: Optional[str] = None,
     search: Optional[str] = None,
     region: Optional[str] = None,
@@ -116,7 +119,9 @@ async def list_marketplace_integrations(
 
 
 @router.get("/marketplace/categories")
+@limiter.limit("60/minute")
 async def get_marketplace_categories(
+    request: Request,
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(get_current_user)
 ):
@@ -127,7 +132,9 @@ async def get_marketplace_categories(
 
 
 @router.get("/marketplace/popular")
+@limiter.limit("60/minute")
 async def get_popular_integrations(
+    request: Request,
     limit: int = 10,
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(get_current_user)
@@ -139,7 +146,9 @@ async def get_popular_integrations(
 
 
 @router.get("/marketplace/integrations/{slug}")
+@limiter.limit("60/minute")
 async def get_integration_details(
+    request: Request,
     slug: str,
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(get_current_user)
@@ -154,8 +163,10 @@ async def get_integration_details(
 
 
 @router.post("/marketplace/connect")
+@limiter.limit("30/minute")
 async def connect_marketplace_integration(
-    request: IntegrationConnectRequest,
+    request: Request,
+    body: IntegrationConnectRequest,
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(require_admin)
 ):
@@ -164,14 +175,16 @@ async def connect_marketplace_integration(
     service = IntegrationMarketplaceService(db)
     return service.connect_integration(
         venue_id=current_user.venue_id,
-        slug=request.slug,
-        credentials=request.credentials,
-        settings=request.settings
+        slug=body.slug,
+        credentials=body.credentials,
+        settings=body.settings
     )
 
 
 @router.post("/marketplace/{slug}/disconnect")
+@limiter.limit("30/minute")
 async def disconnect_marketplace_integration(
+    request: Request,
     slug: str,
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(require_admin)
@@ -183,7 +196,9 @@ async def disconnect_marketplace_integration(
 
 
 @router.get("/marketplace/connected")
+@limiter.limit("60/minute")
 async def get_connected_marketplace_integrations(
+    request: Request,
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(get_current_user)
 ):
@@ -194,7 +209,9 @@ async def get_connected_marketplace_integrations(
 
 
 @router.get("/marketplace/stats")
+@limiter.limit("60/minute")
 async def get_marketplace_stats(
+    request: Request,
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(get_current_user)
 ):
@@ -207,8 +224,10 @@ async def get_marketplace_stats(
 # ==================== AI INVOICE OCR ====================
 
 @router.post("/invoice-ocr/jobs")
+@limiter.limit("30/minute")
 async def create_ocr_job(
-    request: OCRJobCreate,
+    request: Request,
+    body: OCRJobCreate,
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(get_current_user)
 ):
@@ -217,17 +236,19 @@ async def create_ocr_job(
     service = InvoiceOCRService(db)
     return service.create_ocr_job(
         venue_id=current_user.venue_id,
-        file_url=request.file_url,
-        original_filename=request.original_filename,
-        file_type=request.file_type,
-        file_size_bytes=request.file_size_bytes,
-        source_type=request.source_type,
+        file_url=body.file_url,
+        original_filename=body.original_filename,
+        file_type=body.file_type,
+        file_size_bytes=body.file_size_bytes,
+        source_type=body.source_type,
         uploaded_by=current_user.id
     )
 
 
 @router.post("/invoice-ocr/jobs/{job_id}/process")
+@limiter.limit("30/minute")
 async def process_ocr_job(
+    request: Request,
     job_id: int,
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(get_current_user)
@@ -239,7 +260,9 @@ async def process_ocr_job(
 
 
 @router.get("/invoice-ocr/jobs/{job_id}")
+@limiter.limit("60/minute")
 async def get_ocr_job(
+    request: Request,
     job_id: int,
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(get_current_user)
@@ -254,7 +277,9 @@ async def get_ocr_job(
 
 
 @router.get("/invoice-ocr/jobs")
+@limiter.limit("60/minute")
 async def list_ocr_jobs(
+    request: Request,
     status: Optional[str] = None,
     limit: int = 50,
     offset: int = 0,
@@ -273,7 +298,9 @@ async def list_ocr_jobs(
 
 
 @router.post("/invoice-ocr/jobs/{job_id}/match-items")
+@limiter.limit("30/minute")
 async def match_ocr_line_items(
+    request: Request,
     job_id: int,
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(get_current_user)
@@ -285,7 +312,9 @@ async def match_ocr_line_items(
 
 
 @router.post("/invoice-ocr/jobs/{job_id}/approve")
+@limiter.limit("30/minute")
 async def approve_ocr_job(
+    request: Request,
     job_id: int,
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(require_admin)
@@ -297,7 +326,9 @@ async def approve_ocr_job(
 
 
 @router.post("/invoice-ocr/jobs/{job_id}/reject")
+@limiter.limit("30/minute")
 async def reject_ocr_job(
+    request: Request,
     job_id: int,
     reason: str,
     db: Session = Depends(get_db),
@@ -310,7 +341,9 @@ async def reject_ocr_job(
 
 
 @router.put("/invoice-ocr/jobs/{job_id}/field/{field}")
+@limiter.limit("30/minute")
 async def update_ocr_field(
+    request: Request,
     job_id: int,
     field: str,
     value: Any,
@@ -324,7 +357,9 @@ async def update_ocr_field(
 
 
 @router.get("/invoice-ocr/stats")
+@limiter.limit("60/minute")
 async def get_ocr_stats(
+    request: Request,
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(get_current_user)
 ):
@@ -337,8 +372,10 @@ async def get_ocr_stats(
 # ==================== MOBILE APP BUILDER ====================
 
 @router.post("/mobile-app")
+@limiter.limit("30/minute")
 async def create_mobile_app(
-    request: MobileAppCreate,
+    request: Request,
+    body: MobileAppCreate,
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(require_admin)
 ):
@@ -347,16 +384,18 @@ async def create_mobile_app(
     service = MobileAppBuilderService(db)
     return service.create_app(
         venue_id=current_user.venue_id,
-        app_name=request.app_name,
-        app_description=request.app_description,
-        primary_color=request.primary_color,
-        secondary_color=request.secondary_color,
+        app_name=body.app_name,
+        app_description=body.app_description,
+        primary_color=body.primary_color,
+        secondary_color=body.secondary_color,
         created_by=current_user.id
     )
 
 
 @router.get("/mobile-app")
+@limiter.limit("60/minute")
 async def get_mobile_app(
+    request: Request,
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(get_current_user)
 ):
@@ -370,7 +409,9 @@ async def get_mobile_app(
 
 
 @router.put("/mobile-app/branding")
+@limiter.limit("30/minute")
 async def update_mobile_app_branding(
+    request: Request,
     branding: MobileAppBranding,
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(require_admin)
@@ -385,7 +426,9 @@ async def update_mobile_app_branding(
 
 
 @router.put("/mobile-app/features")
+@limiter.limit("30/minute")
 async def update_mobile_app_features(
+    request: Request,
     features: List[str],
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(require_admin)
@@ -397,7 +440,9 @@ async def update_mobile_app_features(
 
 
 @router.get("/mobile-app/features/available")
+@limiter.limit("60/minute")
 async def get_available_app_features(
+    request: Request,
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(get_current_user)
 ):
@@ -408,7 +453,9 @@ async def get_available_app_features(
 
 
 @router.post("/mobile-app/builds")
+@limiter.limit("30/minute")
 async def start_mobile_app_build(
+    request: Request,
     platform: str,
     version: str,
     release_notes: str = "",
@@ -428,7 +475,9 @@ async def start_mobile_app_build(
 
 
 @router.get("/mobile-app/builds")
+@limiter.limit("60/minute")
 async def get_mobile_app_builds(
+    request: Request,
     limit: int = 20,
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(get_current_user)
@@ -440,7 +489,9 @@ async def get_mobile_app_builds(
 
 
 @router.post("/mobile-app/builds/{build_id}/publish")
+@limiter.limit("30/minute")
 async def publish_mobile_app(
+    request: Request,
     build_id: int,
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(require_admin)
@@ -452,8 +503,10 @@ async def publish_mobile_app(
 
 
 @router.post("/mobile-app/push-campaigns")
+@limiter.limit("30/minute")
 async def create_push_campaign(
-    request: PushCampaignCreate,
+    request: Request,
+    body: PushCampaignCreate,
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(require_admin)
 ):
@@ -462,19 +515,21 @@ async def create_push_campaign(
     service = MobileAppBuilderService(db)
     return service.create_push_campaign(
         venue_id=current_user.venue_id,
-        name=request.name,
-        title=request.title,
-        body=request.body,
+        name=body.name,
+        title=body.title,
+        body=body.body,
         created_by=current_user.id,
-        target_audience=request.target_audience,
-        scheduled_at=request.scheduled_at,
-        image_url=request.image_url,
-        action_url=request.action_url
+        target_audience=body.target_audience,
+        scheduled_at=body.scheduled_at,
+        image_url=body.image_url,
+        action_url=body.action_url
     )
 
 
 @router.get("/mobile-app/push-campaigns")
+@limiter.limit("60/minute")
 async def get_push_campaigns(
+    request: Request,
     limit: int = 50,
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(get_current_user)
@@ -486,7 +541,9 @@ async def get_push_campaigns(
 
 
 @router.get("/mobile-app/analytics")
+@limiter.limit("60/minute")
 async def get_mobile_app_analytics(
+    request: Request,
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(get_current_user)
 ):
@@ -497,7 +554,9 @@ async def get_mobile_app_analytics(
 
 
 @router.get("/mobile-app/screens")
+@limiter.limit("60/minute")
 async def get_custom_screens(
+    request: Request,
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(get_current_user)
 ):
@@ -510,7 +569,9 @@ async def get_custom_screens(
 # ==================== HOTEL PMS INTEGRATION ====================
 
 @router.get("/hotel-pms/providers")
+@limiter.limit("60/minute")
 async def get_pms_providers(
+    request: Request,
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(get_current_user)
 ):
@@ -521,8 +582,10 @@ async def get_pms_providers(
 
 
 @router.post("/hotel-pms/connect")
+@limiter.limit("30/minute")
 async def connect_hotel_pms(
-    request: PMSConnectRequest,
+    request: Request,
+    body: PMSConnectRequest,
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(require_admin)
 ):
@@ -531,16 +594,18 @@ async def connect_hotel_pms(
     service = HotelPMSService(db)
     return service.connect_pms(
         venue_id=current_user.venue_id,
-        provider=request.provider,
-        api_endpoint=request.api_endpoint,
-        credentials=request.credentials,
-        hotel_id=request.hotel_id,
-        hotel_name=request.hotel_name
+        provider=body.provider,
+        api_endpoint=body.api_endpoint,
+        credentials=body.credentials,
+        hotel_id=body.hotel_id,
+        hotel_name=body.hotel_name
     )
 
 
 @router.post("/hotel-pms/disconnect")
+@limiter.limit("30/minute")
 async def disconnect_hotel_pms(
+    request: Request,
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(require_admin)
 ):
@@ -551,7 +616,9 @@ async def disconnect_hotel_pms(
 
 
 @router.get("/hotel-pms/connection")
+@limiter.limit("60/minute")
 async def get_pms_connection(
+    request: Request,
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(get_current_user)
 ):
@@ -565,7 +632,9 @@ async def get_pms_connection(
 
 
 @router.get("/hotel-pms/health")
+@limiter.limit("60/minute")
 async def check_pms_health(
+    request: Request,
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(get_current_user)
 ):
@@ -576,7 +645,9 @@ async def check_pms_health(
 
 
 @router.get("/hotel-pms/guests")
+@limiter.limit("60/minute")
 async def search_hotel_guests(
+    request: Request,
     query: Optional[str] = None,
     room_number: Optional[str] = None,
     checked_in_only: bool = True,
@@ -595,7 +666,9 @@ async def search_hotel_guests(
 
 
 @router.post("/hotel-pms/guests/sync")
+@limiter.limit("30/minute")
 async def sync_hotel_guests(
+    request: Request,
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(require_admin)
 ):
@@ -606,8 +679,10 @@ async def sync_hotel_guests(
 
 
 @router.post("/hotel-pms/room-charges")
+@limiter.limit("30/minute")
 async def post_room_charge(
-    request: RoomChargeRequest,
+    request: Request,
+    body: RoomChargeRequest,
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(get_current_user)
 ):
@@ -616,16 +691,18 @@ async def post_room_charge(
     service = HotelPMSService(db)
     return service.post_room_charge(
         venue_id=current_user.venue_id,
-        order_id=request.order_id,
-        guest_id=request.guest_id,
-        amount=request.amount,
-        description=request.description,
+        order_id=body.order_id,
+        guest_id=body.guest_id,
+        amount=body.amount,
+        description=body.description,
         posted_by=current_user.id
     )
 
 
 @router.get("/hotel-pms/room-charges")
+@limiter.limit("60/minute")
 async def get_room_charges(
+    request: Request,
     guest_id: Optional[int] = None,
     order_id: Optional[int] = None,
     status: Optional[str] = None,
@@ -646,7 +723,9 @@ async def get_room_charges(
 
 
 @router.post("/hotel-pms/room-charges/{charge_id}/void")
+@limiter.limit("30/minute")
 async def void_room_charge(
+    request: Request,
     charge_id: int,
     reason: str,
     db: Session = Depends(get_db),
@@ -664,8 +743,10 @@ async def void_room_charge(
 
 
 @router.post("/hotel-pms/fb-credits")
+@limiter.limit("30/minute")
 async def create_fb_credit(
-    request: FBCreditCreate,
+    request: Request,
+    body: FBCreditCreate,
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(require_admin)
 ):
@@ -674,15 +755,17 @@ async def create_fb_credit(
     service = HotelPMSService(db)
     return service.create_fb_credit(
         venue_id=current_user.venue_id,
-        guest_id=request.guest_id,
-        amount=request.amount,
-        credit_type=request.credit_type,
-        valid_days=request.valid_days
+        guest_id=body.guest_id,
+        amount=body.amount,
+        credit_type=body.credit_type,
+        valid_days=body.valid_days
     )
 
 
 @router.get("/hotel-pms/guests/{guest_id}/credits")
+@limiter.limit("60/minute")
 async def get_guest_credits(
+    request: Request,
     guest_id: int,
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(get_current_user)
@@ -694,7 +777,9 @@ async def get_guest_credits(
 
 
 @router.post("/hotel-pms/fb-credits/{credit_id}/apply")
+@limiter.limit("30/minute")
 async def apply_fb_credit(
+    request: Request,
     credit_id: int,
     guest_id: int,
     amount: float,
@@ -713,7 +798,9 @@ async def apply_fb_credit(
 
 
 @router.get("/hotel-pms/stats")
+@limiter.limit("60/minute")
 async def get_pms_stats(
+    request: Request,
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(get_current_user)
 ):

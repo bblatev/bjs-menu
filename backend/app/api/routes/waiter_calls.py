@@ -1,14 +1,15 @@
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy.orm import Session
 from sqlalchemy import func
 from typing import List, Optional
 from datetime import datetime, date, timedelta
 from app.db.session import get_db
-from app.schemas import WaiterCallCreate, WaiterCallResponse, WaiterCallStatusUpdate
+from app.schemas.waiter_call import WaiterCallCreate, WaiterCallResponse, WaiterCallStatusUpdate
 from app.services.waiter_call_service import WaiterCallService
 from app.core.rbac import get_current_user
-from app.models import StaffUser, WaiterCall, WaiterCallStatus
+from app.models.hardware import WaiterCall
 from pydantic import BaseModel
+from app.core.rate_limit import limiter
 
 
 router = APIRouter()
@@ -27,14 +28,17 @@ class WaiterCallStats(BaseModel):
 
 
 @router.post("/", response_model=WaiterCallResponse, status_code=201)
-def create_waiter_call(request: WaiterCallCreate, db: Session = Depends(get_db)):
+@limiter.limit("30/minute")
+def create_waiter_call(request: Request, call_data: WaiterCallCreate, db: Session = Depends(get_db)):
     """Create waiter call (public endpoint with table token)."""
     service = WaiterCallService(db)
-    return service.create_call(request)
+    return service.create_call(call_data)
 
 
 @router.get("/active", response_model=List[WaiterCallResponse])
+@limiter.limit("60/minute")
 def get_active_calls(
+    request: Request,
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(get_current_user)
 ):
@@ -44,7 +48,9 @@ def get_active_calls(
 
 
 @router.get("/history", response_model=WaiterCallHistory)
+@limiter.limit("60/minute")
 def get_call_history(
+    request: Request,
     table_id: Optional[int] = None,
     start_date: Optional[date] = None,
     end_date: Optional[date] = None,
@@ -73,18 +79,21 @@ def get_call_history(
         calls=[WaiterCallResponse(
             id=c.id,
             table_id=c.table_id,
-            reason=c.reason,
-            status=c.status.value if hasattr(c.status, 'value') else c.status,
+            reason=c.call_type or "other",
+            message=c.message,
+            status=c.status if isinstance(c.status, str) else (c.status.value if hasattr(c.status, 'value') else str(c.status)),
             created_at=c.created_at,
             acknowledged_at=c.acknowledged_at,
-            completed_at=c.completed_at
+            resolved_at=c.completed_at
         ) for c in calls],
         total=total
     )
 
 
 @router.get("/stats", response_model=WaiterCallStats)
+@limiter.limit("60/minute")
 def get_call_stats(
+    request: Request,
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(get_current_user)
 ):
@@ -111,13 +120,13 @@ def get_call_stats(
     else:
         avg_response = 0
 
-    # Calls by reason
+    # Calls by reason (call_type in DB)
     reason_counts = db.query(
-        WaiterCall.reason, func.count(WaiterCall.id)
+        WaiterCall.call_type, func.count(WaiterCall.id)
     ).filter(
         WaiterCall.created_at >= today_start
-    ).group_by(WaiterCall.reason).all()
-    calls_by_reason = {r[0]: r[1] for r in reason_counts}
+    ).group_by(WaiterCall.call_type).all()
+    calls_by_reason = {(r[0] or "other"): r[1] for r in reason_counts}
 
     # Calls by hour - SQLite compatible
     hour_counts = db.query(
@@ -137,7 +146,9 @@ def get_call_stats(
 
 
 @router.get("/table/{table_id}", response_model=List[WaiterCallResponse])
+@limiter.limit("60/minute")
 def get_calls_by_table(
+    request: Request,
     table_id: int,
     active_only: bool = True,
     db: Session = Depends(get_db),
@@ -157,16 +168,19 @@ def get_calls_by_table(
     return [WaiterCallResponse(
         id=c.id,
         table_id=c.table_id,
-        reason=c.reason,
-        status=c.status.value if hasattr(c.status, 'value') else c.status,
+        reason=c.call_type or "other",
+        message=c.message,
+        status=c.status if isinstance(c.status, str) else (c.status.value if hasattr(c.status, 'value') else str(c.status)),
         created_at=c.created_at,
         acknowledged_at=c.acknowledged_at,
-        completed_at=c.completed_at
+        resolved_at=c.completed_at
     ) for c in calls]
 
 
 @router.get("/{call_id}", response_model=WaiterCallResponse)
+@limiter.limit("60/minute")
 def get_call_by_id(
+    request: Request,
     call_id: int,
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(get_current_user)
@@ -180,16 +194,19 @@ def get_call_by_id(
     return WaiterCallResponse(
         id=call.id,
         table_id=call.table_id,
-        reason=call.reason,
-        status=call.status.value if hasattr(call.status, 'value') else call.status,
+        reason=call.call_type or "other",
+        message=call.message,
+        status=call.status if isinstance(call.status, str) else (call.status.value if hasattr(call.status, 'value') else str(call.status)),
         created_at=call.created_at,
         acknowledged_at=call.acknowledged_at,
-        completed_at=call.completed_at
+        resolved_at=call.completed_at
     )
 
 
 @router.put("/{call_id}/status", response_model=WaiterCallResponse)
+@limiter.limit("30/minute")
 def update_call_status(
+    request: Request,
     call_id: int,
     update: WaiterCallStatusUpdate,
     db: Session = Depends(get_db),
@@ -201,7 +218,9 @@ def update_call_status(
 
 
 @router.delete("/{call_id}", status_code=204)
+@limiter.limit("30/minute")
 def delete_waiter_call(
+    request: Request,
     call_id: int,
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(get_current_user)
@@ -218,7 +237,9 @@ def delete_waiter_call(
 
 
 @router.delete("/cleanup/completed", status_code=200)
+@limiter.limit("30/minute")
 def cleanup_completed_calls(
+    request: Request,
     older_than_days: int = Query(7, ge=1, le=365),
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(get_current_user)
@@ -227,7 +248,7 @@ def cleanup_completed_calls(
     cutoff_date = datetime.utcnow() - timedelta(days=older_than_days)
 
     deleted = db.query(WaiterCall).filter(
-        WaiterCall.status == WaiterCallStatus.RESOLVED,
+        WaiterCall.status == "resolved",
         WaiterCall.created_at < cutoff_date
     ).delete(synchronize_session=False)
 

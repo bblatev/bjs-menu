@@ -5,7 +5,7 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from typing import Optional
 
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, Query, Request
 
 from app.core.rbac import CurrentUser
 from app.db.session import DbSession
@@ -23,12 +23,15 @@ from app.schemas.sync import (
     SyncStockData,
     SyncSupplierData,
 )
+from app.core.rate_limit import limiter
 
 router = APIRouter()
 
 
 @router.get("/changes")
+@limiter.limit("60/minute")
 def get_sync_changes(
+    request: Request,
     db: DbSession,
     since: Optional[datetime] = Query(None, description="Get changes since this timestamp"),
 ):
@@ -61,7 +64,9 @@ def get_sync_changes(
 
 
 @router.get("/pull", response_model=SyncPullResponse)
+@limiter.limit("60/minute")
 def sync_pull(
+    request: Request,
     db: DbSession,
     current_user: CurrentUser,
     since: Optional[datetime] = Query(None, description="Get changes since this timestamp"),
@@ -147,8 +152,10 @@ def sync_pull(
 
 
 @router.post("/push", response_model=SyncPushResponse)
+@limiter.limit("30/minute")
 def sync_push(
-    request: SyncPushRequest,
+    request: Request,
+    body: SyncPushRequest,
     db: DbSession,
     current_user: CurrentUser,
 ):
@@ -164,7 +171,7 @@ def sync_push(
     conflicts = []
     id_mappings = {}
 
-    for session_data in request.sessions:
+    for session_data in body.sessions:
         # Conflict detection: check for duplicate by location_id + started_at
         existing = db.query(InventorySession).filter(
             InventorySession.location_id == session_data.location_id,

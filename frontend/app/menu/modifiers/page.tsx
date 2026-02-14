@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
 import { API_URL } from '@/lib/api';
 
+import { toast } from '@/lib/toast';
 interface MultiLang {
   bg: string;
   en: string;
@@ -163,11 +164,11 @@ export default function MenuModifiersPage() {
         resetGroupForm();
       } else {
         const error = await response.json();
-        alert(error.detail || 'Error saving modifier group');
+        toast.error(error.detail || 'Error saving modifier group');
       }
     } catch (error) {
       console.error('Error saving modifier group:', error);
-      alert('Error saving modifier group');
+      toast.error('Error saving modifier group');
     }
   };
 
@@ -204,11 +205,11 @@ export default function MenuModifiersPage() {
         resetOptionForm();
       } else {
         const error = await response.json();
-        alert(error.detail || 'Error saving option');
+        toast.error(error.detail || 'Error saving option');
       }
     } catch (error) {
       console.error('Error saving option:', error);
-      alert('Error saving option');
+      toast.error('Error saving option');
     }
   };
 
@@ -227,11 +228,11 @@ export default function MenuModifiersPage() {
       if (response.ok) {
         loadModifiers();
       } else {
-        alert('Error deleting modifier group');
+        toast.error('Error deleting modifier group');
       }
     } catch (error) {
       console.error('Error deleting modifier group:', error);
-      alert('Error deleting modifier group');
+      toast.error('Error deleting modifier group');
     }
   };
 
@@ -250,11 +251,11 @@ export default function MenuModifiersPage() {
       if (response.ok) {
         loadModifiers();
       } else {
-        alert('Error deleting option');
+        toast.error('Error deleting option');
       }
     } catch (error) {
       console.error('Error deleting option:', error);
-      alert('Error deleting option');
+      toast.error('Error deleting option');
     }
   };
 
@@ -343,7 +344,7 @@ export default function MenuModifiersPage() {
       if (response.ok) {
         loadModifiers();
       } else {
-        alert('Error toggling group status');
+        toast.error('Error toggling group status');
       }
     } catch (error) {
       console.error('Error toggling group active:', error);
@@ -363,7 +364,7 @@ export default function MenuModifiersPage() {
       if (response.ok) {
         loadModifiers();
       } else {
-        alert('Error toggling option availability');
+        toast.error('Error toggling option availability');
       }
     } catch (error) {
       console.error('Error toggling option available:', error);

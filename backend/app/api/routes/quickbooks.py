@@ -3,10 +3,11 @@
 import logging
 from typing import Optional, List
 from datetime import datetime, date, timezone
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Query, Request
 from pydantic import BaseModel
 
 from app.db.session import DbSession
+from app.core.rate_limit import limiter
 from app.models.hardware import Integration
 from app.services.quickbooks_service import (
     get_quickbooks_service,
@@ -166,7 +167,8 @@ class SyncResponse(BaseModel):
 # ============================================================================
 
 @router.get("/auth-url")
-async def get_authorization_url(state: str = "random_state"):
+@limiter.limit("60/minute")
+async def get_authorization_url(request: Request, state: str = "random_state"):
     """Get the OAuth2 authorization URL to connect QuickBooks."""
     qbo = get_quickbooks_service()
     if not qbo:
@@ -180,7 +182,9 @@ async def get_authorization_url(state: str = "random_state"):
 
 
 @router.get("/callback")
+@limiter.limit("60/minute")
 async def oauth_callback(
+    request: Request,
     db: DbSession,
     code: str = Query(...),
     realmId: str = Query(...),
@@ -214,17 +218,18 @@ async def oauth_callback(
 
 
 @router.post("/tokens")
-async def set_tokens(db: DbSession, request: SetTokensRequest):
+@limiter.limit("30/minute")
+async def set_tokens(request: Request, db: DbSession, token_request: SetTokensRequest):
     """Set tokens manually and persist to database."""
     qbo = get_quickbooks_service()
     if not qbo:
         raise HTTPException(status_code=503, detail="QuickBooks not configured")
 
     tokens = QBOTokens(
-        access_token=request.access_token,
-        refresh_token=request.refresh_token,
-        realm_id=request.realm_id,
-        expires_at=request.expires_at,
+        access_token=token_request.access_token,
+        refresh_token=token_request.refresh_token,
+        realm_id=token_request.realm_id,
+        expires_at=token_request.expires_at,
     )
     qbo.set_tokens(tokens)
     _save_qbo_tokens(db, tokens)
@@ -233,7 +238,8 @@ async def set_tokens(db: DbSession, request: SetTokensRequest):
 
 
 @router.post("/refresh")
-async def refresh_tokens(db: DbSession):
+@limiter.limit("30/minute")
+async def refresh_tokens(request: Request, db: DbSession):
     """Refresh access tokens and persist new tokens to database."""
     qbo = get_quickbooks_service()
     if not qbo:
@@ -260,7 +266,8 @@ async def refresh_tokens(db: DbSession):
 
 
 @router.get("/status")
-async def get_connection_status(db: DbSession):
+@limiter.limit("60/minute")
+async def get_connection_status(request: Request, db: DbSession):
     """Check QuickBooks connection status, restoring tokens from DB if needed."""
     qbo = get_quickbooks_service()
 
@@ -317,7 +324,8 @@ async def get_connection_status(db: DbSession):
 # ============================================================================
 
 @router.get("/customers")
-async def get_customers(limit: int = 100):
+@limiter.limit("60/minute")
+async def get_customers(request: Request, limit: int = 100):
     """Get all customers from QuickBooks."""
     qbo = get_quickbooks_service()
     if not qbo:
@@ -328,19 +336,20 @@ async def get_customers(limit: int = 100):
 
 
 @router.post("/customers")
-async def sync_customer(request: CustomerSyncRequest):
+@limiter.limit("30/minute")
+async def sync_customer(request: Request, customer_request: CustomerSyncRequest):
     """Create or update a customer in QuickBooks."""
     qbo = get_quickbooks_service()
     if not qbo:
         raise HTTPException(status_code=503, detail="QuickBooks not configured")
 
     result = await qbo.sync_customer(
-        display_name=request.display_name,
-        email=request.email,
-        phone=request.phone,
-        company_name=request.company_name,
-        notes=request.notes,
-        internal_id=request.internal_id,
+        display_name=customer_request.display_name,
+        email=customer_request.email,
+        phone=customer_request.phone,
+        company_name=customer_request.company_name,
+        notes=customer_request.notes,
+        internal_id=customer_request.internal_id,
     )
 
     if result.get("success"):
@@ -354,17 +363,18 @@ async def sync_customer(request: CustomerSyncRequest):
 # ============================================================================
 
 @router.post("/vendors")
-async def sync_vendor(request: VendorSyncRequest):
+@limiter.limit("30/minute")
+async def sync_vendor(request: Request, vendor_request: VendorSyncRequest):
     """Create or update a vendor in QuickBooks."""
     qbo = get_quickbooks_service()
     if not qbo:
         raise HTTPException(status_code=503, detail="QuickBooks not configured")
 
     result = await qbo.sync_vendor(
-        display_name=request.display_name,
-        email=request.email,
-        phone=request.phone,
-        company_name=request.company_name,
+        display_name=vendor_request.display_name,
+        email=vendor_request.email,
+        phone=vendor_request.phone,
+        company_name=vendor_request.company_name,
     )
 
     if result.get("success"):
@@ -378,7 +388,8 @@ async def sync_vendor(request: VendorSyncRequest):
 # ============================================================================
 
 @router.get("/items")
-async def get_items(limit: int = 1000):
+@limiter.limit("60/minute")
+async def get_items(request: Request, limit: int = 1000):
     """Get all items from QuickBooks."""
     qbo = get_quickbooks_service()
     if not qbo:
@@ -389,21 +400,22 @@ async def get_items(limit: int = 1000):
 
 
 @router.post("/items")
-async def sync_item(request: ItemSyncRequest):
+@limiter.limit("30/minute")
+async def sync_item(request: Request, item_request: ItemSyncRequest):
     """Create or update an item in QuickBooks."""
     qbo = get_quickbooks_service()
     if not qbo:
         raise HTTPException(status_code=503, detail="QuickBooks not configured")
 
     result = await qbo.sync_item(
-        name=request.name,
-        description=request.description,
-        unit_price=request.unit_price,
-        purchase_cost=request.purchase_cost,
-        item_type=request.item_type,
-        income_account_id=request.income_account_id,
-        expense_account_id=request.expense_account_id,
-        sku=request.sku,
+        name=item_request.name,
+        description=item_request.description,
+        unit_price=item_request.unit_price,
+        purchase_cost=item_request.purchase_cost,
+        item_type=item_request.item_type,
+        income_account_id=item_request.income_account_id,
+        expense_account_id=item_request.expense_account_id,
+        sku=item_request.sku,
     )
 
     if result.get("success"):
@@ -417,7 +429,8 @@ async def sync_item(request: ItemSyncRequest):
 # ============================================================================
 
 @router.post("/sales-receipts")
-async def create_sales_receipt(request: SalesReceiptRequest):
+@limiter.limit("30/minute")
+async def create_sales_receipt(request: Request, receipt_request: SalesReceiptRequest):
     """Create a sales receipt in QuickBooks."""
     qbo = get_quickbooks_service()
     if not qbo:
@@ -430,16 +443,16 @@ async def create_sales_receipt(request: SalesReceiptRequest):
             "quantity": item.quantity,
             "item_id": item.item_id,
         }
-        for item in request.line_items
+        for item in receipt_request.line_items
     ]
 
     result = await qbo.create_sales_receipt(
-        customer_id=request.customer_id,
+        customer_id=receipt_request.customer_id,
         line_items=line_items,
-        payment_method=request.payment_method,
-        txn_date=request.txn_date,
-        memo=request.memo,
-        order_id=request.order_id,
+        payment_method=receipt_request.payment_method,
+        txn_date=receipt_request.txn_date,
+        memo=receipt_request.memo,
+        order_id=receipt_request.order_id,
     )
 
     if result.get("success"):
@@ -453,7 +466,8 @@ async def create_sales_receipt(request: SalesReceiptRequest):
 # ============================================================================
 
 @router.post("/invoices")
-async def create_invoice(request: InvoiceRequest):
+@limiter.limit("30/minute")
+async def create_invoice(request: Request, invoice_request: InvoiceRequest):
     """Create an invoice in QuickBooks."""
     qbo = get_quickbooks_service()
     if not qbo:
@@ -466,16 +480,16 @@ async def create_invoice(request: InvoiceRequest):
             "quantity": item.quantity,
             "item_id": item.item_id,
         }
-        for item in request.line_items
+        for item in invoice_request.line_items
     ]
 
     result = await qbo.create_invoice(
-        customer_id=request.customer_id,
+        customer_id=invoice_request.customer_id,
         line_items=line_items,
-        due_date=request.due_date,
-        txn_date=request.txn_date,
-        memo=request.memo,
-        invoice_number=request.invoice_number,
+        due_date=invoice_request.due_date,
+        txn_date=invoice_request.txn_date,
+        memo=invoice_request.memo,
+        invoice_number=invoice_request.invoice_number,
     )
 
     if result.get("success"):
@@ -489,7 +503,8 @@ async def create_invoice(request: InvoiceRequest):
 # ============================================================================
 
 @router.post("/bills")
-async def create_bill(request: BillRequest):
+@limiter.limit("30/minute")
+async def create_bill(request: Request, bill_request: BillRequest):
     """Create a bill (vendor invoice) in QuickBooks."""
     qbo = get_quickbooks_service()
     if not qbo:
@@ -502,16 +517,16 @@ async def create_bill(request: BillRequest):
             "quantity": item.quantity,
             "account_id": item.account_id,
         }
-        for item in request.line_items
+        for item in bill_request.line_items
     ]
 
     result = await qbo.create_bill(
-        vendor_id=request.vendor_id,
+        vendor_id=bill_request.vendor_id,
         line_items=line_items,
-        due_date=request.due_date,
-        txn_date=request.txn_date,
-        memo=request.memo,
-        ref_number=request.ref_number,
+        due_date=bill_request.due_date,
+        txn_date=bill_request.txn_date,
+        memo=bill_request.memo,
+        ref_number=bill_request.ref_number,
     )
 
     if result.get("success"):
@@ -525,7 +540,8 @@ async def create_bill(request: BillRequest):
 # ============================================================================
 
 @router.get("/accounts")
-async def get_accounts(account_type: Optional[str] = None):
+@limiter.limit("60/minute")
+async def get_accounts(request: Request, account_type: Optional[str] = None):
     """Get chart of accounts from QuickBooks."""
     qbo = get_quickbooks_service()
     if not qbo:
@@ -540,7 +556,9 @@ async def get_accounts(account_type: Optional[str] = None):
 # ============================================================================
 
 @router.get("/reports/profit-and-loss")
+@limiter.limit("60/minute")
 async def get_profit_and_loss(
+    request: Request,
     start_date: str = Query(..., description="Start date (YYYY-MM-DD)"),
     end_date: str = Query(..., description="End date (YYYY-MM-DD)"),
 ):
@@ -558,7 +576,9 @@ async def get_profit_and_loss(
 
 
 @router.get("/reports/balance-sheet")
+@limiter.limit("60/minute")
 async def get_balance_sheet(
+    request: Request,
     as_of_date: str = Query(..., description="As of date (YYYY-MM-DD)"),
 ):
     """Get balance sheet report from QuickBooks."""
@@ -579,7 +599,8 @@ async def get_balance_sheet(
 # ============================================================================
 
 @router.post("/sync/daily-sales", response_model=SyncResponse)
-async def sync_daily_sales(db: DbSession, request: DailySalesSyncRequest):
+@limiter.limit("30/minute")
+async def sync_daily_sales(request: Request, db: DbSession, sync_request: DailySalesSyncRequest):
     """
     Sync daily sales from BJS Menu to QuickBooks.
 
@@ -592,8 +613,8 @@ async def sync_daily_sales(db: DbSession, request: DailySalesSyncRequest):
     from app.models.restaurant import GuestOrder
     from sqlalchemy import and_
 
-    start = datetime.strptime(request.start_date, "%Y-%m-%d")
-    end = datetime.strptime(request.end_date, "%Y-%m-%d").replace(hour=23, minute=59, second=59)
+    start = datetime.strptime(sync_request.start_date, "%Y-%m-%d")
+    end = datetime.strptime(sync_request.end_date, "%Y-%m-%d").replace(hour=23, minute=59, second=59)
 
     orders = db.query(GuestOrder).filter(
         and_(

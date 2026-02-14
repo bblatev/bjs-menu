@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 
 import { API_URL, getAuthHeaders } from '@/lib/api';
 
+import { toast } from '@/lib/toast';
 interface CateringEvent {
   id: number;
   event_name: string;
@@ -202,7 +203,7 @@ export default function CateringPage() {
       resetEventForm();
       loadData();
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'Failed to create event');
+      toast.error(err instanceof Error ? err.message : 'Failed to create event');
     }
   };
 
@@ -244,7 +245,7 @@ export default function CateringPage() {
 
       loadData();
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'Failed to update status');
+      toast.error(err instanceof Error ? err.message : 'Failed to update status');
     }
   };
 

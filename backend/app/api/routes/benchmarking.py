@@ -3,9 +3,10 @@
 from datetime import datetime, timezone
 from typing import Any, List, Optional
 
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, Query, Request
 from pydantic import BaseModel
 
+from app.core.rate_limit import limiter
 from app.db.session import DbSession
 from app.models.operations import AppSetting
 
@@ -101,7 +102,8 @@ _DEFAULT_SUMMARY = BenchmarkSummary(
 
 
 @router.get("/summary")
-async def get_benchmark_summary(db: DbSession, period: str = Query("month")):
+@limiter.limit("60/minute")
+async def get_benchmark_summary(request: Request, db: DbSession, period: str = Query("month")):
     """Get benchmarking summary."""
     stored = _get_setting_value(db, f"summary_{period}")
     if stored and isinstance(stored, dict):
@@ -113,8 +115,9 @@ async def get_benchmark_summary(db: DbSession, period: str = Query("month")):
 
 
 @router.put("/summary")
+@limiter.limit("30/minute")
 async def update_benchmark_summary(
-    data: BenchmarkSummary, db: DbSession, period: str = Query("month")
+    request: Request, data: BenchmarkSummary, db: DbSession, period: str = Query("month")
 ):
     """Update benchmarking summary."""
     _upsert_setting(db, f"summary_{period}", data.model_dump())
@@ -122,7 +125,8 @@ async def update_benchmark_summary(
 
 
 @router.get("/peers")
-async def get_peer_comparisons(db: DbSession):
+@limiter.limit("60/minute")
+async def get_peer_comparisons(request: Request, db: DbSession):
     """Get peer comparison data."""
     stored = _get_setting_value(db, "peers")
     if stored and isinstance(stored, list):
@@ -134,14 +138,16 @@ async def get_peer_comparisons(db: DbSession):
 
 
 @router.put("/peers")
-async def update_peer_comparisons(data: List[PeerComparison], db: DbSession):
+@limiter.limit("30/minute")
+async def update_peer_comparisons(request: Request, data: List[PeerComparison], db: DbSession):
     """Update peer comparison data."""
     _upsert_setting(db, "peers", [item.model_dump() for item in data])
     return {"success": True}
 
 
 @router.get("/recommendations")
-async def get_recommendations(db: DbSession):
+@limiter.limit("60/minute")
+async def get_recommendations(request: Request, db: DbSession):
     """Get improvement recommendations."""
     stored = _get_setting_value(db, "recommendations")
     if stored and isinstance(stored, list):
@@ -153,7 +159,8 @@ async def get_recommendations(db: DbSession):
 
 
 @router.put("/recommendations")
-async def update_recommendations(data: List[Recommendation], db: DbSession):
+@limiter.limit("30/minute")
+async def update_recommendations(request: Request, data: List[Recommendation], db: DbSession):
     """Update improvement recommendations."""
     _upsert_setting(db, "recommendations", [item.model_dump() for item in data])
     return {"success": True}

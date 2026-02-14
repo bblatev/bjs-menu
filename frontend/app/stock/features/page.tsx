@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { API_URL } from '@/lib/api';
 
+import { toast } from '@/lib/toast';
 // Types
 interface StockItem {
   id: number;
@@ -281,7 +282,7 @@ export default function StockFeaturesPage() {
         loadTabData();
       }
     } catch (error) {
-      alert("Error creating barcode");
+      toast.error("Error creating barcode");
     }
   };
 
@@ -299,7 +300,7 @@ export default function StockFeaturesPage() {
         loadTabData();
       }
     } catch (error) {
-      alert("Error creating reorder rule");
+      toast.error("Error creating reorder rule");
     }
   };
 
@@ -317,7 +318,7 @@ export default function StockFeaturesPage() {
         loadTabData();
       }
     } catch (error) {
-      alert("Error creating batch");
+      toast.error("Error creating batch");
     }
   };
 
@@ -340,7 +341,7 @@ export default function StockFeaturesPage() {
         loadTabData();
       }
     } catch (error) {
-      alert("Error recording shrinkage");
+      toast.error("Error recording shrinkage");
     }
   };
 
@@ -358,7 +359,7 @@ export default function StockFeaturesPage() {
         loadTabData();
       }
     } catch (error) {
-      alert("Error creating schedule");
+      toast.error("Error creating schedule");
     }
   };
 
@@ -376,7 +377,7 @@ export default function StockFeaturesPage() {
         loadTabData();
       }
     } catch (error) {
-      alert("Error starting reconciliation");
+      toast.error("Error starting reconciliation");
     }
   };
 
@@ -394,7 +395,7 @@ export default function StockFeaturesPage() {
         loadTabData();
       }
     } catch (error) {
-      alert("Error creating conversion");
+      toast.error("Error creating conversion");
     }
   };
 
@@ -407,11 +408,11 @@ export default function StockFeaturesPage() {
       });
       if (res.ok) {
         const result = await res.json();
-        alert(`Processed ${result.orders_created || 0} reorder requests`);
+        toast.success(`Processed ${result.orders_created || 0} reorder requests`);
         loadTabData();
       }
     } catch (error) {
-      alert("Error processing reorders");
+      toast.error("Error processing reorders");
     }
   };
 

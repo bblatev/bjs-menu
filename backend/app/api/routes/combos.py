@@ -1,7 +1,7 @@
 """
 Combo Menus & Set Meals API
 """
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.orm import Session
 from typing import List, Optional
 from datetime import datetime, time
@@ -9,6 +9,7 @@ from pydantic import BaseModel, ConfigDict
 
 from app.db.session import get_db
 from app.core.rbac import get_current_user
+from app.core.rate_limit import limiter
 from app.models import (
     ComboMenu, ComboMenuItem, MenuItem, StaffUser
 )
@@ -71,7 +72,9 @@ class ComboResponse(BaseModel):
 
 # CRUD Operations
 @router.post("/", response_model=ComboResponse)
+@limiter.limit("30/minute")
 def create_combo(
+    request: Request,
     data: ComboCreate,
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(get_current_user)
@@ -129,7 +132,9 @@ def create_combo(
 
 
 @router.get("/", response_model=List[ComboResponse])
+@limiter.limit("60/minute")
 def list_combos(
+    request: Request,
     active_only: bool = True,
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(get_current_user)
@@ -146,7 +151,9 @@ def list_combos(
 
 
 @router.get("/available", response_model=List[ComboResponse])
+@limiter.limit("60/minute")
 def get_available_combos(
+    request: Request,
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(get_current_user)
 ):
@@ -176,7 +183,9 @@ def get_available_combos(
 
 
 @router.get("/{combo_id}", response_model=ComboResponse)
+@limiter.limit("60/minute")
 def get_combo(
+    request: Request,
     combo_id: int,
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(get_current_user)
@@ -194,7 +203,9 @@ def get_combo(
 
 
 @router.put("/{combo_id}", response_model=ComboResponse)
+@limiter.limit("30/minute")
 def update_combo(
+    request: Request,
     combo_id: int,
     data: ComboUpdate,
     db: Session = Depends(get_db),
@@ -219,7 +230,9 @@ def update_combo(
 
 
 @router.delete("/{combo_id}")
+@limiter.limit("30/minute")
 def delete_combo(
+    request: Request,
     combo_id: int,
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(get_current_user)
@@ -241,7 +254,9 @@ def delete_combo(
 
 # Combo Items Management
 @router.post("/{combo_id}/items")
+@limiter.limit("30/minute")
 def add_combo_item(
+    request: Request,
     combo_id: int,
     item: ComboItemInput,
     db: Session = Depends(get_db),
@@ -283,7 +298,9 @@ def add_combo_item(
 
 
 @router.delete("/{combo_id}/items/{item_id}")
+@limiter.limit("30/minute")
 def remove_combo_item(
+    request: Request,
     combo_id: int,
     item_id: int,
     db: Session = Depends(get_db),

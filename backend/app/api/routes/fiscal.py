@@ -11,7 +11,7 @@ Provides endpoints for:
 
 from typing import Optional, List
 from datetime import datetime, timezone
-from fastapi import APIRouter, HTTPException, Body
+from fastapi import APIRouter, HTTPException, Body, Request
 from pydantic import BaseModel
 
 from app.db.session import DbSession
@@ -22,6 +22,7 @@ from app.services.fiscal_service import (
     PaymentType,
     VATRate,
 )
+from app.core.rate_limit import limiter
 
 router = APIRouter()
 
@@ -57,7 +58,8 @@ class FiscalReceiptCreate(BaseModel):
 # ============== Endpoints ==============
 
 @router.get("/status")
-def get_fiscal_status(db: DbSession):
+@limiter.limit("60/minute")
+def get_fiscal_status(request: Request, db: DbSession):
     """
     Get fiscal device status.
     Returns device info, paper status, and last receipt number.
@@ -66,7 +68,8 @@ def get_fiscal_status(db: DbSession):
 
 
 @router.get("/devices")
-def list_fiscal_devices(db: DbSession):
+@limiter.limit("60/minute")
+def list_fiscal_devices(request: Request, db: DbSession):
     """
     List available fiscal device types.
     """
@@ -108,7 +111,8 @@ def list_fiscal_devices(db: DbSession):
 
 
 @router.post("/print-receipt")
-def print_fiscal_receipt(db: DbSession, data: FiscalReceiptCreate):
+@limiter.limit("30/minute")
+def print_fiscal_receipt(request: Request, db: DbSession, data: FiscalReceiptCreate):
     """
     Print a fiscal receipt.
 
@@ -165,7 +169,8 @@ def print_fiscal_receipt(db: DbSession, data: FiscalReceiptCreate):
 
 
 @router.post("/generate-usn")
-def generate_usn(db: DbSession):
+@limiter.limit("30/minute")
+def generate_usn(request: Request, db: DbSession):
     """
     Generate a new Unique Sale Number (USN) without printing receipt.
     Useful for pre-generating USN at transaction start.
@@ -178,7 +183,8 @@ def generate_usn(db: DbSession):
 
 
 @router.get("/qr-code/{usn}")
-def get_qr_code_url(db: DbSession, usn: str, total: float = 0.0):
+@limiter.limit("60/minute")
+def get_qr_code_url(request: Request, db: DbSession, usn: str, total: float = 0.0):
     """
     Get QR code verification URL for an existing USN.
     """
@@ -201,7 +207,8 @@ def get_qr_code_url(db: DbSession, usn: str, total: float = 0.0):
 
 
 @router.get("/daily-report")
-def get_daily_report(db: DbSession):
+@limiter.limit("60/minute")
+def get_daily_report(request: Request, db: DbSession):
     """
     Get daily fiscal report (Z-report).
     """
@@ -209,7 +216,8 @@ def get_daily_report(db: DbSession):
 
 
 @router.post("/daily-report")
-def generate_daily_report(db: DbSession):
+@limiter.limit("30/minute")
+def generate_daily_report(request: Request, db: DbSession):
     """
     Generate and print daily fiscal report (Z-report).
     This closes the fiscal day.
@@ -222,7 +230,8 @@ def generate_daily_report(db: DbSession):
 
 
 @router.get("/receipt/{receipt_number}/text")
-def get_receipt_text(db: DbSession, receipt_number: int):
+@limiter.limit("60/minute")
+def get_receipt_text(request: Request, db: DbSession, receipt_number: int):
     """
     Get formatted receipt text for a past receipt.
     For reprinting purposes.
@@ -238,7 +247,8 @@ def get_receipt_text(db: DbSession, receipt_number: int):
 
 
 @router.post("/reprint/{receipt_number}")
-def reprint_receipt(db: DbSession, receipt_number: int):
+@limiter.limit("30/minute")
+def reprint_receipt(request: Request, db: DbSession, receipt_number: int):
     """
     Reprint a past receipt.
     Marked as duplicate/copy per NRA requirements.
@@ -252,7 +262,8 @@ def reprint_receipt(db: DbSession, receipt_number: int):
 
 
 @router.get("/vat-rates")
-def get_vat_rates(db: DbSession):
+@limiter.limit("60/minute")
+def get_vat_rates(request: Request, db: DbSession):
     """
     Get Bulgarian VAT rates.
     """
@@ -268,7 +279,8 @@ def get_vat_rates(db: DbSession):
 
 
 @router.get("/payment-types")
-def get_payment_types(db: DbSession):
+@limiter.limit("60/minute")
+def get_payment_types(request: Request, db: DbSession):
     """
     Get NRA payment type codes.
     """
@@ -285,7 +297,9 @@ def get_payment_types(db: DbSession):
 
 
 @router.post("/test-connection")
+@limiter.limit("30/minute")
 def test_device_connection(
+    request: Request,
     db: DbSession,
     device_type: str = "virtual",
 ):
@@ -313,7 +327,9 @@ def test_device_connection(
 
 
 @router.put("/configure")
+@limiter.limit("30/minute")
 def configure_fiscal_device(
+    request: Request,
     db: DbSession,
     device_type: Optional[str] = None,
     device_serial: Optional[str] = None,

@@ -12,11 +12,12 @@ from datetime import datetime
 from pathlib import Path
 from typing import Optional, List, Dict
 
-from fastapi import APIRouter, File, Form, HTTPException, UploadFile, BackgroundTasks
+from fastapi import APIRouter, File, Form, HTTPException, Request, UploadFile, BackgroundTasks
 from pydantic import BaseModel, Field
 
 from app.db.session import DbSession
 from app.core.rbac import CurrentUser, OptionalCurrentUser
+from app.core.rate_limit import limiter
 
 router = APIRouter()
 
@@ -104,7 +105,9 @@ _next_image_id = 1
 # ==================== TRAINING ENDPOINTS ====================
 
 @router.post("/training/upload", response_model=TrainingImageResponse)
+@limiter.limit("30/minute")
 async def upload_training_image(
+    request: Request,
     image: UploadFile = File(..., description="Image of bottle to train"),
     product_id: int = Form(...),
     use_augmentation: bool = Form(default=True, description="Generate augmented versions"),
@@ -147,7 +150,9 @@ async def upload_training_image(
 
 
 @router.post("/training/upload-batch", response_model=BatchUploadResponse)
+@limiter.limit("30/minute")
 async def upload_training_images_batch(
+    request: Request,
     images: List[UploadFile] = File(..., description="Multiple images to upload"),
     product_id: int = Form(...),
     use_augmentation: bool = Form(default=True),
@@ -204,7 +209,8 @@ async def upload_training_images_batch(
 
 
 @router.get("/training/stats", response_model=TrainingStatsResponse)
-def get_training_stats(db: DbSession = None, current_user: CurrentUser = None):
+@limiter.limit("60/minute")
+def get_training_stats(request: Request, db: DbSession = None, current_user: CurrentUser = None):
     """Get comprehensive training statistics."""
     total_images = len(_training_images)
     product_counts: Dict[str, int] = {}
@@ -227,7 +233,8 @@ def get_training_stats(db: DbSession = None, current_user: CurrentUser = None):
 
 
 @router.get("/training/product-status/{product_id}", response_model=ProductTrainingStatus)
-def get_product_training_status(product_id: int, db: DbSession = None, current_user: CurrentUser = None):
+@limiter.limit("60/minute")
+def get_product_training_status(request: Request, product_id: int, db: DbSession = None, current_user: CurrentUser = None):
     """Get detailed training status for a specific product."""
     images = [img for img in _training_images if img["product_id"] == product_id]
     image_count = len(images)
@@ -253,7 +260,9 @@ def get_product_training_status(product_id: int, db: DbSession = None, current_u
 
 
 @router.get("/training/images")
+@limiter.limit("60/minute")
 def list_training_images(
+    request: Request,
     product_id: Optional[int] = None,
     only_without_features: bool = False,
     skip: int = 0, limit: int = 100,
@@ -284,7 +293,8 @@ def list_training_images(
 
 
 @router.delete("/training/images/{image_id}")
-def delete_training_image(image_id: int, db: DbSession = None, current_user: CurrentUser = None):
+@limiter.limit("30/minute")
+def delete_training_image(request: Request, image_id: int, db: DbSession = None, current_user: CurrentUser = None):
     """Delete a training image."""
     global _training_images
 
@@ -302,7 +312,9 @@ def delete_training_image(image_id: int, db: DbSession = None, current_user: Cur
 
 
 @router.post("/training/retrain", response_model=RetrainResponse)
+@limiter.limit("30/minute")
 def retrain_features(
+    request: Request,
     product_id: Optional[int] = None,
     force: bool = False,
     db: DbSession = None, current_user: CurrentUser = None,
@@ -340,7 +352,8 @@ def retrain_features(
 
 
 @router.post("/training/verify/{image_id}")
-def verify_training_image(image_id: int, verified: bool = True, db: DbSession = None, current_user: CurrentUser = None):
+@limiter.limit("30/minute")
+def verify_training_image(request: Request, image_id: int, verified: bool = True, db: DbSession = None, current_user: CurrentUser = None):
     """Mark a training image as verified (confirmed correct)."""
     for img in _training_images:
         if img["id"] == image_id:
@@ -352,7 +365,9 @@ def verify_training_image(image_id: int, verified: bool = True, db: DbSession = 
 # ==================== RECOGNITION ENDPOINT ====================
 
 @router.post("/recognize", response_model=RecognitionResponse)
+@limiter.limit("30/minute")
 async def recognize_bottle(
+    request: Request,
     image: UploadFile = File(..., description="Image of bottle to recognize"),
     top_k: int = 5,
     skip_detection: bool = False,
@@ -392,7 +407,9 @@ async def recognize_bottle(
 
 
 @router.post("/recognize/compare")
+@limiter.limit("30/minute")
 async def compare_images(
+    request: Request,
     image1: UploadFile = File(..., description="First image"),
     image2: UploadFile = File(..., description="Second image"),
 ):
@@ -414,12 +431,14 @@ async def compare_images(
 # ==================== ACTIVE LEARNING ====================
 
 @router.post("/recognize/confirm")
+@limiter.limit("30/minute")
 def confirm_recognition(
-    request: RecognitionConfirmRequest,
+    request: Request,
+    body: RecognitionConfirmRequest,
     db: DbSession = None, current_user: CurrentUser = None,
 ):
     """Confirm a recognition result for active learning."""
-    if not request.is_correct:
+    if not body.is_correct:
         return {
             "success": True,
             "message": "Incorrect recognition logged",
@@ -436,7 +455,8 @@ def confirm_recognition(
 # ==================== STORAGE STATUS ====================
 
 @router.get("/training/storage-status")
-def get_storage_status(current_user: CurrentUser = None):
+@limiter.limit("60/minute")
+def get_storage_status(request: Request, current_user: CurrentUser = None):
     """Get status of training image storage systems."""
     local_count = 0
     local_size = 0

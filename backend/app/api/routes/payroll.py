@@ -3,10 +3,12 @@
 from datetime import date, datetime
 from typing import List, Optional
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Query, Request
 from pydantic import BaseModel
 from sqlalchemy import func
 
+from app.core.rate_limit import limiter
+from app.core.rbac import CurrentUser, RequireManager, RequireOwner
 from app.db.session import DbSession
 from app.models.operations import PayrollRun, PayrollEntry
 
@@ -16,8 +18,11 @@ router = APIRouter()
 # ==================== ROOT ENDPOINT ====================
 
 @router.get("/")
+@limiter.limit("60/minute")
 def get_payroll_overview(
+    request: Request,
     db: DbSession,
+    current_user: RequireManager,
     period_start: Optional[str] = Query(None),
     period_end: Optional[str] = Query(None),
 ):
@@ -109,7 +114,8 @@ def _entry_to_schema(entry: PayrollEntry) -> PayrollEntrySchema:
 # --------------- Endpoints ---------------
 
 @router.get("/entries")
-async def get_payroll_entries(db: DbSession, period: str = Query(None)):
+@limiter.limit("60/minute")
+async def get_payroll_entries(request: Request, db: DbSession, current_user: RequireManager, period: str = Query(None)):
     """Get payroll entries."""
     query = db.query(PayrollEntry)
     if period:
@@ -124,7 +130,8 @@ async def get_payroll_entries(db: DbSession, period: str = Query(None)):
 
 
 @router.get("/entries/{entry_id}")
-async def get_payroll_entry(entry_id: str, db: DbSession):
+@limiter.limit("60/minute")
+async def get_payroll_entry(request: Request, entry_id: str, db: DbSession, current_user: RequireManager):
     """Get a specific payroll entry."""
     entry = db.query(PayrollEntry).filter(PayrollEntry.id == int(entry_id)).first()
     if not entry:
@@ -133,8 +140,11 @@ async def get_payroll_entry(entry_id: str, db: DbSession):
 
 
 @router.post("/generate")
+@limiter.limit("30/minute")
 async def generate_payroll(
+    request: Request,
     db: DbSession,
+    current_user: RequireOwner,
     period_start: str = Query(...),
     period_end: str = Query(...),
 ):
@@ -184,7 +194,8 @@ async def generate_payroll(
 
 
 @router.post("/entries/{entry_id}/approve")
-async def approve_payroll_entry(entry_id: str, db: DbSession):
+@limiter.limit("30/minute")
+async def approve_payroll_entry(request: Request, entry_id: str, db: DbSession, current_user: RequireManager):
     """Approve a payroll entry."""
     entry = db.query(PayrollEntry).filter(PayrollEntry.id == int(entry_id)).first()
     if not entry:
@@ -195,7 +206,8 @@ async def approve_payroll_entry(entry_id: str, db: DbSession):
 
 
 @router.post("/approve-all")
-async def approve_all_payroll(db: DbSession):
+@limiter.limit("30/minute")
+async def approve_all_payroll(request: Request, db: DbSession, current_user: RequireManager):
     """Approve all pending payroll entries."""
     pending = (
         db.query(PayrollEntry)
@@ -209,7 +221,8 @@ async def approve_all_payroll(db: DbSession):
 
 
 @router.post("/entries/{entry_id}/pay")
-async def mark_as_paid(entry_id: str, db: DbSession):
+@limiter.limit("30/minute")
+async def mark_as_paid(request: Request, entry_id: str, db: DbSession, current_user: RequireOwner):
     """Mark a payroll entry as paid."""
     entry = db.query(PayrollEntry).filter(PayrollEntry.id == int(entry_id)).first()
     if not entry:
@@ -220,7 +233,8 @@ async def mark_as_paid(entry_id: str, db: DbSession):
 
 
 @router.get("/summary")
-async def get_payroll_summary(db: DbSession):
+@limiter.limit("60/minute")
+async def get_payroll_summary(request: Request, db: DbSession, current_user: RequireManager):
     """Get payroll summary statistics."""
     total_entries = db.query(func.count(PayrollEntry.id)).scalar() or 0
     total_gross = float(db.query(func.coalesce(func.sum(PayrollEntry.gross_pay), 0)).scalar())
@@ -239,7 +253,8 @@ async def get_payroll_summary(db: DbSession):
 
 
 @router.get("/runs")
-async def get_payroll_runs(db: DbSession):
+@limiter.limit("60/minute")
+async def get_payroll_runs(request: Request, db: DbSession, current_user: RequireManager):
     """Get payroll runs."""
     runs = db.query(PayrollRun).all()
     return [
@@ -261,7 +276,8 @@ async def get_payroll_runs(db: DbSession):
 
 
 @router.get("/employees")
-async def get_payroll_employees(db: DbSession):
+@limiter.limit("60/minute")
+async def get_payroll_employees(request: Request, db: DbSession, current_user: RequireManager):
     """Get payroll employees."""
     rows = (
         db.query(

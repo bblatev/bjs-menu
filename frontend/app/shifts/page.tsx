@@ -5,6 +5,7 @@ import { motion } from "framer-motion";
 
 import { API_URL, getAuthHeaders } from '@/lib/api';
 
+import { toast } from '@/lib/toast';
 interface Shift {
   id: number;
   staff_id: number;
@@ -144,7 +145,7 @@ export default function ShiftSchedulingPage() {
 
   const handleSaveShift = async () => {
     if (!formData.staff_id) {
-      alert("Please select a staff member");
+      toast.success("Please select a staff member");
       return;
     }
 
@@ -189,7 +190,7 @@ export default function ShiftSchedulingPage() {
       resetForm();
       loadData();
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'Failed to save shift');
+      toast.error(err instanceof Error ? err.message : 'Failed to save shift');
     }
   };
 
@@ -211,7 +212,7 @@ export default function ShiftSchedulingPage() {
 
         loadData();
       } catch (err) {
-        alert(err instanceof Error ? err.message : 'Failed to delete shift');
+        toast.error(err instanceof Error ? err.message : 'Failed to delete shift');
       }
     }
   };

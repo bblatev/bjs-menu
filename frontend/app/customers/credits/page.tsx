@@ -6,6 +6,7 @@ import { motion, AnimatePresence } from "framer-motion";
 
 import { API_URL, getAuthHeaders } from '@/lib/api';
 
+import { toast } from '@/lib/toast';
 interface Customer {
   id: number;
   name: string;
@@ -111,10 +112,10 @@ export default function CustomerCreditsPage() {
         loadData();
       } else {
         const err = await response.json();
-        alert(err.detail || "Error setting credit limit");
+        toast.error(err.detail || "Error setting credit limit");
       }
     } catch (error) {
-      alert("Error setting credit limit");
+      toast.error("Error setting credit limit");
     }
   };
 
@@ -137,10 +138,10 @@ export default function CustomerCreditsPage() {
         loadData();
       } else {
         const err = await response.json();
-        alert(err.detail || "Error recording payment");
+        toast.error(err.detail || "Error recording payment");
       }
     } catch (error) {
-      alert("Error recording payment");
+      toast.error("Error recording payment");
     }
   };
 
@@ -163,10 +164,10 @@ export default function CustomerCreditsPage() {
         loadData();
       } else {
         const err = await response.json();
-        alert(err.detail || "Error charging credit");
+        toast.error(err.detail || "Error charging credit");
       }
     } catch (error) {
-      alert("Error charging credit");
+      toast.error("Error charging credit");
     }
   };
 

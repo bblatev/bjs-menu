@@ -2,11 +2,12 @@
 
 from datetime import datetime, timedelta, timezone
 from typing import List, Optional
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel
 from enum import Enum
 
 from app.db.session import DbSession
+from app.core.rate_limit import limiter
 from app.models.hardware import (
     Keg as KegModel,
     Tank as TankModel,
@@ -127,7 +128,9 @@ class InventoryCountSession(BaseModel):
 # ==================== KEGS ====================
 
 @router.get("/kegs")
+@limiter.limit("60/minute")
 def list_kegs(
+    request: Request,
     db: DbSession,
     status: Optional[str] = None,
     location: Optional[str] = None,
@@ -175,7 +178,8 @@ def list_kegs(
 
 
 @router.get("/kegs/{keg_id}")
-def get_keg(db: DbSession, keg_id: int):
+@limiter.limit("60/minute")
+def get_keg(request: Request, db: DbSession, keg_id: int):
     """Get a specific keg."""
     keg = db.query(KegModel).filter(KegModel.id == keg_id).first()
     if not keg:
@@ -197,7 +201,8 @@ def get_keg(db: DbSession, keg_id: int):
 
 
 @router.post("/kegs")
-def create_keg(db: DbSession, keg: KegCreate):
+@limiter.limit("30/minute")
+def create_keg(request: Request, db: DbSession, keg: KegCreate):
     """Add a new keg to inventory."""
     new_keg = KegModel(
         product_id=keg.product_id,
@@ -227,7 +232,9 @@ def create_keg(db: DbSession, keg: KegCreate):
 
 
 @router.post("/kegs/tap")
+@limiter.limit("30/minute")
 def tap_keg(
+    request: Request,
     db: DbSession,
     keg_id: int,
     tap_number: int,
@@ -264,7 +271,9 @@ def tap_keg(
 
 
 @router.post("/kegs/{keg_id}/pour")
+@limiter.limit("30/minute")
 def record_pour(
+    request: Request,
     db: DbSession,
     keg_id: int,
     liters: float,
@@ -284,7 +293,8 @@ def record_pour(
 
 
 @router.post("/kegs/{keg_id}/empty")
-def mark_keg_empty(db: DbSession, keg_id: int):
+@limiter.limit("30/minute")
+def mark_keg_empty(request: Request, db: DbSession, keg_id: int):
     """Mark a keg as empty."""
     keg = db.query(KegModel).filter(KegModel.id == keg_id).first()
     if not keg:
@@ -307,7 +317,9 @@ def mark_keg_empty(db: DbSession, keg_id: int):
 # ==================== TANKS ====================
 
 @router.get("/tanks")
+@limiter.limit("60/minute")
 def list_tanks(
+    request: Request,
     db: DbSession,
     status: Optional[str] = None,
 ):
@@ -346,7 +358,8 @@ def list_tanks(
 
 
 @router.get("/tanks/{tank_id}")
-def get_tank(db: DbSession, tank_id: int):
+@limiter.limit("60/minute")
+def get_tank(request: Request, db: DbSession, tank_id: int):
     """Get a specific tank."""
     tank = db.query(TankModel).filter(TankModel.id == tank_id).first()
     if not tank:
@@ -367,7 +380,8 @@ def get_tank(db: DbSession, tank_id: int):
 
 
 @router.post("/tanks")
-def create_tank(db: DbSession, tank: TankCreate):
+@limiter.limit("30/minute")
+def create_tank(request: Request, db: DbSession, tank: TankCreate):
     """Add a new tank."""
     new_tank = TankModel(
         name=tank.name,
@@ -397,7 +411,9 @@ def create_tank(db: DbSession, tank: TankCreate):
 
 
 @router.post("/tanks/level")
+@limiter.limit("30/minute")
 def update_tank_level(
+    request: Request,
     db: DbSession,
     tank_id: int,
     level: TankLevelUpdate,
@@ -433,7 +449,8 @@ def update_tank_level(
 
 
 @router.post("/tanks/{tank_id}/refill")
-def refill_tank(db: DbSession, tank_id: int):
+@limiter.limit("30/minute")
+def refill_tank(request: Request, db: DbSession, tank_id: int):
     """Mark a tank as refilled."""
     tank = db.query(TankModel).filter(TankModel.id == tank_id).first()
     if not tank:
@@ -456,7 +473,9 @@ def refill_tank(db: DbSession, tank_id: int):
 # ==================== RFID ====================
 
 @router.get("/rfid/tags")
+@limiter.limit("60/minute")
 def list_rfid_tags(
+    request: Request,
     db: DbSession,
     zone: Optional[str] = None,
     status: Optional[str] = None,
@@ -495,7 +514,8 @@ def list_rfid_tags(
 
 
 @router.get("/rfid/tags/status")
-def get_rfid_status(db: DbSession):
+@limiter.limit("60/minute")
+def get_rfid_status(request: Request, db: DbSession):
     """Get RFID system status."""
     tags = db.query(RFIDTagModel).all()
 
@@ -509,7 +529,8 @@ def get_rfid_status(db: DbSession):
 
 
 @router.get("/rfid/tags/{tag_id}")
-def get_rfid_tag(db: DbSession, tag_id: str):
+@limiter.limit("60/minute")
+def get_rfid_tag(request: Request, db: DbSession, tag_id: str):
     """Get a specific RFID tag."""
     tag = db.query(RFIDTagModel).filter(RFIDTagModel.tag_id == tag_id).first()
     if not tag:
@@ -530,7 +551,9 @@ def get_rfid_tag(db: DbSession, tag_id: str):
 
 
 @router.post("/rfid/scan")
+@limiter.limit("30/minute")
 def record_rfid_scan(
+    request: Request,
     db: DbSession,
     tag_id: str,
     zone: Optional[str] = None,
@@ -564,7 +587,8 @@ def record_rfid_scan(
 
 
 @router.get("/rfid/zones/summary")
-def get_zones_summary(db: DbSession):
+@limiter.limit("60/minute")
+def get_zones_summary(request: Request, db: DbSession):
     """Get inventory summary by zone."""
     tags = db.query(RFIDTagModel).all()
 
@@ -584,7 +608,9 @@ def get_zones_summary(db: DbSession):
 
 
 @router.post("/rfid/inventory-count/start")
+@limiter.limit("30/minute")
 def start_rfid_inventory_count(
+    request: Request,
     db: DbSession,
     zone: str,
 ):
@@ -609,7 +635,9 @@ def start_rfid_inventory_count(
 
 
 @router.post("/rfid/inventory-count/{session_id}/complete")
+@limiter.limit("30/minute")
 def complete_rfid_inventory_count(
+    request: Request,
     db: DbSession,
     session_id: int,
 ):
@@ -637,7 +665,8 @@ def complete_rfid_inventory_count(
 
 
 @router.get("/rfid/inventory-count/sessions")
-def list_inventory_count_sessions(db: DbSession):
+@limiter.limit("60/minute")
+def list_inventory_count_sessions(request: Request, db: DbSession):
     """List all inventory count sessions."""
     sessions = db.query(CountSessionModel).all()
 

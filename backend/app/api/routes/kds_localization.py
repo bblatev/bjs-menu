@@ -4,9 +4,10 @@ Multilingual support for Kitchen Display Systems.
 """
 
 from typing import Optional, List
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel
 
+from app.core.rate_limit import limiter
 from app.services.kds_localization_service import (
     get_kds_localization_service,
     SupportedLanguage,
@@ -58,7 +59,8 @@ class LocalizeOrderRequest(BaseModel):
 # ============================================================================
 
 @router.get("/languages")
-async def list_supported_languages():
+@limiter.limit("60/minute")
+async def list_supported_languages(request: Request):
     """
     List all supported languages for KDS.
 
@@ -79,7 +81,8 @@ async def list_supported_languages():
 # ============================================================================
 
 @router.get("/stations")
-async def list_stations():
+@limiter.limit("60/minute")
+async def list_stations(request: Request):
     """List all KDS stations with their language settings."""
     service = get_kds_localization_service()
     raw_stations = service.list_station_languages()
@@ -114,7 +117,8 @@ async def list_stations():
 
 
 @router.put("/stations/{station_id}")
-async def update_station_settings(station_id: str, updates: dict):
+@limiter.limit("30/minute")
+async def update_station_settings(request: Request, station_id: str, updates: dict):
     """Update station display settings (language, font sizes, etc.)."""
     service = get_kds_localization_service()
     if "language_code" in updates:
@@ -128,7 +132,8 @@ async def update_station_settings(station_id: str, updates: dict):
 
 
 @router.put("/translations/{key}")
-async def update_translation_by_key(key: str, body: dict):
+@limiter.limit("30/minute")
+async def update_translation_by_key(request: Request, key: str, body: dict):
     """Update a single translation by key."""
     service = get_kds_localization_service()
     lang_code = body.get("language_code", "")
@@ -143,7 +148,8 @@ async def update_translation_by_key(key: str, body: dict):
 
 
 @router.post("/stations/language")
-async def set_station_language(request: SetStationLanguageRequest):
+@limiter.limit("30/minute")
+async def set_station_language(request: Request, data: SetStationLanguageRequest):
     """
     Set the display language for a kitchen station.
 
@@ -152,17 +158,17 @@ async def set_station_language(request: SetStationLanguageRequest):
     service = get_kds_localization_service()
 
     try:
-        language = SupportedLanguage(request.language)
+        language = SupportedLanguage(data.language)
     except ValueError:
-        raise HTTPException(status_code=400, detail=f"Unsupported language: {request.language}")
+        raise HTTPException(status_code=400, detail=f"Unsupported language: {data.language}")
 
     try:
-        fallback = SupportedLanguage(request.fallback_language)
+        fallback = SupportedLanguage(data.fallback_language)
     except ValueError:
         fallback = SupportedLanguage.ENGLISH
 
     station_lang = service.set_station_language(
-        request.station_id,
+        data.station_id,
         language,
         fallback,
     )
@@ -176,7 +182,8 @@ async def set_station_language(request: SetStationLanguageRequest):
 
 
 @router.get("/stations/languages")
-async def list_station_languages():
+@limiter.limit("60/minute")
+async def list_station_languages(request: Request):
     """List language settings for all stations."""
     service = get_kds_localization_service()
 
@@ -189,7 +196,8 @@ async def list_station_languages():
 
 
 @router.get("/stations/{station_id}/language")
-async def get_station_language(station_id: str):
+@limiter.limit("60/minute")
+async def get_station_language(request: Request, station_id: str):
     """Get the language setting for a specific station."""
     service = get_kds_localization_service()
 
@@ -206,7 +214,8 @@ async def get_station_language(station_id: str):
 # ============================================================================
 
 @router.get("/stations/{station_id}/ui-labels")
-async def get_station_ui_labels(station_id: str):
+@limiter.limit("60/minute")
+async def get_station_ui_labels(request: Request, station_id: str):
     """
     Get all UI labels for a station in its configured language.
 
@@ -225,7 +234,8 @@ async def get_station_ui_labels(station_id: str):
 
 
 @router.get("/ui-labels/{language}")
-async def get_ui_labels_by_language(language: str):
+@limiter.limit("60/minute")
+async def get_ui_labels_by_language(request: Request, language: str):
     """Get UI labels for a specific language."""
     service = get_kds_localization_service()
 
@@ -254,7 +264,8 @@ async def get_ui_labels_by_language(language: str):
 # ============================================================================
 
 @router.get("/translations")
-async def get_all_translations():
+@limiter.limit("60/minute")
+async def get_all_translations(request: Request):
     """Get all translations for all languages."""
     service = get_kds_localization_service()
     all_translations = {}
@@ -276,7 +287,8 @@ async def get_all_translations():
 
 
 @router.get("/translations/{language}")
-async def get_translations(language: str):
+@limiter.limit("60/minute")
+async def get_translations(request: Request, language: str):
     """Get all translations for a language."""
     service = get_kds_localization_service()
 
@@ -295,43 +307,45 @@ async def get_translations(language: str):
 
 
 @router.post("/translations")
-async def add_translation(request: AddTranslationRequest):
+@limiter.limit("30/minute")
+async def add_translation(request: Request, data: AddTranslationRequest):
     """Add or update a single translation."""
     service = get_kds_localization_service()
 
     try:
-        language = SupportedLanguage(request.language)
+        language = SupportedLanguage(data.language)
     except ValueError:
-        raise HTTPException(status_code=400, detail=f"Unsupported language: {request.language}")
+        raise HTTPException(status_code=400, detail=f"Unsupported language: {data.language}")
 
-    service.add_translation(request.key, language, request.text)
+    service.add_translation(data.key, language, data.text)
 
     return {
         "success": True,
-        "key": request.key,
-        "language": request.language,
-        "text": request.text,
+        "key": data.key,
+        "language": data.language,
+        "text": data.text,
     }
 
 
 @router.post("/translations/bulk")
-async def add_bulk_translations(request: BulkTranslationRequest):
+@limiter.limit("30/minute")
+async def add_bulk_translations(request: Request, data: BulkTranslationRequest):
     """Add multiple translations at once."""
     service = get_kds_localization_service()
 
     try:
-        language = SupportedLanguage(request.language)
+        language = SupportedLanguage(data.language)
     except ValueError:
-        raise HTTPException(status_code=400, detail=f"Unsupported language: {request.language}")
+        raise HTTPException(status_code=400, detail=f"Unsupported language: {data.language}")
 
     added = 0
-    for key, text in request.translations.items():
+    for key, text in data.translations.items():
         service.add_translation(key, language, text)
         added += 1
 
     return {
         "success": True,
-        "language": request.language,
+        "language": data.language,
         "added": added,
     }
 
@@ -341,27 +355,29 @@ async def add_bulk_translations(request: BulkTranslationRequest):
 # ============================================================================
 
 @router.post("/items/translation")
-async def set_item_translation(request: SetItemTranslationRequest):
+@limiter.limit("30/minute")
+async def set_item_translation(request: Request, data: SetItemTranslationRequest):
     """Set translation for a menu item."""
     service = get_kds_localization_service()
 
     try:
-        language = SupportedLanguage(request.language)
+        language = SupportedLanguage(data.language)
     except ValueError:
-        raise HTTPException(status_code=400, detail=f"Unsupported language: {request.language}")
+        raise HTTPException(status_code=400, detail=f"Unsupported language: {data.language}")
 
-    service.set_item_translation(request.item_id, language, request.name)
+    service.set_item_translation(data.item_id, language, data.name)
 
     return {
         "success": True,
-        "item_id": request.item_id,
-        "language": request.language,
-        "name": request.name,
+        "item_id": data.item_id,
+        "language": data.language,
+        "name": data.name,
     }
 
 
 @router.post("/items/translations/bulk")
-async def set_bulk_item_translations(items: List[SetItemTranslationRequest]):
+@limiter.limit("30/minute")
+async def set_bulk_item_translations(request: Request, items: List[SetItemTranslationRequest]):
     """Set translations for multiple menu items."""
     service = get_kds_localization_service()
 
@@ -385,27 +401,29 @@ async def set_bulk_item_translations(items: List[SetItemTranslationRequest]):
 # ============================================================================
 
 @router.post("/modifiers/translation")
-async def set_modifier_translation(request: SetModifierTranslationRequest):
+@limiter.limit("30/minute")
+async def set_modifier_translation(request: Request, data: SetModifierTranslationRequest):
     """Set translation for a modifier."""
     service = get_kds_localization_service()
 
     try:
-        language = SupportedLanguage(request.language)
+        language = SupportedLanguage(data.language)
     except ValueError:
-        raise HTTPException(status_code=400, detail=f"Unsupported language: {request.language}")
+        raise HTTPException(status_code=400, detail=f"Unsupported language: {data.language}")
 
-    service.set_modifier_translation(request.modifier_id, language, request.name)
+    service.set_modifier_translation(data.modifier_id, language, data.name)
 
     return {
         "success": True,
-        "modifier_id": request.modifier_id,
-        "language": request.language,
-        "name": request.name,
+        "modifier_id": data.modifier_id,
+        "language": data.language,
+        "name": data.name,
     }
 
 
 @router.post("/modifiers/translations/bulk")
-async def set_bulk_modifier_translations(modifiers: List[SetModifierTranslationRequest]):
+@limiter.limit("30/minute")
+async def set_bulk_modifier_translations(request: Request, modifiers: List[SetModifierTranslationRequest]):
     """Set translations for multiple modifiers."""
     service = get_kds_localization_service()
 
@@ -429,7 +447,8 @@ async def set_bulk_modifier_translations(modifiers: List[SetModifierTranslationR
 # ============================================================================
 
 @router.post("/localize-order")
-async def localize_order(request: LocalizeOrderRequest):
+@limiter.limit("30/minute")
+async def localize_order(request: Request, data: LocalizeOrderRequest):
     """
     Localize an order for display on a specific station.
 
@@ -438,11 +457,11 @@ async def localize_order(request: LocalizeOrderRequest):
     """
     service = get_kds_localization_service()
 
-    localized = service.localize_order(request.order, request.station_id)
-    language = service.get_station_language(request.station_id)
+    localized = service.localize_order(data.order, data.station_id)
+    language = service.get_station_language(data.station_id)
 
     return {
-        "station_id": request.station_id,
+        "station_id": data.station_id,
         "language": language.value,
         "order": localized,
     }
@@ -453,7 +472,8 @@ async def localize_order(request: LocalizeOrderRequest):
 # ============================================================================
 
 @router.get("/categories")
-async def get_translation_categories():
+@limiter.limit("60/minute")
+async def get_translation_categories(request: Request):
     """Get available translation categories."""
     return {
         "categories": [
@@ -492,7 +512,8 @@ async def get_translation_categories():
 
 
 @router.get("/categories/{category}/keys")
-async def get_category_keys(category: str, language: str = "en"):
+@limiter.limit("60/minute")
+async def get_category_keys(request: Request, category: str, language: str = "en"):
     """Get all translation keys for a category."""
     service = get_kds_localization_service()
 

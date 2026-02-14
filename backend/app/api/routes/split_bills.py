@@ -2,11 +2,12 @@
 Split Bill API Endpoints
 Support for splitting bills by guest, item, amount, or percentage
 """
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.orm import Session
 from typing import Optional
 from datetime import datetime
 
+from app.core.rate_limit import limiter
 from app.db.session import get_db
 from app.core.rbac import get_current_user
 from app.models import (
@@ -22,7 +23,9 @@ router = APIRouter()
 
 
 @router.post("/", response_model=SplitBillResponse)
+@limiter.limit("30/minute")
 async def create_split_bill(
+    request: Request,
     data: SplitBillCreate,
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(get_current_user)
@@ -173,7 +176,9 @@ async def create_split_bill(
 
 
 @router.get("/{split_bill_id}", response_model=SplitBillResponse)
+@limiter.limit("60/minute")
 async def get_split_bill(
+    request: Request,
     split_bill_id: int,
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(get_current_user)
@@ -192,7 +197,9 @@ async def get_split_bill(
 
 
 @router.get("/table/{table_id}", response_model=Optional[SplitBillResponse])
+@limiter.limit("60/minute")
 async def get_active_split_bill_for_table(
+    request: Request,
     table_id: int,
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(get_current_user)
@@ -212,7 +219,9 @@ async def get_active_split_bill_for_table(
 
 
 @router.post("/pay", response_model=SplitBillResponse)
+@limiter.limit("30/minute")
 async def process_split_bill_payment(
+    request: Request,
     payment: SplitBillPayment,
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(get_current_user)
@@ -275,7 +284,9 @@ async def process_split_bill_payment(
 
 
 @router.delete("/{split_bill_id}")
+@limiter.limit("30/minute")
 async def cancel_split_bill(
+    request: Request,
     split_bill_id: int,
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(get_current_user)

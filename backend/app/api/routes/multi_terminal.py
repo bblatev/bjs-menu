@@ -2,7 +2,7 @@
 Multi-Terminal Bill Sharing API Endpoints
 TouchSale feature: Work with the same bill from any terminal
 """
-from fastapi import APIRouter, Depends, HTTPException, status, WebSocket, WebSocketDisconnect
+from fastapi import APIRouter, Depends, HTTPException, Request, status, WebSocket, WebSocketDisconnect
 from sqlalchemy.orm import Session
 from typing import List, Optional, Dict, Any
 from datetime import datetime
@@ -13,6 +13,7 @@ import asyncio
 from app.db.session import get_db
 from app.core.rbac import get_current_user
 from app.models import StaffUser, Order, OrderItem, Table, OrderStatus
+from app.core.rate_limit import limiter
 
 
 router = APIRouter()
@@ -121,7 +122,9 @@ async def broadcast_order_update(order_id: int, update_data: Dict[str, Any], exc
 # =============================================================================
 
 @router.post("/session/register")
+@limiter.limit("30/minute")
 async def register_terminal(
+    request: Request,
     data: TerminalSession,
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(get_current_user)
@@ -150,7 +153,9 @@ async def register_terminal(
 
 
 @router.post("/session/unregister/{terminal_id}")
+@limiter.limit("30/minute")
 async def unregister_terminal(
+    request: Request,
     terminal_id: str,
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(get_current_user)
@@ -180,7 +185,9 @@ async def unregister_terminal(
 
 
 @router.get("/session/list")
+@limiter.limit("60/minute")
 async def list_active_terminals(
+    request: Request,
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(get_current_user)
 ):
@@ -211,7 +218,9 @@ async def list_active_terminals(
 # =============================================================================
 
 @router.post("/orders/{order_id}/lock", response_model=OrderLockResponse)
+@limiter.limit("30/minute")
 async def lock_order(
+    request: Request,
     order_id: int,
     data: OrderLockRequest,
     db: Session = Depends(get_db),
@@ -272,7 +281,9 @@ async def lock_order(
 
 
 @router.post("/orders/{order_id}/unlock")
+@limiter.limit("30/minute")
 async def unlock_order(
+    request: Request,
     order_id: int,
     terminal_id: str,
     force: bool = False,
@@ -309,7 +320,9 @@ async def unlock_order(
 
 
 @router.get("/orders/{order_id}/lock-status")
+@limiter.limit("60/minute")
 async def get_order_lock_status(
+    request: Request,
     order_id: int,
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(get_current_user)
@@ -333,7 +346,9 @@ async def get_order_lock_status(
 # =============================================================================
 
 @router.get("/orders/{order_id}/shared-view", response_model=TerminalOrderView)
+@limiter.limit("60/minute")
 async def get_shared_order_view(
+    request: Request,
     order_id: int,
     terminal_id: str,
     db: Session = Depends(get_db),
@@ -394,7 +409,9 @@ async def get_shared_order_view(
 
 
 @router.post("/orders/{order_id}/shared-update")
+@limiter.limit("30/minute")
 async def apply_shared_update(
+    request: Request,
     order_id: int,
     update: SharedOrderUpdate,
     db: Session = Depends(get_db),
@@ -569,7 +586,9 @@ async def websocket_terminal_connection(
 # =============================================================================
 
 @router.get("/workload/distribution")
+@limiter.limit("60/minute")
 async def get_workload_distribution(
+    request: Request,
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(get_current_user)
 ):
@@ -621,7 +640,9 @@ async def get_workload_distribution(
 
 
 @router.post("/workload/transfer-order")
+@limiter.limit("30/minute")
 async def transfer_order_to_terminal(
+    request: Request,
     order_id: int,
     target_terminal_id: str,
     db: Session = Depends(get_db),

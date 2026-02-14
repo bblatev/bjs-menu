@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import Link from 'next/link';
 import { API_URL } from '@/lib/api';
 
+import { toast } from '@/lib/toast';
 interface Budget {
   id: number;
   name: string;
@@ -109,7 +110,7 @@ export default function BudgetsPage() {
         resetForm();
       } else {
         const error = await response.json();
-        alert(error.detail || 'Error creating budget');
+        toast.error(error.detail || 'Error creating budget');
       }
     } catch (error) {
       console.error('Error creating budget:', error);

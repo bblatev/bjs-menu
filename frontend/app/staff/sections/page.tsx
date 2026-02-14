@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { API_URL } from '@/lib/api';
 
+import { toast } from '@/lib/toast';
 interface Server {
   id: number;
   name: string;
@@ -152,11 +153,11 @@ export default function ServerSectionsPage() {
         ));
       } else {
         const error = await response.json();
-        alert(error.detail || 'Failed to assign server');
+        toast.error(error.detail || 'Failed to assign server');
       }
     } catch (error) {
       console.error('Error assigning server:', error);
-      alert('Failed to assign server');
+      toast.error('Failed to assign server');
     }
   };
 

@@ -10,7 +10,7 @@ Includes:
 - Advanced Purchase Orders (templates, approvals, invoicing, three-way matching, GRN)
 """
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Body
+from fastapi import APIRouter, Depends, HTTPException, Query, Body, Request
 from sqlalchemy.orm import Session
 from typing import List, Optional, Dict, Any
 from datetime import datetime, date, timedelta
@@ -37,6 +37,7 @@ from app.services.inventory_management_service import (
     AdvancedMenuService, AdvancedRecipeService, AdvancedStockService,
     AdvancedSupplierService, AdvancedPurchaseOrderService
 )
+from app.core.rate_limit import limiter
 
 
 router = APIRouter()
@@ -278,7 +279,9 @@ class GRNCreate(BaseModel):
 # ==================== MENU MANAGEMENT ENDPOINTS ====================
 
 @router.get("/menu/versions/{menu_item_id}")
+@limiter.limit("60/minute")
 def get_menu_item_versions(
+    request: Request,
     menu_item_id: int,
     db: Session = Depends(get_db),
     current_user = Depends(get_current_user)
@@ -294,7 +297,9 @@ def get_menu_item_versions(
         raise HTTPException(status_code=500, detail="Failed to fetch menu versions")
 
 @router.post("/menu/versions")
+@limiter.limit("30/minute")
 def create_menu_version(
+    request: Request,
     data: MenuVersionCreate,
     venue_id: int = Query(..., description="Venue ID"),
     db: Session = Depends(get_db),
@@ -329,7 +334,9 @@ def create_menu_version(
         raise HTTPException(status_code=500, detail="Failed to create menu version")
 
 @router.post("/menu/versions/{version_id}/restore")
+@limiter.limit("30/minute")
 def restore_menu_version(
+    request: Request,
     version_id: int,
     db: Session = Depends(get_db),
     current_user = Depends(get_current_user)
@@ -356,7 +363,9 @@ def restore_menu_version(
         raise HTTPException(status_code=500, detail="Failed to restore menu version")
 
 @router.get("/menu/schedules")
+@limiter.limit("60/minute")
 def get_menu_schedules(
+    request: Request,
     venue_id: int,
     menu_item_id: Optional[int] = None,
     db: Session = Depends(get_db),
@@ -374,7 +383,9 @@ def get_menu_schedules(
         raise HTTPException(status_code=500, detail="Failed to fetch menu schedules")
 
 @router.post("/menu/schedules")
+@limiter.limit("30/minute")
 def create_menu_schedule(
+    request: Request,
     venue_id: int,
     data: MenuScheduleCreate,
     db: Session = Depends(get_db),
@@ -405,7 +416,9 @@ def create_menu_schedule(
         raise HTTPException(status_code=500, detail="Failed to create menu schedule")
 
 @router.delete("/menu/schedules/{schedule_id}")
+@limiter.limit("30/minute")
 def delete_menu_schedule(
+    request: Request,
     schedule_id: int,
     db: Session = Depends(get_db),
     current_user = Depends(get_current_user)
@@ -426,7 +439,9 @@ def delete_menu_schedule(
         raise HTTPException(status_code=500, detail="Failed to delete menu schedule")
 
 @router.get("/menu/nutrition/{menu_item_id}")
+@limiter.limit("60/minute")
 def get_menu_nutrition(
+    request: Request,
     menu_item_id: int,
     db: Session = Depends(get_db),
     current_user = Depends(get_current_user)
@@ -454,7 +469,9 @@ def get_menu_nutrition(
         raise HTTPException(status_code=500, detail="Failed to fetch nutrition information")
 
 @router.post("/menu/nutrition")
+@limiter.limit("30/minute")
 def create_menu_nutrition(
+    request: Request,
     data: MenuNutritionCreate,
     db: Session = Depends(get_db),
     current_user = Depends(get_current_user)
@@ -507,7 +524,9 @@ def create_menu_nutrition(
         raise HTTPException(status_code=500, detail="Failed to save nutrition information")
 
 @router.get("/menu/allergens/{menu_item_id}")
+@limiter.limit("60/minute")
 def get_menu_allergens(
+    request: Request,
     menu_item_id: int,
     db: Session = Depends(get_db),
     current_user = Depends(get_current_user)
@@ -544,7 +563,9 @@ def get_menu_allergens(
         raise HTTPException(status_code=500, detail="Failed to fetch allergens")
 
 @router.post("/menu/allergens")
+@limiter.limit("30/minute")
 def create_menu_allergen(
+    request: Request,
     data: MenuAllergenCreate,
     db: Session = Depends(get_db),
     current_user = Depends(get_current_user)
@@ -568,7 +589,9 @@ def create_menu_allergen(
         raise HTTPException(status_code=500, detail="Failed to create allergen")
 
 @router.delete("/menu/allergens/{allergen_id}")
+@limiter.limit("30/minute")
 def delete_menu_allergen(
+    request: Request,
     allergen_id: int,
     db: Session = Depends(get_db),
     current_user = Depends(get_current_user)
@@ -589,7 +612,9 @@ def delete_menu_allergen(
         raise HTTPException(status_code=500, detail="Failed to delete allergen")
 
 @router.get("/menu/bundles/{bundle_item_id}")
+@limiter.limit("60/minute")
 def get_menu_bundle(
+    request: Request,
     bundle_item_id: int,
     db: Session = Depends(get_db),
     current_user = Depends(get_current_user)
@@ -605,7 +630,9 @@ def get_menu_bundle(
         raise HTTPException(status_code=500, detail="Failed to fetch bundle components")
 
 @router.post("/menu/bundles")
+@limiter.limit("30/minute")
 def create_menu_bundle(
+    request: Request,
     data: MenuBundleCreate,
     db: Session = Depends(get_db),
     current_user = Depends(get_current_user)
@@ -630,7 +657,9 @@ def create_menu_bundle(
         raise HTTPException(status_code=500, detail="Failed to create bundle")
 
 @router.post("/menu/bulk-price-update")
+@limiter.limit("30/minute")
 def bulk_update_menu_prices(
+    request: Request,
     venue_id: int,
     data: BulkPriceUpdate,
     db: Session = Depends(get_db),
@@ -676,7 +705,9 @@ def bulk_update_menu_prices(
 # ==================== RECIPE MANAGEMENT ENDPOINTS ====================
 
 @router.get("/recipes")
+@limiter.limit("60/minute")
 def get_recipes(
+    request: Request,
     venue_id: int,
     category_id: Optional[int] = None,
     search: Optional[str] = None,
@@ -724,7 +755,9 @@ def get_recipes(
         raise HTTPException(status_code=500, detail="Failed to fetch recipes")
 
 @router.get("/recipes/{recipe_id}")
+@limiter.limit("60/minute")
 def get_recipe(
+    request: Request,
     recipe_id: int,
     include_sub_recipes: bool = True,
     db: Session = Depends(get_db),
@@ -747,7 +780,9 @@ def get_recipe(
         raise HTTPException(status_code=500, detail="Failed to fetch recipe")
 
 @router.post("/recipes")
+@limiter.limit("30/minute")
 def create_recipe(
+    request: Request,
     venue_id: int,
     data: RecipeCreate,
     db: Session = Depends(get_db),
@@ -777,7 +812,9 @@ def create_recipe(
         raise HTTPException(status_code=500, detail="Failed to create recipe")
 
 @router.put("/recipes/{recipe_id}")
+@limiter.limit("30/minute")
 def update_recipe(
+    request: Request,
     recipe_id: int,
     data: RecipeCreate,
     db: Session = Depends(get_db),
@@ -810,7 +847,9 @@ def update_recipe(
         raise HTTPException(status_code=500, detail="Failed to update recipe")
 
 @router.get("/recipes/{recipe_id}/versions")
+@limiter.limit("60/minute")
 def get_recipe_versions(
+    request: Request,
     recipe_id: int,
     db: Session = Depends(get_db),
     current_user = Depends(get_current_user)
@@ -826,7 +865,9 @@ def get_recipe_versions(
         raise HTTPException(status_code=500, detail="Failed to fetch recipe versions")
 
 @router.post("/recipes/{recipe_id}/ingredients")
+@limiter.limit("30/minute")
 def add_recipe_ingredient(
+    request: Request,
     recipe_id: int,
     data: RecipeIngredientCreate,
     db: Session = Depends(get_db),
@@ -868,7 +909,9 @@ def add_recipe_ingredient(
         raise HTTPException(status_code=500, detail="Failed to add ingredient")
 
 @router.post("/recipes/{recipe_id}/instructions")
+@limiter.limit("30/minute")
 def add_recipe_instruction(
+    request: Request,
     recipe_id: int,
     data: RecipeInstructionCreate,
     db: Session = Depends(get_db),
@@ -906,7 +949,9 @@ def add_recipe_instruction(
         raise HTTPException(status_code=500, detail="Failed to add instruction")
 
 @router.post("/recipes/sub-recipes")
+@limiter.limit("30/minute")
 def add_sub_recipe(
+    request: Request,
     data: SubRecipeCreate,
     db: Session = Depends(get_db),
     current_user = Depends(get_current_user)
@@ -928,7 +973,9 @@ def add_sub_recipe(
         raise HTTPException(status_code=500, detail="Failed to add sub-recipe")
 
 @router.post("/recipes/scale")
+@limiter.limit("30/minute")
 def scale_recipe(
+    request: Request,
     data: RecipeScaleRequest,
     db: Session = Depends(get_db),
     current_user = Depends(get_current_user)
@@ -950,7 +997,9 @@ def scale_recipe(
         raise HTTPException(status_code=500, detail="Failed to scale recipe")
 
 @router.get("/recipes/{recipe_id}/cost")
+@limiter.limit("60/minute")
 def calculate_recipe_cost(
+    request: Request,
     recipe_id: int,
     quantity: Decimal = Decimal("1"),
     db: Session = Depends(get_db),
@@ -972,7 +1021,9 @@ def calculate_recipe_cost(
         raise HTTPException(status_code=500, detail="Failed to calculate recipe cost")
 
 @router.get("/recipes/{recipe_id}/cost-history")
+@limiter.limit("60/minute")
 def get_recipe_cost_history(
+    request: Request,
     recipe_id: int,
     start_date: Optional[date] = None,
     end_date: Optional[date] = None,
@@ -995,7 +1046,9 @@ def get_recipe_cost_history(
 # ==================== STOCK MANAGEMENT ENDPOINTS ====================
 
 @router.get("/warehouses")
+@limiter.limit("60/minute")
 def get_warehouses(
+    request: Request,
     venue_id: int,
     include_inactive: bool = False,
     db: Session = Depends(get_db),
@@ -1012,7 +1065,9 @@ def get_warehouses(
         raise HTTPException(status_code=500, detail="Failed to fetch warehouses")
 
 @router.post("/warehouses")
+@limiter.limit("30/minute")
 def create_warehouse(
+    request: Request,
     venue_id: int,
     data: WarehouseCreate,
     db: Session = Depends(get_db),
@@ -1037,7 +1092,9 @@ def create_warehouse(
         raise HTTPException(status_code=500, detail="Failed to create warehouse")
 
 @router.get("/warehouses/{warehouse_id}")
+@limiter.limit("60/minute")
 def get_warehouse(
+    request: Request,
     warehouse_id: int,
     db: Session = Depends(get_db),
     current_user = Depends(get_current_user)
@@ -1055,7 +1112,9 @@ def get_warehouse(
         raise HTTPException(status_code=500, detail="Failed to fetch warehouse")
 
 @router.put("/warehouses/{warehouse_id}")
+@limiter.limit("30/minute")
 def update_warehouse(
+    request: Request,
     warehouse_id: int,
     data: WarehouseCreate,
     db: Session = Depends(get_db),
@@ -1084,7 +1143,9 @@ def update_warehouse(
         raise HTTPException(status_code=500, detail="Failed to update warehouse")
 
 @router.get("/warehouses/{warehouse_id}/stock")
+@limiter.limit("60/minute")
 def get_warehouse_stock(
+    request: Request,
     warehouse_id: int,
     venue_id: int = Query(..., description="Venue ID"),
     include_batches: bool = False,
@@ -1109,7 +1170,9 @@ def get_warehouse_stock(
         raise HTTPException(status_code=500, detail="Failed to fetch warehouse stock")
 
 @router.get("/stock/batches")
+@limiter.limit("60/minute")
 def get_stock_batches(
+    request: Request,
     venue_id: int = Query(..., description="Venue ID"),
     warehouse_id: Optional[int] = None,
     stock_item_id: Optional[int] = None,
@@ -1140,7 +1203,9 @@ def get_stock_batches(
         raise HTTPException(status_code=500, detail="Failed to fetch stock batches")
 
 @router.post("/stock/batches")
+@limiter.limit("30/minute")
 def create_stock_batch(
+    request: Request,
     data: StockBatchCreate,
     db: Session = Depends(get_db),
     current_user = Depends(get_current_user)
@@ -1167,7 +1232,9 @@ def create_stock_batch(
         raise HTTPException(status_code=500, detail="Failed to create stock batch")
 
 @router.get("/stock/transfers")
+@limiter.limit("60/minute")
 def get_stock_transfers(
+    request: Request,
     venue_id: int,
     status: Optional[str] = None,
     from_warehouse_id: Optional[int] = None,
@@ -1194,7 +1261,9 @@ def get_stock_transfers(
         raise HTTPException(status_code=500, detail="Failed to fetch stock transfers")
 
 @router.post("/stock/transfers")
+@limiter.limit("30/minute")
 def create_stock_transfer(
+    request: Request,
     venue_id: int,
     data: StockTransferCreate,
     db: Session = Depends(get_db),
@@ -1219,7 +1288,9 @@ def create_stock_transfer(
         raise HTTPException(status_code=500, detail="Failed to create stock transfer")
 
 @router.post("/stock/transfers/{transfer_id}/complete")
+@limiter.limit("30/minute")
 def complete_stock_transfer(
+    request: Request,
     transfer_id: int,
     received_items: List[Dict[str, Any]] = Body(...),
     db: Session = Depends(get_db),
@@ -1246,7 +1317,9 @@ def complete_stock_transfer(
         raise HTTPException(status_code=500, detail="Failed to complete stock transfer")
 
 @router.post("/stock/transfers/{transfer_id}/cancel")
+@limiter.limit("30/minute")
 def cancel_stock_transfer(
+    request: Request,
     transfer_id: int,
     reason: str = Body(..., embed=True),
     db: Session = Depends(get_db),
@@ -1272,7 +1345,9 @@ def cancel_stock_transfer(
         raise HTTPException(status_code=500, detail="Failed to cancel stock transfer")
 
 @router.get("/stock/adjustments")
+@limiter.limit("60/minute")
 def get_stock_adjustments(
+    request: Request,
     venue_id: int,
     warehouse_id: Optional[int] = None,
     status: Optional[str] = None,
@@ -1295,7 +1370,9 @@ def get_stock_adjustments(
         raise HTTPException(status_code=500, detail="Failed to fetch stock adjustments")
 
 @router.post("/stock/adjustments")
+@limiter.limit("30/minute")
 def create_stock_adjustment(
+    request: Request,
     venue_id: int,
     data: StockAdjustmentCreate,
     db: Session = Depends(get_db),
@@ -1320,7 +1397,9 @@ def create_stock_adjustment(
         raise HTTPException(status_code=500, detail="Failed to create stock adjustment")
 
 @router.post("/stock/adjustments/{adjustment_id}/approve")
+@limiter.limit("30/minute")
 def approve_stock_adjustment(
+    request: Request,
     adjustment_id: int,
     db: Session = Depends(get_db),
     current_user = Depends(get_current_user)
@@ -1344,7 +1423,9 @@ def approve_stock_adjustment(
         raise HTTPException(status_code=500, detail="Failed to approve stock adjustment")
 
 @router.post("/stock/reservations")
+@limiter.limit("30/minute")
 def create_stock_reservation(
+    request: Request,
     data: StockReservationCreate,
     db: Session = Depends(get_db),
     current_user = Depends(get_current_user)
@@ -1369,7 +1450,9 @@ def create_stock_reservation(
         raise HTTPException(status_code=500, detail="Failed to create stock reservation")
 
 @router.post("/stock/reservations/{reservation_id}/release")
+@limiter.limit("30/minute")
 def release_stock_reservation(
+    request: Request,
     reservation_id: int,
     db: Session = Depends(get_db),
     current_user = Depends(get_current_user)
@@ -1391,7 +1474,9 @@ def release_stock_reservation(
         raise HTTPException(status_code=500, detail="Failed to release stock reservation")
 
 @router.get("/stock/valuation")
+@limiter.limit("60/minute")
 def get_stock_valuation(
+    request: Request,
     venue_id: int,
     warehouse_id: Optional[int] = None,
     valuation_method: str = "fifo",
@@ -1412,7 +1497,9 @@ def get_stock_valuation(
         raise HTTPException(status_code=500, detail="Failed to fetch stock valuation")
 
 @router.get("/stock/expiring")
+@limiter.limit("60/minute")
 def get_expiring_stock(
+    request: Request,
     venue_id: int,
     days: int = Query(7, ge=1, le=365),
     db: Session = Depends(get_db),
@@ -1430,7 +1517,9 @@ def get_expiring_stock(
 # ==================== SUPPLIER MANAGEMENT ENDPOINTS ====================
 
 @router.get("/suppliers/{supplier_id}/contacts")
+@limiter.limit("60/minute")
 def get_supplier_contacts(
+    request: Request,
     supplier_id: int,
     db: Session = Depends(get_db),
     current_user = Depends(get_current_user)
@@ -1446,7 +1535,9 @@ def get_supplier_contacts(
         raise HTTPException(status_code=500, detail="Failed to fetch supplier contacts")
 
 @router.post("/suppliers/contacts")
+@limiter.limit("30/minute")
 def create_supplier_contact(
+    request: Request,
     data: SupplierContactCreate,
     db: Session = Depends(get_db),
     current_user = Depends(get_current_user)
@@ -1471,7 +1562,9 @@ def create_supplier_contact(
         raise HTTPException(status_code=500, detail="Failed to create supplier contact")
 
 @router.put("/suppliers/contacts/{contact_id}")
+@limiter.limit("30/minute")
 def update_supplier_contact(
+    request: Request,
     contact_id: int,
     data: SupplierContactCreate,
     db: Session = Depends(get_db),
@@ -1498,7 +1591,9 @@ def update_supplier_contact(
         raise HTTPException(status_code=500, detail="Failed to update supplier contact")
 
 @router.get("/suppliers/{supplier_id}/price-lists")
+@limiter.limit("60/minute")
 def get_supplier_price_lists(
+    request: Request,
     supplier_id: int,
     active_only: bool = True,
     db: Session = Depends(get_db),
@@ -1515,7 +1610,9 @@ def get_supplier_price_lists(
         raise HTTPException(status_code=500, detail="Failed to fetch supplier price lists")
 
 @router.post("/suppliers/price-lists")
+@limiter.limit("30/minute")
 def create_supplier_price_list(
+    request: Request,
     data: SupplierPriceListCreate,
     db: Session = Depends(get_db),
     current_user = Depends(get_current_user)
@@ -1540,7 +1637,9 @@ def create_supplier_price_list(
         raise HTTPException(status_code=500, detail="Failed to create supplier price list")
 
 @router.get("/suppliers/price-lists/{price_list_id}/items")
+@limiter.limit("60/minute")
 def get_price_list_items(
+    request: Request,
     price_list_id: int,
     db: Session = Depends(get_db),
     current_user = Depends(get_current_user)
@@ -1556,7 +1655,9 @@ def get_price_list_items(
         raise HTTPException(status_code=500, detail="Failed to fetch price list items")
 
 @router.get("/suppliers/best-price/{stock_item_id}")
+@limiter.limit("60/minute")
 def get_best_supplier_price(
+    request: Request,
     stock_item_id: int,
     venue_id: int = Query(...),
     quantity: Decimal = Decimal("1"),
@@ -1577,7 +1678,9 @@ def get_best_supplier_price(
         raise HTTPException(status_code=500, detail="Failed to fetch best supplier price")
 
 @router.get("/suppliers/{supplier_id}/documents")
+@limiter.limit("60/minute")
 def get_supplier_documents(
+    request: Request,
     supplier_id: int,
     document_type: Optional[str] = None,
     db: Session = Depends(get_db),
@@ -1595,7 +1698,9 @@ def get_supplier_documents(
         raise HTTPException(status_code=500, detail="Failed to fetch supplier documents")
 
 @router.post("/suppliers/documents")
+@limiter.limit("30/minute")
 def upload_supplier_document(
+    request: Request,
     data: SupplierDocumentCreate,
     db: Session = Depends(get_db),
     current_user = Depends(get_current_user)
@@ -1622,7 +1727,9 @@ def upload_supplier_document(
         raise HTTPException(status_code=500, detail="Failed to upload supplier document")
 
 @router.get("/suppliers/expiring-documents")
+@limiter.limit("60/minute")
 def get_expiring_supplier_documents(
+    request: Request,
     venue_id: int,
     days: int = Query(30, ge=1, le=365),
     db: Session = Depends(get_db),
@@ -1638,7 +1745,9 @@ def get_expiring_supplier_documents(
         raise HTTPException(status_code=500, detail="Failed to fetch expiring supplier documents")
 
 @router.get("/suppliers/{supplier_id}/ratings")
+@limiter.limit("60/minute")
 def get_supplier_ratings(
+    request: Request,
     supplier_id: int,
     db: Session = Depends(get_db),
     current_user = Depends(get_current_user)
@@ -1653,7 +1762,9 @@ def get_supplier_ratings(
         raise HTTPException(status_code=500, detail="Failed to fetch supplier ratings")
 
 @router.post("/suppliers/ratings")
+@limiter.limit("30/minute")
 def create_supplier_rating(
+    request: Request,
     venue_id: int,
     data: SupplierRatingCreate,
     db: Session = Depends(get_db),
@@ -1679,7 +1790,9 @@ def create_supplier_rating(
 # ==================== PURCHASE ORDER ENDPOINTS ====================
 
 @router.get("/purchase-orders/templates")
+@limiter.limit("60/minute")
 def get_po_templates(
+    request: Request,
     venue_id: int,
     supplier_id: Optional[int] = None,
     db: Session = Depends(get_db),
@@ -1699,7 +1812,9 @@ def get_po_templates(
         raise HTTPException(status_code=500, detail="Failed to fetch PO templates")
 
 @router.post("/purchase-orders/templates")
+@limiter.limit("30/minute")
 def create_po_template(
+    request: Request,
     venue_id: int,
     data: POTemplateCreate,
     db: Session = Depends(get_db),
@@ -1727,7 +1842,9 @@ def create_po_template(
         raise HTTPException(status_code=500, detail="Failed to create PO template")
 
 @router.post("/purchase-orders/from-template/{template_id}")
+@limiter.limit("30/minute")
 def create_po_from_template(
+    request: Request,
     template_id: int,
     db: Session = Depends(get_db),
     current_user = Depends(get_current_user)
@@ -1751,7 +1868,9 @@ def create_po_from_template(
         raise HTTPException(status_code=500, detail="Failed to create PO from template")
 
 @router.get("/purchase-orders/{po_id}/approvals")
+@limiter.limit("60/minute")
 def get_po_approvals(
+    request: Request,
     po_id: int,
     db: Session = Depends(get_db),
     current_user = Depends(get_current_user)
@@ -1766,7 +1885,9 @@ def get_po_approvals(
         raise HTTPException(status_code=500, detail="Failed to fetch PO approvals")
 
 @router.post("/purchase-orders/approvals")
+@limiter.limit("30/minute")
 def submit_po_approval(
+    request: Request,
     data: POApprovalCreate,
     db: Session = Depends(get_db),
     current_user = Depends(get_current_user)
@@ -1802,7 +1923,9 @@ def submit_po_approval(
         raise HTTPException(status_code=500, detail="Failed to process PO approval")
 
 @router.get("/purchase-orders/pending-approval")
+@limiter.limit("60/minute")
 def get_pending_approval_pos(
+    request: Request,
     venue_id: int,
     db: Session = Depends(get_db),
     current_user = Depends(get_current_user)
@@ -1825,7 +1948,9 @@ def get_pending_approval_pos(
         raise HTTPException(status_code=500, detail="Failed to fetch pending approval POs")
 
 @router.get("/invoices")
+@limiter.limit("60/minute")
 def get_supplier_invoices(
+    request: Request,
     venue_id: int,
     supplier_id: Optional[int] = None,
     status: Optional[str] = None,
@@ -1848,7 +1973,9 @@ def get_supplier_invoices(
         raise HTTPException(status_code=500, detail="Failed to fetch supplier invoices")
 
 @router.post("/invoices")
+@limiter.limit("30/minute")
 def create_supplier_invoice(
+    request: Request,
     venue_id: int,
     data: SupplierInvoiceCreate,
     db: Session = Depends(get_db),
@@ -1875,7 +2002,9 @@ def create_supplier_invoice(
         raise HTTPException(status_code=500, detail="Failed to create supplier invoice")
 
 @router.post("/invoices/{invoice_id}/match")
+@limiter.limit("30/minute")
 def perform_three_way_match(
+    request: Request,
     invoice_id: int,
     db: Session = Depends(get_db),
     current_user = Depends(get_current_user)
@@ -1894,7 +2023,9 @@ def perform_three_way_match(
         raise HTTPException(status_code=500, detail="Failed to perform three-way match")
 
 @router.get("/grn")
+@limiter.limit("60/minute")
 def get_goods_received_notes(
+    request: Request,
     venue_id: int,
     purchase_order_id: Optional[int] = None,
     limit: int = Query(50, le=200),
@@ -1914,7 +2045,9 @@ def get_goods_received_notes(
         raise HTTPException(status_code=500, detail="Failed to fetch goods received notes")
 
 @router.post("/grn")
+@limiter.limit("30/minute")
 def create_goods_received_note(
+    request: Request,
     venue_id: int,
     data: GRNCreate,
     db: Session = Depends(get_db),
@@ -1939,7 +2072,9 @@ def create_goods_received_note(
         raise HTTPException(status_code=500, detail="Failed to create goods received note")
 
 @router.get("/purchase-orders/analytics")
+@limiter.limit("60/minute")
 def get_po_analytics(
+    request: Request,
     venue_id: int,
     start_date: Optional[date] = None,
     end_date: Optional[date] = None,

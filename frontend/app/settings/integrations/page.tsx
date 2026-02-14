@@ -6,6 +6,7 @@ import { Button, Input, Card, CardBody, Badge } from '@/components/ui';
 
 import { API_URL, getAuthHeaders } from '@/lib/api';
 
+import { toast } from '@/lib/toast';
 interface Integration {
   id: string;
   name: string;
@@ -174,14 +175,14 @@ export default function SettingsIntegrationsPage() {
       });
 
       if (response.ok) {
-        alert('Integration connected successfully!');
+        toast.success('Integration connected successfully!');
         loadData();
       } else {
-        alert('Failed to connect integration');
+        toast.error('Failed to connect integration');
       }
     } catch (err) {
       console.error('Error connecting integration:', err);
-      alert('Error connecting integration');
+      toast.error('Error connecting integration');
     }
   };
 
@@ -202,7 +203,7 @@ export default function SettingsIntegrationsPage() {
       );
 
       if (response.ok) {
-        alert('Integration disconnected');
+        toast.success('Integration disconnected');
         loadData();
       }
     } catch (err) {
@@ -224,11 +225,11 @@ export default function SettingsIntegrationsPage() {
       });
 
       if (response.ok) {
-        alert('Webhook settings saved!');
+        toast.success('Webhook settings saved!');
       }
     } catch (err) {
       console.error('Error saving webhooks:', err);
-      alert('Failed to save webhooks');
+      toast.error('Failed to save webhooks');
     } finally {
       setSaving(false);
     }
@@ -254,7 +255,7 @@ export default function SettingsIntegrationsPage() {
 
       if (response.ok) {
         const data = await response.json();
-        alert(`API Key created: ${data.api_key}\n\nSave this key securely, it won't be shown again.`);
+        toast.success(`API Key created: ${data.api_key}\n\nSave this key securely, it won't be shown again.`);
         loadData();
       }
     } catch (err) {
@@ -294,11 +295,11 @@ export default function SettingsIntegrationsPage() {
       );
 
       if (response.ok) {
-        alert('Multi-location sync settings saved!');
+        toast.success('Multi-location sync settings saved!');
       }
     } catch (err) {
       console.error('Error saving settings:', err);
-      alert('Failed to save settings');
+      toast.error('Failed to save settings');
     } finally {
       setSaving(false);
     }

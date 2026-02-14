@@ -2,11 +2,12 @@
 Batch & Expiration Tracking API Endpoints
 Track batches, expiration dates, and handle FIFO inventory
 """
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.orm import Session
 from typing import List, Optional
 from datetime import datetime, timedelta
 
+from app.core.rate_limit import limiter
 from app.db.session import get_db
 from app.core.rbac import get_current_user
 from app.models import StaffUser, StockItem, StockBatch
@@ -16,7 +17,9 @@ router = APIRouter()
 
 
 @router.post("/", response_model=BatchResponse)
+@limiter.limit("30/minute")
 async def create_batch(
+    request: Request,
     data: BatchCreate,
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(get_current_user)
@@ -63,7 +66,9 @@ async def create_batch(
 
 
 @router.get("/", response_model=List[BatchResponse])
+@limiter.limit("60/minute")
 async def list_batches(
+    request: Request,
     stock_item_id: Optional[int] = None,
     expiring_soon: bool = False,
     expired: bool = False,
@@ -108,7 +113,9 @@ async def list_batches(
 
 
 @router.get("/expiring", response_model=List[BatchResponse])
+@limiter.limit("60/minute")
 async def get_expiring_batches(
+    request: Request,
     days: int = 7,
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(get_current_user)
@@ -134,7 +141,9 @@ async def get_expiring_batches(
 
 
 @router.get("/expired", response_model=List[BatchResponse])
+@limiter.limit("60/minute")
 async def get_expired_batches(
+    request: Request,
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(get_current_user)
 ):
@@ -157,7 +166,9 @@ async def get_expired_batches(
 
 
 @router.get("/{batch_id}", response_model=BatchResponse)
+@limiter.limit("60/minute")
 async def get_batch(
+    request: Request,
     batch_id: int,
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(get_current_user)
@@ -176,7 +187,9 @@ async def get_batch(
 
 
 @router.put("/{batch_id}/consume")
+@limiter.limit("30/minute")
 async def consume_from_batch(
+    request: Request,
     batch_id: int,
     quantity: float,
     reason: str = "usage",
@@ -212,7 +225,9 @@ async def consume_from_batch(
 
 
 @router.put("/{batch_id}/write-off")
+@limiter.limit("30/minute")
 async def write_off_batch(
+    request: Request,
     batch_id: int,
     reason: str = "expired",
     quantity: float = None,
@@ -250,7 +265,9 @@ async def write_off_batch(
 
 
 @router.post("/consume-fifo")
+@limiter.limit("30/minute")
 async def consume_fifo(
+    request: Request,
     stock_item_id: int,
     quantity: float,
     reason: str = "usage",
@@ -309,7 +326,9 @@ async def consume_fifo(
 
 
 @router.get("/item/{stock_item_id}", response_model=List[BatchResponse])
+@limiter.limit("60/minute")
 async def get_batches_for_item(
+    request: Request,
     stock_item_id: int,
     include_empty: bool = False,
     db: Session = Depends(get_db),
@@ -335,7 +354,9 @@ async def get_batches_for_item(
 
 
 @router.get("/summary")
+@limiter.limit("60/minute")
 async def get_batch_summary(
+    request: Request,
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(get_current_user)
 ):

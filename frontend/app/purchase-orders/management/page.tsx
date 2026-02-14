@@ -4,6 +4,7 @@ import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { API_URL, getAuthHeaders } from '@/lib/api';
 
+import { toast } from '@/lib/toast';
 // Types
 interface PurchaseOrder {
   id: string;
@@ -388,7 +389,7 @@ export default function PurchaseOrdersManagementPage() {
       await Promise.all([fetchPurchaseOrders(), fetchApprovals()]);
     } catch (err) {
       console.error('Error approving purchase order:', err);
-      alert('Failed to approve purchase order. Please try again.');
+      toast.error('Failed to approve purchase order. Please try again.');
     }
   };
 
@@ -407,7 +408,7 @@ export default function PurchaseOrdersManagementPage() {
       await Promise.all([fetchPurchaseOrders(), fetchApprovals()]);
     } catch (err) {
       console.error('Error rejecting purchase order:', err);
-      alert('Failed to reject purchase order. Please try again.');
+      toast.error('Failed to reject purchase order. Please try again.');
     }
   };
 
@@ -426,7 +427,7 @@ export default function PurchaseOrdersManagementPage() {
       await fetchApprovals();
     } catch (err) {
       console.error('Error approving variance:', err);
-      alert('Failed to approve variance. Please try again.');
+      toast.error('Failed to approve variance. Please try again.');
     }
   };
 

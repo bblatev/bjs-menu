@@ -12,12 +12,13 @@ Exposes all Phase 2-7 gap features:
 from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional
 from uuid import UUID
-from fastapi import APIRouter, Depends, HTTPException, Query, Body
+from fastapi import APIRouter, Depends, HTTPException, Query, Body, Request
 from pydantic import BaseModel, Field, EmailStr
 from sqlalchemy.orm import Session
 
 from app.db.session import get_db
 from app.core.rbac import get_current_user, get_current_venue
+from app.core.rate_limit import limiter
 from app.models import StaffUser as Staff
 
 
@@ -178,7 +179,9 @@ class SSOConfigRequest(BaseModel):
 # ==================== MOBILE & OFFLINE ENDPOINTS ====================
 
 @router.get("/mobile/sync")
+@limiter.limit("60/minute")
 async def get_sync_package(
+    request: Request,
     device_id: str,
     last_sync: Optional[datetime] = None,
     include_menu: bool = True,
@@ -205,8 +208,10 @@ async def get_sync_package(
 
 
 @router.post("/mobile/sync/transactions")
+@limiter.limit("30/minute")
 async def process_offline_transactions(
-    request: OfflineTransactionRequest,
+    request: Request,
+    body: OfflineTransactionRequest,
     db: Session = Depends(get_db),
     current_user: Staff = Depends(get_current_user),
     venue_id: UUID = Depends(get_current_venue)
@@ -217,14 +222,16 @@ async def process_offline_transactions(
     service = MobileOfflineService(db)
     return await service.process_offline_transactions(
         venue_id=venue_id,
-        device_id=request.device_id,
-        transactions=request.transactions
+        device_id=body.device_id,
+        transactions=body.transactions
     )
 
 
 @router.post("/push/register")
+@limiter.limit("30/minute")
 async def register_push_token(
-    request: PushTokenRequest,
+    request: Request,
+    body: PushTokenRequest,
     db: Session = Depends(get_db),
     current_user: Staff = Depends(get_current_user),
     venue_id: UUID = Depends(get_current_venue)
@@ -237,15 +244,17 @@ async def register_push_token(
         user_id=current_user.id,
         user_type="staff",
         venue_id=venue_id,
-        token=request.token,
-        platform=request.platform,
-        device_info=request.device_info
+        token=body.token,
+        platform=body.platform,
+        device_info=body.device_info
     )
     return {"status": "registered", "token_id": str(token.id)}
 
 
 @router.delete("/push/unregister")
+@limiter.limit("30/minute")
 async def unregister_push_token(
+    request: Request,
     token: str,
     db: Session = Depends(get_db)
 ):
@@ -258,9 +267,11 @@ async def unregister_push_token(
 
 
 @router.post("/push/send")
+@limiter.limit("30/minute")
 async def send_push_notification(
+    request: Request,
     user_id: UUID,
-    request: NotificationRequest,
+    body: NotificationRequest,
     db: Session = Depends(get_db),
     current_user: Staff = Depends(get_current_user)
 ):
@@ -270,16 +281,18 @@ async def send_push_notification(
     service = PushNotificationService(db)
     notification = await service.send_notification(
         user_id=user_id,
-        title=request.title,
-        body=request.body,
-        data=request.data,
-        channel=request.channel
+        title=body.title,
+        body=body.body,
+        data=body.data,
+        channel=body.channel
     )
     return {"status": notification.status, "notification_id": str(notification.id)}
 
 
 @router.get("/push/notifications")
+@limiter.limit("60/minute")
 async def get_notifications(
+    request: Request,
     limit: int = 50,
     include_read: bool = False,
     db: Session = Depends(get_db),
@@ -300,8 +313,10 @@ async def get_notifications(
 # ==================== DEVELOPER PORTAL ENDPOINTS ====================
 
 @router.post("/developers/register")
+@limiter.limit("30/minute")
 async def register_developer(
-    request: DeveloperRegistrationRequest,
+    request: Request,
+    body: DeveloperRegistrationRequest,
     db: Session = Depends(get_db)
 ):
     """Register as a developer."""
@@ -309,11 +324,11 @@ async def register_developer(
 
     service = DeveloperPortalService(db)
     developer = await service.register_developer(
-        email=request.email,
-        company_name=request.company_name,
-        contact_name=request.contact_name,
-        website=request.website,
-        use_case=request.use_case
+        email=body.email,
+        company_name=body.company_name,
+        contact_name=body.contact_name,
+        website=body.website,
+        use_case=body.use_case
     )
     return {
         "developer_id": str(developer.id),
@@ -324,9 +339,11 @@ async def register_developer(
 
 
 @router.post("/developers/{developer_id}/api-keys")
+@limiter.limit("30/minute")
 async def create_api_key(
+    request: Request,
     developer_id: UUID,
-    request: APIKeyRequest,
+    body: APIKeyRequest,
     db: Session = Depends(get_db)
 ):
     """Create a new API key."""
@@ -335,9 +352,9 @@ async def create_api_key(
     service = DeveloperPortalService(db)
     api_key, raw_key = await service.create_api_key(
         developer_id=developer_id,
-        name=request.name,
-        scopes=request.scopes,
-        expires_in_days=request.expires_in_days
+        name=body.name,
+        scopes=body.scopes,
+        expires_in_days=body.expires_in_days
     )
     return {
         "api_key_id": str(api_key.id),
@@ -350,7 +367,9 @@ async def create_api_key(
 
 
 @router.get("/developers/{developer_id}/api-keys")
+@limiter.limit("60/minute")
 async def list_api_keys(
+    request: Request,
     developer_id: UUID,
     db: Session = Depends(get_db)
 ):
@@ -376,7 +395,9 @@ async def list_api_keys(
 
 
 @router.delete("/developers/{developer_id}/api-keys/{api_key_id}")
+@limiter.limit("30/minute")
 async def revoke_api_key(
+    request: Request,
     developer_id: UUID,
     api_key_id: UUID,
     db: Session = Depends(get_db)
@@ -390,7 +411,9 @@ async def revoke_api_key(
 
 
 @router.get("/developers/{developer_id}/usage")
+@limiter.limit("60/minute")
 async def get_api_usage(
+    request: Request,
     developer_id: UUID,
     days: int = 30,
     db: Session = Depends(get_db)
@@ -409,8 +432,10 @@ async def get_api_usage(
 # ==================== MARKETPLACE ENDPOINTS ====================
 
 @router.post("/marketplace/apps")
+@limiter.limit("30/minute")
 async def submit_app(
-    request: AppSubmissionRequest,
+    request: Request,
+    body: AppSubmissionRequest,
     developer_id: UUID = Query(...),
     db: Session = Depends(get_db)
 ):
@@ -420,7 +445,7 @@ async def submit_app(
     service = MarketplaceService(db)
     app = await service.submit_app(
         developer_id=developer_id,
-        **request.model_dump()
+        **body.model_dump()
     )
     return {
         "app_id": str(app.id),
@@ -430,7 +455,9 @@ async def submit_app(
 
 
 @router.get("/marketplace/apps")
+@limiter.limit("60/minute")
 async def list_marketplace_apps(
+    request: Request,
     category: Optional[str] = None,
     search: Optional[str] = None,
     sort_by: str = "popular",
@@ -470,7 +497,9 @@ async def list_marketplace_apps(
 
 
 @router.get("/marketplace/apps/{app_slug}")
+@limiter.limit("60/minute")
 async def get_marketplace_app(
+    request: Request,
     app_slug: str,
     db: Session = Depends(get_db)
 ):
@@ -485,7 +514,9 @@ async def get_marketplace_app(
 
 
 @router.post("/marketplace/apps/{app_id}/install")
+@limiter.limit("30/minute")
 async def install_app(
+    request: Request,
     app_id: UUID,
     granted_scopes: List[str] = Body(...),
     billing_cycle: str = "monthly",
@@ -511,7 +542,9 @@ async def install_app(
 
 
 @router.delete("/marketplace/apps/{app_id}/install")
+@limiter.limit("30/minute")
 async def uninstall_app(
+    request: Request,
     app_id: UUID,
     db: Session = Depends(get_db),
     venue_id: UUID = Depends(get_current_venue)
@@ -525,7 +558,9 @@ async def uninstall_app(
 
 
 @router.get("/marketplace/installed")
+@limiter.limit("60/minute")
 async def get_installed_apps(
+    request: Request,
     db: Session = Depends(get_db),
     venue_id: UUID = Depends(get_current_venue)
 ):
@@ -551,7 +586,9 @@ async def get_installed_apps(
 # ==================== INTEGRATIONS ENDPOINTS ====================
 
 @router.get("/integrations")
+@limiter.limit("60/minute")
 async def list_integrations(
+    request: Request,
     db: Session = Depends(get_db),
     venue_id: UUID = Depends(get_current_venue)
 ):
@@ -563,8 +600,10 @@ async def list_integrations(
 
 
 @router.post("/integrations/configure")
+@limiter.limit("30/minute")
 async def configure_integration(
-    request: IntegrationCredentialRequest,
+    request: Request,
+    body: IntegrationCredentialRequest,
     db: Session = Depends(get_db),
     venue_id: UUID = Depends(get_current_venue)
 ):
@@ -574,15 +613,17 @@ async def configure_integration(
     service = IntegrationCredentialService(db)
     credential = await service.store_credential(
         venue_id=venue_id,
-        integration_type=request.integration_type,
-        credentials=request.credentials,
-        metadata=request.metadata
+        integration_type=body.integration_type,
+        credentials=body.credentials,
+        metadata=body.metadata
     )
     return {"status": "configured", "id": str(credential.id)}
 
 
 @router.delete("/integrations/{integration_type}")
+@limiter.limit("30/minute")
 async def delete_integration(
+    request: Request,
     integration_type: str,
     db: Session = Depends(get_db),
     venue_id: UUID = Depends(get_current_venue)
@@ -596,8 +637,10 @@ async def delete_integration(
 
 
 @router.post("/integrations/zapier/webhooks")
+@limiter.limit("30/minute")
 async def create_zapier_webhook(
-    request: ZapierWebhookRequest,
+    request: Request,
+    body: ZapierWebhookRequest,
     db: Session = Depends(get_db),
     venue_id: UUID = Depends(get_current_venue)
 ):
@@ -607,9 +650,9 @@ async def create_zapier_webhook(
     service = ZapierService(db)
     webhook = await service.create_webhook(
         venue_id=venue_id,
-        event_type=request.event_type,
-        webhook_url=request.webhook_url,
-        filters=request.filters
+        event_type=body.event_type,
+        webhook_url=body.webhook_url,
+        filters=body.filters
     )
     return {
         "webhook_id": str(webhook.id),
@@ -618,7 +661,9 @@ async def create_zapier_webhook(
 
 
 @router.get("/integrations/zapier/webhooks")
+@limiter.limit("60/minute")
 async def list_zapier_webhooks(
+    request: Request,
     db: Session = Depends(get_db),
     venue_id: UUID = Depends(get_current_venue)
 ):
@@ -642,7 +687,9 @@ async def list_zapier_webhooks(
 
 
 @router.get("/integrations/zapier/events")
+@limiter.limit("60/minute")
 async def get_zapier_events(
+    request: Request,
     db: Session = Depends(get_db)
 ):
     """Get available Zapier event types."""
@@ -655,8 +702,10 @@ async def get_zapier_events(
 # ==================== TEAM CHAT ENDPOINTS ====================
 
 @router.post("/chat/channels")
+@limiter.limit("30/minute")
 async def create_channel(
-    request: ChannelCreateRequest,
+    request: Request,
+    body: ChannelCreateRequest,
     db: Session = Depends(get_db),
     current_user: Staff = Depends(get_current_user),
     venue_id: UUID = Depends(get_current_venue)
@@ -667,17 +716,19 @@ async def create_channel(
     service = TeamChatService(db)
     channel = await service.create_channel(
         venue_id=venue_id,
-        name=request.name,
-        channel_type=request.channel_type,
-        description=request.description,
+        name=body.name,
+        channel_type=body.channel_type,
+        description=body.description,
         created_by=current_user.id,
-        members=request.members
+        members=body.members
     )
     return {"channel_id": str(channel.id), "name": channel.name}
 
 
 @router.get("/chat/channels")
+@limiter.limit("60/minute")
 async def get_channels(
+    request: Request,
     db: Session = Depends(get_db),
     current_user: Staff = Depends(get_current_user),
     venue_id: UUID = Depends(get_current_venue)
@@ -702,9 +753,11 @@ async def get_channels(
 
 
 @router.post("/chat/channels/{channel_id}/messages")
+@limiter.limit("30/minute")
 async def send_message(
+    request: Request,
     channel_id: UUID,
-    request: MessageRequest,
+    body: MessageRequest,
     db: Session = Depends(get_db),
     current_user: Staff = Depends(get_current_user)
 ):
@@ -715,17 +768,19 @@ async def send_message(
     message = await service.send_message(
         channel_id=channel_id,
         sender_id=current_user.id,
-        content=request.content,
-        message_type=request.message_type,
-        attachments=request.attachments,
-        reply_to_id=request.reply_to_id,
-        mentions=request.mentions
+        content=body.content,
+        message_type=body.message_type,
+        attachments=body.attachments,
+        reply_to_id=body.reply_to_id,
+        mentions=body.mentions
     )
     return {"message_id": str(message.id), "created_at": message.created_at.isoformat()}
 
 
 @router.get("/chat/channels/{channel_id}/messages")
+@limiter.limit("60/minute")
 async def get_messages(
+    request: Request,
     channel_id: UUID,
     limit: int = 50,
     before: Optional[datetime] = None,
@@ -760,7 +815,9 @@ async def get_messages(
 
 
 @router.post("/chat/channels/{channel_id}/read")
+@limiter.limit("30/minute")
 async def mark_channel_read(
+    request: Request,
     channel_id: UUID,
     db: Session = Depends(get_db),
     current_user: Staff = Depends(get_current_user)
@@ -774,8 +831,10 @@ async def mark_channel_read(
 
 
 @router.post("/announcements")
+@limiter.limit("30/minute")
 async def create_announcement(
-    request: AnnouncementRequest,
+    request: Request,
+    body: AnnouncementRequest,
     db: Session = Depends(get_db),
     current_user: Staff = Depends(get_current_user),
     venue_id: UUID = Depends(get_current_venue)
@@ -786,20 +845,22 @@ async def create_announcement(
     service = TeamChatService(db)
     announcement = await service.create_announcement(
         venue_id=venue_id,
-        title=request.title,
-        content=request.content,
+        title=body.title,
+        content=body.content,
         created_by=current_user.id,
-        priority=request.priority,
-        target_roles=request.target_roles,
-        target_staff_ids=request.target_staff_ids,
-        expires_at=request.expires_at,
-        require_acknowledgment=request.require_acknowledgment
+        priority=body.priority,
+        target_roles=body.target_roles,
+        target_staff_ids=body.target_staff_ids,
+        expires_at=body.expires_at,
+        require_acknowledgment=body.require_acknowledgment
     )
     return {"announcement_id": str(announcement.id)}
 
 
 @router.get("/announcements")
+@limiter.limit("60/minute")
 async def get_announcements(
+    request: Request,
     db: Session = Depends(get_db),
     current_user: Staff = Depends(get_current_user),
     venue_id: UUID = Depends(get_current_venue)
@@ -830,7 +891,9 @@ async def get_announcements(
 
 
 @router.post("/announcements/{announcement_id}/acknowledge")
+@limiter.limit("30/minute")
 async def acknowledge_announcement(
+    request: Request,
     announcement_id: UUID,
     db: Session = Depends(get_db),
     current_user: Staff = Depends(get_current_user)
@@ -846,8 +909,10 @@ async def acknowledge_announcement(
 # ==================== LABOR COMPLIANCE ENDPOINTS ====================
 
 @router.post("/labor/compliance/rules")
+@limiter.limit("30/minute")
 async def create_compliance_rule(
-    request: ComplianceRuleRequest,
+    request: Request,
+    body: ComplianceRuleRequest,
     db: Session = Depends(get_db),
     venue_id: UUID = Depends(get_current_venue)
 ):
@@ -857,17 +922,19 @@ async def create_compliance_rule(
     service = LaborComplianceService(db)
     rule = await service.create_compliance_rule(
         venue_id=venue_id,
-        rule_type=request.rule_type,
-        name=request.name,
-        description=request.description,
-        conditions=request.conditions,
-        action=request.action
+        rule_type=body.rule_type,
+        name=body.name,
+        description=body.description,
+        conditions=body.conditions,
+        action=body.action
     )
     return rule
 
 
 @router.post("/labor/compliance/check")
+@limiter.limit("30/minute")
 async def check_shift_compliance(
+    request: Request,
     staff_id: UUID,
     shift_start: datetime,
     shift_end: datetime,
@@ -888,7 +955,9 @@ async def check_shift_compliance(
 
 
 @router.get("/labor/compliance/violations")
+@limiter.limit("60/minute")
 async def get_violations(
+    request: Request,
     start_date: Optional[datetime] = None,
     end_date: Optional[datetime] = None,
     status: Optional[str] = None,
@@ -911,8 +980,10 @@ async def get_violations(
 # ==================== A/B TESTING ENDPOINTS ====================
 
 @router.post("/experiments")
+@limiter.limit("30/minute")
 async def create_experiment(
-    request: ExperimentRequest,
+    request: Request,
+    body: ExperimentRequest,
     db: Session = Depends(get_db),
     current_user: Staff = Depends(get_current_user),
     venue_id: UUID = Depends(get_current_venue)
@@ -923,21 +994,23 @@ async def create_experiment(
     service = ABTestingService(db)
     experiment = await service.create_experiment(
         venue_id=venue_id,
-        name=request.name,
-        description=request.description,
-        experiment_type=request.experiment_type,
-        variants=request.variants,
-        target_metric=request.target_metric,
-        traffic_percentage=request.traffic_percentage,
-        start_date=request.start_date,
-        end_date=request.end_date,
+        name=body.name,
+        description=body.description,
+        experiment_type=body.experiment_type,
+        variants=body.variants,
+        target_metric=body.target_metric,
+        traffic_percentage=body.traffic_percentage,
+        start_date=body.start_date,
+        end_date=body.end_date,
         created_by=current_user.id
     )
     return {"experiment_id": str(experiment.id), "status": experiment.status.value}
 
 
 @router.get("/experiments")
+@limiter.limit("60/minute")
 async def list_experiments(
+    request: Request,
     status: Optional[str] = None,
     experiment_type: Optional[str] = None,
     db: Session = Depends(get_db),
@@ -968,7 +1041,9 @@ async def list_experiments(
 
 
 @router.post("/experiments/{experiment_id}/start")
+@limiter.limit("30/minute")
 async def start_experiment(
+    request: Request,
     experiment_id: UUID,
     db: Session = Depends(get_db)
 ):
@@ -981,7 +1056,9 @@ async def start_experiment(
 
 
 @router.post("/experiments/{experiment_id}/pause")
+@limiter.limit("30/minute")
 async def pause_experiment(
+    request: Request,
     experiment_id: UUID,
     db: Session = Depends(get_db)
 ):
@@ -994,7 +1071,9 @@ async def pause_experiment(
 
 
 @router.post("/experiments/{experiment_id}/complete")
+@limiter.limit("30/minute")
 async def complete_experiment(
+    request: Request,
     experiment_id: UUID,
     winner_variant: Optional[str] = None,
     db: Session = Depends(get_db)
@@ -1008,7 +1087,9 @@ async def complete_experiment(
 
 
 @router.get("/experiments/{experiment_id}/variant")
+@limiter.limit("60/minute")
 async def get_variant(
+    request: Request,
     experiment_id: UUID,
     user_id: str,
     user_type: str = "customer",
@@ -1023,9 +1104,11 @@ async def get_variant(
 
 
 @router.post("/experiments/{experiment_id}/convert")
+@limiter.limit("30/minute")
 async def record_conversion(
+    request: Request,
     experiment_id: UUID,
-    request: ConversionRequest,
+    body: ConversionRequest,
     db: Session = Depends(get_db)
 ):
     """Record a conversion event."""
@@ -1034,17 +1117,19 @@ async def record_conversion(
     service = ABTestingService(db)
     success = await service.record_conversion(
         experiment_id=experiment_id,
-        user_id=request.user_id,
-        metric_name=request.metric_name,
-        metric_value=request.metric_value,
-        order_id=request.order_id,
-        metadata=request.metadata
+        user_id=body.user_id,
+        metric_name=body.metric_name,
+        metric_value=body.metric_value,
+        order_id=body.order_id,
+        metadata=body.metadata
     )
     return {"recorded": success}
 
 
 @router.get("/experiments/{experiment_id}/results")
+@limiter.limit("60/minute")
 async def get_experiment_results(
+    request: Request,
     experiment_id: UUID,
     db: Session = Depends(get_db)
 ):
@@ -1059,8 +1144,10 @@ async def get_experiment_results(
 # ==================== REVIEW AUTOMATION ENDPOINTS ====================
 
 @router.post("/reviews/links")
+@limiter.limit("30/minute")
 async def create_review_link(
-    request: ReviewLinkRequest,
+    request: Request,
+    body: ReviewLinkRequest,
     db: Session = Depends(get_db),
     venue_id: UUID = Depends(get_current_venue)
 ):
@@ -1070,14 +1157,16 @@ async def create_review_link(
     service = ReviewAutomationService(db)
     link = await service.create_review_link(
         venue_id=venue_id,
-        platform=request.platform,
-        link_url=request.link_url
+        platform=body.platform,
+        link_url=body.link_url
     )
     return link
 
 
 @router.get("/reviews/links")
+@limiter.limit("60/minute")
 async def get_review_links(
+    request: Request,
     db: Session = Depends(get_db),
     venue_id: UUID = Depends(get_current_venue)
 ):
@@ -1090,8 +1179,10 @@ async def get_review_links(
 
 
 @router.post("/reviews/requests")
+@limiter.limit("30/minute")
 async def send_review_request(
-    request: ReviewRequestRequest,
+    request: Request,
+    body: ReviewRequestRequest,
     db: Session = Depends(get_db),
     venue_id: UUID = Depends(get_current_venue)
 ):
@@ -1101,16 +1192,18 @@ async def send_review_request(
     service = ReviewAutomationService(db)
     result = await service.send_review_request(
         venue_id=venue_id,
-        order_id=request.order_id,
-        customer_id=request.customer_id,
-        method=request.method,
-        delay_hours=request.delay_hours
+        order_id=body.order_id,
+        customer_id=body.customer_id,
+        method=body.method,
+        delay_hours=body.delay_hours
     )
     return result
 
 
 @router.get("/reviews/analytics")
+@limiter.limit("60/minute")
 async def get_review_analytics(
+    request: Request,
     days: int = 30,
     db: Session = Depends(get_db),
     venue_id: UUID = Depends(get_current_venue)
@@ -1129,8 +1222,10 @@ async def get_review_analytics(
 # ==================== SSO ENDPOINTS ====================
 
 @router.post("/sso/configurations")
+@limiter.limit("30/minute")
 async def create_sso_config(
-    request: SSOConfigRequest,
+    request: Request,
+    body: SSOConfigRequest,
     tenant_id: UUID = Query(...),
     db: Session = Depends(get_db)
 ):
@@ -1140,18 +1235,20 @@ async def create_sso_config(
     service = SSOService(db)
     config = await service.create_sso_config(
         tenant_id=tenant_id,
-        provider_type=request.provider_type,
-        display_name=request.display_name,
-        config=request.config,
-        domain_whitelist=request.domain_whitelist,
-        auto_provision_users=request.auto_provision_users,
-        default_role=request.default_role
+        provider_type=body.provider_type,
+        display_name=body.display_name,
+        config=body.config,
+        domain_whitelist=body.domain_whitelist,
+        auto_provision_users=body.auto_provision_users,
+        default_role=body.default_role
     )
     return {"config_id": str(config.id), "provider": config.provider_type.value}
 
 
 @router.get("/sso/configurations")
+@limiter.limit("60/minute")
 async def get_sso_config(
+    request: Request,
     tenant_id: UUID,
     db: Session = Depends(get_db)
 ):
@@ -1174,7 +1271,9 @@ async def get_sso_config(
 
 
 @router.get("/sso/login")
+@limiter.limit("60/minute")
 async def initiate_sso_login(
+    request: Request,
     tenant_id: UUID,
     redirect_uri: str,
     db: Session = Depends(get_db)
@@ -1196,7 +1295,9 @@ async def initiate_sso_login(
 
 
 @router.post("/sso/callback")
+@limiter.limit("30/minute")
 async def handle_sso_callback(
+    request: Request,
     tenant_id: UUID,
     code: Optional[str] = None,
     saml_response: Optional[str] = Body(None, alias="SAMLResponse"),
@@ -1243,7 +1344,9 @@ async def handle_sso_callback(
 
 
 @router.post("/sso/logout")
+@limiter.limit("30/minute")
 async def sso_logout(
+    request: Request,
     session_id: UUID,
     db: Session = Depends(get_db)
 ):
@@ -1258,7 +1361,9 @@ async def sso_logout(
 # ==================== BACKGROUND WORKERS ====================
 
 @router.get("/system/workers/stats")
+@limiter.limit("60/minute")
 async def get_worker_stats(
+    request: Request,
     current_user: Staff = Depends(get_current_user)
 ):
     """
@@ -1273,7 +1378,9 @@ async def get_worker_stats(
 
 
 @router.post("/system/workers/schedule")
+@limiter.limit("30/minute")
 async def schedule_task(
+    request: Request,
     task_type: str = Body(...),
     name: str = Body(...),
     payload: Dict[str, Any] = Body(default={}),
@@ -1311,7 +1418,9 @@ async def schedule_task(
 
 
 @router.get("/system/workers/task/{task_id}")
+@limiter.limit("60/minute")
 async def get_task_status(
+    request: Request,
     task_id: str,
     current_user: Staff = Depends(get_current_user)
 ):
@@ -1341,7 +1450,9 @@ async def get_task_status(
 
 
 @router.post("/system/workers/trigger/{task_type}")
+@limiter.limit("30/minute")
 async def trigger_task(
+    request: Request,
     task_type: str,
     current_user: Staff = Depends(get_current_user),
     venue = Depends(get_current_venue)

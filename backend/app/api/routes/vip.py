@@ -3,10 +3,11 @@
 from datetime import date, datetime, timezone
 from typing import List, Optional
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel
 from sqlalchemy import desc
 
+from app.core.rate_limit import limiter
 from app.db.session import DbSession
 from app.models.operations import (
     VIPCustomerLink,
@@ -18,7 +19,8 @@ router = APIRouter()
 
 
 @router.get("/tiers")
-async def get_vip_tiers(db: DbSession):
+@limiter.limit("60/minute")
+async def get_vip_tiers(request: Request, db: DbSession):
     """Get VIP tier definitions."""
     setting = db.query(AppSetting).filter(
         AppSetting.category == "vip",
@@ -121,14 +123,16 @@ def _occasion_to_schema(o: VIPOccasionModel) -> VIPOccasion:
 
 
 @router.get("/customers")
-async def get_vip_customers(db: DbSession):
+@limiter.limit("60/minute")
+async def get_vip_customers(request: Request, db: DbSession):
     """Get all VIP customers."""
     customers = db.query(VIPCustomerLink).order_by(desc(VIPCustomerLink.total_spent)).all()
     return [_customer_to_schema(c) for c in customers]
 
 
 @router.post("/customers")
-async def create_vip_customer(data: VIPCustomerCreate, db: DbSession):
+@limiter.limit("30/minute")
+async def create_vip_customer(request: Request, data: VIPCustomerCreate, db: DbSession):
     """Add a customer to VIP program."""
     new_customer = VIPCustomerLink(
         customer_id=data.customer_id,
@@ -154,7 +158,8 @@ async def create_vip_customer(data: VIPCustomerCreate, db: DbSession):
 
 
 @router.get("/occasions")
-async def get_vip_occasions(db: DbSession):
+@limiter.limit("60/minute")
+async def get_vip_occasions(request: Request, db: DbSession):
     """Get upcoming VIP occasions."""
     occasions = (
         db.query(VIPOccasionModel)
@@ -165,7 +170,8 @@ async def get_vip_occasions(db: DbSession):
 
 
 @router.get("/occasions/{occasion_id}")
-async def get_vip_occasion(occasion_id: str, db: DbSession):
+@limiter.limit("60/minute")
+async def get_vip_occasion(request: Request, occasion_id: str, db: DbSession):
     """Get a specific VIP occasion."""
     occasion = db.query(VIPOccasionModel).filter(
         VIPOccasionModel.id == int(occasion_id)
@@ -176,7 +182,8 @@ async def get_vip_occasion(occasion_id: str, db: DbSession):
 
 
 @router.post("/occasions")
-async def create_vip_occasion(occasion: VIPOccasion, db: DbSession):
+@limiter.limit("30/minute")
+async def create_vip_occasion(request: Request, occasion: VIPOccasion, db: DbSession):
     """Create a new VIP occasion."""
     # Parse the date string
     occasion_date = date.fromisoformat(occasion.date) if occasion.date else date.today()
@@ -204,7 +211,8 @@ _DEFAULT_VIP_SETTINGS = {
 
 
 @router.get("/settings")
-async def get_vip_settings(db: DbSession):
+@limiter.limit("60/minute")
+async def get_vip_settings(request: Request, db: DbSession):
     """Get VIP program settings."""
     setting = db.query(AppSetting).filter(
         AppSetting.category == "vip",
@@ -216,7 +224,8 @@ async def get_vip_settings(db: DbSession):
 
 
 @router.put("/settings")
-async def update_vip_settings(settings: VIPSettings, db: DbSession):
+@limiter.limit("30/minute")
+async def update_vip_settings(request: Request, settings: VIPSettings, db: DbSession):
     """Update VIP program settings."""
     existing = db.query(AppSetting).filter(
         AppSetting.category == "vip",
@@ -238,7 +247,8 @@ async def update_vip_settings(settings: VIPSettings, db: DbSession):
 
 
 @router.get("/tier-changes")
-async def get_tier_changes(db: DbSession):
+@limiter.limit("60/minute")
+async def get_tier_changes(request: Request, db: DbSession):
     """Get recent tier changes."""
     # Tier changes are stored as AppSetting entries with category 'vip_tier_changes'
     setting = db.query(AppSetting).filter(

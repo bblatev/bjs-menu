@@ -5,6 +5,7 @@ import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 import { API_URL } from "@/lib/api";
 
+import { toast } from '@/lib/toast';
 interface DailyMenuItem {
   product_id: number;
   special_price: number;
@@ -141,10 +142,10 @@ export default function DailyMenuPage() {
         loadData();
       } else {
         const err = await response.json();
-        alert(err.detail || "Error creating daily menu");
+        toast.error(err.detail || "Error creating daily menu");
       }
     } catch (error) {
-      alert("Error creating daily menu");
+      toast.error("Error creating daily menu");
     }
   };
 
@@ -184,10 +185,10 @@ export default function DailyMenuPage() {
         loadData();
       } else {
         const err = await response.json();
-        alert(err.detail || "Error updating daily menu");
+        toast.error(err.detail || "Error updating daily menu");
       }
     } catch (error) {
-      alert("Error updating daily menu");
+      toast.error("Error updating daily menu");
     }
   };
 
@@ -207,10 +208,10 @@ export default function DailyMenuPage() {
       if (response.ok) {
         loadData();
       } else {
-        alert("Error deleting daily menu");
+        toast.error("Error deleting daily menu");
       }
     } catch (error) {
-      alert("Error deleting daily menu");
+      toast.error("Error deleting daily menu");
     }
   };
 
