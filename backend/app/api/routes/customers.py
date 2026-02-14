@@ -6,6 +6,7 @@ from fastapi import APIRouter, HTTPException, Body, Query, Request
 from pydantic import BaseModel, field_validator
 
 from app.core.rate_limit import limiter
+from app.core.rbac import CurrentUser
 from app.core.sanitize import sanitize_text
 from sqlalchemy import func, or_, String
 
@@ -104,6 +105,7 @@ def _customer_to_dict(customer: Customer) -> dict:
 def list_customers(
     request: Request,
     db: DbSession,
+    current_user: CurrentUser,
     search: Optional[str] = None,
     tag: Optional[str] = None,
     segment: Optional[str] = None,
@@ -147,7 +149,7 @@ def list_customers(
 
 @router.get("/customers/{customer_id}")
 @limiter.limit("60/minute")
-def get_customer(request: Request, db: DbSession, customer_id: int):
+def get_customer(request: Request, db: DbSession, current_user: CurrentUser, customer_id: int):
     """Get a specific customer."""
     customer = db.query(Customer).filter(Customer.id == customer_id, Customer.not_deleted()).first()
     if not customer:
@@ -157,7 +159,7 @@ def get_customer(request: Request, db: DbSession, customer_id: int):
 
 @router.post("/customers/")
 @limiter.limit("30/minute")
-def create_customer(request: Request, db: DbSession, data: CustomerCreate):
+def create_customer(request: Request, db: DbSession, current_user: CurrentUser, data: CustomerCreate):
     """Create a new customer."""
     # Check if phone already exists
     existing = db.query(Customer).filter(Customer.phone == data.phone, Customer.not_deleted()).first()
@@ -199,7 +201,7 @@ def create_customer(request: Request, db: DbSession, data: CustomerCreate):
 
 @router.put("/customers/{customer_id}")
 @limiter.limit("30/minute")
-def update_customer(request: Request, db: DbSession, customer_id: int, data: CustomerUpdate):
+def update_customer(request: Request, db: DbSession, current_user: CurrentUser, customer_id: int, data: CustomerUpdate):
     """Update a customer."""
     customer = db.query(Customer).filter(Customer.id == customer_id, Customer.not_deleted()).first()
     if not customer:
@@ -246,7 +248,7 @@ def update_customer(request: Request, db: DbSession, customer_id: int, data: Cus
 
 @router.delete("/customers/{customer_id}")
 @limiter.limit("30/minute")
-def delete_customer(request: Request, db: DbSession, customer_id: int):
+def delete_customer(request: Request, db: DbSession, current_user: CurrentUser, customer_id: int):
     """Soft-delete a customer."""
     customer = db.query(Customer).filter(Customer.id == customer_id, Customer.not_deleted()).first()
     if not customer:
@@ -261,7 +263,7 @@ def delete_customer(request: Request, db: DbSession, customer_id: int):
 
 @router.get("/customers/{customer_id}/orders")
 @limiter.limit("60/minute")
-def get_customer_orders(request: Request, db: DbSession, customer_id: int, limit: int = Query(20, le=100)):
+def get_customer_orders(request: Request, db: DbSession, current_user: CurrentUser, customer_id: int, limit: int = Query(20, le=100)):
     """Get order history for a customer from guest orders."""
     from app.models.restaurant import GuestOrder
     customer = db.query(Customer).filter(Customer.id == customer_id).first()
@@ -304,6 +306,7 @@ def get_customer_orders(request: Request, db: DbSession, customer_id: int, limit
 def get_upcoming_events(
     request: Request,
     db: DbSession,
+    current_user: CurrentUser,
     days: int = Query(30, le=90),
 ):
     """Get customers with upcoming birthdays and anniversaries."""
@@ -354,7 +357,7 @@ def get_upcoming_events(
 
 @router.get("/crm/customers/segments")
 @limiter.limit("60/minute")
-def get_customer_segments(request: Request, db: DbSession):
+def get_customer_segments(request: Request, db: DbSession, current_user: CurrentUser):
     """Get customer segment statistics."""
 
     segments = ["Champions", "Loyal", "Potential", "New", "At Risk", "Lost"]
@@ -377,7 +380,7 @@ def get_customer_segments(request: Request, db: DbSession):
 
 @router.get("/crm/customers/stats")
 @limiter.limit("60/minute")
-def get_customer_stats(request: Request, db: DbSession):
+def get_customer_stats(request: Request, db: DbSession, current_user: CurrentUser):
     """Get overall customer statistics."""
 
     total = db.query(Customer).filter(Customer.not_deleted()).count()

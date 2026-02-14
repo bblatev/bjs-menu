@@ -41,10 +41,11 @@ export default function KitchenStationPage() {
         { headers: { Authorization: `Bearer ${authToken}` } }
       );
       setOrders(response.data);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Failed to load orders', err);
-      setError(err.response?.data?.detail || 'Failed to load orders');
-      if (err.response?.status === 401) {
+      const message = err instanceof Error ? err.message : typeof err === 'object' && err && 'response' in err ? String((err as any).response?.data?.detail || 'Failed to load orders') : 'Failed to load orders';
+      setError(message);
+      if (typeof err === 'object' && err && 'response' in err && (err as any).response?.status === 401) {
         localStorage.removeItem('access_token');
         router.push('/login');
       }
@@ -97,8 +98,9 @@ export default function KitchenStationPage() {
       } else {
         toast.error(`Print failed: ${response.data.error || 'Unknown error'}`);
       }
-    } catch (err: any) {
-      toast.error(`Print error: ${err.response?.data?.detail || err.message}`);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : typeof err === 'object' && err && 'response' in err ? String((err as any).response?.data?.detail || 'An error occurred') : 'An error occurred';
+      toast.error(`Print error: ${message}`);
     } finally {
       setPrinting(null);
     }
@@ -117,8 +119,9 @@ export default function KitchenStationPage() {
       } else {
         toast.error(`Print failed: ${response.data.error || 'Unknown error'}`);
       }
-    } catch (err: any) {
-      toast.error(`Print error: ${err.response?.data?.detail || err.message}`);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : typeof err === 'object' && err && 'response' in err ? String((err as any).response?.data?.detail || 'An error occurred') : 'An error occurred';
+      toast.error(`Print error: ${message}`);
     } finally {
       setPrinting(null);
     }

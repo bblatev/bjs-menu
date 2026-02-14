@@ -6,6 +6,7 @@ import { usePathname } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import { ThemeToggle } from '@/components/ui/ThemeProvider';
 import { SkipLink } from '@/components/ui/SkipLink';
+import { getVenueId } from '@/lib/auth';
 
 const RealtimeNotifications = dynamic(
   () => import('./RealtimeNotifications'),
@@ -442,6 +443,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
               <button
                 onClick={() => setSidebarOpen(!sidebarOpen)}
                 className="p-2 rounded-lg text-surface-500 hover:bg-surface-100 hover:text-surface-700 transition-colors"
+                aria-label="Toggle sidebar"
               >
                 <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 6h16M4 12h16M4 18h16" />
@@ -494,7 +496,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
 
       {/* Real-time Notifications */}
       <RealtimeNotifications
-        venueId={1}
+        venueId={getVenueId()}
         position="top-right"
         maxNotifications={5}
         autoHideDuration={5000}

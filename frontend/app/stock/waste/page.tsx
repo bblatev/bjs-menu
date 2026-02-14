@@ -169,8 +169,9 @@ export default function WasteManagementPage() {
       setSelectedStockItemId(0);
       setShowModal(false);
       loadData();
-    } catch (error: any) {
-      toast.error(error.message || 'Error recording waste');
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'An error occurred';
+      toast.error(message);
     }
   };
 

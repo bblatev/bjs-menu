@@ -87,6 +87,7 @@ export function ThemeToggle() {
       onClick={cycleTheme}
       className="p-2 rounded-lg hover:bg-surface-100 dark:hover:bg-surface-800 transition-colors"
       title={`Theme: ${theme} (${resolvedTheme})`}
+      aria-label="Toggle theme"
     >
       {resolvedTheme === 'dark' ? (
         <svg className="w-5 h-5 text-amber-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">

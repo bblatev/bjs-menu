@@ -42,16 +42,19 @@ def get_stock_levels(
     query = db.query(StockOnHand)
     if location_id:
         query = query.filter(StockOnHand.location_id == location_id)
-    stock_items = query.all()
+    rows = (
+        query.join(Product, Product.id == StockOnHand.product_id, isouter=True)
+        .with_entities(StockOnHand, Product.unit)
+        .all()
+    )
     results = []
-    for s in stock_items:
-        product = db.query(Product).filter(Product.id == s.product_id).first()
+    for s, product_unit in rows:
         results.append({
             "id": s.id,
             "product_id": s.product_id,
             "location_id": s.location_id,
             "quantity": float(s.qty) if s.qty else 0,
-            "unit": product.unit if product and hasattr(product, 'unit') else "unit",
+            "unit": product_unit or "unit",
             "last_updated": s.updated_at.isoformat() if s.updated_at else None,
         })
     return {

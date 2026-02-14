@@ -99,7 +99,7 @@ class Settings(BaseSettings):
     borica_terminal_id: str = ""
     borica_private_key_path: str = ""
     borica_certificate_path: str = ""
-    borica_secret: str = "demo_secret"
+    borica_secret: str = ""
     borica_return_url: str = ""
     borica_production: bool = False
 

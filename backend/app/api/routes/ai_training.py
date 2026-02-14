@@ -129,7 +129,9 @@ async def upload_training_image(
     if len(image_data) < 1000:
         raise HTTPException(status_code=400, detail=f"Image too small ({len(image_data)} bytes). Minimum is 1000 bytes.")
 
-    ext = image.filename.split(".")[-1] if "." in image.filename else "jpg"
+    ext = image.filename.split(".")[-1].lower() if "." in image.filename else "jpg"
+    if ext not in ("jpg", "jpeg", "png", "gif", "webp"):
+        ext = "jpg"
     filename = f"{product_id}_{uuid.uuid4().hex[:8]}.{ext}"
     filepath = TRAINING_DIR / filename
 

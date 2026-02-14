@@ -196,8 +196,9 @@ export default function StockTransfersPage() {
       setNewTransfer({ from_warehouse_id: 0, to_warehouse_id: 0, items: [], notes: '' });
       setShowModal(false);
       loadData(); // Reload data
-    } catch (error: any) {
-      toast.error(error.message || 'Error creating transfer');
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'An error occurred';
+      toast.error(message);
     }
   };
 
@@ -229,8 +230,9 @@ export default function StockTransfersPage() {
 
       setShowDetailModal(null);
       loadData(); // Reload data
-    } catch (error: any) {
-      toast.error(error.message || 'Error updating transfer');
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'An error occurred';
+      toast.error(message);
     }
   };
 

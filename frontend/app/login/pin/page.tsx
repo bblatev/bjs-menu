@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { API_URL } from '@/lib/api'
+import { API_URL, setAuthToken } from '@/lib/api'
 
 export default function PinLoginPage() {
   const router = useRouter()
@@ -50,13 +50,14 @@ export default function PinLoginPage() {
       const data = await response.json()
       
       // Store tokens
-      localStorage.setItem('access_token', data.access_token)
+      setAuthToken(data.access_token)
       localStorage.setItem('refresh_token', data.refresh_token)
       
       // Redirect to dashboard
       router.push('/dashboard')
-    } catch (err: any) {
-      setError(err.message || 'Login failed')
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Login failed';
+      setError(message)
       setPin('')
     } finally {
       setLoading(false)

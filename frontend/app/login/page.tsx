@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 
-import { API_URL, getAuthHeaders } from '@/lib/api';
+import { API_URL, getAuthHeaders, setAuthToken } from '@/lib/api';
 
 export default function LoginPage() {
   const [pin, setPin] = useState('');
@@ -42,7 +42,7 @@ export default function LoginPage() {
 
       if (res.ok) {
         const data = await res.json();
-        localStorage.setItem('access_token', data.access_token);
+        setAuthToken(data.access_token);
         window.location.href = '/dashboard';
       } else {
         setError('Invalid PIN');

@@ -173,8 +173,9 @@ export default function StockCountsPage() {
       setShowNewCountModal(false);
       setShowCountModal(true);
       loadCounts();
-    } catch (error: any) {
-      toast.error(error.message || 'Error creating count');
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'An error occurred';
+      toast.error(message);
     }
   };
 
@@ -226,8 +227,9 @@ export default function StockCountsPage() {
       setShowCountModal(false);
       setActiveCount(null);
       loadCounts();
-    } catch (error: any) {
-      toast.error(error.message || 'Error completing count');
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'An error occurred';
+      toast.error(message);
     }
   };
 
@@ -245,8 +247,9 @@ export default function StockCountsPage() {
       }
 
       loadCounts();
-    } catch (error: any) {
-      toast.error(error.message || 'Error approving count');
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'An error occurred';
+      toast.error(message);
     }
   };
 

@@ -96,7 +96,7 @@ class PaymentMethodResponse(BaseModel):
 
 @router.post("/intents", response_model=PaymentIntentResponse)
 @limiter.limit("5/minute")
-async def create_payment_intent(request: Request, current_user: CurrentUser, body: CreatePaymentIntentRequest = None):
+async def create_payment_intent(request: Request, current_user: CurrentUser, body: CreatePaymentIntentRequest):
     """
     Create a payment intent for processing a payment.
 
@@ -250,7 +250,7 @@ async def refund_payment(request: Request, payment_intent_id: str, current_user:
 
 @router.post("/customers", response_model=CustomerResponse)
 @limiter.limit("10/minute")
-async def create_customer(request: Request, current_user: CurrentUser, body: CreateCustomerRequest = None):
+async def create_customer(request: Request, current_user: CurrentUser, body: CreateCustomerRequest):
     """Create a Stripe customer for saving payment methods."""
     stripe = get_stripe_service()
     if not stripe:

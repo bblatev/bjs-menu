@@ -186,8 +186,9 @@ export default function InventoryIntelligencePage() {
           break;
         }
       }
-    } catch (err: any) {
-      setError(err.message || 'Failed to load data');
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Failed to load data';
+      setError(message);
     } finally {
       setLoading(false);
     }
@@ -229,8 +230,9 @@ export default function InventoryIntelligencePage() {
         body: JSON.stringify({ location_id: 1, name: `Snapshot ${new Date().toLocaleString()}` }),
       });
       fetchData('snapshots');
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'An error occurred';
+      setError(message);
     }
   };
 

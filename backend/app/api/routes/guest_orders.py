@@ -297,7 +297,7 @@ def get_table_menu(
     table = _get_table_by_token(db, token)
 
     # Get menu items from database
-    menu_items = db.query(MenuItem).filter(MenuItem.available == True, MenuItem.not_deleted()).all()
+    menu_items = db.query(MenuItem).filter(MenuItem.available == True, MenuItem.not_deleted()).limit(500).all()
 
     # Group menu items by category
     categories = {}
@@ -549,9 +549,9 @@ def create_table(request: Request, db: DbSession, table: TableCreate):
     if existing:
         raise HTTPException(status_code=400, detail="Table number already exists")
 
-    # Generate a token for QR code
-    import hashlib
-    token = hashlib.md5(f"table_{table.number}_{datetime.now(timezone.utc).isoformat()}".encode()).hexdigest()[:12]
+    # Generate a secure random token for QR code
+    import secrets
+    token = secrets.token_urlsafe(16)
 
     db_table = Table(
         number=table.number,

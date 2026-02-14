@@ -22,7 +22,7 @@ interface RealtimeNotificationsProps {
 
 const getNotificationFromEvent = (wsMessage: WebSocketMessage): Notification | null => {
   const baseNotification = {
-    id: `${wsMessage.event}-${Date.now()}-${Math.random()}`,
+    id: typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(36).substring(2, 11)}`,
     timestamp: new Date(wsMessage.timestamp),
   };
 
