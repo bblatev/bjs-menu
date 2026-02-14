@@ -12,12 +12,15 @@ Features:
 - Smart capacity management
 """
 
+import logging
 from datetime import datetime, timedelta
 from typing import List, Dict, Optional, Any
 from sqlalchemy.orm import Session
 from enum import Enum
 import statistics
 from app.core.config import settings
+
+logger = logging.getLogger(__name__)
 
 
 class OrderChannel(str, Enum):
@@ -1004,7 +1007,8 @@ class OrderThrottlingService:
                 "threshold_value": r.threshold_value,
                 "action_type": r.action_type
             } for r in rules]
-        except Exception:
+        except Exception as e:
+            logger.warning(f"Failed to get active throttle rules for venue {venue_id}: {e}")
             return []
     
     def _is_snooze_active(self, venue_id: int) -> Dict[str, Any]:
@@ -1053,7 +1057,8 @@ class OrderThrottlingService:
                 } for r in rules],
                 "total": len(rules)
             }
-        except Exception:
+        except Exception as e:
+            logger.warning(f"Failed to get throttle rules for venue {venue_id}: {e}")
             return {"venue_id": venue_id, "rules": [], "total": 0}
     
     def create_rule(
@@ -1358,7 +1363,8 @@ class OrderThrottlingService:
                 "total": len(events),
                 "in_memory_events": self.throttle_history[-20:]
             }
-        except Exception:
+        except Exception as e:
+            logger.warning(f"Failed to get throttle events for venue {venue_id}: {e}")
             return {
                 "venue_id": venue_id,
                 "events": [],

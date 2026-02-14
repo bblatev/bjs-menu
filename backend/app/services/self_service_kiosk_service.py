@@ -17,7 +17,10 @@ from datetime import datetime, timedelta
 from typing import List, Dict, Optional, Any
 from sqlalchemy.orm import Session
 from enum import Enum
+import logging
 import uuid
+
+logger = logging.getLogger(__name__)
 
 
 class KioskMode(str, Enum):
@@ -883,7 +886,8 @@ class SelfServiceKioskService:
 
             return round(max(0, min(100, uptime_percent)), 2)
 
-        except Exception:
+        except Exception as e:
+            logger.warning(f"Failed to calculate uptime for kiosk {kiosk_id}: {e}")
             # Fallback to checking current status
             kiosk = self.registered_kiosks.get(kiosk_id)
             if kiosk and kiosk.get("status") == "active":
@@ -945,7 +949,8 @@ class SelfServiceKioskService:
                 })
 
             return {"categories": result_categories}
-        except Exception:
+        except Exception as e:
+            logger.warning(f"Failed to get kiosk menu for venue {venue_id} (language={language}): {e}")
             return {"categories": []}
     
     def _get_welcome_message(self, language: str) -> str:
@@ -1008,9 +1013,10 @@ class SelfServiceKioskService:
                 }
                 for item, _ in popular_items
             ]
-        except Exception:
+        except Exception as e:
+            logger.warning(f"Failed to get featured items for venue {venue_id}: {e}")
             return []
-    
+
     def _get_active_promotions(self, venue_id: int) -> List[Dict]:
         """Get active promotions"""
         from app.models import Promotion
@@ -1035,9 +1041,10 @@ class SelfServiceKioskService:
                 }
                 for promo in promotions
             ]
-        except Exception:
+        except Exception as e:
+            logger.warning(f"Failed to get active promotions for venue {venue_id}: {e}")
             return []
-    
+
     def _get_menu_item(self, item_id: int, language: str) -> Optional[Dict]:
         """Get menu item details"""
         from app.models import MenuItem, ModifierGroup
@@ -1068,9 +1075,10 @@ class SelfServiceKioskService:
                 "allergens": item.allergens or [],
                 "category_id": item.category_id
             }
-        except Exception:
+        except Exception as e:
+            logger.warning(f"Failed to get menu item {item_id} (language={language}): {e}")
             return None
-    
+
     def _recalculate_totals(self, session: Dict):
         """Recalculate session totals"""
         subtotal = sum(i["item_total"] for i in session["cart"])
@@ -1146,9 +1154,10 @@ class SelfServiceKioskService:
                         }
 
             return None
-        except Exception:
+        except Exception as e:
+            logger.warning(f"Failed to check combo opportunity for venue {venue_id} with {len(cart)} cart items: {e}")
             return None
-    
+
     def _get_complementary_items(self, item_id: int, venue_id: int) -> List[Dict]:
         """Get items commonly ordered with this item"""
         from app.models import MenuItem, OrderItem, Order
@@ -1191,9 +1200,10 @@ class SelfServiceKioskService:
                 }
                 for item, _ in complementary
             ]
-        except Exception:
+        except Exception as e:
+            logger.warning(f"Failed to get complementary items for item {item_id} in venue {venue_id}: {e}")
             return []
-    
+
     def _is_drink_item(self, item_id: int) -> bool:
         """Check if item is a drink"""
         from app.models import MenuItem, MenuCategory
@@ -1216,7 +1226,8 @@ class SelfServiceKioskService:
             drink_keywords = ["drink", "beverage", "napitka", "напитка", "getränk"]
 
             return any(keyword in category_name for keyword in drink_keywords)
-        except Exception:
+        except Exception as e:
+            logger.warning(f"Failed to check if item {item_id} is a drink: {e}")
             return False
     
     def _get_popular_drinks(self, venue_id: int) -> List[Dict]:
@@ -1283,9 +1294,10 @@ class SelfServiceKioskService:
                 }
                 for item, _ in popular_drinks
             ]
-        except Exception:
+        except Exception as e:
+            logger.warning(f"Failed to get popular drinks for venue {venue_id}: {e}")
             return []
-    
+
     def _apply_size_upgrade(self, session: Dict, data: Dict) -> Dict:
         """Apply size upgrade to cart item"""
         from app.models import MenuItem, MenuItemVariant
@@ -1534,9 +1546,10 @@ class SelfServiceKioskService:
                 }
 
             return None
-        except Exception:
+        except Exception as e:
+            logger.warning(f"Failed to get dessert upsell for session (venue={session.get('venue_id')}): {e}")
             return None
-    
+
     def _get_available_payment_methods(self, kiosk_id: str) -> List[str]:
         """Get available payment methods for kiosk"""
         return ["card", "apple_pay", "google_pay", "qr_code"]
@@ -1569,9 +1582,10 @@ class SelfServiceKioskService:
                 "total_spent": float(customer.total_spent or 0),
                 "total_orders": customer.total_orders or 0
             }
-        except Exception:
+        except Exception as e:
+            logger.warning(f"Failed to look up loyalty customer with identifier '{identifier}': {e}")
             return None
-    
+
     def _get_available_rewards(self, customer_id: int, total: float = 0) -> List[Dict]:
         """Get available rewards for customer"""
         from app.models import Customer, Promotion
@@ -1622,9 +1636,10 @@ class SelfServiceKioskService:
                 })
 
             return rewards
-        except Exception:
+        except Exception as e:
+            logger.warning(f"Failed to get available rewards for customer {customer_id} (total={total}): {e}")
             return []
-    
+
     def _get_reward_details(self, reward_id: str) -> Optional[Dict]:
         """Get reward details"""
         from app.models import Promotion
@@ -1660,9 +1675,10 @@ class SelfServiceKioskService:
                     }
 
             return None
-        except Exception:
+        except Exception as e:
+            logger.warning(f"Failed to get reward details for reward '{reward_id}': {e}")
             return None
-    
+
     def _initiate_card_payment(self, session: Dict, data: Dict) -> Dict:
         """Initiate card payment"""
         return {
@@ -1926,9 +1942,10 @@ class SelfServiceKioskService:
                 }
                 for item in popular_items
             ]
-        except Exception:
+        except Exception as e:
+            logger.warning(f"Failed to get popular kiosk items: {e}")
             return []
-    
+
     def _analyze_peak_hours(self, conversions: List) -> List:
         """Analyze peak ordering hours"""
         from collections import defaultdict
@@ -1945,7 +1962,8 @@ class SelfServiceKioskService:
                         timestamp = datetime.fromisoformat(timestamp_str)
                         hour = timestamp.hour
                         hourly_counts[hour] += 1
-                    except Exception:
+                    except Exception as e:
+                        logger.warning(f"Failed to parse conversion timestamp '{timestamp_str}': {e}")
                         continue
 
             # Convert to sorted list
@@ -1959,7 +1977,8 @@ class SelfServiceKioskService:
             ]
 
             return peak_hours[:10]  # Top 10 peak hours
-        except Exception:
+        except Exception as e:
+            logger.warning(f"Failed to analyze peak hours from {len(conversions)} conversions: {e}")
             return []
     
     def _calculate_avg_session_duration(self, conversions: List) -> float:
@@ -2101,7 +2120,8 @@ class SelfServiceKioskService:
                     "description": item.description.get(language, "") if isinstance(item.description, dict) else str(item.description or "")
                 } for item in items]
             }
-        except Exception:
+        except Exception as e:
+            logger.warning(f"Failed to get category {category_id} (language={language}): {e}")
             return {
                 "success": True,
                 "category_id": category_id,
@@ -2148,7 +2168,8 @@ class SelfServiceKioskService:
                     "max_selections": mod.max_selections if hasattr(mod, 'max_selections') else 1
                 } for mod in modifiers]
             }
-        except Exception:
+        except Exception as e:
+            logger.warning(f"Failed to get item detail for item {item_id} (language={language}): {e}")
             return {
                 "success": True,
                 "item": self._get_menu_item(item_id, language),
@@ -2232,7 +2253,8 @@ class SelfServiceKioskService:
                     "customer_found": False,
                     "message": "Customer not found. Would you like to create an account?"
                 }
-        except Exception:
+        except Exception as e:
+            logger.warning(f"Failed to apply loyalty lookup (phone={phone_number}, code={loyalty_code}): {e}")
             return {"success": False, "error": "Unable to look up loyalty information"}
 
     def get_accessibility_config(self, session_id: str) -> Dict[str, Any]:

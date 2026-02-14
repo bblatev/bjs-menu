@@ -454,7 +454,7 @@ def get_stock_alerts(
 ):
     """Get stock alerts (low stock, out of stock, expiring)."""
     from app.api.routes.stock_management import get_stock_alerts as _get_alerts
-    return _get_alerts(db=db, location_id=location_id)
+    return _get_alerts(request=request, db=db, location_id=location_id)
 
 
 # ==================== BATCHES ====================

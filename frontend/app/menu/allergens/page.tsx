@@ -555,7 +555,7 @@ export default function AllergensNutritionPage() {
       {/* Edit Modal */}
       <AnimatePresence>
         {showModal && editingItem && (
-          <div className="fixed inset-0 bg-white/50 flex items-center justify-center z-50 p-4">
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
             <motion.div
               initial={{ scale: 0.9, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}

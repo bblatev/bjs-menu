@@ -562,7 +562,8 @@ def get_inventory_valuation(
                     unit_cost = total_cost / total_qty if total_qty > 0 else Decimal("0")
                 else:
                     unit_cost = product.cost_price or Decimal("0")
-            except Exception:
+            except Exception as e:
+                logger.warning(f"FIFO batch cost calculation failed for product {product.id} at location {location_id}, falling back to cost_price: {e}")
                 unit_cost = product.cost_price or Decimal("0")
 
         elif method == "last_cost":

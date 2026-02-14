@@ -22,10 +22,10 @@ import secrets
 import logging
 
 from app.core.rate_limit import limiter
+from app.core.config import settings
 from app.db.session import get_db
 from app.models import Reservation, ReservationStatus, BookingSource, Table, Venue
 from app.schemas.reservations import (
-from app.core.config import settings
     GoogleSlot,
     GoogleAvailabilityRequest,
     GoogleAvailabilityResponse,
@@ -81,7 +81,8 @@ def verify_google_signature(request: Request, signature: str = Header(None, alia
             digestmod=hashlib.sha256
         ).hexdigest()
         return hmac.compare_digest(signature, expected)
-    except Exception:
+    except Exception as e:
+        logger.warning(f"Google webhook signature verification failed: {e}")
         return False
 
 

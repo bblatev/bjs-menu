@@ -3,6 +3,7 @@ Telephone System Integration API Endpoints
 TouchSale feature: Integration with PBX systems (ELTA, Alcatel, Panasonic, Siemens, etc.)
 For caller ID lookup, automatic reservations, and customer recognition
 """
+import logging
 from fastapi import APIRouter, Depends, HTTPException, WebSocket, WebSocketDisconnect, Request
 from sqlalchemy.orm import Session
 from typing import List, Optional, Dict, Any
@@ -17,6 +18,8 @@ from app.core.rate_limit import limiter
 from app.models import StaffUser, Customer, Reservation
 
 
+logger = logging.getLogger(__name__)
+
 router = APIRouter()
 
 
@@ -24,7 +27,7 @@ def require_admin(current_user = Depends(get_current_user)):
     """Require admin/owner role."""
     if not hasattr(current_user, 'role'):
         return current_user
-    if current_user.role not in ("admin", "owner", "manager"):
+    if current_user.role not in ("owner", "manager"):
         raise HTTPException(status_code=403, detail="Admin access required")
     return current_user
 
@@ -33,7 +36,7 @@ def require_manager(current_user = Depends(get_current_user)):
     """Require manager or above role."""
     if not hasattr(current_user, 'role'):
         return current_user
-    if current_user.role not in ("admin", "owner", "manager"):
+    if current_user.role not in ("owner", "manager"):
         raise HTTPException(status_code=403, detail="Manager access required")
     return current_user
 
@@ -627,8 +630,9 @@ async def broadcast_call_notification(notification: Dict[str, Any]):
     for terminal_id, ws in list(call_notification_sockets.items()):
         try:
             await ws.send_text(message)
-        except Exception:
+        except Exception as e:
             # Remove disconnected socket
+            logger.warning(f"Failed to send call notification to terminal {terminal_id}, removing disconnected socket: {e}")
             del call_notification_sockets[terminal_id]
 
 

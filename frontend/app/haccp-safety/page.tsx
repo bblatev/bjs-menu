@@ -581,7 +581,7 @@ export default function HACCPFoodSafetyPage() {
 
         {/* Record Temperature Modal */}
         {showRecordModal && selectedCcp && (
-          <div className="fixed inset-0 bg-white/50 flex items-center justify-center z-50">
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
             <div className="bg-white rounded-xl p-6 w-full max-w-md">
               <h2 className="text-xl font-semibold mb-4">📝 Запис на измерване</h2>
               <p className="text-gray-600 mb-4">{selectedCcp.name} ({selectedCcp.location})</p>

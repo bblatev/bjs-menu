@@ -116,7 +116,7 @@ async def broadcast_order_update(order_id: int, update_data: Dict[str, Any], exc
             try:
                 await ws.send_text(message)
             except Exception as e:
-                logger.debug(f"Optional: send WebSocket update to terminal {terminal_id}: {e}")
+                logger.warning(f"Failed to send WebSocket order update to terminal {terminal_id}: {e}")
 
 
 # =============================================================================
@@ -304,7 +304,7 @@ async def unlock_order(
 
     # Check if terminal owns the lock or if force unlock by manager
     if lock_info["terminal_id"] != terminal_id:
-        if not force or current_user.role not in ["admin", "manager"]:
+        if not force or current_user.role not in ["owner", "manager"]:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Cannot unlock order locked by another terminal"
@@ -559,7 +559,8 @@ async def websocket_terminal_connection(
                 # Send keepalive
                 try:
                     await websocket.send_json({"type": "keepalive"})
-                except Exception:
+                except Exception as e:
+                    logger.warning(f"Failed to send WebSocket keepalive to terminal {terminal_id}: {e}")
                     break
 
     except WebSocketDisconnect:

@@ -368,7 +368,7 @@ export default function InvoiceUploadPage() {
                 </p>
               </div>
             </div>
-            <span className="px-3 py-1 bg-white/50 rounded-lg text-sm font-medium">
+            <span className="px-3 py-1 bg-black/50 rounded-lg text-sm font-medium">
               {extractedData.items.filter(i => i.matched_stock_item).length}/{extractedData.items.length} items matched
             </span>
           </div>

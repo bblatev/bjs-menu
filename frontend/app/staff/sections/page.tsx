@@ -432,7 +432,7 @@ export default function ServerSectionsPage() {
 
       {/* Assign Server Modal */}
       {showAssignModal && selectedSection && (
-        <div className="fixed inset-0 bg-white/50 flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-secondary rounded-lg max-w-md w-full">
             <div className="p-6">
               <div className="flex items-center justify-between mb-4">

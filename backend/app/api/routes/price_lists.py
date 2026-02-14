@@ -1,5 +1,6 @@
 """Price lists, daily menus, and manager alerts routes - TouchSale gap features."""
 
+import logging
 from typing import List, Optional
 from datetime import datetime, date, time, timedelta, timezone
 from fastapi import APIRouter, HTTPException, Body, Query, Request
@@ -14,6 +15,8 @@ from app.models.price_lists import (
 )
 from app.models.staff import StaffUser
 from app.services.notification_service import NotificationService
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -536,7 +539,8 @@ def record_item_use(request: Request, db: DbSession, staff_id: int, product_id: 
         )
         db.add(item)
         db.commit()
-    except Exception:
+    except Exception as e:
+        logger.warning(f"Failed to record item use for staff_id={staff_id}, product_id={product_id}: {e}")
         db.rollback()
         raise HTTPException(status_code=404, detail="Staff or product not found")
 

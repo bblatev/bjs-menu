@@ -284,7 +284,7 @@ async def set_ubereats_store_status(
     current_user=Depends(get_current_user)
 ):
     """Set UberEats store online/offline"""
-    if current_user.role not in ["admin", "manager"]:
+    if current_user.role not in ["owner", "manager"]:
         raise HTTPException(status_code=403, detail="Insufficient permissions")
 
     service = get_uber_eats_service()

@@ -104,10 +104,33 @@ def get_order_suggestions(
 
 @router.get("/stats")
 @limiter.limit("60/minute")
-def get_order_stats_summary(request: Request, db: DbSession):
+def get_order_stats_summary(request: Request, db: DbSession, current_user: CurrentUser):
     """Get order statistics."""
     total = db.query(PurchaseOrder).filter(PurchaseOrder.not_deleted()).count()
-    return {"total_orders": total, "pending": 0, "in_progress": 0, "completed": 0, "total_revenue": 0}
+    pending = db.query(PurchaseOrder).filter(
+        PurchaseOrder.not_deleted(), PurchaseOrder.status == POStatus.DRAFT
+    ).count()
+    in_progress = db.query(PurchaseOrder).filter(
+        PurchaseOrder.not_deleted(), PurchaseOrder.status == POStatus.SENT
+    ).count()
+    completed = db.query(PurchaseOrder).filter(
+        PurchaseOrder.not_deleted(), PurchaseOrder.status == POStatus.RECEIVED
+    ).count()
+    # Calculate total revenue from received orders
+    from sqlalchemy import func
+    total_revenue_row = (
+        db.query(func.sum(PurchaseOrderLine.qty * PurchaseOrderLine.unit_cost))
+        .join(PurchaseOrder, PurchaseOrder.id == PurchaseOrderLine.po_id)
+        .filter(PurchaseOrder.not_deleted(), PurchaseOrder.status == POStatus.RECEIVED)
+        .scalar()
+    )
+    return {
+        "total_orders": total,
+        "pending": pending,
+        "in_progress": in_progress,
+        "completed": completed,
+        "total_revenue": float(total_revenue_row or 0),
+    }
 
 
 @router.get("/", response_model=List[PurchaseOrderResponse])
@@ -455,10 +478,15 @@ def receive_order(
             except Exception as e:
                 logger.debug(f"Optional: batch creation for product {line.product_id}: {e}")
 
-    # Update PO status to RECEIVED if not already
-    if order.status != POStatus.RECEIVED:
+    # Update PO status - check if all lines have been fully received
+    total_ordered = sum(float(line.qty) for line in order.lines)
+    total_received = sum(line.received_qty for line in receiving_data.lines)
+    if total_received >= total_ordered:
         order.status = POStatus.RECEIVED
         order.received_at = datetime.now(timezone.utc)
+    elif order.status == POStatus.DRAFT or order.status == POStatus.SENT:
+        # Mark as SENT (in-progress) if only partially received
+        order.status = POStatus.SENT
 
     if receiving_data.notes:
         order.notes = (order.notes or "") + f"\nReceived: {receiving_data.notes}"

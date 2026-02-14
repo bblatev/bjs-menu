@@ -1,9 +1,23 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, memo } from 'react';
 import Link from 'next/link';
 
-import { API_URL, getAuthHeaders } from '@/lib/api';
+import { API_URL, getAuthHeaders, clearAuth } from '@/lib/api';
+
+/** Isolated clock component to prevent full dashboard re-render every second */
+const LiveClock = memo(function LiveClock() {
+  const [currentTime, setCurrentTime] = useState(new Date());
+  useEffect(() => {
+    const timer = setInterval(() => setCurrentTime(new Date()), 1000);
+    return () => clearInterval(timer);
+  }, []);
+  return (
+    <span className="font-mono text-lg">
+      {currentTime.toLocaleTimeString('bg-BG', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+    </span>
+  );
+});
 
 interface DashboardStats {
   total_orders_today: number;
@@ -57,7 +71,6 @@ interface SystemHealth {
 }
 
 function DashboardContent() {
-  const [currentTime, setCurrentTime] = useState(new Date());
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -162,15 +175,24 @@ function DashboardContent() {
   };
 
   useEffect(() => {
-    const timer = setInterval(() => setCurrentTime(new Date()), 1000);
-    return () => clearInterval(timer);
-  }, []);
-
-  useEffect(() => {
     fetchDashboardData();
-    // Refresh data every 30 seconds
-    const refreshInterval = setInterval(fetchDashboardData, 30000);
-    return () => clearInterval(refreshInterval);
+    // Refresh data every 30 seconds, but only when tab is visible
+    const refreshInterval = setInterval(() => {
+      if (document.visibilityState === 'visible') {
+        fetchDashboardData();
+      }
+    }, 30000);
+    // Also refresh immediately when tab becomes visible after being hidden
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') {
+        fetchDashboardData();
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibility);
+    return () => {
+      clearInterval(refreshInterval);
+      document.removeEventListener('visibilitychange', handleVisibility);
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -203,7 +225,6 @@ function DashboardContent() {
       label: "Приходи днес",
       value: `${todayRevenue.toLocaleString('bg-BG')} лв`,
       subvalue: `€${(todayRevenue / 1.96).toFixed(0)}`,
-      trend: { value: 12, up: true },
       icon: '💰',
       color: 'success'
     },
@@ -211,7 +232,6 @@ function DashboardContent() {
       label: 'Поръчки',
       value: totalOrdersToday.toString(),
       subvalue: `${activeOrders.length} активни`,
-      trend: { value: 8, up: true },
       icon: '📋',
       color: 'primary'
     },
@@ -219,7 +239,6 @@ function DashboardContent() {
       label: 'Средна сметка',
       value: `${avgTicket.toFixed(0)} лв`,
       subvalue: `€${(avgTicket / 1.96).toFixed(2)}`,
-      trend: { value: 3, up: avgTicket > 45 },
       icon: '🧾',
       color: 'accent'
     },
@@ -377,16 +396,15 @@ function DashboardContent() {
         <div className="flex items-center gap-4">
           <div className="text-right">
             <p className="text-2xl font-display font-bold text-surface-900">
-              {currentTime.toLocaleTimeString('bg-BG', { hour: '2-digit', minute: '2-digit' })}
+              <LiveClock />
             </p>
             <p className="text-sm text-surface-500">
-              {currentTime.toLocaleDateString('bg-BG', { weekday: 'long', day: 'numeric', month: 'long' })}
+              {new Date().toLocaleDateString('bg-BG', { weekday: 'long', day: 'numeric', month: 'long' })}
             </p>
           </div>
           <button
             onClick={() => {
-              localStorage.removeItem('access_token');
-              localStorage.removeItem('auth_token');
+              clearAuth();
               window.location.href = '/login';
             }}
             className="p-2 text-surface-500 hover:text-surface-700 hover:bg-surface-100 rounded-lg transition-colors"

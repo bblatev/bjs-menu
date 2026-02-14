@@ -292,8 +292,7 @@ async def upload_training_image(
                 clip_embedding = clip_embedding / (np.linalg.norm(clip_embedding) + 1e-7)
                 feature_vector = clip_embedding.astype(np.float32).tobytes()
         except Exception as e:
-            import logging
-            logging.warning(f"CLIP feature extraction failed: {e}")
+            logger.warning(f"CLIP feature extraction failed: {e}")
 
     # Fallback to old feature extraction if CLIP fails
     if feature_vector is None:
@@ -408,10 +407,12 @@ async def upload_training_batch(
                 try:
                     feature_vectors = augment_and_extract_features(image_data, n_augments=3)
                     feature_vector = aggregate_product_features(feature_vectors) if feature_vectors else None
-                except Exception:
+                except Exception as e:
+                    logger.warning(f"Augmented feature extraction failed for batch image {idx}, product {product_id}: {e}")
                     try:
                         feature_vector = extract_combined_features(image_data)
-                    except Exception:
+                    except Exception as e2:
+                        logger.warning(f"Combined feature extraction also failed for batch image {idx}, product {product_id}: {e2}")
                         feature_vector = None
 
             # Create database record - no file saved
@@ -588,10 +589,12 @@ async def upload_training_video(
                     try:
                         feature_vectors = augment_and_extract_features(image_data, n_augments=2)
                         feature_vector = aggregate_product_features(feature_vectors) if feature_vectors else None
-                    except Exception:
+                    except Exception as e:
+                        logger.warning(f"Augmented feature extraction failed for video frame {frame_count}, product {product_id}: {e}")
                         try:
                             feature_vector = extract_combined_features(image_data)
-                        except Exception:
+                        except Exception as e2:
+                            logger.warning(f"Combined feature extraction also failed for video frame {frame_count}, product {product_id}: {e2}")
                             feature_vector = None
 
                     # Extract OCR text from every 10th frame (OCR is slow)
@@ -642,8 +645,8 @@ async def upload_training_video(
         import os as os_module
         try:
             os_module.unlink(tmp_path)
-        except OSError:
-            pass
+        except OSError as e:
+            logger.warning(f"Failed to clean up temp video file {tmp_path}: {e}")
 
     return results
 
@@ -811,8 +814,7 @@ async def recognize_bottle(
         img.save(buffer, format='JPEG', quality=95)
         image_data = buffer.getvalue()
     except Exception as e:
-        import logging
-        logging.debug(f"EXIF transpose failed (non-critical): {e}")
+        logger.warning(f"EXIF orientation fix failed for recognition image: {e}")
 
     # ===== YOLO DETECTION FIRST - Filter non-bar items =====
     detected_class = None
@@ -838,8 +840,7 @@ async def recognize_bottle(
                 is_bar_item = False
                 detected_class = None
         except Exception as e:
-            import logging
-            logging.warning(f"YOLO detection failed, continuing without crop: {e}")
+            logger.warning(f"YOLO detection failed, continuing without crop: {e}")
 
     # If YOLO says no bar item, still try recognition but flag it
     # This allows recognition of bottles that YOLO doesn't detect (unusual shapes, angles)
@@ -901,8 +902,7 @@ async def recognize_bottle(
 
         except Exception as e:
             # Log error and fall back to traditional matching
-            import logging
-            logging.error(f"Hybrid recognition failed, falling back: {e}")
+            logger.error(f"Hybrid recognition failed, falling back: {e}")
             results = []
 
     # Fall back to CLIP feature matching if no results
@@ -954,7 +954,8 @@ async def recognize_bottle(
                 feat_array = np.frombuffer(img.feature_vector, dtype=np.float32)
                 if len(feat_array) == 512:  # Valid CLIP embedding
                     product_features[img.stock_item_id].append(feat_array)
-            except Exception:
+            except Exception as e:
+                logger.warning(f"Failed to parse feature vector for training image {img.id} (stock_item {img.stock_item_id}): {e}")
                 continue
 
         # Find best match per product using CLIP cosine similarity
@@ -1141,8 +1142,7 @@ async def recognize_multi(
         image_data = buffer.getvalue()
         img_width, img_height = img.size
     except Exception as e:
-        import logging
-        logging.warning(f"EXIF transpose failed: {e}")
+        logger.warning(f"EXIF orientation fix failed for multi-recognition image: {e}")
         img_width, img_height = 0, 0
 
     # ===== YOLO DETECTION - Find ALL items =====
@@ -1160,8 +1160,7 @@ async def recognize_multi(
             )
             all_detections = detections or []
         except Exception as e:
-            import logging
-            logging.warning(f"YOLO detection failed: {e}")
+            logger.warning(f"YOLO detection failed in multi-recognition: {e}")
 
     # ===== LIGHT FILTERING - Remove noise and non-bottle items =====
     filtered_detections = []
@@ -1218,7 +1217,8 @@ async def recognize_multi(
             feat_array = np.frombuffer(ti.feature_vector, dtype=np.float32)
             if len(feat_array) == 512:
                 product_features_dict[ti.stock_item_id].append(feat_array)
-        except Exception:
+        except Exception as e:
+            logger.warning(f"Failed to parse feature vector for training image {ti.id} (stock_item {ti.stock_item_id}): {e}")
             continue
 
     # Build mean feature matrix for vectorized similarity
@@ -1248,7 +1248,8 @@ async def recognize_multi(
             from app.services.ai.clip_yolo_service import crop_to_detection
             cropped = crop_to_detection(image_data, bbox, padding=0.08)
             cropped_images.append(cropped)
-        except Exception:
+        except Exception as e:
+            logger.warning(f"Failed to crop detection {idx} (bbox={bbox}), using original image: {e}")
             cropped_images.append(image_data)
 
     # ===== BATCH CLIP FEATURE EXTRACTION =====
@@ -1257,13 +1258,13 @@ async def recognize_multi(
         try:
             clip_embeddings = extract_clip_features_batch(cropped_images, batch_size=32)
         except Exception as e:
-            import logging
-            logging.warning(f"Batch CLIP extraction failed: {e}")
+            logger.warning(f"Batch CLIP extraction failed, falling back to individual extraction: {e}")
             for cropped in cropped_images:
                 try:
                     emb = get_clip_embedding(cropped)
                     clip_embeddings.append(emb)
-                except Exception:
+                except Exception as e:
+                    logger.warning(f"Individual CLIP embedding extraction failed for detection {idx}: {e}")
                     clip_embeddings.append(None)
 
     # ===== VECTORIZED MATCHING (FAST) =====
@@ -1969,7 +1970,8 @@ def get_active_learning_queue(
             meta["image_path"] = str(img_path) if img_path.exists() else None
 
             items.append(meta)
-        except Exception:
+        except Exception as e:
+            logger.warning(f"Failed to read active learning queue metadata file {meta_file}: {e}")
             continue
 
     return {"items": items, "total": total}
@@ -2050,7 +2052,8 @@ def label_active_learning_item(
         # Extract features and create training image
         try:
             feature_vector = extract_combined_features(image_data)
-        except Exception:
+        except Exception as e:
+            logger.warning(f"Feature extraction failed for active learning item {item_id} (product {product.id}): {e}")
             feature_vector = None
 
         training_image = TrainingImage(

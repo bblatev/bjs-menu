@@ -538,7 +538,7 @@ export default function MenuCombosPage() {
       {/* Combo Modal */}
       <AnimatePresence>
         {showModal && (
-          <div className="fixed inset-0 bg-white/50 flex items-center justify-center z-50 p-4">
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
             <motion.div
               initial={{ scale: 0.9, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
@@ -761,7 +761,7 @@ export default function MenuCombosPage() {
       {/* Component Modal */}
       <AnimatePresence>
         {showComponentModal && (
-          <div className="fixed inset-0 bg-white/50 flex items-center justify-center z-[60] p-4">
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[60] p-4">
             <motion.div
               initial={{ scale: 0.9, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}

@@ -522,7 +522,7 @@ export default function TablesPage() {
               </div>
 
               {/* Status Badge */}
-              <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold ${statusConfig[table.status].text} bg-white/50`}>
+              <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold ${statusConfig[table.status].text} bg-black/50`}>
                 {statusConfig[table.status].label}
               </span>
 
@@ -611,7 +611,7 @@ export default function TablesPage() {
       {/* Table Detail Modal */}
       {selectedTable && (
         <>
-          <div className="fixed inset-0 bg-white/50 backdrop-blur-sm z-50" onClick={() => setSelectedTable(null)} />
+          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50" onClick={() => setSelectedTable(null)} />
           <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-50 w-full max-w-md bg-white rounded-3xl shadow-2xl">
             <div className="p-6 border-b border-surface-100">
               <div className="flex items-center justify-between">

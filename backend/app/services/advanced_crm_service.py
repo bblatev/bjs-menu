@@ -2,6 +2,7 @@
 Advanced CRM & Loyalty Service - Section U
 Guest preferences, CLV, churn prediction, and advanced loyalty features
 """
+import logging
 from datetime import datetime, date, timedelta
 from decimal import Decimal
 from typing import Optional, List, Dict, Any
@@ -9,6 +10,8 @@ from sqlalchemy.orm import Session
 from sqlalchemy import func, and_, or_
 import uuid
 import json
+
+logger = logging.getLogger(__name__)
 
 
 class AdvancedCRMService:
@@ -159,8 +162,8 @@ class AdvancedCRMService:
                                 "severity": "info",
                                 "message": f"Upcoming {occasion} in {days_until} days!"
                             })
-                    except Exception:
-                        pass
+                    except Exception as e:
+                        logger.warning(f"Failed to parse special occasion date for customer {customer_id}, occasion '{occasion}': {e}")
 
         return {
             "customer_id": customer_id,

@@ -150,7 +150,7 @@ async def refund_borica_payment(
     Requires admin or manager role
     """
     # Check permissions
-    if current_user.role not in ["admin", "manager"]:
+    if current_user.role not in ["owner", "manager"]:
         raise HTTPException(status_code=403, detail="Insufficient permissions")
 
     borica = get_borica_service()

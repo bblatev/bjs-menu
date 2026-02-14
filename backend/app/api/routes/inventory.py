@@ -30,12 +30,13 @@ from app.schemas.inventory import (
 router = APIRouter()
 
 
-# Stock and movements endpoints (public)
+# Stock and movements endpoints
 @router.get("/stock")
 @limiter.limit("60/minute")
 def get_stock_levels(
     request: Request,
     db: DbSession,
+    current_user: CurrentUser,
     location_id: Optional[int] = Query(None),
 ):
     """Get current stock levels."""
@@ -68,6 +69,7 @@ def get_stock_levels(
 def get_stock_movements(
     request: Request,
     db: DbSession,
+    current_user: CurrentUser,
     location_id: Optional[int] = Query(None),
     limit: int = Query(50, le=500),
 ):

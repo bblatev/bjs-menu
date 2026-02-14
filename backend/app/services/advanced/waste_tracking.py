@@ -1,5 +1,6 @@
 """AI Food Waste Tracking Service - Leanpath/Winnow style."""
 
+import logging
 from datetime import date, datetime, timedelta
 from decimal import Decimal
 from typing import List, Optional, Dict, Any
@@ -8,6 +9,8 @@ from sqlalchemy import select, func, and_
 from sqlalchemy.orm import Session
 
 from app.models.advanced_features import WasteTrackingEntry, WasteForecast, WasteCategory
+
+logger = logging.getLogger(__name__)
 
 
 class WasteTrackingService:
@@ -256,8 +259,8 @@ class WasteTrackingService:
                     "upper": float(predicted_waste) + 1.96 * stddev,
                     "confidence_level": 0.95,
                 }
-        except Exception:
-            pass  # Skip confidence interval if calculation fails
+        except Exception as e:
+            logger.warning(f"Failed to calculate confidence interval for waste forecast at location {location_id}: {e}")
 
         return self.create_forecast(
             location_id=location_id,

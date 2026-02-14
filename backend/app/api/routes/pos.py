@@ -2,6 +2,7 @@
 
 import csv
 import io
+import logging
 from datetime import datetime, timezone
 from decimal import Decimal
 from typing import Optional, List
@@ -21,6 +22,8 @@ from app.models.stock import MovementReason, StockMovement, StockOnHand
 from app.models.hardware import BarTab as BarTabModel
 from app.schemas.pos import PosConsumeResult, PosImportResult, PosSalesLineResponse
 from app.core.rate_limit import limiter
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -202,7 +205,8 @@ def import_pos_csv(
 
             try:
                 qty = Decimal(row.get("qty", "1"))
-            except Exception:
+            except Exception as e:
+                logger.warning(f"POS import row {row_num}: invalid qty value '{row.get('qty')}': {e}")
                 errors.append(f"Row {row_num}: Invalid qty")
                 skipped += 1
                 continue
@@ -303,6 +307,7 @@ def consume_sales(
             processed += 1
 
         except Exception as e:
+            logger.warning(f"Failed to consume POS sales line {sales_line.id}: {e}")
             errors.append(f"Sales line {sales_line.id}: {str(e)}")
 
     db.commit()

@@ -7,6 +7,7 @@ accommodate different CSV formats.
 
 import csv
 import io
+import logging
 from datetime import datetime
 from decimal import Decimal, InvalidOperation
 from typing import Any
@@ -16,6 +17,8 @@ from app.services.pos.connector_base import (
     POSConnector,
     POSConnectorFactory,
 )
+
+logger = logging.getLogger(__name__)
 
 
 @POSConnectorFactory.register
@@ -69,8 +72,9 @@ class CSVConnector(POSConnector):
                 line = self._parse_row(row, columns)
                 if line:
                     lines.append(line)
-            except Exception:
+            except Exception as e:
                 # Skip invalid rows (validation will catch these)
+                logger.warning(f"Failed to parse CSV row: {e}")
                 continue
 
         return lines

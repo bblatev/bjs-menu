@@ -85,11 +85,11 @@ export default function KitchenPage() {
         name: station.name,
         type: station.type,
         icon: getStationIcon(station.type),
-        current_load: station.current_load || 0,
-        max_capacity: station.max_capacity || 15,
-        active_tickets: station.current_load || 0,
+        current_load: station.current_load ?? 0,
+        max_capacity: station.max_capacity ?? 15,
+        active_tickets: station.current_load ?? 0,
         overdue_tickets: 0, // Will be updated from tickets
-        avg_time: station.avg_cook_time || 10,
+        avg_time: station.avg_cook_time ?? 10,
       }));
 
       setStations(transformedStations);
@@ -156,7 +156,7 @@ export default function KitchenPage() {
         id: ticket.ticket_id,
         order_id: ticket.order_id,
         table: ticket.table_number || 'N/A',
-        items: ticket.item_count || 0,
+        items: ticket.item_count ?? 0,
         status: ticket.status as 'bumped' | 'in_progress',
         cook_time: ticket.cook_time_seconds ? Math.round(ticket.cook_time_seconds / 60) : 0,
         station: getStationName(ticket.station_id),
@@ -184,11 +184,11 @@ export default function KitchenPage() {
 
       setStats({
         activeOrders: activeOrders,
-        avgPrepTime: data.avg_prep_time_minutes || 0,
+        avgPrepTime: data.avg_prep_time_minutes ?? 0,
         pendingItems: pendingItems,
-        completedToday: data.orders_completed_today || 0,
-        rushOrders: data.rush_orders_today || 0,
-        items86: data.items_86_count || 0,
+        completedToday: data.orders_completed_today ?? 0,
+        rushOrders: data.rush_orders_today ?? 0,
+        items86: data.items_86_count ?? 0,
       });
     } catch (err) {
       console.error('Error loading stats:', err);
@@ -444,7 +444,7 @@ export default function KitchenPage() {
                   {alert.order_id && (
                     <Link
                       href={`/orders/${alert.order_id}`}
-                      className="px-2 py-1 bg-white/50 rounded text-xs font-medium hover:bg-white/80"
+                      className="px-2 py-1 bg-black/50 rounded text-xs font-medium hover:bg-white/80"
                     >
                       View
                     </Link>

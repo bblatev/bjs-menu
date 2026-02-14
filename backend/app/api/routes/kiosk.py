@@ -65,7 +65,7 @@ async def update_kiosk_config(
     current_user: StaffUser = Depends(get_current_user)
 ):
     """Update kiosk configuration (admin only)"""
-    if current_user.role not in ["admin", "manager"]:
+    if current_user.role not in ["owner", "manager"]:
         raise HTTPException(status_code=403, detail="Not authorized")
 
     if data.venue_id != current_user.venue_id:

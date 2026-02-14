@@ -605,7 +605,7 @@ export default function CloudKitchenPage() {
 
         {/* Brand Modal */}
         {showBrandModal && (
-          <div className="fixed inset-0 bg-white/50 flex items-center justify-center z-50">
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
             <div className="bg-white rounded-xl p-6 w-full max-w-lg">
               <h2 className="text-xl font-semibold mb-4">
                 {editingBrand ? 'Редактирай бранд' : 'Нов виртуален бранд'}

@@ -10,7 +10,7 @@ Provides endpoints for:
 """
 
 from typing import Optional, List
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from fastapi import APIRouter, HTTPException, Body, Query, Request
 from pydantic import BaseModel
 
@@ -317,7 +317,7 @@ def get_access_stats(
 ):
     """Get access statistics for the specified period."""
     start = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0) - \
-            __import__('datetime').timedelta(days=days)
+            timedelta(days=days)
 
     log = BiometricService.get_access_log(start_date=start, limit=10000)
 

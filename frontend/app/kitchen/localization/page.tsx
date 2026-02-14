@@ -65,9 +65,10 @@ export default function KDSLocalizationPage() {
   const loadData = async () => {
     setLoading(true);
     try {
+      const headers = getAuthHeaders();
       const [stationsRes, translationsRes] = await Promise.all([
-        fetch(`${API_URL}/kds-localization/stations`),
-        fetch(`${API_URL}/kds-localization/translations`),
+        fetch(`${API_URL}/kds-localization/stations`, { headers }),
+        fetch(`${API_URL}/kds-localization/translations`, { headers }),
       ]);
 
       if (stationsRes.ok) {
@@ -90,7 +91,7 @@ export default function KDSLocalizationPage() {
     try {
       const res = await fetch(`${API_URL}/kds-localization/stations/${stationId}`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { ...getAuthHeaders() },
         body: JSON.stringify(updates),
       });
       if (res.ok) {
@@ -105,7 +106,7 @@ export default function KDSLocalizationPage() {
     try {
       const res = await fetch(`${API_URL}/kds-localization/translations/${key}`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { ...getAuthHeaders() },
         body: JSON.stringify({ language_code: langCode, value }),
       });
       if (res.ok) {

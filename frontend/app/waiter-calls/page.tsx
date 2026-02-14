@@ -77,6 +77,8 @@ export default function WaiterCallsPage() {
   const [autoRefresh, setAutoRefresh] = useState(true);
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
+  const wsRef = useRef<WebSocket | null>(null);
+
   useEffect(() => {
     const token = localStorage.getItem('access_token');
     if (!token) {
@@ -88,8 +90,9 @@ export default function WaiterCallsPage() {
     connectWebSocket();
 
     return () => {
-      if (ws) {
-        ws.close();
+      if (wsRef.current) {
+        wsRef.current.close();
+        wsRef.current = null;
       }
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -254,16 +257,19 @@ export default function WaiterCallsPage() {
 
       socket.onopen = () => { /* WebSocket connected */ };
       socket.onmessage = (event) => {
-        const data = JSON.parse(event.data);
-        if (data.type === 'waiter_call') {
-          loadData();
-          if (soundEnabled) playNotificationSound();
-        }
+        try {
+          const data = JSON.parse(event.data);
+          if (data.type === 'waiter_call') {
+            loadData();
+            if (soundEnabled) playNotificationSound();
+          }
+        } catch { /* ignore malformed messages */ }
       };
       socket.onerror = () => { /* WebSocket error - will attempt reconnect */ };
       socket.onclose = () => {
         if (autoRefresh) setTimeout(connectWebSocket, 3000);
       };
+      wsRef.current = socket;
       setWs(socket);
     } catch (err) {
       console.error('Failed to connect WebSocket', err);
@@ -853,7 +859,7 @@ export default function WaiterCallsPage() {
                         <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
                           <div
                             className="h-full bg-orange-500"
-                            style={{ width: `${(item.count / stats.total_today) * 100}%` }}
+                            style={{ width: `${(stats.total_today > 0 ? (item.count / stats.total_today) * 100 : 0)}%` }}
                           ></div>
                         </div>
                       </div>
@@ -870,12 +876,12 @@ export default function WaiterCallsPage() {
                     <div key={item.zone}>
                       <div className="flex justify-between mb-1">
                         <span className="text-gray-700">{item.zone}</span>
-                        <span className="text-gray-500">{item.count} ({Math.round((item.count / stats.total_today) * 100)}%)</span>
+                        <span className="text-gray-500">{item.count} ({Math.round((stats.total_today > 0 ? (item.count / stats.total_today) * 100 : 0))}%)</span>
                       </div>
                       <div className="h-3 bg-gray-100 rounded-full overflow-hidden">
                         <div
                           className="h-full bg-blue-500"
-                          style={{ width: `${(item.count / stats.total_today) * 100}%` }}
+                          style={{ width: `${(stats.total_today > 0 ? (item.count / stats.total_today) * 100 : 0)}%` }}
                         ></div>
                       </div>
                     </div>
@@ -967,7 +973,7 @@ export default function WaiterCallsPage() {
       {/* Assign Staff Modal */}
       <AnimatePresence>
         {showAssignModal && selectedCall && (
-          <div className="fixed inset-0 bg-white/50 flex items-center justify-center z-50 p-4">
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
             <motion.div
               initial={{ opacity: 0, scale: 0.9 }}
               animate={{ opacity: 1, scale: 1 }}
@@ -1014,7 +1020,7 @@ export default function WaiterCallsPage() {
       {/* Call Detail Modal */}
       <AnimatePresence>
         {showCallModal && selectedCall && (
-          <div className="fixed inset-0 bg-white/50 flex items-center justify-center z-50 p-4">
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
             <motion.div
               initial={{ opacity: 0, scale: 0.9 }}
               animate={{ opacity: 1, scale: 1 }}

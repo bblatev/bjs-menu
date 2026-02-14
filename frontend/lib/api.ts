@@ -16,11 +16,11 @@ export const WS_URL = process.env.NEXT_PUBLIC_WS_URL || 'ws://localhost:8000';
 export const API_VERSION = '/api/v1';
 
 // Application version
-export const APP_VERSION = process.env.NEXT_PUBLIC_APP_VERSION || '8.0.2';
+export const APP_VERSION = process.env.NEXT_PUBLIC_APP_VERSION || '9.0.0';
 
 // Common API headers
 export const getAuthHeaders = (): Record<string, string> => {
-  const token = typeof window !== 'undefined' ? localStorage.getItem('access_token') : null;
+  const token = typeof window !== 'undefined' ? localStorage.getItem(TOKEN_KEY) : null;
   return {
     'Content-Type': 'application/json',
     ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
@@ -30,19 +30,20 @@ export const getAuthHeaders = (): Record<string, string> => {
 // Check if user is authenticated
 export const isAuthenticated = (): boolean => {
   if (typeof window === 'undefined') return false;
-  return !!localStorage.getItem('access_token');
+  return !!localStorage.getItem(TOKEN_KEY);
 };
 
 // Clear authentication
 export const clearAuth = (): void => {
   if (typeof window === 'undefined') return;
-  localStorage.removeItem('access_token');
+  localStorage.removeItem(TOKEN_KEY);
+  localStorage.removeItem('auth_token');
 };
 
 // Set authentication token
 export const setAuthToken = (token: string): void => {
   if (typeof window === 'undefined') return;
-  localStorage.setItem('access_token', token);
+  localStorage.setItem(TOKEN_KEY, token);
 };
 
 // Build full API endpoint URL
@@ -91,7 +92,21 @@ export async function apiFetch<T = any>(
     delete headers['Content-Type'];
   }
 
-  const res = await fetch(url, { ...options, headers });
+  // Add request timeout (30s default) to prevent indefinite hangs
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 30000);
+
+  let res: Response;
+  try {
+    res = await fetch(url, { ...options, headers, signal: controller.signal });
+  } catch (err: any) {
+    clearTimeout(timeoutId);
+    if (err.name === 'AbortError') {
+      throw new ApiError('Request timed out', 408);
+    }
+    throw err;
+  }
+  clearTimeout(timeoutId);
 
   if (!res.ok) {
     let data: any;

@@ -711,7 +711,7 @@ export default function ReservationsPage() {
               <div className="w-24 flex-shrink-0 text-gray-300 text-sm">
                 Table {table.number || table.table_number}
               </div>
-              <div className="flex-1 flex relative h-10 bg-white/50 rounded">
+              <div className="flex-1 flex relative h-10 bg-black/50 rounded">
                 {reservations
                   .filter((r) => r.table_id === table.id)
                   .map((res) => {
@@ -884,7 +884,7 @@ export default function ReservationsPage() {
                   </div>
                 </div>
                 {reservation.special_requests && (
-                  <div className="mt-2 text-gray-400 text-sm bg-white/50 rounded p-2">
+                  <div className="mt-2 text-gray-400 text-sm bg-black/50 rounded p-2">
                     Note: {reservation.special_requests}
                   </div>
                 )}
@@ -896,7 +896,7 @@ export default function ReservationsPage() {
 
       {/* Reservation Modal */}
       {showModal && (
-        <div className="fixed inset-0 bg-white/50 flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-secondary rounded-lg max-w-lg w-full max-h-[90vh] overflow-y-auto">
             <div className="p-6">
               <div className="flex items-center justify-between mb-6">

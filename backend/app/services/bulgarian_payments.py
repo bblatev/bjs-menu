@@ -41,6 +41,11 @@ class PaymentResult:
     error_message: Optional[str] = None
     redirect_url: Optional[str] = None
     raw_response: Optional[Dict] = None
+    metadata: Optional[Dict] = None
+
+    def __post_init__(self):
+        if self.metadata is None:
+            self.metadata = {}
 
 
 # ============================================================================
@@ -69,7 +74,7 @@ class BoricaService:
         self.merchant_id = settings.borica_merchant_id
         self.private_key_path = settings.borica_private_key_path
         self.certificate_path = settings.borica_certificate_path
-        self.is_production = settings.borica_production.lower() == "true"
+        self.is_production = settings.borica_production
 
         self._base_url = self.PROD_URL if self.is_production else self.TEST_URL
         self._initialized = bool(self.terminal_id and self.merchant_id)
@@ -195,14 +200,16 @@ class BoricaService:
                     transaction_id=approval,
                     status=PaymentStatus.SUCCESS,
                     amount=int(amount) / 100,
-                    raw_response=callback_data
+                    raw_response=callback_data,
+                    metadata={"order_id": order_id}
                 )
             else:
                 return PaymentResult(
                     success=False,
                     status=PaymentStatus.FAILED,
                     error_message=self._get_error_message(rc),
-                    raw_response=callback_data
+                    raw_response=callback_data,
+                    metadata={"order_id": order_id}
                 )
 
         except Exception as e:
@@ -359,7 +366,7 @@ class EPayService:
     def __init__(self):
         self.client_id = settings.epay_client_id
         self.secret_key = settings.epay_secret_key
-        self.is_production = settings.epay_production.lower() == "true"
+        self.is_production = settings.epay_production
 
         self._base_url = self.PROD_URL if self.is_production else self.TEST_URL
         self._initialized = bool(self.client_id and self.secret_key)
@@ -421,7 +428,8 @@ class EPayService:
                 transaction_id=f"EPAY-{invoice_id}",
                 status=PaymentStatus.PENDING,
                 amount=amount,
-                redirect_url=redirect_url
+                redirect_url=redirect_url,
+                metadata={"payment_url": redirect_url, "form_data": params}
             )
 
         except Exception as e:
@@ -470,27 +478,31 @@ class EPayService:
                     transaction_id=data.get("PAY_TIME", invoice_id),
                     status=PaymentStatus.SUCCESS,
                     amount=amount,
-                    raw_response=data
+                    raw_response=data,
+                    metadata={"invoice_id": invoice_id}
                 )
             elif status == "DENIED":
                 return PaymentResult(
                     success=False,
                     status=PaymentStatus.FAILED,
                     error_message="Payment denied",
-                    raw_response=data
+                    raw_response=data,
+                    metadata={"invoice_id": invoice_id}
                 )
             elif status == "EXPIRED":
                 return PaymentResult(
                     success=False,
                     status=PaymentStatus.CANCELLED,
                     error_message="Payment expired",
-                    raw_response=data
+                    raw_response=data,
+                    metadata={"invoice_id": invoice_id}
                 )
             else:
                 return PaymentResult(
                     success=False,
                     status=PaymentStatus.PENDING,
-                    raw_response=data
+                    raw_response=data,
+                    metadata={"invoice_id": invoice_id}
                 )
 
         except Exception as e:

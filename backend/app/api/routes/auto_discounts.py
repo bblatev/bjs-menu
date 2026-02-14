@@ -82,7 +82,7 @@ async def create_auto_discount(
     current_user: StaffUser = Depends(get_current_user)
 ):
     """Create a new automatic discount"""
-    if current_user.role not in ["admin", "manager"]:
+    if current_user.role not in ["owner", "manager"]:
         raise HTTPException(status_code=403, detail="Not authorized")
 
     # Validate time format
@@ -181,7 +181,7 @@ async def update_auto_discount(
     current_user: StaffUser = Depends(get_current_user)
 ):
     """Update an automatic discount"""
-    if current_user.role not in ["admin", "manager"]:
+    if current_user.role not in ["owner", "manager"]:
         raise HTTPException(status_code=403, detail="Not authorized")
 
     discount = db.query(AutoDiscount).filter(
@@ -221,7 +221,7 @@ async def toggle_auto_discount(
     current_user: StaffUser = Depends(get_current_user)
 ):
     """Toggle discount active status"""
-    if current_user.role not in ["admin", "manager"]:
+    if current_user.role not in ["owner", "manager"]:
         raise HTTPException(status_code=403, detail="Not authorized")
 
     discount = db.query(AutoDiscount).filter(
@@ -247,7 +247,7 @@ async def delete_auto_discount(
     current_user: StaffUser = Depends(get_current_user)
 ):
     """Delete an automatic discount"""
-    if current_user.role not in ["admin", "manager"]:
+    if current_user.role not in ["owner", "manager"]:
         raise HTTPException(status_code=403, detail="Not authorized")
 
     discount = db.query(AutoDiscount).filter(

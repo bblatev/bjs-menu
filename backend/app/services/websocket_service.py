@@ -262,7 +262,8 @@ class ConnectionManager:
         for websocket in connections:
             try:
                 await websocket.send_text(message.to_json())
-            except Exception:
+            except Exception as e:
+                logger.warning(f"Failed to send broadcast message to WebSocket client for venue {venue_id}: {e}")
                 disconnected.append(websocket)
 
         # Clean up disconnected
@@ -286,7 +287,8 @@ class ConnectionManager:
         for websocket in connections:
             try:
                 await websocket.send_text(message.to_json())
-            except Exception:
+            except Exception as e:
+                logger.warning(f"Failed to send channel '{channel}' message to WebSocket client for venue {venue_id}: {e}")
                 disconnected.append(websocket)
 
         for ws in disconnected:

@@ -3,6 +3,8 @@ Bar Management API Endpoints
 Complete bar operations: pour costs, inventory, recipes, spillage, happy hours
 """
 
+import logging
+
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from app.core.rate_limit import limiter
 from sqlalchemy.orm import Session
@@ -10,6 +12,8 @@ from sqlalchemy import func, desc
 from typing import List, Optional, Dict
 from datetime import datetime, date, timedelta
 from pydantic import BaseModel
+
+logger = logging.getLogger(__name__)
 
 from app.db.session import get_db
 from app.core.rbac import get_current_user
@@ -267,6 +271,7 @@ async def get_bar_stats(
         )
     except Exception as e:
         # Return fallback data if database query fails
+        logger.warning(f"Failed to query bar stats for venue {venue_id}, period={period}: {e}")
         return BarStatsResponse(
             total_sales=3450.00,
             total_cost=862.50,
@@ -332,8 +337,9 @@ async def get_top_drinks(
             ))
 
         return results
-    except Exception:
+    except Exception as e:
         # Return sample data on error
+        logger.warning(f"Failed to query top drinks for venue {venue_id}: {e}")
         return [
             TopDrinkResponse(id=1, name="Mojito", category="Cocktail", sold_today=42, revenue=420.00, pour_cost=21.5, margin=78.5),
             TopDrinkResponse(id=2, name="Margarita", category="Cocktail", sold_today=38, revenue=380.00, pour_cost=23.0, margin=77.0),
@@ -382,7 +388,8 @@ async def get_inventory_alerts(
             ))
 
         return alerts
-    except Exception:
+    except Exception as e:
+        logger.warning(f"Failed to query inventory alerts for venue {venue_id}: {e}")
         return [
             InventoryAlertResponse(id=1, item_name="Grey Goose Vodka", current_stock=2, par_level=6, unit="bottles", status="critical"),
             InventoryAlertResponse(id=2, item_name="Bacardi White Rum", current_stock=3, par_level=8, unit="bottles", status="low"),
@@ -436,7 +443,8 @@ async def get_recent_activity(
             ))
 
         return pours
-    except Exception:
+    except Exception as e:
+        logger.warning(f"Failed to query recent bar activity for venue {venue_id}: {e}")
         return [
             RecentPourResponse(id=1, drink_name="Mojito", bartender="Alex", time="2 min ago", type="sale", amount="1x", cost=2.15),
             RecentPourResponse(id=2, drink_name="Beer Draft", bartender="Maria", time="5 min ago", type="sale", amount="2x", cost=1.80),

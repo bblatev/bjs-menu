@@ -32,7 +32,7 @@ async def create_floor_plan(
 ):
 
     """Create a new floor plan"""
-    if current_user.role not in ["admin", "manager"]:
+    if current_user.role not in ["owner", "manager"]:
         raise HTTPException(status_code=403, detail="Not authorized")
 
     # Deactivate other floor plans for this venue
@@ -156,7 +156,7 @@ async def update_floor_plan(
     current_user: StaffUser = Depends(get_current_user)
 ):
     """Update a floor plan"""
-    if current_user.role not in ["admin", "manager"]:
+    if current_user.role not in ["owner", "manager"]:
         raise HTTPException(status_code=403, detail="Not authorized")
 
     floor_plan = db.query(FloorPlan).filter(
@@ -281,7 +281,7 @@ async def activate_floor_plan(
     current_user: StaffUser = Depends(get_current_user)
 ):
     """Set a floor plan as the active one"""
-    if current_user.role not in ["admin", "manager"]:
+    if current_user.role not in ["owner", "manager"]:
         raise HTTPException(status_code=403, detail="Not authorized")
 
     floor_plan = db.query(FloorPlan).filter(
@@ -312,7 +312,7 @@ async def delete_floor_plan(
     current_user: StaffUser = Depends(get_current_user)
 ):
     """Delete a floor plan"""
-    if current_user.role not in ["admin", "manager"]:
+    if current_user.role not in ["owner", "manager"]:
         raise HTTPException(status_code=403, detail="Not authorized")
 
     floor_plan = db.query(FloorPlan).filter(

@@ -6,6 +6,7 @@ Competitor: Toast Go, Square Terminal, TouchBistro Mobile
 
 import json
 import hashlib
+import logging
 from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional, Tuple
 from uuid import UUID, uuid4
@@ -16,6 +17,8 @@ from app.core.config import settings
 from app.models.gap_features_models import (
     PushToken, PushNotification, EmployeeAppSession, CustomerAppSession
 )
+
+logger = logging.getLogger(__name__)
 
 
 class MobileOfflineService:
@@ -687,7 +690,8 @@ class PushNotificationService:
                 )
                 if notification.status == "sent":
                     sent_count += 1
-            except Exception:
+            except Exception as e:
+                logger.warning(f"Failed to send push notification to token {token.token[:8]}...: {e}")
                 continue
 
         return sent_count

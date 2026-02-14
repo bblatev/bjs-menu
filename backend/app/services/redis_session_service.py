@@ -188,7 +188,8 @@ class RedisSessionService:
                 # Count active learning sessions
                 keys = self._client.keys(f"{self.SESSION_PREFIX}*")
                 stats["redis_sessions"] = len(keys)
-            except Exception:
+            except Exception as e:
+                logger.warning(f"Failed to count Redis sessions: {e}")
                 stats["redis_sessions"] = "error"
 
         return stats

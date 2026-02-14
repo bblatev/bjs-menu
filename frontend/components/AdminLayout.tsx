@@ -7,6 +7,7 @@ import dynamic from 'next/dynamic';
 import { ThemeToggle } from '@/components/ui/ThemeProvider';
 import { SkipLink } from '@/components/ui/SkipLink';
 import { getVenueId } from '@/lib/auth';
+import { TOKEN_KEY } from '@/lib/api';
 
 const RealtimeNotifications = dynamic(
   () => import('./RealtimeNotifications'),
@@ -20,9 +21,9 @@ const navigationGroups = [
     items: [
       { name: 'Dashboard', href: '/dashboard', icon: '📊' },
       { name: 'Waiter Terminal', href: '/waiter', icon: '🧑‍🍳' },
-      { name: 'Orders', href: '/orders', icon: '📋', badge: 12 },
+      { name: 'Orders', href: '/orders', icon: '📋' },
       { name: 'Tables', href: '/tables', icon: '🪑' },
-      { name: 'Reservations', href: '/reservations', icon: '📅', badge: 3 },
+      { name: 'Reservations', href: '/reservations', icon: '📅' },
     ]
   },
   {
@@ -210,6 +211,17 @@ const navigationGroups = [
   },
 ];
 
+// Decode JWT payload without verification (for display only)
+function parseJwtPayload(token: string): { email?: string; role?: string } | null {
+  try {
+    const base64 = token.split('.')[1];
+    if (!base64) return null;
+    return JSON.parse(atob(base64));
+  } catch {
+    return null;
+  }
+}
+
 export default function AdminLayout({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const [sidebarOpen, setSidebarOpen] = useState(true);
@@ -217,6 +229,18 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
   const [searchTerm, setSearchTerm] = useState('');
   const [searchResults, setSearchResults] = useState<{name: string, href: string, icon: string, group: string}[]>([]);
   const [showSearch, setShowSearch] = useState(false);
+
+  // Get user info from JWT token
+  const [userInfo, setUserInfo] = useState<{ email: string; role: string }>({ email: '', role: '' });
+  useEffect(() => {
+    const token = localStorage.getItem(TOKEN_KEY);
+    if (token) {
+      const payload = parseJwtPayload(token);
+      if (payload?.email) {
+        setUserInfo({ email: payload.email, role: payload.role || 'staff' });
+      }
+    }
+  }, []);
 
   // Auto-expand group containing current page
   useEffect(() => {
@@ -402,32 +426,16 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
           })}
         </nav>
 
-        {/* Quick Stats */}
-        {sidebarOpen && (
-          <div className="border-t border-surface-100 p-3">
-            <div className="grid grid-cols-2 gap-2 text-center text-xs">
-              <div className="bg-green-50 rounded-lg p-2">
-                <div className="text-green-600 font-bold">12</div>
-                <div className="text-green-700">Orders</div>
-              </div>
-              <div className="bg-blue-50 rounded-lg p-2">
-                <div className="text-blue-600 font-bold">8</div>
-                <div className="text-blue-700">Tables</div>
-              </div>
-            </div>
-          </div>
-        )}
-
         {/* User Profile */}
         <div className="border-t border-surface-100 p-3">
           <div className={`flex items-center gap-3 ${sidebarOpen ? '' : 'justify-center'}`}>
             <div className="w-9 h-9 rounded-full bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center text-white font-semibold text-sm">
-              AD
+              {(userInfo.email || 'U').substring(0, 2).toUpperCase()}
             </div>
             {sidebarOpen && (
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-surface-900 truncate">Admin</p>
-                <p className="text-xs text-surface-500 truncate">admin@v99pos.com</p>
+                <p className="text-sm font-medium text-surface-900 truncate capitalize">{userInfo.role || 'User'}</p>
+                <p className="text-xs text-surface-500 truncate">{userInfo.email || ''}</p>
               </div>
             )}
           </div>
@@ -483,7 +491,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
               </Link>
 
               {/* Version */}
-              <span className="text-xs text-surface-400 font-mono">v9.0</span>
+              <span className="text-xs text-surface-400 font-mono">v9.0.0</span>
             </div>
           </div>
         </header>

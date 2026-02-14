@@ -1,5 +1,6 @@
 """Staff management routes - comprehensive CRUD for staff, shifts, time clock, performance, tips."""
 
+import logging
 from typing import List, Optional, Dict
 from datetime import datetime, date, time, timedelta, timezone
 from fastapi import APIRouter, HTTPException, Body, Query, Request
@@ -21,6 +22,8 @@ from app.schemas.staff import (
     TipPoolCreate, TipPoolResponse,
     TimeClockEntryResponse,
 )
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -786,7 +789,8 @@ def get_performance_goals(request: Request, db: DbSession):
     """Get performance goals."""
     try:
         goals = db.query(PerformanceGoal).all()
-    except Exception:
+    except Exception as e:
+        logger.warning(f"Failed to query performance goals: {e}")
         db.rollback()
         goals = []
 

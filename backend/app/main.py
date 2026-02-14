@@ -200,8 +200,7 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
             "frame-src https://js.stripe.com; "
             "font-src 'self' data:;"
         )
-        if not settings.debug:
-            response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
+        # Note: HSTS is set at the nginx layer to avoid duplicate headers
         return response
 
 
@@ -410,9 +409,9 @@ class AuditLoggingMiddleware(BaseHTTPMiddleware):
                         "status_code": response.status_code,
                     },
                 )
-            except Exception:
-                # Never let audit logging break the request
-                pass
+            except Exception as e:
+                # Never let audit logging break the request, but log the failure
+                logger.warning(f"Audit logging failed for {method} {path}: {e}")
 
         return response
 
@@ -428,22 +427,37 @@ async def lifespan(app: FastAPI):
         Base.metadata.create_all(bind=engine)
         logger.info("Database tables created (SQLite mode)")
 
-    # Audit log retention: archive entries older than 90 days on startup
+    # Audit log retention: purge entries older than 90 days on startup
+    # Uses a flag in AppSetting to only run once per day
+    retention_db = None
     try:
         from datetime import datetime, timedelta, timezone
         from app.db.session import SessionLocal
-        from app.models.operations import AuditLogEntry
+        from app.models.operations import AuditLogEntry, AppSetting
         retention_db = SessionLocal()
-        cutoff = datetime.now(timezone.utc) - timedelta(days=90)
-        deleted = retention_db.query(AuditLogEntry).filter(
-            AuditLogEntry.created_at < cutoff
-        ).delete(synchronize_session=False)
-        retention_db.commit()
-        retention_db.close()
-        if deleted:
-            logger.info(f"Audit log retention: purged {deleted} entries older than 90 days")
+        today_str = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+        last_run = retention_db.query(AppSetting).filter(
+            AppSetting.key == "audit_retention_last_run"
+        ).first()
+        if not last_run or last_run.value != today_str:
+            cutoff = datetime.now(timezone.utc) - timedelta(days=90)
+            deleted = retention_db.query(AuditLogEntry).filter(
+                AuditLogEntry.created_at < cutoff
+            ).delete(synchronize_session=False)
+            if last_run:
+                last_run.value = today_str
+            else:
+                retention_db.add(AppSetting(category="system", key="audit_retention_last_run", value=today_str))
+            retention_db.commit()
+            if deleted:
+                logger.info(f"Audit log retention: purged {deleted} entries older than 90 days")
+        else:
+            logger.debug("Audit log retention: already ran today, skipping")
     except Exception as e:
         logger.warning(f"Audit log retention skipped: {e}")
+    finally:
+        if retention_db:
+            retention_db.close()
 
     yield
 
@@ -455,7 +469,7 @@ app = FastAPI(
     description="Backend API for inventory scanning and management",
     version="1.0.0",
     lifespan=lifespan,
-    redirect_slashes=False,
+    redirect_slashes=True,
     docs_url="/docs" if settings.debug else None,
     redoc_url="/redoc" if settings.debug else None,
 )
@@ -515,14 +529,17 @@ def readiness_check():
     }
 
     # Check database connectivity
+    db = None
     try:
         db = SessionLocal()
         db.execute(text("SELECT 1"))
-        db.close()
         checks["database"] = "healthy"
     except Exception as e:
         logger.error(f"Database health check failed: {e}")
         checks["database"] = f"unhealthy: {str(e)}"
+    finally:
+        if db:
+            db.close()
 
     # Check Redis connectivity
     try:

@@ -29,12 +29,25 @@ ROLE_HIERARCHY = {
 
 
 class TokenData:
-    """Decoded token data."""
+    """Decoded token data.
 
-    def __init__(self, user_id: int, email: str, role: UserRole):
+    Attributes:
+        user_id: The user's database ID.
+        email: The user's email address.
+        role: The user's role (owner/manager/staff).
+        id: Alias for user_id (many route files use current_user.id).
+        venue_id: The venue ID from the token (defaults to 1 for single-venue).
+        full_name: The user's display name (defaults to email prefix).
+    """
+
+    def __init__(self, user_id: int, email: str, role: UserRole,
+                 venue_id: int = 1, full_name: str = ""):
         self.user_id = user_id
+        self.id = user_id  # Alias used by many route files
         self.email = email
         self.role = role
+        self.venue_id = venue_id
+        self.full_name = full_name or email.split("@")[0]
 
 
 async def get_current_user(
@@ -69,7 +82,13 @@ async def get_current_user(
             detail="Invalid role in token",
         )
 
-    return TokenData(user_id=int(user_id), email=email, role=user_role)
+    venue_id = payload.get("venue_id", 1)
+    full_name = payload.get("full_name", "")
+    return TokenData(
+        user_id=int(user_id), email=email, role=user_role,
+        venue_id=int(venue_id) if venue_id else 1,
+        full_name=full_name or "",
+    )
 
 
 def require_role(minimum_role: UserRole):
@@ -123,7 +142,13 @@ async def get_optional_current_user(
     except ValueError:
         return None
 
-    return TokenData(user_id=int(user_id), email=email, role=user_role)
+    venue_id = payload.get("venue_id", 1)
+    full_name = payload.get("full_name", "")
+    return TokenData(
+        user_id=int(user_id), email=email, role=user_role,
+        venue_id=int(venue_id) if venue_id else 1,
+        full_name=full_name or "",
+    )
 
 
 OptionalCurrentUser = Annotated[Optional[TokenData], Depends(get_optional_current_user)]
@@ -134,4 +159,4 @@ async def get_current_venue(
 ) -> int:
     """Extract venue_id from the current user's token.
     Returns 1 as default venue for single-venue deployments."""
-    return getattr(current_user, 'venue_id', 1)
+    return current_user.venue_id

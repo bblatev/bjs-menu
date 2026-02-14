@@ -411,7 +411,7 @@ export default function PourCostsPage() {
 
       {/* Add Item Modal */}
       {showModal && (
-        <div className="fixed inset-0 bg-white/50 flex items-center justify-center z-50">
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
           <div className="bg-white rounded-2xl w-full max-w-lg mx-4 shadow-xl">
             <div className="p-6 border-b border-surface-200">
               <h2 className="text-xl font-semibold text-surface-900">Add Pour Cost Item</h2>

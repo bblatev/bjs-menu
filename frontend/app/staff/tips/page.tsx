@@ -453,7 +453,7 @@ export default function TipsManagerPage() {
 
       {/* Add Pool Modal */}
       {showAddModal && (
-        <div className="fixed inset-0 bg-white/50 flex items-center justify-center z-50">
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
           <div className="bg-white rounded-2xl w-full max-w-lg mx-4 shadow-xl">
             <div className="p-6 border-b border-surface-200">
               <h2 className="text-xl font-semibold text-surface-900">Add Tip Pool</h2>
@@ -566,7 +566,7 @@ export default function TipsManagerPage() {
 
       {/* Distribution Modal */}
       {showDistributeModal && selectedPool && (
-        <div className="fixed inset-0 bg-white/50 flex items-center justify-center z-50">
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
           <div className="bg-white rounded-2xl w-full max-w-2xl mx-4 shadow-xl max-h-[90vh] overflow-y-auto">
             <div className="p-6 border-b border-surface-200">
               <h2 className="text-xl font-semibold text-surface-900">

@@ -13,11 +13,21 @@ logger = logging.getLogger(__name__)
 
 
 class SimpleCache:
-    """In-memory cache with TTL support."""
+    """In-memory cache with TTL support and size limit."""
+
+    MAX_ENTRIES = 10000  # Prevent unbounded memory growth
 
     def __init__(self):
         self._cache: dict = {}
         self._expiry: dict = {}
+
+    def _evict_expired(self):
+        """Remove expired entries to reclaim memory."""
+        now = datetime.now()
+        expired = [k for k, exp in self._expiry.items() if exp <= now]
+        for k in expired:
+            self._cache.pop(k, None)
+            self._expiry.pop(k, None)
 
     def get(self, key: str) -> Optional[Any]:
         """Get value from cache if not expired."""
@@ -32,6 +42,15 @@ class SimpleCache:
 
     def set(self, key: str, value: Any, ttl_seconds: int = 300):
         """Set value in cache with TTL."""
+        # Evict expired entries if approaching limit
+        if len(self._cache) >= self.MAX_ENTRIES:
+            self._evict_expired()
+        # If still at limit after eviction, remove oldest entries
+        if len(self._cache) >= self.MAX_ENTRIES:
+            oldest_keys = sorted(self._expiry, key=self._expiry.get)[:100]
+            for k in oldest_keys:
+                self._cache.pop(k, None)
+                self._expiry.pop(k, None)
         self._cache[key] = value
         self._expiry[key] = datetime.now() + timedelta(seconds=ttl_seconds)
 

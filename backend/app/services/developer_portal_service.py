@@ -4,6 +4,7 @@ Implements developer portal, API key management, and marketplace
 Competitor: Toast Developer Portal, Square Developer Platform, Clover App Market
 """
 
+import logging
 import secrets
 import hashlib
 from datetime import datetime, timedelta
@@ -16,6 +17,8 @@ from app.models.gap_features_models import (
     Developer, APIKey, APILog, MarketplaceApp, AppInstallation,
     AppReview, AppStatus, PricingType
 )
+
+logger = logging.getLogger(__name__)
 
 
 class DeveloperPortalService:
@@ -813,5 +816,6 @@ class MarketplaceService:
                     timeout=10.0
                 )
                 return response.status_code < 400
-        except Exception:
+        except Exception as e:
+            logger.warning(f"Failed to deliver webhook to {app.webhook_url} for event {event_type}: {e}")
             return False

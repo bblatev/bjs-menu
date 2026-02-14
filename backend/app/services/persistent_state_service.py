@@ -13,10 +13,13 @@ When feature flags are enabled, state is persisted to survive restarts.
 """
 
 import json
+import logging
 import hashlib
 from datetime import datetime, timedelta
 from typing import Optional, Dict, Any, List
 from functools import wraps
+
+logger = logging.getLogger(__name__)
 
 from sqlalchemy.orm import Session
 from sqlalchemy import Column, Integer, String, DateTime, Text, JSON
@@ -183,7 +186,8 @@ class PersistentStateService:
             if value is None:
                 return default
             return json.loads(value)
-        except Exception:
+        except Exception as e:
+            logger.warning(f"Redis GET failed for {namespace}:{key}: {e}")
             return default
 
     def _redis_set(
@@ -201,14 +205,16 @@ class PersistentStateService:
             else:
                 self.redis.set(redis_key, serialized)
             return True
-        except Exception:
+        except Exception as e:
+            logger.warning(f"Redis SET failed for {namespace}:{key}: {e}")
             return False
 
     def _redis_delete(self, namespace: str, key: str) -> bool:
         try:
             redis_key = f"{namespace}:{key}"
             return self.redis.delete(redis_key) > 0
-        except Exception:
+        except Exception as e:
+            logger.warning(f"Redis DELETE failed for {namespace}:{key}: {e}")
             return False
 
     def _redis_get_all(self, namespace: str) -> Dict[str, Any]:
@@ -222,7 +228,8 @@ class PersistentStateService:
                     short_key = key.decode().replace(f"{namespace}:", "")
                     result[short_key] = json.loads(value)
             return result
-        except Exception:
+        except Exception as e:
+            logger.warning(f"Redis GET_ALL failed for namespace {namespace}: {e}")
             return {}
 
 

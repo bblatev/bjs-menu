@@ -547,7 +547,8 @@ class TremolZFPLabDriver(FiscalPrinterDriver):
                 has_paper=not data.get("paper_end", False),
                 serial_number=data.get("serial_number")
             )
-        except Exception:
+        except Exception as e:
+            logger.warning(f"Failed to get Tremol printer status: {e}")
             return PrinterStatus(is_online=False)
 
     async def print_fiscal_receipt(
@@ -707,7 +708,8 @@ class DaisyFiscalDriver(FiscalPrinterDriver):
                 has_paper=data.get("paper", True),
                 serial_number=data.get("sn")
             )
-        except Exception:
+        except Exception as e:
+            logger.warning(f"Failed to get Daisy printer status: {e}")
             return PrinterStatus(is_online=False)
 
     async def print_fiscal_receipt(

@@ -1,5 +1,6 @@
 """Invoice OCR & AP Automation Service - Toast xtraCHEF style."""
 
+import logging
 import re
 import hashlib
 from datetime import datetime, timedelta, timezone
@@ -14,6 +15,8 @@ from app.models.invoice import (
 from app.models.product import Product
 from app.models.supplier import Supplier
 from app.services.ai.ocr_service import extract_text_from_image
+
+logger = logging.getLogger(__name__)
 
 
 class InvoiceOCRService:
@@ -142,8 +145,8 @@ class InvoiceOCRService:
                             break
                         except ValueError:
                             continue
-                except Exception:
-                    pass
+                except Exception as e:
+                    logger.warning(f"Failed to parse invoice date from OCR text: {e}")
                 break
 
         # Extract total amount

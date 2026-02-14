@@ -527,7 +527,7 @@ export default function TablesQrPage() {
       {/* QR Preview Modal */}
       {previewTable && (
         <>
-          <div className="fixed inset-0 bg-white/50 backdrop-blur-sm z-50" onClick={() => setPreviewTable(null)} />
+          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50" onClick={() => setPreviewTable(null)} />
           <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-50 w-full max-w-lg bg-white rounded-3xl shadow-2xl">
             <div className="p-6 border-b border-surface-100">
               <div className="flex items-center justify-between">

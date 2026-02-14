@@ -24,7 +24,7 @@ def require_manager(current_user = Depends(get_current_user)):
     """Require manager or above role."""
     if not hasattr(current_user, 'role'):
         return current_user
-    if current_user.role not in ("admin", "owner", "manager"):
+    if current_user.role not in ("owner", "manager"):
         raise HTTPException(status_code=403, detail="Manager access required")
     return current_user
 
@@ -224,7 +224,7 @@ async def get_staff_availability(
 ):
     """Get staff availability"""
     # Staff can view their own, managers can view all
-    if current_user.role not in ["admin", "manager"] and current_user.id != staff_id:
+    if current_user.role not in ["owner", "manager"] and current_user.id != staff_id:
         raise HTTPException(status_code=403, detail="Not authorized")
 
     service = get_shift_scheduling_service(db)
@@ -242,7 +242,7 @@ async def set_staff_availability(
 ):
     """Set staff availability for a day of week"""
     # Staff can set their own, managers can set all
-    if current_user.role not in ["admin", "manager"] and current_user.id != staff_id:
+    if current_user.role not in ["owner", "manager"] and current_user.id != staff_id:
         raise HTTPException(status_code=403, detail="Not authorized")
 
     service = get_shift_scheduling_service(db)

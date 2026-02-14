@@ -36,7 +36,7 @@ def require_manager(current_user = Depends(get_current_user)):
     """Require manager or above role."""
     if not hasattr(current_user, 'role'):
         return current_user
-    if current_user.role not in ("admin", "owner", "manager"):
+    if current_user.role not in ("owner", "manager"):
         raise HTTPException(status_code=403, detail="Manager access required")
     return current_user
 
@@ -669,7 +669,8 @@ async def upload_menu_item_photo(
             from app.services.upload_service import UploadService
             upload_service = UploadService()
             minio_available = True
-        except Exception:
+        except Exception as e:
+            logger.warning(f"MinIO/S3 upload service not available, falling back to local storage: {e}")
             minio_available = False
 
         if minio_available:
@@ -809,7 +810,7 @@ async def delete_menu_item_photo(
             if file_path.exists():
                 file_path.unlink()
     except Exception as e:
-        logger.debug(f"Optional: cleanup uploaded photo file: {e}")
+        logger.warning(f"Failed to cleanup uploaded photo file for photo {photo_id}: {e}")
 
     recipe_data["photos"] = photos
     item.recipe_json = recipe_data

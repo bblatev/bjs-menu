@@ -6,8 +6,9 @@ from datetime import datetime, date, timedelta
 from app.db.session import get_db
 from app.schemas.waiter_call import WaiterCallCreate, WaiterCallResponse, WaiterCallStatusUpdate
 from app.services.waiter_call_service import WaiterCallService
-from app.core.rbac import get_current_user
+from app.core.rbac import get_current_user, TokenData
 from app.models.hardware import WaiterCall
+from app.models.platform_compat import WaiterCallStatus
 from pydantic import BaseModel
 from app.core.rate_limit import limiter
 
@@ -40,7 +41,7 @@ def create_waiter_call(request: Request, call_data: WaiterCallCreate, db: Sessio
 def get_active_calls(
     request: Request,
     db: Session = Depends(get_db),
-    current_user: StaffUser = Depends(get_current_user)
+    current_user: TokenData = Depends(get_current_user)
 ):
     """Get active waiter calls (staff only)."""
     service = WaiterCallService(db)
@@ -58,7 +59,7 @@ def get_call_history(
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=100),
     db: Session = Depends(get_db),
-    current_user: StaffUser = Depends(get_current_user)
+    current_user: TokenData = Depends(get_current_user)
 ):
     """Get waiter call history with filters (staff only)."""
     query = db.query(WaiterCall)
@@ -95,7 +96,7 @@ def get_call_history(
 def get_call_stats(
     request: Request,
     db: Session = Depends(get_db),
-    current_user: StaffUser = Depends(get_current_user)
+    current_user: TokenData = Depends(get_current_user)
 ):
     """Get waiter call statistics for today (staff only)."""
     today_start = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
@@ -152,7 +153,7 @@ def get_calls_by_table(
     table_id: int,
     active_only: bool = True,
     db: Session = Depends(get_db),
-    current_user: StaffUser = Depends(get_current_user)
+    current_user: TokenData = Depends(get_current_user)
 ):
     """Get waiter calls for a specific table (staff only)."""
     query = db.query(WaiterCall).filter(WaiterCall.table_id == table_id)
@@ -183,7 +184,7 @@ def get_call_by_id(
     request: Request,
     call_id: int,
     db: Session = Depends(get_db),
-    current_user: StaffUser = Depends(get_current_user)
+    current_user: TokenData = Depends(get_current_user)
 ):
     """Get a specific waiter call by ID (staff only)."""
     call = db.query(WaiterCall).filter(WaiterCall.id == call_id).first()
@@ -210,7 +211,7 @@ def update_call_status(
     call_id: int,
     update: WaiterCallStatusUpdate,
     db: Session = Depends(get_db),
-    current_user: StaffUser = Depends(get_current_user)
+    current_user: TokenData = Depends(get_current_user)
 ):
     """Update waiter call status (staff only)."""
     service = WaiterCallService(db)
@@ -223,7 +224,7 @@ def delete_waiter_call(
     request: Request,
     call_id: int,
     db: Session = Depends(get_db),
-    current_user: StaffUser = Depends(get_current_user)
+    current_user: TokenData = Depends(get_current_user)
 ):
     """Delete a waiter call (staff only). Usually used for cleanup of old calls."""
     call = db.query(WaiterCall).filter(WaiterCall.id == call_id).first()
@@ -242,7 +243,7 @@ def cleanup_completed_calls(
     request: Request,
     older_than_days: int = Query(7, ge=1, le=365),
     db: Session = Depends(get_db),
-    current_user: StaffUser = Depends(get_current_user)
+    current_user: TokenData = Depends(get_current_user)
 ):
     """Delete old completed waiter calls for cleanup (staff only)."""
     cutoff_date = datetime.utcnow() - timedelta(days=older_than_days)

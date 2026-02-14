@@ -1225,7 +1225,7 @@ export default function MenuPage() {
       {/* Item Modal */}
       <AnimatePresence>
         {showItemModal && (
-          <div className="fixed inset-0 bg-white/50 flex items-center justify-center z-50 p-4">
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
             <motion.div
               initial={{ scale: 0.9, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
@@ -1365,7 +1365,7 @@ export default function MenuPage() {
       {/* Category Modal */}
       <AnimatePresence>
         {showCategoryModal && (
-          <div className="fixed inset-0 bg-white/50 flex items-center justify-center z-50 p-4">
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
             <motion.div
               initial={{ scale: 0.9, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
@@ -1445,7 +1445,7 @@ export default function MenuPage() {
       {/* Modifier Group Modal */}
       <AnimatePresence>
         {showModifierGroupModal && (
-          <div className="fixed inset-0 bg-white/50 flex items-center justify-center z-50 p-4">
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
             <motion.div
               initial={{ scale: 0.9, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
@@ -1543,7 +1543,7 @@ export default function MenuPage() {
       {/* Option Modal */}
       <AnimatePresence>
         {showOptionModal && (
-          <div className="fixed inset-0 bg-white/50 flex items-center justify-center z-50 p-4">
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
             <motion.div
               initial={{ scale: 0.9, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}

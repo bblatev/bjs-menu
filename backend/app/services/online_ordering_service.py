@@ -16,6 +16,7 @@ Features:
 - Group ordering
 """
 
+import logging
 from datetime import datetime, date, time
 from typing import Optional, List, Dict, Any, Tuple
 from sqlalchemy.orm import Session
@@ -24,6 +25,8 @@ import enum
 import math
 
 from app.models import DeliveryZone, DeliveryDriver
+
+logger = logging.getLogger(__name__)
 
 
 class OrderChannel(str, enum.Enum):
@@ -89,8 +92,9 @@ class OnlineOrderingService:
                     "is_active": zone.is_active,
                     "polygon": zone.polygon or []
                 }
-        except Exception:
+        except Exception as e:
             # If database query fails, initialize empty zones
+            logger.warning(f"Failed to load delivery zones from database: {e}")
             self._delivery_zones = {}
     
     # ========== DELIVERY ZONE MANAGEMENT ==========

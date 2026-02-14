@@ -875,7 +875,8 @@ def aggregate_features(feature_vectors: List[bytes]) -> bytes:
     for fv in feature_vectors:
         try:
             vectors.append(safe_loads(fv))
-        except Exception:
+        except Exception as e:
+            logger.warning(f"Failed to deserialize feature vector during aggregation: {e}")
             continue
 
     if not vectors:

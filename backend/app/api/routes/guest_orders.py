@@ -206,24 +206,11 @@ def _get_table_by_token(db: DbSession, token: str) -> dict:
             "area": db_table.area or "Main Floor",
         }
 
-    # Accept any token - create a real table entry
-    new_table = Table(
-        number=token.upper()[:8],
-        capacity=4,
-        status="available",
-        area="Main Floor",
-        token=token,
+    # Unknown token - reject instead of auto-creating (prevents DoS)
+    raise HTTPException(
+        status_code=404,
+        detail="Table not found. Please scan a valid table QR code.",
     )
-    db.add(new_table)
-    db.commit()
-    db.refresh(new_table)
-    return {
-        "id": new_table.id,
-        "number": new_table.number,
-        "capacity": new_table.capacity,
-        "status": new_table.status,
-        "area": "Main Floor",
-    }
 
 
 def _menu_item_to_dict(item: MenuItem) -> dict:

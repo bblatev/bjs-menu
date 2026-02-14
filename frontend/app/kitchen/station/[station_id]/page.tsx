@@ -28,7 +28,8 @@ export default function KitchenStationPage() {
     }
     setToken(storedToken);
     loadOrders(storedToken);
-    connectWebSocket(storedToken);
+    const cleanup = connectWebSocket(storedToken);
+    return cleanup;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [stationId]);
 
@@ -59,10 +60,12 @@ export default function KitchenStationPage() {
 
     socket.onopen = () => { /* WebSocket connected */ };
     socket.onmessage = (event) => {
-      const data = JSON.parse(event.data);
-      if (data.type === 'order_update') {
-        loadOrders(authToken);
-      }
+      try {
+        const data = JSON.parse(event.data);
+        if (data.type === 'order_update') {
+          loadOrders(authToken);
+        }
+      } catch { /* ignore malformed messages */ }
     };
     socket.onerror = () => { /* WebSocket error */ };
     socket.onclose = () => { /* WebSocket disconnected */ };

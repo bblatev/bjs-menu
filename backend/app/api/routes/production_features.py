@@ -275,7 +275,7 @@ async def analyze_staff_risk(
 
     Requires manager or admin role.
     """
-    if current_user.role not in ["admin", "manager"]:
+    if current_user.role not in ["owner", "manager"]:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Insufficient permissions"

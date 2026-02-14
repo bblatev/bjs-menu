@@ -82,7 +82,8 @@ def get_xero_status(request: Request, db: DbSession):
         row = db.execute(
             text("SELECT * FROM xero_connections ORDER BY id DESC LIMIT 1")
         ).fetchone()
-    except Exception:
+    except Exception as e:
+        logger.warning(f"Failed to query Xero connection status: {e}")
         return XeroConnectionStatus(connected=False)
 
     if not row:
@@ -181,7 +182,8 @@ def trigger_xero_sync(request: Request, db: DbSession, data: XeroSyncRequest):
             raise HTTPException(status_code=400, detail="Xero not connected")
     except HTTPException:
         raise
-    except Exception:
+    except Exception as e:
+        logger.warning(f"Failed to check Xero connection status for sync: {e}")
         raise HTTPException(status_code=400, detail="Xero not connected")
 
     # Log the sync attempt
@@ -239,7 +241,8 @@ def get_account_mappings(request: Request, db: DbSession):
         rows = db.execute(
             text("SELECT id, local_category, xero_account_code, xero_account_name, sync_direction, is_active FROM xero_account_mappings ORDER BY local_category")
         ).fetchall()
-    except Exception:
+    except Exception as e:
+        logger.warning(f"Failed to query Xero account mappings: {e}")
         return []
 
     return [
@@ -303,7 +306,8 @@ def get_sync_logs(
             text("SELECT id, sync_type, records_synced, status, started_at, completed_at, error_message FROM xero_sync_logs ORDER BY started_at DESC LIMIT :lim"),
             {"lim": limit}
         ).fetchall()
-    except Exception:
+    except Exception as e:
+        logger.warning(f"Failed to query Xero sync logs: {e}")
         return []
 
     return [

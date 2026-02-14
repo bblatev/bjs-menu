@@ -473,7 +473,7 @@ export default function BarRecipesPage() {
 
       {/* Recipe Detail Modal */}
       {selectedRecipe && (
-        <div className="fixed inset-0 bg-white/50 flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl w-full max-w-2xl shadow-xl max-h-[90vh] overflow-y-auto">
             <div className={`h-40 flex items-center justify-center text-8xl relative ${
               selectedRecipe.is_signature ? 'bg-gradient-to-br from-amber-100 to-amber-200' :

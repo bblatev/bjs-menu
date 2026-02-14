@@ -11,6 +11,7 @@ Features:
 - Local data encryption and security
 """
 
+import logging
 from datetime import datetime, timedelta
 from typing import List, Dict, Optional, Any
 from sqlalchemy.orm import Session
@@ -19,6 +20,8 @@ import json
 import hashlib
 import uuid
 import base64
+
+logger = logging.getLogger(__name__)
 
 
 class SyncStatus(str, Enum):
@@ -108,8 +111,8 @@ class TrueOfflineService:
         try:
             urllib.request.urlopen('https://www.google.com', timeout=2)
             return True
-        except Exception:
-            pass
+        except Exception as e:
+            logger.warning(f"Internet connectivity HTTP check failed: {e}")
 
         return False
     
@@ -129,7 +132,8 @@ class TrueOfflineService:
                 response = requests.get(endpoint, timeout=3)
                 if response.status_code in [200, 404]:  # 404 is ok, means we reached the server
                     return True
-            except Exception:
+            except Exception as e:
+                logger.warning(f"Payment gateway check failed for {endpoint}: {e}")
                 continue
 
         # If all gateways are unreachable, mark as offline
@@ -140,7 +144,8 @@ class TrueOfflineService:
         try:
             self.db.execute("SELECT 1")
             return True
-        except Exception:
+        except Exception as e:
+            logger.warning(f"Primary database connectivity check failed: {e}")
             return False
     
     def _check_replica_database(self) -> bool:
@@ -151,7 +156,8 @@ class TrueOfflineService:
             from sqlalchemy import text
             result = self.db.execute(text("SELECT 1 AS health_check"))
             return result.scalar() == 1
-        except Exception:
+        except Exception as e:
+            logger.warning(f"Replica database connectivity check failed: {e}")
             return False
     
     def _check_fiscal_service(self) -> bool:
@@ -170,7 +176,8 @@ class TrueOfflineService:
                 response = requests.get(endpoint, timeout=2)
                 if response.status_code == 200:
                     return True
-            except Exception:
+            except Exception as e:
+                logger.warning(f"Fiscal service check failed for {endpoint}: {e}")
                 continue
 
         # Fiscal service might be optional for some operations
@@ -192,7 +199,8 @@ class TrueOfflineService:
                 response = requests.head(endpoint, timeout=2)
                 if response.status_code in [200, 401, 403]:  # Service is up, even if auth fails
                     available_count += 1
-            except Exception:
+            except Exception as e:
+                logger.warning(f"Cloud service check failed for {endpoint}: {e}")
                 continue
 
         # Consider cloud services "available" if at least one responds
@@ -528,8 +536,8 @@ class TrueOfflineService:
             )
             self.db.add(sync_log)
             self.db.commit()
-        except Exception:
-            pass
+        except Exception as e:
+            logger.warning(f"Failed to log sync_started event for venue {venue_id}, terminal {self.terminal_id}: {e}")
 
         queue = self._get_all_pending_transactions()
 
@@ -538,8 +546,8 @@ class TrueOfflineService:
             try:
                 sync_log.transactions_queued = len(queue)
                 self.db.commit()
-            except Exception:
-                pass
+            except Exception as e:
+                logger.warning(f"Failed to update sync log queue count for terminal {self.terminal_id}: {e}")
 
         # Sort by sequence number to maintain order
         queue.sort(key=lambda x: x.get("sequence_number", 0))
@@ -628,8 +636,8 @@ class TrueOfflineService:
             )
             self.db.add(completed_log)
             self.db.commit()
-        except Exception:
-            pass
+        except Exception as e:
+            logger.warning(f"Failed to log sync_completed event for venue {venue_id}, terminal {self.terminal_id}: {e}")
 
         return results
     
@@ -1313,4 +1321,4 @@ class TrueOfflineService:
         except Exception as e:
             # Don't fail the connectivity check if logging fails
             self.db.rollback()
-            pass
+            logger.warning(f"Failed to log connectivity change for terminal {self.terminal_id}: {e}")

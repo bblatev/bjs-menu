@@ -281,99 +281,73 @@ class SMSPreview(BaseModel):
 # ---------------------------------------------------------------------------
 
 class GoogleSlot(BaseModel):
-    """A single bookable time slot for Google Reserve."""
-    slot_id: str
-    start_time: datetime
-    end_time: datetime
-    party_size: int = Field(..., ge=1)
-    available: bool = True
-    resource_id: Optional[str] = None
+    """A time slot for Reserve with Google v3 API."""
+    start_time: str  # ISO 8601 datetime string
+    duration_seconds: int
 
 
 class GoogleAvailabilityRequest(BaseModel):
-    """Request availability from Google Reserve."""
-    merchant_id: str
-    service_id: Optional[str] = None
-    start_time: datetime
-    end_time: datetime
-    party_size: int = Field(..., ge=1, le=100)
-    resource_ids: Optional[List[str]] = None
+    """Check availability request (Reserve with Google v3)."""
+    slot: GoogleSlot
+    party_size: int = Field(..., ge=1)
 
 
 class GoogleAvailabilityResponse(BaseModel):
-    """Availability response for Google Reserve."""
-    merchant_id: str
-    slots: List[GoogleSlot] = []
-    next_page_token: Optional[str] = None
+    """Availability response (Reserve with Google v3)."""
+    slot: GoogleSlot
+    count_available: int
 
 
 class GoogleUserInfo(BaseModel):
-    """User information provided by Google during booking."""
-    google_user_id: Optional[str] = None
-    given_name: str
-    family_name: str
+    """User information from Google during booking."""
+    user_id: Optional[str] = None
+    given_name: Optional[str] = None
+    family_name: Optional[str] = None
     email: Optional[str] = None
     phone: Optional[str] = None
-    language_code: Optional[str] = "en"
 
 
 class GoogleBookingRequest(BaseModel):
-    """Booking request from Google Reserve."""
-    slot_id: str
-    merchant_id: str
-    service_id: Optional[str] = None
-    party_size: int = Field(..., ge=1, le=100)
-    user_info: GoogleUserInfo
+    """Create booking request (Reserve with Google v3)."""
+    slot: GoogleSlot
+    user_information: GoogleUserInfo
+    party_size: int = Field(..., ge=1)
     idempotency_token: str
     additional_request: Optional[str] = None
-    payment_info: Optional[Dict[str, Any]] = None
+
+
+class _GoogleBookingData(BaseModel):
+    """Nested booking object inside update request."""
+    booking_id: str
+    slot: Optional[GoogleSlot] = None
+    party_size: Optional[int] = None
+    user_information: Optional[GoogleUserInfo] = None
 
 
 class GoogleBookingResponse(BaseModel):
-    """Booking response for Google Reserve."""
+    """Booking response (Reserve with Google v3)."""
     booking_id: str
-    slot_id: str
-    merchant_id: str
-    status: str = "confirmed"
-    user_info: GoogleUserInfo
+    slot: GoogleSlot
+    user_information: GoogleUserInfo
     party_size: int
-    start_time: datetime
-    end_time: datetime
-    confirmation_code: Optional[str] = None
-    prepayment_status: Optional[str] = None
-    created_at: datetime
+    status: str
 
 
 class GoogleBookingStatusRequest(BaseModel):
-    """Request to check booking status via Google Reserve."""
+    """Get booking status request."""
     booking_id: str
-    merchant_id: str
 
 
 class GoogleBookingUpdateRequest(BaseModel):
-    """Request to update an existing Google booking."""
-    booking_id: str
-    merchant_id: str
-    slot_id: Optional[str] = None
-    party_size: Optional[int] = Field(None, ge=1, le=100)
-    start_time: Optional[datetime] = None
-    end_time: Optional[datetime] = None
-    status: Optional[str] = None
+    """Update booking request (Reserve with Google v3)."""
+    booking: _GoogleBookingData
 
 
 class GoogleCancelRequest(BaseModel):
-    """Request to cancel a Google Reserve booking."""
+    """Cancel booking request."""
     booking_id: str
-    merchant_id: str
-    cancel_reason: Optional[str] = None
-    cancelled_by: str = "user"  # user | merchant
 
 
 class GoogleHealthCheckResponse(BaseModel):
-    """Health check response for the Google Reserve integration."""
-    status: str = "healthy"
-    server_time: datetime
-    api_version: str = "v2"
-    merchant_count: int = 0
-    supported_features: List[str] = []
-    latency_ms: Optional[float] = None
+    """Health check response for Reserve with Google."""
+    serving_status: str = "SERVING"

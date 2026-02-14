@@ -555,7 +555,8 @@ def get_status() -> Dict[str, Any]:
         try:
             import torch
             status["device"] = "cuda" if torch.cuda.is_available() else "cpu"
-        except Exception:
+        except Exception as e:
+            logger.warning(f"Failed to detect CLIP device type: {e}")
             status["device"] = "unknown"
 
     return status

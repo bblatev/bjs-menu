@@ -1370,7 +1370,7 @@ async def get_worker_stats(
     Get background worker statistics.
     Requires admin privileges.
     """
-    if current_user.role not in ["admin", "owner"]:
+    if current_user.role not in ["owner"]:
         raise HTTPException(status_code=403, detail="Admin access required")
 
     from app.services.background_workers import worker_manager
@@ -1393,7 +1393,7 @@ async def schedule_task(
     Schedule a background task.
     Requires admin privileges.
     """
-    if current_user.role not in ["admin", "owner"]:
+    if current_user.role not in ["owner"]:
         raise HTTPException(status_code=403, detail="Admin access required")
 
     from app.services.background_workers import schedule_task as bg_schedule, TaskPriority
@@ -1425,7 +1425,7 @@ async def get_task_status(
     current_user: Staff = Depends(get_current_user)
 ):
     """Get status of a background task."""
-    if current_user.role not in ["admin", "owner"]:
+    if current_user.role not in ["owner"]:
         raise HTTPException(status_code=403, detail="Admin access required")
 
     from app.services.background_workers import worker_manager
@@ -1461,7 +1461,7 @@ async def trigger_task(
     Immediately trigger a specific task type.
     Requires admin privileges.
     """
-    if current_user.role not in ["admin", "owner"]:
+    if current_user.role not in ["owner"]:
         raise HTTPException(status_code=403, detail="Admin access required")
 
     valid_tasks = [

@@ -26,7 +26,7 @@ def require_manager(current_user = Depends(get_current_user)):
     """Require manager or above role."""
     if not hasattr(current_user, 'role'):
         return current_user
-    if current_user.role not in ("admin", "owner", "manager"):
+    if current_user.role not in ("owner", "manager"):
         raise HTTPException(status_code=403, detail="Manager access required")
     return current_user
 
@@ -440,7 +440,7 @@ async def list_time_off_requests(
         query = query.filter(TimeOffRequestModel.staff_id == staff_id)
     else:
         # Non-managers can only see their own requests
-        if current_user.role not in [StaffRole.ADMIN, StaffRole.MANAGER]:
+        if current_user.role not in ["owner", "manager"]:
             query = query.filter(TimeOffRequestModel.staff_id == current_user.id)
 
     if status_filter:

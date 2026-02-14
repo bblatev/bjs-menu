@@ -478,7 +478,7 @@ export default function BarManagementPage() {
                 <div className="text-sm">
                   {alert.current_stock} / {alert.par_level} {alert.unit}
                 </div>
-                <div className="mt-2 h-2 bg-white/50 rounded-full overflow-hidden">
+                <div className="mt-2 h-2 bg-black/50 rounded-full overflow-hidden">
                   <div
                     className="h-full bg-current rounded-full opacity-50"
                     style={{ width: `${(alert.current_stock / alert.par_level) * 100}%` }}

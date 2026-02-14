@@ -339,21 +339,21 @@ export default function SubtablesPage() {
                                 {st.status === "available" ? (
                                   <button
                                     onClick={() => occupySubtable(st.id, st.seats)}
-                                    className="flex-1 px-2 py-1 bg-white/50 rounded text-xs hover:bg-white/80"
+                                    className="flex-1 px-2 py-1 bg-black/50 rounded text-xs hover:bg-white/80"
                                   >
                                     Seat
                                   </button>
                                 ) : (
                                   <button
                                     onClick={() => clearSubtable(st.id)}
-                                    className="flex-1 px-2 py-1 bg-white/50 rounded text-xs hover:bg-white/80"
+                                    className="flex-1 px-2 py-1 bg-black/50 rounded text-xs hover:bg-white/80"
                                   >
                                     Clear
                                   </button>
                                 )}
                                 <button
                                   onClick={() => deleteSubtable(st.id)}
-                                  className="px-2 py-1 bg-white/50 rounded text-xs text-red-500 hover:bg-white/80"
+                                  className="px-2 py-1 bg-black/50 rounded text-xs text-red-500 hover:bg-white/80"
                                   disabled={st.status === "occupied"}
                                 >
                                   ✕

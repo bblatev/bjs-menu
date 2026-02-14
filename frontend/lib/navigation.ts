@@ -9,6 +9,7 @@
  */
 
 import { useRouter } from 'next/navigation';
+import { clearAuth } from '@/lib/api';
 
 /**
  * Custom hook for navigation with consistent patterns.
@@ -56,10 +57,7 @@ export function useNavigation() {
      * Logout and redirect to login
      */
     logout: (loginPath: string = '/login') => {
-      if (typeof window !== 'undefined') {
-        localStorage.removeItem('access_token');
-        localStorage.removeItem('auth_token');
-      }
+      clearAuth();
       window.location.href = loginPath;
     },
   };

@@ -12,6 +12,7 @@ Features:
 - Drive-thru voice AI support
 """
 
+import logging
 from datetime import datetime, timedelta
 from typing import List, Dict, Optional, Any, Tuple
 from sqlalchemy.orm import Session
@@ -22,6 +23,8 @@ import os
 import tempfile
 import base64
 from app.core.config import settings
+
+logger = logging.getLogger(__name__)
 
 
 class VoiceChannelType(str, Enum):
@@ -855,7 +858,8 @@ class VoiceOrderingAIService:
                     "usual_order": self._get_customer_usual_order(customer.id)
                 }
             return None
-        except Exception:
+        except Exception as e:
+            logger.warning(f"Failed to look up customer by phone number {phone_number}: {e}")
             return None
     
     def _get_customer_usual_order(self, customer_id: int) -> Optional[List[Dict]]:
@@ -882,7 +886,8 @@ class VoiceOrderingAIService:
                 "price": float(item.price),
                 "quantity": 1
             } for item in frequent_items]
-        except Exception:
+        except Exception as e:
+            logger.warning(f"Failed to get usual order for customer {customer_id}: {e}")
             return None
     
     def _detect_language_from_phone(self, phone_number: str) -> str:
@@ -976,7 +981,8 @@ class VoiceOrderingAIService:
                         })
             
             return sorted(matches, key=lambda x: x["confidence"], reverse=True)[:3]
-        except Exception:
+        except Exception as e:
+            logger.warning(f"Failed to match voice input to menu items from database: {e}")
             # Fallback sample data
             menu_items = [
                 {"id": 1, "name": "Cheeseburger", "price": 8.50},
@@ -1008,7 +1014,8 @@ class VoiceOrderingAIService:
                 "name": mod.name,
                 "options": mod.options if isinstance(mod.options, list) else []
             } for mod in modifiers]
-        except Exception:
+        except Exception as e:
+            logger.warning(f"Failed to get required modifiers for menu item {item_id}: {e}")
             modifiers = {
                 1: [{"name": "cooking", "options": ["rare", "medium", "well done"]}]
             }

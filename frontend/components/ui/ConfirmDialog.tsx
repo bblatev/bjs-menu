@@ -27,6 +27,7 @@ export default function ConfirmDialog({
   onConfirm,
   onCancel,
 }: ConfirmDialogProps) {
+  const dialogRef = useRef<HTMLDivElement>(null);
   const confirmRef = useRef<HTMLButtonElement>(null);
 
   // Focus confirm button when dialog opens
@@ -36,10 +37,36 @@ export default function ConfirmDialog({
     }
   }, [open]);
 
-  // Handle escape key
+  // Handle escape key and focus trap
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
-      if (e.key === 'Escape') onCancel();
+      if (e.key === 'Escape') {
+        onCancel();
+        return;
+      }
+
+      // Focus trap: cycle focus between Cancel and Confirm buttons
+      if (e.key === 'Tab' && dialogRef.current) {
+        const focusableEls = dialogRef.current.querySelectorAll<HTMLElement>(
+          'button:not([disabled]), [tabindex]:not([tabindex="-1"])'
+        );
+        if (focusableEls.length === 0) return;
+
+        const firstEl = focusableEls[0];
+        const lastEl = focusableEls[focusableEls.length - 1];
+
+        if (e.shiftKey) {
+          if (document.activeElement === firstEl) {
+            e.preventDefault();
+            lastEl.focus();
+          }
+        } else {
+          if (document.activeElement === lastEl) {
+            e.preventDefault();
+            firstEl.focus();
+          }
+        }
+      }
     },
     [onCancel]
   );
@@ -63,6 +90,7 @@ export default function ConfirmDialog({
       aria-describedby="confirm-dialog-message"
     >
       <div
+        ref={dialogRef}
         className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-md w-full mx-4 p-6"
         onClick={(e) => e.stopPropagation()}
       >

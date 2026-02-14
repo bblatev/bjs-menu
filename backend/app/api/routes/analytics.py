@@ -1,5 +1,6 @@
 """Analytics, Conversational AI & Scale routes - Lightspeed/WISK style."""
 
+import logging
 from typing import List, Optional
 from datetime import datetime, date, timedelta, timezone
 from fastapi import APIRouter, HTTPException, Query, Request
@@ -22,6 +23,8 @@ from app.services.conversational_ai_service import ConversationalAIService
 from app.services.scale_service import (
     ScaleService, BottleWeightDatabaseService, InventoryCountingService
 )
+
+logger = logging.getLogger(__name__)
 from app.schemas.analytics import (
     MenuAnalysisResponse, MenuEngineeringReport,
     ServerPerformanceResponse, ServerRanking, ServerPerformanceReport,
@@ -275,8 +278,9 @@ def get_dashboard_stats(
         ).filter(*pos_filter).group_by(
             func.extract('hour', PosSalesLine.ts)
         ).all()
-    except Exception:
+    except Exception as e:
         # Fallback for SQLite
+        logger.warning(f"PostgreSQL EXTRACT failed for hourly stats, falling back to SQLite strftime: {e}")
         hourly_stats = db.query(
             func.strftime('%H', PosSalesLine.ts).label("hour"),
             func.count(PosSalesLine.id).label("count")
@@ -603,7 +607,8 @@ def get_daily_metrics(
             query = query.filter(DailyMetrics.date <= end_date)
 
         return query.order_by(DailyMetrics.date.desc()).limit(90).all()
-    except Exception:
+    except Exception as e:
+        logger.warning(f"Failed to query daily metrics (location_id={location_id}): {e}")
         db.rollback()
         return []
 

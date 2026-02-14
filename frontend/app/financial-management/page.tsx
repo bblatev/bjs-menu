@@ -1079,7 +1079,7 @@ export default function FinancialManagementPage() {
       {/* Transaction Modal */}
       <AnimatePresence>
         {showTransactionModal && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 bg-white/50 flex items-center justify-center z-50 p-4" onClick={() => setShowTransactionModal(false)}>
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => setShowTransactionModal(false)}>
             <motion.div initial={{ scale: 0.9, y: 20 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.9, y: 20 }} className="bg-white rounded-2xl p-6 max-w-lg w-full max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
               <h2 className="text-2xl font-bold text-gray-900 mb-6">Нова транзакция</h2>
               <form className="space-y-4">
@@ -1118,7 +1118,7 @@ export default function FinancialManagementPage() {
       {/* Invoice Modal */}
       <AnimatePresence>
         {showInvoiceModal && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 bg-white/50 flex items-center justify-center z-50 p-4" onClick={() => setShowInvoiceModal(false)}>
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => setShowInvoiceModal(false)}>
             <motion.div initial={{ scale: 0.9, y: 20 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.9, y: 20 }} className="bg-white rounded-2xl p-6 max-w-2xl w-full max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
               <h2 className="text-2xl font-bold text-gray-900 mb-6">Нова фактура</h2>
               <form className="space-y-4">
@@ -1158,7 +1158,7 @@ export default function FinancialManagementPage() {
       {/* Transaction Detail Modal */}
       <AnimatePresence>
         {selectedTransaction && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 bg-white/50 flex items-center justify-center z-50 p-4" onClick={() => setSelectedTransaction(null)}>
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => setSelectedTransaction(null)}>
             <motion.div initial={{ scale: 0.9, y: 20 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.9, y: 20 }} className="bg-white rounded-2xl p-6 max-w-md w-full" onClick={e => e.stopPropagation()}>
               <div className="flex items-start justify-between mb-6">
                 <h2 className="text-xl font-bold text-gray-900">Детайли на транзакция</h2>
@@ -1191,7 +1191,7 @@ export default function FinancialManagementPage() {
       {/* Invoice Detail Modal */}
       <AnimatePresence>
         {selectedInvoice && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 bg-white/50 flex items-center justify-center z-50 p-4" onClick={() => setSelectedInvoice(null)}>
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => setSelectedInvoice(null)}>
             <motion.div initial={{ scale: 0.9, y: 20 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.9, y: 20 }} className="bg-white rounded-2xl p-6 max-w-2xl w-full max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
               <div className="flex items-start justify-between mb-6">
                 <div>
@@ -1232,7 +1232,7 @@ export default function FinancialManagementPage() {
       {/* Vendor Detail Modal */}
       <AnimatePresence>
         {selectedVendor && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 bg-white/50 flex items-center justify-center z-50 p-4" onClick={() => setSelectedVendor(null)}>
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => setSelectedVendor(null)}>
             <motion.div initial={{ scale: 0.9, y: 20 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.9, y: 20 }} className="bg-white rounded-2xl p-6 max-w-2xl w-full max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
               <div className="flex items-start justify-between mb-6">
                 <div className="flex items-center gap-4">

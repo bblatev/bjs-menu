@@ -260,7 +260,7 @@ class Settings(BaseSettings):
     pos_default_connector: str = "csv"
 
     # Server
-    debug: bool = True
+    debug: bool = False
     log_level: Literal["DEBUG", "INFO", "WARNING", "ERROR"] = "INFO"
 
     # API

@@ -872,7 +872,8 @@ def create_inventory_snapshot(
     # Get the ID (use last_insert_rowid for SQLite, lastval for PostgreSQL)
     try:
         result = db.execute(text("SELECT last_insert_rowid()")).scalar()
-    except Exception:
+    except Exception as e:
+        logger.warning(f"SQLite last_insert_rowid() failed, falling back to PostgreSQL lastval(): {e}")
         result = db.execute(text("SELECT lastval()")).scalar()
 
     return SnapshotResponse(
@@ -1042,7 +1043,8 @@ def get_cycle_count_schedule(
             .all()
         )
         last_count_map = {r.product_id: r.last_counted for r in last_counts}
-    except Exception:
+    except Exception as e:
+        logger.warning(f"Failed to query last inventory count dates for location {location_id}: {e}")
         last_count_map = {}
 
     schedule = []

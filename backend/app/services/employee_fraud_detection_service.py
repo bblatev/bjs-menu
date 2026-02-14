@@ -13,12 +13,15 @@ Features:
 - Manager override tracking
 """
 
+import logging
 from datetime import datetime, timedelta
 from typing import List, Dict, Optional, Any, Tuple
 from sqlalchemy.orm import Session
 from enum import Enum
 import statistics
 import math
+
+logger = logging.getLogger(__name__)
 
 
 class FraudCategory(str, Enum):
@@ -847,7 +850,8 @@ class EmployeeFraudDetectionService:
 
             return trend_data
 
-        except Exception:
+        except Exception as e:
+            logger.warning(f"Failed to calculate fraud index trend from database for staff_id={staff_id}: {e}")
             # Fallback to in-memory data if database fails
             if staff_id in self.fraud_scores:
                 prev_index = self.fraud_scores[staff_id].get("previous_index", current_index)
@@ -938,8 +942,7 @@ class EmployeeFraudDetectionService:
 
         except Exception as e:
             self.db.rollback()
-            # Log error but don't fail the fraud calculation
-            print(f"Error saving fraud score to database: {e}")
+            logger.warning(f"Failed to save fraud score to database for staff_id={staff_id}: {e}")
 
     def _generate_fraud_alert(
         self,
@@ -991,8 +994,9 @@ class EmployeeFraudDetectionService:
                 "tip_amount": float(o.tip_amount or 0)
             } for o in orders]
         except Exception as e:
+            logger.warning(f"Failed to fetch employee transactions for staff_id={staff_id}: {e}")
             return []
-    
+
     def _get_employee_voids(self, staff_id: int, start: datetime, end: datetime) -> List[Dict]:
         """Get employee void transactions from database"""
         from app.models import Order, OrderStatus
@@ -1029,8 +1033,9 @@ class EmployeeFraudDetectionService:
 
             return results
         except Exception as e:
+            logger.warning(f"Failed to fetch employee voids for staff_id={staff_id}: {e}")
             return []
-    
+
     def _get_employee_discounts(self, staff_id: int, start: datetime, end: datetime) -> List[Dict]:
         """Get employee discount applications from database"""
         from app.models import PromotionUsage, Order, Promotion
@@ -1083,8 +1088,9 @@ class EmployeeFraudDetectionService:
             return results
 
         except Exception as e:
+            logger.warning(f"Failed to fetch employee discounts for staff_id={staff_id}: {e}")
             return []
-    
+
     def _get_employee_refunds(self, staff_id: int, start: datetime, end: datetime) -> List[Dict]:
         """Get employee refund transactions from database"""
         from app.models import OrderCancellation, Order
@@ -1155,8 +1161,9 @@ class EmployeeFraudDetectionService:
             return refunds
 
         except Exception as e:
+            logger.warning(f"Failed to fetch employee refunds for staff_id={staff_id}: {e}")
             return []
-    
+
     def _get_employee_cash_reports(self, staff_id: int, start: datetime, end: datetime) -> List[Dict]:
         """Get employee cash drawer reports from database"""
         from app.models import CashDrawer, CashDrawerTransaction
@@ -1190,9 +1197,10 @@ class EmployeeFraudDetectionService:
                 })
 
             return reports
-        except Exception:
+        except Exception as e:
+            logger.warning(f"Failed to fetch employee cash reports for staff_id={staff_id}: {e}")
             return []
-    
+
     def _get_employee_time_entries(self, staff_id: int, start: datetime, end: datetime) -> List[Dict]:
         """Get employee time clock entries from database"""
         from app.models import StaffShift, ClockEvent
@@ -1253,8 +1261,9 @@ class EmployeeFraudDetectionService:
 
             return entries
         except Exception as e:
+            logger.warning(f"Failed to fetch employee time entries for staff_id={staff_id}: {e}")
             return []
-    
+
     def _get_manager_overrides(self, staff_id: int, start: datetime, end: datetime) -> List[Dict]:
         """Get manager override actions from database"""
         from app.models import AuditLog
@@ -1284,9 +1293,10 @@ class EmployeeFraudDetectionService:
                 })
 
             return results
-        except Exception:
+        except Exception as e:
+            logger.warning(f"Failed to fetch manager overrides for staff_id={staff_id}: {e}")
             return []
-    
+
     def _get_venue_staff(self, venue_id: int) -> List[Dict]:
         """Get all staff for a venue"""
         from app.models import StaffUser
@@ -1302,9 +1312,10 @@ class EmployeeFraudDetectionService:
                 "name": s.full_name,
                 "role": s.role.value if hasattr(s.role, 'value') else str(s.role)
             } for s in staff]
-        except Exception:
+        except Exception as e:
+            logger.warning(f"Failed to fetch venue staff for venue_id={venue_id}: {e}")
             return []
-    
+
     def _get_venue_transactions(self, venue_id: int, start: datetime, end: datetime) -> List[Dict]:
         """Get all venue transactions for a period"""
         from app.models import Order, VenueStation
@@ -1325,9 +1336,10 @@ class EmployeeFraudDetectionService:
                 "total": float(o.total or 0),
                 "created_at": o.created_at.isoformat() if o.created_at else None
             } for o in orders]
-        except Exception:
+        except Exception as e:
+            logger.warning(f"Failed to fetch venue transactions for venue_id={venue_id}: {e}")
             return []
-    
+
     def _get_venue_voids(self, venue_id: int, start: datetime, end: datetime) -> List[Dict]:
         """Get all venue void transactions for a period"""
         from app.models import Order, VenueStation, OrderStatus
@@ -1349,9 +1361,10 @@ class EmployeeFraudDetectionService:
                 "amount": float(o.total or 0),
                 "voided_at": o.updated_at.isoformat() if o.updated_at else None
             } for o in voids]
-        except Exception:
+        except Exception as e:
+            logger.warning(f"Failed to fetch venue voids for venue_id={venue_id}: {e}")
             return []
-    
+
     def _detect_consecutive_voids(self, voids: List[Dict]) -> bool:
         """Detect if voids occurred consecutively (within 5 minutes of each other)"""
         if len(voids) < 2:
@@ -1599,9 +1612,10 @@ class EmployeeFraudDetectionService:
 
             return no_sales
 
-        except Exception:
+        except Exception as e:
+            logger.warning(f"Failed to fetch recent no-sale transactions for staff_id={staff_id}: {e}")
             return 0
-    
+
     def _get_shift_start_time(self, shift_id: str) -> datetime:
         """Get the start time of a shift from the database"""
         from app.models import StaffShift
@@ -1645,9 +1659,10 @@ class EmployeeFraudDetectionService:
                 "discount_amount": 0  # Would need to calculate from order items
             } for o in orders]
 
-        except Exception:
+        except Exception as e:
+            logger.warning(f"Failed to fetch transactions since {since} for staff_id={staff_id}: {e}")
             return []
-    
+
     def _get_staff_baseline(self, staff_id: int) -> Optional[Dict]:
         """Get baseline metrics for a staff member from historical data"""
         from app.models import Order, OrderCancellation
@@ -1688,9 +1703,10 @@ class EmployeeFraudDetectionService:
                 "total_transactions": total_orders
             }
 
-        except Exception:
+        except Exception as e:
+            logger.warning(f"Failed to fetch staff baseline metrics for staff_id={staff_id}: {e}")
             return None
-    
+
     def _calculate_shift_duration(self, start: datetime) -> int:
         return int((datetime.utcnow() - start).total_seconds() / 60)
     
@@ -1729,9 +1745,10 @@ class EmployeeFraudDetectionService:
             else:
                 return "stable"
 
-        except Exception:
+        except Exception as e:
+            logger.warning(f"Failed to calculate venue fraud trend for venue_id={venue_id}: {e}")
             return "stable"
-    
+
     def _get_venue_recommendations(self, indexes: List[Dict], alerts: List[Dict]) -> List[str]:
         """Generate venue-wide recommendations based on fraud analysis"""
         recommendations = []

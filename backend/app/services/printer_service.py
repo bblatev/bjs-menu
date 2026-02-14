@@ -556,8 +556,8 @@ class PrinterService:
         if self._socket:
             try:
                 self._socket.close()
-            except Exception:
-                pass
+            except Exception as e:
+                logger.warning(f"Failed to close printer socket for {self.config.name}: {e}")
             self._socket = None
 
     async def print_raw(self, data: bytes) -> bool:

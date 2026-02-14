@@ -117,7 +117,7 @@ export default function LoginPage() {
 
         {/* Version */}
         <p className="text-center text-xs text-gray-400 mt-8">
-          BJ&apos;s Bar POS v8.0.1
+          BJ&apos;s Bar POS v9.0.0
         </p>
       </div>
     </div>

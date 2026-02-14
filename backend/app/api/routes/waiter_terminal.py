@@ -1345,7 +1345,7 @@ async def apply_discount(
 
     # Check if manager approval needed (for discounts > 10%)
     if body.discount_type == "percent" and body.discount_value > 10:
-        if current_user.role not in [StaffRole.ADMIN, StaffRole.MANAGER]:
+        if current_user.role not in ["owner", "manager"]:
             if not body.manager_pin:
                 raise HTTPException(status_code=403, detail="Manager PIN required for discounts over 10%")
             # Verify manager PIN
@@ -1431,7 +1431,7 @@ async def void_item(
         raise HTTPException(status_code=404, detail="Item not found")
 
     # Verify manager approval
-    if current_user.role not in [StaffRole.ADMIN, StaffRole.MANAGER]:
+    if current_user.role not in ["owner", "manager"]:
         if not body.manager_pin:
             raise HTTPException(status_code=403, detail="Manager PIN required to void items")
         managers = db.query(StaffUser).filter(
@@ -1489,7 +1489,7 @@ async def comp_item(
         raise HTTPException(status_code=404, detail="Item not found")
 
     # Verify manager approval
-    if current_user.role not in [StaffRole.ADMIN, StaffRole.MANAGER]:
+    if current_user.role not in ["owner", "manager"]:
         if not body.manager_pin:
             raise HTTPException(status_code=403, detail="Manager PIN required to comp items")
         managers = db.query(StaffUser).filter(

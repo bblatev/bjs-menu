@@ -5,7 +5,7 @@ Handles sending email alerts and notifications
 
 import logging
 from typing import Optional, List
-from datetime import datetime
+from datetime import datetime, timezone
 
 logger = logging.getLogger(__name__)
 
@@ -180,7 +180,7 @@ def send_alert_email(
         <div class="alert {priority}">
             <h2>{subject}</h2>
             <p>{body.replace(chr(10), '<br>')}</p>
-            <p class="timestamp">Sent at: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}</p>
+            <p class="timestamp">Sent at: {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S')}</p>
         </div>
         <p style="color: #666; font-size: 11px;">
             BJ's Bar Borovets Alert System<br>
@@ -203,12 +203,12 @@ def send_daily_report(
     report_data: dict
 ) -> bool:
     """Send daily business report"""
-    subject = f"📊 Daily Report - {datetime.now().strftime('%Y-%m-%d')}"
+    subject = f"📊 Daily Report - {datetime.now(timezone.utc).strftime('%Y-%m-%d')}"
     
     body = f"""
 Daily Report for BJ's Bar Borovets
 
-Date: {datetime.now().strftime('%Y-%m-%d')}
+Date: {datetime.now(timezone.utc).strftime('%Y-%m-%d')}
 
 Revenue: €{report_data.get('revenue', 0):,.2f}
 Orders: {report_data.get('order_count', 0)}
