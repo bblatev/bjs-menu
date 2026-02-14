@@ -388,7 +388,7 @@ function GiftCardsTab() {
                 <button
                   onClick={() => setShowCreateModal(false)}
                   className="text-gray-400 hover:text-gray-900 text-2xl"
-                >
+                 aria-label="Close">
                   &times;
                 </button>
               </div>
@@ -504,7 +504,7 @@ function GiftCardsTab() {
                 <button
                   onClick={() => setShowDetailsModal(false)}
                   className="text-gray-400 hover:text-gray-900 text-2xl"
-                >
+                 aria-label="Close">
                   &times;
                 </button>
               </div>
@@ -1163,7 +1163,7 @@ export default function LoyaltyPage() {
                     setEditingPromo(null);
                   }}
                   className="text-gray-400 hover:text-gray-900 text-2xl"
-                >
+                 aria-label="Close">
                   &times;
                 </button>
               </div>

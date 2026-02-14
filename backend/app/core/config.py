@@ -55,6 +55,104 @@ class Settings(BaseSettings):
     smtp_use_tls: bool = True
 
     # ==========================================================================
+    # SMS/Communication
+    # ==========================================================================
+    sms_provider: str = "local"
+    sms_api_key: str = ""
+    sms_from_number: str = ""
+    email_provider: str = "smtp"
+    email_api_key: str = ""
+    email_from: str = ""
+    from_name: str = "V99 POS System"
+    twilio_account_sid: str = ""
+    twilio_auth_token: str = ""
+    twilio_from_number: str = ""
+    venue_phone: str = ""
+
+    # ==========================================================================
+    # AI/OpenAI
+    # ==========================================================================
+    openai_api_key: Optional[str] = None
+    stt_provider: str = "mock"
+    tts_provider: str = "mock"
+    openweather_api_key: Optional[str] = None
+
+    # ==========================================================================
+    # OCR
+    # ==========================================================================
+    ocr_provider: str = "tesseract"
+    tesseract_path: str = "/usr/bin/tesseract"
+    ocr_default_language: str = "bul+eng"
+    ocr_dpi: int = 300
+    ocr_confidence_threshold: float = 60.0
+
+    # ==========================================================================
+    # Payment Providers
+    # ==========================================================================
+    stripe_secret_key: Optional[str] = None
+    stripe_publishable_key: Optional[str] = None
+    stripe_webhook_secret: Optional[str] = None
+    stripe_currency: str = "usd"
+
+    # Bulgarian payment providers
+    borica_merchant_id: str = ""
+    borica_terminal_id: str = ""
+    borica_private_key_path: str = ""
+    borica_certificate_path: str = ""
+    borica_secret: str = "demo_secret"
+    borica_return_url: str = ""
+    borica_production: bool = False
+
+    epay_client_id: str = ""
+    epay_secret_key: str = ""
+    epay_success_url: str = ""
+    epay_cancel_url: str = ""
+    epay_production: bool = False
+
+    # ==========================================================================
+    # Delivery Platforms
+    # ==========================================================================
+    ubereats_client_id: str = ""
+    ubereats_client_secret: str = ""
+    ubereats_store_id: str = ""
+    ubereats_webhook_secret: str = ""
+    uber_eats_api_key: Optional[str] = None
+    uber_eats_store_id: Optional[str] = None
+
+    doordash_developer_id: str = ""
+    doordash_key_id: str = ""
+    doordash_signing_secret: str = ""
+    doordash_api_key: Optional[str] = None
+    doordash_store_id: str = ""
+
+    glovo_api_key: Optional[str] = None
+    glovo_store_id: Optional[str] = None
+
+    wolt_api_key: Optional[str] = None
+    wolt_venue_id: Optional[str] = None
+
+    # ==========================================================================
+    # Google Reserve
+    # ==========================================================================
+    google_webhook_secret: Optional[str] = None
+    google_reserve_api_key: Optional[str] = None
+    google_reserve_merchant_id: Optional[str] = None
+    google_reserve_partner_id: Optional[str] = None
+
+    # ==========================================================================
+    # QuickBooks
+    # ==========================================================================
+    qbo_client_id: Optional[str] = None
+    qbo_client_secret: Optional[str] = None
+    qbo_redirect_uri: Optional[str] = None
+    qbo_environment: str = "sandbox"
+
+    # ==========================================================================
+    # General
+    # ==========================================================================
+    environment: str = "development"
+
+    # ==========================================================================
     # External POS Integration
     # ==========================================================================
     external_pos_db_url: Optional[str] = None

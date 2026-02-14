@@ -1088,7 +1088,7 @@ export default function VIPManagementPage() {
                     {tierIcons[selectedCustomer.tier]} {selectedCustomer.tier.toUpperCase()}
                   </span>
                 </div>
-                <button onClick={() => setShowCustomerModal(false)} className="text-gray-400 hover:text-gray-900 text-2xl">
+                <button onClick={() => setShowCustomerModal(false)} className="text-gray-400 hover:text-gray-900 text-2xl" aria-label="Close">
                   &times;
                 </button>
               </div>

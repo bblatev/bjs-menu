@@ -12,6 +12,7 @@ from dataclasses import dataclass, field
 from enum import Enum
 from decimal import Decimal
 import os
+from app.core.config import settings
 
 logger = logging.getLogger(__name__)
 
@@ -97,10 +98,10 @@ class UberEatsService:
     BASE_URL = "https://api.uber.com/v1/eats"
 
     def __init__(self):
-        self.client_id = os.getenv("UBEREATS_CLIENT_ID", "")
-        self.client_secret = os.getenv("UBEREATS_CLIENT_SECRET", "")
-        self.store_id = os.getenv("UBEREATS_STORE_ID", "")
-        self.webhook_secret = os.getenv("UBEREATS_WEBHOOK_SECRET", "")
+        self.client_id = settings.ubereats_client_id
+        self.client_secret = settings.ubereats_client_secret
+        self.store_id = settings.ubereats_store_id
+        self.webhook_secret = settings.ubereats_webhook_secret
         self._access_token: Optional[str] = None
         self._token_expires: Optional[datetime] = None
 
@@ -359,10 +360,10 @@ class DoorDashService:
     BASE_URL = "https://openapi.doordash.com"
 
     def __init__(self):
-        self.developer_id = os.getenv("DOORDASH_DEVELOPER_ID", "")
-        self.key_id = os.getenv("DOORDASH_KEY_ID", "")
-        self.signing_secret = os.getenv("DOORDASH_SIGNING_SECRET", "")
-        self.store_id = os.getenv("DOORDASH_STORE_ID", "")
+        self.developer_id = settings.doordash_developer_id
+        self.key_id = settings.doordash_key_id
+        self.signing_secret = settings.doordash_signing_secret
+        self.store_id = settings.doordash_store_id
 
     def _create_jwt(self) -> str:
         """Create JWT for DoorDash API authentication"""
@@ -487,7 +488,7 @@ class DoorDashService:
                     json={
                         "external_delivery_id": f"V99-{datetime.utcnow().strftime('%Y%m%d%H%M%S')}",
                         "pickup_address": pickup_address,
-                        "pickup_phone_number": os.getenv("VENUE_PHONE", ""),
+                        "pickup_phone_number": settings.venue_phone,
                         "dropoff_address": dropoff_address,
                         "dropoff_phone_number": dropoff_phone,
                         "order_value": int(order_value * 100),

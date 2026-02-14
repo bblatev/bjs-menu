@@ -80,7 +80,7 @@ def check_server_health() -> bool:
     try:
         response = requests.get(f"{API_BASE}/health", timeout=5)
         return response.status_code == 200
-    except:
+    except Exception:
         return False
 
 
@@ -314,7 +314,7 @@ def main():
             response = requests.get(f"{API_BASE}/docs", timeout=5)
             if response.status_code != 200:
                 raise Exception("Server not responding")
-        except:
+        except Exception:
             logger.error("Server is not running. Start with:")
             logger.error("  AI_V2_ENABLED=true uvicorn app.main:app --port 8001")
             sys.exit(1)

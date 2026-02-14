@@ -13,6 +13,7 @@ from pydantic import BaseModel
 from app.db.session import get_db
 from app.services.dynamic_pricing_service import DynamicPricingService
 from app.models import DynamicPricingRule
+from app.core.config import settings
 
 
 
@@ -445,7 +446,7 @@ def get_weather_impact(
     import httpx
 
     # Try to fetch real weather data from OpenWeatherMap API
-    api_key = os.getenv('OPENWEATHER_API_KEY')
+    api_key = settings.openweather_api_key
     weather = None
 
     if api_key:

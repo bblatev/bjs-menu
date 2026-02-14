@@ -25,6 +25,7 @@ from app.core.rate_limit import limiter
 from app.db.session import get_db
 from app.models import Reservation, ReservationStatus, BookingSource, Table, Venue
 from app.schemas.reservations import (
+from app.core.config import settings
     GoogleSlot,
     GoogleAvailabilityRequest,
     GoogleAvailabilityResponse,
@@ -55,13 +56,13 @@ def verify_google_signature(request: Request, signature: str = Header(None, alia
     import os
 
     # Get webhook secret from environment
-    webhook_secret = os.getenv("GOOGLE_WEBHOOK_SECRET", "")
+    webhook_secret = settings.google_webhook_secret
 
     # If no secret configured, log warning but allow in non-production
     if not webhook_secret:
         import logging
         logger = logging.getLogger(__name__)
-        env = os.getenv("ENVIRONMENT", "development")
+        env = settings.environment
         if env == "production":
             logger.error("GOOGLE_WEBHOOK_SECRET not configured in production!")
             return False

@@ -1157,7 +1157,7 @@ export default function PriceTrackerPage() {
                   <h2 className="text-2xl font-bold text-gray-900">{selectedItem.itemName}</h2>
                   <p className="text-gray-600">{selectedItem.supplier} • {selectedItem.category}</p>
                 </div>
-                <button onClick={() => setSelectedItem(null)} className="text-gray-600 hover:text-gray-900 text-2xl">
+                <button onClick={() => setSelectedItem(null)} className="text-gray-600 hover:text-gray-900 text-2xl" aria-label="Close">
                   &times;
                 </button>
               </div>

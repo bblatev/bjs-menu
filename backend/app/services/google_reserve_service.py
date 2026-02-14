@@ -12,6 +12,7 @@ from typing import Optional, List, Dict, Any
 from dataclasses import dataclass, field
 from enum import Enum
 import httpx
+from app.core.config import settings
 
 logger = logging.getLogger(__name__)
 
@@ -423,10 +424,10 @@ def get_google_reserve_service() -> Optional[GoogleReserveService]:
     global _google_reserve_service
     if _google_reserve_service is None:
         import os
-        partner_id = os.getenv("GOOGLE_RESERVE_PARTNER_ID")
-        api_key = os.getenv("GOOGLE_RESERVE_API_KEY")
+        partner_id = settings.google_reserve_partner_id
+        api_key = settings.google_reserve_api_key
         webhook_secret = os.getenv("GOOGLE_RESERVE_WEBHOOK_SECRET")
-        merchant_id = os.getenv("GOOGLE_RESERVE_MERCHANT_ID")
+        merchant_id = settings.google_reserve_merchant_id
 
         if partner_id and api_key and merchant_id:
             _google_reserve_service = GoogleReserveService(

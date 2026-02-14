@@ -7,6 +7,7 @@ from dataclasses import dataclass
 from enum import Enum
 import json
 import httpx
+from app.core.config import settings
 
 logger = logging.getLogger(__name__)
 
@@ -762,9 +763,9 @@ def get_quickbooks_service() -> Optional[QuickBooksService]:
     global _qbo_service
     if _qbo_service is None:
         import os
-        client_id = os.getenv("QBO_CLIENT_ID")
-        client_secret = os.getenv("QBO_CLIENT_SECRET")
-        redirect_uri = os.getenv("QBO_REDIRECT_URI", "http://localhost:8000/api/v1/quickbooks/callback")
+        client_id = settings.qbo_client_id
+        client_secret = settings.qbo_client_secret
+        redirect_uri = settings.qbo_redirect_uri
 
         if client_id and client_secret:
             env = QBOEnvironment.PRODUCTION if os.getenv("QBO_PRODUCTION", "false").lower() == "true" else QBOEnvironment.SANDBOX

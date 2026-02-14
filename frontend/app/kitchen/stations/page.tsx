@@ -446,7 +446,7 @@ export default function KitchenStationsPage() {
               <h2 className="text-lg font-semibold text-surface-900">
                 {editingStation ? 'Edit Station' : 'Add New Station'}
               </h2>
-              <button onClick={handleCloseModal} className="p-1 rounded hover:bg-surface-100">
+              <button onClick={handleCloseModal} className="p-1 rounded hover:bg-surface-100" aria-label="Close">
                 <svg className="w-5 h-5 text-surface-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                 </svg>

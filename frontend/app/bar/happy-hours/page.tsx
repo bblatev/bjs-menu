@@ -415,7 +415,7 @@ export default function HappyHoursPage() {
                     resetForm();
                   }}
                   className="text-gray-400 hover:text-gray-900 text-2xl"
-                >
+                 aria-label="Close">
                   &times;
                 </button>
               </div>

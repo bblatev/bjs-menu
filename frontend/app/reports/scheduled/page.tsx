@@ -514,7 +514,7 @@ export default function ScheduledReportsPage() {
                           type="button"
                           onClick={() => removeRecipient(email)}
                           className="text-surface-400 hover:text-surface-600"
-                        >
+                         aria-label="Close">
                           &times;
                         </button>
                       </span>

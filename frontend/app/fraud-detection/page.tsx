@@ -983,7 +983,7 @@ export default function FraudDetectionPage() {
                 <button
                   onClick={() => setShowAlertModal(false)}
                   className="text-gray-400 hover:text-gray-900 text-2xl"
-                >
+                 aria-label="Close">
                   &times;
                 </button>
               </div>
@@ -1087,7 +1087,7 @@ export default function FraudDetectionPage() {
                 <button
                   onClick={() => setShowCaseModal(false)}
                   className="text-gray-400 hover:text-gray-900 text-2xl"
-                >
+                 aria-label="Close">
                   &times;
                 </button>
               </div>
@@ -1255,7 +1255,7 @@ export default function FraudDetectionPage() {
                 <button
                   onClick={() => setShowStaffModal(false)}
                   className="text-gray-400 hover:text-gray-900 text-2xl"
-                >
+                 aria-label="Close">
                   &times;
                 </button>
               </div>

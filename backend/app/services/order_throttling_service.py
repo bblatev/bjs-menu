@@ -17,6 +17,7 @@ from typing import List, Dict, Optional, Any
 from sqlalchemy.orm import Session
 from enum import Enum
 import statistics
+from app.core.config import settings
 
 
 class OrderChannel(str, Enum):
@@ -505,8 +506,8 @@ class OrderThrottlingService:
 
         try:
             # Get Uber Eats API credentials from environment
-            api_key = os.getenv("UBER_EATS_API_KEY")
-            store_id = os.getenv("UBER_EATS_STORE_ID")
+            api_key = settings.uber_eats_api_key
+            store_id = settings.uber_eats_store_id
 
             if not api_key or not store_id:
                 return {
@@ -577,8 +578,8 @@ class OrderThrottlingService:
 
         try:
             # Get DoorDash API credentials from environment
-            api_key = os.getenv("DOORDASH_API_KEY")
-            store_id = os.getenv("DOORDASH_STORE_ID")
+            api_key = settings.doordash_api_key
+            store_id = settings.doordash_store_id
 
             if not api_key or not store_id:
                 return {
@@ -647,8 +648,8 @@ class OrderThrottlingService:
 
         try:
             # Get Glovo API credentials from environment
-            api_key = os.getenv("GLOVO_API_KEY")
-            store_id = os.getenv("GLOVO_STORE_ID")
+            api_key = settings.glovo_api_key
+            store_id = settings.glovo_store_id
 
             if not api_key or not store_id:
                 return {
@@ -718,8 +719,8 @@ class OrderThrottlingService:
 
         try:
             # Get Wolt API credentials from environment
-            api_key = os.getenv("WOLT_API_KEY")
-            venue_id = os.getenv("WOLT_VENUE_ID")
+            api_key = settings.wolt_api_key
+            venue_id = settings.wolt_venue_id
 
             if not api_key or not venue_id:
                 return {

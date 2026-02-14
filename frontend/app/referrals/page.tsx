@@ -1186,7 +1186,7 @@ export default function ReferralsPage() {
                     {selectedReferrer.tier.charAt(0).toUpperCase() + selectedReferrer.tier.slice(1)} Member
                   </span>
                 </div>
-                <button onClick={() => setShowReferrerModal(false)} className="text-gray-600 hover:text-gray-900 text-2xl">
+                <button onClick={() => setShowReferrerModal(false)} className="text-gray-600 hover:text-gray-900 text-2xl" aria-label="Close">
                   &times;
                 </button>
               </div>

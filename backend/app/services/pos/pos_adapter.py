@@ -15,7 +15,6 @@ from dataclasses import dataclass, field
 from datetime import datetime, date, timedelta, timezone
 from decimal import Decimal
 from typing import Optional, List, Dict, Any, Set
-import os
 import json
 import logging
 import re
@@ -23,6 +22,7 @@ import re
 from sqlalchemy import create_engine, text, MetaData, Table, Column, select, func
 from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.engine import Engine
+from app.core.config import settings
 
 logger = logging.getLogger(__name__)
 
@@ -543,8 +543,8 @@ class ExternalPOSAdapter(POSAdapterBase):
         mapping_file: Optional[str] = None
     ):
         """Initialize with database URL and mapping configuration."""
-        self.db_url = db_url or os.getenv("EXTERNAL_POS_DB_URL")
-        mapping_path = mapping_file or os.getenv("EXTERNAL_POS_MAPPING")
+        self.db_url = db_url or settings.external_pos_db_url
+        mapping_path = mapping_file or settings.external_pos_mapping
 
         if not self.db_url:
             raise ValueError("External POS database URL not configured")
@@ -874,7 +874,7 @@ def get_pos_adapter(db_session: Session) -> POSAdapterBase:
     Checks for EXTERNAL_POS_DB_URL environment variable.
     If set, uses ExternalPOSAdapter; otherwise, uses LocalDatabaseAdapter.
     """
-    external_url = os.getenv("EXTERNAL_POS_DB_URL")
+    external_url = settings.external_pos_db_url
 
     if external_url:
         try:

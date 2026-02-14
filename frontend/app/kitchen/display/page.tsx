@@ -644,7 +644,7 @@ export default function KitchenDisplayPage() {
               </svg>
             </button>
 
-            <button onClick={toggleFullscreen} className={`p-2 rounded-lg ${isFullscreen ? 'bg-gray-200 text-gray-900' : 'bg-surface-100 text-surface-600'}`} title="Fullscreen">
+            <button onClick={toggleFullscreen} className={`p-2 rounded-lg ${isFullscreen ? 'bg-gray-200 text-gray-900' : 'bg-surface-100 text-surface-600'}`} title="Fullscreen" aria-label="Close">
               <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
               </svg>

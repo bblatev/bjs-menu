@@ -2,7 +2,6 @@
 Bulgarian Payment Gateway Integrations
 Borica and ePay.bg payment processors for Bulgarian market
 """
-import os
 import hmac
 import hashlib
 import base64
@@ -12,6 +11,7 @@ from datetime import datetime
 from dataclasses import dataclass
 from enum import Enum
 from urllib.parse import urlencode
+from app.core.config import settings
 
 logger = logging.getLogger(__name__)
 
@@ -65,11 +65,11 @@ class BoricaService:
     TEST_URL = "https://3dsgate-dev.borica.bg/cgi-bin/cgi_link"
 
     def __init__(self):
-        self.terminal_id = os.getenv("BORICA_TERMINAL_ID", "")
-        self.merchant_id = os.getenv("BORICA_MERCHANT_ID", "")
-        self.private_key_path = os.getenv("BORICA_PRIVATE_KEY_PATH", "")
-        self.certificate_path = os.getenv("BORICA_CERTIFICATE_PATH", "")
-        self.is_production = os.getenv("BORICA_PRODUCTION", "false").lower() == "true"
+        self.terminal_id = settings.borica_terminal_id
+        self.merchant_id = settings.borica_merchant_id
+        self.private_key_path = settings.borica_private_key_path
+        self.certificate_path = settings.borica_certificate_path
+        self.is_production = settings.borica_production.lower() == "true"
 
         self._base_url = self.PROD_URL if self.is_production else self.TEST_URL
         self._initialized = bool(self.terminal_id and self.merchant_id)
@@ -119,7 +119,7 @@ class BoricaService:
                 order_id=order_id,
                 description=description,
                 timestamp=timestamp,
-                return_url=return_url or os.getenv("BORICA_RETURN_URL", "")
+                return_url=return_url or settings.borica_return_url
             )
 
             # Sign message
@@ -269,7 +269,7 @@ class BoricaService:
         """Sign message with private key"""
         # In production, use RSA signing with private key
         # This is a simplified HMAC for demo
-        secret = os.getenv("BORICA_SECRET", "demo_secret")
+        secret = settings.borica_secret
         signature = hmac.new(
             secret.encode(),
             message.encode(),
@@ -357,9 +357,9 @@ class EPayService:
     TEST_URL = "https://demo.epay.bg"
 
     def __init__(self):
-        self.client_id = os.getenv("EPAY_CLIENT_ID", "")
-        self.secret_key = os.getenv("EPAY_SECRET_KEY", "")
-        self.is_production = os.getenv("EPAY_PRODUCTION", "false").lower() == "true"
+        self.client_id = settings.epay_client_id
+        self.secret_key = settings.epay_secret_key
+        self.is_production = settings.epay_production.lower() == "true"
 
         self._base_url = self.PROD_URL if self.is_production else self.TEST_URL
         self._initialized = bool(self.client_id and self.secret_key)
@@ -410,8 +410,8 @@ class EPayService:
                 "PAGE": "paylogin",
                 "ENCODED": encoded_data,
                 "CHECKSUM": checksum,
-                "URL_OK": return_url or os.getenv("EPAY_SUCCESS_URL", ""),
-                "URL_CANCEL": cancel_url or os.getenv("EPAY_CANCEL_URL", "")
+                "URL_OK": return_url or settings.epay_success_url,
+                "URL_CANCEL": cancel_url or settings.epay_cancel_url
             }
 
             redirect_url = f"{self._base_url}/?{urlencode(params)}"

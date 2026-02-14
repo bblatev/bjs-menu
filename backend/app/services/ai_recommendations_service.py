@@ -16,10 +16,10 @@ import logging
 from redis import Redis
 import json
 from enum import Enum
-import os
 import requests
 
 from app.models import (
+from app.core.config import settings
     MenuItem, Order, OrderItem, MenuCategory, ItemImage,
     AnalyticsEvent, ItemRating, VenueStation, ItemTag,
     ItemTagLink
@@ -28,7 +28,7 @@ from app.models import (
 logger = logging.getLogger(__name__)
 
 # OpenWeatherMap API key from environment
-OPENWEATHER_API_KEY = os.getenv("OPENWEATHER_API_KEY")
+OPENWEATHER_API_KEY = settings.openweather_api_key
 
 
 class WeatherCondition(str, Enum):

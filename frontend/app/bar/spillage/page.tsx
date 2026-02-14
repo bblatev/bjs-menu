@@ -498,7 +498,7 @@ export default function SpillagePage() {
                 <button
                   onClick={() => setShowAddModal(false)}
                   className="text-gray-400 hover:text-gray-900 text-2xl"
-                >
+                 aria-label="Close">
                   &times;
                 </button>
               </div>

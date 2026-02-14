@@ -1,6 +1,5 @@
 """Email & SMS Communication Service - for marketing, PO sending, and notifications."""
 
-import os
 import smtplib
 import httpx
 from email.mime.text import MIMEText
@@ -17,12 +16,12 @@ class EmailService:
     """Send emails for various purposes."""
 
     def __init__(self):
-        self.smtp_host = os.getenv("SMTP_HOST", "smtp.gmail.com")
-        self.smtp_port = int(os.getenv("SMTP_PORT", "587"))
-        self.smtp_user = os.getenv("SMTP_USER", "")
-        self.smtp_password = os.getenv("SMTP_PASSWORD", "")
-        self.from_email = os.getenv("FROM_EMAIL", self.smtp_user)
-        self.from_name = os.getenv("FROM_NAME", "V99 POS System")
+        self.smtp_host = settings.smtp_host
+        self.smtp_port = int(str(settings.smtp_port))
+        self.smtp_user = settings.smtp_user
+        self.smtp_password = settings.smtp_password
+        self.from_email = settings.smtp_from_email
+        self.from_name = settings.from_name
 
     def send_email(
         self,
@@ -221,9 +220,9 @@ class SMSService:
     """Send SMS via Twilio for waitlist, reservations, and marketing."""
 
     def __init__(self):
-        self.account_sid = os.getenv("TWILIO_ACCOUNT_SID", "")
-        self.auth_token = os.getenv("TWILIO_AUTH_TOKEN", "")
-        self.from_number = os.getenv("TWILIO_FROM_NUMBER", "")
+        self.account_sid = settings.twilio_account_sid
+        self.auth_token = settings.twilio_auth_token
+        self.from_number = settings.twilio_from_number
         self.api_url = "https://api.twilio.com/2010-04-01"
 
     async def send_sms(

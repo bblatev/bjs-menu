@@ -23,6 +23,7 @@ from functools import lru_cache
 from collections import OrderedDict
 import numpy as np
 from PIL import Image, ImageOps
+from app.core.config import settings
 
 logger = logging.getLogger(__name__)
 
@@ -32,7 +33,7 @@ logger = logging.getLogger(__name__)
 
 OCR_GPU_ENABLED = os.getenv("OCR_GPU_ENABLED", "false").lower() == "true"
 OCR_LANGUAGES = os.getenv("OCR_LANGUAGES", "en").split(",")
-OCR_CONFIDENCE_THRESHOLD = float(os.getenv("OCR_CONFIDENCE_THRESHOLD", "0.25"))
+OCR_CONFIDENCE_THRESHOLD = float(settings.ocr_confidence_threshold)
 OCR_CACHE_SIZE = int(os.getenv("OCR_CACHE_SIZE", "500"))
 SEMANTIC_MATCHING_ENABLED = os.getenv("SEMANTIC_MATCHING_ENABLED", "true").lower() == "true"
 

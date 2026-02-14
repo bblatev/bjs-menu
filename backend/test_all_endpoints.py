@@ -56,7 +56,7 @@ for path in sorted(paths.keys()):
                 total_500 += 1
                 try:
                     detail = r.json().get("detail", r.text[:200])
-                except:
+                except Exception:
                     detail = r.text[:200]
                 errors_detail.append({"method": method_name.upper(), "path": path, "status": 500, "detail": str(detail)[:300]})
                 print(f"500: {method_name.upper()} {path} -> {str(detail)[:120]}")

@@ -909,7 +909,7 @@ export default function ReservationsPage() {
                     setEditingReservation(null);
                   }}
                   className="text-gray-400 hover:text-gray-900 text-2xl"
-                >
+                 aria-label="Close">
                   &times;
                 </button>
               </div>
@@ -1100,7 +1100,7 @@ export default function ReservationsPage() {
                 <button
                   onClick={() => setShowPlatformsModal(false)}
                   className="text-gray-400 hover:text-gray-900 text-2xl"
-                >
+                 aria-label="Close">
                   &times;
                 </button>
               </div>
@@ -1176,7 +1176,7 @@ export default function ReservationsPage() {
                 <button
                   onClick={() => { setShowDepositModal(false); setSelectedReservationForDeposit(null); }}
                   className="text-gray-400 hover:text-gray-900 text-2xl"
-                >
+                 aria-label="Close">
                   &times;
                 </button>
               </div>
@@ -1246,7 +1246,7 @@ export default function ReservationsPage() {
                 <button
                   onClick={() => setShowAnalyticsModal(false)}
                   className="text-gray-400 hover:text-gray-900 text-2xl"
-                >
+                 aria-label="Close">
                   &times;
                 </button>
               </div>
@@ -1331,7 +1331,7 @@ export default function ReservationsPage() {
                 <button
                   onClick={() => setShowCancellationPolicyModal(false)}
                   className="text-gray-400 hover:text-gray-900 text-2xl"
-                >
+                 aria-label="Close">
                   &times;
                 </button>
               </div>
@@ -1416,7 +1416,7 @@ export default function ReservationsPage() {
                 <button
                   onClick={() => { setShowRefundModal(false); setSelectedReservationForRefund(null); }}
                   className="text-gray-400 hover:text-gray-900 text-2xl"
-                >
+                 aria-label="Close">
                   &times;
                 </button>
               </div>
@@ -1486,7 +1486,7 @@ export default function ReservationsPage() {
                 <button
                   onClick={() => setShowWebhookLogsModal(false)}
                   className="text-gray-400 hover:text-gray-900 text-2xl"
-                >
+                 aria-label="Close">
                   &times;
                 </button>
               </div>

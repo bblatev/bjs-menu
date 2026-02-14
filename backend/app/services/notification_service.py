@@ -6,6 +6,7 @@ from datetime import datetime, timezone
 from typing import List, Optional
 from dataclasses import dataclass
 import httpx
+from app.core.config import settings
 
 logger = logging.getLogger(__name__)
 
@@ -575,16 +576,16 @@ def get_notification_service() -> NotificationService:
         # Load config from environment or settings
         import os
         _notification_service = NotificationService(
-            sms_provider=os.getenv("SMS_PROVIDER", "local"),
-            sms_api_key=os.getenv("SMS_API_KEY"),
+            sms_provider=settings.sms_provider,
+            sms_api_key=settings.sms_api_key,
             sms_api_secret=os.getenv("SMS_API_SECRET"),
-            sms_from_number=os.getenv("SMS_FROM_NUMBER"),
-            email_provider=os.getenv("EMAIL_PROVIDER", "smtp"),
-            email_api_key=os.getenv("EMAIL_API_KEY"),
-            smtp_host=os.getenv("SMTP_HOST"),
-            smtp_port=int(os.getenv("SMTP_PORT", "587")),
-            smtp_user=os.getenv("SMTP_USER"),
-            smtp_password=os.getenv("SMTP_PASSWORD"),
-            email_from=os.getenv("EMAIL_FROM"),
+            sms_from_number=settings.sms_from_number,
+            email_provider=settings.email_provider,
+            email_api_key=settings.email_api_key,
+            smtp_host=settings.smtp_host,
+            smtp_port=int(str(settings.smtp_port)),
+            smtp_user=settings.smtp_user,
+            smtp_password=settings.smtp_password,
+            email_from=settings.email_from,
         )
     return _notification_service

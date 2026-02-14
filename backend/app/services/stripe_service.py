@@ -6,6 +6,7 @@ from typing import Optional, List, Dict, Any
 from dataclasses import dataclass
 from enum import Enum
 import httpx
+from app.core.config import settings
 
 logger = logging.getLogger(__name__)
 
@@ -521,11 +522,11 @@ def get_stripe_service() -> Optional[StripeService]:
     global _stripe_service
     if _stripe_service is None:
         import os
-        secret_key = os.getenv("STRIPE_SECRET_KEY")
+        secret_key = settings.stripe_secret_key
         if secret_key:
             _stripe_service = StripeService(
                 secret_key=secret_key,
-                webhook_secret=os.getenv("STRIPE_WEBHOOK_SECRET"),
-                currency=os.getenv("STRIPE_CURRENCY", "usd"),
+                webhook_secret=settings.stripe_webhook_secret,
+                currency=settings.stripe_currency,
             )
     return _stripe_service

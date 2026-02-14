@@ -409,7 +409,7 @@ export default function AuditLogsPage() {
                 <button
                   onClick={() => setSelectedLog(null)}
                   className="text-gray-600 hover:text-gray-900 text-2xl"
-                >
+                 aria-label="Close">
                   &times;
                 </button>
               </div>

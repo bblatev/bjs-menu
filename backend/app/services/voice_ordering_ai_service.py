@@ -21,6 +21,7 @@ import re
 import os
 import tempfile
 import base64
+from app.core.config import settings
 
 
 class VoiceChannelType(str, Enum):
@@ -662,8 +663,8 @@ class VoiceOrderingAIService:
         # Supports: OpenAI Whisper, Google Cloud Speech, AWS Transcribe, Azure Speech
         # Configure via environment variables: OPENAI_API_KEY, STT_PROVIDER, STT_API_KEY
 
-        openai_api_key = os.getenv("OPENAI_API_KEY")
-        provider = os.getenv("STT_PROVIDER", "openai" if openai_api_key else "mock")
+        openai_api_key = settings.openai_api_key
+        provider = settings.stt_provider
 
         if provider == "openai" and openai_api_key:
             return self._openai_whisper_stt(audio_data, language)
@@ -686,7 +687,7 @@ class VoiceOrderingAIService:
         try:
             from openai import OpenAI
 
-            client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+            client = OpenAI(api_key=settings.openai_api_key)
 
             # Create temporary audio file (Whisper API requires a file)
             with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as temp_audio:
@@ -759,8 +760,8 @@ class VoiceOrderingAIService:
     
     def _text_to_speech(self, text: str, language: str) -> str:
         """Convert text to speech audio URL (TTS) - integration point"""
-        openai_api_key = os.getenv("OPENAI_API_KEY")
-        provider = os.getenv("TTS_PROVIDER", "openai" if openai_api_key else "mock")
+        openai_api_key = settings.openai_api_key
+        provider = settings.tts_provider
 
         if provider == "openai" and openai_api_key:
             # OpenAI TTS
@@ -782,7 +783,7 @@ class VoiceOrderingAIService:
         try:
             from openai import OpenAI
 
-            client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+            client = OpenAI(api_key=settings.openai_api_key)
 
             # Select voice based on language and preference
             voice = self._select_openai_voice(language)

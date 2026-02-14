@@ -159,7 +159,7 @@ class AdvancedCRMService:
                                 "severity": "info",
                                 "message": f"Upcoming {occasion} in {days_until} days!"
                             })
-                    except:
+                    except Exception:
                         pass
 
         return {
