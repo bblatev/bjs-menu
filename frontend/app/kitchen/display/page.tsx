@@ -143,6 +143,16 @@ export default function KitchenDisplayPage() {
     yellowTime: 10,
     redTime: 15,
   });
+  // Void item modal
+  const [showVoidItemModal, setShowVoidItemModal] = useState(false);
+  const [voidItemReason, setVoidItemReason] = useState('');
+  const [voidItemContext, setVoidItemContext] = useState<{ ticketId: string; itemId: number } | null>(null);
+
+  // 86 item modal
+  const [show86Modal, setShow86Modal] = useState(false);
+  const [mark86Reason, setMark86Reason] = useState('');
+  const [mark86Context, setMark86Context] = useState<{ itemId: number; itemName: string } | null>(null);
+
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const overdueAudioRef = useRef<HTMLAudioElement | null>(null);
 
@@ -392,14 +402,20 @@ export default function KitchenDisplayPage() {
     }
   }, [tickets, fetchTickets]);
 
-  const handleVoidItem = useCallback(async (ticketId: string, itemId: number) => {
-    const reason = prompt('Reason for voiding item:');
-    if (!reason) return;
+  const handleVoidItem = useCallback((ticketId: string, itemId: number) => {
+    setVoidItemContext({ ticketId, itemId });
+    setVoidItemReason('');
+    setShowVoidItemModal(true);
+  }, []);
+
+  const handleConfirmVoidItem = useCallback(async () => {
+    if (!voidItemContext || !voidItemReason) return;
+    const { ticketId, itemId } = voidItemContext;
 
     try {
       const token = localStorage.getItem('access_token');
       const apiUrl = '/api/v1';
-      const response = await fetch(`${apiUrl}/kitchen/tickets/${ticketId}/void?reason=${encodeURIComponent(reason)}`, {
+      const response = await fetch(`${apiUrl}/kitchen/tickets/${ticketId}/void?reason=${encodeURIComponent(voidItemReason)}`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -424,8 +440,12 @@ export default function KitchenDisplayPage() {
       }
     } catch (error) {
       console.error('Error voiding item:', error);
+    } finally {
+      setShowVoidItemModal(false);
+      setVoidItemContext(null);
+      setVoidItemReason('');
     }
-  }, [fetchTickets]);
+  }, [voidItemContext, voidItemReason, fetchTickets]);
 
   const handleUn86Item = useCallback(async (itemId: number) => {
     try {
@@ -446,9 +466,14 @@ export default function KitchenDisplayPage() {
     }
   }, []);
 
-  const handleMark86 = useCallback(async (itemId: number, itemName: string) => {
-    const reason = prompt(`Reason for 86'ing ${itemName}:`);
-    if (!reason) return;
+  const handleMark86 = useCallback((itemId: number, itemName: string) => {
+    setMark86Context({ itemId, itemName });
+    setMark86Reason('');
+    setShow86Modal(true);
+  }, []);
+
+  const handleConfirmMark86 = useCallback(async () => {
+    if (!mark86Context || !mark86Reason) return;
 
     try {
       const token = localStorage.getItem('access_token');
@@ -460,8 +485,8 @@ export default function KitchenDisplayPage() {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          item_id: itemId,
-          reason: reason,
+          item_id: mark86Context.itemId,
+          reason: mark86Reason,
         }),
       });
 
@@ -471,8 +496,12 @@ export default function KitchenDisplayPage() {
       }
     } catch (error) {
       console.error('Error marking item as 86:', error);
+    } finally {
+      setShow86Modal(false);
+      setMark86Context(null);
+      setMark86Reason('');
     }
-  }, [fetchTickets]);
+  }, [mark86Context, mark86Reason, fetchTickets]);
 
   const handleSetPriority = useCallback(async (ticketId: string, priority: number) => {
     try {
@@ -1022,6 +1051,90 @@ export default function KitchenDisplayPage() {
                   ))}
                 </div>
               )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Void Item Modal */}
+      {showVoidItemModal && (
+        <div
+          className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
+          onClick={() => { setShowVoidItemModal(false); setVoidItemContext(null); setVoidItemReason(''); }}
+        >
+          <div
+            className="bg-white rounded-2xl p-6 w-full max-w-md mx-4"
+            onClick={e => e.stopPropagation()}
+          >
+            <h3 className="text-lg font-semibold text-surface-900 mb-4">Void Item</h3>
+            <input
+              type="text"
+              autoFocus
+              value={voidItemReason}
+              onChange={(e) => setVoidItemReason(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && voidItemReason) handleConfirmVoidItem();
+                if (e.key === 'Escape') { setShowVoidItemModal(false); setVoidItemContext(null); setVoidItemReason(''); }
+              }}
+              placeholder="Reason for voiding item"
+              className="w-full px-4 py-2 border border-surface-200 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 mb-4"
+            />
+            <div className="flex gap-3">
+              <button
+                onClick={() => { setShowVoidItemModal(false); setVoidItemContext(null); setVoidItemReason(''); }}
+                className="flex-1 py-2 bg-surface-100 text-surface-700 rounded-lg hover:bg-surface-200"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleConfirmVoidItem}
+                disabled={!voidItemReason}
+                className="flex-1 py-2 bg-primary-500 text-white rounded-lg hover:bg-primary-600 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Confirm
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 86 Item Reason Modal */}
+      {show86Modal && mark86Context && (
+        <div
+          className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
+          onClick={() => { setShow86Modal(false); setMark86Context(null); setMark86Reason(''); }}
+        >
+          <div
+            className="bg-white rounded-2xl p-6 w-full max-w-md mx-4"
+            onClick={e => e.stopPropagation()}
+          >
+            <h3 className="text-lg font-semibold text-surface-900 mb-4">86 Item: {mark86Context.itemName}</h3>
+            <input
+              type="text"
+              autoFocus
+              value={mark86Reason}
+              onChange={(e) => setMark86Reason(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && mark86Reason) handleConfirmMark86();
+                if (e.key === 'Escape') { setShow86Modal(false); setMark86Context(null); setMark86Reason(''); }
+              }}
+              placeholder="Reason for 86'ing this item"
+              className="w-full px-4 py-2 border border-surface-200 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 mb-4"
+            />
+            <div className="flex gap-3">
+              <button
+                onClick={() => { setShow86Modal(false); setMark86Context(null); setMark86Reason(''); }}
+                className="flex-1 py-2 bg-surface-100 text-surface-700 rounded-lg hover:bg-surface-200"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleConfirmMark86}
+                disabled={!mark86Reason}
+                className="flex-1 py-2 bg-error-500 text-white rounded-lg hover:bg-error-600 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Confirm 86
+              </button>
             </div>
           </div>
         </div>

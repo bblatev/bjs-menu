@@ -9,12 +9,14 @@ from datetime import datetime
 from pydantic import BaseModel, Field
 import json
 import asyncio
+import logging
 
 from app.db.session import get_db
 from app.core.rbac import get_current_user
 from app.models import StaffUser, Order, OrderItem, Table, OrderStatus
 from app.core.rate_limit import limiter
 
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -113,8 +115,8 @@ async def broadcast_order_update(order_id: int, update_data: Dict[str, Any], exc
         if terminal_id != exclude_terminal:
             try:
                 await ws.send_text(message)
-            except Exception:
-                pass  # Terminal disconnected
+            except Exception as e:
+                logger.debug(f"Optional: send WebSocket update to terminal {terminal_id}: {e}")
 
 
 # =============================================================================

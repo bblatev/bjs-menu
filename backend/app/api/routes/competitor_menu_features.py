@@ -15,6 +15,7 @@ from sqlalchemy.orm import Session
 from typing import List, Optional, Dict
 from pydantic import BaseModel
 from datetime import datetime, time, timedelta, date
+import logging
 import uuid
 from pathlib import Path
 
@@ -26,6 +27,7 @@ from app.models import (
 )
 from app.core.config import settings
 
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -806,8 +808,8 @@ async def delete_menu_item_photo(
             file_path = Path("/tmp/v99_uploads") / photo_to_delete["url"].lstrip("/uploads/")
             if file_path.exists():
                 file_path.unlink()
-    except Exception:
-        pass  # File deletion is best-effort
+    except Exception as e:
+        logger.debug(f"Optional: cleanup uploaded photo file: {e}")
 
     recipe_data["photos"] = photos
     item.recipe_json = recipe_data

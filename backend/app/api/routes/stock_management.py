@@ -285,8 +285,8 @@ def get_stock_alerts(
                 "quantity": float(batch.current_quantity),
                 "message": f"Batch {batch.batch_number} expires in {days_left} days" if days_left and days_left > 0 else f"Batch {batch.batch_number} has expired",
             })
-    except Exception:
-        pass  # InventoryBatch table may not exist yet
+    except Exception as e:
+        logger.debug(f"Optional: query expiring batch alerts: {e}")
 
     # Sort by severity
     severity_order = {"critical": 0, "warning": 1, "info": 2}
@@ -787,8 +787,8 @@ def ai_shelf_scan(
         from app.services.ai.combined_recognition import CombinedRecognitionService
         ai_service = CombinedRecognitionService()
         ai_available = True
-    except Exception:
-        pass
+    except Exception as e:
+        logger.debug(f"Optional: load AI recognition service: {e}")
 
     if ai_available and (scan_request.image_data or scan_request.image_url):
         try:

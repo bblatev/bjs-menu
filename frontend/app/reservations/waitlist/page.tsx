@@ -52,6 +52,11 @@ export default function WaitlistPage() {
     vip: false,
   });
 
+  // Seat guest modal
+  const [showSeatModal, setShowSeatModal] = useState(false);
+  const [seatEntryId, setSeatEntryId] = useState<number | null>(null);
+  const [seatTableNumber, setSeatTableNumber] = useState('');
+
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
   useEffect(() => {
@@ -437,8 +442,9 @@ export default function WaitlistPage() {
                       <>
                         <button
                           onClick={() => {
-                            const table = prompt('Enter table number:');
-                            if (table) seatGuest(entry.id, table);
+                            setSeatEntryId(entry.id);
+                            setSeatTableNumber('');
+                            setShowSeatModal(true);
                           }}
                           className="flex-1 py-2 bg-green-600 text-white rounded-lg text-sm font-medium hover:bg-green-700"
                         >
@@ -646,6 +652,60 @@ export default function WaitlistPage() {
                 </button>
               </div>
             </motion.div>
+          </div>
+        )}
+
+        {/* Seat Guest Modal */}
+        {showSeatModal && (
+          <div
+            className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
+            onClick={() => { setShowSeatModal(false); setSeatEntryId(null); setSeatTableNumber(''); }}
+          >
+            <div
+              className="bg-white rounded-2xl p-6 w-full max-w-md mx-4"
+              onClick={e => e.stopPropagation()}
+            >
+              <h3 className="text-lg font-bold text-gray-900 mb-4">Seat Guest</h3>
+              <input
+                type="text"
+                autoFocus
+                value={seatTableNumber}
+                onChange={(e) => setSeatTableNumber(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && seatTableNumber && seatEntryId !== null) {
+                    seatGuest(seatEntryId, seatTableNumber);
+                    setShowSeatModal(false);
+                    setSeatEntryId(null);
+                    setSeatTableNumber('');
+                  }
+                  if (e.key === 'Escape') { setShowSeatModal(false); setSeatEntryId(null); setSeatTableNumber(''); }
+                }}
+                placeholder="Enter table number"
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 mb-4"
+              />
+              <div className="flex gap-3">
+                <button
+                  onClick={() => { setShowSeatModal(false); setSeatEntryId(null); setSeatTableNumber(''); }}
+                  className="flex-1 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={() => {
+                    if (seatTableNumber && seatEntryId !== null) {
+                      seatGuest(seatEntryId, seatTableNumber);
+                      setShowSeatModal(false);
+                      setSeatEntryId(null);
+                      setSeatTableNumber('');
+                    }
+                  }}
+                  disabled={!seatTableNumber}
+                  className="flex-1 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Confirm
+                </button>
+              </div>
+            </div>
           </div>
         )}
       </div>

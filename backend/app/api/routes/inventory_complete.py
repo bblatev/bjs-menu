@@ -105,8 +105,8 @@ def get_inventory_dashboard(
             InventoryBatch.current_quantity > 0,
             InventoryBatch.expiration_date <= date.today() + timedelta(days=7),
         ).scalar() or 0
-    except Exception:
-        pass
+    except Exception as e:
+        logger.debug(f"Optional: query expiring batch count: {e}")
 
     # Active inventory sessions
     active_sessions = db.query(func.count(InventorySession.id)).filter(
@@ -200,8 +200,8 @@ def get_inventory_items(
                 expiry_dates = [b.expiration_date for b in batches if b.expiration_date]
                 if expiry_dates:
                     earliest_expiry = min(expiry_dates).isoformat()
-        except Exception:
-            pass
+        except Exception as e:
+            logger.debug(f"Optional: query batch info for item: {e}")
 
         reserved = float(s.reserved_qty) if hasattr(s, 'reserved_qty') and s.reserved_qty else 0
 
@@ -390,8 +390,8 @@ def get_inventory_alerts(
                 "quantity": float(batch.current_quantity),
                 "message": f"Batch {batch.batch_number} expires in {days_left} days" if days_left and days_left > 0 else f"Batch {batch.batch_number} has expired",
             })
-    except Exception:
-        pass
+    except Exception as e:
+        logger.debug(f"Optional: query expiring batch alerts: {e}")
 
     severity_order = {"critical": 0, "warning": 1, "info": 2}
     alerts.sort(key=lambda x: severity_order.get(x["severity"], 99))
@@ -845,8 +845,8 @@ def list_batches(request: Request, db: DbSession, location_id: int = Query(1)):
                 "cost_per_unit": float(b.unit_cost) if b.unit_cost else None,
                 "is_active": not b.is_expired,
             })
-    except Exception:
-        pass
+    except Exception as e:
+        logger.debug(f"Optional: query batch list: {e}")
     return batches
 
 
@@ -873,8 +873,8 @@ def get_batches_for_item(request: Request, item_id: int, db: DbSession, location
                 "cost_per_unit": float(b.unit_cost) if b.unit_cost else None,
                 "is_active": not b.is_expired,
             })
-    except Exception:
-        pass
+    except Exception as e:
+        logger.debug(f"Optional: query batches for item {item_id}: {e}")
     return batches
 
 

@@ -3,6 +3,7 @@ Dynamic Pricing API Endpoints
 Complete implementation of weather-based, time-based, and demand-based pricing
 """
 
+import logging
 from fastapi import APIRouter, Depends, HTTPException, Query, Body, Request
 from app.core.rate_limit import limiter
 from sqlalchemy.orm import Session
@@ -15,6 +16,7 @@ from app.services.dynamic_pricing_service import DynamicPricingService
 from app.models import DynamicPricingRule
 from app.core.config import settings
 
+logger = logging.getLogger(__name__)
 
 
 router = APIRouter()
@@ -468,8 +470,8 @@ def get_weather_impact(
                         'location': 'Borovets, Bulgaria',
                         'source': 'openweathermap'
                     }
-        except Exception:
-            pass
+        except Exception as e:
+            logger.warning(f"Failed to fetch weather data from API: {e}")
 
     # Fallback to mock data if API fails or no key
     if not weather:

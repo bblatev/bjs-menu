@@ -446,7 +446,7 @@ class OrderThrottlingService:
     
     # ==================== THIRD-PARTY INTEGRATION ====================
     
-    def update_delivery_platform_status(
+    async def update_delivery_platform_status(
         self,
         platform: str,  # "uber_eats", "doordash", "glovo", etc.
         paused: bool,
@@ -455,39 +455,38 @@ class OrderThrottlingService:
         """
         Update status on third-party delivery platforms
         """
-        # In production, call platform APIs
         updates = {
             "platform": platform,
             "paused": paused,
             "prep_time_minutes": prep_time_minutes,
             "updated_at": datetime.utcnow().isoformat()
         }
-        
+
         if platform == "uber_eats":
-            updates["api_response"] = self._update_uber_eats(paused, prep_time_minutes)
+            updates["api_response"] = await self._update_uber_eats(paused, prep_time_minutes)
         elif platform == "doordash":
-            updates["api_response"] = self._update_doordash(paused, prep_time_minutes)
+            updates["api_response"] = await self._update_doordash(paused, prep_time_minutes)
         elif platform == "glovo":
-            updates["api_response"] = self._update_glovo(paused, prep_time_minutes)
+            updates["api_response"] = await self._update_glovo(paused, prep_time_minutes)
         elif platform == "wolt":
-            updates["api_response"] = self._update_wolt(paused, prep_time_minutes)
-        
+            updates["api_response"] = await self._update_wolt(paused, prep_time_minutes)
+
         return updates
-    
-    def sync_all_platforms(self) -> Dict[str, Any]:
+
+    async def sync_all_platforms(self) -> Dict[str, Any]:
         """
         Sync throttle status with all delivery platforms
         """
         third_party_status = self.channel_status[OrderChannel.THIRD_PARTY.value]
         paused = third_party_status["level"] == ThrottleLevel.PAUSED.value
         prep_time = third_party_status["estimated_delay_minutes"]
-        
+
         platforms = ["uber_eats", "doordash", "glovo", "wolt", "foodpanda"]
         results = {}
-        
+
         for platform in platforms:
             try:
-                result = self.update_delivery_platform_status(platform, paused, prep_time)
+                result = await self.update_delivery_platform_status(platform, paused, prep_time)
                 results[platform] = {"success": True, "response": result}
             except Exception as e:
                 results[platform] = {"success": False, "error": str(e)}
@@ -499,13 +498,11 @@ class OrderThrottlingService:
             "platforms": results
         }
     
-    def _update_uber_eats(self, paused: bool, prep_time: int) -> Dict:
+    async def _update_uber_eats(self, paused: bool, prep_time: int) -> Dict:
         """Update Uber Eats status via API"""
-        import requests
-        import os
+        import httpx
 
         try:
-            # Get Uber Eats API credentials from environment
             api_key = settings.uber_eats_api_key
             store_id = settings.uber_eats_store_id
 
@@ -516,37 +513,32 @@ class OrderThrottlingService:
                     "reason": "API credentials not configured"
                 }
 
-            # Uber Eats Store API endpoint
             base_url = "https://api.uber.com/v1/eats/store"
             headers = {
                 "Authorization": f"Bearer {api_key}",
                 "Content-Type": "application/json"
             }
 
-            # Update store status
-            if paused:
-                # Pause store - set to offline
-                response = requests.post(
-                    f"{base_url}/{store_id}/status",
-                    headers=headers,
-                    json={
-                        "status": "OFFLINE",
-                        "reason": "BUSY",
-                        "offline_reason_description": "High order volume - temporarily paused"
-                    },
-                    timeout=10
-                )
-            else:
-                # Resume store - set to online with updated prep time
-                response = requests.post(
-                    f"{base_url}/{store_id}/status",
-                    headers=headers,
-                    json={
-                        "status": "ONLINE",
-                        "prep_time_minutes": prep_time or 15
-                    },
-                    timeout=10
-                )
+            async with httpx.AsyncClient(timeout=10) as client:
+                if paused:
+                    response = await client.post(
+                        f"{base_url}/{store_id}/status",
+                        headers=headers,
+                        json={
+                            "status": "OFFLINE",
+                            "reason": "BUSY",
+                            "offline_reason_description": "High order volume - temporarily paused"
+                        },
+                    )
+                else:
+                    response = await client.post(
+                        f"{base_url}/{store_id}/status",
+                        headers=headers,
+                        json={
+                            "status": "ONLINE",
+                            "prep_time_minutes": prep_time or 15
+                        },
+                    )
 
             if response.status_code in [200, 201, 204]:
                 return {
@@ -564,20 +556,18 @@ class OrderThrottlingService:
                     "response": response.text[:200] if response.text else None
                 }
 
-        except requests.exceptions.Timeout:
+        except httpx.TimeoutException:
             return {"status": "error", "platform": "uber_eats", "error": "Request timed out"}
-        except requests.exceptions.RequestException as e:
+        except httpx.HTTPError as e:
             return {"status": "error", "platform": "uber_eats", "error": str(e)}
         except Exception as e:
             return {"status": "error", "platform": "uber_eats", "error": str(e)}
 
-    def _update_doordash(self, paused: bool, prep_time: int) -> Dict:
+    async def _update_doordash(self, paused: bool, prep_time: int) -> Dict:
         """Update DoorDash status via API"""
-        import requests
-        import os
+        import httpx
 
         try:
-            # Get DoorDash API credentials from environment
             api_key = settings.doordash_api_key
             store_id = settings.doordash_store_id
 
@@ -588,35 +578,31 @@ class OrderThrottlingService:
                     "reason": "API credentials not configured"
                 }
 
-            # DoorDash Drive API endpoint
             base_url = "https://openapi.doordash.com/drive/v2"
             headers = {
                 "Authorization": f"Bearer {api_key}",
                 "Content-Type": "application/json"
             }
 
-            if paused:
-                # Pause accepting orders
-                response = requests.patch(
-                    f"{base_url}/stores/{store_id}",
-                    headers=headers,
-                    json={
-                        "is_accepting_orders": False,
-                        "status_reason": "temporarily_busy"
-                    },
-                    timeout=10
-                )
-            else:
-                # Resume accepting orders with updated prep time
-                response = requests.patch(
-                    f"{base_url}/stores/{store_id}",
-                    headers=headers,
-                    json={
-                        "is_accepting_orders": True,
-                        "default_prep_time_minutes": prep_time or 15
-                    },
-                    timeout=10
-                )
+            async with httpx.AsyncClient(timeout=10) as client:
+                if paused:
+                    response = await client.patch(
+                        f"{base_url}/stores/{store_id}",
+                        headers=headers,
+                        json={
+                            "is_accepting_orders": False,
+                            "status_reason": "temporarily_busy"
+                        },
+                    )
+                else:
+                    response = await client.patch(
+                        f"{base_url}/stores/{store_id}",
+                        headers=headers,
+                        json={
+                            "is_accepting_orders": True,
+                            "default_prep_time_minutes": prep_time or 15
+                        },
+                    )
 
             if response.status_code in [200, 201, 204]:
                 return {
@@ -634,20 +620,18 @@ class OrderThrottlingService:
                     "response": response.text[:200] if response.text else None
                 }
 
-        except requests.exceptions.Timeout:
+        except httpx.TimeoutException:
             return {"status": "error", "platform": "doordash", "error": "Request timed out"}
-        except requests.exceptions.RequestException as e:
+        except httpx.HTTPError as e:
             return {"status": "error", "platform": "doordash", "error": str(e)}
         except Exception as e:
             return {"status": "error", "platform": "doordash", "error": str(e)}
 
-    def _update_glovo(self, paused: bool, prep_time: int) -> Dict:
+    async def _update_glovo(self, paused: bool, prep_time: int) -> Dict:
         """Update Glovo status via API"""
-        import requests
-        import os
+        import httpx
 
         try:
-            # Get Glovo API credentials from environment
             api_key = settings.glovo_api_key
             store_id = settings.glovo_store_id
 
@@ -658,36 +642,32 @@ class OrderThrottlingService:
                     "reason": "API credentials not configured"
                 }
 
-            # Glovo Partner API endpoint
             base_url = "https://api.glovoapp.com/partner"
             headers = {
                 "Authorization": f"Bearer {api_key}",
                 "Content-Type": "application/json"
             }
 
-            if paused:
-                # Close store temporarily
-                response = requests.put(
-                    f"{base_url}/stores/{store_id}/status",
-                    headers=headers,
-                    json={
-                        "status": "CLOSED",
-                        "reason": "HIGH_DEMAND",
-                        "message": "Temporarily closed due to high order volume"
-                    },
-                    timeout=10
-                )
-            else:
-                # Open store with updated prep time
-                response = requests.put(
-                    f"{base_url}/stores/{store_id}/status",
-                    headers=headers,
-                    json={
-                        "status": "OPEN",
-                        "preparation_time_minutes": prep_time or 15
-                    },
-                    timeout=10
-                )
+            async with httpx.AsyncClient(timeout=10) as client:
+                if paused:
+                    response = await client.put(
+                        f"{base_url}/stores/{store_id}/status",
+                        headers=headers,
+                        json={
+                            "status": "CLOSED",
+                            "reason": "HIGH_DEMAND",
+                            "message": "Temporarily closed due to high order volume"
+                        },
+                    )
+                else:
+                    response = await client.put(
+                        f"{base_url}/stores/{store_id}/status",
+                        headers=headers,
+                        json={
+                            "status": "OPEN",
+                            "preparation_time_minutes": prep_time or 15
+                        },
+                    )
 
             if response.status_code in [200, 201, 204]:
                 return {
@@ -705,20 +685,18 @@ class OrderThrottlingService:
                     "response": response.text[:200] if response.text else None
                 }
 
-        except requests.exceptions.Timeout:
+        except httpx.TimeoutException:
             return {"status": "error", "platform": "glovo", "error": "Request timed out"}
-        except requests.exceptions.RequestException as e:
+        except httpx.HTTPError as e:
             return {"status": "error", "platform": "glovo", "error": str(e)}
         except Exception as e:
             return {"status": "error", "platform": "glovo", "error": str(e)}
 
-    def _update_wolt(self, paused: bool, prep_time: int) -> Dict:
+    async def _update_wolt(self, paused: bool, prep_time: int) -> Dict:
         """Update Wolt status via API"""
-        import requests
-        import os
+        import httpx
 
         try:
-            # Get Wolt API credentials from environment
             api_key = settings.wolt_api_key
             venue_id = settings.wolt_venue_id
 
@@ -729,36 +707,32 @@ class OrderThrottlingService:
                     "reason": "API credentials not configured"
                 }
 
-            # Wolt Merchant API endpoint
             base_url = "https://restaurant-api.wolt.com/v1"
             headers = {
                 "Authorization": f"Bearer {api_key}",
                 "Content-Type": "application/json"
             }
 
-            if paused:
-                # Set venue to busy/closed
-                response = requests.put(
-                    f"{base_url}/venues/{venue_id}/availability",
-                    headers=headers,
-                    json={
-                        "is_available": False,
-                        "unavailability_reason": "busy",
-                        "message": "High order volume - temporarily paused"
-                    },
-                    timeout=10
-                )
-            else:
-                # Set venue to available with prep time
-                response = requests.put(
-                    f"{base_url}/venues/{venue_id}/availability",
-                    headers=headers,
-                    json={
-                        "is_available": True,
-                        "estimated_delivery_time_minutes": prep_time or 15
-                    },
-                    timeout=10
-                )
+            async with httpx.AsyncClient(timeout=10) as client:
+                if paused:
+                    response = await client.put(
+                        f"{base_url}/venues/{venue_id}/availability",
+                        headers=headers,
+                        json={
+                            "is_available": False,
+                            "unavailability_reason": "busy",
+                            "message": "High order volume - temporarily paused"
+                        },
+                    )
+                else:
+                    response = await client.put(
+                        f"{base_url}/venues/{venue_id}/availability",
+                        headers=headers,
+                        json={
+                            "is_available": True,
+                            "estimated_delivery_time_minutes": prep_time or 15
+                        },
+                    )
 
             if response.status_code in [200, 201, 204]:
                 return {
@@ -776,9 +750,9 @@ class OrderThrottlingService:
                     "response": response.text[:200] if response.text else None
                 }
 
-        except requests.exceptions.Timeout:
+        except httpx.TimeoutException:
             return {"status": "error", "platform": "wolt", "error": "Request timed out"}
-        except requests.exceptions.RequestException as e:
+        except httpx.HTTPError as e:
             return {"status": "error", "platform": "wolt", "error": str(e)}
         except Exception as e:
             return {"status": "error", "platform": "wolt", "error": str(e)}

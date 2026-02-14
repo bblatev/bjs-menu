@@ -123,6 +123,11 @@ export default function OrdersPage() {
   const [refundAmount, setRefundAmount] = useState(0);
   const [refundReason, setRefundReason] = useState('');
 
+  // Void item modal
+  const [showVoidItemModal, setShowVoidItemModal] = useState(false);
+  const [voidItemReason, setVoidItemReason] = useState('');
+  const [voidItemId, setVoidItemId] = useState<string | null>(null);
+
   // Auto-refresh
   const refreshInterval = useRef<NodeJS.Timeout | null>(null);
   const [autoRefresh, setAutoRefresh] = useState(true);
@@ -366,16 +371,21 @@ export default function OrdersPage() {
 
   const handleVoidItem = async (itemId: string) => {
     if (!selectedOrder) return;
-    const reason = prompt('Причина за анулиране на артикула:');
-    if (!reason) return;
+    setVoidItemId(itemId);
+    setVoidItemReason('');
+    setShowVoidItemModal(true);
+  };
 
+  const handleConfirmVoidItem = async () => {
+    if (!selectedOrder || !voidItemId || !voidItemReason) return;
     const headers = getAuthHeaders();
+    const itemId = voidItemId;
 
     try {
       const response = await fetch(`${API_URL}/orders/${selectedOrder.id}/items/${itemId}/void`, {
         method: 'POST',
         headers,
-        body: JSON.stringify({ reason }),
+        body: JSON.stringify({ reason: voidItemReason }),
       });
       if (response.ok) {
         const data = await response.json();
@@ -392,6 +402,10 @@ export default function OrdersPage() {
       }
     } catch (error) {
       console.error('Error voiding item:', error);
+    } finally {
+      setShowVoidItemModal(false);
+      setVoidItemId(null);
+      setVoidItemReason('');
     }
   };
 
@@ -1505,6 +1519,56 @@ export default function OrdersPage() {
               >
                 Отказ
               </button>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Void Item Modal */}
+      <AnimatePresence>
+        {showVoidItemModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
+            onClick={() => { setShowVoidItemModal(false); setVoidItemId(null); setVoidItemReason(''); }}
+          >
+            <motion.div
+              initial={{ scale: 0.9, y: 20 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.9, y: 20 }}
+              className="bg-white rounded-2xl p-6 w-full max-w-md mx-4"
+              onClick={e => e.stopPropagation()}
+            >
+              <h3 className="text-lg font-bold text-gray-900 mb-4">Анулиране на артикул</h3>
+              <input
+                type="text"
+                autoFocus
+                value={voidItemReason}
+                onChange={(e) => setVoidItemReason(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && voidItemReason) handleConfirmVoidItem();
+                  if (e.key === 'Escape') { setShowVoidItemModal(false); setVoidItemId(null); setVoidItemReason(''); }
+                }}
+                placeholder="Причина за анулиране на артикула..."
+                className="w-full px-4 py-2 bg-gray-50 rounded-lg border border-gray-200 focus:border-blue-500 focus:outline-none mb-4"
+              />
+              <div className="flex gap-3">
+                <button
+                  onClick={() => { setShowVoidItemModal(false); setVoidItemId(null); setVoidItemReason(''); }}
+                  className="flex-1 py-2 bg-gray-100 text-gray-700 rounded-xl hover:bg-gray-200"
+                >
+                  Отказ
+                </button>
+                <button
+                  onClick={handleConfirmVoidItem}
+                  disabled={!voidItemReason}
+                  className="flex-1 py-2 bg-blue-600 text-white rounded-xl hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Потвърди
+                </button>
+              </div>
             </motion.div>
           </motion.div>
         )}

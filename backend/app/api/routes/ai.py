@@ -387,8 +387,8 @@ async def upload_training_batch(
                 buffer = iolib.BytesIO()
                 img.save(buffer, format='JPEG', quality=95)
                 image_data = buffer.getvalue()
-            except Exception:
-                pass
+            except Exception as e:
+                logger.debug(f"Optional: image preprocessing with PIL: {e}")
 
             # Extract CLIP features (preferred) or fallback to old method
             feature_vector = None
@@ -400,8 +400,8 @@ async def upload_training_batch(
                     if clip_embedding is not None:
                         clip_embedding = clip_embedding / (np.linalg.norm(clip_embedding) + 1e-7)
                         feature_vector = clip_embedding.astype(np.float32).tobytes()
-                except Exception:
-                    pass
+                except Exception as e:
+                    logger.warning(f"Failed to extract CLIP features: {e}")
 
             # Fallback to old feature extraction if CLIP fails
             if feature_vector is None:
@@ -605,8 +605,8 @@ async def upload_training_video(
                                 ocr_text = label_info.raw_text if label_info.raw_text else None
                                 ocr_brand = label_info.brand
                                 ocr_product_name = label_info.product_name
-                        except Exception:
-                            pass
+                        except Exception as e:
+                            logger.debug(f"Optional: OCR text extraction from image: {e}")
 
                     # Create database record - no file saved
                     training_image = TrainingImage(
@@ -759,8 +759,8 @@ def delete_training_image(
     try:
         if os.path.exists(image.storage_path):
             os.remove(image.storage_path)
-    except Exception:
-        pass
+    except Exception as e:
+        logger.debug(f"Optional: cleanup training image file: {e}")
 
     db.delete(image)
     db.commit()
@@ -941,8 +941,8 @@ async def recognize_bottle(
                         query_ocr_brand = query_label_info.brand
                     if query_label_info.product_name:
                         query_ocr_product_name = query_label_info.product_name
-            except Exception:
-                pass
+            except Exception as e:
+                logger.debug(f"Optional: OCR text extraction for recognition query: {e}")
 
         # Build candidates per product - group CLIP features by stock_item_id
         product_features: dict[int, list] = {}
@@ -1366,8 +1366,8 @@ async def recognize_multi(
 
                         # Apply boost
                         best_confidence = min(1.0, max(0.0, best_confidence + ocr_boost_value))
-            except Exception:
-                pass
+            except Exception as e:
+                logger.debug(f"Optional: OCR confidence boosting: {e}")
 
         is_match = best_confidence >= confidence_threshold
 
@@ -1459,8 +1459,8 @@ def get_ai_status(
         try:
             clip_status = get_clip_yolo_status()
             status.update(clip_status)
-        except Exception:
-            pass
+        except Exception as e:
+            logger.warning(f"Failed to get CLIP/YOLO status: {e}")
 
     return status
 
@@ -2066,8 +2066,8 @@ def label_active_learning_item(
         meta_file.unlink()
         if img_file.exists():
             img_file.unlink()
-    except Exception:
-        pass
+    except Exception as e:
+        logger.debug(f"Optional: cleanup queue files after labeling: {e}")
 
     return {
         "message": "Item labeled and added to training set",

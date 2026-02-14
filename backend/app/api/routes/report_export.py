@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 from fastapi import APIRouter, HTTPException, Request
 from app.core.rate_limit import limiter
 from fastapi.responses import StreamingResponse
@@ -14,6 +15,8 @@ import io as _io
 
 from app.db.session import DbSession
 from app.core.rbac import CurrentUser, OptionalCurrentUser
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -76,8 +79,8 @@ def create_excel_export(data: list, headers: list, sheet_name: str = "Report") -
                 try:
                     if len(str(cell.value)) > max_length:
                         max_length = len(str(cell.value))
-                except Exception:
-                    pass
+                except Exception as e:
+                    logger.debug(f"Optional: calculate column width for cell: {e}")
             ws.column_dimensions[column_letter].width = min(max_length + 2, 50)
         output = BytesIO()
         wb.save(output)

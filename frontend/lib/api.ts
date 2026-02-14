@@ -3,6 +3,9 @@
  * Use this module for all API-related configuration to avoid duplication
  */
 
+// Auth token storage key - use this constant instead of hardcoding 'access_token'
+export const TOKEN_KEY = 'access_token';
+
 // API base URL - configured via environment variable
 export const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1';
 

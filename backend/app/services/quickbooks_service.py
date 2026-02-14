@@ -272,8 +272,8 @@ class QuickBooksService:
         internal_id: Optional[str] = None,
     ) -> Dict[str, Any]:
         """Create or update a customer in QuickBooks."""
-        # First check if customer exists
-        safe_name = display_name.replace("'", "\\'")
+        # First check if customer exists (use doubled single-quotes per QBO query syntax)
+        safe_name = display_name.replace("'", "''")
         query = f"SELECT * FROM Customer WHERE DisplayName = '{safe_name}'"
         existing = await self._api_request("GET", "/query", params={"query": query})
 
@@ -472,8 +472,8 @@ class QuickBooksService:
         company_name: Optional[str] = None,
     ) -> Dict[str, Any]:
         """Create or update a vendor in QuickBooks."""
-        # Check if vendor exists
-        safe_name = display_name.replace("'", "\\'")
+        # Check if vendor exists (use doubled single-quotes per QBO query syntax)
+        safe_name = display_name.replace("'", "''")
         query = f"SELECT * FROM Vendor WHERE DisplayName = '{safe_name}'"
         existing = await self._api_request("GET", "/query", params={"query": query})
 
@@ -606,8 +606,8 @@ class QuickBooksService:
         sku: Optional[str] = None,
     ) -> Dict[str, Any]:
         """Create or update an item in QuickBooks."""
-        # Check if item exists
-        safe_name = name.replace("'", "\\'")
+        # Check if item exists (use doubled single-quotes per QBO query syntax)
+        safe_name = name.replace("'", "''")
         query = f"SELECT * FROM Item WHERE Name = '{safe_name}'"
         existing = await self._api_request("GET", "/query", params={"query": query})
 

@@ -1,5 +1,6 @@
 """Industry benchmarking API routes."""
 
+import logging
 from datetime import datetime, timezone
 from typing import Any, List, Optional
 
@@ -9,6 +10,8 @@ from pydantic import BaseModel
 from app.core.rate_limit import limiter
 from app.db.session import DbSession
 from app.models.operations import AppSetting
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -109,8 +112,8 @@ async def get_benchmark_summary(request: Request, db: DbSession, period: str = Q
     if stored and isinstance(stored, dict):
         try:
             return BenchmarkSummary(**stored)
-        except Exception:
-            pass
+        except Exception as e:
+            logger.warning(f"Failed to parse stored benchmark summary: {e}")
     return _DEFAULT_SUMMARY
 
 
@@ -132,8 +135,8 @@ async def get_peer_comparisons(request: Request, db: DbSession):
     if stored and isinstance(stored, list):
         try:
             return [PeerComparison(**item) for item in stored]
-        except Exception:
-            pass
+        except Exception as e:
+            logger.warning(f"Failed to parse stored peer comparisons: {e}")
     return []
 
 
@@ -153,8 +156,8 @@ async def get_recommendations(request: Request, db: DbSession):
     if stored and isinstance(stored, list):
         try:
             return [Recommendation(**item) for item in stored]
-        except Exception:
-            pass
+        except Exception as e:
+            logger.warning(f"Failed to parse stored recommendations: {e}")
     return []
 
 

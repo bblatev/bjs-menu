@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import io
+import logging
 from collections import defaultdict
 from datetime import datetime, timezone
 from decimal import Decimal
@@ -28,6 +29,8 @@ from app.schemas.order import (
 from app.services.order_service import generate_pdf, generate_whatsapp_text, generate_xlsx
 from app.core.rate_limit import limiter
 
+logger = logging.getLogger(__name__)
+
 router = APIRouter()
 
 
@@ -50,33 +53,27 @@ def get_order_suggestions(
     if not location:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Location not found")
 
-    # Get all active products with their current stock
-    products = db.query(Product).filter(Product.active == True).all()
+    # Get all active products with stock and supplier in a single query
+    rows = (
+        db.query(Product, StockOnHand.qty, Supplier.name)
+        .outerjoin(
+            StockOnHand,
+            (StockOnHand.product_id == Product.id) & (StockOnHand.location_id == location_id),
+        )
+        .outerjoin(Supplier, Supplier.id == Product.supplier_id)
+        .filter(Product.active == True)
+        .all()
+    )
 
     suggestions = []
     by_supplier = defaultdict(list)
 
-    for product in products:
-        # Get current stock for this location
-        stock = (
-            db.query(StockOnHand)
-            .filter(
-                StockOnHand.product_id == product.id,
-                StockOnHand.location_id == location_id,
-            )
-            .first()
-        )
-        current_qty = stock.qty if stock else Decimal("0")
+    for product, stock_qty, supplier_name in rows:
+        current_qty = stock_qty if stock_qty is not None else Decimal("0")
 
         # Calculate suggested order quantity
         if current_qty < product.target_stock:
             suggested_qty = product.target_stock - current_qty
-
-            # Get supplier name
-            supplier_name = None
-            if product.supplier_id:
-                supplier = db.query(Supplier).filter(Supplier.id == product.supplier_id).first()
-                supplier_name = supplier.name if supplier else None
 
             suggestion = OrderSuggestion(
                 product_id=product.id,
@@ -455,8 +452,8 @@ def receive_order(
                     "batch_number": batch.batch_number,
                     "expiration_date": line.expiration_date,
                 })
-            except Exception:
-                pass  # Batch creation is optional
+            except Exception as e:
+                logger.debug(f"Optional: batch creation for product {line.product_id}: {e}")
 
     # Update PO status to RECEIVED if not already
     if order.status != POStatus.RECEIVED:

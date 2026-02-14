@@ -1,5 +1,6 @@
 """Settings API routes."""
 
+import logging
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
@@ -9,6 +10,8 @@ from pydantic import BaseModel
 from app.db.session import DbSession
 from app.models.operations import AppSetting
 from app.core.rate_limit import limiter
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -225,8 +228,8 @@ async def get_security_settings(request: Request, db: DbSession, current_user: R
     if stored and isinstance(stored, dict):
         try:
             return SecuritySettings(**stored)
-        except Exception:
-            pass
+        except Exception as e:
+            logger.warning(f"Failed to parse stored security settings: {e}")
     return SecuritySettings(
         session_timeout_minutes=30,
         require_pin_for_voids=True,
@@ -252,8 +255,8 @@ async def get_general_settings(request: Request, db: DbSession, current_user: Cu
     if stored and isinstance(stored, dict):
         try:
             return GeneralSettings(**stored)
-        except Exception:
-            pass
+        except Exception as e:
+            logger.warning(f"Failed to parse stored general settings: {e}")
     return GeneralSettings(
         language="en",
         date_format="DD/MM/YYYY",

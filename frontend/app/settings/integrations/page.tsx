@@ -52,6 +52,15 @@ export default function SettingsIntegrationsPage() {
   const [apiKeys, setApiKeys] = useState<Array<{ id: string; name: string; key: string; created_at: string }>>([]);
   const [showApiKeyModal, setShowApiKeyModal] = useState(false);
 
+  // Connect integration modal
+  const [showConnectModal, setShowConnectModal] = useState(false);
+  const [connectIntegrationId, setConnectIntegrationId] = useState<string | null>(null);
+  const [connectCredentials, setConnectCredentials] = useState('');
+
+  // Create API key modal
+  const [showCreateApiKeyModal, setShowCreateApiKeyModal] = useState(false);
+  const [newApiKeyName, setNewApiKeyName] = useState('');
+
   // Multi-location sync
   const [multiLocationSync, setMultiLocationSync] = useState({
     enabled: false,
@@ -155,9 +164,14 @@ export default function SettingsIntegrationsPage() {
     }
   };
 
-  const connectIntegration = async (integrationId: string) => {
-    const credentials = prompt(`Enter API key/credentials for ${integrationId}:`);
-    if (!credentials) return;
+  const connectIntegration = (integrationId: string) => {
+    setConnectIntegrationId(integrationId);
+    setConnectCredentials('');
+    setShowConnectModal(true);
+  };
+
+  const handleConfirmConnect = async () => {
+    if (!connectIntegrationId || !connectCredentials) return;
 
     try {
       const token = localStorage.getItem('access_token');
@@ -168,8 +182,8 @@ export default function SettingsIntegrationsPage() {
           Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({
-          integration_id: integrationId,
-          credentials: { api_key: credentials },
+          integration_id: connectIntegrationId,
+          credentials: { api_key: connectCredentials },
           settings: {},
         }),
       });
@@ -183,6 +197,10 @@ export default function SettingsIntegrationsPage() {
     } catch (err) {
       console.error('Error connecting integration:', err);
       toast.error('Error connecting integration');
+    } finally {
+      setShowConnectModal(false);
+      setConnectIntegrationId(null);
+      setConnectCredentials('');
     }
   };
 
@@ -235,9 +253,13 @@ export default function SettingsIntegrationsPage() {
     }
   };
 
-  const createApiKey = async () => {
-    const name = prompt('Enter API key name:');
-    if (!name) return;
+  const createApiKey = () => {
+    setNewApiKeyName('');
+    setShowCreateApiKeyModal(true);
+  };
+
+  const handleConfirmCreateApiKey = async () => {
+    if (!newApiKeyName) return;
 
     try {
       const token = localStorage.getItem('access_token');
@@ -248,7 +270,7 @@ export default function SettingsIntegrationsPage() {
           Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({
-          name,
+          name: newApiKeyName,
           permissions: ['read', 'write'],
         }),
       });
@@ -260,6 +282,9 @@ export default function SettingsIntegrationsPage() {
       }
     } catch (err) {
       console.error('Error creating API key:', err);
+    } finally {
+      setShowCreateApiKeyModal(false);
+      setNewApiKeyName('');
     }
   };
 
@@ -591,6 +616,91 @@ export default function SettingsIntegrationsPage() {
           )}
         </CardBody>
       </Card>
+
+      {/* Connect Integration Modal */}
+      {showConnectModal && (
+        <div
+          className="fixed inset-0 bg-black/50 flex items-center justify-center z-50"
+          onClick={() => { setShowConnectModal(false); setConnectIntegrationId(null); setConnectCredentials(''); }}
+        >
+          <div
+            className="bg-white rounded-2xl p-6 w-full max-w-md mx-4"
+            onClick={e => e.stopPropagation()}
+          >
+            <h3 className="text-lg font-semibold text-surface-900 mb-4">Connect Integration</h3>
+            <p className="text-sm text-surface-500 mb-4">Enter API key or credentials for {connectIntegrationId}.</p>
+            <input
+              type="text"
+              autoFocus
+              value={connectCredentials}
+              onChange={(e) => setConnectCredentials(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && connectCredentials) handleConfirmConnect();
+                if (e.key === 'Escape') { setShowConnectModal(false); setConnectIntegrationId(null); setConnectCredentials(''); }
+              }}
+              placeholder="API key / credentials"
+              className="w-full px-4 py-2 border border-surface-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 mb-4"
+            />
+            <div className="flex gap-3">
+              <button
+                onClick={() => { setShowConnectModal(false); setConnectIntegrationId(null); setConnectCredentials(''); }}
+                className="flex-1 py-2 bg-surface-100 text-surface-700 rounded-lg hover:bg-surface-200"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleConfirmConnect}
+                disabled={!connectCredentials}
+                className="flex-1 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Connect
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Create API Key Modal */}
+      {showCreateApiKeyModal && (
+        <div
+          className="fixed inset-0 bg-black/50 flex items-center justify-center z-50"
+          onClick={() => { setShowCreateApiKeyModal(false); setNewApiKeyName(''); }}
+        >
+          <div
+            className="bg-white rounded-2xl p-6 w-full max-w-md mx-4"
+            onClick={e => e.stopPropagation()}
+          >
+            <h3 className="text-lg font-semibold text-surface-900 mb-4">Create API Key</h3>
+            <input
+              type="text"
+              autoFocus
+              value={newApiKeyName}
+              onChange={(e) => setNewApiKeyName(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && newApiKeyName) handleConfirmCreateApiKey();
+                if (e.key === 'Escape') { setShowCreateApiKeyModal(false); setNewApiKeyName(''); }
+              }}
+              placeholder="API key name"
+              className="w-full px-4 py-2 border border-surface-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 mb-4"
+            />
+            <div className="flex gap-3">
+              <button
+                onClick={() => { setShowCreateApiKeyModal(false); setNewApiKeyName(''); }}
+                className="flex-1 py-2 bg-surface-100 text-surface-700 rounded-lg hover:bg-surface-200"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleConfirmCreateApiKey}
+                disabled={!newApiKeyName}
+                className="flex-1 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Create
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

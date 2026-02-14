@@ -1,5 +1,6 @@
 """Kitchen Display System (KDS) routes - using database models."""
 
+import logging
 from datetime import timedelta
 from typing import Optional
 from datetime import datetime, timezone
@@ -10,6 +11,8 @@ from sqlalchemy import func
 from app.core.rate_limit import limiter
 from app.db.session import DbSession
 from app.models.restaurant import KitchenOrder, GuestOrder, MenuItem, Table, Check
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -680,8 +683,8 @@ def get_all_alerts(
                 "created_at": t.recorded_at.isoformat() if t.recorded_at else None,
                 "severity": t.status,
             })
-    except Exception:
-        pass  # HACCP table may not exist yet
+    except Exception as e:
+        logger.debug(f"Optional: query HACCP temperature alerts: {e}")
 
     return alerts
 

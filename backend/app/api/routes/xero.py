@@ -157,8 +157,8 @@ def disconnect_xero(request: Request, db: DbSession, data: XeroDisconnectRequest
     try:
         db.execute(text("UPDATE xero_connections SET is_active = false"))
         db.commit()
-    except Exception:
-        pass
+    except Exception as e:
+        logger.warning(f"Failed to deactivate Xero connections in database: {e}")
 
     return {"status": "disconnected", "message": "Xero integration disconnected"}
 

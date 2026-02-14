@@ -6,6 +6,7 @@ adapted for the bjs-menu system.
 
 from __future__ import annotations
 
+import logging
 import os
 import uuid
 from datetime import datetime
@@ -18,6 +19,8 @@ from pydantic import BaseModel, Field
 from app.db.session import DbSession
 from app.core.rbac import CurrentUser, OptionalCurrentUser
 from app.core.rate_limit import limiter
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -303,8 +306,8 @@ def delete_training_image(request: Request, image_id: int, db: DbSession = None,
             try:
                 if os.path.exists(img["storage_path"]):
                     os.remove(img["storage_path"])
-            except Exception:
-                pass
+            except Exception as e:
+                logger.debug(f"Optional: cleanup training image file: {e}")
             _training_images = [i for i in _training_images if i["id"] != image_id]
             return {"message": "Training image deleted"}
 

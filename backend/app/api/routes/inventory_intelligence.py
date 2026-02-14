@@ -578,8 +578,8 @@ def get_cogs_report(
         if rev_result:
             revenue = float(rev_result)
             cogs_pct = round((cogs / revenue) * 100, 1) if revenue > 0 else None
-    except Exception:
-        pass
+    except Exception as e:
+        logger.warning(f"Failed to calculate revenue/COGS percentage: {e}")
 
     by_category = []
     for cat, vals in sorted(category_data.items()):

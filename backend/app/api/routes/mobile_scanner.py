@@ -2,6 +2,7 @@
 Mobile Scanner API Endpoints
 For handheld RFID scanners, barcode readers, and mobile inventory apps
 """
+import logging
 from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.orm import Session
 from typing import List, Optional, Dict, Any
@@ -14,6 +15,7 @@ from app.core.rate_limit import limiter
 from app.models import StaffUser
 from app.services.v9_features.iot_service import IoTService
 
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -206,8 +208,8 @@ async def process_batch_scans(
                     count_id=data.session_id,
                     tag_ids=tag_ids
                 )
-            except Exception:
-                pass
+            except Exception as e:
+                logger.warning(f"Failed to record RFID count scan for session {data.session_id}: {e}")
 
     return {
         "total_scans": len(data.scans),

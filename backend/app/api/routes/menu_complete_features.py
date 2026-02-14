@@ -16,6 +16,7 @@ Features:
 
 from __future__ import annotations
 
+import logging
 from fastapi import APIRouter, HTTPException, Query, Request
 from sqlalchemy import func, desc
 from typing import List, Optional, Dict
@@ -28,6 +29,8 @@ import base64
 from app.core.rate_limit import limiter
 from app.db.session import DbSession
 from app.core.rbac import CurrentUser, OptionalCurrentUser
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -517,15 +520,15 @@ def create_combo(
             h, m = data.available_from.split(":")
             if now.time() < time(int(h), int(m)):
                 is_available = False
-        except Exception:
-            pass
+        except Exception as e:
+            logger.debug(f"Optional: parse available_from time '{data.available_from}': {e}")
     if data.available_until:
         try:
             h, m = data.available_until.split(":")
             if now.time() > time(int(h), int(m)):
                 is_available = False
-        except Exception:
-            pass
+        except Exception as e:
+            logger.debug(f"Optional: parse available_until time '{data.available_until}': {e}")
     if now.weekday() not in data.available_days:
         is_available = False
 
