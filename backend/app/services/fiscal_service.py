@@ -36,6 +36,8 @@ class FiscalDeviceType(str, Enum):
     DAISY = "daisy"
     TREMOL = "tremol"
     ELTRADE = "eltrade"
+    INCOTEX = "incotex"
+    ISL = "isl"
     VIRTUAL = "virtual"  # For testing/development
 
 
