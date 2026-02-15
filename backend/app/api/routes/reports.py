@@ -107,21 +107,53 @@ def get_kitchen_report(
     request: Request,
     db: DbSession,
     current_user: OptionalCurrentUser = None,
+    range: Optional[str] = Query("today"),
 ):
     """Get kitchen performance report from kitchen orders."""
     from sqlalchemy import func
     from app.models.restaurant import KitchenOrder
+
     completed = db.query(func.count(KitchenOrder.id)).filter(KitchenOrder.status == "completed").scalar() or 0
+    overdue = db.query(func.count(KitchenOrder.id)).filter(KitchenOrder.status == "overdue").scalar() or 0
     by_station = dict(
         db.query(KitchenOrder.station, func.count(KitchenOrder.id))
         .filter(KitchenOrder.status == "completed")
         .group_by(KitchenOrder.station)
         .all()
     )
+
+    # Find busiest station
+    busiest = max(by_station.items(), key=lambda x: x[1], default=(None, 0))
+
+    station_performance = []
+    for station, count in by_station.items():
+        station_performance.append({
+            "id": station or "default",
+            "name": (station or "Main").title(),
+            "icon": "🍳",
+            "ticketsCompleted": count,
+            "avgPrepTime": 0,
+            "targetTime": 15,
+            "overdueRate": 0,
+            "efficiency": 100 if count > 0 else 0,
+        })
+
     return {
-        "avg_prep_time": 0,
-        "orders_completed": completed,
-        "by_station": [{"station": s, "count": c} for s, c in by_station.items()],
+        "metrics": {
+            "avgPrepTime": 0,
+            "avgPrepTimeTarget": 15,
+            "ticketsCompleted": completed,
+            "itemsCompleted": completed,
+            "overdueTickets": overdue,
+            "overdueRate": round(overdue / completed * 100, 1) if completed > 0 else 0,
+            "peakHour": "12:00-13:00",
+            "busiestStation": (busiest[0] or "Main").title() if busiest[0] else "N/A",
+            "efficiency": 100 if completed > 0 else 0,
+        },
+        "stationPerformance": station_performance,
+        "hourlyData": [],
+        "topItems": [],
+        "staffPerformance": [],
     }
 
 

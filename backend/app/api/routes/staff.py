@@ -803,6 +803,7 @@ def get_performance_goals(request: Request, db: DbSession):
             "id": g.id,
             "metric": g.metric,
             "target": g.target_value,
+            "value": g.target_value,
             "current": g.current_value,
             "unit": g.unit,
             "period": g.period,

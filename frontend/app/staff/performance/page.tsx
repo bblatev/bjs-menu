@@ -99,11 +99,12 @@ export default function StaffPerformancePage() {
 
       if (response.ok) {
         const data = await response.json();
-        setStaff(data.map((s: any) => ({
+        const staffArray = Array.isArray(data) ? data : (data.items || data.staff || []);
+        setStaff(staffArray.map((s: any) => ({
           id: s.id,
-          name: s.full_name,
+          name: s.name || s.full_name,
           role: s.role,
-          avatar_initials: s.full_name.split(' ').map((n: string) => n[0]).join('').toUpperCase(),
+          avatar_initials: (s.name || s.full_name || '').split(' ').map((n: string) => n[0]).join('').toUpperCase(),
           hired_date: s.created_at,
           status: s.active ? 'active' : 'inactive',
         })));
