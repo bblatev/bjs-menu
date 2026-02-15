@@ -148,10 +148,10 @@ export default function MarketingPage() {
   };
 
   const metrics: MarketingMetric[] = stats ? [
-    { label: "Total Reach", value: stats.total_reach >= 1000 ? `${(stats.total_reach / 1000).toFixed(1)}K` : stats.total_reach.toString(), change: stats.total_reach_change, trend: stats.total_reach_change > 0 ? "up" : stats.total_reach_change < 0 ? "down" : "neutral", icon: "👥" },
-    { label: "Avg Open Rate", value: `${(stats.avg_open_rate * 100).toFixed(0)}%`, change: stats.avg_open_rate_change, trend: stats.avg_open_rate_change > 0 ? "up" : stats.avg_open_rate_change < 0 ? "down" : "neutral", icon: "📬" },
-    { label: "Conversion Rate", value: `${(stats.conversion_rate * 100).toFixed(1)}%`, change: stats.conversion_rate_change, trend: stats.conversion_rate_change > 0 ? "up" : stats.conversion_rate_change < 0 ? "down" : "neutral", icon: "🎯" },
-    { label: "Revenue from Campaigns", value: stats.revenue_from_campaigns >= 1000 ? `${(stats.revenue_from_campaigns / 1000).toFixed(1)}K BGN` : `${stats.revenue_from_campaigns} BGN`, change: stats.revenue_change, trend: stats.revenue_change > 0 ? "up" : stats.revenue_change < 0 ? "down" : "neutral", icon: "💰" },
+    { label: "Total Reach", value: stats.total_reach >= 1000 ? `${((stats.total_reach / 1000) ?? 0).toFixed(1)}K` : stats.total_reach.toString(), change: stats.total_reach_change, trend: stats.total_reach_change > 0 ? "up" : stats.total_reach_change < 0 ? "down" : "neutral", icon: "👥" },
+    { label: "Avg Open Rate", value: `${((stats.avg_open_rate * 100) ?? 0).toFixed(0)}%`, change: stats.avg_open_rate_change, trend: stats.avg_open_rate_change > 0 ? "up" : stats.avg_open_rate_change < 0 ? "down" : "neutral", icon: "📬" },
+    { label: "Conversion Rate", value: `${((stats.conversion_rate * 100) ?? 0).toFixed(1)}%`, change: stats.conversion_rate_change, trend: stats.conversion_rate_change > 0 ? "up" : stats.conversion_rate_change < 0 ? "down" : "neutral", icon: "🎯" },
+    { label: "Revenue from Campaigns", value: stats.revenue_from_campaigns >= 1000 ? `${((stats.revenue_from_campaigns / 1000) ?? 0).toFixed(1)}K BGN` : `${stats.revenue_from_campaigns} BGN`, change: stats.revenue_change, trend: stats.revenue_change > 0 ? "up" : stats.revenue_change < 0 ? "down" : "neutral", icon: "💰" },
     { label: "Active Promotions", value: stats.active_promotions.toString(), change: 0, trend: "neutral", icon: "🏷️" },
     { label: "Customer Segments", value: stats.customer_segments.toString(), change: 0, trend: "neutral", icon: "📊" },
   ] : [];
@@ -284,7 +284,7 @@ export default function MarketingPage() {
                             <div className="flex items-center gap-4 text-sm text-gray-500">
                               <span>👥 {campaign.sent_count.toLocaleString()} sent</span>
                               {campaign.conversion_rate > 0 && (
-                                <span>🎯 {(campaign.conversion_rate * 100).toFixed(1)}% conv.</span>
+                                <span>🎯 {((campaign.conversion_rate * 100) ?? 0).toFixed(1)}% conv.</span>
                               )}
                               {campaign.revenue_generated > 0 && (
                                 <span>💰 {campaign.revenue_generated.toLocaleString()} BGN</span>
@@ -430,15 +430,15 @@ export default function MarketingPage() {
                             <div className="text-xs text-gray-500">Sent</div>
                           </div>
                           <div>
-                            <div className="text-lg font-bold">{(campaign.open_rate * 100).toFixed(1)}%</div>
+                            <div className="text-lg font-bold">{((campaign.open_rate * 100) ?? 0).toFixed(1)}%</div>
                             <div className="text-xs text-gray-500">Open Rate</div>
                           </div>
                           <div>
-                            <div className="text-lg font-bold">{(campaign.click_rate * 100).toFixed(1)}%</div>
+                            <div className="text-lg font-bold">{((campaign.click_rate * 100) ?? 0).toFixed(1)}%</div>
                             <div className="text-xs text-gray-500">Click Rate</div>
                           </div>
                           <div>
-                            <div className="text-lg font-bold">{(campaign.conversion_rate * 100).toFixed(1)}%</div>
+                            <div className="text-lg font-bold">{((campaign.conversion_rate * 100) ?? 0).toFixed(1)}%</div>
                             <div className="text-xs text-gray-500">Conversion</div>
                           </div>
                           <div>

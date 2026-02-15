@@ -122,7 +122,7 @@ export default function PourCostsPage() {
 
   const filteredItems = items
     .filter(item => selectedCategory === 'all' || item.category === selectedCategory)
-    .filter(item => item.name.toLowerCase().includes(searchQuery.toLowerCase()))
+    .filter(item => (item.name ?? '').toLowerCase().includes(searchQuery.toLowerCase()))
     .sort((a, b) => {
       let comparison = 0;
       switch (sortBy) {
@@ -130,13 +130,13 @@ export default function PourCostsPage() {
           comparison = a.name.localeCompare(b.name);
           break;
         case 'pour_cost':
-          comparison = a.pour_cost_percentage - b.pour_cost_percentage;
+          comparison = (a.pour_cost_percentage ?? 0) - (b.pour_cost_percentage ?? 0);
           break;
         case 'variance':
-          comparison = a.variance - b.variance;
+          comparison = (a.variance ?? 0) - (b.variance ?? 0);
           break;
         case 'revenue':
-          comparison = a.revenue_today - b.revenue_today;
+          comparison = (a.revenue_today ?? 0) - (b.revenue_today ?? 0);
           break;
       }
       return sortOrder === 'asc' ? comparison : -comparison;
@@ -177,8 +177,8 @@ export default function PourCostsPage() {
     });
   };
 
-  const totalRevenue = filteredItems.reduce((sum, item) => sum + item.revenue_today, 0);
-  const totalCost = filteredItems.reduce((sum, item) => sum + (item.cost_per_pour * item.sold_today), 0);
+  const totalRevenue = filteredItems.reduce((sum, item) => sum + (item.revenue_today ?? 0), 0);
+  const totalCost = filteredItems.reduce((sum, item) => sum + ((item.cost_per_pour ?? 0) * (item.sold_today ?? 0)), 0);
   const overallPourCost = totalRevenue > 0 ? (totalCost / totalRevenue) * 100 : 0;
 
   return (
@@ -214,26 +214,26 @@ export default function PourCostsPage() {
       <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
         <div className="bg-white p-4 rounded-xl border border-surface-200 shadow-sm">
           <p className="text-sm text-surface-500">Total Revenue</p>
-          <p className="text-2xl font-bold text-success-600">${totalRevenue.toFixed(2)}</p>
+          <p className="text-2xl font-bold text-success-600">${(totalRevenue ?? 0).toFixed(2)}</p>
         </div>
         <div className="bg-white p-4 rounded-xl border border-surface-200 shadow-sm">
           <p className="text-sm text-surface-500">Total Cost</p>
-          <p className="text-2xl font-bold text-surface-900">${totalCost.toFixed(2)}</p>
+          <p className="text-2xl font-bold text-surface-900">${(totalCost ?? 0).toFixed(2)}</p>
         </div>
         <div className="bg-white p-4 rounded-xl border border-surface-200 shadow-sm">
           <p className="text-sm text-surface-500">Gross Profit</p>
-          <p className="text-2xl font-bold text-success-600">${(totalRevenue - totalCost).toFixed(2)}</p>
+          <p className="text-2xl font-bold text-success-600">${((totalRevenue - totalCost) ?? 0).toFixed(2)}</p>
         </div>
         <div className="bg-white p-4 rounded-xl border border-surface-200 shadow-sm">
           <p className="text-sm text-surface-500">Overall Pour Cost</p>
           <p className={`text-2xl font-bold ${getPourCostColor(overallPourCost)}`}>
-            {overallPourCost.toFixed(1)}%
+            {(overallPourCost ?? 0).toFixed(1)}%
           </p>
         </div>
         <div className="bg-white p-4 rounded-xl border border-surface-200 shadow-sm">
           <p className="text-sm text-surface-500">Profit Margin</p>
           <p className="text-2xl font-bold text-primary-600">
-            {(100 - overallPourCost).toFixed(1)}%
+            {((100 - overallPourCost) ?? 0).toFixed(1)}%
           </p>
         </div>
       </div>
@@ -265,20 +265,20 @@ export default function PourCostsPage() {
                   <td className="px-4 py-3 text-center text-surface-700">{cat.items}</td>
                   <td className="px-4 py-3 text-center">
                     <span className={`font-medium ${getPourCostColor(cat.avgPourCost, cat.targetPourCost)}`}>
-                      {cat.avgPourCost.toFixed(1)}%
+                      {(cat.avgPourCost ?? 0).toFixed(1)}%
                     </span>
                   </td>
-                  <td className="px-4 py-3 text-center text-surface-500">{cat.targetPourCost.toFixed(1)}%</td>
+                  <td className="px-4 py-3 text-center text-surface-500">{(cat.targetPourCost ?? 0).toFixed(1)}%</td>
                   <td className="px-4 py-3 text-center">
                     <span className={`px-2 py-1 rounded-full text-xs font-medium ${getVarianceColor(cat.variance)}`}>
-                      {cat.variance > 0 ? '+' : ''}{cat.variance.toFixed(1)}%
+                      {cat.variance > 0 ? '+' : ''}{(cat.variance ?? 0).toFixed(1)}%
                     </span>
                   </td>
                   <td className="px-4 py-3 text-right font-medium text-surface-900">
-                    ${cat.revenue.toFixed(2)}
+                    ${(cat.revenue ?? 0).toFixed(2)}
                   </td>
                   <td className="px-4 py-3 text-right font-medium text-success-600">
-                    ${cat.profit.toFixed(2)}
+                    ${(cat.profit ?? 0).toFixed(2)}
                   </td>
                 </tr>
               ))}
@@ -375,19 +375,19 @@ export default function PourCostsPage() {
                   </td>
                   <td className="px-4 py-3 text-center text-surface-700">{item.size}</td>
                   <td className="px-4 py-3 text-right text-surface-900">
-                    ${item.bottle_cost.toFixed(2)}
+                    ${(item.bottle_cost ?? 0).toFixed(2)}
                   </td>
                   <td className="px-4 py-3 text-center text-surface-700">{item.pour_size}</td>
                   <td className="px-4 py-3 text-center text-surface-700">{item.pours_per_bottle}</td>
                   <td className="px-4 py-3 text-right text-surface-900 font-medium">
-                    ${item.cost_per_pour.toFixed(2)}
+                    ${(item.cost_per_pour ?? 0).toFixed(2)}
                   </td>
                   <td className="px-4 py-3 text-right text-success-600 font-medium">
-                    ${item.sell_price.toFixed(2)}
+                    ${(item.sell_price ?? 0).toFixed(2)}
                   </td>
                   <td className="px-4 py-3 text-center">
                     <span className={`font-bold ${getPourCostColor(item.pour_cost_percentage, item.ideal_pour_cost)}`}>
-                      {item.pour_cost_percentage.toFixed(1)}%
+                      {(item.pour_cost_percentage ?? 0).toFixed(1)}%
                     </span>
                     <span className="text-xs text-surface-400 block">
                       target: {item.ideal_pour_cost}%
@@ -395,11 +395,11 @@ export default function PourCostsPage() {
                   </td>
                   <td className="px-4 py-3 text-center">
                     <span className={`px-2 py-1 rounded-full text-xs font-medium ${getVarianceColor(item.variance)}`}>
-                      {item.variance > 0 ? '+' : ''}{item.variance.toFixed(1)}%
+                      {item.variance > 0 ? '+' : ''}{(item.variance ?? 0).toFixed(1)}%
                     </span>
                   </td>
                   <td className="px-4 py-3 text-right">
-                    <p className="font-medium text-success-600">${item.revenue_today.toFixed(2)}</p>
+                    <p className="font-medium text-success-600">${(item.revenue_today ?? 0).toFixed(2)}</p>
                     <p className="text-xs text-surface-500">{item.sold_today} sold</p>
                   </td>
                 </tr>
@@ -513,7 +513,7 @@ export default function PourCostsPage() {
                     <div>
                       <p className="text-surface-500">Cost per Pour</p>
                       <p className="font-medium text-surface-900">
-                        ${(newItem.bottle_cost / (newItem.size === '750ml' ? 25 : newItem.size === '1L' ? 33 : 16)).toFixed(2)}
+                        ${((newItem.bottle_cost / (newItem.size === '750ml' ? 25 : newItem.size === '1L' ? 33 : 16)) ?? 0).toFixed(2)}
                       </p>
                     </div>
                     <div>
@@ -522,13 +522,13 @@ export default function PourCostsPage() {
                         ((newItem.bottle_cost / (newItem.size === '750ml' ? 25 : newItem.size === '1L' ? 33 : 16)) / newItem.sell_price) * 100,
                         newItem.ideal_pour_cost
                       )}`}>
-                        {(((newItem.bottle_cost / (newItem.size === '750ml' ? 25 : newItem.size === '1L' ? 33 : 16)) / newItem.sell_price) * 100).toFixed(1)}%
+                        {((((newItem.bottle_cost / (newItem.size === '750ml' ? 25 : newItem.size === '1L' ? 33 : 16)) / newItem.sell_price) * 100) ?? 0).toFixed(1)}%
                       </p>
                     </div>
                     <div>
                       <p className="text-surface-500">Profit per Pour</p>
                       <p className="font-medium text-success-600">
-                        ${(newItem.sell_price - (newItem.bottle_cost / (newItem.size === '750ml' ? 25 : newItem.size === '1L' ? 33 : 16))).toFixed(2)}
+                        ${((newItem.sell_price - (newItem.bottle_cost / (newItem.size === '750ml' ? 25 : newItem.size === '1L' ? 33 : 16))) ?? 0).toFixed(2)}
                       </p>
                     </div>
                   </div>

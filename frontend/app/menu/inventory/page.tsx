@@ -414,7 +414,7 @@ export default function MenuInventoryPage() {
               >
                 <div className="font-medium">{item.name.bg || item.name.en}</div>
                 <div className="text-sm text-gray-300 flex justify-between">
-                  <span>{item.price.toFixed(2)} лв</span>
+                  <span>{(item.price ?? 0).toFixed(2)} лв</span>
                   <span className={item.available ? "text-green-400" : "text-red-400"}>
                     {item.available ? "●" : "○"}
                   </span>
@@ -436,10 +436,10 @@ export default function MenuInventoryPage() {
                     <p className="text-gray-400">{selectedItem.name.en}</p>
                   </div>
                   <div className="text-right">
-                    <div className="text-3xl font-bold text-orange-400">{selectedItem.price.toFixed(2)} лв</div>
+                    <div className="text-3xl font-bold text-orange-400">{(selectedItem.price ?? 0).toFixed(2)} лв</div>
                     {selectedItem.food_cost && (
                       <div className="text-sm text-gray-400">
-                        Cost: {selectedItem.food_cost.toFixed(2)} лв ({selectedItem.profit_margin?.toFixed(0)}% margin)
+                        Cost: {(selectedItem.food_cost ?? 0).toFixed(2)} лв ({(selectedItem.profit_margin? ?? 0).toFixed(0)}% margin)
                       </div>
                     )}
                   </div>
@@ -670,18 +670,18 @@ export default function MenuInventoryPage() {
                     <div className="grid grid-cols-3 gap-6">
                       <div className="bg-gray-100 rounded-lg p-4">
                         <div className="text-gray-400 text-sm">Current Price</div>
-                        <div className="text-2xl font-bold text-green-400">{selectedItem.price.toFixed(2)} лв</div>
+                        <div className="text-2xl font-bold text-green-400">{(selectedItem.price ?? 0).toFixed(2)} лв</div>
                       </div>
                       <div className="bg-gray-100 rounded-lg p-4">
                         <div className="text-gray-400 text-sm">Food Cost</div>
                         <div className="text-2xl font-bold text-red-400">
-                          {selectedItem.food_cost?.toFixed(2) || "N/A"} лв
+                          {(selectedItem.food_cost? ?? 0).toFixed(2) || "N/A"} лв
                         </div>
                       </div>
                       <div className="bg-gray-100 rounded-lg p-4">
                         <div className="text-gray-400 text-sm">Profit Margin</div>
                         <div className="text-2xl font-bold text-orange-400">
-                          {selectedItem.profit_margin?.toFixed(0) || "N/A"}%
+                          {(selectedItem.profit_margin? ?? 0).toFixed(0) || "N/A"}%
                         </div>
                       </div>
                     </div>
@@ -1052,7 +1052,7 @@ export default function MenuInventoryPage() {
                           className="w-4 h-4"
                         />
                         <span>{item.name.bg || item.name.en}</span>
-                        <span className="text-gray-400 ml-auto">{item.price.toFixed(2)} лв</span>
+                        <span className="text-gray-400 ml-auto">{(item.price ?? 0).toFixed(2)} лв</span>
                       </label>
                     ))}
                   </div>

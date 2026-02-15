@@ -199,7 +199,7 @@ export default function InventoryIntelligencePage() {
   }, [activeTab, fetchData]);
 
   const fmt = (n: number) => n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-  const fmtPct = (n: number) => `${n.toFixed(1)}%`;
+  const fmtPct = (n: number) => `${(n ?? 0).toFixed(1)}%`;
 
   const categoryColor = (cat: string) => {
     switch (cat) {
@@ -368,7 +368,7 @@ export default function InventoryIntelligencePage() {
           <div className="grid grid-cols-3 gap-4">
             <div className="bg-white rounded-xl border border-surface-200 p-4">
               <div className="text-sm text-surface-500">Average Turnover Ratio</div>
-              <div className="text-2xl font-bold text-surface-900 mt-1">{turnoverData.avg_turnover.toFixed(1)}x</div>
+              <div className="text-2xl font-bold text-surface-900 mt-1">{(turnoverData.avg_turnover ?? 0).toFixed(1)}x</div>
             </div>
             <div className="bg-white rounded-xl border border-surface-200 p-4">
               <div className="text-sm text-surface-500">Total Items Tracked</div>
@@ -403,8 +403,8 @@ export default function InventoryIntelligencePage() {
                       <td className="px-4 py-3 text-center">
                         <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${statusColor(item.status)}`}>{item.status}</span>
                       </td>
-                      <td className="px-4 py-3 text-right font-mono">{item.turnover_ratio.toFixed(1)}x</td>
-                      <td className="px-4 py-3 text-right font-mono">{item.days_on_hand?.toFixed(0) || '-'}</td>
+                      <td className="px-4 py-3 text-right font-mono">{(item.turnover_ratio ?? 0).toFixed(1)}x</td>
+                      <td className="px-4 py-3 text-right font-mono">{(item.days_on_hand? ?? 0).toFixed(0) || '-'}</td>
                       <td className="px-4 py-3 text-right font-mono">{fmt(item.avg_stock)}</td>
                       <td className="px-4 py-3 text-right font-mono">{fmt(item.total_usage)}</td>
                     </tr>
@@ -571,9 +571,9 @@ export default function InventoryIntelligencePage() {
                   {varianceItems.slice(0, 50).map((item) => (
                     <tr key={item.product_id} className="hover:bg-surface-50">
                       <td className="px-4 py-3 font-medium text-surface-900">{item.product_name}</td>
-                      <td className="px-4 py-3 text-right font-mono">{item.theoretical_usage.toFixed(2)}</td>
-                      <td className="px-4 py-3 text-right font-mono">{item.actual_usage.toFixed(2)}</td>
-                      <td className="px-4 py-3 text-right font-mono">{item.variance.toFixed(2)}</td>
+                      <td className="px-4 py-3 text-right font-mono">{(item.theoretical_usage ?? 0).toFixed(2)}</td>
+                      <td className="px-4 py-3 text-right font-mono">{(item.actual_usage ?? 0).toFixed(2)}</td>
+                      <td className="px-4 py-3 text-right font-mono">{(item.variance ?? 0).toFixed(2)}</td>
                       <td className="px-4 py-3 text-right">
                         <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${item.variance_pct > 10 ? 'bg-red-100 text-red-800' : item.variance_pct > 0 ? 'bg-amber-100 text-amber-800' : 'bg-green-100 text-green-800'}`}>
                           {fmtPct(item.variance_pct)}
@@ -629,7 +629,7 @@ export default function InventoryIntelligencePage() {
                 </div>
                 <div className="bg-white rounded-xl border border-surface-200 p-4">
                   <div className="text-sm text-surface-500">Orders per Year</div>
-                  <div className="text-xl font-bold text-surface-900 mt-1">{eoqData.orders_per_year.toFixed(1)}</div>
+                  <div className="text-xl font-bold text-surface-900 mt-1">{(eoqData.orders_per_year ?? 0).toFixed(1)}</div>
                 </div>
                 <div className="bg-white rounded-xl border border-surface-200 p-4">
                   <div className="text-sm text-surface-500">Total Annual Cost</div>

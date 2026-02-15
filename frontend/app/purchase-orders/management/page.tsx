@@ -498,7 +498,7 @@ export default function PurchaseOrdersManagementPage() {
             className="bg-white rounded-xl p-4 shadow-sm border"
           >
             <div className="text-2xl font-bold text-green-600">
-              {(purchaseOrders.reduce((sum, po) => sum + po.total_amount, 0) / 1000).toFixed(1)}K
+              {((purchaseOrders.reduce((sum, po) => sum + po.total_amount, 0) / 1000) ?? 0).toFixed(1)}K
             </div>
             <div className="text-sm text-gray-600">Total Orders (BGN)</div>
           </motion.div>
@@ -918,7 +918,7 @@ export default function PurchaseOrdersManagementPage() {
                                   <div className="font-bold text-lg">{(invoice.total_amount ?? 0).toFixed(2)} {invoice.currency}</div>
                                   <div className="text-sm text-gray-500">Due: {invoice.due_date}</div>
                                   {invoice.variance_amount && invoice.variance_amount > 0 && (
-                                    <div className="text-sm text-red-600">Variance: {invoice.variance_amount.toFixed(2)} {invoice.currency}</div>
+                                    <div className="text-sm text-red-600">Variance: {(invoice.variance_amount ?? 0).toFixed(2)} {invoice.currency}</div>
                                   )}
                                 </div>
                               </div>
@@ -1007,12 +1007,12 @@ export default function PurchaseOrdersManagementPage() {
                                 <div className="text-center p-3 bg-purple-50 rounded">
                                   <div className="text-xs text-gray-500 mb-1">GRN</div>
                                   <div className="font-medium">{match.grn_number || "-"}</div>
-                                  <div className="text-lg font-bold text-purple-600">{match.grn_total?.toFixed(2) || "-"}</div>
+                                  <div className="text-lg font-bold text-purple-600">{(match.grn_total? ?? 0).toFixed(2) || "-"}</div>
                                 </div>
                                 <div className="text-center p-3 bg-green-50 rounded">
                                   <div className="text-xs text-gray-500 mb-1">Invoice</div>
                                   <div className="font-medium">{match.invoice_number || "-"}</div>
-                                  <div className="text-lg font-bold text-green-600">{match.invoice_total?.toFixed(2) || "-"}</div>
+                                  <div className="text-lg font-bold text-green-600">{(match.invoice_total? ?? 0).toFixed(2) || "-"}</div>
                                 </div>
                               </div>
 
@@ -1315,15 +1315,15 @@ export default function PurchaseOrdersManagementPage() {
                               {item.quantity_received} {item.unit}
                             </span>
                           </td>
-                          <td className="text-right p-3">{item.unit_price.toFixed(2)}</td>
-                          <td className="text-right p-3 font-medium">{item.total_price.toFixed(2)}</td>
+                          <td className="text-right p-3">{(item.unit_price ?? 0).toFixed(2)}</td>
+                          <td className="text-right p-3 font-medium">{(item.total_price ?? 0).toFixed(2)}</td>
                         </tr>
                       ))}
                     </tbody>
                     <tfoot className="border-t-2">
                       <tr>
                         <td colSpan={4} className="p-3 text-right font-semibold">Total</td>
-                        <td className="p-3 text-right font-bold">{selectedPO.total_amount.toFixed(2)} {selectedPO.currency}</td>
+                        <td className="p-3 text-right font-bold">{(selectedPO.total_amount ?? 0).toFixed(2)} {selectedPO.currency}</td>
                       </tr>
                     </tfoot>
                   </table>

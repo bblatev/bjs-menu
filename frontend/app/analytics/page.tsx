@@ -60,7 +60,7 @@ export default function AnalyticsPage() {
     }
   };
 
-  const formatCurrency = (amount: number) => `${amount.toFixed(2)} лв`;
+  const formatCurrency = (amount: number) => `${(amount ?? 0).toFixed(2)} лв`;
 
   const maxRevenue = data?.orders_by_hour
     ? Math.max(...data.orders_by_hour.map((h) => h.revenue))
@@ -312,7 +312,7 @@ export default function AnalyticsPage() {
             <div className="space-y-4">
               {(data?.payment_methods || []).map((pm) => {
                 const total = (data?.payment_methods || []).reduce((a, b) => a + b.count, 0);
-                const percentage = ((pm.count / total) * 100).toFixed(0);
+                const percentage = (((pm.count / total) * 100) ?? 0).toFixed(0);
                 return (
                   <div key={pm.method} className="space-y-2">
                     <div className="flex justify-between text-gray-900">
@@ -410,7 +410,7 @@ export default function AnalyticsPage() {
                 Tips account for{" "}
                 <span className="text-yellow-400 font-bold">
                   {data?.summary?.total_revenue
-                    ? ((data.summary.total_tips / data.summary.total_revenue) * 100).toFixed(1)
+                    ? (((data.summary.total_tips / data.summary.total_revenue) * 100) ?? 0).toFixed(1)
                     : 0}
                   %
                 </span>{" "}

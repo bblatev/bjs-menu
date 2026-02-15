@@ -338,7 +338,7 @@ export default function TrainingModePage() {
                       <div>
                         <span className="text-gray-500 dark:text-gray-400">Sales:</span>
                         <span className="ml-1 font-medium text-green-600">
-                          ${session.totalSales.toFixed(2)}
+                          ${(session.totalSales ?? 0).toFixed(2)}
                         </span>
                       </div>
                     </div>
@@ -370,7 +370,7 @@ export default function TrainingModePage() {
               <p className="text-sm text-gray-500 dark:text-gray-400">Payments Processed</p>
             </div>
             <div className="text-center p-4 bg-gray-50 dark:bg-surface-700 rounded-lg">
-              <p className="text-3xl font-bold text-green-600">${sessionStats.totalSales.toFixed(2)}</p>
+              <p className="text-3xl font-bold text-green-600">${(sessionStats.totalSales ?? 0).toFixed(2)}</p>
               <p className="text-sm text-gray-500 dark:text-gray-400">Total Sales</p>
             </div>
             <div className="text-center p-4 bg-gray-50 dark:bg-surface-700 rounded-lg">
@@ -428,7 +428,7 @@ export default function TrainingModePage() {
                       className="p-3 bg-gray-50 dark:bg-surface-700 rounded-lg hover:bg-gray-100 dark:hover:bg-surface-600 transition-colors text-left"
                     >
                       <p className="font-medium text-gray-900 dark:text-white">{item.name}</p>
-                      <p className="text-sm text-green-600">${item.price.toFixed(2)}</p>
+                      <p className="text-sm text-green-600">${(item.price ?? 0).toFixed(2)}</p>
                       <p className="text-xs text-gray-500 dark:text-gray-400">{item.category}</p>
                     </button>
                   ))}
@@ -491,7 +491,7 @@ export default function TrainingModePage() {
                           </span>
                         </div>
                         <span className="text-gray-600 dark:text-gray-400">
-                          ${(item.price * item.quantity).toFixed(2)}
+                          ${((item.price * item.quantity) ?? 0).toFixed(2)}
                         </span>
                       </div>
                     ))}
@@ -499,15 +499,15 @@ export default function TrainingModePage() {
                   <div className="border-t border-gray-200 dark:border-surface-700 pt-3 space-y-1 text-sm">
                     <div className="flex justify-between">
                       <span className="text-gray-600 dark:text-gray-400">Subtotal</span>
-                      <span className="text-gray-900 dark:text-white">${cartSubtotal.toFixed(2)}</span>
+                      <span className="text-gray-900 dark:text-white">${(cartSubtotal ?? 0).toFixed(2)}</span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-gray-600 dark:text-gray-400">Tax (10%)</span>
-                      <span className="text-gray-900 dark:text-white">${cartTax.toFixed(2)}</span>
+                      <span className="text-gray-900 dark:text-white">${(cartTax ?? 0).toFixed(2)}</span>
                     </div>
                     <div className="flex justify-between font-semibold text-base pt-2">
                       <span className="text-gray-900 dark:text-white">Total</span>
-                      <span className="text-green-600">${cartTotal.toFixed(2)}</span>
+                      <span className="text-green-600">${(cartTotal ?? 0).toFixed(2)}</span>
                     </div>
                   </div>
                   <button
@@ -541,14 +541,14 @@ export default function TrainingModePage() {
                 <div className="flex justify-between text-sm">
                   <span className="text-gray-600 dark:text-gray-400">Total Sales</span>
                   <span className="font-medium text-green-600">
-                    ${currentSession.totalSales.toFixed(2)}
+                    ${(currentSession.totalSales ?? 0).toFixed(2)}
                   </span>
                 </div>
                 <div className="flex justify-between text-sm">
                   <span className="text-gray-600 dark:text-gray-400">Avg. Ticket</span>
                   <span className="font-medium text-gray-900 dark:text-white">
                     ${currentSession.ordersCreated > 0
-                      ? (currentSession.totalSales / currentSession.ordersCreated).toFixed(2)
+                      ? ((currentSession.totalSales / currentSession.ordersCreated) ?? 0).toFixed(2)
                       : '0.00'}
                   </span>
                 </div>

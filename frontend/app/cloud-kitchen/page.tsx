@@ -212,7 +212,7 @@ export default function CloudKitchenPage() {
             <div className="text-sm text-gray-500 mt-1">От всички брандове</div>
           </div>
           <div className="bg-white rounded-xl shadow-sm border p-5">
-            <div className="text-3xl font-bold text-green-600">{totalRevenueToday.toFixed(0)} лв</div>
+            <div className="text-3xl font-bold text-green-600">{(totalRevenueToday ?? 0).toFixed(0)} лв</div>
             <div className="text-gray-600">Приходи днес</div>
             <div className="text-sm text-gray-500 mt-1">Общо приходи</div>
           </div>
@@ -222,7 +222,7 @@ export default function CloudKitchenPage() {
             <div className="text-sm text-gray-500 mt-1">Средно за деня</div>
           </div>
           <div className="bg-white rounded-xl shadow-sm border p-5">
-            <div className="text-3xl font-bold text-yellow-600">{stats.avgRating > 0 ? stats.avgRating.toFixed(1) : '-'}</div>
+            <div className="text-3xl font-bold text-yellow-600">{stats.avgRating > 0 ? (stats.avgRating ?? 0).toFixed(1) : '-'}</div>
             <div className="text-gray-600">Ср. рейтинг</div>
             <div className="flex mt-1">{'⭐'.repeat(Math.round(stats.avgRating || 0))}</div>
           </div>
@@ -294,7 +294,7 @@ export default function CloudKitchenPage() {
                             <div className="text-xs text-gray-500">Поръчки</div>
                           </div>
                           <div className="bg-gray-50 rounded p-2 text-center">
-                            <div className="font-bold text-lg">{brand.revenueToday.toFixed(0)}</div>
+                            <div className="font-bold text-lg">{(brand.revenueToday ?? 0).toFixed(0)}</div>
                             <div className="text-xs text-gray-500">Приходи</div>
                           </div>
                           <div className="bg-gray-50 rounded p-2 text-center">
@@ -434,7 +434,7 @@ export default function CloudKitchenPage() {
                         {order.items.map(i => `${i.quantity}x ${i.name}`).join(', ')}
                       </div>
                       <div className="flex justify-between items-center">
-                        <span className="font-bold">{order.total.toFixed(2)} лв</span>
+                        <span className="font-bold">{(order.total ?? 0).toFixed(2)} лв</span>
                         <button 
                           onClick={() => setOrders(orders.map(o => o.id === order.id ? {...o, status: 'preparing'} : o))}
                           className="bg-blue-600 text-gray-900 px-4 py-1 rounded text-sm font-medium hover:bg-blue-700"
@@ -552,8 +552,8 @@ export default function CloudKitchenPage() {
                         </div>
                       </td>
                       <td className="p-3 font-bold">{brand.ordersToday}</td>
-                      <td className="p-3 font-bold text-green-600">{brand.revenueToday.toFixed(2)} лв</td>
-                      <td className="p-3">{(brand.revenueToday / (brand.ordersToday || 1)).toFixed(2)} лв</td>
+                      <td className="p-3 font-bold text-green-600">{(brand.revenueToday ?? 0).toFixed(2)} лв</td>
+                      <td className="p-3">{((brand.revenueToday / (brand.ordersToday || 1)) ?? 0).toFixed(2)} лв</td>
                       <td className="p-3">12-18 мин</td>
                       <td className="p-3">
                         <span className="flex items-center gap-1">

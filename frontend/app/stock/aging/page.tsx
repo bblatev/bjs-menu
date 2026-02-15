@@ -171,7 +171,7 @@ export default function StockAgingPage() {
           </div>
           <div className="bg-white p-4 rounded-xl border border-error-200 shadow-sm">
             <p className="text-sm text-surface-500">Value at Risk</p>
-            <p className="text-2xl font-bold text-error-600">${stats.total_value_at_risk.toFixed(0)}</p>
+            <p className="text-2xl font-bold text-error-600">${(stats.total_value_at_risk ?? 0).toFixed(0)}</p>
           </div>
           <div className="bg-white p-4 rounded-xl border border-surface-200 shadow-sm">
             <p className="text-sm text-surface-500">Critical Items</p>
@@ -179,7 +179,7 @@ export default function StockAgingPage() {
           </div>
           <div className="bg-white p-4 rounded-xl border border-surface-200 shadow-sm">
             <p className="text-sm text-surface-500">Avg Days in Stock</p>
-            <p className="text-2xl font-bold text-surface-900">{stats.avg_days_in_stock.toFixed(1)}</p>
+            <p className="text-2xl font-bold text-surface-900">{(stats.avg_days_in_stock ?? 0).toFixed(1)}</p>
           </div>
           <div className="bg-white p-4 rounded-xl border border-surface-200 shadow-sm">
             <p className="text-sm text-surface-500">Slow Movers</p>
@@ -209,7 +209,7 @@ export default function StockAgingPage() {
               <div key={idx}>
                 <div className="flex items-center justify-between mb-1">
                   <span className="text-sm font-medium text-surface-700">{bucket.bucket}</span>
-                  <span className="text-sm text-surface-600">{bucket.count} items • ${bucket.value.toFixed(0)}</span>
+                  <span className="text-sm text-surface-600">{bucket.count} items • ${(bucket.value ?? 0).toFixed(0)}</span>
                 </div>
                 <div className="h-4 bg-surface-200 rounded-full overflow-hidden">
                   <div
@@ -336,7 +336,7 @@ export default function StockAgingPage() {
                     <span className="text-surface-900">{item.quantity} {item.unit}</span>
                   </td>
                   <td className="px-4 py-3 text-center">
-                    <span className="font-medium text-surface-900">${item.total_value.toFixed(2)}</span>
+                    <span className="font-medium text-surface-900">${(item.total_value ?? 0).toFixed(2)}</span>
                   </td>
                   <td className="px-4 py-3 text-center">
                     <span className={`font-medium ${
@@ -344,7 +344,7 @@ export default function StockAgingPage() {
                       item.turnover_rate >= 0.5 ? 'text-primary-600' :
                       'text-warning-600'
                     }`}>
-                      {item.turnover_rate.toFixed(2)}x
+                      {(item.turnover_rate ?? 0).toFixed(2)}x
                     </span>
                   </td>
                   <td className="px-4 py-3 text-center">

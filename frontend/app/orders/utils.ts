@@ -58,7 +58,7 @@ export function getTimeColor(minutes: number): string {
  * Format currency (BGN)
  */
 export function formatCurrency(amount: number): string {
-  return `${amount.toFixed(2)} лв`;
+  return `${(amount ?? 0).toFixed(2)} лв`;
 }
 
 /**

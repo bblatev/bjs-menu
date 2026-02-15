@@ -272,7 +272,7 @@ export default function BudgetsPage() {
         >
           <div className="text-3xl mb-2">📈</div>
           <div className="text-2xl font-bold text-purple-900">
-            {totalBudgeted > 0 ? ((totalSpent / totalBudgeted) * 100).toFixed(1) : 0}%
+            {totalBudgeted > 0 ? (((totalSpent / totalBudgeted) * 100) ?? 0).toFixed(1) : 0}%
           </div>
           <div className="text-sm text-purple-600">Budget Used</div>
         </motion.div>
@@ -348,7 +348,7 @@ export default function BudgetsPage() {
                 </div>
                 <div className="flex justify-between text-xs mt-1">
                   <span className={isOverBudget ? 'text-red-600' : 'text-surface-500'}>
-                    {progress.toFixed(1)}% used
+                    {(progress ?? 0).toFixed(1)}% used
                   </span>
                   <span className="text-surface-500">
                     {formatCurrency(budget.total_amount - budget.spent_amount)} remaining
@@ -553,7 +553,7 @@ export default function BudgetsPage() {
                       Variance %
                     </div>
                     <div className={`text-xl font-bold ${variance.variance_percentage >= 0 ? 'text-green-900' : 'text-red-900'}`}>
-                      {variance.variance_percentage >= 0 ? '+' : ''}{variance.variance_percentage.toFixed(1)}%
+                      {variance.variance_percentage >= 0 ? '+' : ''}{(variance.variance_percentage ?? 0).toFixed(1)}%
                     </div>
                   </div>
                 </div>
@@ -579,7 +579,7 @@ export default function BudgetsPage() {
                           {formatCurrency(item.variance)}
                         </td>
                         <td className={`px-4 py-3 text-right ${item.percentage >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                          {item.percentage >= 0 ? '+' : ''}{item.percentage.toFixed(1)}%
+                          {item.percentage >= 0 ? '+' : ''}{(item.percentage ?? 0).toFixed(1)}%
                         </td>
                       </tr>
                     ))}

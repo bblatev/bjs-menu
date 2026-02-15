@@ -262,7 +262,7 @@ export default function TipsManagerPage() {
           </div>
           <div className="bg-white p-4 rounded-xl border border-surface-200 shadow-sm">
             <p className="text-xs text-surface-500 uppercase">Avg per Hour</p>
-            <p className="text-xl font-bold text-primary-600">${stats.avgTipPerHour.toFixed(2)}</p>
+            <p className="text-xl font-bold text-primary-600">${(stats.avgTipPerHour ?? 0).toFixed(2)}</p>
           </div>
           <div className="bg-white p-4 rounded-xl border border-warning-200 shadow-sm bg-warning-50">
             <p className="text-xs text-warning-600 uppercase">Pending</p>
@@ -375,7 +375,7 @@ export default function TipsManagerPage() {
                         </div>
                         <div className="text-right ml-2">
                           <p className="font-bold text-success-600">${dist.amount}</p>
-                          <p className="text-xs text-surface-500">{dist.share_percentage.toFixed(1)}%</p>
+                          <p className="text-xs text-surface-500">{(dist.share_percentage ?? 0).toFixed(1)}%</p>
                         </div>
                         {dist.paid && (
                           <span className="text-success-500 text-sm">✓</span>
@@ -426,7 +426,7 @@ export default function TipsManagerPage() {
                     <td className="px-4 py-3 text-right text-surface-700">{staff.hours}h</td>
                     <td className="px-4 py-3 text-right font-bold text-surface-900">${staff.earned}</td>
                     <td className="px-4 py-3 text-right text-primary-600">
-                      ${staff.hours > 0 ? (staff.earned / staff.hours).toFixed(2) : '0.00'}
+                      ${staff.hours > 0 ? ((staff.earned / staff.hours) ?? 0).toFixed(2) : '0.00'}
                     </td>
                     <td className="px-4 py-3 text-right">
                       {staff.pending > 0 ? (
@@ -540,7 +540,7 @@ export default function TipsManagerPage() {
                 <div className="bg-success-50 rounded-lg p-4 text-center">
                   <p className="text-sm text-success-600">Total Tips</p>
                   <p className="text-2xl font-bold text-success-700">
-                    ${(newPool.tips_cash + newPool.tips_card).toFixed(2)}
+                    ${((newPool.tips_cash + newPool.tips_card) ?? 0).toFixed(2)}
                   </p>
                 </div>
               )}
@@ -592,7 +592,7 @@ export default function TipsManagerPage() {
                     <div className="flex items-center gap-4">
                       <div className="text-right">
                         <p className="text-sm text-surface-500">Share</p>
-                        <p className="font-medium">{dist.share_percentage.toFixed(1)}%</p>
+                        <p className="font-medium">{(dist.share_percentage ?? 0).toFixed(1)}%</p>
                       </div>
                       <div className="text-right w-24">
                         <p className="text-sm text-surface-500">Amount</p>

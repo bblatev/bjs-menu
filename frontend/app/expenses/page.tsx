@@ -277,7 +277,7 @@ export default function ExpensesPage() {
                 <div className="flex justify-between text-sm">
                   <span className="font-medium text-surface-900">{cat.name}</span>
                   <span className={`${isOverBudget ? 'text-red-600' : 'text-surface-500'}`}>
-                    {percentage.toFixed(0)}%
+                    {(percentage ?? 0).toFixed(0)}%
                   </span>
                 </div>
                 <div className="h-2 bg-surface-100 rounded-full overflow-hidden">

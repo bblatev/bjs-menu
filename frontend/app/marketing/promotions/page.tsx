@@ -401,7 +401,7 @@ export default function MarketingPromotionsPage() {
           <div className="flex items-center justify-between mb-2">
             <span className="text-3xl">📊</span>
           </div>
-          <div className="text-2xl font-bold text-surface-900">{avgDiscount.toFixed(0)}%</div>
+          <div className="text-2xl font-bold text-surface-900">{(avgDiscount ?? 0).toFixed(0)}%</div>
           <div className="text-sm text-surface-500">Avg Discount</div>
         </motion.div>
       </div>

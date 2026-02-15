@@ -781,7 +781,7 @@ export default function OrdersPage() {
                                   <span className={`w-2 h-2 rounded-full ${item.status === 'served' ? 'bg-green-500' : item.status === 'ready' ? 'bg-blue-500' : item.status === 'preparing' ? 'bg-orange-500' : 'bg-gray-300'}`} />
                                   <span className="text-gray-700">{item.quantity}x {item.name}</span>
                                 </div>
-                                <span className="text-gray-500">{(item.quantity * item.unit_price).toFixed(2)} лв</span>
+                                <span className="text-gray-500">{((item.quantity * item.unit_price) ?? 0).toFixed(2)} лв</span>
                               </div>
                             );
                           })}
@@ -798,7 +798,7 @@ export default function OrdersPage() {
 
                       {/* Order Footer */}
                       <div className="px-4 py-3 bg-gray-50 border-t border-gray-100 flex items-center justify-between">
-                        <span className="text-xl font-bold text-gray-900">{order.total.toFixed(2)} лв</span>
+                        <span className="text-xl font-bold text-gray-900">{(order.total ?? 0).toFixed(2)} лв</span>
                         <div className="flex gap-2">
                           {order.status === 'new' && (
                             <button
@@ -885,7 +885,7 @@ export default function OrdersPage() {
                           {statusConfig.label}
                         </span>
                       </td>
-                      <td className="px-4 py-3 text-right font-medium text-gray-900">{order.total.toFixed(2)} лв</td>
+                      <td className="px-4 py-3 text-right font-medium text-gray-900">{(order.total ?? 0).toFixed(2)} лв</td>
                     </tr>
                   );
                 })}
@@ -917,7 +917,7 @@ export default function OrdersPage() {
                       <span className="text-2xl font-bold text-gray-900">{table.number}</span>
                       <span className="text-xs text-gray-500 mt-1">{table.seats} места</span>
                       {table.status === 'occupied' && tableOrder && (
-                        <span className="text-xs font-medium text-orange-600 mt-1">{tableOrder.total.toFixed(2)} лв</span>
+                        <span className="text-xs font-medium text-orange-600 mt-1">{(tableOrder.total ?? 0).toFixed(2)} лв</span>
                       )}
                       {table.status === 'reserved' && <span className="text-xs text-blue-600 mt-1">Резервирана</span>}
                       {table.status === 'cleaning' && <span className="text-xs text-gray-500 mt-1">Почистване</span>}
@@ -949,7 +949,7 @@ export default function OrdersPage() {
                         </div>
                       </div>
                       <div className="text-right">
-                        <div className="font-bold text-gray-900">{s.total_sales.toFixed(2)} лв</div>
+                        <div className="font-bold text-gray-900">{(s.total_sales ?? 0).toFixed(2)} лв</div>
                         <div className="text-xs text-gray-500">продажби</div>
                       </div>
                     </div>
@@ -994,7 +994,7 @@ export default function OrdersPage() {
                 </div>
                 <div className="p-4 bg-gray-50 rounded-lg">
                   <div className="text-gray-500 text-sm">Средна поръчка</div>
-                  <div className="text-3xl font-bold text-blue-600">{stats.avg_order_value.toFixed(2)} лв</div>
+                  <div className="text-3xl font-bold text-blue-600">{(stats.avg_order_value ?? 0).toFixed(2)} лв</div>
                 </div>
                 <div className="p-4 bg-gray-50 rounded-lg">
                   <div className="text-gray-500 text-sm">Ср. време за готвене</div>
@@ -1041,7 +1041,7 @@ export default function OrdersPage() {
                       <div className="text-xs text-gray-500">{s.active_orders} активни</div>
                     </div>
                     <div className="text-right">
-                      <div className="font-bold text-gray-900">{s.total_sales.toFixed(2)} лв</div>
+                      <div className="font-bold text-gray-900">{(s.total_sales ?? 0).toFixed(2)} лв</div>
                     </div>
                   </div>
                 ))}
@@ -1131,7 +1131,7 @@ export default function OrdersPage() {
                           </div>
                         </div>
                         <div className="flex items-center gap-3">
-                          <span className="text-gray-900 font-medium">{(item.quantity * item.unit_price).toFixed(2)} лв</span>
+                          <span className="text-gray-900 font-medium">{((item.quantity * item.unit_price) ?? 0).toFixed(2)} лв</span>
                           <span className={`px-2 py-0.5 rounded text-xs ${itemStatus.bg} ${itemStatus.color}`}>{itemStatus.label}</span>
                           {item.sent_to_kitchen && !['served', 'cancelled'].includes(item.status) && (
                             <div className="flex gap-1">
@@ -1174,13 +1174,13 @@ export default function OrdersPage() {
               {/* Order Summary */}
               <div className="p-6 bg-gray-50 border-t border-gray-100">
                 <div className="space-y-2 mb-4">
-                  <div className="flex justify-between text-gray-600"><span>Междинна сума</span><span>{selectedOrder.subtotal.toFixed(2)} лв</span></div>
-                  <div className="flex justify-between text-gray-600"><span>ДДС (20%)</span><span>{selectedOrder.tax.toFixed(2)} лв</span></div>
+                  <div className="flex justify-between text-gray-600"><span>Междинна сума</span><span>{(selectedOrder.subtotal ?? 0).toFixed(2)} лв</span></div>
+                  <div className="flex justify-between text-gray-600"><span>ДДС (20%)</span><span>{(selectedOrder.tax ?? 0).toFixed(2)} лв</span></div>
                   {selectedOrder.discount > 0 && (
-                    <div className="flex justify-between text-green-600"><span>Отстъпка</span><span>-{selectedOrder.discount.toFixed(2)} лв</span></div>
+                    <div className="flex justify-between text-green-600"><span>Отстъпка</span><span>-{(selectedOrder.discount ?? 0).toFixed(2)} лв</span></div>
                   )}
                   <div className="flex justify-between text-xl font-bold text-gray-900 pt-2 border-t border-gray-200">
-                    <span>Общо</span><span>{selectedOrder.total.toFixed(2)} лв</span>
+                    <span>Общо</span><span>{(selectedOrder.total ?? 0).toFixed(2)} лв</span>
                   </div>
                 </div>
 
@@ -1337,7 +1337,7 @@ export default function OrdersPage() {
               onClick={e => e.stopPropagation()}
             >
               <h2 className="text-2xl font-bold text-gray-900 mb-4">Възстановяване на сума</h2>
-              <p className="text-gray-500 mb-4">Поръчка #{selectedOrder.order_number} - Обща сума: {selectedOrder.total.toFixed(2)} лв</p>
+              <p className="text-gray-500 mb-4">Поръчка #{selectedOrder.order_number} - Обща сума: {(selectedOrder.total ?? 0).toFixed(2)} лв</p>
 
               <div className="mb-4">
                 <label className="block text-sm text-gray-600 mb-1">Сума за възстановяване</label>
@@ -1373,7 +1373,7 @@ export default function OrdersPage() {
                   disabled={!refundAmount || !refundReason}
                   className="flex-1 py-3 bg-red-500 text-white rounded-xl hover:bg-red-600 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  💸 Възстанови {refundAmount.toFixed(2)} лв
+                  💸 Възстанови {(refundAmount ?? 0).toFixed(2)} лв
                 </button>
               </div>
             </motion.div>
@@ -1401,7 +1401,7 @@ export default function OrdersPage() {
               <h2 className="text-2xl font-bold text-gray-900 mb-6">Плащане на поръчка #{selectedOrder.order_number}</h2>
 
               <div className="text-center mb-6">
-                <div className="text-4xl font-bold text-gray-900">{selectedOrder.total.toFixed(2)} лв</div>
+                <div className="text-4xl font-bold text-gray-900">{(selectedOrder.total ?? 0).toFixed(2)} лв</div>
                 <div className="text-gray-500">Общо за плащане</div>
               </div>
 
@@ -1453,7 +1453,7 @@ export default function OrdersPage() {
               <h2 className="text-2xl font-bold text-gray-900 mb-6">Раздели сметка #{selectedOrder.order_number}</h2>
 
               <div className="text-center mb-6">
-                <div className="text-3xl font-bold text-gray-900">{selectedOrder.total.toFixed(2)} лв</div>
+                <div className="text-3xl font-bold text-gray-900">{(selectedOrder.total ?? 0).toFixed(2)} лв</div>
                 <div className="text-gray-500">Общо</div>
               </div>
 
@@ -1480,10 +1480,10 @@ export default function OrdersPage() {
                 <div className="text-center">
                   <div className="text-sm text-blue-600 mb-1">Всеки плаща</div>
                   <div className="text-3xl font-bold text-blue-700">
-                    {(selectedOrder.total / splitWays).toFixed(2)} лв
+                    {((selectedOrder.total / splitWays) ?? 0).toFixed(2)} лв
                   </div>
                   <div className="text-sm text-blue-500 mt-1">
-                    {splitWays} x {(selectedOrder.total / splitWays).toFixed(2)} лв = {selectedOrder.total.toFixed(2)} лв
+                    {splitWays} x {((selectedOrder.total / splitWays) ?? 0).toFixed(2)} лв = {(selectedOrder.total ?? 0).toFixed(2)} лв
                   </div>
                 </div>
               </div>

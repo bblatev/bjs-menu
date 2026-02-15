@@ -386,7 +386,7 @@ export default function BarInventoryPage() {
             <p className="text-sm text-surface-500">Inventory Value</p>
             <span className="text-2xl">💰</span>
           </div>
-          <p className="text-2xl font-bold text-success-600">${totalInventoryValue.toFixed(2)}</p>
+          <p className="text-2xl font-bold text-success-600">${(totalInventoryValue ?? 0).toFixed(2)}</p>
         </div>
         <div className="bg-white p-4 rounded-xl border border-surface-200 shadow-sm">
           <div className="flex items-center justify-between">
@@ -553,11 +553,11 @@ export default function BarInventoryPage() {
                         </span>
                       </td>
                       <td className="px-4 py-3 text-right font-medium text-surface-900">
-                        ${item.total_value.toFixed(2)}
+                        ${(item.total_value ?? 0).toFixed(2)}
                       </td>
                       <td className="px-4 py-3 text-center">
                         <span className={`font-medium ${getVarianceColor(item.variance_from_expected)}`}>
-                          {item.variance_from_expected > 0 ? '+' : ''}{item.variance_from_expected.toFixed(1)}
+                          {item.variance_from_expected > 0 ? '+' : ''}{(item.variance_from_expected ?? 0).toFixed(1)}
                         </span>
                       </td>
                       <td className="px-4 py-3 text-center">
@@ -626,7 +626,7 @@ export default function BarInventoryPage() {
                     )}
                   </div>
                   <div className="flex-1 text-right">
-                    <p className="text-2xl font-bold text-surface-900">{totalBottles.toFixed(1)}</p>
+                    <p className="text-2xl font-bold text-surface-900">{(totalBottles ?? 0).toFixed(1)}</p>
                     <p className="text-sm text-surface-500">of {item.par_level} par</p>
                   </div>
                 </div>
@@ -638,7 +638,7 @@ export default function BarInventoryPage() {
                   </div>
                   <div className="bg-surface-50 rounded-lg p-2">
                     <p className="text-surface-500">Value</p>
-                    <p className="font-medium text-success-600">${item.total_value.toFixed(2)}</p>
+                    <p className="font-medium text-success-600">${(item.total_value ?? 0).toFixed(2)}</p>
                   </div>
                 </div>
 
@@ -741,13 +741,13 @@ export default function BarInventoryPage() {
                     <p className="text-surface-500">Total Volume</p>
                     <p className="font-medium">
                       {(countData.full_bottles * parseInt(selectedItem.size) +
-                        (countData.partial_percentage / 100) * parseInt(selectedItem.size)).toFixed(0)}ml
+(                        (countData.partial_percentage / 100) * parseInt(selectedItem.size)) ?? 0).toFixed(0)}ml
                     </p>
                   </div>
                   <div>
                     <p className="text-surface-500">Estimated Value</p>
                     <p className="font-medium text-success-600">
-                      ${((countData.full_bottles + (countData.partial_percentage / 100)) * selectedItem.cost_per_bottle).toFixed(2)}
+                      ${(((countData.full_bottles + (countData.partial_percentage / 100)) * selectedItem.cost_per_bottle) ?? 0).toFixed(2)}
                     </p>
                   </div>
                 </div>

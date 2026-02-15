@@ -419,7 +419,7 @@ export default function VoiceAssistantPage() {
                               {cmd.intent}
                             </span>
                             <span className="text-gray-500 text-xs">
-                              {(cmd.confidence * 100).toFixed(0)}% confidence
+                              {((cmd.confidence * 100) ?? 0).toFixed(0)}% confidence
                             </span>
                           </div>
                         )}

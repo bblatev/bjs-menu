@@ -502,7 +502,7 @@ export default function CardTerminalsPage() {
                           )}
                         </td>
                         <td className="px-4 py-3 text-right font-medium text-surface-900">
-                          ${(payment.amount / 100).toFixed(2)}
+                          ${((payment.amount / 100) ?? 0).toFixed(2)}
                         </td>
                         <td className="px-4 py-3">
                           <span className={`px-2 py-1 rounded-full text-xs font-medium ${status.bg} ${status.text}`}>
@@ -645,7 +645,7 @@ export default function CardTerminalsPage() {
                     <span className="absolute left-3 top-2 text-surface-500">$</span>
                     <input
                       type="number"
-                      value={(testPayment.amount / 100).toFixed(2)}
+                      value={((testPayment.amount / 100) ?? 0).toFixed(2)}
                       onChange={(e) => setTestPayment({ ...testPayment, amount: Math.round(parseFloat(e.target.value) * 100) || 0 })}
                       className="w-full pl-7 pr-3 py-2 border border-surface-200 rounded-lg"
                       step="0.01"

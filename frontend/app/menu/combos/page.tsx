@@ -400,7 +400,7 @@ export default function MenuCombosPage() {
           </div>
           <div className="bg-gray-100 rounded-xl p-4">
             <p className="text-gray-600 text-sm">Customer Savings</p>
-            <p className="text-2xl font-bold text-purple-400">{totalSavings.toFixed(2)} lv</p>
+            <p className="text-2xl font-bold text-purple-400">{(totalSavings ?? 0).toFixed(2)} lv</p>
           </div>
         </div>
 
@@ -660,10 +660,10 @@ export default function MenuCombosPage() {
                   <div>
                     <label className="text-gray-700 text-sm">Original Price</label>
                     <div className="px-4 py-3 bg-gray-50 text-gray-500 rounded-xl mt-1">
-                      {calculateOriginalPrice(form.components).toFixed(2)} lv
+                      {(calculateOriginalPrice(form.components) ?? 0).toFixed(2)} lv
                       {form.price > 0 && calculateOriginalPrice(form.components) > form.price && (
                         <span className="ml-2 text-green-400">
-                          (Save {(calculateOriginalPrice(form.components) - form.price).toFixed(2)} lv)
+                          (Save {((calculateOriginalPrice(form.components) - form.price) ?? 0).toFixed(2)} lv)
                         </span>
                       )}
                     </div>

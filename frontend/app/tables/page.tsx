@@ -474,7 +474,7 @@ export default function TablesPage() {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-xs font-semibold uppercase tracking-wider text-surface-400">Активни Продажби</p>
-              <p className="text-3xl font-display font-bold text-surface-900 mt-1">{stats.totalRevenue.toFixed(0)} лв</p>
+              <p className="text-3xl font-display font-bold text-surface-900 mt-1">{(stats.totalRevenue ?? 0).toFixed(0)} лв</p>
             </div>
             <div className="w-12 h-12 rounded-xl bg-accent-100 flex items-center justify-center text-2xl">💰</div>
           </div>
@@ -535,7 +535,7 @@ export default function TablesPage() {
                   </div>
                   <div className="flex items-center justify-between mt-2">
                     <span className="text-surface-600">{table.currentOrder.items} артикула</span>
-                    <span className="font-display font-bold text-surface-900">{table.currentOrder.total.toFixed(2)} лв</span>
+                    <span className="font-display font-bold text-surface-900">{(table.currentOrder.total ?? 0).toFixed(2)} лв</span>
                   </div>
                   {table.waiter && (
                     <div className="flex items-center gap-2 mt-2">
@@ -598,7 +598,7 @@ export default function TablesPage() {
                   </td>
                   <td className="px-6 py-4 text-right">
                     {table.currentOrder ? (
-                      <span className="font-display font-bold text-surface-900">{table.currentOrder.total.toFixed(2)} лв</span>
+                      <span className="font-display font-bold text-surface-900">{(table.currentOrder.total ?? 0).toFixed(2)} лв</span>
                     ) : '-'}
                   </td>
                 </tr>
@@ -639,7 +639,7 @@ export default function TablesPage() {
                   </div>
                   <div className="flex items-center justify-between p-4 bg-success-50 rounded-xl">
                     <span className="text-success-700 font-medium">Сума</span>
-                    <span className="text-2xl font-display font-bold text-success-700">{selectedTable.currentOrder.total.toFixed(2)} лв</span>
+                    <span className="text-2xl font-display font-bold text-success-700">{(selectedTable.currentOrder.total ?? 0).toFixed(2)} лв</span>
                   </div>
                 </>
               ) : selectedTable.reservation ? (

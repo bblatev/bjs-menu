@@ -204,11 +204,11 @@ export default function ParLevelsPage() {
           </div>
           <div className="bg-white p-4 rounded-xl border border-surface-200 shadow-sm">
             <p className="text-sm text-surface-500">Reorder Value</p>
-            <p className="text-2xl font-bold text-surface-900">${stats.total_reorder_value.toFixed(0)}</p>
+            <p className="text-2xl font-bold text-surface-900">${(stats.total_reorder_value ?? 0).toFixed(0)}</p>
           </div>
           <div className="bg-white p-4 rounded-xl border border-surface-200 shadow-sm">
             <p className="text-sm text-surface-500">Avg Stock Days</p>
-            <p className="text-2xl font-bold text-success-600">{stats.avg_stock_days.toFixed(1)}</p>
+            <p className="text-2xl font-bold text-success-600">{(stats.avg_stock_days ?? 0).toFixed(1)}</p>
           </div>
         </div>
       )}
@@ -302,7 +302,7 @@ export default function ParLevelsPage() {
                       item.avg_daily_usage > 0 && item.current_stock / item.avg_daily_usage < 7 ? 'text-warning-600' :
                       'text-success-600'
                     }`}>
-                      {item.avg_daily_usage > 0 ? (item.current_stock / item.avg_daily_usage).toFixed(1) : '∞'}
+                      {item.avg_daily_usage > 0 ? ((item.current_stock / item.avg_daily_usage) ?? 0).toFixed(1) : '∞'}
                     </span>
                   </td>
                   <td className="px-4 py-3 text-center">
@@ -438,13 +438,13 @@ export default function ParLevelsPage() {
                   <div>
                     <span className="text-primary-700">Recommended Reorder Point:</span>
                     <span className="font-medium text-primary-900 ml-2">
-                      {(selectedItem.avg_daily_usage * selectedItem.lead_time_days + selectedItem.safety_stock).toFixed(0)} {selectedItem.unit}
+                      {((selectedItem.avg_daily_usage * selectedItem.lead_time_days + selectedItem.safety_stock) ?? 0).toFixed(0)} {selectedItem.unit}
                     </span>
                   </div>
                   <div>
                     <span className="text-primary-700">Days of Stock:</span>
                     <span className="font-medium text-primary-900 ml-2">
-                      {selectedItem.avg_daily_usage > 0 ? (selectedItem.current_stock / selectedItem.avg_daily_usage).toFixed(1) : '∞'} days
+                      {selectedItem.avg_daily_usage > 0 ? ((selectedItem.current_stock / selectedItem.avg_daily_usage) ?? 0).toFixed(1) : '∞'} days
                     </span>
                   </div>
                 </div>

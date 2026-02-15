@@ -345,7 +345,7 @@ export default function BarRecipesPage() {
         </div>
         <div className="bg-white p-4 rounded-xl border border-surface-200 shadow-sm">
           <p className="text-sm text-surface-500">Avg Pour Cost</p>
-          <p className="text-2xl font-bold text-primary-600">{avgPourCost.toFixed(1)}%</p>
+          <p className="text-2xl font-bold text-primary-600">{(avgPourCost ?? 0).toFixed(1)}%</p>
         </div>
         <div className="bg-white p-4 rounded-xl border border-surface-200 shadow-sm">
           <p className="text-sm text-surface-500">Sold Today</p>
@@ -442,11 +442,11 @@ export default function BarRecipesPage() {
               <div className="grid grid-cols-2 gap-2 text-sm mb-3">
                 <div>
                   <p className="text-surface-500">Cost</p>
-                  <p className="font-medium">${recipe.total_cost.toFixed(2)}</p>
+                  <p className="font-medium">${(recipe.total_cost ?? 0).toFixed(2)}</p>
                 </div>
                 <div>
                   <p className="text-surface-500">Sell</p>
-                  <p className="font-medium text-success-600">${recipe.sell_price.toFixed(2)}</p>
+                  <p className="font-medium text-success-600">${(recipe.sell_price ?? 0).toFixed(2)}</p>
                 </div>
               </div>
 
@@ -515,11 +515,11 @@ export default function BarRecipesPage() {
               {/* Quick Stats */}
               <div className="grid grid-cols-4 gap-4 mb-6">
                 <div className="text-center p-3 bg-surface-50 rounded-lg">
-                  <p className="text-2xl font-bold text-surface-900">${selectedRecipe.total_cost.toFixed(2)}</p>
+                  <p className="text-2xl font-bold text-surface-900">${(selectedRecipe.total_cost ?? 0).toFixed(2)}</p>
                   <p className="text-sm text-surface-500">Cost</p>
                 </div>
                 <div className="text-center p-3 bg-surface-50 rounded-lg">
-                  <p className="text-2xl font-bold text-success-600">${selectedRecipe.sell_price.toFixed(2)}</p>
+                  <p className="text-2xl font-bold text-success-600">${(selectedRecipe.sell_price ?? 0).toFixed(2)}</p>
                   <p className="text-sm text-surface-500">Price</p>
                 </div>
                 <div className="text-center p-3 bg-surface-50 rounded-lg">
@@ -555,7 +555,7 @@ export default function BarRecipesPage() {
                         <tr key={ing.id}>
                           <td className="px-4 py-2 font-medium text-surface-900">{ing.name}</td>
                           <td className="px-4 py-2 text-center text-surface-700">{ing.amount} {ing.unit}</td>
-                          <td className="px-4 py-2 text-right text-surface-700">${ing.cost.toFixed(2)}</td>
+                          <td className="px-4 py-2 text-right text-surface-700">${(ing.cost ?? 0).toFixed(2)}</td>
                         </tr>
                       ))}
                     </tbody>
@@ -564,7 +564,7 @@ export default function BarRecipesPage() {
                         <td className="px-4 py-2 font-semibold text-surface-900">Total</td>
                         <td></td>
                         <td className="px-4 py-2 text-right font-semibold text-surface-900">
-                          ${selectedRecipe.total_cost.toFixed(2)}
+                          ${(selectedRecipe.total_cost ?? 0).toFixed(2)}
                         </td>
                       </tr>
                     </tfoot>
@@ -880,7 +880,7 @@ export default function BarRecipesPage() {
               <div className="p-4 bg-surface-50 rounded-lg">
                 <div className="flex justify-between text-sm">
                   <span className="text-surface-600">Total Cost:</span>
-                  <span className="font-medium">${newRecipe.ingredients.reduce((sum, i) => sum + (i.cost || 0), 0).toFixed(2)}</span>
+                  <span className="font-medium">${(newRecipe.ingredients.reduce((sum, i) => sum + (i.cost || 0), 0) ?? 0).toFixed(2)}</span>
                 </div>
                 <div className="flex justify-between text-sm mt-1">
                   <span className="text-surface-600">Pour Cost %:</span>

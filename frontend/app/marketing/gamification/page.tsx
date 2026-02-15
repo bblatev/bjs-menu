@@ -401,7 +401,7 @@ export default function MarketingGamificationPage() {
             <span className="text-3xl">✅</span>
             <span className="text-sm text-green-600 font-medium">↑ 22%</span>
           </div>
-          <div className="text-2xl font-bold text-surface-900">{challengeCompletionRate.toFixed(0)}%</div>
+          <div className="text-2xl font-bold text-surface-900">{(challengeCompletionRate ?? 0).toFixed(0)}%</div>
           <div className="text-sm text-surface-500">Completion Rate</div>
         </motion.div>
 

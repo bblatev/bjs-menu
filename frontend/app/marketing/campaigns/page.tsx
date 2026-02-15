@@ -339,7 +339,7 @@ export default function MarketingCampaignsPage() {
             <span className="text-3xl">👁️</span>
             <span className="text-sm text-green-600 font-medium">↑ 8%</span>
           </div>
-          <div className="text-2xl font-bold text-surface-900">{(avgOpenRate * 100).toFixed(1)}%</div>
+          <div className="text-2xl font-bold text-surface-900">{((avgOpenRate * 100) ?? 0).toFixed(1)}%</div>
           <div className="text-sm text-surface-500">Avg Open Rate</div>
         </motion.div>
 
@@ -353,7 +353,7 @@ export default function MarketingCampaignsPage() {
             <span className="text-3xl">🎯</span>
             <span className="text-sm text-purple-600 font-medium">↑ 5%</span>
           </div>
-          <div className="text-2xl font-bold text-surface-900">{(avgConversionRate * 100).toFixed(1)}%</div>
+          <div className="text-2xl font-bold text-surface-900">{((avgConversionRate * 100) ?? 0).toFixed(1)}%</div>
           <div className="text-sm text-surface-500">Conversion Rate</div>
         </motion.div>
 
@@ -455,19 +455,19 @@ export default function MarketingCampaignsPage() {
                 </div>
                 <div>
                   <div className="text-lg font-bold text-blue-600">
-                    {campaign.delivered_count > 0 ? ((campaign.delivered_count / campaign.sent_count) * 100).toFixed(1) : 0}%
+                    {campaign.delivered_count > 0 ? (((campaign.delivered_count / campaign.sent_count) * 100) ?? 0).toFixed(1) : 0}%
                   </div>
                   <div className="text-xs text-surface-500">Delivered</div>
                 </div>
                 <div>
                   <div className="text-lg font-bold text-green-600">
-                    {campaign.sent_count > 0 ? ((campaign.opened_count / campaign.sent_count) * 100).toFixed(1) : 0}%
+                    {campaign.sent_count > 0 ? (((campaign.opened_count / campaign.sent_count) * 100) ?? 0).toFixed(1) : 0}%
                   </div>
                   <div className="text-xs text-surface-500">Opened</div>
                 </div>
                 <div>
                   <div className="text-lg font-bold text-purple-600">
-                    {campaign.sent_count > 0 ? ((campaign.clicked_count / campaign.sent_count) * 100).toFixed(1) : 0}%
+                    {campaign.sent_count > 0 ? (((campaign.clicked_count / campaign.sent_count) * 100) ?? 0).toFixed(1) : 0}%
                   </div>
                   <div className="text-xs text-surface-500">Clicked</div>
                 </div>
@@ -695,25 +695,25 @@ export default function MarketingCampaignsPage() {
                       </div>
                       <div className="bg-blue-50 rounded-lg p-4">
                         <div className="text-2xl font-bold text-blue-600">
-                          {((selectedCampaign.delivered_count / selectedCampaign.sent_count) * 100).toFixed(1)}%
+                          {(((selectedCampaign.delivered_count / selectedCampaign.sent_count) * 100) ?? 0).toFixed(1)}%
                         </div>
                         <div className="text-sm text-surface-500">Delivered ({selectedCampaign.delivered_count})</div>
                       </div>
                       <div className="bg-green-50 rounded-lg p-4">
                         <div className="text-2xl font-bold text-green-600">
-                          {((selectedCampaign.opened_count / selectedCampaign.sent_count) * 100).toFixed(1)}%
+                          {(((selectedCampaign.opened_count / selectedCampaign.sent_count) * 100) ?? 0).toFixed(1)}%
                         </div>
                         <div className="text-sm text-surface-500">Opened ({selectedCampaign.opened_count})</div>
                       </div>
                       <div className="bg-purple-50 rounded-lg p-4">
                         <div className="text-2xl font-bold text-purple-600">
-                          {((selectedCampaign.clicked_count / selectedCampaign.sent_count) * 100).toFixed(1)}%
+                          {(((selectedCampaign.clicked_count / selectedCampaign.sent_count) * 100) ?? 0).toFixed(1)}%
                         </div>
                         <div className="text-sm text-surface-500">Clicked ({selectedCampaign.clicked_count})</div>
                       </div>
                       <div className="bg-amber-50 rounded-lg p-4">
                         <div className="text-2xl font-bold text-amber-600">
-                          {((selectedCampaign.converted_count / selectedCampaign.sent_count) * 100).toFixed(1)}%
+                          {(((selectedCampaign.converted_count / selectedCampaign.sent_count) * 100) ?? 0).toFixed(1)}%
                         </div>
                         <div className="text-sm text-surface-500">Converted ({selectedCampaign.converted_count})</div>
                       </div>

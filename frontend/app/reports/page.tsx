@@ -186,7 +186,7 @@ export default function ReportsPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTab, period, lowStockOnly, token, dateFrom, dateTo, hourFrom, hourTo]);
 
-  const formatCurrency = (val: number) => `${val.toFixed(2)} лв`;
+  const formatCurrency = (val: number) => `${(val ?? 0).toFixed(2)} лв`;
   const formatDate = (dateStr: string) => new Date(dateStr).toLocaleDateString('bg-BG');
 
   const tabs = [

@@ -321,7 +321,7 @@ export default function WaiterTerminal() {
     if (res.ok) {
       const data = await res.json();
       setShowSplit(false);
-      notify(`Split ${splitWays} ways: $${data.amount_per_person.toFixed(2)} each`);
+      notify(`Split ${splitWays} ways: $${(data.amount_per_person ?? 0).toFixed(2)} each`);
     } else {
       const err = await res.json();
       notify(err.detail || "Split failed");
@@ -378,7 +378,7 @@ export default function WaiterTerminal() {
         notify("Payment complete!");
       } else {
         await loadCheck(check.check_id);
-        notify(`Paid $${paymentAmount}. Remaining: $${data.data?.balance_remaining?.toFixed(2)}`);
+        notify(`Paid $${paymentAmount}. Remaining: $${(data.data?.balance_remaining? ?? 0).toFixed(2)}`);
       }
       setShowTip(false);
     } else {
@@ -638,7 +638,7 @@ export default function WaiterTerminal() {
                     {t.status === "occupied" ? `${t.guest_count} guests` : `${t.capacity} seats`}
                   </div>
                   {t.current_total !== null && t.current_total > 0 && (
-                    <div className="font-black text-xl mt-2">${t.current_total.toFixed(0)}</div>
+                    <div className="font-black text-xl mt-2">${(t.current_total ?? 0).toFixed(0)}</div>
                   )}
                 </button>
               ))}
@@ -717,7 +717,7 @@ export default function WaiterTerminal() {
                         <div className="text-base font-bold leading-tight line-clamp-2">{item.name}</div>
                         <div className="flex justify-between items-center mt-1">
                           <div className={`text-xs font-medium ${inCart ? "text-blue-100" : "text-gray-500"}`}>{item.category}</div>
-                          <div className="font-black text-lg">${item.price.toFixed(2)}</div>
+                          <div className="font-black text-lg">${(item.price ?? 0).toFixed(2)}</div>
                         </div>
                       </div>
                     </button>
@@ -729,7 +729,7 @@ export default function WaiterTerminal() {
             {/* Check info bar */}
             {check && check.items.length > 0 && (
               <div className="bg-white px-3 py-2 border-t border-gray-200 flex items-center justify-between shadow-sm">
-                <span className="text-gray-500 text-sm">Check: ${check.subtotal.toFixed(2)}</span>
+                <span className="text-gray-500 text-sm">Check: ${(check.subtotal ?? 0).toFixed(2)}</span>
                 <button onClick={() => setScreen("check")} className="px-3 py-1.5 bg-blue-600 text-white rounded-lg text-sm font-medium">
                   View Check
                 </button>
@@ -762,7 +762,7 @@ export default function WaiterTerminal() {
                             {item.modifiers?.length ? <span className="text-blue-600 font-semibold">+mods</span> : null}
                           </div>
                         </div>
-                        <div className="font-black text-xl text-gray-900">${(item.price * item.quantity).toFixed(2)}</div>
+                        <div className="font-black text-xl text-gray-900">${((item.price * item.quantity) ?? 0).toFixed(2)}</div>
                       </div>
                       <div className="flex items-center gap-3 mt-3">
                         <button onClick={() => updateQty(idx, -1)} className="w-12 h-12 bg-gray-100 hover:bg-gray-200 rounded-xl font-black text-2xl text-gray-700">-</button>
@@ -781,7 +781,7 @@ export default function WaiterTerminal() {
               <div className="bg-white p-4 border-t border-gray-200 shadow-lg">
                 <div className="flex justify-between mb-3">
                   <span className="text-gray-500 text-lg font-semibold">Subtotal</span>
-                  <span className="font-black text-2xl text-gray-900">${cartTotal.toFixed(2)}</span>
+                  <span className="font-black text-2xl text-gray-900">${(cartTotal ?? 0).toFixed(2)}</span>
                 </div>
                 <button onClick={sendOrder} disabled={!table || sending}
                   className="w-full py-4 bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-xl font-black text-xl disabled:bg-gray-300 active:scale-[0.98] shadow-lg">
@@ -806,7 +806,7 @@ export default function WaiterTerminal() {
                       {item.status === "voided" && <span className="text-red-500 text-xs ml-2">VOID</span>}
                     </div>
                     <div className="flex items-center gap-2">
-                      <span className="font-bold text-gray-900">${item.total.toFixed(2)}</span>
+                      <span className="font-bold text-gray-900">${(item.total ?? 0).toFixed(2)}</span>
                       {item.status !== "voided" && (
                         <button onClick={() => setShowVoid(item)} className="text-red-500 text-xs">Void</button>
                       )}
@@ -819,33 +819,33 @@ export default function WaiterTerminal() {
               <div className="mt-4 bg-white rounded-lg p-3 space-y-1 border border-gray-200 shadow-sm">
                 <div className="flex justify-between text-sm">
                   <span className="text-gray-500">Subtotal</span>
-                  <span className="text-gray-900">${check.subtotal.toFixed(2)}</span>
+                  <span className="text-gray-900">${(check.subtotal ?? 0).toFixed(2)}</span>
                 </div>
                 <div className="flex justify-between text-sm">
                   <span className="text-gray-500">Tax</span>
-                  <span className="text-gray-900">${check.tax.toFixed(2)}</span>
+                  <span className="text-gray-900">${(check.tax ?? 0).toFixed(2)}</span>
                 </div>
                 {check.discount > 0 && (
                   <div className="flex justify-between text-sm text-green-600">
                     <span>Discount</span>
-                    <span>-${check.discount.toFixed(2)}</span>
+                    <span>-${(check.discount ?? 0).toFixed(2)}</span>
                   </div>
                 )}
                 <div className="flex justify-between font-bold text-lg pt-2 border-t border-gray-200">
                   <span className="text-gray-900">Total</span>
-                  <span className="text-gray-900">${check.total.toFixed(2)}</span>
+                  <span className="text-gray-900">${(check.total ?? 0).toFixed(2)}</span>
                 </div>
                 {check.payments.length > 0 && (
                   <div className="pt-2 border-t border-gray-200">
                     {check.payments.map((p, i) => (
                       <div key={i} className="flex justify-between text-sm text-green-600">
                         <span>Paid ({p.method})</span>
-                        <span>${p.amount.toFixed(2)}</span>
+                        <span>${(p.amount ?? 0).toFixed(2)}</span>
                       </div>
                     ))}
                     <div className="flex justify-between font-bold text-amber-600">
                       <span>Balance Due</span>
-                      <span>${check.balance_due.toFixed(2)}</span>
+                      <span>${(check.balance_due ?? 0).toFixed(2)}</span>
                     </div>
                   </div>
                 )}
@@ -896,7 +896,7 @@ export default function WaiterTerminal() {
             <div className="bg-white p-3 border-t border-gray-200 shadow-lg">
               <button onClick={() => { setPaymentAmount(check.balance_due || check.total); setShowTip(true); }}
                 className="w-full py-3 bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-xl font-bold active:scale-[0.98] shadow-lg">
-                Pay ${(check.balance_due || check.total).toFixed(2)}
+                Pay ${((check.balance_due || check.total) ?? 0).toFixed(2)}
               </button>
             </div>
           </div>
@@ -906,7 +906,7 @@ export default function WaiterTerminal() {
         {screen === "payment" && check && (
           <div className="h-full p-3">
             <div className="bg-white rounded-xl p-4 mb-4 border border-gray-200 shadow-md">
-              <div className="text-center text-3xl font-bold text-gray-900">${check.total.toFixed(2)}</div>
+              <div className="text-center text-3xl font-bold text-gray-900">${(check.total ?? 0).toFixed(2)}</div>
               <div className="text-center text-gray-500">Total Due</div>
             </div>
 
@@ -1084,10 +1084,10 @@ export default function WaiterTerminal() {
             <h2 className="text-lg font-bold mb-4 text-gray-900">Payment</h2>
 
             <div className="bg-gray-100 rounded-xl p-3 mb-4">
-              <div className="flex justify-between text-sm"><span className="text-gray-600">Subtotal</span><span className="text-gray-900">${check.subtotal.toFixed(2)}</span></div>
-              <div className="flex justify-between text-sm"><span className="text-gray-600">Tax</span><span className="text-gray-900">${check.tax.toFixed(2)}</span></div>
-              {check.discount > 0 && <div className="flex justify-between text-sm text-green-600"><span>Discount</span><span>-${check.discount.toFixed(2)}</span></div>}
-              <div className="flex justify-between font-bold border-t border-gray-200 pt-2 mt-2"><span className="text-gray-900">Total</span><span className="text-gray-900">${check.total.toFixed(2)}</span></div>
+              <div className="flex justify-between text-sm"><span className="text-gray-600">Subtotal</span><span className="text-gray-900">${(check.subtotal ?? 0).toFixed(2)}</span></div>
+              <div className="flex justify-between text-sm"><span className="text-gray-600">Tax</span><span className="text-gray-900">${(check.tax ?? 0).toFixed(2)}</span></div>
+              {check.discount > 0 && <div className="flex justify-between text-sm text-green-600"><span>Discount</span><span>-${(check.discount ?? 0).toFixed(2)}</span></div>}
+              <div className="flex justify-between font-bold border-t border-gray-200 pt-2 mt-2"><span className="text-gray-900">Total</span><span className="text-gray-900">${(check.total ?? 0).toFixed(2)}</span></div>
             </div>
 
             <div className="mb-4">
@@ -1099,13 +1099,13 @@ export default function WaiterTerminal() {
                   </button>
                 ))}
               </div>
-              {tipPercent > 0 && <p className="text-green-600 text-sm mt-2 text-center font-medium">Tip: ${(check.subtotal * tipPercent / 100).toFixed(2)}</p>}
+              {tipPercent > 0 && <p className="text-green-600 text-sm mt-2 text-center font-medium">Tip: ${((check.subtotal * tipPercent / 100) ?? 0).toFixed(2)}</p>}
             </div>
 
             <div className="bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-xl p-3 mb-4">
               <div className="flex justify-between text-green-700 text-xl font-bold">
                 <span>Grand Total</span>
-                <span>${(check.total + check.subtotal * tipPercent / 100).toFixed(2)}</span>
+                <span>${((check.total + check.subtotal * tipPercent / 100) ?? 0).toFixed(2)}</span>
               </div>
             </div>
 
@@ -1192,7 +1192,7 @@ export default function WaiterTerminal() {
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
                 </svg>
-                Print Fiscal Receipt (Cash) - ${check.total.toFixed(2)}
+                Print Fiscal Receipt (Cash) - ${(check.total ?? 0).toFixed(2)}
               </button>
 
               {/* Print Fiscal Receipt - Card */}
@@ -1201,7 +1201,7 @@ export default function WaiterTerminal() {
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
                 </svg>
-                Print Fiscal Receipt (Card) - ${check.total.toFixed(2)}
+                Print Fiscal Receipt (Card) - ${(check.total ?? 0).toFixed(2)}
               </button>
 
               {/* Card via PinPad */}
@@ -1210,7 +1210,7 @@ export default function WaiterTerminal() {
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z" />
                 </svg>
-                Card Payment (PinPad) - ${check.total.toFixed(2)}
+                Card Payment (PinPad) - ${(check.total ?? 0).toFixed(2)}
               </button>
             </div>
 

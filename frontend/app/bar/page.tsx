@@ -361,21 +361,21 @@ export default function BarManagementPage() {
         <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-4 mb-6">
           <div className="bg-white p-4 rounded-xl border border-surface-200 shadow-sm">
             <p className="text-sm text-surface-500">Sales</p>
-            <p className="text-xl font-bold text-surface-900">${stats.totalSales.toFixed(2)}</p>
+            <p className="text-xl font-bold text-surface-900">${(stats.totalSales ?? 0).toFixed(2)}</p>
           </div>
           <div className="bg-white p-4 rounded-xl border border-surface-200 shadow-sm">
             <p className="text-sm text-surface-500">Cost</p>
-            <p className="text-xl font-bold text-surface-900">${stats.totalCost.toFixed(2)}</p>
+            <p className="text-xl font-bold text-surface-900">${(stats.totalCost ?? 0).toFixed(2)}</p>
           </div>
           <div className="bg-white p-4 rounded-xl border border-surface-200 shadow-sm">
             <p className="text-sm text-surface-500">Pour Cost %</p>
             <p className={`text-xl font-bold ${getPourCostColor(stats.pourCostPercentage)}`}>
-              {stats.pourCostPercentage.toFixed(1)}%
+              {(stats.pourCostPercentage ?? 0).toFixed(1)}%
             </p>
           </div>
           <div className="bg-white p-4 rounded-xl border border-surface-200 shadow-sm">
             <p className="text-sm text-surface-500">Avg Ticket</p>
-            <p className="text-xl font-bold text-surface-900">${stats.avgTicket.toFixed(2)}</p>
+            <p className="text-xl font-bold text-surface-900">${(stats.avgTicket ?? 0).toFixed(2)}</p>
           </div>
           <div className="bg-white p-4 rounded-xl border border-surface-200 shadow-sm">
             <p className="text-sm text-surface-500">Top Drink</p>
@@ -383,7 +383,7 @@ export default function BarManagementPage() {
           </div>
           <div className="bg-white p-4 rounded-xl border border-surface-200 shadow-sm">
             <p className="text-sm text-surface-500">Spillage</p>
-            <p className="text-xl font-bold text-warning-600">${stats.spillageToday.toFixed(2)}</p>
+            <p className="text-xl font-bold text-warning-600">${(stats.spillageToday ?? 0).toFixed(2)}</p>
           </div>
           <div className="bg-white p-4 rounded-xl border border-surface-200 shadow-sm">
             <p className="text-sm text-surface-500">Low Stock</p>
@@ -429,11 +429,11 @@ export default function BarManagementPage() {
                       <span className="font-medium text-surface-900">{drink.soldToday}</span>
                     </td>
                     <td className="px-4 py-3 text-right">
-                      <span className="font-medium text-success-600">${drink.revenue.toFixed(2)}</span>
+                      <span className="font-medium text-success-600">${(drink.revenue ?? 0).toFixed(2)}</span>
                     </td>
                     <td className="px-4 py-3 text-right">
                       <span className={`font-medium ${getPourCostColor(drink.pourCost)}`}>
-                        {drink.pourCost.toFixed(1)}%
+                        {(drink.pourCost ?? 0).toFixed(1)}%
                       </span>
                     </td>
                     <td className="px-4 py-3 text-right">
@@ -444,7 +444,7 @@ export default function BarManagementPage() {
                             style={{ width: `${drink.margin}%` }}
                           />
                         </div>
-                        <span className="text-sm font-medium text-surface-700">{drink.margin.toFixed(1)}%</span>
+                        <span className="text-sm font-medium text-surface-700">{(drink.margin ?? 0).toFixed(1)}%</span>
                       </div>
                     </td>
                   </tr>
@@ -528,7 +528,7 @@ export default function BarManagementPage() {
                 <p className={`font-medium ${getTypeColor(pour.type)}`}>
                   {pour.type === 'sale' ? '+' : '-'}{pour.amount}
                 </p>
-                <p className="text-sm text-surface-500">${pour.cost.toFixed(2)} cost</p>
+                <p className="text-sm text-surface-500">${(pour.cost ?? 0).toFixed(2)} cost</p>
               </div>
             </div>
           ))}

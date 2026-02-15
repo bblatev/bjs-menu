@@ -504,7 +504,7 @@ export default function RFMAnalyticsPage() {
                     }}
                   >
                     <div className="absolute -top-12 left-1/2 transform -translate-x-1/2 bg-gray-800 text-white px-3 py-2 rounded-lg text-sm whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity z-10">
-                      {segment.name}: {segment.count} ({segment.percentage.toFixed(1)}%)
+                      {segment.name}: {segment.count} ({(segment.percentage ?? 0).toFixed(1)}%)
                     </div>
                   </motion.div>
                 ))}
@@ -610,7 +610,7 @@ export default function RFMAnalyticsPage() {
                     </div>
                     <div className="text-right">
                       <div className="text-2xl font-bold text-gray-900">{segment.count}</div>
-                      <div className="text-gray-500 text-sm">{segment.percentage.toFixed(1)}%</div>
+                      <div className="text-gray-500 text-sm">{(segment.percentage ?? 0).toFixed(1)}%</div>
                     </div>
                   </div>
 
@@ -625,7 +625,7 @@ export default function RFMAnalyticsPage() {
                     </div>
                     <div className="bg-gray-50 rounded-xl p-3">
                       <div className="text-gray-500 text-xs">Avg Order</div>
-                      <div className="text-gray-900 font-bold">{segment.avg_order_value.toFixed(2)}</div>
+                      <div className="text-gray-900 font-bold">{(segment.avg_order_value ?? 0).toFixed(2)}</div>
                     </div>
                   </div>
 
@@ -751,7 +751,7 @@ export default function RFMAnalyticsPage() {
                           </div>
                         </td>
                         <td className="px-6 py-4 text-right text-gray-900 font-medium">
-                          {customer.total_spent.toFixed(2)}
+                          {(customer.total_spent ?? 0).toFixed(2)}
                         </td>
                         <td className="px-6 py-4 text-center">
                           <span className={`px-2 py-1 rounded-full text-xs ${risk.color}/20 text-gray-900`}>
@@ -852,7 +852,7 @@ export default function RFMAnalyticsPage() {
                     <div className="mb-4">
                       <div className="flex justify-between text-sm text-gray-500 mb-1">
                         <span>Conversion Funnel</span>
-                        <span>{((campaign.converted / campaign.sent) * 100).toFixed(1)}% conversion</span>
+                        <span>{(((campaign.converted / campaign.sent) * 100) ?? 0).toFixed(1)}% conversion</span>
                       </div>
                       <div className="flex gap-1 h-2 rounded-full overflow-hidden bg-gray-200">
                         <div
@@ -1044,7 +1044,7 @@ export default function RFMAnalyticsPage() {
                       className="w-full mt-2"
                     />
                     <div className="text-center text-gray-900 font-bold mt-1">
-                      {((settings as any)[item.key] * 100).toFixed(0)}%
+                      {(((settings as any)[item.key] * 100) ?? 0).toFixed(0)}%
                     </div>
                   </div>
                 ))}
@@ -1249,7 +1249,7 @@ export default function RFMAnalyticsPage() {
                       <span className="text-3xl font-bold text-purple-600">{selectedCustomer.monetary_score}</span>
                     </div>
                     <div className="text-gray-900 font-medium">Monetary</div>
-                    <div className="text-gray-500 text-sm">{selectedCustomer.total_spent.toFixed(2)} BGN</div>
+                    <div className="text-gray-500 text-sm">{(selectedCustomer.total_spent ?? 0).toFixed(2)} BGN</div>
                   </div>
                 </div>
               </div>
@@ -1257,7 +1257,7 @@ export default function RFMAnalyticsPage() {
               {/* Additional Stats */}
               <div className="grid grid-cols-4 gap-4 mb-6">
                 <div className="bg-gray-50 rounded-xl p-4 text-center">
-                  <div className="text-2xl font-bold text-gray-900">{selectedCustomer.avg_order_value.toFixed(2)}</div>
+                  <div className="text-2xl font-bold text-gray-900">{(selectedCustomer.avg_order_value ?? 0).toFixed(2)}</div>
                   <div className="text-gray-500 text-xs">Avg Order</div>
                 </div>
                 <div className="bg-gray-50 rounded-xl p-4 text-center">

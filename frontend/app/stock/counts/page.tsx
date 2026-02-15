@@ -330,7 +330,7 @@ export default function StockCountsPage() {
         <div className="bg-white rounded-xl p-4 shadow-sm border border-surface-100">
           <p className="text-xs font-semibold uppercase tracking-wider text-surface-400">Total Variance</p>
           <p className={`text-2xl font-display font-bold mt-1 ${counts.reduce((sum, c) => sum + (c.variance_value ?? 0), 0) < 0 ? 'text-error-600' : 'text-success-600'}`}>
-            {counts.reduce((sum, c) => sum + (c.variance_value ?? 0), 0).toFixed(2)} lv
+            {(counts.reduce((sum, c) => sum + (c.variance_value ?? 0), 0) ?? 0).toFixed(2)} lv
           </p>
         </div>
       </div>
@@ -578,7 +578,7 @@ export default function StockCountsPage() {
                         item.variance_cost && item.variance_cost < 0 ? 'text-error-600' :
                         item.variance_cost && item.variance_cost > 0 ? 'text-success-600' : ''
                       }`}>
-                        {item.variance_cost != null ? `${item.variance_cost > 0 ? '+' : ''}${item.variance_cost.toFixed(2)} lv` : '-'}
+                        {item.variance_cost != null ? `${item.variance_cost > 0 ? '+' : ''}${(item.variance_cost ?? 0).toFixed(2)} lv` : '-'}
                       </td>
                     </tr>
                   ))}
@@ -589,7 +589,7 @@ export default function StockCountsPage() {
               <div>
                 {itemsWithVariance.length > 0 && (
                   <p className="text-sm text-error-600">
-                    {itemsWithVariance.length} variance(s) detected: {itemsWithVariance.reduce((sum, i) => sum + (i.variance_cost || 0), 0).toFixed(2)} lv
+                    {itemsWithVariance.length} variance(s) detected: {(itemsWithVariance.reduce((sum, i) => sum + (i.variance_cost || 0), 0) ?? 0).toFixed(2)} lv
                   </p>
                 )}
               </div>

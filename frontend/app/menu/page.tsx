@@ -940,7 +940,7 @@ export default function MenuPage() {
                       <p className="text-gray-500 text-sm">{item.name.bg}</p>
                     </div>
                     <div className="text-orange-400 font-bold text-xl">
-                      {item.price.toFixed(2)} lv
+                      {(item.price ?? 0).toFixed(2)} lv
                     </div>
                   </div>
 
@@ -1192,7 +1192,7 @@ export default function MenuPage() {
                                 <span className={`ml-2 text-sm ${
                                   option.price_delta > 0 ? "text-green-400" : "text-red-400"
                                 }`}>
-                                  {option.price_delta > 0 ? "+" : ""}{option.price_delta.toFixed(2)} lv
+                                  {option.price_delta > 0 ? "+" : ""}{(option.price_delta ?? 0).toFixed(2)} lv
                                 </span>
                               )}
                             </div>
