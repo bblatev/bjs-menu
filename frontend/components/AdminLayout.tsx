@@ -22,15 +22,24 @@ const navigationGroups = [
       { name: 'Dashboard', href: '/dashboard', icon: '📊' },
       { name: 'Waiter Terminal', href: '/waiter', icon: '🧑‍🍳' },
       { name: 'Orders', href: '/orders', icon: '📋' },
+      { name: 'New Order', href: '/orders/new', icon: '➕' },
+      { name: 'Quick Reorder', href: '/orders/quick-reorder', icon: '🔁' },
+      { name: 'Payments', href: '/payments', icon: '💳' },
       { name: 'Tables', href: '/tables', icon: '🪑' },
+      { name: 'Floor Plan', href: '/tables/floor-plan', icon: '🗺️' },
+      { name: 'Sub-Tables', href: '/tables/subtables', icon: '🪑' },
       { name: 'Reservations', href: '/reservations', icon: '📅' },
+      { name: 'Daily Menu', href: '/daily-menu', icon: '📰' },
+      { name: 'Training', href: '/training', icon: '🎓' },
     ]
   },
   {
     name: 'Kitchen & Bar',
     items: [
       { name: 'Kitchen Display', href: '/kitchen', icon: '👨‍🍳' },
+      { name: 'KDS Display', href: '/kitchen/display', icon: '🖥️' },
       { name: 'Kitchen Stations', href: '/kitchen/stations', icon: '🍳' },
+      { name: 'Kitchen Requests', href: '/kitchen/requests', icon: '📩' },
       { name: 'KDS Localization', href: '/kitchen/localization', icon: '🌐' },
       { name: '86\'d Items', href: '/kitchen/86-items', icon: '🚫' },
       { name: 'Bar Management', href: '/bar', icon: '🍺' },
@@ -101,6 +110,7 @@ const navigationGroups = [
       { name: 'Performance', href: '/staff/performance', icon: '📈' },
       { name: 'Sections', href: '/staff/sections', icon: '🗺️' },
       { name: 'Tips', href: '/staff/tips', icon: '💵' },
+      { name: 'Commission', href: '/staff/commission', icon: '💲' },
       { name: 'Shifts', href: '/shifts', icon: '🔄' },
       { name: 'Payroll', href: '/payroll', icon: '💰' },
     ]
@@ -109,6 +119,7 @@ const navigationGroups = [
     name: 'Customers & CRM',
     items: [
       { name: 'Customers', href: '/customers', icon: '👤' },
+      { name: 'Customer Credits', href: '/customers/credits', icon: '💳' },
       { name: 'Loyalty Program', href: '/loyalty', icon: '⭐' },
       { name: 'Birthday Rewards', href: '/loyalty/birthday-rewards', icon: '🎂' },
       { name: 'VIP Management', href: '/vip-management', icon: '👑' },
@@ -147,6 +158,10 @@ const navigationGroups = [
       { name: 'Customer Reports', href: '/reports/customers', icon: '👤' },
       { name: 'Financial Reports', href: '/reports/financial', icon: '💵' },
       { name: 'Kitchen Reports', href: '/reports/kitchen', icon: '🍳' },
+      { name: 'Transactions', href: '/reports/transactions', icon: '🧾' },
+      { name: 'Turnover Base', href: '/reports/turnover-base', icon: '📊' },
+      { name: 'Accounting Export', href: '/reports/accounting-export', icon: '📤' },
+      { name: 'Service Deductions', href: '/reports/service-deductions', icon: '📉' },
       { name: 'Comprehensive', href: '/reports/comprehensive', icon: '📋' },
       { name: 'Benchmarking', href: '/benchmarking', icon: '📏' },
     ]
@@ -206,6 +221,10 @@ const navigationGroups = [
       { name: 'Fiscal', href: '/settings/fiscal', icon: '🧾' },
       { name: 'Integrations', href: '/settings/integrations', icon: '🔌' },
       { name: 'Security', href: '/settings/security', icon: '🔒' },
+      { name: 'Biometric', href: '/settings/biometric', icon: '🔐' },
+      { name: 'Alerts', href: '/settings/alerts', icon: '🚨' },
+      { name: 'Price Lists', href: '/settings/price-lists', icon: '💲' },
+      { name: 'Workflow', href: '/settings/workflow', icon: '🔀' },
       { name: 'Notifications', href: '/settings/notifications', icon: '🔔' },
     ]
   },

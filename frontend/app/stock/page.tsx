@@ -335,22 +335,25 @@ export default function StockPage() {
     const token = localStorage.getItem("access_token");
 
     try {
-      const items = parseCSV(importData);
-
-      if (items.length === 0) {
-        toast.success("No valid data to import");
+      if (!importData.trim()) {
+        toast.error("No CSV data to import");
         return;
       }
+
+      // Create a CSV file from the text data and send as FormData
+      const blob = new Blob([importData], { type: "text/csv" });
+      const file = new File([blob], "stock_import.csv", { type: "text/csv" });
+      const formData = new FormData();
+      formData.append("file", file);
 
       const response = await fetch(
         `${API_URL}/stock/import`,
         {
           method: "POST",
           headers: {
-            "Content-Type": "application/json",
             Authorization: `Bearer ${token}`,
           },
-          body: JSON.stringify(items),
+          body: formData,
         }
       );
 
@@ -359,7 +362,8 @@ export default function StockPage() {
         setImportResult(result);
         loadStock();
       } else {
-        toast.error("Import failed");
+        const err = await response.json().catch(() => null);
+        toast.error(err?.detail || "Import failed");
       }
     } catch (error) {
       toast.error("Error importing data");
@@ -378,22 +382,18 @@ export default function StockPage() {
       );
 
       if (response.ok) {
-        const data = await response.json();
+        // Backend returns CSV text directly with text/csv content type
+        const csvText = await response.text();
 
-        const headers = ["name", "sku", "quantity", "unit", "cost_per_unit", "low_stock_threshold", "total_value"];
-        const csv = [
-          headers.join(","),
-          ...data.items.map((item: any) =>
-            headers.map(h => item[h] ?? "").join(",")
-          )
-        ].join("\n");
-
-        const blob = new Blob([csv], { type: "text/csv" });
+        const blob = new Blob([csvText], { type: "text/csv" });
         const url = URL.createObjectURL(blob);
         const a = document.createElement("a");
         a.href = url;
         a.download = `stock_export_${new Date().toISOString().split("T")[0]}.csv`;
         a.click();
+        URL.revokeObjectURL(url);
+      } else {
+        toast.error("Export failed");
       }
     } catch (error) {
       toast.error("Error exporting data");
@@ -1189,9 +1189,9 @@ export default function StockPage() {
               <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 mb-4">
                 <p className="text-blue-800 text-sm mb-2 font-medium">CSV Format (first row = headers):</p>
                 <code className="text-xs text-blue-900 block bg-blue-100 p-3 rounded-lg font-mono">
-                  name,sku,quantity,unit,cost_per_unit,low_stock_threshold<br/>
-                  Vodka,VOD001,10,l,15.00,2<br/>
-                  Tomatoes,TOM001,5,kg,2.50,1
+                  name,barcode,unit,min_stock,cost_price,par_level<br/>
+                  Vodka,5012345678901,l,2,15.00,5<br/>
+                  Tomatoes,5098765432101,kg,1,2.50,3
                 </code>
               </div>
 

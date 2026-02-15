@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import AdminLayout from '@/components/AdminLayout';
 import { API_URL, getAuthHeaders } from '@/lib/api';
 
@@ -56,6 +56,10 @@ export default function RecipeCostsPage() {
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [showUnprofitableOnly, setShowUnprofitableOnly] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
+  const [showImportModal, setShowImportModal] = useState(false);
+  const [importData, setImportData] = useState('');
+  const [importResult, setImportResult] = useState<any>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
 
   useEffect(() => {
@@ -335,8 +339,70 @@ export default function RecipeCostsPage() {
     fetchRecipeData();
   };
 
-  const exportReport = () => {
-    toast.success('Експортиране на отчет за разходите на рецептите...');
+  const exportReport = async () => {
+    try {
+      const headers = getAuthHeaders();
+      const response = await fetch(`${API_URL}/recipes/export`, { headers });
+
+      if (response.ok) {
+        const csvText = await response.text();
+        const blob = new Blob([csvText], { type: 'text/csv' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `recipes_export_${new Date().toISOString().split('T')[0]}.csv`;
+        a.click();
+        URL.revokeObjectURL(url);
+        toast.success('Рецептите са експортирани успешно');
+      } else {
+        toast.error('Грешка при експортиране');
+      }
+    } catch {
+      toast.error('Грешка при експортиране');
+    }
+  };
+
+  const handleImportFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      setImportData(event.target?.result as string);
+    };
+    reader.readAsText(file);
+  };
+
+  const handleImportRecipes = async () => {
+    try {
+      if (!importData.trim()) {
+        toast.error('Няма данни за импортиране');
+        return;
+      }
+
+      const blob = new Blob([importData], { type: 'text/csv' });
+      const file = new File([blob], 'recipes_import.csv', { type: 'text/csv' });
+      const formData = new FormData();
+      formData.append('file', file);
+
+      const token = localStorage.getItem('access_token');
+      const response = await fetch(`${API_URL}/recipes/import`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+        body: formData,
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        setImportResult(result);
+        fetchRecipeData();
+        toast.success(`Импортирани: ${result.recipes_created} рецепти, ${result.lines_added} реда`);
+      } else {
+        const err = await response.json().catch(() => null);
+        toast.error(err?.detail || 'Грешка при импортиране');
+      }
+    } catch {
+      toast.error('Грешка при импортиране');
+    }
   };
 
   return (
@@ -359,13 +425,22 @@ export default function RecipeCostsPage() {
               Преизчисли разходите
             </button>
             <button
+              onClick={() => setShowImportModal(true)}
+              className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg flex items-center gap-2"
+            >
+              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+              </svg>
+              Импорт CSV
+            </button>
+            <button
               onClick={exportReport}
               className="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg flex items-center gap-2"
-             aria-label="Close">
+            >
               <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
               </svg>
-              Експорт
+              Експорт CSV
             </button>
           </div>
         </div>
@@ -767,6 +842,85 @@ export default function RecipeCostsPage() {
                     Виж история
                   </button>
                 </div>
+              </div>
+            </div>
+          </div>
+        )}
+        {/* Import Modal */}
+        {showImportModal && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+            <div className="bg-gray-800 border border-gray-700 rounded-xl p-6 w-full max-w-2xl mx-4">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-xl font-bold text-white">Импорт на рецепти от CSV</h2>
+                <button
+                  onClick={() => { setShowImportModal(false); setImportData(''); setImportResult(null); }}
+                  className="p-2 hover:bg-gray-700 rounded-lg text-gray-400"
+                >
+                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+
+              <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-4 mb-4">
+                <p className="text-blue-400 text-sm mb-2 font-medium">CSV формат (първи ред = заглавия):</p>
+                <code className="text-xs text-blue-300 block bg-blue-500/10 p-3 rounded-lg font-mono">
+                  recipe_name,pos_item_id,pos_item_name,product_barcode,qty,unit<br/>
+                  Chicken Soup,POS001,Soup,5012345678901,0.5,kg<br/>
+                  Chicken Soup,POS001,Soup,5098765432101,1,l
+                </code>
+              </div>
+
+              <div className="mb-4">
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept=".csv"
+                  onChange={handleImportFile}
+                  className="hidden"
+                />
+                <button
+                  onClick={() => fileInputRef.current?.click()}
+                  className="w-full py-4 border-2 border-dashed border-gray-600 rounded-xl text-gray-400 hover:border-blue-500 hover:text-blue-400 transition-colors"
+                >
+                  Изберете CSV файл
+                </button>
+              </div>
+
+              <textarea
+                value={importData}
+                onChange={(e) => setImportData(e.target.value)}
+                placeholder="Или поставете CSV данни тук..."
+                className="w-full h-32 px-4 py-3 bg-gray-700 border border-gray-600 rounded-xl mb-4 font-mono text-sm text-white placeholder-gray-500 focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+              />
+
+              {importResult && (
+                <div className="bg-green-500/10 border border-green-500/30 rounded-lg p-4 mb-4">
+                  <p className="text-green-400 font-medium">
+                    Създадени рецепти: {importResult.recipes_created} | Добавени редове: {importResult.lines_added}
+                  </p>
+                  {importResult.errors?.length > 0 && (
+                    <p className="text-red-400 text-sm mt-2">
+                      Грешки: {importResult.errors.join(', ')}
+                    </p>
+                  )}
+                </div>
+              )}
+
+              <div className="flex gap-3">
+                <button
+                  onClick={() => { setShowImportModal(false); setImportData(''); setImportResult(null); }}
+                  className="flex-1 py-3 bg-gray-700 text-gray-300 rounded-xl hover:bg-gray-600 transition-colors"
+                >
+                  Затвори
+                </button>
+                <button
+                  onClick={handleImportRecipes}
+                  disabled={!importData}
+                  className="flex-1 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-medium"
+                >
+                  Импортирай
+                </button>
               </div>
             </div>
           </div>

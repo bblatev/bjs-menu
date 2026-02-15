@@ -26,6 +26,10 @@ from app.models import (
     TableSession, Payment, Customer, VenueStation
 )
 from app.core.security import verify_pin
+from app.services.stock_deduction_service import StockDeductionService
+
+import logging
+logger = logging.getLogger(__name__)
 
 
 router = APIRouter()
@@ -427,6 +431,19 @@ async def create_waiter_order(
     db.commit()
     db.refresh(order)
 
+    # Deduct stock for ordered items
+    try:
+        stock_service = StockDeductionService(db)
+        stock_result = stock_service.deduct_for_order(
+            order_items=order_items,
+            location_id=getattr(order, 'location_id', None) or 1,
+            reference_type="waiter_order",
+            reference_id=order.id,
+        )
+        logger.info(f"Stock deduction for waiter order {order.id}: {stock_result['total_ingredients_deducted']} ingredients")
+    except Exception as e:
+        logger.warning(f"Stock deduction failed for waiter order {order.id}: {e}")
+
     return WaiterOrderResponse(
         order_id=order.id,
         order_number=order.order_number,
@@ -499,6 +516,28 @@ async def add_items_to_order(
     order.total = subtotal + tax
 
     db.commit()
+
+    # Deduct stock for newly added items
+    try:
+        new_items_data = []
+        for item_data in body.items:
+            menu_item = db.query(MenuItem).filter(MenuItem.id == item_data.menu_item_id).first()
+            if menu_item:
+                new_items_data.append({
+                    "menu_item_id": item_data.menu_item_id,
+                    "quantity": item_data.quantity,
+                    "name": menu_item.name,
+                })
+        stock_service = StockDeductionService(db)
+        stock_result = stock_service.deduct_for_order(
+            order_items=new_items_data,
+            location_id=getattr(order, 'location_id', None) or 1,
+            reference_type="waiter_order",
+            reference_id=order.id,
+        )
+        logger.info(f"Stock deduction for added items on order {order.id}: {stock_result['total_ingredients_deducted']} ingredients")
+    except Exception as e:
+        logger.warning(f"Stock deduction failed for added items on order {order.id}: {e}")
 
     return QuickActionResponse(
         success=True,
@@ -784,6 +823,7 @@ async def add_to_tab(
         db.flush()
 
     # Add items
+    tab_items_data = []
     for item_data in body.items:
         menu_item = db.query(MenuItem).filter(MenuItem.id == item_data.menu_item_id).first()
         if menu_item:
@@ -797,8 +837,26 @@ async def add_to_tab(
                 status="sent"
             )
             db.add(order_item)
+            tab_items_data.append({
+                "menu_item_id": menu_item.id,
+                "quantity": item_data.quantity,
+                "name": menu_item.name,
+            })
 
     db.commit()
+
+    # Deduct stock for bar tab items
+    try:
+        stock_service = StockDeductionService(db)
+        stock_result = stock_service.deduct_for_order(
+            order_items=tab_items_data,
+            location_id=1,
+            reference_type="bar_tab",
+            reference_id=order.id,
+        )
+        logger.info(f"Stock deduction for bar tab {tab_id}: {stock_result['total_ingredients_deducted']} ingredients")
+    except Exception as e:
+        logger.warning(f"Stock deduction failed for bar tab {tab_id}: {e}")
 
     return QuickActionResponse(
         success=True,
@@ -1453,8 +1511,26 @@ async def void_item(
     item.voided_by = current_user.id
     item.voided_at = datetime.now(timezone.utc)
 
-    # Recalculate order total
+    # Refund stock for voided item
+    menu_item = db.query(MenuItem).filter(MenuItem.id == item.menu_item_id).first()
     order = db.query(Order).filter(Order.id == item.order_id).first()
+    try:
+        stock_service = StockDeductionService(db)
+        stock_service.refund_for_order(
+            order_items=[{
+                "menu_item_id": item.menu_item_id,
+                "quantity": item.quantity,
+                "name": menu_item.name if menu_item else "Unknown",
+            }],
+            location_id=getattr(order, 'location_id', None) or 1 if order else 1,
+            reference_type="waiter_void",
+            reference_id=item.id,
+        )
+        logger.info(f"Stock refund for voided item {item.id}")
+    except Exception as e:
+        logger.warning(f"Stock refund failed for voided item {item.id}: {e}")
+
+    # Recalculate order total
     if order:
         active_items = db.query(OrderItem).filter(
             OrderItem.order_id == order.id,

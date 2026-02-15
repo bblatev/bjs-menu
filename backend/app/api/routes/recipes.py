@@ -218,6 +218,41 @@ def delete_recipe(request: Request, recipe_id: int, db: DbSession, current_user:
     db.commit()
 
 
+@router.get("/export")
+@limiter.limit("60/minute")
+def export_recipes(request: Request, db: DbSession = None):
+    """Export all recipes to CSV.
+
+    CSV format: recipe_name,pos_item_id,pos_item_name,product_barcode,qty,unit
+    """
+    from fastapi.responses import Response
+
+    recipes = db.query(Recipe).all()
+
+    output = io.StringIO()
+    writer = csv.writer(output)
+    writer.writerow(["recipe_name", "pos_item_id", "pos_item_name", "product_barcode", "qty", "unit"])
+
+    for recipe in recipes:
+        lines = db.query(RecipeLine).filter(RecipeLine.recipe_id == recipe.id).all()
+        for line in lines:
+            product = db.query(Product).filter(Product.id == line.product_id).first()
+            writer.writerow([
+                recipe.name,
+                recipe.pos_item_id or "",
+                recipe.pos_item_name or "",
+                product.barcode if product else "",
+                float(line.qty),
+                line.unit or "pcs",
+            ])
+
+    return Response(
+        content=output.getvalue(),
+        media_type="text/csv",
+        headers={"Content-Disposition": "attachment; filename=recipes_export.csv"},
+    )
+
+
 @router.post("/import")
 @limiter.limit("30/minute")
 def import_recipes(
