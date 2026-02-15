@@ -4,7 +4,7 @@ Integration with hotel property management systems for room charges and guest sy
 Like Oracle MICROS, Lightspeed, and NCR Aloha
 """
 from typing import List, Optional, Dict, Any
-from datetime import datetime, date, timedelta
+from datetime import datetime, date, timedelta, timezone
 from sqlalchemy.orm import Session
 
 
@@ -139,7 +139,7 @@ class HotelPMSService:
             existing.hotel_name = hotel_name
             existing.is_connected = True
             existing.connection_status = "connected"
-            existing.last_health_check = datetime.utcnow()
+            existing.last_health_check = datetime.now(timezone.utc)
             self.db.commit()
 
             return {
@@ -161,7 +161,7 @@ class HotelPMSService:
             hotel_name=hotel_name,
             is_connected=True,
             connection_status="connected",
-            last_health_check=datetime.utcnow()
+            last_health_check=datetime.now(timezone.utc)
         )
         self.db.add(connection)
         self.db.commit()
@@ -292,7 +292,7 @@ class HotelPMSService:
                 for key, value in guest_data.items():
                     if hasattr(existing, key):
                         setattr(existing, key, value)
-                existing.last_synced_at = datetime.utcnow()
+                existing.last_synced_at = datetime.now(timezone.utc)
             else:
                 # Create new guest
                 guest = HotelGuest(
@@ -300,7 +300,7 @@ class HotelPMSService:
                     pms_connection_id=connection.id,
                     **guest_data
                 )
-                guest.last_synced_at = datetime.utcnow()
+                guest.last_synced_at = datetime.now(timezone.utc)
                 self.db.add(guest)
 
             synced_count += 1
@@ -439,7 +439,7 @@ class HotelPMSService:
             amount=amount,
             tax_amount=amount * 0.1,  # 10% tax
             total_amount=amount * 1.1,
-            charge_date=datetime.utcnow(),
+            charge_date=datetime.now(timezone.utc),
             status=RoomChargeStatus.PENDING,
             posted_by=posted_by
         )
@@ -449,8 +449,8 @@ class HotelPMSService:
         # In production, post to actual PMS API
         # Simulate successful posting
         charge.status = RoomChargeStatus.POSTED
-        charge.posted_at = datetime.utcnow()
-        charge.pms_posting_id = f"POST-{datetime.utcnow().strftime('%Y%m%d%H%M%S')}"
+        charge.posted_at = datetime.now(timezone.utc)
+        charge.pms_posting_id = f"POST-{datetime.now(timezone.utc).strftime('%Y%m%d%H%M%S')}"
 
         # Update guest balance
         guest.current_balance = (guest.current_balance or 0) + charge.total_amount
@@ -755,7 +755,7 @@ class HotelPMSService:
 
         # In production, this would ping the actual PMS API
         # Simulate health check
-        connection.last_health_check = datetime.utcnow()
+        connection.last_health_check = datetime.now(timezone.utc)
         connection.connection_status = "healthy"
         self.db.commit()
 

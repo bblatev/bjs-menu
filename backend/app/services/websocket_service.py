@@ -5,7 +5,7 @@ Live updates for hardware data, kitchen orders, and alerts
 import asyncio
 import json
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Dict, Set, Any, List
 from dataclasses import dataclass, asdict
 from enum import Enum
@@ -125,7 +125,7 @@ class WebSocketMessage:
 
     def __post_init__(self):
         if not self.timestamp:
-            self.timestamp = datetime.utcnow().isoformat()
+            self.timestamp = datetime.now(timezone.utc).isoformat()
 
     def to_json(self) -> str:
         return json.dumps(asdict(self))
@@ -185,7 +185,7 @@ class ConnectionManager:
             "venue_id": venue_id,
             "user_id": user_id,
             "channels": channels,
-            "connected_at": datetime.utcnow().isoformat()
+            "connected_at": datetime.now(timezone.utc).isoformat()
         }
 
         self.stats["total_connections"] += 1
@@ -578,7 +578,7 @@ class RealtimeMonitor:
         from app.models.advanced_features_v9 import RFIDTag
         from datetime import timedelta
 
-        threshold = datetime.utcnow() + timedelta(days=3)
+        threshold = datetime.now(timezone.utc) + timedelta(days=3)
 
         expiring = db.query(RFIDTag).filter(
             RFIDTag.is_active == True,

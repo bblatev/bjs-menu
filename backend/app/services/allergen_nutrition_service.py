@@ -12,7 +12,7 @@ Features:
 - Dietary preferences (vegan, vegetarian, halal, kosher)
 """
 
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional, List, Dict, Any
 from sqlalchemy.orm import Session
 import uuid
@@ -207,7 +207,7 @@ class AllergenNutritionService:
             "contains": allergens,
             "may_contain": may_contain or [],
             "cross_contamination_risk": cross_contamination_risk or "low",
-            "updated_at": datetime.utcnow().isoformat(),
+            "updated_at": datetime.now(timezone.utc).isoformat(),
             "updated_by": staff_id
         }
         
@@ -429,7 +429,7 @@ class AllergenNutritionService:
             },
             "vitamins": vitamins or {},
             "minerals": minerals or {},
-            "updated_at": datetime.utcnow().isoformat(),
+            "updated_at": datetime.now(timezone.utc).isoformat(),
             "updated_by": staff_id
         }
         
@@ -605,7 +605,7 @@ class AllergenNutritionService:
         recipe_data["dietary"] = {
             "types": dietary_types,
             "certifications": certifications or [],
-            "updated_at": datetime.utcnow().isoformat(),
+            "updated_at": datetime.now(timezone.utc).isoformat(),
             "updated_by": staff_id
         }
         
@@ -716,7 +716,7 @@ class AllergenNutritionService:
             "is_acceptable": is_acceptable,
             "staff_id": staff_id,
             "notes": notes,
-            "recorded_at": datetime.utcnow().isoformat()
+            "recorded_at": datetime.now(timezone.utc).isoformat()
         }
         
         # Determine if corrective action needed
@@ -758,7 +758,7 @@ class AllergenNutritionService:
             "is_compliant": is_compliant,
             "corrective_action": corrective_action,
             "attachments": attachments or [],
-            "recorded_at": datetime.utcnow().isoformat()
+            "recorded_at": datetime.now(timezone.utc).isoformat()
         }
         
         self._haccp_logs.append(log_entry)
@@ -811,7 +811,7 @@ class AllergenNutritionService:
             },
             "haccp_events": relevant_logs,
             "temperature_logs": relevant_temps,
-            "generated_at": datetime.utcnow().isoformat()
+            "generated_at": datetime.now(timezone.utc).isoformat()
         }
     
     # ========== HELPER METHODS ==========

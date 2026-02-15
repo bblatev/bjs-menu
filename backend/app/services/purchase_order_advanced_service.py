@@ -14,7 +14,7 @@ Complete business logic for:
 from sqlalchemy.orm import Session
 from sqlalchemy import func, and_
 from typing import Optional, List
-from datetime import datetime, date
+from datetime import datetime, date, timezone
 
 from app.models.purchase_order_advanced import (
     # Returns & Credit Notes
@@ -138,7 +138,7 @@ class SupplierReturnService:
         if supplier_return and supplier_return.status == ReturnStatus.PENDING_APPROVAL:
             supplier_return.status = ReturnStatus.APPROVED
             supplier_return.approved_by = user_id
-            supplier_return.approved_at = datetime.utcnow()
+            supplier_return.approved_at = datetime.now(timezone.utc)
             db.commit()
             db.refresh(supplier_return)
         return supplier_return
@@ -382,7 +382,7 @@ class PurchaseOrderAmendmentService:
                 'total': float(po.total) if po.total else 0
             },
             new_values=data.new_values,
-            affected_items=[item.dict() for item in data.affected_items] if data.affected_items else None,
+            affected_items=[item.model_dump() for item in data.affected_items] if data.affected_items else None,
             previous_total=po.total,
             reason=data.reason,
             requested_by=user_id,
@@ -402,7 +402,7 @@ class PurchaseOrderAmendmentService:
         if amendment and amendment.status == AmendmentStatus.PENDING:
             amendment.status = AmendmentStatus.APPROVED
             amendment.approved_by = user_id
-            amendment.approved_at = datetime.utcnow()
+            amendment.approved_at = datetime.now(timezone.utc)
             db.commit()
             db.refresh(amendment)
         return amendment
@@ -441,7 +441,7 @@ class PurchaseOrderAmendmentService:
         amendment.new_total = po.total
         amendment.variance = po.total - (amendment.previous_total or 0)
         amendment.status = AmendmentStatus.APPLIED
-        amendment.applied_at = datetime.utcnow()
+        amendment.applied_at = datetime.now(timezone.utc)
 
         # Create version snapshot after amendment
         PurchaseOrderAmendmentService.create_version_snapshot(
@@ -614,7 +614,7 @@ class BlanketPurchaseOrderService:
             supplier_id=blanket.supplier_id,
             order_number=order_number,
             status=PurchaseOrderStatus.DRAFT,
-            order_date=datetime.utcnow(),
+            order_date=datetime.now(timezone.utc),
             expected_date=release.expected_delivery,
             subtotal=release.total_value,
             total=release.total_value,
@@ -711,7 +711,7 @@ class PurchaseRequisitionService:
 
         if requisition and requisition.status == RequisitionStatus.DRAFT:
             requisition.status = RequisitionStatus.SUBMITTED
-            requisition.submitted_at = datetime.utcnow()
+            requisition.submitted_at = datetime.now(timezone.utc)
             db.commit()
             db.refresh(requisition)
         return requisition
@@ -732,7 +732,7 @@ class PurchaseRequisitionService:
                 approval_type="manager",
                 status="approved",
                 approved_by=user_id,
-                approved_at=datetime.utcnow(),
+                approved_at=datetime.now(timezone.utc),
                 comments=comments
             )
             db.add(approval)
@@ -760,7 +760,7 @@ class PurchaseRequisitionService:
             supplier_id=data.supplier_id,
             order_number=order_number,
             status=PurchaseOrderStatus.DRAFT,
-            order_date=datetime.utcnow(),
+            order_date=datetime.now(timezone.utc),
             expected_date=requisition.required_by_date,
             subtotal=subtotal,
             total=subtotal,
@@ -938,7 +938,7 @@ class LandedCostService:
 
         landed_cost.status = "calculated"
         landed_cost.calculated_by = user_id
-        landed_cost.calculated_at = datetime.utcnow()
+        landed_cost.calculated_at = datetime.now(timezone.utc)
 
         db.commit()
         db.refresh(landed_cost)
@@ -961,11 +961,11 @@ class LandedCostService:
                 if stock_item:
                     stock_item.cost_per_unit = allocation.landed_unit_cost
                     allocation.applied_to_stock = True
-                    allocation.applied_at = datetime.utcnow()
+                    allocation.applied_at = datetime.now(timezone.utc)
 
         landed_cost.status = "applied"
         landed_cost.applied_by = user_id
-        landed_cost.applied_at = datetime.utcnow()
+        landed_cost.applied_at = datetime.now(timezone.utc)
 
         db.commit()
         db.refresh(landed_cost)
@@ -1182,7 +1182,7 @@ class QualityControlService:
             description=data.description,
             applies_to_category=data.applies_to_category,
             applies_to_supplier_id=data.applies_to_supplier_id,
-            checklist_items=[item.dict() for item in data.checklist_items],
+            checklist_items=[item.model_dump() for item in data.checklist_items],
             requires_photos=data.requires_photos,
             requires_temperature=data.requires_temperature,
             auto_reject_threshold=data.auto_reject_threshold,
@@ -1202,7 +1202,7 @@ class QualityControlService:
             stock_item_id=data.stock_item_id,
             checklist_id=data.checklist_id,
             inspection_number=QualityControlService.generate_inspection_number(db, data.venue_id),
-            checklist_responses=[r.dict() for r in data.checklist_responses] if data.checklist_responses else None,
+            checklist_responses=[r.model_dump() for r in data.checklist_responses] if data.checklist_responses else None,
             temperature_reading=data.temperature_reading,
             temperature_unit=data.temperature_unit,
             photos=data.photos,
@@ -1261,7 +1261,7 @@ class QualityControlService:
             inspection.notes = data.notes
 
         inspection.reviewed_by = user_id
-        inspection.reviewed_at = datetime.utcnow()
+        inspection.reviewed_at = datetime.now(timezone.utc)
 
         db.commit()
         db.refresh(inspection)
@@ -1497,7 +1497,7 @@ class PartialDeliveryService:
         if not backorder:
             raise ValueError("Backorder not found")
 
-        for field, value in data.dict(exclude_unset=True).items():
+        for field, value in data.model_dump(exclude_unset=True).items():
             setattr(backorder, field, value)
 
         db.commit()

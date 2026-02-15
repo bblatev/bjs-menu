@@ -8,7 +8,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, BackgroundTasks, R
 from sqlalchemy.orm import Session
 from app.db.session import get_db
 from typing import List, Optional, Dict, Any
-from datetime import datetime, date, timedelta
+from datetime import datetime, date, timedelta, timezone
 from decimal import Decimal
 
 
@@ -1010,7 +1010,7 @@ async def update_clv_from_order(
     if not venue_id:
         raise HTTPException(status_code=400, detail="User has no venue assigned")
     if not order_date:
-        order_date = datetime.utcnow()
+        order_date = datetime.now(timezone.utc)
     return CustomerLifetimeValueService.update_clv_from_order(db, guest_id, venue_id, order_total, order_date)
 
 

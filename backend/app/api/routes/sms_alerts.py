@@ -3,7 +3,7 @@
 
 from fastapi import APIRouter, HTTPException, BackgroundTasks, Request
 from typing import List, Optional
-from datetime import datetime, time
+from datetime import datetime, timezone, time
 from pydantic import BaseModel, Field
 
 from app.db.session import DbSession
@@ -84,7 +84,7 @@ class SMSService:
         if self.provider == "mock":
             return {
                 "success": True,
-                "provider_id": f"mock_{datetime.utcnow().timestamp()}",
+                "provider_id": f"mock_{datetime.now(timezone.utc).timestamp()}",
                 "status": "sent",
             }
         return {"success": False, "error": "Unknown SMS provider"}
@@ -106,7 +106,7 @@ def create_alert_config(request: Request, data: SMSAlertConfigCreate, db: DbSess
         if cfg["staff_user_id"] == 0:
             raise HTTPException(status_code=400, detail="Alert configuration already exists. Use PUT to update.")
 
-    now = datetime.utcnow().isoformat()
+    now = datetime.now(timezone.utc).isoformat()
     config = {
         "id": _next_config_id,
         "staff_user_id": 0,
@@ -229,8 +229,8 @@ async def send_alert_to_managers(alert_type: str, message: str, order_id: Option
             "message": message,
             "phone_number": cfg["phone_number"],
             "delivery_status": "sent" if result.get("success") else "failed",
-            "sent_at": datetime.utcnow().isoformat() if result.get("success") else None,
-            "created_at": datetime.utcnow().isoformat(),
+            "sent_at": datetime.now(timezone.utc).isoformat() if result.get("success") else None,
+            "created_at": datetime.now(timezone.utc).isoformat(),
         }
         _alert_logs.append(log)
         _next_log_id += 1

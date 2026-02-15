@@ -125,7 +125,7 @@ async def create_booking(
     if not service:
         raise HTTPException(status_code=503, detail="Google Reserve not configured")
 
-    result = await service.handle_create_booking(body.dict())
+    result = await service.handle_create_booking(body.model_dump())
 
     return result
 
@@ -150,7 +150,7 @@ async def update_booking(
     if not booking_id:
         raise HTTPException(status_code=400, detail="Missing booking_id")
 
-    result = await service.handle_update_booking(booking_id, body.dict())
+    result = await service.handle_update_booking(booking_id, body.model_dump())
 
     return result
 

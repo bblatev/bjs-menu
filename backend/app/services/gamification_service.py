@@ -11,7 +11,7 @@ Implements comprehensive gamification system:
 from typing import List, Dict, Optional
 from sqlalchemy.orm import Session
 from sqlalchemy import func, desc, and_, or_
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 import logging
 
@@ -503,7 +503,7 @@ class GamificationService:
                 game_profile_id=profile_id,
                 achievement_id=achievement_id,
                 points_awarded=points,
-                unlocked_at=datetime.utcnow()
+                unlocked_at=datetime.now(timezone.utc)
             )
             self.db.add(user_achievement)
 
@@ -526,7 +526,7 @@ class GamificationService:
                 'description': achievement['description'],
                 'points': points,
                 'icon': achievement.get('icon', '🏆'),
-                'unlocked_at': datetime.utcnow().isoformat()
+                'unlocked_at': datetime.now(timezone.utc).isoformat()
             }
         except Exception as e:
             logger.error(f"Error awarding achievement: {e}")
@@ -700,7 +700,7 @@ class GamificationService:
             UserChallenge.status.in_([ChallengeStatus.ACTIVE.value]),
             or_(
                 UserChallenge.expires_at.is_(None),
-                UserChallenge.expires_at > datetime.utcnow()
+                UserChallenge.expires_at > datetime.now(timezone.utc)
             )
         ).all()
 

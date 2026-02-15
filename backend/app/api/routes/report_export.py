@@ -6,7 +6,7 @@ from fastapi import APIRouter, HTTPException, Request
 from app.core.rate_limit import limiter
 from fastapi.responses import StreamingResponse
 from typing import Optional, List
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from io import BytesIO
 from pydantic import BaseModel
 import csv
@@ -139,15 +139,15 @@ def export_sales_report(
     if body.format == "pdf":
         output = create_pdf_export(data, headers, "Sales Report")
         media_type = "application/pdf"
-        filename = f"sales_report_{datetime.utcnow().strftime('%Y%m%d')}.pdf"
+        filename = f"sales_report_{datetime.now(timezone.utc).strftime('%Y%m%d')}.pdf"
     elif body.format == "excel":
         output = create_excel_export(data, headers, "Sales Report")
         media_type = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-        filename = f"sales_report_{datetime.utcnow().strftime('%Y%m%d')}.xlsx"
+        filename = f"sales_report_{datetime.now(timezone.utc).strftime('%Y%m%d')}.xlsx"
     else:
         output = create_csv_export(data, headers)
         media_type = "text/csv"
-        filename = f"sales_report_{datetime.utcnow().strftime('%Y%m%d')}.csv"
+        filename = f"sales_report_{datetime.now(timezone.utc).strftime('%Y%m%d')}.csv"
 
     return StreamingResponse(output, media_type=media_type, headers={"Content-Disposition": f"attachment; filename={filename}"})
 
@@ -161,15 +161,15 @@ def export_labor_cost_report(request: Request, body: ReportExportRequest = None,
     if body.format == "pdf":
         output = create_pdf_export(data, headers, "Labor Cost Report")
         media_type = "application/pdf"
-        filename = f"labor_cost_report_{datetime.utcnow().strftime('%Y%m%d')}.pdf"
+        filename = f"labor_cost_report_{datetime.now(timezone.utc).strftime('%Y%m%d')}.pdf"
     elif body.format == "excel":
         output = create_excel_export(data, headers, "Labor Costs")
         media_type = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-        filename = f"labor_cost_report_{datetime.utcnow().strftime('%Y%m%d')}.xlsx"
+        filename = f"labor_cost_report_{datetime.now(timezone.utc).strftime('%Y%m%d')}.xlsx"
     else:
         output = create_csv_export(data, headers)
         media_type = "text/csv"
-        filename = f"labor_cost_report_{datetime.utcnow().strftime('%Y%m%d')}.csv"
+        filename = f"labor_cost_report_{datetime.now(timezone.utc).strftime('%Y%m%d')}.csv"
     return StreamingResponse(output, media_type=media_type, headers={"Content-Disposition": f"attachment; filename={filename}"})
 
 
@@ -182,15 +182,15 @@ def export_food_cost_report(request: Request, body: ReportExportRequest = None, 
     if body.format == "pdf":
         output = create_pdf_export(data, headers, "Food Cost Report")
         media_type = "application/pdf"
-        filename = f"food_cost_report_{datetime.utcnow().strftime('%Y%m%d')}.pdf"
+        filename = f"food_cost_report_{datetime.now(timezone.utc).strftime('%Y%m%d')}.pdf"
     elif body.format == "excel":
         output = create_excel_export(data, headers, "Food Costs")
         media_type = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-        filename = f"food_cost_report_{datetime.utcnow().strftime('%Y%m%d')}.xlsx"
+        filename = f"food_cost_report_{datetime.now(timezone.utc).strftime('%Y%m%d')}.xlsx"
     else:
         output = create_csv_export(data, headers)
         media_type = "text/csv"
-        filename = f"food_cost_report_{datetime.utcnow().strftime('%Y%m%d')}.csv"
+        filename = f"food_cost_report_{datetime.now(timezone.utc).strftime('%Y%m%d')}.csv"
     return StreamingResponse(output, media_type=media_type, headers={"Content-Disposition": f"attachment; filename={filename}"})
 
 
@@ -198,7 +198,7 @@ def export_food_cost_report(request: Request, body: ReportExportRequest = None, 
 @limiter.limit("30/minute")
 def create_scheduled_report(request: Request, config: ScheduledReportConfig = None, db: DbSession = None, current_user: OptionalCurrentUser = None):
     """Create a scheduled report."""
-    return {"id": 1, "created_at": datetime.utcnow().isoformat(), "last_run": None, "next_run": (datetime.utcnow() + timedelta(days=1)).isoformat(), **config.model_dump()}
+    return {"id": 1, "created_at": datetime.now(timezone.utc).isoformat(), "last_run": None, "next_run": (datetime.now(timezone.utc) + timedelta(days=1)).isoformat(), **config.model_dump()}
 
 
 @router.get("/scheduled")

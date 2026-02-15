@@ -6,7 +6,7 @@ import logging
 from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.orm import Session
 from typing import List, Optional, Dict, Any
-from datetime import datetime
+from datetime import datetime, timezone
 from pydantic import BaseModel, Field
 
 from app.db.session import get_db
@@ -97,7 +97,7 @@ async def process_mobile_scan(
     result = {
         "scan_type": data.scan_type,
         "scan_data": data.scan_data,
-        "timestamp": datetime.utcnow().isoformat(),
+        "timestamp": datetime.now(timezone.utc).isoformat(),
         "status": "unknown"
     }
 
@@ -304,7 +304,7 @@ async def sync_offline_data(
     return {
         "device_id": data.device_id,
         "collected_at": data.collected_at.isoformat(),
-        "synced_at": datetime.utcnow().isoformat(),
+        "synced_at": datetime.now(timezone.utc).isoformat(),
         "total_scans": len(data.scans),
         "processed": processed,
         "errors": len(errors),

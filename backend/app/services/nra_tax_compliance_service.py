@@ -5,7 +5,7 @@ Bulgarian NRA real-time reporting, SAF-T export, GDPR, e-invoice
 with full database integration.
 """
 
-from datetime import datetime, date, timedelta
+from datetime import datetime, date, timedelta, timezone
 from typing import List, Dict, Any, Optional
 from enum import Enum
 from pydantic import BaseModel, ConfigDict
@@ -123,7 +123,7 @@ class NRATaxComplianceService:
                 doc_counter = 1
 
         # Generate unique sale number (УНП)
-        unique_sale_number = f"{fiscal_printer_id}-{venue_id}-{datetime.utcnow().strftime('%Y%m%d%H%M%S')}-{doc_counter:06d}"
+        unique_sale_number = f"{fiscal_printer_id}-{venue_id}-{datetime.now(timezone.utc).strftime('%Y%m%d%H%M%S')}-{doc_counter:06d}"
 
         # Generate fiscal sign (would be from fiscal device in production)
         fiscal_sign = self._generate_fiscal_sign(unique_sale_number, total_without_vat + total_vat)
@@ -147,7 +147,7 @@ class NRATaxComplianceService:
             unique_sale_number=unique_sale_number,
             fiscal_sign=fiscal_sign,
             qr_code=qr_data,
-            issued_at=datetime.utcnow()
+            issued_at=datetime.now(timezone.utc)
         )
 
         self.db.add(document)
@@ -204,7 +204,7 @@ class NRATaxComplianceService:
             except ValueError:
                 doc_counter = 1
 
-        unique_sale_number = f"INV-{venue_id}-{datetime.utcnow().strftime('%Y%m%d')}-{doc_counter:06d}"
+        unique_sale_number = f"INV-{venue_id}-{datetime.now(timezone.utc).strftime('%Y%m%d')}-{doc_counter:06d}"
         fiscal_sign = self._generate_fiscal_sign(unique_sale_number, total_without_vat + total_vat)
         qr_data = self._generate_qr_code(unique_sale_number, total_without_vat + total_vat, fiscal_sign)
 
@@ -227,7 +227,7 @@ class NRATaxComplianceService:
             unique_sale_number=unique_sale_number,
             fiscal_sign=fiscal_sign,
             qr_code=qr_data,
-            issued_at=datetime.utcnow()
+            issued_at=datetime.now(timezone.utc)
         )
 
         self.db.add(document)
@@ -291,7 +291,7 @@ class NRATaxComplianceService:
             unique_sale_number=unique_sale_number,
             fiscal_sign=fiscal_sign,
             qr_code=self._generate_qr_code(unique_sale_number, -float(original.total_with_vat), fiscal_sign),
-            issued_at=datetime.utcnow()
+            issued_at=datetime.now(timezone.utc)
         )
 
         self.db.add(storno)
@@ -350,7 +350,7 @@ class NRATaxComplianceService:
 
     def _generate_fiscal_sign(self, usn: str, amount: float) -> str:
         """Generate fiscal signature (simplified - real implementation uses fiscal device)."""
-        data = f"{usn}:{amount:.2f}:{datetime.utcnow().isoformat()}"
+        data = f"{usn}:{amount:.2f}:{datetime.now(timezone.utc).isoformat()}"
         return hashlib.sha256(data.encode()).hexdigest()[:16].upper()
 
     def _generate_qr_code(self, usn: str, amount: float, sign: str) -> str:
@@ -413,7 +413,7 @@ class NRATaxComplianceService:
             sales_by_vat_rate=sales_by_vat,
             vat_by_rate=vat_by_rate,
             sales_by_payment_method=sales_by_payment,
-            generated_at=datetime.utcnow()
+            generated_at=datetime.now(timezone.utc)
         )
 
         self.db.add(report)
@@ -479,7 +479,7 @@ class NRATaxComplianceService:
             sales_by_vat_rate=sales_by_vat,
             vat_by_rate=vat_by_rate,
             sales_by_payment_method=sales_by_payment,
-            generated_at=datetime.utcnow()
+            generated_at=datetime.now(timezone.utc)
         )
 
         self.db.add(report)
@@ -514,8 +514,8 @@ class NRATaxComplianceService:
 
         # In production, would call NRA API
         report.status = NRAReportStatus.SENT.value
-        report.sent_at = datetime.utcnow()
-        report.nra_reference = f"NRA-REF-{datetime.utcnow().strftime('%Y%m%d%H%M%S')}"
+        report.sent_at = datetime.now(timezone.utc)
+        report.nra_reference = f"NRA-REF-{datetime.now(timezone.utc).strftime('%Y%m%d%H%M%S')}"
 
         # Simulate acceptance
         report.status = NRAReportStatus.ACCEPTED.value
@@ -588,7 +588,7 @@ class NRATaxComplianceService:
             "header": {
                 "audit_file_version": "2.0",
                 "audit_file_country": "BG",
-                "audit_file_date_created": datetime.utcnow().isoformat(),
+                "audit_file_date_created": datetime.now(timezone.utc).isoformat(),
                 "software_company": "BJS POS",
                 "software_version": "6.0",
                 "selection_criteria": {
@@ -638,10 +638,10 @@ class NRATaxComplianceService:
             existing.ip_address = kwargs.get('ip_address')
             existing.user_agent = kwargs.get('user_agent')
             if consented:
-                existing.given_at = datetime.utcnow()
+                existing.given_at = datetime.now(timezone.utc)
                 existing.withdrawn_at = None
             else:
-                existing.withdrawn_at = datetime.utcnow()
+                existing.withdrawn_at = datetime.now(timezone.utc)
             consent = existing
         else:
             consent = GDPRConsent(
@@ -652,7 +652,7 @@ class NRATaxComplianceService:
                 consent_text=consent_text,
                 ip_address=kwargs.get('ip_address'),
                 user_agent=kwargs.get('user_agent'),
-                given_at=datetime.utcnow()
+                given_at=datetime.now(timezone.utc)
             )
             self.db.add(consent)
 
@@ -682,7 +682,7 @@ class NRATaxComplianceService:
             return {"success": False, "error": "Consent not found"}
 
         consent.consented = False
-        consent.withdrawn_at = datetime.utcnow()
+        consent.withdrawn_at = datetime.now(timezone.utc)
         self.db.commit()
 
         return {"success": True, "consent_id": consent_id, "withdrawn": True}
@@ -725,7 +725,7 @@ class NRATaxComplianceService:
 
         return {
             "customer_id": customer_id,
-            "export_date": datetime.utcnow().isoformat(),
+            "export_date": datetime.now(timezone.utc).isoformat(),
             "consents": [
                 {
                     "consent_type": c.consent_type,
@@ -756,7 +756,7 @@ class NRATaxComplianceService:
         return {
             "success": True,
             "customer_id": customer_id,
-            "deleted_at": datetime.utcnow().isoformat(),
+            "deleted_at": datetime.now(timezone.utc).isoformat(),
             "consents_deleted": deleted
         }
 

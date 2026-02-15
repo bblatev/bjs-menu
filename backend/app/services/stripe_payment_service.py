@@ -5,7 +5,7 @@ Handles subscription payments and billing
 
 import stripe
 from typing import Dict, Optional
-from datetime import datetime
+from datetime import datetime, timezone
 import logging
 
 logger = logging.getLogger(__name__)
@@ -282,7 +282,7 @@ class StripePaymentService:
             "plan_id": data.get("plan", {}).get("id"),
             "current_period_start": data.get("current_period_start"),
             "current_period_end": data.get("current_period_end"),
-            "created_at": datetime.utcnow().isoformat(),
+            "created_at": datetime.now(timezone.utc).isoformat(),
             "activated": True
         }
         self._subscriptions[data["id"]] = subscription_record
@@ -306,7 +306,7 @@ class StripePaymentService:
             self._subscriptions[data["id"]].update({
                 "status": data["status"],
                 "current_period_end": data.get("current_period_end"),
-                "updated_at": datetime.utcnow().isoformat()
+                "updated_at": datetime.now(timezone.utc).isoformat()
             })
         
         # Handle status changes
@@ -327,7 +327,7 @@ class StripePaymentService:
         
         if hasattr(self, '_subscriptions') and data["id"] in self._subscriptions:
             self._subscriptions[data["id"]]["status"] = "canceled"
-            self._subscriptions[data["id"]]["canceled_at"] = datetime.utcnow().isoformat()
+            self._subscriptions[data["id"]]["canceled_at"] = datetime.now(timezone.utc).isoformat()
         
         # In production: Deactivate venue but preserve data
         # self.db.query(Venue).filter(Venue.stripe_subscription_id == data["id"]).update({"status": "inactive"})
@@ -352,7 +352,7 @@ class StripePaymentService:
             "amount": data["amount_paid"],
             "currency": data["currency"],
             "status": "succeeded",
-            "paid_at": datetime.utcnow().isoformat()
+            "paid_at": datetime.now(timezone.utc).isoformat()
         }
         self._payments.append(payment_record)
         
@@ -382,7 +382,7 @@ class StripePaymentService:
             "failure_reason": data.get("last_finalization_error", {}).get("message", "Unknown"),
             "attempt_count": data.get("attempt_count", 1),
             "next_attempt": data.get("next_payment_attempt"),
-            "failed_at": datetime.utcnow().isoformat()
+            "failed_at": datetime.now(timezone.utc).isoformat()
         }
         self._failed_payments.append(failure_record)
         
@@ -413,7 +413,7 @@ class StripePaymentService:
             "currency": data.get("currency"),
             "refunded": data.get("refunded", False),
             "refund_count": len(data.get("refunds", {}).get("data", [])),
-            "refunded_at": datetime.utcnow().isoformat()
+            "refunded_at": datetime.now(timezone.utc).isoformat()
         }
         self._refunds.append(refund_record)
 

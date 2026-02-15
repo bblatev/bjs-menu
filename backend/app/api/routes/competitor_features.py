@@ -1,3 +1,4 @@
+from datetime import timezone
 """
 Competitor Features API Endpoints
 Toast, TouchBistro, iiko feature parity
@@ -397,7 +398,7 @@ async def update_86_config(
         config = Item86Config(venue_id=current_user.venue_id)
         db.add(config)
 
-    for field, value in config_data.dict().items():
+    for field, value in config_data.model_dump().items():
         setattr(config, field, value)
 
     db.commit()
@@ -470,7 +471,7 @@ async def get_86_logs(
     current_user: StaffUser = Depends(get_current_user)
 ):
     """Get 86 event logs"""
-    start_date = datetime.utcnow() - timedelta(days=days)
+    start_date = datetime.now(timezone.utc) - timedelta(days=days)
 
     query = db.query(Item86Log).filter(
         Item86Log.venue_id == current_user.venue_id,
@@ -587,7 +588,7 @@ async def create_auto_po_rule(
     """Create auto purchase order rule"""
     rule = AutoPurchaseOrderRule(
         venue_id=current_user.venue_id,
-        **rule_data.dict()
+        **rule_data.model_dump()
     )
     db.add(rule)
     db.commit()
@@ -826,7 +827,7 @@ async def report_supplier_issue(
     issue = service.report_issue(
         venue_id=current_user.venue_id,
         reported_by=current_user.id,
-        **issue_data.dict()
+        **issue_data.model_dump()
     )
     return issue
 
@@ -943,7 +944,7 @@ async def log_waste(
     log = service.log_waste(
         venue_id=current_user.venue_id,
         recorded_by=current_user.id,
-        **waste_data.dict()
+        **waste_data.model_dump()
     )
     return log
 
@@ -958,7 +959,7 @@ async def list_waste_logs(
     current_user: StaffUser = Depends(get_current_user)
 ):
     """List waste logs"""
-    start_date = datetime.utcnow() - timedelta(days=days)
+    start_date = datetime.now(timezone.utc) - timedelta(days=days)
 
     query = db.query(WasteLog).filter(
         WasteLog.venue_id == current_user.venue_id,
@@ -999,7 +1000,7 @@ async def get_waste_summary(
     current_user: StaffUser = Depends(get_current_user)
 ):
     """Get waste summary statistics"""
-    start_date = datetime.utcnow() - timedelta(days=days)
+    start_date = datetime.now(timezone.utc) - timedelta(days=days)
 
     logs = db.query(WasteLog).filter(
         WasteLog.venue_id == current_user.venue_id,
@@ -1065,7 +1066,7 @@ async def list_recipe_scale_logs(
     current_user: StaffUser = Depends(get_current_user)
 ):
     """List recipe scaling logs"""
-    start_date = datetime.utcnow() - timedelta(days=days)
+    start_date = datetime.now(timezone.utc) - timedelta(days=days)
 
     query = db.query(RecipeScaleLog).filter(
         RecipeScaleLog.venue_id == current_user.venue_id,
@@ -1095,7 +1096,7 @@ async def create_stock_take(
     stock_take = service.create_stock_take(
         venue_id=current_user.venue_id,
         created_by=current_user.id,
-        **body.dict()
+        **body.model_dump()
     )
     return stock_take
 
@@ -1164,7 +1165,7 @@ async def start_stock_take(
         raise HTTPException(status_code=404, detail="Stock take not found")
 
     stock_take.status = "in_progress"
-    stock_take.started_at = datetime.utcnow()
+    stock_take.started_at = datetime.now(timezone.utc)
     db.commit()
 
     return {"status": "in_progress"}
@@ -1801,7 +1802,7 @@ async def verify_invoice(
 
     invoice.verification_status = 'verified'
     invoice.verified_by = current_user.id
-    invoice.verified_at = datetime.utcnow()
+    invoice.verified_at = datetime.now(timezone.utc)
 
     db.commit()
     db.refresh(invoice)
@@ -1986,7 +1987,7 @@ async def list_invoices(
     current_user: StaffUser = Depends(get_current_user)
 ):
     """List scanned invoices"""
-    start_date = datetime.utcnow() - timedelta(days=days)
+    start_date = datetime.now(timezone.utc) - timedelta(days=days)
 
     query = db.query(ScannedInvoice).filter(
         ScannedInvoice.venue_id == current_user.venue_id,

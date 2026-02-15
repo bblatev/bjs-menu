@@ -1,5 +1,5 @@
 """Catering & Events Service - Full catering workflow"""
-from datetime import datetime, date, timedelta
+from datetime import datetime, date, timedelta, timezone
 from typing import List, Dict, Optional, Any
 from sqlalchemy.orm import Session
 from decimal import Decimal
@@ -44,7 +44,7 @@ class CateringEventsService:
             "contact_email": contact_email,
             "special_requirements": special_requirements,
             "dietary_notes": dietary_notes,
-            "created_at": datetime.utcnow().isoformat()
+            "created_at": datetime.now(timezone.utc).isoformat()
         }
         return event
     
@@ -63,7 +63,7 @@ class CateringEventsService:
             "event_id": event_id,
             "status": status,
             "notes": notes,
-            "updated_at": datetime.utcnow().isoformat()
+            "updated_at": datetime.now(timezone.utc).isoformat()
         }
     
     async def get_event(self, event_id: int) -> Optional[Dict[str, Any]]:
@@ -72,7 +72,7 @@ class CateringEventsService:
             "id": event_id,
             "event_name": "Johnson Wedding Reception",
             "event_type": "wedding",
-            "event_date": (datetime.utcnow() + timedelta(days=30)).isoformat(),
+            "event_date": (datetime.now(timezone.utc) + timedelta(days=30)).isoformat(),
             "guest_count": 100,
             "status": "confirmed",
             "total_amount": 5000.00,
@@ -95,7 +95,7 @@ class CateringEventsService:
                 "id": i,
                 "event_name": f"Event {i}",
                 "event_type": ["wedding", "corporate", "birthday"][i % 3],
-                "event_date": (datetime.utcnow() + timedelta(days=i*7)).isoformat(),
+                "event_date": (datetime.now(timezone.utc) + timedelta(days=i*7)).isoformat(),
                 "guest_count": 50 + i * 10,
                 "status": ["inquiry", "quoted", "confirmed"][i % 3],
                 "total_amount": 1000 + i * 500
@@ -132,7 +132,7 @@ class CateringEventsService:
             "total_price": float(total_price),
             "course": course,
             "notes": notes,
-            "created_at": datetime.utcnow().isoformat()
+            "created_at": datetime.now(timezone.utc).isoformat()
         }
         
         # Update event total
@@ -187,7 +187,7 @@ class CateringEventsService:
             raise ValueError("Event not found")
         
         # Generate invoice number
-        invoice_number = f"INV-{datetime.utcnow().strftime('%Y%m')}-{secrets.randbelow(9999):04d}"
+        invoice_number = f"INV-{datetime.now(timezone.utc).strftime('%Y%m')}-{secrets.randbelow(9999):04d}"
         
         items = await self.get_event_items(event_id)
         subtotal = sum(item["total_price"] for item in items)
@@ -209,7 +209,7 @@ class CateringEventsService:
             "status": "draft",
             "notes": notes,
             "items": items,
-            "created_at": datetime.utcnow().isoformat()
+            "created_at": datetime.now(timezone.utc).isoformat()
         }
         
         return invoice
@@ -220,7 +220,7 @@ class CateringEventsService:
         return {
             "invoice_id": invoice_id,
             "status": "sent",
-            "sent_at": datetime.utcnow().isoformat(),
+            "sent_at": datetime.now(timezone.utc).isoformat(),
             "sent_to": "customer@example.com"
         }
     
@@ -239,7 +239,7 @@ class CateringEventsService:
             "transaction_id": transaction_id,
             "remaining_balance": 0,
             "status": "paid",
-            "paid_at": datetime.utcnow().isoformat()
+            "paid_at": datetime.now(timezone.utc).isoformat()
         }
     
     # Kitchen Prep Sheets
@@ -270,7 +270,7 @@ class CateringEventsService:
             "station": station,
             "items": prep_items,
             "status": "pending",
-            "created_at": datetime.utcnow().isoformat()
+            "created_at": datetime.now(timezone.utc).isoformat()
         }
         
         return prep_sheet
@@ -320,7 +320,7 @@ class CateringEventsService:
             "label_count": len(label_ids),
             "format": label_format,
             "print_url": f"/api/v1/catering/labels/print?ids={','.join(map(str, label_ids))}",
-            "generated_at": datetime.utcnow().isoformat()
+            "generated_at": datetime.now(timezone.utc).isoformat()
         }
     
     # Event Calendar
@@ -360,7 +360,7 @@ class CateringEventsService:
         return {
             "event_id": event_id,
             "sent_to": event.get("contact_email", ""),
-            "sent_at": datetime.utcnow().isoformat(),
+            "sent_at": datetime.now(timezone.utc).isoformat(),
             "type": "confirmation"
         }
     
@@ -378,7 +378,7 @@ class CateringEventsService:
             "message": message,
             "sender_type": sender_type,
             "sender_id": sender_id,
-            "created_at": datetime.utcnow().isoformat()
+            "created_at": datetime.now(timezone.utc).isoformat()
         }
     
     async def get_event_discussions(self, event_id: int) -> List[Dict[str, Any]]:
@@ -388,12 +388,12 @@ class CateringEventsService:
                 "id": 1,
                 "message": "Can we add vegetarian options?",
                 "sender_type": "customer",
-                "created_at": (datetime.utcnow() - timedelta(days=2)).isoformat()
+                "created_at": (datetime.now(timezone.utc) - timedelta(days=2)).isoformat()
             },
             {
                 "id": 2,
                 "message": "Absolutely! I've added 3 vegetarian main courses to your menu.",
                 "sender_type": "staff",
-                "created_at": (datetime.utcnow() - timedelta(days=1)).isoformat()
+                "created_at": (datetime.now(timezone.utc) - timedelta(days=1)).isoformat()
             }
         ]

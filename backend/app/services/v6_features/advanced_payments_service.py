@@ -6,7 +6,7 @@ wallets, cryptocurrency payments, and buy-now-pay-later.
 """
 
 import uuid
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 
 class AdvancedPaymentsService:
@@ -24,7 +24,7 @@ class AdvancedPaymentsService:
             "id": code,
             "code": code,
             "amount": amount,
-            "expires_at": (datetime.utcnow() + timedelta(days=365)).isoformat()
+            "expires_at": (datetime.now(timezone.utc) + timedelta(days=365)).isoformat()
         }
 
     def check_gift_card_balance(self, code: str) -> dict:
@@ -53,7 +53,7 @@ class AdvancedPaymentsService:
             "amount_crypto": 0.0,
             "exchange_rate": 0.0,
             "payment_uri": "",
-            "expires_at": (datetime.utcnow() + timedelta(minutes=30)).isoformat()
+            "expires_at": (datetime.now(timezone.utc) + timedelta(minutes=30)).isoformat()
         }
 
     def create_bnpl_plan(self, venue_id: int, order_id: int, customer_id: int,
@@ -64,5 +64,5 @@ class AdvancedPaymentsService:
             "success": True,
             "plan_id": f"BNPL-{uuid.uuid4().hex[:8]}",
             "installment_amount": installment_amount,
-            "first_payment_date": (datetime.utcnow() + timedelta(days=30)).isoformat()
+            "first_payment_date": (datetime.now(timezone.utc) + timedelta(days=30)).isoformat()
         }

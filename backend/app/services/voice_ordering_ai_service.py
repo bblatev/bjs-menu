@@ -13,7 +13,7 @@ Features:
 """
 
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import List, Dict, Optional, Any, Tuple
 from sqlalchemy.orm import Session
 from enum import Enum
@@ -80,7 +80,7 @@ class VoiceOrderingAIService:
             "status": VoiceOrderStatus.LISTENING.value,
             "order_items": [],
             "transcriptions": [],
-            "started_at": datetime.utcnow().isoformat(),
+            "started_at": datetime.now(timezone.utc).isoformat(),
             "language": self._detect_language_from_phone(phone_number),
             "caller_id_name": customer.get("name") if customer else None
         }
@@ -135,7 +135,7 @@ class VoiceOrderingAIService:
         session["transcriptions"].append({
             "text": transcription,
             "confidence": confidence,
-            "timestamp": datetime.utcnow().isoformat()
+            "timestamp": datetime.now(timezone.utc).isoformat()
         })
         
         # Check confidence threshold
@@ -379,7 +379,7 @@ class VoiceOrderingAIService:
         """
         Start a drive-thru voice ordering session
         """
-        session_id = f"dt-{lane_id}-{datetime.utcnow().strftime('%H%M%S')}"
+        session_id = f"dt-{lane_id}-{datetime.now(timezone.utc).strftime('%H%M%S')}"
         
         session = {
             "session_id": session_id,
@@ -389,7 +389,7 @@ class VoiceOrderingAIService:
             "status": VoiceOrderStatus.LISTENING.value,
             "order_items": [],
             "transcriptions": [],
-            "started_at": datetime.utcnow().isoformat(),
+            "started_at": datetime.now(timezone.utc).isoformat(),
             "language": "en",  # Default, will detect
             "vehicle_present": True
         }
@@ -453,7 +453,7 @@ class VoiceOrderingAIService:
         """
         Start voice ordering at a self-service kiosk
         """
-        session_id = f"kiosk-{kiosk_id}-{datetime.utcnow().strftime('%H%M%S')}"
+        session_id = f"kiosk-{kiosk_id}-{datetime.now(timezone.utc).strftime('%H%M%S')}"
         
         session = {
             "session_id": session_id,
@@ -463,7 +463,7 @@ class VoiceOrderingAIService:
             "status": VoiceOrderStatus.LISTENING.value,
             "order_items": [],
             "transcriptions": [],
-            "started_at": datetime.utcnow().isoformat(),
+            "started_at": datetime.now(timezone.utc).isoformat(),
             "language": language,
             "touch_fallback_available": True
         }

@@ -5,7 +5,7 @@ Digital waitlist, SMS notifications, AI wait time prediction, virtual queue
 with database persistence and production-ready features.
 """
 
-from datetime import datetime, timedelta, date
+from datetime import datetime, timedelta, timezone, date
 from typing import List, Dict, Any, Optional
 from enum import Enum
 from pydantic import BaseModel, ConfigDict
@@ -114,7 +114,7 @@ class QueueWaitlistService:
 
     def _generate_entry_code(self) -> str:
         """Generate unique entry code."""
-        return f"WL-{datetime.utcnow().strftime('%Y%m%d%H%M%S')}-{uuid.uuid4().hex[:6].upper()}"
+        return f"WL-{datetime.now(timezone.utc).strftime('%Y%m%d%H%M%S')}-{uuid.uuid4().hex[:6].upper()}"
 
     def add_to_waitlist(self, venue_id: int, customer_name: str, customer_phone: str,
                         party_size: int, **kwargs) -> WaitlistEntry:
@@ -135,7 +135,7 @@ class QueueWaitlistService:
                 seating_preference=kwargs.get('seating_preference'),
                 has_reservation=kwargs.get('has_reservation', False),
                 priority=kwargs.get('priority', 0),
-                check_in_time=datetime.utcnow()
+                check_in_time=datetime.now(timezone.utc)
             )
 
             # Assign pager if available
@@ -193,7 +193,7 @@ class QueueWaitlistService:
                 seating_preference=kwargs.get('seating_preference'),
                 has_reservation=kwargs.get('has_reservation', False),
                 priority=kwargs.get('priority', 0),
-                check_in_time=datetime.utcnow(),
+                check_in_time=datetime.now(timezone.utc),
                 position=1,
                 estimated_wait_minutes=quoted_wait
             )
@@ -261,7 +261,7 @@ class QueueWaitlistService:
 
             if entry and entry.status == WaitlistStatus.WAITING.value:
                 entry.status = WaitlistStatus.NOTIFIED.value
-                entry.notified_at = datetime.utcnow()
+                entry.notified_at = datetime.now(timezone.utc)
 
                 try:
                     self.db.commit()
@@ -293,7 +293,7 @@ class QueueWaitlistService:
 
             if entry:
                 entry.status = WaitlistStatus.SEATED.value
-                entry.seated_at = datetime.utcnow()
+                entry.seated_at = datetime.now(timezone.utc)
                 entry.table_id = table_id
                 entry.actual_wait_minutes = int(
                     (entry.seated_at - entry.check_in_time).total_seconds() / 60
@@ -432,7 +432,7 @@ class QueueWaitlistService:
     def get_stats(self, venue_id: int) -> Dict[str, Any]:
         """Get queue statistics."""
         if self.db:
-            today = datetime.utcnow().date()
+            today = datetime.now(timezone.utc).date()
             today_start = datetime.combine(today, datetime.min.time())
 
             # Get today's entries
@@ -489,7 +489,7 @@ class QueueWaitlistService:
 
         # Default to last 30 days if no date range provided
         if not end_date:
-            end_date = datetime.utcnow().date()
+            end_date = datetime.now(timezone.utc).date()
         if not start_date:
             start_date = end_date - timedelta(days=30)
 
@@ -760,7 +760,7 @@ class QueueWaitlistService:
     def cleanup_old_entries(self, days: int = 30):
         """Clean up waitlist entries older than specified days."""
         if self.db:
-            cutoff = datetime.utcnow() - timedelta(days=days)
+            cutoff = datetime.now(timezone.utc) - timedelta(days=days)
 
             deleted = self.db.query(WaitlistEntryDB).filter(
                 WaitlistEntryDB.check_in_time < cutoff,

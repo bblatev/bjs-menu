@@ -5,7 +5,7 @@ Temperature monitoring, digital logs, supplier tracking, allergen alerts, expiry
 with full database integration.
 """
 
-from datetime import datetime, date, timedelta
+from datetime import datetime, date, timedelta, timezone
 from typing import List, Dict, Any, Optional
 from enum import Enum
 from pydantic import BaseModel, ConfigDict
@@ -243,7 +243,7 @@ class HACCPFoodSafetyService:
             zone=zone,
             temperature=temperature,
             recorded_by=recorded_by,
-            recorded_at=datetime.utcnow(),
+            recorded_at=datetime.now(timezone.utc),
             within_limits=within_limits
         )
 
@@ -252,7 +252,7 @@ class HACCPFoodSafetyService:
         # Update CCP
         if ccp:
             ccp.last_reading = temperature
-            ccp.last_reading_at = datetime.utcnow()
+            ccp.last_reading_at = datetime.now(timezone.utc)
             ccp.status = "normal" if within_limits else "critical"
 
         self.db.commit()
@@ -627,7 +627,7 @@ class HACCPFoodSafetyService:
         checklist.overall_score = (passed_items / len(results) * 100) if results else 100
         checklist.passed = checklist.overall_score >= 80
         checklist.notes = notes
-        checklist.completed_at = datetime.utcnow()
+        checklist.completed_at = datetime.now(timezone.utc)
 
         self.db.commit()
 
@@ -691,7 +691,7 @@ class HACCPFoodSafetyService:
             venue_id=venue_id,
             ccp_id=ccp_id,
             incident_type=incident_type,
-            incident_date=datetime.utcnow(),
+            incident_date=datetime.now(timezone.utc),
             description=description,
             severity=severity,
             immediate_action=immediate_action,
@@ -731,7 +731,7 @@ class HACCPFoodSafetyService:
         action.root_cause = root_cause
         action.preventive_measures = preventive_measures
         action.status = "completed"
-        action.completed_at = datetime.utcnow()
+        action.completed_at = datetime.now(timezone.utc)
         action.verified_by = verified_by
 
         self.db.commit()
@@ -851,7 +851,7 @@ class HACCPFoodSafetyService:
         ).all()
 
         overdue_list = []
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
 
         for ccp in ccps:
             # Skip auto-monitored CCPs
@@ -1027,7 +1027,7 @@ class HACCPFoodSafetyService:
             "venue_id": venue_id,
             "period_start": start.isoformat(),
             "period_end": end.isoformat(),
-            "generated_at": datetime.utcnow().isoformat(),
+            "generated_at": datetime.now(timezone.utc).isoformat(),
             "overall_score": round(overall_score, 2),
             "compliance_status": compliance_status,
             "temperature_monitoring": {
@@ -1135,7 +1135,7 @@ class HACCPFoodSafetyService:
             })
 
         # Check for CCPs with no recent readings
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         for ccp in ccps:
             if ccp.active and not ccp.auto_monitoring:
                 if not ccp.last_reading_at:

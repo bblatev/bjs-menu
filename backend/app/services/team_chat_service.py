@@ -4,7 +4,7 @@ Implements team messaging, announcements, and shift-based chat
 Competitor: Toast Team Communication, 7shifts Messaging, Homebase Chat
 """
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, List, Optional, Tuple
 from uuid import UUID, uuid4
 from sqlalchemy import select, and_, or_, func, desc
@@ -45,7 +45,7 @@ class TeamChatService:
             created_by=created_by,
             members=members or [],
             is_active=True,
-            created_at=datetime.utcnow()
+            created_at=datetime.now(timezone.utc)
         )
         self.db.add(channel)
         await self.db.commit()
@@ -193,14 +193,14 @@ class TeamChatService:
             reply_to_id=reply_to_id,
             mentions=mentions or [],
             is_edited=False,
-            created_at=datetime.utcnow()
+            created_at=datetime.now(timezone.utc)
         )
         self.db.add(message)
 
         # Update channel's last message timestamp
         channel = await self.get_channel(channel_id)
         if channel:
-            channel.last_message_at = datetime.utcnow()
+            channel.last_message_at = datetime.now(timezone.utc)
 
         await self.db.commit()
         await self.db.refresh(message)
@@ -228,7 +228,7 @@ class TeamChatService:
 
         message.content = new_content
         message.is_edited = True
-        message.edited_at = datetime.utcnow()
+        message.edited_at = datetime.now(timezone.utc)
         await self.db.commit()
         await self.db.refresh(message)
         return message
@@ -250,7 +250,7 @@ class TeamChatService:
 
         if message:
             message.is_deleted = True
-            message.deleted_at = datetime.utcnow()
+            message.deleted_at = datetime.now(timezone.utc)
             await self.db.commit()
             return True
         return False
@@ -336,7 +336,7 @@ class TeamChatService:
             id=uuid4(),
             message_id=message_id,
             user_id=user_id,
-            read_at=datetime.utcnow()
+            read_at=datetime.now(timezone.utc)
         )
         self.db.add(ack)
         await self.db.commit()
@@ -361,7 +361,7 @@ class TeamChatService:
         )
         unread_ids = [r[0] for r in result.all()]
 
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         for message_id in unread_ids:
             ack = MessageAcknowledgment(
                 id=uuid4(),
@@ -422,7 +422,7 @@ class TeamChatService:
             require_acknowledgment=require_acknowledgment,
             acknowledgments=[],
             is_active=True,
-            created_at=datetime.utcnow()
+            created_at=datetime.now(timezone.utc)
         )
         self.db.add(announcement)
         await self.db.commit()
@@ -445,7 +445,7 @@ class TeamChatService:
 
         if user_id not in announcement.acknowledgments:
             announcement.acknowledgments = announcement.acknowledgments + [
-                {"user_id": str(user_id), "acknowledged_at": datetime.utcnow().isoformat()}
+                {"user_id": str(user_id), "acknowledged_at": datetime.now(timezone.utc).isoformat()}
             ]
             await self.db.commit()
         return True
@@ -457,7 +457,7 @@ class TeamChatService:
         role: Optional[str] = None
     ) -> List[TeamAnnouncement]:
         """Get active announcements for a venue/user."""
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
 
         query = select(TeamAnnouncement).where(
             and_(
@@ -537,7 +537,7 @@ class LaborComplianceService:
             conditions=conditions,
             action=action,
             is_active=is_active,
-            created_at=datetime.utcnow()
+            created_at=datetime.now(timezone.utc)
         )
         self.db.add(rule)
         await self.db.commit()
@@ -743,7 +743,7 @@ class LaborComplianceService:
             violation_type=violation_type,
             details=details,
             status="open",
-            created_at=datetime.utcnow()
+            created_at=datetime.now(timezone.utc)
         )
         self.db.add(violation)
         await self.db.commit()

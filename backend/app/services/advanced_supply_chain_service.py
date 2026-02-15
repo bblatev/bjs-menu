@@ -3,7 +3,7 @@ BJ's Bar V9 - Advanced Supply Chain & Inventory Service
 Handles auto-purchase orders, supplier management, costing methods, cross-store balancing
 """
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Optional, List, Dict, Any, Tuple
 from sqlalchemy.orm import Session
 from sqlalchemy import func, and_, or_, desc
@@ -325,7 +325,7 @@ class AdvancedSupplyChainService:
             else lead_time.standard_lead_time_days
         )
         
-        order_date = datetime.utcnow()
+        order_date = datetime.now(timezone.utc)
         
         # Check cut-off time
         if lead_time.cut_off_time:
@@ -379,7 +379,7 @@ class AdvancedSupplyChainService:
             existing.pack_size = pack_size
             existing.pack_unit = pack_unit
             existing.quality_rating = quality_rating
-            existing.last_price_date = datetime.utcnow() if unit_price else existing.last_price_date
+            existing.last_price_date = datetime.now(timezone.utc) if unit_price else existing.last_price_date
             db.commit()
             return existing
         
@@ -393,7 +393,7 @@ class AdvancedSupplyChainService:
             pack_size=pack_size,
             pack_unit=pack_unit,
             quality_rating=quality_rating,
-            last_price_date=datetime.utcnow() if unit_price else None
+            last_price_date=datetime.now(timezone.utc) if unit_price else None
         )
         
         db.add(alt)

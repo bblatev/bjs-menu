@@ -4,7 +4,7 @@ Held Orders / Bill Suspend & Resume API
 from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.orm import Session
 from typing import List, Optional
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from pydantic import BaseModel, ConfigDict
 
 from app.core.rate_limit import limiter
@@ -60,7 +60,7 @@ def hold_order(
     """Hold/suspend an order for later"""
     expires_at = None
     if data.expires_hours:
-        expires_at = datetime.utcnow() + timedelta(hours=data.expires_hours)
+        expires_at = datetime.now(timezone.utc) + timedelta(hours=data.expires_hours)
 
     held_order = HeldOrder(
         venue_id=current_user.venue_id,
@@ -141,14 +141,14 @@ def resume_held_order(
         raise HTTPException(status_code=404, detail="Held order not found or already resumed")
 
     # Check if expired
-    if held_order.expires_at and datetime.utcnow() > held_order.expires_at:
+    if held_order.expires_at and datetime.now(timezone.utc) > held_order.expires_at:
         held_order.status = HeldOrderStatus.EXPIRED
         db.commit()
         raise HTTPException(status_code=400, detail="Held order has expired")
 
     # Mark as resumed
     held_order.status = HeldOrderStatus.RESUMED
-    held_order.resumed_at = datetime.utcnow()
+    held_order.resumed_at = datetime.now(timezone.utc)
     held_order.resumed_by = current_user.id
 
     db.commit()

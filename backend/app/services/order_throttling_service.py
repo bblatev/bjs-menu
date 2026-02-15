@@ -13,7 +13,7 @@ Features:
 """
 
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import List, Dict, Optional, Any
 from sqlalchemy.orm import Session
 from enum import Enum
@@ -98,7 +98,7 @@ class OrderThrottlingService:
         """
         Set throttle level for a specific channel
         """
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         auto_resume = None
         
         if duration_minutes:
@@ -197,7 +197,7 @@ class OrderThrottlingService:
             "success": True,
             "channels_paused": [c.value for c in online_channels],
             "duration_minutes": duration_minutes,
-            "auto_resume_at": (datetime.utcnow() + timedelta(minutes=duration_minutes)).isoformat(),
+            "auto_resume_at": (datetime.now(timezone.utc) + timedelta(minutes=duration_minutes)).isoformat(),
             "results": results
         }
     
@@ -215,7 +215,7 @@ class OrderThrottlingService:
         """
         Update real-time kitchen metrics for auto-throttling decisions
         """
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         
         metrics = {
             "venue_id": venue_id,
@@ -348,7 +348,7 @@ class OrderThrottlingService:
             # Check auto-resume
             if status.get("auto_resume_at"):
                 resume_time = datetime.fromisoformat(status["auto_resume_at"])
-                if datetime.utcnow() >= resume_time:
+                if datetime.now(timezone.utc) >= resume_time:
                     # Auto-resume
                     self.resume_channel(channel)
                     status = self.channel_status[channel.value]
@@ -358,7 +358,7 @@ class OrderThrottlingService:
                         "reason": "channel_paused",
                         "message": status.get("message", "Orders temporarily unavailable"),
                         "resume_at": status["auto_resume_at"],
-                        "minutes_until_resume": int((resume_time - datetime.utcnow()).total_seconds() / 60)
+                        "minutes_until_resume": int((resume_time - datetime.now(timezone.utc)).total_seconds() / 60)
                     }
             else:
                 return {
@@ -462,7 +462,7 @@ class OrderThrottlingService:
             "platform": platform,
             "paused": paused,
             "prep_time_minutes": prep_time_minutes,
-            "updated_at": datetime.utcnow().isoformat()
+            "updated_at": datetime.now(timezone.utc).isoformat()
         }
 
         if platform == "uber_eats":
@@ -495,7 +495,7 @@ class OrderThrottlingService:
                 results[platform] = {"success": False, "error": str(e)}
         
         return {
-            "synced_at": datetime.utcnow().isoformat(),
+            "synced_at": datetime.now(timezone.utc).isoformat(),
             "paused": paused,
             "prep_time_minutes": prep_time,
             "platforms": results
@@ -767,7 +767,7 @@ class OrderThrottlingService:
         Get current status of all order channels
         """
         return {
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
             "channels": self.channel_status,
             "overall_status": self._get_overall_status(),
             "kitchen_metrics": list(self.kitchen_metrics.values())[-1] if self.kitchen_metrics else None
@@ -794,7 +794,7 @@ class OrderThrottlingService:
         )
         
         return {
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
             "summary": {
                 "total_channels": len(self.channel_status),
                 "throttled_channels": throttled,
@@ -819,7 +819,7 @@ class OrderThrottlingService:
         """
         Get throttle history for analysis
         """
-        cutoff = datetime.utcnow() - timedelta(hours=hours)
+        cutoff = datetime.now(timezone.utc) - timedelta(hours=hours)
         
         history = [
             h for h in self.throttle_history
@@ -970,7 +970,7 @@ class OrderThrottlingService:
                     del paused_at[channel]
         
         # Add ongoing pauses
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         for channel, start in paused_at.items():
             downtime[channel] += int((now - start).total_seconds() / 60)
         
@@ -982,7 +982,7 @@ class OrderThrottlingService:
         """Get current throttling status and active rules for a venue"""
         return {
             "venue_id": venue_id,
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
             "channels": self.channel_status,
             "overall_status": self._get_overall_status(),
             "kitchen_metrics": self.kitchen_metrics.get(venue_id, {}),
@@ -1246,7 +1246,7 @@ class OrderThrottlingService:
         station_id: Optional[int] = None
     ) -> Dict[str, Any]:
         """Temporarily pause ordering (Toast-style snooze)"""
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         resume_at = now + timedelta(minutes=duration_minutes)
         
         # Pause all online channels
@@ -1292,7 +1292,7 @@ class OrderThrottlingService:
         station_id: Optional[int] = None
     ) -> Dict[str, Any]:
         """Resume ordering after snooze"""
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         
         # Resume all paused channels
         channels_resumed = []
@@ -1376,7 +1376,7 @@ class OrderThrottlingService:
         """Get throttling analytics and impact analysis"""
         from datetime import timedelta
         
-        start_date = datetime.utcnow() - timedelta(days=period_days)
+        start_date = datetime.now(timezone.utc) - timedelta(days=period_days)
         
         # Get events from database
         events_data = self.get_events(venue_id, start_date)

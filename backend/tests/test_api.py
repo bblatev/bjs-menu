@@ -320,7 +320,7 @@ class TestPOS:
     ):
         """Test converting sales to stock movements."""
         from app.models.pos import PosSalesLine
-        from datetime import datetime
+        from datetime import datetime, timezone
 
         # Create recipe for the product
         recipe = Recipe(
@@ -340,7 +340,7 @@ class TestPOS:
 
         # Create unprocessed sales line
         sales_line = PosSalesLine(
-            ts=datetime.utcnow(),
+            ts=datetime.now(timezone.utc),
             name="Test Beer",
             qty=Decimal("3"),
             is_refund=False,

@@ -12,7 +12,7 @@ When OFFLINE_SYNC_ENABLED feature flag is active:
 import hashlib
 import json
 import uuid
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Optional, Dict, Any, List, Tuple
 
 from sqlalchemy.orm import Session
@@ -143,7 +143,7 @@ class OfflineSyncService:
                 # Mark as in progress
                 item.sync_status = SyncStatus.IN_PROGRESS
                 item.sync_attempts += 1
-                item.last_sync_attempt = datetime.utcnow()
+                item.last_sync_attempt = datetime.now(timezone.utc)
                 self.db.commit()
 
                 # Process operation
@@ -153,7 +153,7 @@ class OfflineSyncService:
                     item.sync_status = SyncStatus.COMPLETED
                     item.server_id = result.get("id")
                     item.server_response = result
-                    item.synced_at = datetime.utcnow()
+                    item.synced_at = datetime.now(timezone.utc)
                     synced += 1
                 elif result.get("conflict"):
                     item.sync_status = SyncStatus.CONFLICT
@@ -282,7 +282,7 @@ class OfflineSyncService:
             )
             self.db.add(state)
 
-        state.last_heartbeat = datetime.utcnow()
+        state.last_heartbeat = datetime.now(timezone.utc)
 
         if is_online and not state.is_online:
             # Coming back online
@@ -291,7 +291,7 @@ class OfflineSyncService:
         elif not is_online and state.is_online:
             # Going offline
             state.is_online = False
-            state.offline_since = datetime.utcnow()
+            state.offline_since = datetime.now(timezone.utc)
 
         self.db.commit()
 
@@ -366,7 +366,7 @@ class OfflineSyncService:
         state.total_synced_operations += synced_delta
 
         if synced_delta > 0:
-            state.last_sync_at = datetime.utcnow()
+            state.last_sync_at = datetime.now(timezone.utc)
 
     def _create_conflict(
         self,

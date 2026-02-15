@@ -1,5 +1,5 @@
 """SMS Marketing Service - TouchBistro/Toast parity feature"""
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import List, Dict, Optional, Any
 from sqlalchemy.orm import Session
 from sqlalchemy import func, and_
@@ -37,7 +37,7 @@ class SMSMarketingService:
             "status": "draft" if not scheduled_at else "scheduled",
             "scheduled_at": scheduled_at,
             "created_by": created_by,
-            "created_at": datetime.utcnow()
+            "created_at": datetime.now(timezone.utc)
         }
         
         # In production: INSERT INTO sms_campaigns
@@ -130,7 +130,7 @@ class SMSMarketingService:
             "message_id": secrets.token_hex(16),
             "phone": phone_number,
             "status": "sent",
-            "sent_at": datetime.utcnow().isoformat()
+            "sent_at": datetime.now(timezone.utc).isoformat()
         }
     
     def _validate_phone(self, phone: str) -> bool:
@@ -150,7 +150,7 @@ class SMSMarketingService:
             "message": "🎄 Happy Holidays! Get 20% off your next visit at BJ's Bar!",
             "status": "draft",
             "target_segment": "all",
-            "created_at": datetime.utcnow().isoformat()
+            "created_at": datetime.now(timezone.utc).isoformat()
         }
     
     async def list_campaigns(
@@ -168,7 +168,7 @@ class SMSMarketingService:
                 "target_segment": "all",
                 "total_recipients": 100 + i * 10,
                 "delivered_count": 95 + i * 9,
-                "created_at": (datetime.utcnow() - timedelta(days=i)).isoformat()
+                "created_at": (datetime.now(timezone.utc) - timedelta(days=i)).isoformat()
             }
             for i in range(1, 6)
         ]
@@ -270,7 +270,7 @@ class SMSMarketingService:
         return {
             "phone": phone,
             "opted_out": True,
-            "opted_out_at": datetime.utcnow().isoformat()
+            "opted_out_at": datetime.now(timezone.utc).isoformat()
         }
     
     async def check_opt_out_status(

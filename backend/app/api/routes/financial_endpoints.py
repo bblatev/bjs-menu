@@ -147,7 +147,7 @@ async def create_account(
     try:
         return service.create_account(
             venue_id=current_user.venue_id,
-            **data.dict()
+            **data.model_dump()
         )
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -208,7 +208,7 @@ async def create_journal_entry(
             venue_id=current_user.venue_id,
             entry_date=data.entry_date,
             description=data.description,
-            lines=[line.dict() for line in data.lines],
+            lines=[line.model_dump() for line in data.lines],
             reference_type=data.reference_type,
             reference_id=data.reference_id,
             created_by=current_user.id
@@ -257,7 +257,7 @@ async def create_bank_account(
     service = get_bank_reconciliation_service(db)
     return service.create_bank_account(
         venue_id=current_user.venue_id,
-        **data.dict()
+        **data.model_dump()
     )
 
 
@@ -274,7 +274,7 @@ async def import_bank_transactions(
     service = get_bank_reconciliation_service(db)
     return service.import_bank_transactions(
         bank_account_id=bank_account_id,
-        transactions=[t.dict() for t in transactions]
+        transactions=[t.model_dump() for t in transactions]
     )
 
 
@@ -290,7 +290,7 @@ async def start_reconciliation(
     service = get_bank_reconciliation_service(db)
     return service.start_reconciliation(
         venue_id=current_user.venue_id,
-        **data.dict()
+        **data.model_dump()
     )
 
 
@@ -333,7 +333,7 @@ async def match_transaction(
     service = get_bank_reconciliation_service(db)
     return service.match_transaction(
         reconciliation_id=reconciliation_id,
-        **data.dict()
+        **data.model_dump()
     )
 
 
@@ -399,7 +399,7 @@ async def create_budget(
         budget_type=data.budget_type,
         period_start=data.period_start,
         period_end=data.period_end,
-        line_items=[item.dict() for item in data.line_items],
+        line_items=[item.model_dump() for item in data.line_items],
         created_by=current_user.id
     )
 

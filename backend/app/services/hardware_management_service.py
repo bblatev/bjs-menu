@@ -13,7 +13,7 @@ Features:
 - Hardware recommendations
 """
 
-from datetime import datetime, timedelta, date
+from datetime import datetime, timedelta, timezone, date
 from typing import Optional, List, Dict, Any
 from sqlalchemy.orm import Session
 from sqlalchemy import desc, func
@@ -205,7 +205,7 @@ class HardwareManagementService:
             physical_location=location,
             status=DeviceStatus.PROVISIONING,
             warranty_expires=date.today() + timedelta(days=hardware["warranty_months"] * 30),
-            installed_at=datetime.utcnow()
+            installed_at=datetime.now(timezone.utc)
         )
 
         self.db.add(device)
@@ -331,7 +331,7 @@ class HardwareManagementService:
         db_device.status = status
 
         if status == DeviceStatus.ONLINE:
-            db_device.last_seen = datetime.utcnow()
+            db_device.last_seen = datetime.now(timezone.utc)
 
         self.db.commit()
 
@@ -365,7 +365,7 @@ class HardwareManagementService:
             return {"success": False, "error": "Device not found"}
 
         db_device.status = DeviceStatus.ONLINE
-        db_device.last_seen = datetime.utcnow()
+        db_device.last_seen = datetime.now(timezone.utc)
         self.db.commit()
 
         return {
@@ -392,14 +392,14 @@ class HardwareManagementService:
         # Base diagnostics with real data from database
         diagnostics = {
             "device_id": device_id,
-            "run_at": datetime.utcnow().isoformat(),
+            "run_at": datetime.now(timezone.utc).isoformat(),
             "overall_health": "good",
             "checks": {}
         }
 
         # Connectivity check based on last_seen timestamp
         if db_device and db_device.last_seen:
-            time_since_last_seen = (datetime.utcnow() - db_device.last_seen.replace(tzinfo=None)).total_seconds()
+            time_since_last_seen = (datetime.now(timezone.utc) - db_device.last_seen.replace(tzinfo=None)).total_seconds()
             if time_since_last_seen < 60:
                 diagnostics["checks"]["connectivity"] = {"status": "pass", "latency_ms": 12, "last_seen_seconds_ago": int(time_since_last_seen)}
             elif time_since_last_seen < 300:
@@ -602,7 +602,7 @@ class HardwareManagementService:
         # Add firmware status log
         if db_device and db_device.firmware_version:
             logs.append({
-                "timestamp": datetime.utcnow().isoformat(),
+                "timestamp": datetime.now(timezone.utc).isoformat(),
                 "level": "info",
                 "action": "firmware_check",
                 "message": f"Firmware version: {db_device.firmware_version}" +
@@ -727,7 +727,7 @@ class HardwareManagementService:
             "latest_version": latest_version,
             "update_available": update_available,
             "release_notes": release_notes,
-            "checked_at": datetime.utcnow().isoformat()
+            "checked_at": datetime.now(timezone.utc).isoformat()
         }
 
         # Add update size and estimated duration if update is available

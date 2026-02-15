@@ -20,7 +20,7 @@ from fastapi import APIRouter, HTTPException, Query, Request
 from sqlalchemy import func, desc
 from typing import List, Optional, Dict
 from pydantic import BaseModel, ConfigDict
-from datetime import datetime, date, time, timedelta
+from datetime import datetime, date, timezone, time, timedelta
 import uuid
 import io
 import base64
@@ -510,7 +510,7 @@ def create_combo(
     savings = original_total - final_price
     savings_percentage = (savings / original_total * 100) if original_total > 0 else 0
 
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
 
     # Check availability
     is_available = data.active
@@ -593,7 +593,7 @@ def list_combos(
         query = query.filter(ComboMeal.available == True)
 
     combos = query.all()
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
 
     result = []
     for combo in combos:
@@ -941,7 +941,7 @@ def create_limited_offer(
     elif data.original_price and data.discount_percentage:
         savings = data.original_price * data.discount_percentage / 100
 
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
     is_expired = now > data.end_datetime
     time_remaining = int((data.end_datetime - now).total_seconds()) if not is_expired else 0
 
@@ -999,7 +999,7 @@ def list_limited_offers(
     current_user: CurrentUser = None,
 ):
     """List limited-time offers."""
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
 
     result = []
     for offer in _limited_offers:
@@ -1063,7 +1063,7 @@ def mark_item_86(
         if r["menu_item_id"] == data.menu_item_id and r["is_active"]:
             raise HTTPException(status_code=400, detail="Item is already 86'd")
 
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
 
     record = {
         "id": _next_ids["item86"],
@@ -1122,7 +1122,7 @@ def list_86_items(
     """List all 86'd items."""
     from app.models.restaurant import MenuItem
 
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
 
     records = list(_item86_records)
     if active_only:
@@ -1185,7 +1185,7 @@ def restore_86_item(
         item.available = True
 
     record["is_active"] = False
-    record["restored_at"] = datetime.utcnow().isoformat()
+    record["restored_at"] = datetime.now(timezone.utc).isoformat()
 
     db.commit()
 
@@ -1209,7 +1209,7 @@ def create_digital_board(
     global _next_ids
 
     board_token = str(uuid.uuid4())[:8]
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
 
     board = {
         "id": _next_ids["board"],

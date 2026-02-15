@@ -15,7 +15,7 @@ Features:
 - Tax compliance
 """
 
-from datetime import datetime, date
+from datetime import datetime, date, timezone
 from typing import Optional, List, Dict, Any
 from sqlalchemy.orm import Session
 from sqlalchemy import String
@@ -110,7 +110,7 @@ class AccountingIntegrationService:
             "last_sync": None,
             "sync_frequency": "daily",
             "auto_sync_enabled": True,
-            "created_at": datetime.utcnow().isoformat(),
+            "created_at": datetime.now(timezone.utc).isoformat(),
             "status": "connected"
         }
         
@@ -289,7 +289,7 @@ class AccountingIntegrationService:
             "total_debits": total_debits,
             "total_credits": total_credits,
             "sync_status": SyncStatus.PENDING.value,
-            "created_at": datetime.utcnow().isoformat()
+            "created_at": datetime.now(timezone.utc).isoformat()
         }
         
         self._pending_transactions.append(entry)
@@ -585,7 +585,7 @@ class AccountingIntegrationService:
             "due_date": due_date.isoformat(),
             "status": "draft",
             "notes": notes,
-            "created_at": datetime.utcnow().isoformat()
+            "created_at": datetime.now(timezone.utc).isoformat()
         }
         
         return {
@@ -1304,15 +1304,15 @@ class AccountingIntegrationService:
         for txn in pending:
             # Simulate sync
             txn["sync_status"] = SyncStatus.SYNCED.value
-            txn["synced_at"] = datetime.utcnow().isoformat()
+            txn["synced_at"] = datetime.now(timezone.utc).isoformat()
             synced += 1
         
-        integration["last_sync"] = datetime.utcnow().isoformat()
+        integration["last_sync"] = datetime.now(timezone.utc).isoformat()
         
         sync_record = {
             "sync_id": f"SYNC-{uuid.uuid4().hex[:8].upper()}",
             "integration_id": integration_id,
-            "synced_at": datetime.utcnow().isoformat(),
+            "synced_at": datetime.now(timezone.utc).isoformat(),
             "transactions_synced": synced,
             "transactions_failed": failed,
             "status": "completed"

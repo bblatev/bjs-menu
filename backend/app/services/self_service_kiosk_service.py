@@ -13,7 +13,7 @@ Features:
 - Analytics and conversion tracking
 """
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import List, Dict, Optional, Any
 from sqlalchemy.orm import Session
 from enum import Enum
@@ -83,8 +83,8 @@ class SelfServiceKioskService:
             },
             "status": "active",
             "mode": KioskMode.IDLE.value,
-            "registered_at": datetime.utcnow().isoformat(),
-            "last_heartbeat": datetime.utcnow().isoformat(),
+            "registered_at": datetime.now(timezone.utc).isoformat(),
+            "last_heartbeat": datetime.now(timezone.utc).isoformat(),
             "session_count_today": 0,
             "revenue_today": 0
         }
@@ -177,8 +177,8 @@ class SelfServiceKioskService:
             "discounts": [],
             "upsells_shown": [],
             "upsells_accepted": [],
-            "started_at": datetime.utcnow().isoformat(),
-            "last_activity": datetime.utcnow().isoformat(),
+            "started_at": datetime.now(timezone.utc).isoformat(),
+            "last_activity": datetime.now(timezone.utc).isoformat(),
             "timeout_seconds": 120,  # 2 minute inactivity timeout
             "step": "menu",
             "customer_id": None
@@ -222,7 +222,7 @@ class SelfServiceKioskService:
             return {"error": "Session not found or expired", "success": False}
         
         # Update activity
-        session["last_activity"] = datetime.utcnow().isoformat()
+        session["last_activity"] = datetime.now(timezone.utc).isoformat()
         
         # Get item details
         item = self._get_menu_item(item_id, session["language"])
@@ -276,7 +276,7 @@ class SelfServiceKioskService:
         if not session:
             return {"error": "Session not found", "success": False}
         
-        session["last_activity"] = datetime.utcnow().isoformat()
+        session["last_activity"] = datetime.now(timezone.utc).isoformat()
         
         # Find cart item
         cart_item = next(
@@ -408,7 +408,7 @@ class SelfServiceKioskService:
         session["upsells_accepted"].append({
             "type": upsell_type,
             "data": upsell_data,
-            "accepted_at": datetime.utcnow().isoformat()
+            "accepted_at": datetime.now(timezone.utc).isoformat()
         })
         
         # Handle different upsell types
@@ -460,7 +460,7 @@ class SelfServiceKioskService:
             return {"error": "Cart is empty", "success": False}
         
         session["step"] = "checkout"
-        session["last_activity"] = datetime.utcnow().isoformat()
+        session["last_activity"] = datetime.now(timezone.utc).isoformat()
         
         # Final upsell opportunity (dessert)
         dessert_upsell = self._get_dessert_upsell(session)
@@ -636,7 +636,7 @@ class SelfServiceKioskService:
             return {"valid": False, "reason": "not_found"}
         
         last_activity = datetime.fromisoformat(session["last_activity"])
-        elapsed = (datetime.utcnow() - last_activity).total_seconds()
+        elapsed = (datetime.now(timezone.utc) - last_activity).total_seconds()
         
         if elapsed > session["timeout_seconds"]:
             return {
@@ -656,7 +656,7 @@ class SelfServiceKioskService:
         if not session:
             return {"error": "Session not found", "success": False}
         
-        session["last_activity"] = datetime.utcnow().isoformat()
+        session["last_activity"] = datetime.now(timezone.utc).isoformat()
         
         return {
             "success": True,
@@ -776,7 +776,7 @@ class SelfServiceKioskService:
         ]
         
         return {
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
             "kiosks": [
                 {
                     "kiosk_id": k["kiosk_id"],
@@ -835,7 +835,7 @@ class SelfServiceKioskService:
         if not session:
             return 0
         start = datetime.fromisoformat(session["started_at"])
-        return int((datetime.utcnow() - start).total_seconds())
+        return int((datetime.now(timezone.utc) - start).total_seconds())
     
     def _calculate_uptime(self, kiosk_id: str) -> float:
         """Calculate kiosk uptime percentage for today"""
@@ -844,7 +844,7 @@ class SelfServiceKioskService:
 
         try:
             # Get today's start
-            today_start = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
+            today_start = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
 
             # Query status logs for this kiosk today
             status_logs = self.db.query(KioskStatusLog).filter(
@@ -860,7 +860,7 @@ class SelfServiceKioskService:
                 return 0.0
 
             # Calculate uptime based on status changes
-            total_minutes = (datetime.utcnow() - today_start).total_seconds() / 60
+            total_minutes = (datetime.now(timezone.utc) - today_start).total_seconds() / 60
             if total_minutes <= 0:
                 return 100.0
 
@@ -878,7 +878,7 @@ class SelfServiceKioskService:
 
             # Check if currently down
             if last_status in ["offline", "error", "maintenance"]:
-                downtime_minutes += (datetime.utcnow() - last_time).total_seconds() / 60
+                downtime_minutes += (datetime.now(timezone.utc) - last_time).total_seconds() / 60
 
             # Calculate uptime percentage
             uptime_minutes = total_minutes - downtime_minutes
@@ -1023,7 +1023,7 @@ class SelfServiceKioskService:
         from datetime import datetime
 
         try:
-            now = datetime.utcnow()
+            now = datetime.now(timezone.utc)
             promotions = self.db.query(Promotion).filter(
                 Promotion.venue_id == venue_id,
                 Promotion.is_active == True,
@@ -1616,7 +1616,7 @@ class SelfServiceKioskService:
                 })
 
             # Check for any customer-specific promotions
-            now = datetime.utcnow()
+            now = datetime.now(timezone.utc)
             promotions = self.db.query(Promotion).filter(
                 Promotion.venue_id == customer.venue_id,
                 Promotion.is_active == True,
@@ -1716,7 +1716,7 @@ class SelfServiceKioskService:
     def _create_order_from_session(self, session: Dict, payment: Dict) -> Dict:
         """Create order from kiosk session"""
         from app.models import Order, OrderItem, OrderItemModifier, OrderEvent, VenueStation
-        from datetime import datetime, timedelta
+        from datetime import datetime, timedelta, timezone
 
         try:
             # Get venue's default station (or kiosk station)
@@ -1729,14 +1729,14 @@ class SelfServiceKioskService:
                 # Fallback to creating a minimal response without DB insertion
                 return {
                     "id": str(uuid.uuid4()),
-                    "order_number": f"K{datetime.utcnow().strftime('%H%M%S')}",
+                    "order_number": f"K{datetime.now(timezone.utc).strftime('%H%M%S')}",
                     "items": session["cart"],
                     "total": session["total"],
                     "estimated_time": 10
                 }
 
             # Generate order number
-            order_number = f"KIOSK-{datetime.utcnow().strftime('%Y%m%d-%H%M%S')}"
+            order_number = f"KIOSK-{datetime.now(timezone.utc).strftime('%Y%m%d-%H%M%S')}"
 
             # Create order
             new_order = Order(
@@ -1749,10 +1749,10 @@ class SelfServiceKioskService:
                 tip_amount=0,
                 payment_method=payment.get("method", "card"),
                 payment_status="paid",
-                payment_date=datetime.utcnow(),
+                payment_date=datetime.now(timezone.utc),
                 customer_name=session.get("customer_name"),
                 customer_phone=session.get("customer_phone"),
-                estimated_ready_time=datetime.utcnow() + timedelta(minutes=10),
+                estimated_ready_time=datetime.now(timezone.utc) + timedelta(minutes=10),
                 notes=f"Kiosk order - Session: {session['session_id']}"
             )
 
@@ -1804,7 +1804,7 @@ class SelfServiceKioskService:
                     customer.loyalty_points = (customer.loyalty_points or 0) + points_earned
                     customer.total_orders = (customer.total_orders or 0) + 1
                     customer.total_spent = (customer.total_spent or 0) + session["total"]
-                    customer.last_visit = datetime.utcnow()
+                    customer.last_visit = datetime.now(timezone.utc)
 
                     # Create loyalty transaction
                     loyalty_txn = LoyaltyTransaction(
@@ -1832,7 +1832,7 @@ class SelfServiceKioskService:
             # Return fallback response
             return {
                 "id": str(uuid.uuid4()),
-                "order_number": f"K{datetime.utcnow().strftime('%H%M%S')}",
+                "order_number": f"K{datetime.now(timezone.utc).strftime('%H%M%S')}",
                 "items": session["cart"],
                 "total": session["total"],
                 "estimated_time": 10,
@@ -1842,7 +1842,7 @@ class SelfServiceKioskService:
     def _track_conversion(self, session: Dict, order: Dict):
         """Track successful conversion"""
         self.conversion_data.append({
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
             "venue_id": session["venue_id"],
             "kiosk_id": session["kiosk_id"],
             "session_id": session["session_id"],
@@ -1857,7 +1857,7 @@ class SelfServiceKioskService:
     def _track_abandonment(self, session: Dict, reason: str):
         """Track session abandonment"""
         self.conversion_data.append({
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
             "venue_id": session["venue_id"],
             "kiosk_id": session["kiosk_id"],
             "session_id": session["session_id"],
@@ -1876,7 +1876,7 @@ class SelfServiceKioskService:
             "items": order["items"],
             "total": order["total"],
             "payment_method": "Card",
-            "timestamp": datetime.utcnow().isoformat()
+            "timestamp": datetime.now(timezone.utc).isoformat()
         }
     
     def _get_thank_you_message(self, language: str) -> str:
@@ -2182,7 +2182,7 @@ class SelfServiceKioskService:
             return {"success": False, "error": "Session not found"}
         
         from datetime import datetime
-        current_year = datetime.utcnow().year
+        current_year = datetime.now(timezone.utc).year
         age = current_year - birth_year
         
         session = self.active_sessions[session_id]

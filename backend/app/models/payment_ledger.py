@@ -17,7 +17,7 @@ from sqlalchemy import (
 )
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
-from datetime import datetime
+from datetime import datetime, timezone
 import enum
 import hashlib
 import uuid
@@ -106,7 +106,7 @@ class PaymentLedgerEntry(Base):
 
         # Set business date if not provided
         if 'business_date' not in kwargs:
-            kwargs['business_date'] = datetime.utcnow()
+            kwargs['business_date'] = datetime.now(timezone.utc)
 
         super().__init__(**kwargs)
 

@@ -13,7 +13,7 @@ When ANTI_THEFT_FUSION is enabled:
 - Evidence packet generation for investigations
 """
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 from typing import Dict, Any, List, Optional, Tuple
 from enum import Enum
@@ -77,7 +77,7 @@ class AntiTheftService:
         if not is_enabled("STAFF_RISK_SCORING"):
             return {"status": "disabled"}
 
-        start_date = datetime.utcnow() - timedelta(days=period_days)
+        start_date = datetime.now(timezone.utc) - timedelta(days=period_days)
 
         # Collect metrics
         metrics = {
@@ -108,7 +108,7 @@ class AntiTheftService:
             "risk_level": risk_level.value,
             "metrics": metrics,
             "alerts": self._generate_alerts(metrics),
-            "analyzed_at": datetime.utcnow().isoformat(),
+            "analyzed_at": datetime.now(timezone.utc).isoformat(),
         }
 
     def generate_evidence_packet(
@@ -128,8 +128,8 @@ class AntiTheftService:
             return {"status": "disabled"}
 
         packet = {
-            "packet_id": f"EVD-{venue_id}-{staff_user_id}-{datetime.utcnow().strftime('%Y%m%d%H%M%S')}",
-            "generated_at": datetime.utcnow().isoformat(),
+            "packet_id": f"EVD-{venue_id}-{staff_user_id}-{datetime.now(timezone.utc).strftime('%Y%m%d%H%M%S')}",
+            "generated_at": datetime.now(timezone.utc).isoformat(),
             "venue_id": venue_id,
             "staff_user_id": staff_user_id,
             "incident_type": incident_type,

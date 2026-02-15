@@ -1,5 +1,5 @@
 """Reservation Deposits Service - TouchBistro/Toast parity"""
-from datetime import datetime, date, timedelta
+from datetime import datetime, date, timedelta, timezone
 from typing import List, Dict, Optional, Any
 from sqlalchemy.orm import Session
 from decimal import Decimal
@@ -26,9 +26,9 @@ class ReservationDepositsService:
             "amount": float(amount),
             "currency": currency,
             "status": "pending",
-            "due_by": (due_by or datetime.utcnow() + timedelta(hours=24)).isoformat(),
+            "due_by": (due_by or datetime.now(timezone.utc) + timedelta(hours=24)).isoformat(),
             "payment_link": self._generate_payment_link(reservation_id),
-            "created_at": datetime.utcnow().isoformat()
+            "created_at": datetime.now(timezone.utc).isoformat()
         }
         return deposit
     
@@ -51,7 +51,7 @@ class ReservationDepositsService:
             "amount_paid": float(amount_paid),
             "payment_method": payment_method,
             "transaction_id": transaction_id,
-            "collected_at": datetime.utcnow().isoformat()
+            "collected_at": datetime.now(timezone.utc).isoformat()
         }
     
     async def apply_deposit_to_order(
@@ -73,7 +73,7 @@ class ReservationDepositsService:
             "order_id": order_id,
             "amount_applied": deposit["amount"],
             "status": "applied",
-            "applied_at": datetime.utcnow().isoformat()
+            "applied_at": datetime.now(timezone.utc).isoformat()
         }
     
     async def refund_deposit(
@@ -93,7 +93,7 @@ class ReservationDepositsService:
             "reason": reason,
             "refund_method": refund_method,
             "status": "refunded",
-            "refunded_at": datetime.utcnow().isoformat()
+            "refunded_at": datetime.now(timezone.utc).isoformat()
         }
     
     async def get_deposit(self, deposit_id: int) -> Optional[Dict[str, Any]]:
@@ -104,7 +104,7 @@ class ReservationDepositsService:
             "amount": 50.00,
             "currency": "BGN",
             "status": "collected",
-            "collected_at": datetime.utcnow().isoformat()
+            "collected_at": datetime.now(timezone.utc).isoformat()
         }
     
     async def get_deposits_for_reservation(
@@ -125,7 +125,7 @@ class ReservationDepositsService:
             "deposit_id": deposit_id,
             "reminder_sent": True,
             "sent_via": ["email", "sms"],
-            "sent_at": datetime.utcnow().isoformat()
+            "sent_at": datetime.now(timezone.utc).isoformat()
         }
     
     async def get_deposit_settings(self, venue_id: int) -> Dict[str, Any]:
@@ -152,7 +152,7 @@ class ReservationDepositsService:
         return {
             "venue_id": venue_id,
             **settings,
-            "updated_at": datetime.utcnow().isoformat()
+            "updated_at": datetime.now(timezone.utc).isoformat()
         }
     
     async def get_deposit_report(

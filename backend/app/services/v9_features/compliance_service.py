@@ -5,7 +5,7 @@ Service stub for V9 compliance features including immutable audit logs,
 fiscal archive, NRA export, age verification, and GDPR compliance.
 """
 
-from datetime import datetime, date
+from datetime import datetime, date, timezone
 from typing import Optional, List, Dict, Any
 
 
@@ -31,7 +31,7 @@ class ImmutableAuditService:
             "entity_type": entity_type,
             "entity_id": entity_id,
             "action_details": action_details,
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
         }
 
     @staticmethod
@@ -73,7 +73,7 @@ class FiscalArchiveService:
             "venue_id": venue_id,
             "order_id": order_id,
             "receipt_number": receipt_number,
-            "archived_at": datetime.utcnow().isoformat(),
+            "archived_at": datetime.now(timezone.utc).isoformat(),
         }
 
     @staticmethod
@@ -179,5 +179,5 @@ class ComplianceService:
         return {
             "customer_id": customer_id,
             "data": {},
-            "exported_at": datetime.utcnow().isoformat(),
+            "exported_at": datetime.now(timezone.utc).isoformat(),
         }

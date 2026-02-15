@@ -5,7 +5,7 @@ from fastapi import APIRouter, HTTPException, Depends, Query, Body, Request
 from sqlalchemy.orm import Session
 from sqlalchemy import func
 from typing import List, Dict, Optional
-from datetime import datetime, date, time, timedelta
+from datetime import datetime, date, timezone, time, timedelta
 from decimal import Decimal
 from pydantic import BaseModel
 import secrets
@@ -153,7 +153,7 @@ async def create_sms_campaign(
         "scheduled_at": db_campaign.scheduled_at.isoformat() if db_campaign.scheduled_at else None,
         "status": db_campaign.status,
         "estimated_recipients": db_campaign.audience_size,
-        "created_at": db_campaign.created_at.isoformat() if db_campaign.created_at else datetime.utcnow().isoformat()
+        "created_at": db_campaign.created_at.isoformat() if db_campaign.created_at else datetime.now(timezone.utc).isoformat()
     }
 
 @router.get("/sms/campaigns")
@@ -213,7 +213,7 @@ async def send_sms_campaign(
 
     # Update campaign status to sending/active
     campaign.status = "active"
-    campaign.started_at = datetime.utcnow()
+    campaign.started_at = datetime.now(timezone.utc)
     db.commit()
     db.refresh(campaign)
 
@@ -221,7 +221,7 @@ async def send_sms_campaign(
         "campaign_id": campaign.id,
         "status": campaign.status,
         "recipients": campaign.audience_size,
-        "estimated_completion": datetime.utcnow().isoformat()
+        "estimated_completion": datetime.now(timezone.utc).isoformat()
     }
 
 @router.get("/sms/campaigns/{campaign_id}/analytics")
@@ -315,7 +315,7 @@ async def send_transactional_sms(
         provider="internal",  # Would be actual provider like twilio
         provider_message_id=message_id,
         status="queued",
-        sent_at=datetime.utcnow()
+        sent_at=datetime.now(timezone.utc)
     )
     db.add(sms_message)
     db.commit()
@@ -381,7 +381,7 @@ async def create_catering_event(
         "contact_email": db_event.contact_email,
         "location": db_event.venue_name,
         "status": db_event.status,
-        "created_at": db_event.created_at.isoformat() if db_event.created_at else datetime.utcnow().isoformat()
+        "created_at": db_event.created_at.isoformat() if db_event.created_at else datetime.now(timezone.utc).isoformat()
     }
 
 @router.get("/catering/events")
@@ -536,9 +536,9 @@ async def update_catering_event(
         event.status = status
         # Update status timestamps
         if status == CateringEventStatus.QUOTED.value:
-            event.quote_sent_date = datetime.utcnow()
+            event.quote_sent_date = datetime.now(timezone.utc)
         elif status == CateringEventStatus.CONFIRMED.value:
-            event.confirmed_date = datetime.utcnow()
+            event.confirmed_date = datetime.now(timezone.utc)
     if notes is not None:
         event.notes = notes
 
@@ -549,7 +549,7 @@ async def update_catering_event(
         "id": event.id,
         "event_name": event.event_name,
         "status": event.status,
-        "updated_at": event.updated_at.isoformat() if event.updated_at else datetime.utcnow().isoformat()
+        "updated_at": event.updated_at.isoformat() if event.updated_at else datetime.now(timezone.utc).isoformat()
     }
 
 @router.delete("/catering/events/{event_id}")
@@ -703,7 +703,7 @@ async def create_event_invoice(
     invoice_count = db.query(func.count(CateringInvoice.id)).filter(
         CateringInvoice.venue_id == event.venue_id
     ).scalar() or 0
-    invoice_number = f"CAT-{datetime.utcnow().strftime('%Y%m')}-{(invoice_count + 1):04d}"
+    invoice_number = f"CAT-{datetime.now(timezone.utc).strftime('%Y%m')}-{(invoice_count + 1):04d}"
 
     # Calculate totals from event
     subtotal = event.subtotal or Decimal("0")
@@ -740,7 +740,7 @@ async def create_event_invoice(
         "amount_paid": float(db_invoice.amount_paid) if db_invoice.amount_paid else 0,
         "balance_due": float(db_invoice.balance_due) if db_invoice.balance_due else float(db_invoice.total),
         "status": db_invoice.status,
-        "created_at": db_invoice.created_at.isoformat() if db_invoice.created_at else datetime.utcnow().isoformat()
+        "created_at": db_invoice.created_at.isoformat() if db_invoice.created_at else datetime.now(timezone.utc).isoformat()
     }
 
 @router.get("/catering/events/{event_id}/invoice")
@@ -1408,7 +1408,7 @@ async def collect_deposit(
     deposit.status = DepositStatus.collected
     deposit.payment_method = payment_method
     deposit.transaction_id = transaction_id
-    deposit.collected_at = datetime.utcnow()
+    deposit.collected_at = datetime.now(timezone.utc)
     deposit.collected_by = staff_id
 
     db.commit()
@@ -1462,7 +1462,7 @@ async def apply_deposit_to_order(
     # Update deposit record
     deposit.status = DepositStatus.applied
     deposit.order_id = order_id
-    deposit.applied_at = datetime.utcnow()
+    deposit.applied_at = datetime.now(timezone.utc)
     deposit.amount_applied = amount_to_apply
 
     db.commit()
@@ -1501,7 +1501,7 @@ async def refund_deposit(
     # Update deposit record
     deposit.status = DepositStatus.refunded
     deposit.refund_reason = reason
-    deposit.refunded_at = datetime.utcnow()
+    deposit.refunded_at = datetime.now(timezone.utc)
     deposit.refunded_by = staff_id
 
     db.commit()
@@ -1754,7 +1754,7 @@ async def get_customer_rfm(
         Order.venue_id == venue_id
     ).all()
 
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
 
     if not orders:
         # No orders - return lowest scores
@@ -1825,7 +1825,7 @@ async def get_rfm_segments(
         Customer.is_active == True
     ).all()
 
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
     segment_counts: Dict[str, int] = {}
 
     for customer in customers:
@@ -1875,7 +1875,7 @@ async def get_segment_customers(
         Customer.is_active == True
     ).all()
 
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
     segment_customers = []
 
     for customer in customers:
@@ -2307,7 +2307,7 @@ async def validate_referral_code(
     # Update referral with referee info
     referral.referee_id = validation.referee_customer_id
     referral.status = "registered"
-    referral.registered_at = datetime.utcnow()
+    referral.registered_at = datetime.now(timezone.utc)
     db.commit()
 
     return {
@@ -2354,7 +2354,7 @@ async def qualify_referral(
             )
 
     referral.status = "qualified"
-    referral.qualified_at = datetime.utcnow()
+    referral.qualified_at = datetime.now(timezone.utc)
     referral.qualifying_order_id = order_id
     db.commit()
 
@@ -2418,7 +2418,7 @@ async def issue_referral_rewards(
 
     if rewards_issued:
         referral.status = "rewarded"
-        referral.rewarded_at = datetime.utcnow()
+        referral.rewarded_at = datetime.now(timezone.utc)
         db.commit()
 
     return {
@@ -2608,7 +2608,7 @@ async def start_break(request: Request, break_id: int, db: Session = Depends(get
 
     # Update break status and actual start time
     employee_break.status = "in_progress"
-    employee_break.actual_start = datetime.utcnow()
+    employee_break.actual_start = datetime.now(timezone.utc)
     db.commit()
     db.refresh(employee_break)
 
@@ -2635,7 +2635,7 @@ async def end_break(request: Request, break_id: int, db: Session = Depends(get_d
 
     # Update break status, actual end time, and calculate duration
     employee_break.status = "completed"
-    employee_break.actual_end = datetime.utcnow()
+    employee_break.actual_end = datetime.now(timezone.utc)
 
     # Calculate actual duration if we have start time
     if employee_break.actual_start:
@@ -2700,7 +2700,7 @@ async def create_shift_trade(
         is_open_to_all=body_data.target_staff_id is None,
         status="pending",
         reason=body_data.reason,
-        expires_at=datetime.utcnow() + timedelta(days=7)  # Default 7 day expiry
+        expires_at=datetime.now(timezone.utc) + timedelta(days=7)  # Default 7 day expiry
     )
     db.add(trade_request)
     db.commit()
@@ -2745,7 +2745,7 @@ async def respond_to_trade(
     if response == "accepted":
         trade_request.status = "accepted"
         trade_request.accepted_by_id = staff_id
-        trade_request.accepted_at = datetime.utcnow()
+        trade_request.accepted_at = datetime.now(timezone.utc)
     else:
         trade_request.status = "rejected"
 
@@ -2756,7 +2756,7 @@ async def respond_to_trade(
         "request_id": request_id,
         "status": trade_request.status,
         "responded_by": staff_id,
-        "responded_at": datetime.utcnow().isoformat()
+        "responded_at": datetime.now(timezone.utc).isoformat()
     }
 
 @router.post("/shifts/trade-requests/{request_id}/approve")
@@ -2782,7 +2782,7 @@ async def approve_trade(
 
     # Update with manager decision
     trade_request.approved_by_id = manager_id
-    trade_request.approved_at = datetime.utcnow()
+    trade_request.approved_at = datetime.now(timezone.utc)
 
     if approved:
         trade_request.status = "approved"
@@ -3031,7 +3031,7 @@ async def update_onboarding(
     # Update completion status
     if completed:
         completion.status = "completed"
-        completion.completed_at = datetime.utcnow()
+        completion.completed_at = datetime.now(timezone.utc)
     else:
         completion.status = "pending"
         completion.completed_at = None
@@ -3244,7 +3244,7 @@ async def acknowledge_alert(
 
     # Mark as read
     notification.is_read = True
-    notification.read_at = datetime.utcnow()
+    notification.read_at = datetime.now(timezone.utc)
     notification.read_by = staff_id
 
     db.commit()
@@ -4198,8 +4198,8 @@ async def generate_promo_codes(
             discount_value=config.discount_value,
             promo_code=code,
             min_order_amount=config.minimum_order,
-            start_date=datetime.utcnow(),
-            end_date=datetime.utcnow() + timedelta(days=config.valid_days),
+            start_date=datetime.now(timezone.utc),
+            end_date=datetime.now(timezone.utc) + timedelta(days=config.valid_days),
             max_uses=1,  # Single-use codes
             uses_count=0,
             is_active=True
@@ -4209,7 +4209,7 @@ async def generate_promo_codes(
             "code": code,
             "discount_type": config.discount_type,
             "discount_value": config.discount_value,
-            "valid_until": (datetime.utcnow() + timedelta(days=config.valid_days)).isoformat(),
+            "valid_until": (datetime.now(timezone.utc) + timedelta(days=config.valid_days)).isoformat(),
             "minimum_order": config.minimum_order
         })
 
@@ -4242,7 +4242,7 @@ async def validate_promo_code(
         }
 
     # Check if the promotion has expired
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
     if promotion.end_date and promotion.end_date < now:
         return {
             "valid": False,
@@ -4370,7 +4370,7 @@ async def get_prep_time_estimate(
     active_orders = db.query(func.count(Order.id)).filter(
         Order.venue_id == venue_id,
         Order.status.in_(["pending", "preparing", "in_progress"]),
-        Order.created_at >= datetime.utcnow() - timedelta(hours=2)
+        Order.created_at >= datetime.now(timezone.utc) - timedelta(hours=2)
     ).scalar() or 0
 
     # Calculate base prep time from menu items
@@ -4466,8 +4466,8 @@ async def get_prep_time_estimate(
                 "channel_factor": channel_factor,
                 "item_count": item_count
             },
-            day_of_week=datetime.utcnow().weekday(),
-            hour_of_day=datetime.utcnow().hour,
+            day_of_week=datetime.now(timezone.utc).weekday(),
+            hour_of_day=datetime.now(timezone.utc).hour,
             current_orders=active_orders,
             item_count=item_count,
             complexity_score=complexity_score
@@ -4636,8 +4636,8 @@ async def submit_tax_filing(
 
     # Update status and submission info
     tax_report.status = "submitted"
-    tax_report.submitted_at = datetime.utcnow()
-    tax_report.filing_reference = f"NRA-{filing_id}-{datetime.utcnow().strftime('%Y%m%d%H%M%S')}"
+    tax_report.submitted_at = datetime.now(timezone.utc)
+    tax_report.filing_reference = f"NRA-{filing_id}-{datetime.now(timezone.utc).strftime('%Y%m%d%H%M%S')}"
 
     db.commit()
     db.refresh(tax_report)
@@ -4727,7 +4727,7 @@ async def record_chargeback(
 ):
     """Record a new chargeback dispute from payment processor"""
     # Calculate response due date (typically 7-21 days depending on provider)
-    due_date = datetime.utcnow() + timedelta(days=10)
+    due_date = datetime.now(timezone.utc) + timedelta(days=10)
 
     db_chargeback = Chargeback(
         venue_id=venue_id,
@@ -4740,7 +4740,7 @@ async def record_chargeback(
         provider=chargeback_data.provider,
         provider_case_id=chargeback_data.provider_case_id,
         status=ChargebackStatus.RECEIVED.value,
-        received_at=datetime.utcnow(),
+        received_at=datetime.now(timezone.utc),
         due_date=due_date
     )
 
@@ -4822,7 +4822,7 @@ async def respond_to_chargeback(
     chargeback.evidence_documents = response_data.evidence_documents
     chargeback.response_notes = response_data.response_notes
     chargeback.evidence_submitted = True
-    chargeback.evidence_submitted_at = datetime.utcnow()
+    chargeback.evidence_submitted_at = datetime.now(timezone.utc)
     chargeback.status = ChargebackStatus.EVIDENCE_SUBMITTED.value
 
     db.commit()
@@ -4853,7 +4853,7 @@ async def resolve_chargeback(
 
     chargeback.won = won
     chargeback.status = ChargebackStatus.WON.value if won else ChargebackStatus.LOST.value
-    chargeback.resolved_at = datetime.utcnow()
+    chargeback.resolved_at = datetime.now(timezone.utc)
 
     if amount_recovered is not None:
         chargeback.amount_recovered = amount_recovered
@@ -5017,7 +5017,7 @@ async def get_overdue_chargebacks(
     overdue = db.query(Chargeback).filter(
         Chargeback.venue_id == venue_id,
         Chargeback.status.in_(pending_statuses),
-        Chargeback.due_date < datetime.utcnow()
+        Chargeback.due_date < datetime.now(timezone.utc)
     ).all()
 
     return {
@@ -5029,7 +5029,7 @@ async def get_overdue_chargebacks(
                 "amount": float(cb.amount) if cb.amount else 0,
                 "reason_code": cb.reason_code,
                 "due_date": cb.due_date.isoformat() if cb.due_date else None,
-                "days_overdue": (datetime.utcnow() - cb.due_date).days if cb.due_date else 0,
+                "days_overdue": (datetime.now(timezone.utc) - cb.due_date).days if cb.due_date else 0,
                 "assigned_to": cb.assigned_to
             }
             for cb in overdue
@@ -5647,7 +5647,7 @@ async def show_order_on_display(
 
     # Update display mode to order
     display.display_mode = "order"
-    display.last_seen_at = datetime.utcnow()
+    display.last_seen_at = datetime.now(timezone.utc)
     db.commit()
 
     # Format order items for display based on display settings
@@ -5703,7 +5703,7 @@ async def show_promo_on_display(
 
     # Update display mode to promo
     display.display_mode = "promo"
-    display.last_seen_at = datetime.utcnow()
+    display.last_seen_at = datetime.now(timezone.utc)
     db.commit()
 
     # Check if there's existing promotional content that matches
@@ -5763,7 +5763,7 @@ async def get_display_config(
         raise HTTPException(status_code=404, detail="Customer display not found")
 
     # Update last seen timestamp
-    display.last_seen_at = datetime.utcnow()
+    display.last_seen_at = datetime.now(timezone.utc)
     db.commit()
 
     # Get active promotional content for idle mode

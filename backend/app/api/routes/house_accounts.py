@@ -362,7 +362,7 @@ async def update_account(
         )
 
     # Build update dict from non-None values
-    update_data = {k: v for k, v in update_request.dict().items() if v is not None}
+    update_data = {k: v for k, v in update_request.model_dump().items() if v is not None}
 
     if not update_data:
         raise HTTPException(

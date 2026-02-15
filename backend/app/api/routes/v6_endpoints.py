@@ -7,7 +7,7 @@ Complete API routes for all V6 features.
 from fastapi import APIRouter, HTTPException, Query, Body, Depends, Request
 from sqlalchemy.orm import Session
 from typing import List, Dict, Optional
-from datetime import datetime, date
+from datetime import datetime, date, timezone
 from pydantic import BaseModel
 import uuid
 
@@ -154,7 +154,7 @@ async def connect_delivery_platform(request: Request, venue_id: int, body_data: 
             "commission_percent": body_data.commission_percent
         },
         sync_frequency="realtime",
-        last_sync_at=datetime.utcnow(),
+        last_sync_at=datetime.now(timezone.utc),
         last_sync_status="success"
     )
     db.add(integration)
@@ -185,7 +185,7 @@ async def disconnect_delivery_platform(request: Request, venue_id: int, platform
         raise HTTPException(status_code=404, detail=f"Platform {platform} is not connected")
 
     integration.status = "disconnected"
-    integration.disconnected_at = datetime.utcnow()
+    integration.disconnected_at = datetime.now(timezone.utc)
     db.commit()
 
     return {"success": True, "platform": platform, "disconnected": True}
@@ -270,7 +270,7 @@ async def accept_aggregator_order(request: Request, venue_id: int, order_id: str
         raise HTTPException(status_code=400, detail=f"Order cannot be accepted, current status: {order.status}")
 
     order.status = "accepted"
-    order.accepted_at = datetime.utcnow()
+    order.accepted_at = datetime.now(timezone.utc)
     order.prep_time_minutes = prep_time
     db.commit()
 
@@ -315,7 +315,7 @@ async def mark_delivery_order_ready(request: Request, venue_id: int, order_id: s
         raise HTTPException(status_code=400, detail=f"Order cannot be marked ready, current status: {order.status}")
 
     order.status = "ready_for_pickup"
-    order.ready_at = datetime.utcnow()
+    order.ready_at = datetime.now(timezone.utc)
     db.commit()
 
     return {"success": True, "order_id": order_id, "status": "ready_for_pickup"}
@@ -469,7 +469,7 @@ async def update_driver_location(request: Request, venue_id: int, driver_id: str
 
     driver.current_latitude = lat
     driver.current_longitude = lng
-    driver.last_location_update = datetime.utcnow()
+    driver.last_location_update = datetime.now(timezone.utc)
     db.commit()
 
     return {"success": True, "driver_id": driver_id, "lat": lat, "lng": lng}
@@ -673,7 +673,7 @@ async def get_waitlist(request: Request, venue_id: int, db: Session = Depends(ge
     """Get current waitlist"""
     service = QueueWaitlistService(db)
     entries = service.get_waitlist(venue_id)
-    return {"venue_id": venue_id, "entries": [e.dict() for e in entries], "count": len(entries)}
+    return {"venue_id": venue_id, "entries": [e.model_dump() for e in entries], "count": len(entries)}
 
 @router.post("/{venue_id}/waitlist/{entry_id}/notify")
 @limiter.limit("30/minute")
@@ -723,7 +723,7 @@ async def create_critical_control_point(request: Request, venue_id: int, ccp: CC
         critical_limit_min=ccp.critical_limit_min,
         critical_limit_max=ccp.critical_limit_max
     )
-    return {"success": True, "ccp_id": result.id, "ccp": result.dict()}
+    return {"success": True, "ccp_id": result.id, "ccp": result.model_dump()}
 
 @router.get("/{venue_id}/haccp/ccp")
 @limiter.limit("60/minute")
@@ -731,7 +731,7 @@ async def get_critical_control_points(request: Request, venue_id: int, db: Sessi
     """Get all CCPs"""
     service = HACCPFoodSafetyService(db)
     ccps = service.get_ccps(venue_id)
-    return {"venue_id": venue_id, "ccps": [c.dict() for c in ccps]}
+    return {"venue_id": venue_id, "ccps": [c.model_dump() for c in ccps]}
 
 @router.post("/{venue_id}/haccp/temperature")
 @limiter.limit("30/minute")
@@ -753,7 +753,7 @@ async def get_temperature_readings(request: Request, venue_id: int, ccp_id: Opti
     """Get temperature readings"""
     service = HACCPFoodSafetyService(db)
     readings = service.get_temperature_readings(venue_id, ccp_id, start, end)
-    return {"venue_id": venue_id, "readings": [r.dict() for r in readings]}
+    return {"venue_id": venue_id, "readings": [r.model_dump() for r in readings]}
 
 @router.post("/{venue_id}/haccp/batch")
 @limiter.limit("30/minute")
@@ -778,7 +778,7 @@ async def get_expiring_food_batches(request: Request, venue_id: int, days: int =
     """Get batches expiring soon"""
     service = HACCPFoodSafetyService(db)
     batches = service.get_expiring_batches(venue_id, days)
-    return {"venue_id": venue_id, "expiring_batches": [b.dict() for b in batches]}
+    return {"venue_id": venue_id, "expiring_batches": [b.model_dump() for b in batches]}
 
 @router.get("/{venue_id}/haccp/report")
 @limiter.limit("60/minute")
@@ -803,7 +803,7 @@ async def create_virtual_brand(request: Request, venue_id: int, brand: VirtualBr
         description=brand.description,
         platforms=brand.platforms
     )
-    return {"success": True, "brand_id": result.id, "brand": result.dict()}
+    return {"success": True, "brand_id": result.id, "brand": result.model_dump()}
 
 @router.get("/{venue_id}/cloud-kitchen/brands")
 @limiter.limit("60/minute")
@@ -811,7 +811,7 @@ async def get_virtual_brands(request: Request, venue_id: int, db: Session = Depe
     """Get all virtual brands"""
     service = CloudKitchenService(db)
     brands = service.get_brands(venue_id)
-    return {"venue_id": venue_id, "brands": [b.dict() for b in brands]}
+    return {"venue_id": venue_id, "brands": [b.model_dump() for b in brands]}
 
 @router.put("/{venue_id}/cloud-kitchen/brands/{brand_id}")
 @limiter.limit("30/minute")
@@ -862,7 +862,7 @@ async def get_kitchen_stations(request: Request, venue_id: int, db: Session = De
     """Get all kitchen stations"""
     service = CloudKitchenService(db)
     stations = service.get_stations(venue_id)
-    return {"venue_id": venue_id, "stations": [s.dict() for s in stations]}
+    return {"venue_id": venue_id, "stations": [s.model_dump() for s in stations]}
 
 @router.get("/{venue_id}/cloud-kitchen/performance")
 @limiter.limit("60/minute")
@@ -889,7 +889,7 @@ async def register_franchisee(request: Request, franchisee: FranchiseeRegister, 
         address=franchisee.address,
         city=franchisee.city
     )
-    return {"success": True, "franchisee_id": result.id, "franchisee": result.dict()}
+    return {"success": True, "franchisee_id": result.id, "franchisee": result.model_dump()}
 
 @router.get("/franchise/franchisees")
 @limiter.limit("60/minute")
@@ -899,7 +899,7 @@ async def get_all_franchisees(request: Request, status: Optional[str] = None, db
     from app.services.v6_features.franchise_management_service import FranchiseStatus
     status_enum = FranchiseStatus(status) if status else None
     franchisees = service.get_franchisees(status=status_enum)
-    return {"franchisees": [f.dict() for f in franchisees], "count": len(franchisees)}
+    return {"franchisees": [f.model_dump() for f in franchisees], "count": len(franchisees)}
 
 @router.post("/franchise/franchisees/{franchisee_id}/approve")
 @limiter.limit("30/minute")
@@ -915,7 +915,7 @@ async def calculate_royalty(request: Request, franchisee_id: str, period_start: 
     """Calculate royalty payment"""
     service = FranchiseManagementService(db)
     result = service.calculate_royalty(franchisee_id, period_start, period_end, gross_sales)
-    return {"success": True, "payment_id": result.id, "royalty_due": result.royalty_amount, "payment": result.dict()}
+    return {"success": True, "payment_id": result.id, "royalty_due": result.royalty_amount, "payment": result.model_dump()}
 
 @router.get("/franchise/franchisees/{franchisee_id}/performance")
 @limiter.limit("60/minute")
@@ -931,7 +931,7 @@ async def create_compliance_audit(request: Request, franchisee_id: str = Body(..
     """Create compliance audit"""
     service = FranchiseManagementService(db)
     result = service.create_audit(franchisee_id, venue_id, auditor_name)
-    return {"success": True, "audit_id": result.id, "audit": result.dict()}
+    return {"success": True, "audit_id": result.id, "audit": result.model_dump()}
 
 @router.get("/franchise/network-overview")
 @limiter.limit("60/minute")
@@ -1045,7 +1045,7 @@ async def create_expense(request: Request, venue_id: int, expense: ExpenseCreate
         receipt_url=getattr(expense, 'receipt_url', None),
         created_by=created_by
     )
-    return {"success": True, "expense_id": result.id, "expense": result.dict()}
+    return {"success": True, "expense_id": result.id, "expense": result.model_dump()}
 
 @router.get("/{venue_id}/finance/expenses")
 @limiter.limit("60/minute")
@@ -1056,7 +1056,7 @@ async def get_expenses(request: Request, venue_id: int, start: date = Query(...)
     category_enum = ExpenseCategory(category) if category else None
     expenses = service.get_expenses(venue_id, start, end, category_enum)
     total = sum(e.amount for e in expenses)
-    return {"venue_id": venue_id, "expenses": [e.dict() for e in expenses], "total": total}
+    return {"venue_id": venue_id, "expenses": [e.model_dump() for e in expenses], "total": total}
 
 @router.get("/{venue_id}/finance/expenses/summary")
 @limiter.limit("60/minute")
@@ -1072,7 +1072,7 @@ async def get_cash_flow_forecast(request: Request, venue_id: int, days: int = 30
     """Get cash flow forecast"""
     service = FinancialManagementService(db)
     forecast = service.forecast_cash_flow(venue_id, days)
-    return {"venue_id": venue_id, "forecast": [f.dict() for f in forecast]}
+    return {"venue_id": venue_id, "forecast": [f.model_dump() for f in forecast]}
 
 @router.get("/{venue_id}/finance/break-even")
 @limiter.limit("60/minute")
@@ -1116,7 +1116,7 @@ async def create_fiscal_receipt(request: Request, venue_id: int, order_id: str =
     """Create fiscal receipt for NRA"""
     service = NRATaxComplianceService(db)
     result = service.create_fiscal_receipt(venue_id, order_id, items, payment_method)
-    return {"success": True, "document_id": result.id, "unique_sale_number": result.unique_sale_number, "qr_code": result.qr_code, "receipt": result.dict()}
+    return {"success": True, "document_id": result.id, "unique_sale_number": result.unique_sale_number, "qr_code": result.qr_code, "receipt": result.model_dump()}
 
 @router.post("/{venue_id}/nra/storno/{document_id}")
 @limiter.limit("30/minute")
@@ -1124,7 +1124,7 @@ async def create_storno(request: Request, venue_id: int, document_id: str, reaso
     """Create storno/reversal document"""
     service = NRATaxComplianceService(db)
     result = service.create_storno(document_id, reason)
-    return {"success": True, "storno_id": result.id, "storno": result.dict()}
+    return {"success": True, "storno_id": result.id, "storno": result.model_dump()}
 
 @router.get("/{venue_id}/nra/daily-report")
 @limiter.limit("60/minute")
@@ -1132,7 +1132,7 @@ async def get_daily_z_report(request: Request, venue_id: int, report_date: date 
     """Get daily Z-report for NRA"""
     service = NRATaxComplianceService(db)
     report = service.generate_daily_report(venue_id, report_date)
-    return {"venue_id": venue_id, "report_date": str(report_date), "report": report.dict()}
+    return {"venue_id": venue_id, "report_date": str(report_date), "report": report.model_dump()}
 
 @router.post("/{venue_id}/nra/report/{report_id}/send")
 @limiter.limit("30/minute")
@@ -1156,7 +1156,7 @@ async def record_gdpr_consent(request: Request, venue_id: int, customer_id: int 
     """Record GDPR consent"""
     service = NRATaxComplianceService(db)
     result = service.record_consent(venue_id, customer_id, consent_type, consented, consent_text)
-    return {"success": True, "consent_id": result.id, "consent": result.dict()}
+    return {"success": True, "consent_id": result.id, "consent": result.model_dump()}
 
 @router.get("/{venue_id}/gdpr/customer/{customer_id}/data")
 @limiter.limit("60/minute")

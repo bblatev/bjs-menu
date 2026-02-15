@@ -7,7 +7,7 @@ Competitor: Toast SSO, Oracle MICROS Enterprise Auth
 import secrets
 import hashlib
 import base64
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, List, Optional, Tuple
 from uuid import UUID, uuid4
 from urllib.parse import urlencode
@@ -54,7 +54,7 @@ class SSOService:
             auto_provision_users=auto_provision_users,
             default_role=default_role,
             is_active=True,
-            created_at=datetime.utcnow()
+            created_at=datetime.now(timezone.utc)
         )
         self.db.add(sso_config)
         await self.db.commit()
@@ -130,7 +130,7 @@ class SSOService:
             if hasattr(sso_config, key):
                 setattr(sso_config, key, value)
 
-        sso_config.updated_at = datetime.utcnow()
+        sso_config.updated_at = datetime.now(timezone.utc)
         await self.db.commit()
         await self.db.refresh(sso_config)
         return sso_config
@@ -391,7 +391,7 @@ class SSOService:
 
         # Generate SAML AuthnRequest
         request_id = f"_{secrets.token_hex(16)}"
-        issue_instant = datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")
+        issue_instant = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
         authn_request = f"""<?xml version="1.0" encoding="UTF-8"?>
 <samlp:AuthnRequest
@@ -489,7 +489,7 @@ class SSOService:
         """Create an SSO session."""
         # Calculate token expiry
         expires_in = tokens.get("expires_in", 3600)
-        token_expires_at = datetime.utcnow() + timedelta(seconds=expires_in)
+        token_expires_at = datetime.now(timezone.utc) + timedelta(seconds=expires_in)
 
         session = SSOSession(
             id=uuid4(),
@@ -502,8 +502,8 @@ class SSOService:
             token_expires_at=token_expires_at,
             user_info=user_info,
             is_active=True,
-            created_at=datetime.utcnow(),
-            last_activity_at=datetime.utcnow()
+            created_at=datetime.now(timezone.utc),
+            last_activity_at=datetime.now(timezone.utc)
         )
         self.db.add(session)
         await self.db.commit()
@@ -591,8 +591,8 @@ class SSOService:
             session.id_token = tokens["id_token"]
 
         expires_in = tokens.get("expires_in", 3600)
-        session.token_expires_at = datetime.utcnow() + timedelta(seconds=expires_in)
-        session.last_activity_at = datetime.utcnow()
+        session.token_expires_at = datetime.now(timezone.utc) + timedelta(seconds=expires_in)
+        session.last_activity_at = datetime.now(timezone.utc)
 
         await self.db.commit()
         await self.db.refresh(session)
@@ -610,14 +610,14 @@ class SSOService:
 
         if session:
             session.is_active = False
-            session.ended_at = datetime.utcnow()
+            session.ended_at = datetime.now(timezone.utc)
             await self.db.commit()
             return True
         return False
 
     async def cleanup_expired_sessions(self) -> int:
         """Clean up expired SSO sessions."""
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
 
         result = await self.db.execute(
             select(SSOSession).where(
@@ -684,7 +684,7 @@ class SSOService:
             is_active=True,
             sso_provider_id=str(sso_config.id),
             sso_user_id=user_info.get("sub"),
-            created_at=datetime.utcnow()
+            created_at=datetime.now(timezone.utc)
         )
         self.db.add(new_user)
         await self.db.commit()

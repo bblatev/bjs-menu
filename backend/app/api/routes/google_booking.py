@@ -16,7 +16,7 @@ Endpoints:
 from fastapi import APIRouter, HTTPException, Depends, Header, Request
 from sqlalchemy.orm import Session
 from typing import Optional
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from dateutil import parser as date_parser
 import secrets
 import logging
@@ -286,7 +286,7 @@ async def create_booking(
             reservation_date=slot_time,
             duration_minutes=duration_minutes,
             status=ReservationStatus.confirmed,  # Auto-confirm Google bookings
-            confirmed_at=datetime.utcnow(),
+            confirmed_at=datetime.now(timezone.utc),
             booking_source=BookingSource.google,
             external_booking_id=booking_id,
             special_requests=booking_data.additional_request,
@@ -385,7 +385,7 @@ async def update_booking(
             if update_data.booking.user_information.given_name:
                 reservation.guest_name = f"{update_data.booking.user_information.given_name} {update_data.booking.user_information.family_name or ''}".strip()
 
-        reservation.updated_at = datetime.utcnow()
+        reservation.updated_at = datetime.now(timezone.utc)
 
         db.commit()
         db.refresh(reservation)
@@ -423,7 +423,7 @@ async def cancel_booking(
         raise HTTPException(status_code=404, detail="Booking not found")
 
     reservation.status = ReservationStatus.cancelled
-    reservation.updated_at = datetime.utcnow()
+    reservation.updated_at = datetime.now(timezone.utc)
 
     db.commit()
     db.refresh(reservation)

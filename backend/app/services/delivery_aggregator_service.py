@@ -6,7 +6,7 @@ Features: Auto-accept, unified dashboard, menu sync, driver tracking, commission
 with full database integration.
 """
 
-from datetime import datetime, timedelta, date
+from datetime import datetime, timedelta, timezone, date
 from typing import List, Dict, Any, Optional, Callable
 from enum import Enum
 from pydantic import BaseModel, ConfigDict
@@ -112,7 +112,7 @@ class DeliveryAggregatorService:
             existing.api_secret = api_secret
             existing.store_id = store_id
             existing.connected = True
-            existing.last_sync = datetime.utcnow()
+            existing.last_sync = datetime.now(timezone.utc)
             for key, value in settings.items():
                 if hasattr(existing, key):
                     setattr(existing, key, value)
@@ -127,7 +127,7 @@ class DeliveryAggregatorService:
                 api_secret=api_secret,
                 store_id=store_id,
                 connected=True,
-                last_sync=datetime.utcnow(),
+                last_sync=datetime.now(timezone.utc),
                 auto_accept=settings.get('auto_accept', False),
                 auto_accept_delay_seconds=settings.get('auto_accept_delay_seconds', 30),
                 prep_time_minutes=settings.get('prep_time_minutes', 20),
@@ -269,7 +269,7 @@ class DeliveryAggregatorService:
             total=total,
             commission_amount=commission,
             net_revenue=total - commission,
-            ordered_at=datetime.utcnow()
+            ordered_at=datetime.now(timezone.utc)
         )
 
         self.db.add(order)
@@ -306,7 +306,7 @@ class DeliveryAggregatorService:
             return {"success": False, "error": "Order not found"}
 
         order.status = AggregatorOrderStatus.ACCEPTED.value
-        order.accepted_at = datetime.utcnow()
+        order.accepted_at = datetime.now(timezone.utc)
         self.db.commit()
 
         logger.info(f"Accepted order {order_id}")
@@ -352,9 +352,9 @@ class DeliveryAggregatorService:
         order.status = status
 
         if status == AggregatorOrderStatus.READY_FOR_PICKUP.value:
-            order.ready_at = datetime.utcnow()
+            order.ready_at = datetime.now(timezone.utc)
         elif status == AggregatorOrderStatus.DELIVERED.value:
-            order.delivered_at = datetime.utcnow()
+            order.delivered_at = datetime.now(timezone.utc)
 
         self.db.commit()
 
@@ -831,7 +831,7 @@ class DeliveryAggregatorService:
 
         # Default to last 30 days
         if not end_date:
-            end_date = datetime.utcnow()
+            end_date = datetime.now(timezone.utc)
         if not start_date:
             start_date = end_date - timedelta(days=30)
 

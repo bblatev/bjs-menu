@@ -7,7 +7,7 @@ Competitor: Toast Go, Square Terminal, TouchBistro Mobile
 import json
 import hashlib
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, List, Optional, Tuple
 from uuid import UUID, uuid4
 from sqlalchemy import select, and_, or_, func
@@ -46,7 +46,7 @@ class MobileOfflineService:
         Get a complete sync package for offline operation.
         Returns all data needed to operate without network.
         """
-        sync_timestamp = datetime.utcnow()
+        sync_timestamp = datetime.now(timezone.utc)
         package = {
             "sync_id": str(uuid4()),
             "sync_timestamp": sync_timestamp.isoformat(),
@@ -407,7 +407,7 @@ class MobileOfflineService:
                 notes=txn_data.get("notes"),
                 created_offline=True,
                 offline_device_id=device_id,
-                created_at=datetime.fromisoformat(txn_data.get("created_at", datetime.utcnow().isoformat()))
+                created_at=datetime.fromisoformat(txn_data.get("created_at", datetime.now(timezone.utc).isoformat()))
             )
             self.db.add(order)
 
@@ -477,7 +477,7 @@ class MobileOfflineService:
             device_type=device_info.get("type", "unknown"),
             device_os=device_info.get("os", "unknown"),
             app_version=app_version,
-            last_sync_at=datetime.utcnow(),
+            last_sync_at=datetime.now(timezone.utc),
             is_active=True
         )
         self.db.add(session)
@@ -496,7 +496,7 @@ class MobileOfflineService:
         )
         session = result.scalar_one_or_none()
         if session:
-            session.last_sync_at = datetime.utcnow()
+            session.last_sync_at = datetime.now(timezone.utc)
             session.sync_version = sync_version
             await self.db.commit()
 
@@ -508,7 +508,7 @@ class MobileOfflineService:
         session = result.scalar_one_or_none()
         if session:
             session.is_active = False
-            session.ended_at = datetime.utcnow()
+            session.ended_at = datetime.now(timezone.utc)
             await self.db.commit()
 
     async def get_active_sessions(
@@ -563,7 +563,7 @@ class PushNotificationService:
             existing.platform = platform
             existing.device_info = device_info or {}
             existing.is_active = True
-            existing.last_used_at = datetime.utcnow()
+            existing.last_used_at = datetime.now(timezone.utc)
             await self.db.commit()
             return existing
 
@@ -577,7 +577,7 @@ class PushNotificationService:
             platform=platform,
             device_info=device_info or {},
             is_active=True,
-            created_at=datetime.utcnow()
+            created_at=datetime.now(timezone.utc)
         )
         self.db.add(push_token)
         await self.db.commit()
@@ -627,7 +627,7 @@ class PushNotificationService:
             channel=channel,
             priority=priority,
             status="pending",
-            created_at=datetime.utcnow()
+            created_at=datetime.now(timezone.utc)
         )
         self.db.add(notification)
 
@@ -643,9 +643,9 @@ class PushNotificationService:
                 elif token.platform == "expo":
                     await self._send_expo(token.token, title, body, data)
 
-                token.last_used_at = datetime.utcnow()
+                token.last_used_at = datetime.now(timezone.utc)
                 notification.status = "sent"
-                notification.sent_at = datetime.utcnow()
+                notification.sent_at = datetime.now(timezone.utc)
 
             except Exception as e:
                 notification.status = "failed"
@@ -807,7 +807,7 @@ class PushNotificationService:
         )
         notification = result.scalar_one_or_none()
         if notification:
-            notification.read_at = datetime.utcnow()
+            notification.read_at = datetime.now(timezone.utc)
             await self.db.commit()
             return True
         return False

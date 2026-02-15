@@ -23,7 +23,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import func, or_
 from typing import List, Optional
 from pydantic import BaseModel, ConfigDict
-from datetime import datetime, date, timedelta
+from datetime import datetime, date, timedelta, timezone
 import uuid
 import random
 
@@ -545,7 +545,7 @@ def process_auto_reorders(
             result["action"] = "notification_sent"
 
         # Update last triggered
-        rule.last_triggered = datetime.utcnow()
+        rule.last_triggered = datetime.now(timezone.utc)
         rule.trigger_count = (rule.trigger_count or 0) + 1
 
         processed.append(result)
@@ -1525,7 +1525,7 @@ def start_reconciliation(
         status=ReconciliationStatus.IN_PROGRESS,
         total_items=len(items),
         started_by=1,
-        started_at=datetime.utcnow()
+        started_at=datetime.now(timezone.utc)
     )
 
     db.add(session)
@@ -1601,7 +1601,7 @@ def submit_count(
     item.variance_value = variance_value
     item.notes = notes
     item.counted_by = 1
-    item.counted_at = datetime.utcnow()
+    item.counted_at = datetime.now(timezone.utc)
     item.status = "matched" if abs(variance) < 0.01 else "variance"
 
     session.items_matched = db.query(ReconciliationItem).filter(
@@ -1733,14 +1733,14 @@ def complete_reconciliation(
         )
 
     session.status = ReconciliationStatus.COMPLETED
-    session.completed_at = datetime.utcnow()
+    session.completed_at = datetime.now(timezone.utc)
 
     adjustments_made = 0
 
     if apply_adjustments:
         session.status = ReconciliationStatus.APPROVED
         session.approved_by = 1
-        session.approved_at = datetime.utcnow()
+        session.approved_at = datetime.now(timezone.utc)
         session.adjustments_applied = True
 
         items = db.query(ReconciliationItem).filter(

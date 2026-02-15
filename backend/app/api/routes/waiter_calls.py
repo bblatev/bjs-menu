@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy.orm import Session
 from sqlalchemy import func
 from typing import List, Optional
-from datetime import datetime, date, timedelta
+from datetime import datetime, date, timedelta, timezone
 from app.db.session import get_db
 from app.schemas.waiter_call import WaiterCallCreate, WaiterCallResponse, WaiterCallStatusUpdate
 from app.services.waiter_call_service import WaiterCallService
@@ -99,7 +99,7 @@ def get_call_stats(
     current_user: TokenData = Depends(get_current_user)
 ):
     """Get waiter call statistics for today (staff only)."""
-    today_start = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
+    today_start = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
 
     # Total calls today
     total_today = db.query(func.count(WaiterCall.id)).filter(
@@ -246,7 +246,7 @@ def cleanup_completed_calls(
     current_user: TokenData = Depends(get_current_user)
 ):
     """Delete old completed waiter calls for cleanup (staff only)."""
-    cutoff_date = datetime.utcnow() - timedelta(days=older_than_days)
+    cutoff_date = datetime.now(timezone.utc) - timedelta(days=older_than_days)
 
     deleted = db.query(WaiterCall).filter(
         WaiterCall.status == "resolved",

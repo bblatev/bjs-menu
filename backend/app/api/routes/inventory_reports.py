@@ -5,7 +5,7 @@ RFID accuracy, keg yield, pour analysis, tank consumption
 from fastapi import APIRouter, Depends, Query, Request
 from sqlalchemy.orm import Session
 from typing import Optional, Dict, Any
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 from app.core.rate_limit import limiter
 from app.db.session import get_db
@@ -36,9 +36,9 @@ async def get_rfid_accuracy_report(
     from app.models.advanced_features_v9 import RFIDInventoryCount
 
     if not start_date:
-        start_date = datetime.utcnow() - timedelta(days=30)
+        start_date = datetime.now(timezone.utc) - timedelta(days=30)
     if not end_date:
-        end_date = datetime.utcnow()
+        end_date = datetime.now(timezone.utc)
 
     # Get completed counts
     counts = db.query(RFIDInventoryCount).filter(
@@ -129,7 +129,7 @@ async def get_rfid_movement_report(
     """
     from app.models.advanced_features_v9 import RFIDReading
 
-    since = datetime.utcnow() - timedelta(hours=hours)
+    since = datetime.now(timezone.utc) - timedelta(hours=hours)
 
     query = db.query(RFIDReading).filter(
         RFIDReading.venue_id == current_user.venue_id,
@@ -178,7 +178,7 @@ async def get_rfid_expiring_report(
     """
     from app.models.advanced_features_v9 import RFIDTag
 
-    threshold = datetime.utcnow() + timedelta(days=days)
+    threshold = datetime.now(timezone.utc) + timedelta(days=days)
 
     expiring = db.query(RFIDTag).filter(
         RFIDTag.venue_id == current_user.venue_id,
@@ -187,8 +187,8 @@ async def get_rfid_expiring_report(
         RFIDTag.expiry_date <= threshold
     ).order_by(RFIDTag.expiry_date).all()
 
-    already_expired = [t for t in expiring if t.expiry_date < datetime.utcnow()]
-    expiring_soon = [t for t in expiring if t.expiry_date >= datetime.utcnow()]
+    already_expired = [t for t in expiring if t.expiry_date < datetime.now(timezone.utc)]
+    expiring_soon = [t for t in expiring if t.expiry_date >= datetime.now(timezone.utc)]
 
     total_value_at_risk = sum(t.current_value or 0 for t in expiring)
 
@@ -204,7 +204,7 @@ async def get_rfid_expiring_report(
             "tag_id": t.tag_id,
             "tag_name": t.tag_name,
             "expiry_date": t.expiry_date.isoformat(),
-            "days_overdue": (datetime.utcnow() - t.expiry_date).days,
+            "days_overdue": (datetime.now(timezone.utc) - t.expiry_date).days,
             "zone": t.current_zone,
             "value": t.current_value
         } for t in already_expired[:20]],
@@ -212,7 +212,7 @@ async def get_rfid_expiring_report(
             "tag_id": t.tag_id,
             "tag_name": t.tag_name,
             "expiry_date": t.expiry_date.isoformat(),
-            "days_remaining": (t.expiry_date - datetime.utcnow()).days,
+            "days_remaining": (t.expiry_date - datetime.now(timezone.utc)).days,
             "zone": t.current_zone,
             "value": t.current_value
         } for t in expiring_soon[:50]]
@@ -239,7 +239,7 @@ async def get_keg_yield_report(
     from app.models.advanced_features_v9 import KegTracking
 
     if not start_date:
-        start_date = datetime.utcnow() - timedelta(days=30)
+        start_date = datetime.now(timezone.utc) - timedelta(days=30)
 
     kegs = db.query(KegTracking).filter(
         KegTracking.venue_id == current_user.venue_id,
@@ -371,7 +371,7 @@ async def get_tank_consumption_report(
         BulkTankLevel.venue_id == current_user.venue_id
     ).all()
 
-    since = datetime.utcnow() - timedelta(days=days)
+    since = datetime.now(timezone.utc) - timedelta(days=days)
 
     tank_consumption = []
     for tank in tanks:
@@ -440,7 +440,7 @@ async def get_inventory_hardware_dashboard(
     recent_counts = db.query(RFIDInventoryCount).filter(
         RFIDInventoryCount.venue_id == venue_id,
         RFIDInventoryCount.status == "completed",
-        RFIDInventoryCount.completed_at >= datetime.utcnow() - timedelta(days=7)
+        RFIDInventoryCount.completed_at >= datetime.now(timezone.utc) - timedelta(days=7)
     ).all()
 
     avg_accuracy = 0
@@ -482,5 +482,5 @@ async def get_inventory_hardware_dashboard(
                 {"type": "tank_low", "count": tanks_low}
             ]
         },
-        "last_updated": datetime.utcnow().isoformat()
+        "last_updated": datetime.now(timezone.utc).isoformat()
     }

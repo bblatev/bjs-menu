@@ -17,7 +17,7 @@ Features:
 """
 
 import logging
-from datetime import datetime, date, time
+from datetime import datetime, date, timezone, time
 from typing import Optional, List, Dict, Any, Tuple
 from sqlalchemy.orm import Session
 import uuid
@@ -122,7 +122,7 @@ class OnlineOrderingService:
             "estimated_time": estimated_time,
             "polygon": polygon or [],
             "is_active": True,
-            "created_at": datetime.utcnow().isoformat()
+            "created_at": datetime.now(timezone.utc).isoformat()
         }
         
         self._delivery_zones[zone_id] = zone
@@ -195,7 +195,7 @@ class OnlineOrderingService:
             "active_delivery": None,
             "deliveries_today": 0,
             "rating": 5.0,
-            "registered_at": datetime.utcnow().isoformat()
+            "registered_at": datetime.now(timezone.utc).isoformat()
         }
         
         self._drivers[staff_id] = driver
@@ -220,7 +220,7 @@ class OnlineOrderingService:
         self._drivers[driver_id]["current_location"] = {
             "latitude": latitude,
             "longitude": longitude,
-            "updated_at": datetime.utcnow().isoformat()
+            "updated_at": datetime.now(timezone.utc).isoformat()
         }
         
         # If driver has active delivery, update ETA
@@ -314,7 +314,7 @@ class OnlineOrderingService:
             "scheduled_time": scheduled_time.isoformat() if scheduled_time else None,
             "estimated_time": zone.get("estimated_time", 30),
             "current_eta": None,
-            "created_at": datetime.utcnow().isoformat(),
+            "created_at": datetime.now(timezone.utc).isoformat(),
             "assigned_at": None,
             "picked_up_at": None,
             "delivered_at": None
@@ -368,7 +368,7 @@ class OnlineOrderingService:
         
         delivery["driver_id"] = driver_id
         delivery["status"] = DeliveryStatus.ASSIGNED.value
-        delivery["assigned_at"] = datetime.utcnow().isoformat()
+        delivery["assigned_at"] = datetime.now(timezone.utc).isoformat()
         
         driver["status"] = "busy"
         driver["active_delivery"] = delivery_id
@@ -401,9 +401,9 @@ class OnlineOrderingService:
         delivery["status"] = status
         
         if status == DeliveryStatus.PICKED_UP.value:
-            delivery["picked_up_at"] = datetime.utcnow().isoformat()
+            delivery["picked_up_at"] = datetime.now(timezone.utc).isoformat()
         elif status == DeliveryStatus.DELIVERED.value:
-            delivery["delivered_at"] = datetime.utcnow().isoformat()
+            delivery["delivered_at"] = datetime.now(timezone.utc).isoformat()
             # Free up driver
             if driver_id in self._drivers:
                 self._drivers[driver_id]["status"] = "available"
@@ -565,7 +565,7 @@ class OnlineOrderingService:
             "arrived_at": None,
             "picked_up_at": None,
             "parking_spot": None,
-            "created_at": datetime.utcnow().isoformat()
+            "created_at": datetime.now(timezone.utc).isoformat()
         }
         
         self._curbside_orders[curbside_id] = curbside
@@ -589,7 +589,7 @@ class OnlineOrderingService:
         
         curbside = self._curbside_orders[curbside_id]
         curbside["customer_arrived"] = True
-        curbside["arrived_at"] = datetime.utcnow().isoformat()
+        curbside["arrived_at"] = datetime.now(timezone.utc).isoformat()
         curbside["parking_spot"] = parking_spot
         curbside["status"] = "customer_waiting"
         
@@ -611,7 +611,7 @@ class OnlineOrderingService:
         
         curbside = self._curbside_orders[curbside_id]
         curbside["status"] = "completed"
-        curbside["picked_up_at"] = datetime.utcnow().isoformat()
+        curbside["picked_up_at"] = datetime.now(timezone.utc).isoformat()
         curbside["completed_by"] = staff_id
         
         return {
@@ -641,7 +641,7 @@ class OnlineOrderingService:
             "scheduled_datetime": scheduled_datetime.isoformat(),
             "reminder_sent": False,
             "status": "scheduled",
-            "created_at": datetime.utcnow().isoformat(),
+            "created_at": datetime.now(timezone.utc).isoformat(),
             **kwargs
         }
         
@@ -662,7 +662,7 @@ class OnlineOrderingService:
     ) -> List[Dict[str, Any]]:
         """Get scheduled orders for a date"""
         orders = []
-        target_date = date or datetime.utcnow().date()
+        target_date = date or datetime.now(timezone.utc).date()
         
         for order in self._scheduled_orders.values():
             order_date = datetime.fromisoformat(order["scheduled_datetime"]).date()
@@ -701,7 +701,7 @@ class OnlineOrderingService:
             "api_key": api_key[:8] + "****",  # Masked
             "store_id": store_id,
             "is_active": is_active,
-            "created_at": datetime.utcnow().isoformat(),
+            "created_at": datetime.now(timezone.utc).isoformat(),
             "last_sync": None,
             "orders_received": 0
         }
@@ -775,7 +775,7 @@ class OnlineOrderingService:
         catering_id = f"CATER-{uuid.uuid4().hex[:8].upper()}"
         
         event_datetime = datetime.combine(event_date, event_time)
-        lead_time = (event_datetime - datetime.utcnow()).days
+        lead_time = (event_datetime - datetime.now(timezone.utc)).days
         
         if lead_time < 2:
             return {
@@ -800,7 +800,7 @@ class OnlineOrderingService:
             "deposit_paid": False,
             "status": "pending_confirmation",
             "total_estimate": 0,  # Would calculate
-            "created_at": datetime.utcnow().isoformat()
+            "created_at": datetime.now(timezone.utc).isoformat()
         }
         
         return {
@@ -841,7 +841,7 @@ class OnlineOrderingService:
             "orders": [],
             "status": "open",
             "total": 0,
-            "created_at": datetime.utcnow().isoformat()
+            "created_at": datetime.now(timezone.utc).isoformat()
         }
         
         return {
@@ -879,7 +879,7 @@ class OnlineOrderingService:
         group["participants"].append({
             "customer_id": customer_id,
             "customer_name": customer_name,
-            "joined_at": datetime.utcnow().isoformat()
+            "joined_at": datetime.now(timezone.utc).isoformat()
         })
         
         return {

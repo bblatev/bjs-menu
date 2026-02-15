@@ -5,7 +5,7 @@ Track batches, expiration dates, and handle FIFO inventory
 from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.orm import Session
 from typing import List, Optional
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 from app.core.rate_limit import limiter
 from app.db.session import get_db
@@ -83,7 +83,7 @@ async def list_batches(
     if stock_item_id:
         query = query.filter(StockBatch.stock_item_id == stock_item_id)
 
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
 
     if expired:
         query = query.filter(
@@ -121,7 +121,7 @@ async def get_expiring_batches(
     current_user: StaffUser = Depends(get_current_user)
 ):
     """Get batches expiring within specified days"""
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
     end_date = now + timedelta(days=days)
 
     batches = db.query(StockBatch).join(StockItem).filter(
@@ -148,7 +148,7 @@ async def get_expired_batches(
     current_user: StaffUser = Depends(get_current_user)
 ):
     """Get all expired batches with remaining quantity"""
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
 
     batches = db.query(StockBatch).join(StockItem).filter(
         StockItem.venue_id == current_user.venue_id,
@@ -361,7 +361,7 @@ async def get_batch_summary(
     current_user: StaffUser = Depends(get_current_user)
 ):
     """Get summary of batch status across all items"""
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
     soon = now + timedelta(days=7)
 
     batches = db.query(StockBatch).join(StockItem).filter(
@@ -409,7 +409,7 @@ async def get_batch_summary(
 
 def _format_batch_response(batch: StockBatch, stock_item: StockItem) -> BatchResponse:
     """Format batch for response"""
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
 
     days_until_expiry = None
     is_expired = False

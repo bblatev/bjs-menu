@@ -1,5 +1,5 @@
 """Operations V5 Service - Tax Center, Chargeback, Menu Pairings, Table Blocking, Customer Display"""
-from datetime import datetime, date, time, timedelta
+from datetime import datetime, date, timezone, time, timedelta
 from typing import List, Dict, Optional, Any
 from sqlalchemy.orm import Session
 from decimal import Decimal
@@ -42,7 +42,7 @@ class OperationsV5Service:
             "tax_due": float(tax_collected),
             "status": "draft",
             "due_date": (period_end + timedelta(days=14)).isoformat(),
-            "created_at": datetime.utcnow().isoformat()
+            "created_at": datetime.now(timezone.utc).isoformat()
         }
         return filing
     
@@ -90,7 +90,7 @@ class OperationsV5Service:
             "status": "filed",
             "filing_reference": filing_reference or f"NRA-{secrets.token_hex(8).upper()}",
             "filed_date": date.today().isoformat(),
-            "filed_at": datetime.utcnow().isoformat()
+            "filed_at": datetime.now(timezone.utc).isoformat()
         }
     
     async def get_tax_summary(
@@ -139,7 +139,7 @@ class OperationsV5Service:
             "status": "received",
             "received_date": received_date.isoformat(),
             "response_due_date": (received_date + timedelta(days=10)).isoformat(),
-            "created_at": datetime.utcnow().isoformat()
+            "created_at": datetime.now(timezone.utc).isoformat()
         }
         return chargeback
     
@@ -157,7 +157,7 @@ class OperationsV5Service:
             "response_notes": response_notes,
             "response_date": date.today().isoformat(),
             "response_submitted": True,
-            "submitted_at": datetime.utcnow().isoformat()
+            "submitted_at": datetime.now(timezone.utc).isoformat()
         }
     
     async def update_chargeback_status(
@@ -172,7 +172,7 @@ class OperationsV5Service:
             "status": status,
             "resolution_notes": resolution_notes,
             "resolution_date": date.today().isoformat(),
-            "updated_at": datetime.utcnow().isoformat()
+            "updated_at": datetime.now(timezone.utc).isoformat()
         }
     
     async def get_chargebacks(
@@ -255,7 +255,7 @@ class OperationsV5Service:
             "times_suggested": 0,
             "times_accepted": 0,
             "acceptance_rate": 0,
-            "created_at": datetime.utcnow().isoformat()
+            "created_at": datetime.now(timezone.utc).isoformat()
         }
         return pairing
     
@@ -325,7 +325,7 @@ class OperationsV5Service:
         return {
             "pairing_id": pairing_id,
             "accepted": accepted,
-            "recorded_at": datetime.utcnow().isoformat()
+            "recorded_at": datetime.now(timezone.utc).isoformat()
         }
     
     async def get_pairing_analytics(
@@ -373,7 +373,7 @@ class OperationsV5Service:
             "reservation_id": reservation_id,
             "notes": notes,
             "created_by": created_by,
-            "created_at": datetime.utcnow().isoformat()
+            "created_at": datetime.now(timezone.utc).isoformat()
         }
         return block
     
@@ -412,7 +412,7 @@ class OperationsV5Service:
         return {
             "block_id": block_id,
             "deleted": True,
-            "deleted_at": datetime.utcnow().isoformat()
+            "deleted_at": datetime.now(timezone.utc).isoformat()
         }
     
     async def check_table_availability(
@@ -462,7 +462,7 @@ class OperationsV5Service:
             "content_data": content_data,
             "priority": priority,
             "is_active": True,
-            "created_at": datetime.utcnow().isoformat()
+            "created_at": datetime.now(timezone.utc).isoformat()
         }
         return content
     

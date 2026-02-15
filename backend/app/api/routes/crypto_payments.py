@@ -5,7 +5,7 @@ Square 2025 feature: Bitcoin payments with zero transaction fees
 from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks, Request
 from sqlalchemy.orm import Session
 from typing import List, Optional, Dict, Any
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from pydantic import BaseModel, Field
 import secrets
 
@@ -186,7 +186,7 @@ async def create_crypto_wallet(
         "is_active": True,
         "total_received": 0.0,
         "total_transactions": 0,
-        "created_at": datetime.utcnow()
+        "created_at": datetime.now(timezone.utc)
     }
 
     crypto_wallets[wallet_counter] = wallet
@@ -228,7 +228,7 @@ async def update_crypto_wallet(
     if wallet["venue_id"] != current_user.venue_id:
         raise HTTPException(status_code=403, detail="Access denied")
 
-    wallet.update(data.dict())
+    wallet.update(data.model_dump())
 
     return CryptoWalletResponse(**{k: v for k, v in wallet.items() if k != "api_key" and k != "webhook_secret"})
 
@@ -304,7 +304,7 @@ async def get_crypto_rates(
     return CryptoRates(
         base_currency=base_currency,
         rates=rates,
-        updated_at=datetime.utcnow()
+        updated_at=datetime.now(timezone.utc)
     )
 
 
@@ -399,8 +399,8 @@ async def create_crypto_payment(
         "confirmations": 0,
         "required_confirmations": 1 if data.currency in ["USDT", "USDC"] else 3,
         "transaction_hash": None,
-        "created_at": datetime.utcnow(),
-        "expires_at": datetime.utcnow() + timedelta(minutes=15),
+        "created_at": datetime.now(timezone.utc),
+        "expires_at": datetime.now(timezone.utc) + timedelta(minutes=15),
         "received_at": None,
         "created_by": current_user.id
     }
@@ -436,7 +436,7 @@ async def get_payment_status(
     payment = crypto_payments[payment_id]
 
     # Check if expired
-    if payment["status"] == "pending" and datetime.utcnow() > payment["expires_at"]:
+    if payment["status"] == "pending" and datetime.now(timezone.utc) > payment["expires_at"]:
         payment["status"] = "expired"
 
     return CryptoPaymentStatus(
@@ -476,7 +476,7 @@ async def check_payment_status(
         payment["confirmations"] = payment["required_confirmations"]
         payment["transaction_hash"] = f"0x{secrets.token_hex(32)}"
         payment["amount_received"] = payment["amount_crypto"]
-        payment["received_at"] = datetime.utcnow()
+        payment["received_at"] = datetime.now(timezone.utc)
 
         # Update wallet stats
         wallet = crypto_wallets.get(payment["wallet_id"])
@@ -551,7 +551,7 @@ async def handle_payment_webhook(
             payment = crypto_payments[payment_id]
             payment["status"] = "confirmed"
             payment["confirmations"] = payment["required_confirmations"]
-            payment["received_at"] = datetime.utcnow()
+            payment["received_at"] = datetime.now(timezone.utc)
 
     elif provider == "bitpay":
         # BitPay webhook
@@ -621,7 +621,7 @@ async def get_crypto_stats(
     current_user: StaffUser = Depends(require_manager)
 ):
     """Get cryptocurrency payment statistics"""
-    cutoff = datetime.utcnow() - timedelta(days=days)
+    cutoff = datetime.now(timezone.utc) - timedelta(days=days)
 
     venue_payments = [
         p for p in crypto_payments.values()

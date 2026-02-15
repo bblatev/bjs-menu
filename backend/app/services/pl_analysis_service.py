@@ -13,7 +13,7 @@ Features:
 from typing import List, Dict, Optional, Tuple
 from sqlalchemy.orm import Session
 from sqlalchemy import func, and_, desc
-from datetime import datetime, timedelta, date
+from datetime import datetime, timedelta, timezone, date
 from decimal import Decimal
 import logging
 
@@ -733,7 +733,7 @@ class PLAnalysisService:
         if opportunity:
             opportunity.status = status
             if status == "completed":
-                opportunity.completed_at = datetime.utcnow()
+                opportunity.completed_at = datetime.now(timezone.utc)
                 if actual_savings is not None:
                     opportunity.actual_savings = Decimal(str(actual_savings))
             self.db.commit()

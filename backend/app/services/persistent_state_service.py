@@ -15,7 +15,7 @@ When feature flags are enabled, state is persisted to survive restarts.
 import json
 import logging
 import hashlib
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Optional, Dict, Any, List
 from functools import wraps
 
@@ -101,7 +101,7 @@ class PersistentStateService:
             return 0  # Redis handles TTL automatically
 
         deleted = self.db.query(PersistentStateEntry).filter(
-            PersistentStateEntry.expires_at < datetime.utcnow()
+            PersistentStateEntry.expires_at < datetime.now(timezone.utc)
         ).delete()
         self.db.commit()
         return deleted
@@ -117,7 +117,7 @@ class PersistentStateService:
             return default
 
         # Check expiration
-        if entry.expires_at and entry.expires_at < datetime.utcnow():
+        if entry.expires_at and entry.expires_at < datetime.now(timezone.utc):
             self.db.delete(entry)
             self.db.commit()
             return default
@@ -138,7 +138,7 @@ class PersistentStateService:
 
         expires_at = None
         if ttl_seconds:
-            expires_at = datetime.utcnow() + timedelta(seconds=ttl_seconds)
+            expires_at = datetime.now(timezone.utc) + timedelta(seconds=ttl_seconds)
 
         if entry:
             entry.value = value
@@ -169,7 +169,7 @@ class PersistentStateService:
         ).all()
 
         result = {}
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
 
         for entry in entries:
             if entry.expires_at and entry.expires_at < now:
@@ -253,7 +253,7 @@ class WebSocketQueueManager:
         queue = self.state.get(self.NAMESPACE, connection_id, [])
         queue.append({
             "message": message,
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
         })
         self.state.set(self.NAMESPACE, connection_id, queue, ttl_seconds=3600)
 
@@ -284,7 +284,7 @@ class ThrottleStateManager:
 
         data = self.state.get(self.NAMESPACE, key, {"count": 0, "window_start": None})
 
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         window_start = data.get("window_start")
 
         if window_start:
@@ -316,13 +316,13 @@ class KioskSessionManager:
     def create_session(self, kiosk_id: str, session_data: Dict[str, Any]) -> str:
         """Create a new kiosk session."""
         session_id = hashlib.sha256(
-            f"{kiosk_id}:{datetime.utcnow().isoformat()}".encode()
+            f"{kiosk_id}:{datetime.now(timezone.utc).isoformat()}".encode()
         ).hexdigest()[:32]
 
         session = {
             "session_id": session_id,
             "kiosk_id": kiosk_id,
-            "created_at": datetime.utcnow().isoformat(),
+            "created_at": datetime.now(timezone.utc).isoformat(),
             "data": session_data,
         }
 
@@ -347,7 +347,7 @@ class KioskSessionManager:
             return False
 
         session["data"].update(data)
-        session["updated_at"] = datetime.utcnow().isoformat()
+        session["updated_at"] = datetime.now(timezone.utc).isoformat()
         self.state.set(self.NAMESPACE, session_id, session, ttl_seconds=self.SESSION_TTL)
         return True
 

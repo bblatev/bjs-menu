@@ -5,7 +5,7 @@ Implements scheduled and async background tasks for gap features
 
 import asyncio
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, List, Optional, Callable
 from uuid import UUID
 from enum import Enum
@@ -176,7 +176,7 @@ class BackgroundWorkerManager:
             venue_id=venue_id,
             payload=payload or {},
             priority=priority,
-            scheduled_at=datetime.utcnow() + timedelta(seconds=delay_seconds)
+            scheduled_at=datetime.now(timezone.utc) + timedelta(seconds=delay_seconds)
         )
 
         await self.enqueue(task)
@@ -214,7 +214,7 @@ class BackgroundWorkerManager:
                     continue
 
                 # Check if scheduled time has arrived
-                if task.scheduled_at > datetime.utcnow():
+                if task.scheduled_at > datetime.now(timezone.utc):
                     # Re-queue for later
                     await self.task_queue.put(task)
                     await asyncio.sleep(0.1)
@@ -234,7 +234,7 @@ class BackgroundWorkerManager:
     async def _process_task(self, task: BackgroundTask, worker_name: str):
         """Process a single task."""
         task.status = TaskStatus.RUNNING
-        task.started_at = datetime.utcnow()
+        task.started_at = datetime.now(timezone.utc)
         self.stats["tasks_started"] += 1
 
         logger.info(f"[{worker_name}] Processing task: {task.name} ({task.task_type})")
@@ -250,7 +250,7 @@ class BackgroundWorkerManager:
                 task.result = result
 
             task.status = TaskStatus.COMPLETED
-            task.completed_at = datetime.utcnow()
+            task.completed_at = datetime.now(timezone.utc)
             self.stats["tasks_completed"] += 1
 
             logger.info(f"[{worker_name}] Task completed: {task.name}")
@@ -262,7 +262,7 @@ class BackgroundWorkerManager:
             if task.retry_count < task.max_retries:
                 # Re-queue for retry with exponential backoff
                 task.status = TaskStatus.PENDING
-                task.scheduled_at = datetime.utcnow() + timedelta(
+                task.scheduled_at = datetime.now(timezone.utc) + timedelta(
                     seconds=min(300, 2 ** task.retry_count * 10)
                 )
                 await self.task_queue.put(task)
@@ -270,7 +270,7 @@ class BackgroundWorkerManager:
                 logger.warning(f"Task {task.name} failed, retry {task.retry_count}/{task.max_retries}")
             else:
                 task.status = TaskStatus.FAILED
-                task.completed_at = datetime.utcnow()
+                task.completed_at = datetime.now(timezone.utc)
                 self.stats["tasks_failed"] += 1
                 logger.error(f"Task {task.name} failed permanently: {e}\n{traceback.format_exc()}")
 
@@ -280,7 +280,7 @@ class BackgroundWorkerManager:
 
         while self.running:
             try:
-                now = datetime.utcnow()
+                now = datetime.now(timezone.utc)
 
                 # Schedule recurring tasks
                 # Every 5 minutes: process review requests
@@ -374,7 +374,7 @@ class BackgroundWorkerManager:
         from app.models.gap_features_models import ReviewRequest
         from sqlalchemy import select, and_
 
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
 
         # Get all venues with pending requests
         result = await db.execute(
@@ -447,8 +447,8 @@ class BackgroundWorkerManager:
                 await integration.sync_employees(cred.venue_id)
                 await integration.sync_shifts(
                     cred.venue_id,
-                    datetime.utcnow(),
-                    datetime.utcnow() + timedelta(days=14)
+                    datetime.now(timezone.utc),
+                    datetime.now(timezone.utc) + timedelta(days=14)
                 )
                 synced += 1
             except Exception as e:
@@ -485,8 +485,8 @@ class BackgroundWorkerManager:
                 integration.location_id = cred.credentials.get("location_id")
                 await integration.sync_timesheets(
                     cred.venue_id,
-                    datetime.utcnow() - timedelta(days=1),
-                    datetime.utcnow()
+                    datetime.now(timezone.utc) - timedelta(days=1),
+                    datetime.now(timezone.utc)
                 )
                 synced += 1
             except Exception as e:
@@ -522,8 +522,8 @@ class BackgroundWorkerManager:
                 integration.restaurant_id = cred.credentials.get("restaurant_id")
                 await integration.sync_invoices(
                     cred.venue_id,
-                    datetime.utcnow() - timedelta(days=7),
-                    datetime.utcnow()
+                    datetime.now(timezone.utc) - timedelta(days=7),
+                    datetime.now(timezone.utc)
                 )
                 synced += 1
             except Exception as e:
@@ -558,8 +558,8 @@ class BackgroundWorkerManager:
                 await service.sync_sales(
                     cred.venue_id,
                     cred.integration_type,
-                    datetime.utcnow() - timedelta(days=1),
-                    datetime.utcnow()
+                    datetime.now(timezone.utc) - timedelta(days=1),
+                    datetime.now(timezone.utc)
                 )
                 synced += 1
             except Exception as e:
@@ -613,7 +613,7 @@ class BackgroundWorkerManager:
         from app.models.gap_features_models import ABExperiment, ExperimentStatus
         from sqlalchemy import select, and_
 
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
 
         result = await db.execute(
             select(ABExperiment).where(
@@ -750,7 +750,7 @@ class BackgroundWorkerManager:
         from app.models.gap_features_models import WebhookDelivery
         from sqlalchemy import select, and_
 
-        cutoff = datetime.utcnow() - timedelta(hours=24)
+        cutoff = datetime.now(timezone.utc) - timedelta(hours=24)
 
         result = await db.execute(
             select(WebhookDelivery).where(
@@ -818,7 +818,7 @@ class BackgroundWorkerManager:
         from app.models.gap_features_models import PushNotification
         from sqlalchemy import select, and_
 
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
 
         result = await db.execute(
             select(PushNotification).where(
@@ -870,7 +870,7 @@ class BackgroundWorkerManager:
         for device in devices:
             # Check last heartbeat
             if device.last_heartbeat:
-                if datetime.utcnow() - device.last_heartbeat > timedelta(minutes=5):
+                if datetime.now(timezone.utc) - device.last_heartbeat > timedelta(minutes=5):
                     if device.status != "offline":
                         device.status = "offline"
                         offline += 1
@@ -949,7 +949,7 @@ class BackgroundWorkerManager:
         from app.models.gap_features_models import APIKey
         from sqlalchemy import select, and_
 
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
 
         result = await db.execute(
             select(APIKey).where(

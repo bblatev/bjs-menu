@@ -3,7 +3,7 @@ Multi-Location Management Service - Production Ready
 Full database integration with SQLAlchemy models
 """
 
-from datetime import datetime, date
+from datetime import datetime, date, timezone
 from typing import Optional, List, Dict, Any
 from sqlalchemy.orm import Session
 from sqlalchemy import func, and_
@@ -411,7 +411,7 @@ class MultiLocationService:
             return {"success": False, "error": "Transfer not found"}
         
         transfer.status = "shipped"
-        transfer.shipped_at = datetime.utcnow()
+        transfer.shipped_at = datetime.now(timezone.utc)
         self.db.commit()
         
         return {
@@ -434,7 +434,7 @@ class MultiLocationService:
             return {"success": False, "error": "Transfer not found"}
         
         transfer.status = "received"
-        transfer.received_at = datetime.utcnow()
+        transfer.received_at = datetime.now(timezone.utc)
         
         # Update received quantities if provided
         if received_items:
@@ -546,7 +546,7 @@ class MultiLocationService:
                 "locations_count": len(location_data)
             },
             "by_location": sorted(location_data, key=lambda x: x["sales"], reverse=True),
-            "generated_at": datetime.utcnow().isoformat()
+            "generated_at": datetime.now(timezone.utc).isoformat()
         }
     
     def get_enterprise_dashboard(self) -> Dict[str, Any]:
@@ -592,5 +592,5 @@ class MultiLocationService:
                 "total_orders": today_orders,
                 "avg_ticket": round(today_sales / today_orders, 2) if today_orders > 0 else 0
             },
-            "generated_at": datetime.utcnow().isoformat()
+            "generated_at": datetime.now(timezone.utc).isoformat()
         }

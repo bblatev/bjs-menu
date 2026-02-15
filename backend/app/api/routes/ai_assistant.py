@@ -1,3 +1,4 @@
+from datetime import timezone
 """AI Assistant API routes - Conversational AI, P&L Analysis, Demand Forecasting, Auto-Planning."""
 
 
@@ -168,7 +169,7 @@ def get_ai_insights(
     limit: int = Query(5, ge=1, le=20), include_dismissed: bool = False,
 ):
     """Get proactive AI-generated business insights."""
-    now = datetime.utcnow().isoformat()
+    now = datetime.now(timezone.utc).isoformat()
     # Return placeholder insights
     return [
         AIInsightResponse(
@@ -279,7 +280,7 @@ def create_pl_snapshot(
 ):
     """Create a P&L snapshot for record-keeping."""
     global _next_ids
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
     today = date.today()
 
     snapshot = PLSnapshotResponse(
@@ -390,7 +391,7 @@ def generate_schedule_proposal(
 ):
     """Auto-generate staff schedule based on demand forecast."""
     global _next_ids
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
     week_end = week_start + timedelta(days=6)
 
     proposal = ScheduleProposalResponse(
@@ -441,7 +442,7 @@ def generate_purchase_plan(
 ):
     """Auto-generate purchase orders based on demand forecast."""
     global _next_ids
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
 
     plan = PurchasePlanResponse(
         id=_next_ids["purchase"],

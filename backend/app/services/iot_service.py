@@ -2,7 +2,7 @@
 IoT & Hardware Integration Service - Section W
 Temperature monitoring, smart pour meters, scales, and device management
 """
-from datetime import datetime, date, timedelta
+from datetime import datetime, date, timedelta, timezone
 from decimal import Decimal
 from typing import Optional, List, Dict, Any
 from sqlalchemy.orm import Session
@@ -44,7 +44,7 @@ class IoTService:
             location=location,
             status="active",
             configuration=configuration or {},
-            last_seen=datetime.utcnow(),
+            last_seen=datetime.now(timezone.utc),
             firmware_version=None,
             battery_level=None
         )
@@ -79,14 +79,14 @@ class IoTService:
             raise ValueError(f"Device {device_id} not found")
         
         device.status = status
-        device.last_seen = datetime.utcnow()
+        device.last_seen = datetime.now(timezone.utc)
         
         if battery_level is not None:
             device.battery_level = battery_level
         if firmware_version:
             device.firmware_version = firmware_version
         
-        device.updated_at = datetime.utcnow()
+        device.updated_at = datetime.now(timezone.utc)
         db.commit()
         db.refresh(device)
         
@@ -127,7 +127,7 @@ class IoTService:
             "last_seen": d.last_seen.isoformat() if d.last_seen else None,
             "battery_level": d.battery_level,
             "firmware_version": d.firmware_version,
-            "is_online": (datetime.utcnow() - d.last_seen).seconds < 300 if d.last_seen else False
+            "is_online": (datetime.now(timezone.utc) - d.last_seen).seconds < 300 if d.last_seen else False
         } for d in devices]
     
     @staticmethod
@@ -139,7 +139,7 @@ class IoTService:
         """Get devices that haven't reported in recently."""
         from app.models.advanced_features_v9 import IoTDevice
         
-        threshold = datetime.utcnow() - timedelta(minutes=offline_threshold_minutes)
+        threshold = datetime.now(timezone.utc) - timedelta(minutes=offline_threshold_minutes)
         
         offline = db.query(IoTDevice).filter(
             IoTDevice.venue_id == venue_id,
@@ -156,7 +156,7 @@ class IoTService:
             "device_name": d.device_name,
             "location": d.location,
             "last_seen": d.last_seen.isoformat() if d.last_seen else "Never",
-            "minutes_offline": int((datetime.utcnow() - d.last_seen).seconds / 60) if d.last_seen else None
+            "minutes_offline": int((datetime.now(timezone.utc) - d.last_seen).seconds / 60) if d.last_seen else None
         } for d in offline]
     
     # ==================== TEMPERATURE MONITORING (HACCP) ====================
@@ -208,7 +208,7 @@ class IoTService:
         db.add(log)
         
         # Update device last seen
-        device.last_seen = datetime.utcnow()
+        device.last_seen = datetime.now(timezone.utc)
         
         db.commit()
         db.refresh(log)
@@ -296,9 +296,9 @@ class IoTService:
         
         log.acknowledged = True
         log.acknowledged_by = acknowledged_by
-        log.acknowledged_at = datetime.utcnow()
+        log.acknowledged_at = datetime.now(timezone.utc)
         log.corrective_action = corrective_action
-        log.updated_at = datetime.utcnow()
+        log.updated_at = datetime.now(timezone.utc)
         
         db.commit()
         db.refresh(log)
@@ -379,7 +379,7 @@ class IoTService:
             },
             "by_location": by_location,
             "compliance_status": "compliant" if compliance_score >= 95 else "needs_attention" if compliance_score >= 80 else "non_compliant",
-            "generated_at": datetime.utcnow().isoformat()
+            "generated_at": datetime.now(timezone.utc).isoformat()
         }
     
     # ==================== SMART POUR METERS ====================
@@ -431,7 +431,7 @@ class IoTService:
         db.add(reading)
         
         # Update device last seen
-        device.last_seen = datetime.utcnow()
+        device.last_seen = datetime.now(timezone.utc)
         
         db.commit()
         db.refresh(reading)
@@ -563,14 +563,14 @@ class IoTService:
             raise ValueError(f"Device {device_id} is not a scale")
         
         # Update device last seen
-        device.last_seen = datetime.utcnow()
+        device.last_seen = datetime.now(timezone.utc)
         db.commit()
         
         result = {
             "device_id": device_id,
             "item_id": item_id,
             "weight_grams": float(weight_grams),
-            "recorded_at": datetime.utcnow().isoformat()
+            "recorded_at": datetime.now(timezone.utc).isoformat()
         }
         
         if expected_weight_grams:
@@ -696,7 +696,7 @@ class IoTService:
 
         # Check expiry warning (7 days before)
         if tag.expiry_date:
-            days_to_expiry = (tag.expiry_date - datetime.utcnow()).days
+            days_to_expiry = (tag.expiry_date - datetime.now(timezone.utc)).days
             if days_to_expiry <= 7:
                 alert_triggered = True
                 alert_type = "expiry_warning"
@@ -711,10 +711,10 @@ class IoTService:
             tag.current_zone = location_zone
             tag.current_location = reader.location_description
             tag.last_reader_id = reader_id
-        tag.last_seen = datetime.utcnow()
+        tag.last_seen = datetime.now(timezone.utc)
 
         # Update reader last seen
-        reader.last_seen = datetime.utcnow()
+        reader.last_seen = datetime.now(timezone.utc)
 
         db.commit()
         db.refresh(reading)
@@ -769,7 +769,7 @@ class IoTService:
         if status:
             query = query.filter(RFIDTag.status == status)
         if expiring_within_days:
-            expiry_threshold = datetime.utcnow() + timedelta(days=expiring_within_days)
+            expiry_threshold = datetime.now(timezone.utc) + timedelta(days=expiring_within_days)
             query = query.filter(
                 RFIDTag.expiry_date.isnot(None),
                 RFIDTag.expiry_date <= expiry_threshold
@@ -794,7 +794,7 @@ class IoTService:
                 "batch_number": t.batch_number,
                 "expiry_date": t.expiry_date.isoformat() if t.expiry_date else None,
                 "last_seen": t.last_seen.isoformat() if t.last_seen else None,
-                "days_to_expiry": (t.expiry_date - datetime.utcnow()).days if t.expiry_date else None
+                "days_to_expiry": (t.expiry_date - datetime.now(timezone.utc)).days if t.expiry_date else None
             } for t in tags]
         }
 
@@ -928,7 +928,7 @@ class IoTService:
 
         # Update count
         count.status = "completed"
-        count.completed_at = datetime.utcnow()
+        count.completed_at = datetime.now(timezone.utc)
         count.completed_by = completed_by
         count.tags_missing = len(missing)
         count.tags_unexpected = len(unexpected)
@@ -972,10 +972,10 @@ class IoTService:
 
         if new_status in ["consumed", "expired", "lost", "damaged"]:
             tag.is_active = False
-            tag.deactivated_at = datetime.utcnow()
+            tag.deactivated_at = datetime.now(timezone.utc)
             tag.deactivation_reason = reason
 
-        tag.updated_at = datetime.utcnow()
+        tag.updated_at = datetime.now(timezone.utc)
         db.commit()
 
         return {
@@ -1041,7 +1041,7 @@ class IoTService:
                     keg.status = "low"
                 if fill_pct <= 0:
                     keg.status = "empty"
-                    keg.empty_date = datetime.utcnow()
+                    keg.empty_date = datetime.now(timezone.utc)
 
         # Determine low/empty alerts
         is_low = fill_pct is not None and fill_pct <= 15
@@ -1071,7 +1071,7 @@ class IoTService:
         db.add(reading)
 
         # Update device last seen
-        device.last_seen = datetime.utcnow()
+        device.last_seen = datetime.now(timezone.utc)
 
         db.commit()
         db.refresh(reading)
@@ -1130,7 +1130,7 @@ class IoTService:
             current_volume_ml=initial_volume,
             dispensed_volume_ml=0,
             status="full",
-            received_date=datetime.utcnow(),
+            received_date=datetime.now(timezone.utc),
             purchase_price=purchase_price,
             price_per_ml=purchase_price / initial_volume if purchase_price else None,
             expiry_date=expiry_date,
@@ -1166,7 +1166,7 @@ class IoTService:
             raise ValueError(f"Keg {keg_id} not found")
 
         keg.status = "tapped"
-        keg.tapped_date = datetime.utcnow()
+        keg.tapped_date = datetime.now(timezone.utc)
         keg.tap_number = tap_number
         keg.current_location = location
 
@@ -1247,7 +1247,7 @@ class IoTService:
         old_level = tank.current_level_liters
         tank.current_level_liters = current_level_liters
         tank.fill_percentage = (current_level_liters / tank.capacity_liters * 100) if tank.capacity_liters > 0 else 0
-        tank.recorded_at = datetime.utcnow()
+        tank.recorded_at = datetime.now(timezone.utc)
 
         # Calculate usage
         if old_level > current_level_liters:
@@ -1255,7 +1255,7 @@ class IoTService:
             # Could update daily average here
         elif current_level_liters > old_level:
             # Refill detected
-            tank.last_refill_date = datetime.utcnow()
+            tank.last_refill_date = datetime.now(timezone.utc)
             tank.last_refill_amount = current_level_liters - old_level
 
         # Determine status

@@ -174,7 +174,7 @@ def create_recipe(
         recipe = service.create_recipe(
             menu_item_id=data.menu_item_id,
             name=data.name,
-            ingredients=[ing.dict() for ing in data.ingredients],
+            ingredients=[ing.model_dump() for ing in data.ingredients],
             yield_quantity=Decimal(str(data.yield_quantity)),
             yield_unit=data.yield_unit,
             preparation_time=data.preparation_time,

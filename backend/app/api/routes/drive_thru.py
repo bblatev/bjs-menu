@@ -5,7 +5,7 @@ Complete drive-thru ordering with lane management and queue tracking
 from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.orm import Session
 from typing import List, Optional
-from datetime import datetime
+from datetime import datetime, timezone
 
 from app.core.rate_limit import limiter
 from app.db.session import get_db
@@ -50,7 +50,7 @@ async def create_drive_thru_order(
         db.flush()
 
     # Generate order number
-    today = datetime.utcnow().strftime("%Y%m%d")
+    today = datetime.now(timezone.utc).strftime("%Y%m%d")
     count = db.query(Order).filter(
         Order.order_number.like(f"DT{today}%")
     ).count()
@@ -243,7 +243,7 @@ async def update_drive_thru_status(
             order.status = status_mapping[status]
 
     if status == "completed":
-        drive_thru.completed_at = datetime.utcnow()
+        drive_thru.completed_at = datetime.now(timezone.utc)
         # Recalculate queue positions for remaining orders
         _recalculate_queue(db, drive_thru.venue_id, drive_thru.lane)
 
@@ -342,7 +342,7 @@ async def get_drive_thru_stats(
     current_user: StaffUser = Depends(get_current_user)
 ):
     """Get drive-thru statistics"""
-    today_start = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
+    today_start = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
 
     # Today's orders
     today_orders = db.query(DriveThruOrder).filter(

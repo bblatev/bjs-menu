@@ -14,7 +14,7 @@ Features:
 - Pareto analysis (80/20)
 """
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Optional, List, Dict, Any
 from sqlalchemy.orm import Session
 from sqlalchemy import and_, func
@@ -107,7 +107,7 @@ class ReportService:
             },
             "by_period": dict(sales_by_period),
             "by_payment_method": dict(payment_breakdown),
-            "generated_at": datetime.utcnow().isoformat()
+            "generated_at": datetime.now(timezone.utc).isoformat()
         }
     
     def generate_product_mix_report(
@@ -180,7 +180,7 @@ class ReportService:
                 "b_class_count": len([p for p in products if p.get("abc_class") == "B"]),
                 "c_class_count": len([p for p in products if p.get("abc_class") == "C"])
             },
-            "generated_at": datetime.utcnow().isoformat()
+            "generated_at": datetime.now(timezone.utc).isoformat()
         }
     
     # ========== STAFF REPORTS ==========
@@ -245,7 +245,7 @@ class ReportService:
                 "avg_sales_per_staff": round(sum(s["total_sales"] for s in staff_list) / len(staff_list), 2) if staff_list else 0
             },
             "staff": staff_list,
-            "generated_at": datetime.utcnow().isoformat()
+            "generated_at": datetime.now(timezone.utc).isoformat()
         }
     
     # ========== INVENTORY REPORTS ==========
@@ -297,7 +297,7 @@ class ReportService:
             },
             "items": items,
             "low_stock_items": low_stock_items if include_low_stock else [],
-            "generated_at": datetime.utcnow().isoformat()
+            "generated_at": datetime.now(timezone.utc).isoformat()
         }
     
     def generate_variance_report(
@@ -369,7 +369,7 @@ class ReportService:
                 "negative_variance_count": len([v for v in variances if v["variance"] < 0])
             },
             "variances": variances[:50],  # Top 50 variances
-            "generated_at": datetime.utcnow().isoformat()
+            "generated_at": datetime.now(timezone.utc).isoformat()
         }
     
     # ========== CUSTOMER REPORTS ==========
@@ -444,7 +444,7 @@ class ReportService:
                 "rare": {"count": len(segments["rare"]), "revenue": sum(c["total_spent"] for c in segments["rare"])}
             },
             "top_customers": customer_list[:20],
-            "generated_at": datetime.utcnow().isoformat()
+            "generated_at": datetime.now(timezone.utc).isoformat()
         }
     
     # ========== REPORT SCHEDULING ==========
@@ -477,7 +477,7 @@ class ReportService:
             "day_of_week": day_of_week,
             "day_of_month": day_of_month,
             "is_active": True,
-            "created_at": datetime.utcnow().isoformat(),
+            "created_at": datetime.now(timezone.utc).isoformat(),
             "created_by": created_by,
             "last_sent": None,
             "next_send": self._calculate_next_send(frequency, send_time, day_of_week, day_of_month)
@@ -523,7 +523,7 @@ class ReportService:
         day_of_month: Optional[int]
     ) -> str:
         """Calculate next scheduled send time"""
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         hour, minute = map(int, send_time.split(":"))
         
         if frequency == "daily":
@@ -572,7 +572,7 @@ class ReportService:
             "filters": filters or {},
             "grouping": grouping or [],
             "is_builtin": False,
-            "created_at": datetime.utcnow().isoformat(),
+            "created_at": datetime.now(timezone.utc).isoformat(),
             "created_by": created_by
         }
         

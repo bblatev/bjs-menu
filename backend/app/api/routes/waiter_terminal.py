@@ -333,13 +333,13 @@ async def create_waiter_order(
             guest_count=body.guest_count,
             waiter_id=current_user.id,
             status="active",
-            started_at=datetime.utcnow()
+            started_at=datetime.now(timezone.utc)
         )
         db.add(session)
         db.flush()
 
     # Create order
-    order_number = f"W{datetime.utcnow().strftime('%H%M%S')}{table.id:02d}"
+    order_number = f"W{datetime.now(timezone.utc).strftime('%H%M%S')}{table.id:02d}"
 
     # Get default station (first available or kitchen)
     default_station = db.query(VenueStation).filter(
@@ -536,7 +536,7 @@ async def fire_course(
 
     for item in items:
         item.fired = True
-        item.fired_at = datetime.utcnow()
+        item.fired_at = datetime.now(timezone.utc)
         item.status = "sent"
 
     db.commit()
@@ -592,7 +592,7 @@ async def fire_all_items(
 
     for item in items:
         item.fired = True
-        item.fired_at = datetime.utcnow()
+        item.fired_at = datetime.now(timezone.utc)
         item.status = "sent"
 
     order = db.query(Order).filter(Order.id == order_id).first()
@@ -662,7 +662,7 @@ async def open_tab(
         guest_count=1,
         waiter_id=current_user.id,
         status="active",
-        started_at=datetime.utcnow(),
+        started_at=datetime.now(timezone.utc),
         customer_name=body.customer_name,
         card_last_four=body.card_last_four,
         pre_auth_amount=body.pre_auth_amount,
@@ -774,7 +774,7 @@ async def add_to_tab(
 
     if not order:
         order = Order(
-            order_number=f"T{datetime.utcnow().strftime('%H%M%S')}{tab_id:02d}",
+            order_number=f"T{datetime.now(timezone.utc).strftime('%H%M%S')}{tab_id:02d}",
             session_id=tab_id,
             venue_id=current_user.venue_id,
             waiter_id=current_user.id,
@@ -884,13 +884,13 @@ async def close_tab(
         payment_method=body.payment_method.value,
         status="completed",
         processed_by=current_user.id,
-        processed_at=datetime.utcnow()
+        processed_at=datetime.now(timezone.utc)
     )
     db.add(payment)
 
     # Close tab
     tab.status = "closed"
-    tab.ended_at = datetime.utcnow()
+    tab.ended_at = datetime.now(timezone.utc)
 
     # Mark orders as paid
     for order in orders:
@@ -1248,7 +1248,7 @@ async def process_payment(
         auth_code=body.auth_code,
         status="completed",
         processed_by=current_user.id,
-        processed_at=datetime.utcnow()
+        processed_at=datetime.now(timezone.utc)
     )
     db.add(payment)
 
@@ -1305,7 +1305,7 @@ async def split_tender_payment(
             card_last_four=payment_req.card_last_four,
             status="completed",
             processed_by=current_user.id,
-            processed_at=datetime.utcnow()
+            processed_at=datetime.now(timezone.utc)
         )
         db.add(payment)
 
@@ -1451,7 +1451,7 @@ async def void_item(
     item.status = "voided"
     item.void_reason = body.reason
     item.voided_by = current_user.id
-    item.voided_at = datetime.utcnow()
+    item.voided_at = datetime.now(timezone.utc)
 
     # Recalculate order total
     order = db.query(Order).filter(Order.id == item.order_id).first()
@@ -1510,7 +1510,7 @@ async def comp_item(
     item.total_price = 0
     item.comp_reason = body.reason
     item.comped_by = current_user.id
-    item.comped_at = datetime.utcnow()
+    item.comped_at = datetime.now(timezone.utc)
 
     # Recalculate order total
     order = db.query(Order).filter(Order.id == item.order_id).first()
@@ -1626,7 +1626,7 @@ async def seat_table(
         guest_count=guest_count,
         waiter_id=current_user.id,
         status="active",
-        started_at=datetime.utcnow()
+        started_at=datetime.now(timezone.utc)
     )
     db.add(session)
     db.commit()
@@ -1700,7 +1700,7 @@ async def clear_table(
         raise HTTPException(status_code=400, detail="Cannot clear table with unpaid orders")
 
     session.status = "closed"
-    session.ended_at = datetime.utcnow()
+    session.ended_at = datetime.now(timezone.utc)
     db.commit()
 
     return QuickActionResponse(
@@ -1879,7 +1879,7 @@ async def print_check(
 
     # Mark as printed
     order.check_printed = True
-    order.check_printed_at = datetime.utcnow()
+    order.check_printed_at = datetime.now(timezone.utc)
     db.commit()
 
     # In real implementation, would send to receipt printer

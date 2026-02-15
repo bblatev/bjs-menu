@@ -1,6 +1,6 @@
 from sqlalchemy.orm import Session
 from typing import List
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from app.models.hardware import WaiterCall
 from app.models.platform_compat import WaiterCallStatus
 from app.schemas.waiter_call import WaiterCallCreate, WaiterCallResponse, WaiterCallStatusUpdate
@@ -13,7 +13,7 @@ class WaiterCallService:
 
     def _check_rate_limit(self, table_id: int) -> None:
         """Check waiter call rate limit for table."""
-        one_hour_ago = datetime.utcnow() - timedelta(hours=1)
+        one_hour_ago = datetime.now(timezone.utc) - timedelta(hours=1)
         call_count = self.db.query(WaiterCall).filter(
             WaiterCall.table_id == table_id,
             WaiterCall.created_at >= one_hour_ago,
@@ -64,10 +64,10 @@ class WaiterCallService:
         call.status = new_status
 
         if new_status == "acknowledged" and not call.acknowledged_at:
-            call.acknowledged_at = datetime.utcnow()
+            call.acknowledged_at = datetime.now(timezone.utc)
 
         if new_status in ["resolved", "spam"] and not call.completed_at:
-            call.completed_at = datetime.utcnow()
+            call.completed_at = datetime.now(timezone.utc)
 
         self.db.commit()
         self.db.refresh(call)

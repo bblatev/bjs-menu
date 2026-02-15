@@ -13,7 +13,7 @@ Includes:
 from fastapi import APIRouter, Depends, HTTPException, Query, Body, Request
 from sqlalchemy.orm import Session
 from typing import List, Optional, Dict, Any
-from datetime import datetime, date, timedelta
+from datetime import datetime, date, timedelta, timezone
 from decimal import Decimal
 from pydantic import BaseModel
 import logging
@@ -1463,7 +1463,7 @@ def release_stock_reservation(
         if not reservation:
             raise HTTPException(status_code=404, detail="Reservation not found")
         reservation.status = "released"
-        reservation.released_at = datetime.utcnow()
+        reservation.released_at = datetime.now(timezone.utc)
         db.commit()
         return {"status": "released"}
     except HTTPException:

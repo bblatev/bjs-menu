@@ -2,7 +2,7 @@
 AI & Automation Service - Section Y
 AI model management, predictions, and automated actions
 """
-from datetime import datetime, date, timedelta
+from datetime import datetime, date, timedelta, timezone
 from decimal import Decimal
 from typing import Optional, List, Dict, Any
 from sqlalchemy.orm import Session
@@ -131,7 +131,7 @@ class AIAutomationService:
             raise ValueError(f"Model {model_id} not found")
         
         model.accuracy_score = accuracy_score
-        model.last_trained = datetime.utcnow()
+        model.last_trained = datetime.now(timezone.utc)
         db.commit()
         
         return {
@@ -174,7 +174,7 @@ class AIAutomationService:
         db.add(prediction)
         
         # Update model usage stats
-        model.last_prediction = datetime.utcnow()
+        model.last_prediction = datetime.now(timezone.utc)
         model.predictions_count = (model.predictions_count or 0) + 1
 
         db.commit()
@@ -187,7 +187,7 @@ class AIAutomationService:
             "predicted_value": predicted_value,
             "confidence_score": float(confidence_score),
             "target_date": str(target_date) if target_date else None,
-            "created_at": prediction.predicted_at.isoformat() if prediction.predicted_at else datetime.utcnow().isoformat()
+            "created_at": prediction.predicted_at.isoformat() if prediction.predicted_at else datetime.now(timezone.utc).isoformat()
         }
     
     @staticmethod
@@ -354,7 +354,7 @@ class AIAutomationService:
                 )
                 
                 # Update rule stats
-                rule.last_triggered = datetime.utcnow()
+                rule.last_triggered = datetime.now(timezone.utc)
                 rule.trigger_count += 1
                 
                 executed.append({
@@ -500,7 +500,7 @@ class AIAutomationService:
         import statistics
 
         # Get sales data for the last 30 days
-        thirty_days_ago = datetime.utcnow() - timedelta(days=30)
+        thirty_days_ago = datetime.now(timezone.utc) - timedelta(days=30)
 
         # Query menu items with their sales data
         items = db.query(MenuItem).filter(
@@ -548,7 +548,7 @@ class AIAutomationService:
                 "venue_id": venue_id,
                 "suggestions": [],
                 "message": "No menu items found for analysis",
-                "generated_at": datetime.utcnow().isoformat()
+                "generated_at": datetime.now(timezone.utc).isoformat()
             }
 
         # Calculate percentiles for comparison
@@ -620,7 +620,7 @@ class AIAutomationService:
                 "avg_margin": round(avg_margin, 1),
                 "total_suggestions": len(suggestions)
             },
-            "generated_at": datetime.utcnow().isoformat()
+            "generated_at": datetime.now(timezone.utc).isoformat()
         }
     
     @staticmethod
@@ -683,7 +683,7 @@ class AIAutomationService:
                 "peak_hours": ["12:00-14:00", "19:00-21:00"],
                 "confidence": 0.30,
                 "note": "Limited historical data - using defaults",
-                "generated_at": datetime.utcnow().isoformat()
+                "generated_at": datetime.now(timezone.utc).isoformat()
             }
 
         # Calculate averages and predictions
@@ -767,7 +767,7 @@ class AIAutomationService:
                 "avg_revenue_same_day": round(avg_revenue, 2)
             },
             "confidence": round(confidence, 2),
-            "generated_at": datetime.utcnow().isoformat()
+            "generated_at": datetime.now(timezone.utc).isoformat()
         }
 
 

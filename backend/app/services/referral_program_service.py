@@ -1,5 +1,5 @@
 """Referral Program Service - iiko parity feature"""
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import List, Dict, Optional, Any
 from sqlalchemy.orm import Session
 import secrets
@@ -35,7 +35,7 @@ class ReferralProgramService:
             "min_referee_order": min_referee_order,
             "max_referrals_per_customer": max_referrals,
             "is_active": True,
-            "created_at": datetime.utcnow().isoformat()
+            "created_at": datetime.now(timezone.utc).isoformat()
         }
         return program
     
@@ -55,7 +55,7 @@ class ReferralProgramService:
             "status": "active",
             "referrals_made": 0,
             "rewards_earned": 0,
-            "created_at": datetime.utcnow().isoformat()
+            "created_at": datetime.now(timezone.utc).isoformat()
         }
         return referral
     
@@ -134,7 +134,7 @@ class ReferralProgramService:
                 "value": 15.00,
                 "applied": True
             },
-            "completed_at": datetime.utcnow().isoformat()
+            "completed_at": datetime.now(timezone.utc).isoformat()
         }
     
     async def get_customer_referrals(
@@ -154,13 +154,13 @@ class ReferralProgramService:
                     "referee_name": "John D.",
                     "status": "completed",
                     "reward_earned": 20.00,
-                    "completed_at": (datetime.utcnow() - timedelta(days=5)).isoformat()
+                    "completed_at": (datetime.now(timezone.utc) - timedelta(days=5)).isoformat()
                 },
                 {
                     "referee_name": "Sarah M.",
                     "status": "completed",
                     "reward_earned": 20.00,
-                    "completed_at": (datetime.utcnow() - timedelta(days=12)).isoformat()
+                    "completed_at": (datetime.now(timezone.utc) - timedelta(days=12)).isoformat()
                 }
             ]
         }

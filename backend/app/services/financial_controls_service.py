@@ -2,7 +2,7 @@
 Financial Controls Service - Section T
 Prime cost tracking, abuse detection, and financial analytics
 """
-from datetime import datetime, date, timedelta
+from datetime import datetime, date, timedelta, timezone
 from decimal import Decimal
 from typing import Optional, List, Dict, Any
 from sqlalchemy.orm import Session
@@ -56,7 +56,7 @@ class FinancialControlsService:
             existing.beverage_cost_percentage = beverage_cost_percentage
             existing.labor_cost_percentage = labor_cost_percentage
             existing.notes = notes
-            existing.updated_at = datetime.utcnow()
+            existing.updated_at = datetime.now(timezone.utc)
             record = existing
         else:
             record = PrimeCostTracking(
@@ -283,7 +283,7 @@ class FinancialControlsService:
             if hasattr(config, key):
                 setattr(config, key, value)
         
-        config.updated_at = datetime.utcnow()
+        config.updated_at = datetime.now(timezone.utc)
         db.commit()
         db.refresh(config)
         
@@ -312,7 +312,7 @@ class FinancialControlsService:
         if not config or not config.enabled:
             return {"alert_triggered": False, "message": "Abuse detection not enabled"}
         
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         alerts_triggered = []
         severity = "low"
         
@@ -452,9 +452,9 @@ class FinancialControlsService:
         
         alert.status = status
         alert.investigated_by = investigator_id
-        alert.investigated_at = datetime.utcnow()
+        alert.investigated_at = datetime.now(timezone.utc)
         alert.investigation_notes = notes
-        alert.updated_at = datetime.utcnow()
+        alert.updated_at = datetime.now(timezone.utc)
         
         db.commit()
         db.refresh(alert)

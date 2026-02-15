@@ -6,7 +6,7 @@ Gift Cards, Cryptocurrency, BNPL, Apple/Google Pay, Customer Wallets
 Production-ready implementation with full database persistence.
 """
 
-from datetime import datetime, date, timedelta
+from datetime import datetime, date, timedelta, timezone
 from typing import List, Dict, Any, Optional, Union
 from decimal import Decimal
 from enum import Enum
@@ -111,7 +111,7 @@ class AdvancedPaymentsService:
         from app.models import GiftCard, GiftCardStatus, GiftCardTransaction
 
         code = self._generate_gift_card_code()
-        expires_at = datetime.utcnow() + timedelta(days=expires_in_days)
+        expires_at = datetime.now(timezone.utc) + timedelta(days=expires_in_days)
 
         gift_card = GiftCard(
             venue_id=venue_id,
@@ -189,7 +189,7 @@ class AdvancedPaymentsService:
         if gift_card.status != GiftCardStatus.ACTIVE:
             return {"success": False, "error": f"Card is {gift_card.status.value}"}
 
-        if gift_card.expires_at and gift_card.expires_at < datetime.utcnow():
+        if gift_card.expires_at and gift_card.expires_at < datetime.now(timezone.utc):
             gift_card.status = GiftCardStatus.EXPIRED
             self.db.commit()
             return {"success": False, "error": "Card has expired"}
@@ -203,7 +203,7 @@ class AdvancedPaymentsService:
 
         # Process redemption
         gift_card.current_balance -= Decimal(str(amount))
-        gift_card.last_used_at = datetime.utcnow()
+        gift_card.last_used_at = datetime.now(timezone.utc)
 
         # Check if fully used
         if gift_card.current_balance <= 0:
@@ -250,7 +250,7 @@ class AdvancedPaymentsService:
             return {"success": False, "error": "Card not found"}
 
         # Check expiration
-        if gift_card.expires_at and gift_card.expires_at < datetime.utcnow():
+        if gift_card.expires_at and gift_card.expires_at < datetime.now(timezone.utc):
             if gift_card.status == GiftCardStatus.ACTIVE:
                 gift_card.status = GiftCardStatus.EXPIRED
                 self.db.commit()
@@ -395,7 +395,7 @@ class AdvancedPaymentsService:
         # Update balance
         wallet.balance = Decimal(str(wallet.balance)) + Decimal(str(amount))
         wallet.lifetime_loaded = Decimal(str(wallet.lifetime_loaded)) + Decimal(str(amount))
-        wallet.updated_at = datetime.utcnow()
+        wallet.updated_at = datetime.now(timezone.utc)
 
         # Create transaction record
         transaction = CustomerWalletTransaction(
@@ -466,8 +466,8 @@ class AdvancedPaymentsService:
         # Update balance
         wallet.balance = Decimal(str(wallet.balance)) - Decimal(str(amount))
         wallet.lifetime_spent = Decimal(str(wallet.lifetime_spent)) + Decimal(str(amount))
-        wallet.last_used_at = datetime.utcnow()
-        wallet.updated_at = datetime.utcnow()
+        wallet.last_used_at = datetime.now(timezone.utc)
+        wallet.updated_at = datetime.now(timezone.utc)
 
         # Create transaction record
         transaction = CustomerWalletTransaction(
@@ -595,7 +595,7 @@ class AdvancedPaymentsService:
         payment_uri = self._generate_payment_uri(crypto_type, wallet_address, amount_crypto)
 
         # Calculate expiration (15 minutes for rate validity)
-        expires_at = datetime.utcnow() + timedelta(minutes=self.CRYPTO_RATE_VALIDITY_MINUTES)
+        expires_at = datetime.now(timezone.utc) + timedelta(minutes=self.CRYPTO_RATE_VALIDITY_MINUTES)
 
         payment = CryptoPayment(
             venue_id=venue_id,
@@ -652,11 +652,11 @@ class AdvancedPaymentsService:
             CurrencyExchangeRate.from_currency == from_currency.upper(),
             CurrencyExchangeRate.to_currency == crypto_type.upper(),
             CurrencyExchangeRate.is_active == True,
-            CurrencyExchangeRate.valid_from <= datetime.utcnow()
+            CurrencyExchangeRate.valid_from <= datetime.now(timezone.utc)
         ).filter(
             or_(
                 CurrencyExchangeRate.valid_until.is_(None),
-                CurrencyExchangeRate.valid_until > datetime.utcnow()
+                CurrencyExchangeRate.valid_until > datetime.now(timezone.utc)
             )
         ).order_by(CurrencyExchangeRate.created_at.desc()).first()
 
@@ -744,7 +744,7 @@ class AdvancedPaymentsService:
 
         if confirmations >= payment.required_confirmations:
             payment.status = CryptoPaymentStatus.CONFIRMED.value
-            payment.confirmed_at = datetime.utcnow()
+            payment.confirmed_at = datetime.now(timezone.utc)
             logger.info(f"Crypto payment {payment_id} confirmed with tx {tx_hash}")
         else:
             payment.status = CryptoPaymentStatus.AWAITING_CONFIRMATION.value
@@ -752,7 +752,7 @@ class AdvancedPaymentsService:
                 f"Crypto payment {payment_id}: {confirmations}/{payment.required_confirmations} confirmations"
             )
 
-        payment.updated_at = datetime.utcnow()
+        payment.updated_at = datetime.now(timezone.utc)
         self.db.commit()
 
         return {
@@ -787,9 +787,9 @@ class AdvancedPaymentsService:
 
         # Check if expired
         if (payment.status == CryptoPaymentStatus.PENDING.value and
-            payment.expires_at and payment.expires_at < datetime.utcnow()):
+            payment.expires_at and payment.expires_at < datetime.now(timezone.utc)):
             payment.status = CryptoPaymentStatus.EXPIRED.value
-            payment.updated_at = datetime.utcnow()
+            payment.updated_at = datetime.now(timezone.utc)
             self.db.commit()
 
         return {
@@ -932,18 +932,18 @@ class AdvancedPaymentsService:
 
         # Process payment
         installment.status = "paid"
-        installment.paid_at = datetime.utcnow()
+        installment.paid_at = datetime.now(timezone.utc)
         installment.paid_amount = installment.amount
         installment.payment_method = payment_method
 
         plan.paid_installments += 1
         plan.total_paid = Decimal(str(plan.total_paid)) + installment.amount
-        plan.updated_at = datetime.utcnow()
+        plan.updated_at = datetime.now(timezone.utc)
 
         # Check if plan is complete
         if plan.paid_installments >= plan.installments:
             plan.status = BNPLStatus.COMPLETED.value
-            plan.completed_at = datetime.utcnow()
+            plan.completed_at = datetime.now(timezone.utc)
             plan.next_payment_date = None
         else:
             # Get next installment due date
@@ -1102,7 +1102,7 @@ class AdvancedPaymentsService:
         # 2. Send to payment processor (Stripe, Adyen, etc.)
         # 3. Record the transaction in the database
 
-        transaction_id = f"DW-{datetime.utcnow().strftime('%Y%m%d%H%M%S')}-{secrets.token_hex(4)}"
+        transaction_id = f"DW-{datetime.now(timezone.utc).strftime('%Y%m%d%H%M%S')}-{secrets.token_hex(4)}"
 
         logger.info(
             f"Processing {wallet_type} payment: {amount} for order {order_id} at venue {venue_id}"
@@ -1117,7 +1117,7 @@ class AdvancedPaymentsService:
             "wallet_type": wallet_type,
             "amount": amount,
             "order_id": order_id,
-            "processed_at": datetime.utcnow().isoformat()
+            "processed_at": datetime.now(timezone.utc).isoformat()
         }
 
     # ==================== UTILITY METHODS ====================

@@ -14,7 +14,7 @@ Features:
 """
 
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import List, Dict, Optional, Any, Tuple
 from sqlalchemy.orm import Session
 from enum import Enum
@@ -81,7 +81,7 @@ class EmployeeFraudDetectionService:
         Calculate comprehensive Fraud Index score (0-100) for an employee
         Similar to NCR Aloha's Employee Fraud Index
         """
-        end_date = datetime.utcnow()
+        end_date = datetime.now(timezone.utc)
         start_date = end_date - timedelta(days=period_days)
         
         # Get employee transaction data
@@ -143,7 +143,7 @@ class EmployeeFraudDetectionService:
             "peer_comparison": peer_comparison,
             "trend": self._calculate_trend(staff_id, fraud_index),
             "recommendations": self._get_recommendations(scores, concerns),
-            "calculated_at": datetime.utcnow().isoformat()
+            "calculated_at": datetime.now(timezone.utc).isoformat()
         }
         
         # Store the score in memory
@@ -568,7 +568,7 @@ class EmployeeFraudDetectionService:
             return {"success": False, "error": "Alert not found"}
         
         alert["acknowledged"] = True
-        alert["acknowledged_at"] = datetime.utcnow().isoformat()
+        alert["acknowledged_at"] = datetime.now(timezone.utc).isoformat()
         alert["acknowledged_by"] = acknowledged_by
         alert["action_taken"] = action_taken
         alert["notes"] = notes
@@ -587,7 +587,7 @@ class EmployeeFraudDetectionService:
         """
         Get comprehensive fraud detection dashboard
         """
-        end_date = datetime.utcnow()
+        end_date = datetime.now(timezone.utc)
         start_date = end_date - timedelta(days=period_days)
         
         # Get all staff fraud indexes
@@ -653,7 +653,7 @@ class EmployeeFraudDetectionService:
         Generate detailed fraud investigation report
         """
         if not end_date:
-            end_date = datetime.utcnow()
+            end_date = datetime.now(timezone.utc)
         if not start_date:
             start_date = end_date - timedelta(days=30)
         
@@ -707,7 +707,7 @@ class EmployeeFraudDetectionService:
             "pattern_analysis": pattern_analysis,
             "related_alerts": [a for a in self.alerts if a.get("staff_id") == staff_id],
             "investigation_recommendations": self._get_investigation_recommendations(fraud_index),
-            "generated_at": datetime.utcnow().isoformat()
+            "generated_at": datetime.now(timezone.utc).isoformat()
         }
     
     # ==================== HELPER METHODS ====================
@@ -769,7 +769,7 @@ class EmployeeFraudDetectionService:
 
         try:
             # Get fraud score history for this employee over the past 30 days
-            thirty_days_ago = datetime.utcnow() - timedelta(days=30)
+            thirty_days_ago = datetime.now(timezone.utc) - timedelta(days=30)
 
             historical_indexes = self.db.query(FraudScore).filter(
                 FraudScore.employee_id == staff_id,
@@ -960,7 +960,7 @@ class EmployeeFraudDetectionService:
             "category": data.get("alert", {}).get("type", "unknown"),
             "message": data.get("alert", {}).get("message", "Fraud risk detected"),
             "data": data,
-            "created_at": datetime.utcnow().isoformat(),
+            "created_at": datetime.now(timezone.utc).isoformat(),
             "acknowledged": False
         }
 
@@ -1600,7 +1600,7 @@ class EmployeeFraudDetectionService:
         from app.models import CashDrawerTransaction
 
         try:
-            cutoff_time = datetime.utcnow() - timedelta(minutes=minutes)
+            cutoff_time = datetime.now(timezone.utc) - timedelta(minutes=minutes)
 
             no_sales = self.db.query(CashDrawerTransaction).join(
                 CashDrawerTransaction.drawer
@@ -1631,10 +1631,10 @@ class EmployeeFraudDetectionService:
                 return shift.scheduled_start
             else:
                 # Default to 4 hours ago if shift not found
-                return datetime.utcnow() - timedelta(hours=4)
+                return datetime.now(timezone.utc) - timedelta(hours=4)
 
         except (ValueError, TypeError):
-            return datetime.utcnow() - timedelta(hours=4)
+            return datetime.now(timezone.utc) - timedelta(hours=4)
     
     def _get_transactions_since(self, staff_id: int, since: datetime) -> List[Dict]:
         """Get all transactions for a staff member since a specific time"""
@@ -1670,7 +1670,7 @@ class EmployeeFraudDetectionService:
 
         try:
             # Get historical data from last 60-90 days for baseline
-            end_date = datetime.utcnow() - timedelta(days=30)
+            end_date = datetime.now(timezone.utc) - timedelta(days=30)
             start_date = end_date - timedelta(days=60)
 
             # Calculate baseline metrics
@@ -1708,7 +1708,7 @@ class EmployeeFraudDetectionService:
             return None
 
     def _calculate_shift_duration(self, start: datetime) -> int:
-        return int((datetime.utcnow() - start).total_seconds() / 60)
+        return int((datetime.now(timezone.utc) - start).total_seconds() / 60)
     
     def _calculate_venue_fraud_trend(self, venue_id: int, days: int) -> str:
         """Calculate fraud trend for a venue over time"""
@@ -1716,7 +1716,7 @@ class EmployeeFraudDetectionService:
 
         try:
             # Compare current period to previous period
-            end_date = datetime.utcnow()
+            end_date = datetime.now(timezone.utc)
             mid_date = end_date - timedelta(days=days // 2)
             start_date = end_date - timedelta(days=days)
 

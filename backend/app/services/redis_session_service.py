@@ -8,7 +8,7 @@ import json
 import pickle
 from app.core.safe_pickle import safe_loads
 import redis
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Optional, Dict, Any
 import logging
 
@@ -66,7 +66,7 @@ class RedisSessionService:
             True if successful
         """
         # Add timestamp to data
-        data['_created_at'] = datetime.utcnow().isoformat()
+        data['_created_at'] = datetime.now(timezone.utc).isoformat()
 
         if self._client:
             try:
@@ -79,14 +79,14 @@ class RedisSessionService:
                 # Fallback to in-memory
                 self._fallback_store[session_id] = {
                     **data,
-                    '_expires_at': datetime.utcnow() + timedelta(seconds=ttl_seconds)
+                    '_expires_at': datetime.now(timezone.utc) + timedelta(seconds=ttl_seconds)
                 }
                 return True
         else:
             # Use in-memory fallback
             self._fallback_store[session_id] = {
                 **data,
-                '_expires_at': datetime.utcnow() + timedelta(seconds=ttl_seconds)
+                '_expires_at': datetime.now(timezone.utc) + timedelta(seconds=ttl_seconds)
             }
             return True
 
@@ -122,7 +122,7 @@ class RedisSessionService:
         data = self._fallback_store[session_id]
         expires_at = data.get('_expires_at')
 
-        if expires_at and datetime.utcnow() > expires_at:
+        if expires_at and datetime.now(timezone.utc) > expires_at:
             del self._fallback_store[session_id]
             return None
 
@@ -165,7 +165,7 @@ class RedisSessionService:
         if not self._fallback_store:
             return 0
 
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         expired = [
             sid for sid, data in self._fallback_store.items()
             if data.get('_expires_at') and data['_expires_at'] < now

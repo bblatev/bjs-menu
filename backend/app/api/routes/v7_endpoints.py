@@ -8,7 +8,7 @@ from fastapi import APIRouter, HTTPException, Query, Body, Depends, Path, Reques
 from sqlalchemy.orm import Session
 from sqlalchemy import func, or_
 from typing import List, Optional, Dict
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from enum import Enum
 from decimal import Decimal
 
@@ -129,7 +129,7 @@ async def configure_deposit_policy(
         policy.min_party_size = min_party_size
         policy.refund_cutoff_hours = refund_hours
         policy.vip_exempt = vip_exempt
-        policy.updated_at = datetime.utcnow()
+        policy.updated_at = datetime.now(timezone.utc)
     else:
         # Create new policy
         policy = DepositPolicy(
@@ -251,7 +251,7 @@ async def create_deposit(
         amount=Decimal(str(amount)),
         currency=currency,
         status="pending",
-        created_at=datetime.utcnow()
+        created_at=datetime.now(timezone.utc)
     )
 
     db.add(deposit)
@@ -291,7 +291,7 @@ async def confirm_deposit_payment(
 
     deposit.status = "collected"
     deposit.transaction_id = payment_reference
-    deposit.collected_at = datetime.utcnow()
+    deposit.collected_at = datetime.now(timezone.utc)
 
     db.commit()
     db.refresh(deposit)
@@ -331,7 +331,7 @@ async def apply_deposit_to_order(
         raise HTTPException(status_code=400, detail="Deposit must be collected before applying")
 
     deposit.order_id = order_id_int
-    deposit.applied_at = datetime.utcnow()
+    deposit.applied_at = datetime.now(timezone.utc)
     deposit.amount_applied = deposit.amount
     deposit.status = "applied"
 
@@ -377,7 +377,7 @@ async def process_deposit_refund(
     ).first()
 
     cutoff_hours = policy.refund_cutoff_hours if policy else 24
-    hours_until = (reservation_datetime - datetime.utcnow()).total_seconds() / 3600
+    hours_until = (reservation_datetime - datetime.now(timezone.utc)).total_seconds() / 3600
 
     if hours_until < cutoff_hours:
         refund_percentage = 0.5 if hours_until > 0 else 0
@@ -388,7 +388,7 @@ async def process_deposit_refund(
 
     deposit.status = "refunded"
     deposit.refund_reason = reason
-    deposit.refunded_at = datetime.utcnow()
+    deposit.refunded_at = datetime.now(timezone.utc)
 
     db.commit()
     db.refresh(deposit)
@@ -453,7 +453,7 @@ async def create_sms_template(
         language=language,
         category=category,
         is_system_template=False,
-        created_at=datetime.utcnow()
+        created_at=datetime.now(timezone.utc)
     )
 
     db.add(template)
@@ -494,7 +494,7 @@ async def create_sms_campaign(
         campaign_type=campaign_type.value,
         target_audience=target_audience,
         status="draft",
-        created_at=datetime.utcnow()
+        created_at=datetime.now(timezone.utc)
     )
 
     db.add(campaign)
@@ -523,19 +523,19 @@ async def estimate_campaign_audience(request: Request, venue_id: int, filters: D
 
     # Apply segment filters
     if segment == "active_30_days":
-        cutoff = datetime.utcnow() - timedelta(days=30)
+        cutoff = datetime.now(timezone.utc) - timedelta(days=30)
         query = query.filter(Customer.last_visit >= cutoff)
     elif segment == "active_60_days":
-        cutoff = datetime.utcnow() - timedelta(days=60)
+        cutoff = datetime.now(timezone.utc) - timedelta(days=60)
         query = query.filter(Customer.last_visit >= cutoff)
     elif segment == "active_90_days":
-        cutoff = datetime.utcnow() - timedelta(days=90)
+        cutoff = datetime.now(timezone.utc) - timedelta(days=90)
         query = query.filter(Customer.last_visit >= cutoff)
     elif segment == "inactive_90_days":
-        cutoff = datetime.utcnow() - timedelta(days=90)
+        cutoff = datetime.now(timezone.utc) - timedelta(days=90)
         query = query.filter(Customer.last_visit < cutoff)
     elif segment == "birthday_this_month":
-        current_month = datetime.utcnow().month
+        current_month = datetime.now(timezone.utc).month
         query = query.filter(func.extract('month', Customer.birthday) == current_month)
     elif segment == "high_spenders":
         # Top 15% by total spent
@@ -546,7 +546,7 @@ async def estimate_campaign_audience(request: Request, venue_id: int, filters: D
     elif segment == "loyalty_members":
         query = query.filter(Customer.loyalty_tier.isnot(None))
     elif segment == "new_customers":
-        cutoff = datetime.utcnow() - timedelta(days=30)
+        cutoff = datetime.now(timezone.utc) - timedelta(days=30)
         query = query.filter(Customer.created_at >= cutoff)
 
     estimated_recipients = query.scalar() or 0
@@ -646,7 +646,7 @@ async def send_sms_campaign(
         messages_sent = min(5, recipients_count)
     else:
         campaign.status = "sending"
-        campaign.sent_at = datetime.utcnow()
+        campaign.sent_at = datetime.now(timezone.utc)
         messages_sent = recipients_count
 
     campaign.total_recipients = recipients_count
@@ -727,7 +727,7 @@ async def handle_sms_opt_out(
     opt_out = SMSOptOut(
         venue_id=venue_id,
         phone_number=phone_number,
-        opted_out_at=datetime.utcnow()
+        opted_out_at=datetime.now(timezone.utc)
     )
 
     db.add(opt_out)
@@ -803,7 +803,7 @@ async def create_catering_inquiry(
         contact_phone=contact_phone,
         contact_email=contact_email,
         status="inquiry",
-        created_at=datetime.utcnow()
+        created_at=datetime.now(timezone.utc)
     )
 
     db.add(event)
@@ -923,7 +923,7 @@ async def get_kitchen_sheet(
             }
             for item in items
         ],
-        "generated_at": datetime.utcnow().isoformat()
+        "generated_at": datetime.now(timezone.utc).isoformat()
     }
 
 @router.get("/{venue_id}/catering/events/{event_id}/labels")
@@ -1001,8 +1001,8 @@ async def create_catering_invoice(
         tax_amount=Decimal(str(float(event.quoted_amount or 0) * 0.2)),  # 20% VAT
         total_amount=Decimal(str(float(event.quoted_amount or 0) * 1.2)),
         status="issued",
-        issued_date=datetime.utcnow().date(),
-        due_date=(datetime.utcnow() + timedelta(days=14)).date()
+        issued_date=datetime.now(timezone.utc).date(),
+        due_date=(datetime.now(timezone.utc) + timedelta(days=14)).date()
     )
 
     db.add(invoice)
@@ -1043,7 +1043,7 @@ async def register_customer_display(
         existing.name = name
         existing.language = language
         existing.is_active = True
-        existing.last_seen_at = datetime.utcnow()
+        existing.last_seen_at = datetime.now(timezone.utc)
         db.commit()
         db.refresh(existing)
         return {"display_id": existing.id, "name": existing.name}
@@ -1055,8 +1055,8 @@ async def register_customer_display(
         language=language,
         display_mode="idle",
         is_active=True,
-        created_at=datetime.utcnow(),
-        last_seen_at=datetime.utcnow()
+        created_at=datetime.now(timezone.utc),
+        last_seen_at=datetime.now(timezone.utc)
     )
 
     db.add(display)
@@ -1091,7 +1091,7 @@ async def update_display_order(
 
     display.display_mode = "order"
     display.current_order_data = order_data
-    display.last_seen_at = datetime.utcnow()
+    display.last_seen_at = datetime.now(timezone.utc)
 
     db.commit()
 
@@ -1127,7 +1127,7 @@ async def show_payment_screen(
         raise HTTPException(status_code=404, detail="Display not found")
 
     display.display_mode = "payment"
-    display.last_seen_at = datetime.utcnow()
+    display.last_seen_at = datetime.now(timezone.utc)
 
     db.commit()
 
@@ -1163,7 +1163,7 @@ async def show_survey(
         raise HTTPException(status_code=404, detail="Display not found")
 
     display.display_mode = "survey"
-    display.last_seen_at = datetime.utcnow()
+    display.last_seen_at = datetime.now(timezone.utc)
 
     db.commit()
 
@@ -1195,7 +1195,7 @@ async def show_idle_screen(request: Request, venue_id: int, display_id: str, db:
 
     # Update display mode to idle
     display.display_mode = "idle"
-    display.last_seen_at = datetime.utcnow()
+    display.last_seen_at = datetime.now(timezone.utc)
     db.commit()
 
     return {
@@ -1257,7 +1257,7 @@ async def create_menu_review(
         value_rating=value_rating,
         status="pending",
         verified_purchase=True,
-        created_at=datetime.utcnow()
+        created_at=datetime.now(timezone.utc)
     )
 
     db.add(review)
@@ -1368,7 +1368,7 @@ async def approve_review(
         raise HTTPException(status_code=404, detail="Review not found")
 
     review.status = "approved"
-    review.approved_at = datetime.utcnow()
+    review.approved_at = datetime.now(timezone.utc)
 
     db.commit()
     db.refresh(review)
@@ -1400,7 +1400,7 @@ async def respond_to_review(
         raise HTTPException(status_code=404, detail="Review not found")
 
     review.response_text = response
-    review.response_at = datetime.utcnow()
+    review.response_at = datetime.now(timezone.utc)
 
     db.commit()
     db.refresh(review)
@@ -1496,7 +1496,7 @@ async def record_prep_time(
         actual_time_seconds=actual_time,
         order_complexity=order_complexity,
         kitchen_load_factor=kitchen_load,
-        recorded_at=datetime.utcnow()
+        recorded_at=datetime.now(timezone.utc)
     )
 
     db.add(record)
@@ -1629,10 +1629,10 @@ async def create_promo_code(
         discount_type=code_type.value if code_type in [PromoCodeType.percentage, PromoCodeType.fixed_amount] else "percentage",
         discount_value=Decimal(str(value)),
         min_order_value=Decimal(str(min_order)) if min_order > 0 else None,
-        valid_from=datetime.utcnow(),
-        valid_until=datetime.utcnow() + timedelta(days=valid_days),
+        valid_from=datetime.now(timezone.utc),
+        valid_until=datetime.now(timezone.utc) + timedelta(days=valid_days),
         is_used=False,
-        created_at=datetime.utcnow()
+        created_at=datetime.now(timezone.utc)
     )
 
     db.add(promo)
@@ -1670,11 +1670,11 @@ async def generate_promo_batch(
         name=name,
         discount_type=code_type.value,
         discount_value=Decimal(str(value)),
-        valid_from=datetime.utcnow(),
-        valid_until=datetime.utcnow() + timedelta(days=valid_days),
+        valid_from=datetime.now(timezone.utc),
+        valid_until=datetime.now(timezone.utc) + timedelta(days=valid_days),
         total_codes=quantity,
         is_active=True,
-        created_at=datetime.utcnow()
+        created_at=datetime.now(timezone.utc)
     )
 
     db.add(campaign)
@@ -1694,10 +1694,10 @@ async def generate_promo_batch(
             code=promo_code,
             discount_type=code_type.value if code_type in [PromoCodeType.percentage, PromoCodeType.fixed_amount] else "percentage",
             discount_value=Decimal(str(value)),
-            valid_from=datetime.utcnow(),
-            valid_until=datetime.utcnow() + timedelta(days=valid_days),
+            valid_from=datetime.now(timezone.utc),
+            valid_until=datetime.now(timezone.utc) + timedelta(days=valid_days),
             is_used=False,
-            created_at=datetime.utcnow()
+            created_at=datetime.now(timezone.utc)
         )
         db.add(promo)
         codes_generated.append(promo_code)
@@ -1729,7 +1729,7 @@ async def validate_promo_code(request: Request, venue_id: int, code: str = Body(
         return {"valid": False, "error": "Code has already been used"}
 
     # Check validity dates
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
     if promo.valid_from and now < promo.valid_from:
         return {"valid": False, "error": "Code is not yet valid"}
     if promo.valid_until and now > promo.valid_until:
@@ -1800,7 +1800,7 @@ async def redeem_promo_code(
     promo.is_used = True
     promo.used_by_customer_id = customer_id_int
     promo.used_on_order_id = order_id_int
-    promo.used_at = datetime.utcnow()
+    promo.used_at = datetime.now(timezone.utc)
 
     db.commit()
     db.refresh(promo)
@@ -1886,7 +1886,7 @@ async def configure_referral_program(
             referee_reward_value=Decimal(str(referee_reward)),
             minimum_order_value=Decimal(str(min_order)),
             is_active=True,
-            created_at=datetime.utcnow()
+            created_at=datetime.now(timezone.utc)
         )
         db.add(program)
 
@@ -1982,7 +1982,7 @@ async def apply_referral_code(
         referee_email=referee_email,
         referral_code=code,
         status="pending",
-        created_at=datetime.utcnow()
+        created_at=datetime.now(timezone.utc)
     )
 
     db.add(referral)
@@ -2035,7 +2035,7 @@ async def complete_referral(
         }
 
     referral.status = "rewarded"
-    referral.rewarded_at = datetime.utcnow()
+    referral.rewarded_at = datetime.now(timezone.utc)
     referral.qualifying_order_id = int(order_id)
 
     db.commit()
@@ -2175,7 +2175,7 @@ async def calculate_customer_rfm(
         return {"customer_id": customer_id, "error": "No orders provided"}
 
     # Calculate RFM metrics
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
     order_dates = [datetime.fromisoformat(o.get("order_date", o.get("date", now.isoformat()))) for o in orders if o.get("order_date") or o.get("date")]
     order_amounts = [float(o.get("total", o.get("amount", 0))) for o in orders]
 
@@ -2301,7 +2301,7 @@ async def get_rfm_segments(request: Request, venue_id: int, db: Session = Depend
     return {
         "total_customers": total_customers,
         "segments": segments,
-        "calculated_at": datetime.utcnow().isoformat()
+        "calculated_at": datetime.now(timezone.utc).isoformat()
     }
 
 @router.get("/{venue_id}/rfm/segments/{segment}/customers")
@@ -2438,7 +2438,7 @@ async def record_ingredient_price(
         price=Decimal(str(unit_price)),
         quantity=Decimal(str(quantity)),
         unit=unit,
-        recorded_date=datetime.utcnow().date()
+        recorded_date=datetime.now(timezone.utc).date()
     )
 
     db.add(record)
@@ -2471,7 +2471,7 @@ async def create_price_alert(
         alert_type=alert_type,
         threshold_percentage=Decimal(str(threshold_percentage)),
         is_active=True,
-        created_at=datetime.utcnow()
+        created_at=datetime.now(timezone.utc)
     )
 
     db.add(alert)
@@ -2489,7 +2489,7 @@ async def get_price_history(request: Request, venue_id: int, ingredient_id: str,
     except ValueError:
         raise HTTPException(status_code=400, detail="Invalid venue_id or ingredient_id format")
 
-    cutoff = datetime.utcnow() - timedelta(days=days)
+    cutoff = datetime.now(timezone.utc) - timedelta(days=days)
 
     # Query price history from database
     records = db.query(IngredientPriceHistory).filter(
@@ -2517,7 +2517,7 @@ async def get_price_history(request: Request, venue_id: int, ingredient_id: str,
     def calculate_change(days_back: int) -> Optional[float]:
         if len(records) < 2:
             return None
-        cutoff_date = datetime.utcnow().date() - timedelta(days=days_back)
+        cutoff_date = datetime.now(timezone.utc).date() - timedelta(days=days_back)
         old_records = [r for r in records if r.recorded_date >= cutoff_date]
         if len(old_records) < 2:
             return None
@@ -2642,7 +2642,7 @@ async def configure_break_policy(
             meal_break_duration_minutes=meal_break_duration,
             rest_break_duration_minutes=rest_break_duration,
             is_active=True,
-            created_at=datetime.utcnow()
+            created_at=datetime.now(timezone.utc)
         )
         db.add(policy)
 
@@ -2701,7 +2701,7 @@ async def schedule_breaks(
             scheduled_end=midpoint + timedelta(minutes=meal_duration),
             scheduled_duration_minutes=meal_duration,
             status="scheduled",
-            created_at=datetime.utcnow()
+            created_at=datetime.now(timezone.utc)
         )
         db.add(meal_break)
         breaks.append(meal_break)
@@ -2718,7 +2718,7 @@ async def schedule_breaks(
             scheduled_end=rest_time + timedelta(minutes=rest_duration),
             scheduled_duration_minutes=rest_duration,
             status="scheduled",
-            created_at=datetime.utcnow()
+            created_at=datetime.now(timezone.utc)
         )
         db.add(rest_break)
         breaks.append(rest_break)
@@ -2760,7 +2760,7 @@ async def start_break(
         raise HTTPException(status_code=404, detail="Break not found")
 
     brk.status = "in_progress"
-    brk.actual_start = datetime.utcnow()
+    brk.actual_start = datetime.now(timezone.utc)
 
     db.commit()
     db.refresh(brk)
@@ -2791,7 +2791,7 @@ async def end_break(
         raise HTTPException(status_code=404, detail="Break not found")
 
     brk.status = "completed"
-    brk.actual_end = datetime.utcnow()
+    brk.actual_end = datetime.now(timezone.utc)
 
     if brk.actual_start:
         brk.actual_duration_minutes = int((brk.actual_end - brk.actual_start).total_seconds() / 60)
@@ -2810,7 +2810,7 @@ async def get_employee_breaks(request: Request, venue_id: int, employee_id: str,
     except ValueError:
         raise HTTPException(status_code=400, detail="Invalid venue_id or employee_id format")
 
-    dt = datetime.fromisoformat(date) if date else datetime.utcnow()
+    dt = datetime.fromisoformat(date) if date else datetime.now(timezone.utc)
     start_of_day = dt.replace(hour=0, minute=0, second=0, microsecond=0)
     end_of_day = start_of_day + timedelta(days=1)
 
@@ -2926,8 +2926,8 @@ async def request_shift_trade(
         status="pending",
         requires_approval=requires_approval,
         reason=reason,
-        created_at=datetime.utcnow(),
-        expires_at=datetime.utcnow() + timedelta(hours=48)
+        created_at=datetime.now(timezone.utc),
+        expires_at=datetime.now(timezone.utc) + timedelta(hours=48)
     )
 
     db.add(trade)
@@ -2969,7 +2969,7 @@ async def respond_to_trade(
     else:
         trade.status = "rejected"
 
-    trade.responded_at = datetime.utcnow()
+    trade.responded_at = datetime.now(timezone.utc)
 
     db.commit()
     db.refresh(trade)
@@ -3004,7 +3004,7 @@ async def manager_trade_decision(
 
     trade.status = "approved" if approve else "rejected"
     trade.approved_by_id = manager_id_int
-    trade.approved_at = datetime.utcnow()
+    trade.approved_at = datetime.now(timezone.utc)
 
     db.commit()
     db.refresh(trade)
@@ -3148,7 +3148,7 @@ async def assign_vip_status(
     if existing:
         existing.vip_tier_id = tier_model.id
         existing.assigned_by_id = assigned_by_int
-        existing.assigned_date = datetime.utcnow()
+        existing.assigned_date = datetime.now(timezone.utc)
         existing.is_active = True
     else:
         vip_status = CustomerVIPStatus(
@@ -3156,7 +3156,7 @@ async def assign_vip_status(
             customer_id=customer_id_int,
             vip_tier_id=tier_model.id,
             assigned_by_id=assigned_by_int,
-            assigned_date=datetime.utcnow(),
+            assigned_date=datetime.now(timezone.utc),
             is_active=True
         )
         db.add(vip_status)
@@ -3323,13 +3323,13 @@ async def auto_upgrade_vip(
             }
 
         current_status.vip_tier_id = new_tier.id
-        current_status.assigned_date = datetime.utcnow()
+        current_status.assigned_date = datetime.now(timezone.utc)
     else:
         vip_status = CustomerVIPStatus(
             venue_id=venue_id,
             customer_id=customer_id_int,
             vip_tier_id=new_tier.id,
-            assigned_date=datetime.utcnow(),
+            assigned_date=datetime.now(timezone.utc),
             is_active=True
         )
         db.add(vip_status)

@@ -7,7 +7,7 @@ import hmac
 import hashlib
 import logging
 from typing import Dict, List, Optional, Any
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from dataclasses import dataclass, field
 from enum import Enum
 from decimal import Decimal
@@ -107,7 +107,7 @@ class UberEatsService:
 
     async def _get_access_token(self) -> str:
         """Get OAuth2 access token"""
-        if self._access_token and self._token_expires and datetime.utcnow() < self._token_expires:
+        if self._access_token and self._token_expires and datetime.now(timezone.utc) < self._token_expires:
             return self._access_token
 
         async with httpx.AsyncClient(timeout=30) as client:
@@ -124,7 +124,7 @@ class UberEatsService:
             if response.status_code == 200:
                 data = response.json()
                 self._access_token = data["access_token"]
-                self._token_expires = datetime.utcnow() + timedelta(seconds=data.get("expires_in", 3600) - 60)
+                self._token_expires = datetime.now(timezone.utc) + timedelta(seconds=data.get("expires_in", 3600) - 60)
                 return self._access_token
             else:
                 raise Exception(f"Failed to get UberEats token: {response.text}")
@@ -342,7 +342,7 @@ class UberEatsService:
             status=data.get("current_state", "pending").lower(),
             special_instructions=data.get("special_instructions"),
             estimated_pickup_time=None,
-            created_at=datetime.utcnow(),
+            created_at=datetime.now(timezone.utc),
             metadata={"raw": data}
         )
 
@@ -369,7 +369,7 @@ class DoorDashService:
         """Create JWT for DoorDash API authentication"""
         import jwt
 
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         payload = {
             "aud": "doordash",
             "iss": self.developer_id,
@@ -412,7 +412,7 @@ class DoorDashService:
                     headers={"Authorization": f"Bearer {token}"},
                     json={
                         "status": "confirmed",
-                        "pickup_time": (datetime.utcnow() + timedelta(minutes=prep_time_minutes)).isoformat()
+                        "pickup_time": (datetime.now(timezone.utc) + timedelta(minutes=prep_time_minutes)).isoformat()
                     }
                 )
 
@@ -486,7 +486,7 @@ class DoorDashService:
                     f"{self.BASE_URL}/drive/v2/deliveries",
                     headers={"Authorization": f"Bearer {token}"},
                     json={
-                        "external_delivery_id": f"V99-{datetime.utcnow().strftime('%Y%m%d%H%M%S')}",
+                        "external_delivery_id": f"V99-{datetime.now(timezone.utc).strftime('%Y%m%d%H%M%S')}",
                         "pickup_address": pickup_address,
                         "pickup_phone_number": settings.venue_phone,
                         "dropoff_address": dropoff_address,
@@ -587,7 +587,7 @@ class DoorDashService:
             status=data.get("delivery_status", "pending").lower(),
             special_instructions=data.get("dropoff_instructions"),
             estimated_pickup_time=None,
-            created_at=datetime.utcnow(),
+            created_at=datetime.now(timezone.utc),
             metadata={"raw": data}
         )
 
@@ -613,7 +613,7 @@ class OpenTableService:
 
     async def _get_access_token(self) -> str:
         """Get OAuth2 access token"""
-        if self._access_token and self._token_expires and datetime.utcnow() < self._token_expires:
+        if self._access_token and self._token_expires and datetime.now(timezone.utc) < self._token_expires:
             return self._access_token
 
         async with httpx.AsyncClient(timeout=30) as client:
@@ -629,7 +629,7 @@ class OpenTableService:
             if response.status_code == 200:
                 data = response.json()
                 self._access_token = data["access_token"]
-                self._token_expires = datetime.utcnow() + timedelta(seconds=data.get("expires_in", 3600) - 60)
+                self._token_expires = datetime.now(timezone.utc) + timedelta(seconds=data.get("expires_in", 3600) - 60)
                 return self._access_token
             else:
                 raise Exception(f"Failed to get OpenTable token: {response.text}")
@@ -824,7 +824,7 @@ class OpenTableService:
             table_id=None,
             special_requests=data.get("special_requests"),
             status=data.get("state", "pending").lower(),
-            created_at=datetime.utcnow(),
+            created_at=datetime.now(timezone.utc),
             metadata={"raw": data}
         )
 
@@ -1053,7 +1053,7 @@ class ResyService:
             table_id=None,
             special_requests=data.get("service_notes"),
             status=data.get("reservation_status", "pending").lower(),
-            created_at=datetime.utcnow(),
+            created_at=datetime.now(timezone.utc),
             metadata={"raw": data}
         )
 

@@ -1,5 +1,5 @@
 """Customer Engagement V5 Service - VIP Management, Guestbook, Menu Reviews, Fundraising"""
-from datetime import datetime, date, timedelta
+from datetime import datetime, date, timedelta, timezone
 from typing import List, Dict, Optional, Any
 from sqlalchemy.orm import Session
 from decimal import Decimal
@@ -36,7 +36,7 @@ class CustomerEngagementV5Service:
             "lifetime_spend": 0,
             "visit_count": 0,
             "is_active": True,
-            "created_at": datetime.utcnow().isoformat()
+            "created_at": datetime.now(timezone.utc).isoformat()
         }
         return vip
     
@@ -54,7 +54,7 @@ class CustomerEngagementV5Service:
             "customer_id": customer_id,
             "previous_tier": "silver",
             "new_tier": new_tier,
-            "updated_at": datetime.utcnow().isoformat()
+            "updated_at": datetime.now(timezone.utc).isoformat()
         }
     
     async def get_vip_profile(self, customer_id: int) -> Optional[Dict[str, Any]]:
@@ -152,7 +152,7 @@ class CustomerEngagementV5Service:
             "table_number": table_number,
             "server_id": server_id,
             "host_notes": host_notes,
-            "created_at": datetime.utcnow().isoformat()
+            "created_at": datetime.now(timezone.utc).isoformat()
         }
         return entry
     
@@ -167,7 +167,7 @@ class CustomerEngagementV5Service:
             "entry_id": entry_id,
             "feedback_rating": rating,
             "feedback_comment": comment,
-            "feedback_at": datetime.utcnow().isoformat()
+            "feedback_at": datetime.now(timezone.utc).isoformat()
         }
     
     async def get_customer_visit_history(
@@ -178,7 +178,7 @@ class CustomerEngagementV5Service:
         """Get customer's visit history"""
         return [
             {
-                "visit_date": (datetime.utcnow() - timedelta(days=i*7)).isoformat(),
+                "visit_date": (datetime.now(timezone.utc) - timedelta(days=i*7)).isoformat(),
                 "party_size": 2 + (i % 3),
                 "table_number": 5 + i,
                 "server": "Maria",
@@ -232,7 +232,7 @@ class CustomerEngagementV5Service:
             "comment": comment,
             "is_verified_purchase": order_id is not None,
             "is_published": True,
-            "created_at": datetime.utcnow().isoformat()
+            "created_at": datetime.now(timezone.utc).isoformat()
         }
         return review
     
@@ -258,12 +258,12 @@ class CustomerEngagementV5Service:
                 {
                     "rating": 5,
                     "comment": "Best burger I've had!",
-                    "created_at": (datetime.utcnow() - timedelta(days=1)).isoformat()
+                    "created_at": (datetime.now(timezone.utc) - timedelta(days=1)).isoformat()
                 },
                 {
                     "rating": 4,
                     "comment": "Great flavor, portion could be bigger",
-                    "created_at": (datetime.utcnow() - timedelta(days=3)).isoformat()
+                    "created_at": (datetime.now(timezone.utc) - timedelta(days=3)).isoformat()
                 }
             ]
         }
@@ -318,7 +318,7 @@ class CustomerEngagementV5Service:
             "is_active": True,
             "round_up_enabled": True,
             "flat_donation_amounts": [1, 2, 5, 10],
-            "created_at": datetime.utcnow().isoformat()
+            "created_at": datetime.now(timezone.utc).isoformat()
         }
         return campaign
     
@@ -347,7 +347,7 @@ class CustomerEngagementV5Service:
             "donation_type": "round_up",
             "original_total": float(original_total),
             "rounded_total": float(rounded_total),
-            "created_at": datetime.utcnow().isoformat()
+            "created_at": datetime.now(timezone.utc).isoformat()
         }
         return donation
     
@@ -366,7 +366,7 @@ class CustomerEngagementV5Service:
             "customer_id": customer_id,
             "amount": float(amount),
             "donation_type": "flat",
-            "created_at": datetime.utcnow().isoformat()
+            "created_at": datetime.now(timezone.utc).isoformat()
         }
         return donation
     

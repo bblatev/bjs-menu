@@ -3,7 +3,7 @@ Integration Marketplace Service
 Provides 100+ pre-built integrations across all categories
 """
 from typing import List, Optional, Dict, Any
-from datetime import datetime
+from datetime import datetime, timezone
 from sqlalchemy.orm import Session
 
 # Pre-defined integration catalog (100+ integrations)
@@ -271,7 +271,7 @@ class IntegrationMarketplaceService:
             existing.credentials = credentials
             existing.settings = settings
             existing.status = IntegrationStatus.CONNECTED
-            existing.connected_at = datetime.utcnow()
+            existing.connected_at = datetime.now(timezone.utc)
             self.db.commit()
             return {"success": True, "message": "Integration reconnected", "integration_id": existing.id}
 
@@ -282,7 +282,7 @@ class IntegrationMarketplaceService:
             credentials=credentials,
             settings=settings,
             status=IntegrationStatus.CONNECTED,
-            connected_at=datetime.utcnow()
+            connected_at=datetime.now(timezone.utc)
         )
         self.db.add(venue_integration)
         self.db.commit()
@@ -314,7 +314,7 @@ class IntegrationMarketplaceService:
 
         venue_integration.status = IntegrationStatus.AVAILABLE
         venue_integration.is_active = False
-        venue_integration.disconnected_at = datetime.utcnow()
+        venue_integration.disconnected_at = datetime.now(timezone.utc)
         venue_integration.credentials = None
         venue_integration.oauth_tokens = None
 

@@ -12,7 +12,7 @@ Features:
 - Shift swapping
 """
 
-from datetime import datetime, date
+from datetime import datetime, date, timezone
 from typing import Optional, List, Dict, Any
 from sqlalchemy.orm import Session
 from sqlalchemy import and_, or_
@@ -81,7 +81,7 @@ class LaborComplianceService:
             "break_type": break_type,
             "is_paid": is_paid,
             "scheduled_duration": scheduled_duration,
-            "start_time": datetime.utcnow().isoformat(),
+            "start_time": datetime.now(timezone.utc).isoformat(),
             "end_time": None,
             "actual_duration": None,
             "status": "active",
@@ -114,7 +114,7 @@ class LaborComplianceService:
         if break_record["status"] != "active":
             return {"success": False, "error": "Break is not active"}
         
-        end_time = datetime.utcnow()
+        end_time = datetime.now(timezone.utc)
         start_time = datetime.fromisoformat(break_record["start_time"])
         actual_duration = int((end_time - start_time).total_seconds() / 60)
         
@@ -169,7 +169,7 @@ class LaborComplianceService:
         current_time: Optional[datetime] = None
     ) -> Dict[str, Any]:
         """Check if staff member is due for a mandatory break"""
-        current_time = current_time or datetime.utcnow()
+        current_time = current_time or datetime.now(timezone.utc)
         hours_worked = (current_time - shift_start).total_seconds() / 3600
         
         # Get breaks taken
@@ -373,7 +373,7 @@ class LaborComplianceService:
             "success": True,
             "alerts": alerts,
             "weekly_threshold": self.WEEKLY_OVERTIME_THRESHOLD,
-            "checked_at": datetime.utcnow().isoformat(),
+            "checked_at": datetime.now(timezone.utc).isoformat(),
             "staff_checked": len(staff_members)
         }
     
@@ -405,7 +405,7 @@ class LaborComplianceService:
             "partial_day": partial_day,
             "hours_requested": hours_requested,
             "status": "pending",
-            "submitted_at": datetime.utcnow().isoformat(),
+            "submitted_at": datetime.now(timezone.utc).isoformat(),
             "reviewed_by": None,
             "reviewed_at": None,
             "review_notes": None
@@ -439,7 +439,7 @@ class LaborComplianceService:
         
         request["status"] = "approved"
         request["reviewed_by"] = manager_id
-        request["reviewed_at"] = datetime.utcnow().isoformat()
+        request["reviewed_at"] = datetime.now(timezone.utc).isoformat()
         request["review_notes"] = notes
         
         return {
@@ -466,7 +466,7 @@ class LaborComplianceService:
         
         request["status"] = "rejected"
         request["reviewed_by"] = manager_id
-        request["reviewed_at"] = datetime.utcnow().isoformat()
+        request["reviewed_at"] = datetime.now(timezone.utc).isoformat()
         request["review_notes"] = reason
         
         return {
@@ -610,7 +610,7 @@ class LaborComplianceService:
             "manager_approved": False,
             "manager_approved_by": None,
             "manager_approved_at": None,
-            "created_at": datetime.utcnow().isoformat()
+            "created_at": datetime.now(timezone.utc).isoformat()
         }
         
         self._shift_swaps[swap_id] = swap
@@ -642,7 +642,7 @@ class LaborComplianceService:
         
         if accept:
             swap["peer_approved"] = True
-            swap["peer_approved_at"] = datetime.utcnow().isoformat()
+            swap["peer_approved_at"] = datetime.now(timezone.utc).isoformat()
             swap["status"] = "pending_manager"
             message = "Swap approved by peer, awaiting manager approval"
         else:
@@ -675,13 +675,13 @@ class LaborComplianceService:
         if approve:
             swap["manager_approved"] = True
             swap["manager_approved_by"] = manager_id
-            swap["manager_approved_at"] = datetime.utcnow().isoformat()
+            swap["manager_approved_at"] = datetime.now(timezone.utc).isoformat()
             swap["status"] = "approved"
             message = "Shift swap approved - schedules updated"
         else:
             swap["status"] = "rejected_by_manager"
             swap["manager_approved_by"] = manager_id
-            swap["manager_approved_at"] = datetime.utcnow().isoformat()
+            swap["manager_approved_at"] = datetime.now(timezone.utc).isoformat()
             message = "Shift swap rejected by manager"
         
         return {
@@ -740,5 +740,5 @@ class LaborComplianceService:
                 "overtime_violations": 0,
                 "overall_status": "warning"
             },
-            "generated_at": datetime.utcnow().isoformat()
+            "generated_at": datetime.now(timezone.utc).isoformat()
         }

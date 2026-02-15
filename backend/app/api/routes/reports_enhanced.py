@@ -4,7 +4,7 @@
 from fastapi import APIRouter, HTTPException, Query, Request
 from sqlalchemy import func, desc, extract
 from typing import Optional, List
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from collections import defaultdict
 from pydantic import BaseModel
 import statistics
@@ -86,7 +86,7 @@ class KPIMetric(BaseModel):
 
 def get_date_range(period: str, start_date: Optional[str] = None, end_date: Optional[str] = None):
     """Get date range for report period."""
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
 
     if period == "custom" and start_date and end_date:
         return datetime.fromisoformat(start_date), datetime.fromisoformat(end_date)
@@ -338,7 +338,7 @@ def get_trend_analysis(
     period: str = Query("month"),
 ):
     """Get trend analysis for key metrics."""
-    end = datetime.utcnow()
+    end = datetime.now(timezone.utc)
 
     if period == "week":
         start = end - timedelta(days=7)
@@ -422,7 +422,7 @@ def get_dashboard_kpis(
     """Get real-time dashboard KPIs."""
     from app.models.analytics import DailyMetrics
 
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
     today_str = now.strftime("%Y-%m-%d")
     yesterday_str = (now - timedelta(days=1)).strftime("%Y-%m-%d")
 

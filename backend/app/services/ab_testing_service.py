@@ -6,7 +6,7 @@ Competitor: Toast Menu A/B Testing, Square Menu Optimization
 
 import random
 import hashlib
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, List, Optional, Tuple
 from uuid import UUID, uuid4
 from sqlalchemy import select, and_, or_, func, desc
@@ -60,7 +60,7 @@ class ABTestingService:
             start_date=start_date,
             end_date=end_date,
             created_by=created_by,
-            created_at=datetime.utcnow()
+            created_at=datetime.now(timezone.utc)
         )
         self.db.add(experiment)
         await self.db.commit()
@@ -77,7 +77,7 @@ class ABTestingService:
             raise ValueError(f"Cannot start experiment with status {experiment.status}")
 
         experiment.status = ExperimentStatus.RUNNING
-        experiment.started_at = datetime.utcnow()
+        experiment.started_at = datetime.now(timezone.utc)
         await self.db.commit()
         await self.db.refresh(experiment)
         return experiment
@@ -121,7 +121,7 @@ class ABTestingService:
             raise ValueError("Experiment not found")
 
         experiment.status = ExperimentStatus.COMPLETED
-        experiment.ended_at = datetime.utcnow()
+        experiment.ended_at = datetime.now(timezone.utc)
         experiment.winner_variant = winner_variant
         await self.db.commit()
         await self.db.refresh(experiment)
@@ -205,7 +205,7 @@ class ABTestingService:
             user_id=user_id,
             user_type=user_type,
             variant_id=variant.get("id"),
-            assigned_at=datetime.utcnow()
+            assigned_at=datetime.now(timezone.utc)
         )
         self.db.add(new_assignment)
         await self.db.commit()
@@ -261,7 +261,7 @@ class ABTestingService:
             return False
 
         assignment.converted = True
-        assignment.converted_at = datetime.utcnow()
+        assignment.converted_at = datetime.now(timezone.utc)
         assignment.conversion_value = metric_value
         assignment.conversion_metadata = metadata or {}
 
@@ -410,7 +410,7 @@ class ReviewAutomationService:
 
         if existing:
             existing.link_url = link_url
-            existing.updated_at = datetime.utcnow()
+            existing.updated_at = datetime.now(timezone.utc)
             await self.db.commit()
             return {
                 "id": str(existing.id),
@@ -424,7 +424,7 @@ class ReviewAutomationService:
             platform=platform,
             link_url=link_url,
             click_count=0,
-            created_at=datetime.utcnow()
+            created_at=datetime.now(timezone.utc)
         )
         self.db.add(link)
         await self.db.commit()
@@ -487,7 +487,7 @@ class ReviewAutomationService:
             }
 
         # Create review request
-        scheduled_at = datetime.utcnow() + timedelta(hours=delay_hours)
+        scheduled_at = datetime.now(timezone.utc) + timedelta(hours=delay_hours)
 
         request = ReviewRequest(
             id=uuid4(),
@@ -497,7 +497,7 @@ class ReviewAutomationService:
             method=method,
             status="scheduled",
             scheduled_at=scheduled_at,
-            created_at=datetime.utcnow()
+            created_at=datetime.now(timezone.utc)
         )
         self.db.add(request)
         await self.db.commit()
@@ -515,7 +515,7 @@ class ReviewAutomationService:
         """Process pending review requests that are due."""
         from app.models.gap_features_models import ReviewRequest
 
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
 
         result = await self.db.execute(
             select(ReviewRequest).where(
@@ -634,7 +634,7 @@ class ReviewAutomationService:
 
         if link:
             link.click_count = (link.click_count or 0) + 1
-            link.last_clicked_at = datetime.utcnow()
+            link.last_clicked_at = datetime.now(timezone.utc)
             await self.db.commit()
             return True
         return False

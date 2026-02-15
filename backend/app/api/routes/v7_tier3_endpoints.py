@@ -6,7 +6,7 @@ from fastapi import APIRouter, HTTPException, Query, Body, Depends, Request
 from sqlalchemy.orm import Session
 from sqlalchemy import func
 from typing import List, Optional, Dict
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 from enum import Enum
 
@@ -69,7 +69,7 @@ async def create_guest(
         dietary_preferences=dietary_preferences,
         allergies=allergies,
         visit_count=0,
-        created_at=datetime.utcnow()
+        created_at=datetime.now(timezone.utc)
     )
 
     db.add(guest)
@@ -105,7 +105,7 @@ async def record_guest_visit(
     visit = GuestbookVisit(
         guestbook_entry_id=guest_id_int,
         venue_id=venue_id,
-        visit_date=datetime.utcnow(),
+        visit_date=datetime.now(timezone.utc),
         party_size=party_size,
         table_number=table_number,
         spend_amount=Decimal(str(spend_amount))
@@ -115,7 +115,7 @@ async def record_guest_visit(
 
     # Update guest stats
     guest.visit_count = (guest.visit_count or 0) + 1
-    guest.last_visit_date = datetime.utcnow()
+    guest.last_visit_date = datetime.now(timezone.utc)
     guest.total_spend = (guest.total_spend or Decimal("0")) + Decimal(str(spend_amount))
 
     db.commit()
@@ -237,12 +237,12 @@ async def create_fundraising_campaign(
         charity_description=charity_description,
         charity_ein=charity_ein,
         goal_amount=Decimal(str(goal_amount)),
-        start_date=datetime.utcnow(),
-        end_date=datetime.utcnow() + timedelta(days=duration_days),
+        start_date=datetime.now(timezone.utc),
+        end_date=datetime.now(timezone.utc) + timedelta(days=duration_days),
         matching_enabled=matching_enabled,
         status="draft",
         raised_amount=Decimal("0"),
-        created_at=datetime.utcnow()
+        created_at=datetime.now(timezone.utc)
     )
 
     db.add(campaign)
@@ -345,7 +345,7 @@ async def process_donation(
         donation_amount=Decimal(str(donation_amount)),
         donation_type=donation_type,
         order_total=Decimal(str(order_total)),
-        created_at=datetime.utcnow()
+        created_at=datetime.now(timezone.utc)
     )
 
     db.add(donation)
@@ -397,7 +397,7 @@ async def get_campaign_stats(
         "donation_count": donation_count,
         "average_donation": round(float(avg_donation), 2),
         "status": campaign.status,
-        "days_remaining": max(0, (campaign.end_date - datetime.utcnow()).days) if campaign.end_date else None
+        "days_remaining": max(0, (campaign.end_date - datetime.now(timezone.utc)).days) if campaign.end_date else None
     }
 
 
@@ -427,7 +427,7 @@ async def record_chargeback(
         raise HTTPException(status_code=400, detail="Invalid ID format")
 
     # Response due in 7 days
-    response_due = datetime.utcnow() + timedelta(days=7)
+    response_due = datetime.now(timezone.utc) + timedelta(days=7)
 
     cb = ChargebackCase(
         venue_id=venue_id,
@@ -441,7 +441,7 @@ async def record_chargeback(
         last_four_digits=last_four,
         status="received",
         response_due_date=response_due,
-        created_at=datetime.utcnow()
+        created_at=datetime.now(timezone.utc)
     )
 
     db.add(cb)
@@ -523,12 +523,12 @@ async def submit_chargeback_evidence(
             evidence_type=ev.get("type"),
             description=ev.get("description"),
             file_url=ev.get("file_url"),
-            submitted_at=datetime.utcnow()
+            submitted_at=datetime.now(timezone.utc)
         )
         db.add(evidence_record)
 
     cb.status = "evidence_submitted"
-    cb.evidence_submitted_at = datetime.utcnow()
+    cb.evidence_submitted_at = datetime.now(timezone.utc)
 
     db.commit()
     db.refresh(cb)
@@ -560,7 +560,7 @@ async def resolve_chargeback(
 
     cb.status = "won" if won else "lost"
     cb.resolution_notes = notes
-    cb.resolved_at = datetime.utcnow()
+    cb.resolved_at = datetime.now(timezone.utc)
 
     db.commit()
     db.refresh(cb)
@@ -576,7 +576,7 @@ async def get_chargeback_analytics(
     db: Session = Depends(get_db)
 ):
     """Get chargeback analytics from database"""
-    cutoff = datetime.utcnow() - timedelta(days=days)
+    cutoff = datetime.now(timezone.utc) - timedelta(days=days)
 
     chargebacks = db.query(ChargebackCase).filter(
         ChargebackCase.venue_id == venue_id,
@@ -626,13 +626,13 @@ async def configure_taxes(
 
     if config:
         config.tax_rates = rates
-        config.updated_at = datetime.utcnow()
+        config.updated_at = datetime.now(timezone.utc)
     else:
         config = TaxConfiguration(
             venue_id=venue_id,
             tax_rates=rates,
             is_active=True,
-            created_at=datetime.utcnow()
+            created_at=datetime.now(timezone.utc)
         )
         db.add(config)
 
@@ -669,7 +669,7 @@ async def generate_tax_summary(
         gross_sales=Decimal(str(gross_sales)),
         net_sales=Decimal(str(net_sales)),
         tax_collected=Decimal(str(tax_collected)),
-        created_at=datetime.utcnow()
+        created_at=datetime.now(timezone.utc)
     )
 
     db.add(summary)
@@ -808,7 +808,7 @@ async def start_onboarding(
         status="in_progress",
         assigned_tasks=default_tasks,
         completed_tasks=[],
-        created_at=datetime.utcnow()
+        created_at=datetime.now(timezone.utc)
     )
 
     db.add(onboarding)
@@ -850,7 +850,7 @@ async def complete_onboarding_task(
     assigned = onboarding.assigned_tasks or []
     if len(completed) >= len(assigned):
         onboarding.status = "completed"
-        onboarding.completed_at = datetime.utcnow()
+        onboarding.completed_at = datetime.now(timezone.utc)
 
     db.commit()
     db.refresh(onboarding)
@@ -1024,7 +1024,7 @@ async def create_manual_pairing(
         pairing_type=pairing_type,
         reason=reason,
         is_active=True,
-        created_at=datetime.utcnow()
+        created_at=datetime.now(timezone.utc)
     )
 
     db.add(rule)
@@ -1064,7 +1064,7 @@ async def configure_third_party_cards(
             accepted_providers=accepted_providers,
             exchange_rates=rates,
             is_active=True,
-            created_at=datetime.utcnow()
+            created_at=datetime.now(timezone.utc)
         )
         db.add(config)
 
@@ -1140,7 +1140,7 @@ async def redeem_third_party_card(
         order_id=order_id_int,
         amount_applied=Decimal(str(amount_to_apply)),
         status="completed",
-        transaction_date=datetime.utcnow()
+        transaction_date=datetime.now(timezone.utc)
     )
 
     db.add(transaction)
@@ -1189,7 +1189,7 @@ async def create_table_block(
         created_by_id=created_by_int,
         is_recurring=recurring,
         status="active",
-        created_at=datetime.utcnow()
+        created_at=datetime.now(timezone.utc)
     )
 
     db.add(block)
@@ -1302,7 +1302,7 @@ async def cancel_table_block(
         raise HTTPException(status_code=404, detail="Block not found")
 
     block.status = "cancelled"
-    block.cancelled_at = datetime.utcnow()
+    block.cancelled_at = datetime.now(timezone.utc)
 
     db.commit()
     db.refresh(block)

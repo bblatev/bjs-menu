@@ -1,5 +1,5 @@
 """Promo Codes and Smart Ordering V5 Service"""
-from datetime import datetime, date, timedelta
+from datetime import datetime, date, timedelta, timezone
 from typing import List, Dict, Optional, Any
 from sqlalchemy.orm import Session
 from decimal import Decimal
@@ -41,10 +41,10 @@ class PromoAndOrderingV5Service:
                 "discount_value": discount_value,
                 "minimum_order": minimum_order,
                 "max_discount": max_discount,
-                "valid_from": (valid_from or datetime.utcnow()).isoformat(),
+                "valid_from": (valid_from or datetime.now(timezone.utc)).isoformat(),
                 "valid_until": valid_until.isoformat() if valid_until else None,
                 "is_used": False,
-                "created_at": datetime.utcnow().isoformat()
+                "created_at": datetime.now(timezone.utc).isoformat()
             }
             codes.append(promo)
         
@@ -71,7 +71,7 @@ class PromoAndOrderingV5Service:
         if promo["is_used"]:
             return {"valid": False, "error": "This code has already been used"}
         
-        if promo["valid_until"] and datetime.fromisoformat(promo["valid_until"]) < datetime.utcnow():
+        if promo["valid_until"] and datetime.fromisoformat(promo["valid_until"]) < datetime.now(timezone.utc):
             return {"valid": False, "error": "This code has expired"}
         
         if promo["minimum_order"] and float(order_total) < promo["minimum_order"]:
@@ -106,7 +106,7 @@ class PromoAndOrderingV5Service:
             "discount_value": 15,
             "minimum_order": 30.00,
             "max_discount": 20.00,
-            "valid_until": (datetime.utcnow() + timedelta(days=30)).isoformat(),
+            "valid_until": (datetime.now(timezone.utc) + timedelta(days=30)).isoformat(),
             "is_used": False
         }
     
@@ -120,7 +120,7 @@ class PromoAndOrderingV5Service:
             "code": code,
             "order_id": order_id,
             "is_used": True,
-            "used_at": datetime.utcnow().isoformat()
+            "used_at": datetime.now(timezone.utc).isoformat()
         }
     
     async def get_promo_code_stats(
@@ -164,7 +164,7 @@ class PromoAndOrderingV5Service:
         load_multiplier = 1 + (current_load / 100) * 0.5  # 50% max increase at full load
         
         # Adjust for time of day
-        hour = datetime.utcnow().hour
+        hour = datetime.now(timezone.utc).hour
         time_multiplier = 1.2 if 12 <= hour <= 14 or 18 <= hour <= 21 else 1.0
         
         estimated_minutes = int(base_time * load_multiplier * time_multiplier)
@@ -179,7 +179,7 @@ class PromoAndOrderingV5Service:
                 "min": min_time,
                 "max": max_time
             },
-            "ready_by": (datetime.utcnow() + timedelta(minutes=estimated_minutes)).isoformat(),
+            "ready_by": (datetime.now(timezone.utc) + timedelta(minutes=estimated_minutes)).isoformat(),
             "confidence": 85,
             "factors": {
                 "base_prep_time": base_time,
@@ -192,7 +192,7 @@ class PromoAndOrderingV5Service:
     async def _get_current_kitchen_load(self, venue_id: int) -> int:
         """Get current kitchen load percentage"""
         # In production: Count active orders in kitchen
-        hour = datetime.utcnow().hour
+        hour = datetime.now(timezone.utc).hour
         if 12 <= hour <= 14 or 18 <= hour <= 21:
             return 75
         return 40
@@ -231,7 +231,7 @@ class PromoAndOrderingV5Service:
             "new_sample": actual_prep_time,
             "updated_avg": 17,
             "sample_size": 150,
-            "updated_at": datetime.utcnow().isoformat()
+            "updated_at": datetime.now(timezone.utc).isoformat()
         }
     
     async def get_prep_time_analytics(

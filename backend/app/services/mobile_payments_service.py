@@ -16,7 +16,7 @@ Features:
 - PCI compliance
 """
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Optional, List, Dict, Any
 from sqlalchemy.orm import Session
 import uuid
@@ -91,8 +91,8 @@ class MobilePaymentsService:
             "currency": currency,
             "merchant_id": merchant_id,
             "status": "created",
-            "created_at": datetime.utcnow().isoformat(),
-            "expires_at": (datetime.utcnow() + timedelta(minutes=10)).isoformat(),
+            "created_at": datetime.now(timezone.utc).isoformat(),
+            "expires_at": (datetime.now(timezone.utc) + timedelta(minutes=10)).isoformat(),
             "payment_method": PaymentMethod.APPLE_PAY.value
         }
         
@@ -131,7 +131,7 @@ class MobilePaymentsService:
         payment = self._payments[session_id]
         
         # Verify session hasn't expired
-        if datetime.utcnow() > datetime.fromisoformat(payment["expires_at"]):
+        if datetime.now(timezone.utc) > datetime.fromisoformat(payment["expires_at"]):
             return {"success": False, "error": "Session expired"}
         
         # Process payment (would call payment gateway)
@@ -139,7 +139,7 @@ class MobilePaymentsService:
         
         payment["status"] = PaymentStatus.CAPTURED.value
         payment["transaction_id"] = transaction_id
-        payment["completed_at"] = datetime.utcnow().isoformat()
+        payment["completed_at"] = datetime.now(timezone.utc).isoformat()
         payment["card_last_four"] = payment_token.get("paymentData", {}).get("last4", "****")
         payment["card_brand"] = payment_token.get("paymentData", {}).get("network", "unknown")
         
@@ -171,8 +171,8 @@ class MobilePaymentsService:
             "currency": currency,
             "merchant_id": merchant_id,
             "status": "created",
-            "created_at": datetime.utcnow().isoformat(),
-            "expires_at": (datetime.utcnow() + timedelta(minutes=10)).isoformat(),
+            "created_at": datetime.now(timezone.utc).isoformat(),
+            "expires_at": (datetime.now(timezone.utc) + timedelta(minutes=10)).isoformat(),
             "payment_method": PaymentMethod.GOOGLE_PAY.value
         }
         
@@ -226,7 +226,7 @@ class MobilePaymentsService:
         
         payment["status"] = PaymentStatus.CAPTURED.value
         payment["transaction_id"] = transaction_id
-        payment["completed_at"] = datetime.utcnow().isoformat()
+        payment["completed_at"] = datetime.now(timezone.utc).isoformat()
         
         return {
             "success": True,
@@ -248,7 +248,7 @@ class MobilePaymentsService:
     ) -> Dict[str, Any]:
         """Generate QR code / link for pay at table"""
         payment_token = hashlib.sha256(
-            f"{order_id}-{table_id}-{datetime.utcnow().timestamp()}".encode()
+            f"{order_id}-{table_id}-{datetime.now(timezone.utc).timestamp()}".encode()
         ).hexdigest()[:16]
         
         link = f"https://pay.bjsbar.com/t/{payment_token}"
@@ -261,8 +261,8 @@ class MobilePaymentsService:
             "include_tip": include_tip,
             "tip_presets": self._tip_presets if include_tip else [],
             "status": "pending",
-            "created_at": datetime.utcnow().isoformat(),
-            "expires_at": (datetime.utcnow() + timedelta(hours=2)).isoformat()
+            "created_at": datetime.now(timezone.utc).isoformat(),
+            "expires_at": (datetime.now(timezone.utc) + timedelta(hours=2)).isoformat()
         }
         
         self._payments[payment_token] = session
@@ -287,7 +287,7 @@ class MobilePaymentsService:
         
         payment = self._payments[payment_token]
         
-        if datetime.utcnow() > datetime.fromisoformat(payment["expires_at"]):
+        if datetime.now(timezone.utc) > datetime.fromisoformat(payment["expires_at"]):
             return {"success": False, "error": "Payment link expired"}
         
         # Would fetch actual order details
@@ -333,7 +333,7 @@ class MobilePaymentsService:
         payment["tip_amount"] = tip
         payment["total_charged"] = total
         payment["transaction_id"] = transaction_id
-        payment["completed_at"] = datetime.utcnow().isoformat()
+        payment["completed_at"] = datetime.now(timezone.utc).isoformat()
         
         return {
             "success": True,
@@ -362,7 +362,7 @@ class MobilePaymentsService:
             "order_id": order_id,
             "amount": amount,
             "status": "awaiting_tap",
-            "created_at": datetime.utcnow().isoformat(),
+            "created_at": datetime.now(timezone.utc).isoformat(),
             "timeout_seconds": 60
         }
         
@@ -393,7 +393,7 @@ class MobilePaymentsService:
         payment["transaction_id"] = transaction_id
         payment["card_last_four"] = card_data.get("last_four", "****")
         payment["card_brand"] = card_data.get("brand", "unknown")
-        payment["completed_at"] = datetime.utcnow().isoformat()
+        payment["completed_at"] = datetime.now(timezone.utc).isoformat()
         
         return {
             "success": True,
@@ -421,8 +421,8 @@ class MobilePaymentsService:
             "card_token": card_token[:8] + "****",
             "amount": amount,
             "status": "authorized",
-            "created_at": datetime.utcnow().isoformat(),
-            "expires_at": (datetime.utcnow() + timedelta(days=hold_days)).isoformat(),
+            "created_at": datetime.now(timezone.utc).isoformat(),
+            "expires_at": (datetime.now(timezone.utc) + timedelta(days=hold_days)).isoformat(),
             "captured_amount": 0
         }
         
@@ -451,7 +451,7 @@ class MobilePaymentsService:
         if pre_auth["status"] != "authorized":
             return {"success": False, "error": f"Auth is {pre_auth['status']}"}
         
-        if datetime.utcnow() > datetime.fromisoformat(pre_auth["expires_at"]):
+        if datetime.now(timezone.utc) > datetime.fromisoformat(pre_auth["expires_at"]):
             return {"success": False, "error": "Authorization expired"}
         
         amount = capture_amount or pre_auth["amount"]
@@ -463,7 +463,7 @@ class MobilePaymentsService:
         pre_auth["status"] = "captured"
         pre_auth["captured_amount"] = total
         pre_auth["tip_amount"] = tip_amount
-        pre_auth["captured_at"] = datetime.utcnow().isoformat()
+        pre_auth["captured_at"] = datetime.now(timezone.utc).isoformat()
         
         transaction_id = f"TXN-{uuid.uuid4().hex[:10].upper()}"
         
@@ -491,7 +491,7 @@ class MobilePaymentsService:
             return {"success": False, "error": f"Auth is {pre_auth['status']}"}
         
         pre_auth["status"] = "voided"
-        pre_auth["voided_at"] = datetime.utcnow().isoformat()
+        pre_auth["voided_at"] = datetime.now(timezone.utc).isoformat()
         pre_auth["void_reason"] = reason
         
         return {
@@ -572,7 +572,7 @@ class MobilePaymentsService:
                 "payer_name": split.get("name", f"Payer {i+1}"),
                 "amount": split["amount"],
                 "status": "pending",
-                "created_at": datetime.utcnow().isoformat()
+                "created_at": datetime.now(timezone.utc).isoformat()
             }
             self._payments[session_id] = session
             payment_sessions.append({
@@ -610,7 +610,7 @@ class MobilePaymentsService:
         receipt = {
             "receipt_id": f"RCP-{uuid.uuid4().hex[:8].upper()}",
             "transaction_id": transaction_id,
-            "date": payment.get("completed_at", datetime.utcnow().isoformat()),
+            "date": payment.get("completed_at", datetime.now(timezone.utc).isoformat()),
             "merchant": {
                 "name": "BJ's Bar",
                 "address": "Borovets Ski Resort, Bulgaria",
@@ -622,13 +622,13 @@ class MobilePaymentsService:
                 "tip": payment.get("tip_amount", 0),
                 "total": payment.get("total_charged", payment.get("amount"))
             },
-            "generated_at": datetime.utcnow().isoformat()
+            "generated_at": datetime.now(timezone.utc).isoformat()
         }
         
         if send_to:
             # Would send via email/SMS
             receipt["sent_to"] = send_to
-            receipt["sent_at"] = datetime.utcnow().isoformat()
+            receipt["sent_at"] = datetime.now(timezone.utc).isoformat()
         
         return {
             "success": True,

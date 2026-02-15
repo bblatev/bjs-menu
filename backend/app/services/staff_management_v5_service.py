@@ -1,5 +1,5 @@
 """Staff Management V5 Service - Break Management, Shift Trading, Employee Onboarding"""
-from datetime import datetime, date, time, timedelta
+from datetime import datetime, date, timezone, time, timedelta
 from typing import List, Dict, Optional, Any
 from sqlalchemy.orm import Session
 import secrets
@@ -35,7 +35,7 @@ class StaffManagementV5Service:
             "duration_minutes": duration_minutes,
             "is_paid": is_paid,
             "status": "scheduled",
-            "created_at": datetime.utcnow().isoformat()
+            "created_at": datetime.now(timezone.utc).isoformat()
         }
         return break_record
     
@@ -43,13 +43,13 @@ class StaffManagementV5Service:
         """Clock in for break"""
         return {
             "break_id": break_id,
-            "actual_start": datetime.utcnow().isoformat(),
+            "actual_start": datetime.now(timezone.utc).isoformat(),
             "status": "in_progress"
         }
     
     async def end_break(self, break_id: int) -> Dict[str, Any]:
         """Clock out from break"""
-        actual_end = datetime.utcnow()
+        actual_end = datetime.now(timezone.utc)
         # In production: Get actual_start from DB
         actual_start = actual_end - timedelta(minutes=15)
         actual_duration = int((actual_end - actual_start).total_seconds() / 60)
@@ -131,8 +131,8 @@ class StaffManagementV5Service:
             "offered_shift_id": offered_shift_id,
             "reason": reason,
             "status": "pending",
-            "expires_at": (datetime.utcnow() + timedelta(hours=48)).isoformat(),
-            "created_at": datetime.utcnow().isoformat()
+            "expires_at": (datetime.now(timezone.utc) + timedelta(hours=48)).isoformat(),
+            "created_at": datetime.now(timezone.utc).isoformat()
         }
         return request
     
@@ -153,7 +153,7 @@ class StaffManagementV5Service:
             "responded_by": staff_id,
             "response": response,
             "status": status,
-            "responded_at": datetime.utcnow().isoformat()
+            "responded_at": datetime.now(timezone.utc).isoformat()
         }
     
     async def approve_trade_request(
@@ -170,7 +170,7 @@ class StaffManagementV5Service:
             "approved_by": manager_id,
             "approved": approved,
             "status": status,
-            "approved_at": datetime.utcnow().isoformat()
+            "approved_at": datetime.now(timezone.utc).isoformat()
         }
         
         if approved:
@@ -194,7 +194,7 @@ class StaffManagementV5Service:
                 "position": "Server",
                 "trade_type": "giveaway",
                 "reason": "Personal appointment",
-                "expires_at": (datetime.utcnow() + timedelta(hours=24)).isoformat()
+                "expires_at": (datetime.now(timezone.utc) + timedelta(hours=24)).isoformat()
             }
         ]
     
@@ -259,7 +259,7 @@ class StaffManagementV5Service:
                 "name_badge": False,
                 "login_credentials": False
             },
-            "created_at": datetime.utcnow().isoformat()
+            "created_at": datetime.now(timezone.utc).isoformat()
         }
         return onboarding
     
@@ -276,7 +276,7 @@ class StaffManagementV5Service:
             "category": category,
             "item": item,
             "completed": completed,
-            "updated_at": datetime.utcnow().isoformat()
+            "updated_at": datetime.now(timezone.utc).isoformat()
         }
     
     async def get_onboarding_progress(
@@ -332,7 +332,7 @@ class StaffManagementV5Service:
         return {
             "onboarding_id": onboarding_id,
             "status": "completed",
-            "completed_at": datetime.utcnow().isoformat(),
+            "completed_at": datetime.now(timezone.utc).isoformat(),
             "employee_active": True
         }
     
@@ -377,5 +377,5 @@ class StaffManagementV5Service:
             "onboarding_id": onboarding_id,
             "reminder_sent": True,
             "incomplete_items": incomplete_items,
-            "sent_at": datetime.utcnow().isoformat()
+            "sent_at": datetime.now(timezone.utc).isoformat()
         }

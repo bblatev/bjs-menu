@@ -13,7 +13,7 @@ Features:
 - Custom benchmarks
 """
 
-from datetime import datetime, timedelta, date
+from datetime import datetime, timedelta, timezone, date
 from typing import Optional, List, Dict, Any
 from sqlalchemy.orm import Session
 import uuid
@@ -179,7 +179,7 @@ class BenchmarkingService:
             "comparisons": comparisons,
             "overall_percentile": round(avg_percentile, 1),
             "overall_status": "excellent" if avg_percentile >= 75 else "good" if avg_percentile >= 50 else "needs_improvement",
-            "generated_at": datetime.utcnow().isoformat()
+            "generated_at": datetime.now(timezone.utc).isoformat()
         }
     
     def _calculate_percentile(self, value: float, percentiles: Dict[str, float]) -> int:
@@ -229,7 +229,7 @@ class BenchmarkingService:
             "venue_id": venue_id,
             "region": region,
             "comparisons": comparisons,
-            "generated_at": datetime.utcnow().isoformat()
+            "generated_at": datetime.now(timezone.utc).isoformat()
         }
     
     # ========== PEER GROUP COMPARISONS ==========
@@ -247,7 +247,7 @@ class BenchmarkingService:
             "name": name,
             "criteria": criteria,
             "member_count": 0,
-            "created_at": datetime.utcnow().isoformat()
+            "created_at": datetime.now(timezone.utc).isoformat()
         }
         
         # Simulate matching restaurants based on criteria
@@ -285,7 +285,7 @@ class BenchmarkingService:
         peer_group = self._peer_groups[group_id]
 
         # Calculate time period boundaries
-        end_date = datetime.utcnow()
+        end_date = datetime.now(timezone.utc)
         if time_period == "week":
             start_date = end_date - timedelta(days=7)
         elif time_period == "month":
@@ -387,7 +387,7 @@ class BenchmarkingService:
                 "sales_vs_peers": f"{sales_vs_peers:+.1f}%",
                 "efficiency_vs_peers": f"{efficiency_vs_peers:+.1f}%"
             },
-            "generated_at": datetime.utcnow().isoformat()
+            "generated_at": datetime.now(timezone.utc).isoformat()
         }
     
     # ========== PERFORMANCE ANALYSIS ==========
@@ -475,7 +475,7 @@ class BenchmarkingService:
             "insights": insights,
             "opportunities": opportunities,
             "summary": f"Found {len(insights)} areas for attention and {len(opportunities)} improvement opportunities",
-            "generated_at": datetime.utcnow().isoformat()
+            "generated_at": datetime.now(timezone.utc).isoformat()
         }
     
     # ========== GOAL SETTING ==========
@@ -540,7 +540,7 @@ class BenchmarkingService:
         # Check if goal achieved
         if current_value >= target:
             db_goal.status = "achieved"
-            db_goal.achieved_at = datetime.utcnow()
+            db_goal.achieved_at = datetime.now(timezone.utc)
 
         self.db.commit()
 
@@ -630,7 +630,7 @@ class BenchmarkingService:
         else:
             months = 6
 
-        end_date = datetime.utcnow()
+        end_date = datetime.now(timezone.utc)
         start_date = end_date - timedelta(days=30 * months)
 
         # Get venue's stations
@@ -725,7 +725,7 @@ class BenchmarkingService:
             "venue_id": venue_id,
             "period": period,
             "trends": trends,
-            "generated_at": datetime.utcnow().isoformat()
+            "generated_at": datetime.now(timezone.utc).isoformat()
         }
     
     # ========== LEADERBOARDS ==========
@@ -742,7 +742,7 @@ class BenchmarkingService:
         from sqlalchemy import func
 
         # Calculate time period (last 30 days)
-        end_date = datetime.utcnow()
+        end_date = datetime.now(timezone.utc)
         start_date = end_date - timedelta(days=30)
 
         leaderboard = []
@@ -884,5 +884,5 @@ class BenchmarkingService:
             "leaderboard": leaderboard[:limit],
             "your_position": your_rank,
             "total_participants": len(leaderboard),
-            "generated_at": datetime.utcnow().isoformat()
+            "generated_at": datetime.now(timezone.utc).isoformat()
         }

@@ -12,7 +12,7 @@ Features:
 """
 
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import List, Dict, Optional, Any
 from sqlalchemy.orm import Session
 from enum import Enum
@@ -60,7 +60,7 @@ class TrueOfflineService:
         Check current connectivity status across all services and optionally log changes
         """
         connectivity = {
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
             "internet": self._check_internet(),
             "payment_gateway": self._check_payment_gateway(),
             "database_primary": self._check_primary_database(),
@@ -253,7 +253,7 @@ class TrueOfflineService:
             "total": 0,  # Calculated on sync
             "status": "new",
             "created_offline": True,
-            "created_at": datetime.utcnow().isoformat(),
+            "created_at": datetime.now(timezone.utc).isoformat(),
             "synced": False,
             "sync_status": SyncStatus.PENDING.value
         }
@@ -291,7 +291,7 @@ class TrueOfflineService:
         
         # Apply modifications
         modified = {**original, **modifications}
-        modified["modified_at"] = datetime.utcnow().isoformat()
+        modified["modified_at"] = datetime.now(timezone.utc).isoformat()
         modified["modification_count"] = original.get("modification_count", 0) + 1
         
         # Recalculate totals if items changed
@@ -334,7 +334,7 @@ class TrueOfflineService:
             "order_offline_id": offline_order_id,
             "payment_method": payment_method,
             "amount": amount,
-            "created_at": datetime.utcnow().isoformat(),
+            "created_at": datetime.now(timezone.utc).isoformat(),
             "synced": False,
             "sync_status": SyncStatus.PENDING.value
         }
@@ -513,7 +513,7 @@ class TrueOfflineService:
 
         from app.models import OfflineConnectivityLog
 
-        started_at = datetime.utcnow()
+        started_at = datetime.now(timezone.utc)
 
         results = {
             "started_at": started_at.isoformat(),
@@ -600,10 +600,10 @@ class TrueOfflineService:
                 results["errors"].append({
                     "transaction_id": transaction.get("offline_id"),
                     "error": str(e),
-                    "timestamp": datetime.utcnow().isoformat()
+                    "timestamp": datetime.now(timezone.utc).isoformat()
                 })
 
-        results["completed_at"] = datetime.utcnow().isoformat()
+        results["completed_at"] = datetime.now(timezone.utc).isoformat()
         results["success"] = True
 
         # Calculate total synced and errors
@@ -760,7 +760,7 @@ class TrueOfflineService:
                     # auth_success = auth_result.get("approved", False)
 
                     # Simulated for now
-                    auth_code = f"AUTH{datetime.utcnow().strftime('%H%M%S')}"
+                    auth_code = f"AUTH{datetime.now(timezone.utc).strftime('%H%M%S')}"
                     auth_success = True
                 else:
                     auth_code = payment_data.get("offline_authorization_code", "OFFLINE")
@@ -826,7 +826,7 @@ class TrueOfflineService:
                 if order:
                     order.status = "cancelled"
                     order.cancel_reason = void_data.get("reason", "Voided offline")
-                    order.cancelled_at = datetime.utcnow()
+                    order.cancelled_at = datetime.now(timezone.utc)
                     self.db.commit()
                     return {"success": True, "order_id": order_id}
             
@@ -860,7 +860,7 @@ class TrueOfflineService:
                         quantity=quantity_change,
                         movement_type=movement.get("type", "adjustment"),
                         reason=f"Synced from offline: {movement.get('reason', '')}",
-                        created_at=datetime.utcnow()
+                        created_at=datetime.now(timezone.utc)
                     )
                     self.db.add(stock_movement)
             
@@ -932,7 +932,7 @@ class TrueOfflineService:
                 tx.conflict_resolved = True
                 tx.resolution_type = "keep_local"
                 tx.resolved_by = resolved_by
-                tx.resolved_at = datetime.utcnow()
+                tx.resolved_at = datetime.now(timezone.utc)
                 # Add force flag to transaction data
                 tx.transaction_data["force_sync"] = True
 
@@ -943,7 +943,7 @@ class TrueOfflineService:
                 tx.conflict_resolved = True
                 tx.resolution_type = "keep_server"
                 tx.resolved_by = resolved_by
-                tx.resolved_at = datetime.utcnow()
+                tx.resolved_at = datetime.now(timezone.utc)
                 tx.transaction_data["discarded"] = True
 
             elif resolution == "merge":
@@ -961,7 +961,7 @@ class TrueOfflineService:
                 tx.conflict_resolved = True
                 tx.resolution_type = "merge"
                 tx.resolved_by = resolved_by
-                tx.resolved_at = datetime.utcnow()
+                tx.resolved_at = datetime.now(timezone.utc)
 
             else:
                 return {"success": False, "error": f"Invalid resolution type: {resolution}"}
@@ -994,7 +994,7 @@ class TrueOfflineService:
         payments = [t for t in queue if t["type"] == OfflineTransactionType.PAYMENT.value]
         
         return {
-            "date": (shift_date or datetime.utcnow()).strftime("%Y-%m-%d"),
+            "date": (shift_date or datetime.now(timezone.utc)).strftime("%Y-%m-%d"),
             "total_offline_orders": len(orders),
             "total_offline_payments": len(payments),
             "offline_sales_total": sum(o.get("total", 0) for o in orders),
@@ -1023,7 +1023,7 @@ class TrueOfflineService:
     
     def _generate_offline_id(self, prefix: str) -> str:
         """Generate unique offline ID"""
-        timestamp = datetime.utcnow().strftime("%Y%m%d%H%M%S")
+        timestamp = datetime.now(timezone.utc).strftime("%Y%m%d%H%M%S")
         unique = uuid.uuid4().hex[:8].upper()
         return f"{prefix}-OFF-{timestamp}-{unique}"
     
@@ -1164,11 +1164,11 @@ class TrueOfflineService:
         if tx:
             tx.sync_status = status
             tx.sync_attempts += 1
-            tx.last_sync_attempt = datetime.utcnow()
+            tx.last_sync_attempt = datetime.now(timezone.utc)
 
             if status == "synced" and server_id:
                 tx.server_id = server_id
-                tx.synced_at = datetime.utcnow()
+                tx.synced_at = datetime.now(timezone.utc)
 
             if error:
                 # Store error in transaction_data
@@ -1194,7 +1194,7 @@ class TrueOfflineService:
             tx.has_conflict = True
             tx.conflict_type = conflict_type
             tx.conflict_details = conflict_details
-            tx.last_sync_attempt = datetime.utcnow()
+            tx.last_sync_attempt = datetime.now(timezone.utc)
             tx.sync_attempts += 1
 
             self.db.commit()
@@ -1288,7 +1288,7 @@ class TrueOfflineService:
                     event_type = "came_online"
                     # Calculate offline duration
                     if last_log and last_log.created_at:
-                        offline_duration = int((datetime.utcnow() - last_log.created_at).total_seconds())
+                        offline_duration = int((datetime.now(timezone.utc) - last_log.created_at).total_seconds())
 
                 elif current_mode == "offline" and previous_mode in ["online", "degraded", None]:
                     event_type = "went_offline"

@@ -15,7 +15,7 @@ Features:
 - Performance metrics
 """
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Optional, List, Dict, Any
 from sqlalchemy.orm import Session
 from sqlalchemy import func
@@ -282,7 +282,7 @@ class KitchenDisplayService:
         if ticket.status == TicketStatus.BUMPED.value:
             return {"success": False, "error": "Ticket already bumped"}
 
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         cook_time_seconds = int((now - ticket.created_at).total_seconds())
 
         # Update ticket
@@ -345,7 +345,7 @@ class KitchenDisplayService:
             return {"success": False, "error": "Ticket not found"}
 
         ticket.status = TicketStatus.RECALLED.value
-        ticket.recalled_at = datetime.utcnow()
+        ticket.recalled_at = datetime.now(timezone.utc)
         ticket.recall_reason = reason
         ticket.priority = 3  # Highest priority
 
@@ -386,7 +386,7 @@ class KitchenDisplayService:
             KDSTicket.course == course
         ).all()
 
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         fired_count = 0
 
         for ticket in tickets:
@@ -425,7 +425,7 @@ class KitchenDisplayService:
             return {"success": False, "error": "Ticket not found"}
 
         ticket.status = TicketStatus.IN_PROGRESS.value
-        ticket.started_at = datetime.utcnow()
+        ticket.started_at = datetime.now(timezone.utc)
         ticket.started_by = staff_id
 
         try:
@@ -509,7 +509,7 @@ class KitchenDisplayService:
             KDSTicket.created_at.asc()
         ).all()
 
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         target_time_seconds = (station.avg_cook_time_minutes or 10) * 60
 
         ticket_list = []
@@ -566,7 +566,7 @@ class KitchenDisplayService:
         from app.models.missing_features_models import KDSTicket
 
         # Get recently bumped tickets (last 30 minutes)
-        cutoff = datetime.utcnow() - timedelta(minutes=30)
+        cutoff = datetime.now(timezone.utc) - timedelta(minutes=30)
 
         tickets = self.db.query(KDSTicket).filter(
             KDSTicket.venue_id == venue_id,
@@ -622,7 +622,7 @@ class KitchenDisplayService:
 
         results = query.all()
 
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         alerts = []
 
         for ticket, station in results:
@@ -667,7 +667,7 @@ class KitchenDisplayService:
         ).all()
 
         station_list = []
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
 
         for station in stations:
             # Count active tickets
@@ -718,7 +718,7 @@ class KitchenDisplayService:
         """Get performance metrics for KDS"""
         from app.models.missing_features_models import KDSStation, KDSBumpHistory
 
-        cutoff = datetime.utcnow() - timedelta(hours=hours)
+        cutoff = datetime.now(timezone.utc) - timedelta(hours=hours)
 
         query = self.db.query(KDSBumpHistory).filter(
             KDSBumpHistory.venue_id == venue_id,

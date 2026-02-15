@@ -1,3 +1,4 @@
+from datetime import timezone
 """
 External Integrations API Endpoints
 Connect to accounting systems, suppliers, and third-party services
@@ -391,11 +392,11 @@ async def create_webhook(
     """Create a webhook configuration."""
     # In production, store in database
     return {
-        "webhook_id": f"wh_{datetime.utcnow().timestamp()}",
+        "webhook_id": f"wh_{datetime.now(timezone.utc).timestamp()}",
         "url": config.url,
         "events": config.events,
         "active": config.active,
-        "created_at": datetime.utcnow().isoformat()
+        "created_at": datetime.now(timezone.utc).isoformat()
     }
 
 
@@ -429,7 +430,7 @@ async def test_webhook(
         "webhook_id": webhook_id,
         "payload": {
             "event": "test",
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
             "venue_id": current_user.venue_id
         }
     }
@@ -514,7 +515,7 @@ async def get_oauth_url(
         raise HTTPException(status_code=400, detail="Unknown OAuth provider")
 
     config = oauth_configs[provider]
-    state = f"{current_user.venue_id}_{datetime.utcnow().timestamp()}"
+    state = f"{current_user.venue_id}_{datetime.now(timezone.utc).timestamp()}"
 
     return {
         "provider": provider,

@@ -12,7 +12,7 @@ Features:
 - Multi-location support
 """
 
-from datetime import datetime, timedelta, date
+from datetime import datetime, timedelta, timezone, date
 from typing import Optional, List, Dict, Any
 from sqlalchemy.orm import Session
 from sqlalchemy import or_, func
@@ -405,7 +405,7 @@ class HouseAccountService:
             "payments": payments,
             "aging": aging,
             "payment_terms": self._days_to_payment_terms(account.payment_terms or 30),
-            "generated_at": datetime.utcnow().isoformat()
+            "generated_at": datetime.now(timezone.utc).isoformat()
         }
 
         return statement
@@ -456,7 +456,7 @@ class HouseAccountService:
         return {
             "success": True,
             "venue_id": venue_id,
-            "generated_at": datetime.utcnow().isoformat(),
+            "generated_at": datetime.now(timezone.utc).isoformat(),
             "summary": {
                 "total_accounts_receivable": total_ar,
                 "aging_buckets": aging_buckets,
@@ -488,7 +488,7 @@ class HouseAccountService:
             "email": email,
             "phone": phone,
             "spending_limit": spending_limit,
-            "added_at": datetime.utcnow().isoformat(),
+            "added_at": datetime.now(timezone.utc).isoformat(),
             "is_active": True
         }
 

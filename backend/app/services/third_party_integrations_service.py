@@ -7,7 +7,7 @@ Competitor: Toast 7shifts, Square Homebase, MarginEdge, Zapier
 import hmac
 import hashlib
 import json
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, List, Optional, Tuple
 from uuid import UUID, uuid4
 from sqlalchemy import select, and_, or_, func, desc
@@ -52,7 +52,7 @@ class IntegrationCredentialService:
         if existing:
             existing.encrypted_credentials = encrypted_credentials
             existing.metadata = metadata or {}
-            existing.updated_at = datetime.utcnow()
+            existing.updated_at = datetime.now(timezone.utc)
             await self.db.commit()
             await self.db.refresh(existing)
             return existing
@@ -64,7 +64,7 @@ class IntegrationCredentialService:
             encrypted_credentials=encrypted_credentials,
             metadata=metadata or {},
             is_active=True,
-            created_at=datetime.utcnow()
+            created_at=datetime.now(timezone.utc)
         )
         self.db.add(credential)
         await self.db.commit()
@@ -467,7 +467,7 @@ class ZapierService:
             webhook_secret=webhook_secret,
             filters=filters or {},
             is_active=True,
-            created_at=datetime.utcnow()
+            created_at=datetime.now(timezone.utc)
         )
         self.db.add(webhook)
         await self.db.commit()
@@ -538,7 +538,7 @@ class ZapierService:
                 continue
 
             # Prepare payload with signature
-            timestamp = datetime.utcnow().isoformat()
+            timestamp = datetime.now(timezone.utc).isoformat()
             signed_payload = {
                 "event": event_type,
                 "timestamp": timestamp,
@@ -566,7 +566,7 @@ class ZapierService:
                     )
                     if response.status_code < 400:
                         results["triggered"] += 1
-                        webhook.last_triggered_at = datetime.utcnow()
+                        webhook.last_triggered_at = datetime.now(timezone.utc)
                         webhook.trigger_count = (webhook.trigger_count or 0) + 1
                     else:
                         results["failed"] += 1

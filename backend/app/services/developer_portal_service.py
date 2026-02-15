@@ -7,7 +7,7 @@ Competitor: Toast Developer Portal, Square Developer Platform, Clover App Market
 import logging
 import secrets
 import hashlib
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, List, Optional, Tuple
 from uuid import UUID, uuid4
 from sqlalchemy import select, and_, or_, func, desc
@@ -60,7 +60,7 @@ class DeveloperPortalService:
             tier="free",
             rate_limit_per_minute=60,
             rate_limit_per_day=10000,
-            created_at=datetime.utcnow()
+            created_at=datetime.now(timezone.utc)
         )
         self.db.add(developer)
         await self.db.commit()
@@ -75,7 +75,7 @@ class DeveloperPortalService:
         developer = result.scalar_one_or_none()
         if developer:
             developer.is_verified = True
-            developer.verified_at = datetime.utcnow()
+            developer.verified_at = datetime.now(timezone.utc)
             await self.db.commit()
             return True
         return False
@@ -168,7 +168,7 @@ class DeveloperPortalService:
         # Calculate expiry
         expires_at = None
         if expires_in_days:
-            expires_at = datetime.utcnow() + timedelta(days=expires_in_days)
+            expires_at = datetime.now(timezone.utc) + timedelta(days=expires_in_days)
 
         api_key = APIKey(
             id=uuid4(),
@@ -182,7 +182,7 @@ class DeveloperPortalService:
             rate_limit_per_minute=developer.rate_limit_per_minute,
             rate_limit_per_day=developer.rate_limit_per_day,
             expires_at=expires_at,
-            created_at=datetime.utcnow()
+            created_at=datetime.now(timezone.utc)
         )
         self.db.add(api_key)
         await self.db.commit()
@@ -212,11 +212,11 @@ class DeveloperPortalService:
             return None
 
         # Check expiry
-        if api_key.expires_at and api_key.expires_at < datetime.utcnow():
+        if api_key.expires_at and api_key.expires_at < datetime.now(timezone.utc):
             return None
 
         # Update last used
-        api_key.last_used_at = datetime.utcnow()
+        api_key.last_used_at = datetime.now(timezone.utc)
         await self.db.commit()
 
         return api_key
@@ -234,7 +234,7 @@ class DeveloperPortalService:
         api_key = result.scalar_one_or_none()
         if api_key:
             api_key.is_active = False
-            api_key.revoked_at = datetime.utcnow()
+            api_key.revoked_at = datetime.now(timezone.utc)
             await self.db.commit()
             return True
         return False
@@ -273,7 +273,7 @@ class DeveloperPortalService:
             response_body_size=response_body_size,
             error_message=error_message,
             ip_address=ip_address,
-            created_at=datetime.utcnow()
+            created_at=datetime.now(timezone.utc)
         )
         self.db.add(log)
         await self.db.commit()
@@ -353,7 +353,7 @@ class DeveloperPortalService:
         Check if API key has exceeded rate limits.
         Returns (is_allowed, rate_limit_info).
         """
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         minute_ago = now - timedelta(minutes=1)
         day_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
 
@@ -451,7 +451,7 @@ class MarketplaceService:
             install_count=0,
             avg_rating=0,
             review_count=0,
-            created_at=datetime.utcnow()
+            created_at=datetime.now(timezone.utc)
         )
         self.db.add(app)
         await self.db.commit()
@@ -476,7 +476,7 @@ class MarketplaceService:
             raise ValueError(f"Cannot submit app with status {app.status}")
 
         app.status = AppStatus.PENDING_REVIEW
-        app.submitted_at = datetime.utcnow()
+        app.submitted_at = datetime.now(timezone.utc)
         await self.db.commit()
         await self.db.refresh(app)
         return app
@@ -491,7 +491,7 @@ class MarketplaceService:
             raise ValueError("App not found")
 
         app.status = AppStatus.APPROVED
-        app.published_at = datetime.utcnow()
+        app.published_at = datetime.now(timezone.utc)
         await self.db.commit()
         await self.db.refresh(app)
         return app
@@ -615,7 +615,7 @@ class MarketplaceService:
             granted_scopes=granted_scopes,
             is_active=True,
             billing_cycle=billing_cycle,
-            installed_at=datetime.utcnow()
+            installed_at=datetime.now(timezone.utc)
         )
         self.db.add(installation)
 
@@ -646,7 +646,7 @@ class MarketplaceService:
             return False
 
         installation.is_active = False
-        installation.uninstalled_at = datetime.utcnow()
+        installation.uninstalled_at = datetime.now(timezone.utc)
 
         # Update install count
         app_result = await self.db.execute(
@@ -715,7 +715,7 @@ class MarketplaceService:
             existing.rating = rating
             existing.title = title
             existing.body = body
-            existing.updated_at = datetime.utcnow()
+            existing.updated_at = datetime.now(timezone.utc)
             await self.db.commit()
             await self._update_app_rating(app_id)
             await self.db.refresh(existing)
@@ -731,7 +731,7 @@ class MarketplaceService:
             title=title,
             body=body,
             is_verified=True,
-            created_at=datetime.utcnow()
+            created_at=datetime.now(timezone.utc)
         )
         self.db.add(review)
         await self.db.commit()
@@ -802,7 +802,7 @@ class MarketplaceService:
 
         webhook_payload = {
             "event": event_type,
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
             "venue_id": str(installation.venue_id),
             "installation_id": str(installation.id),
             "data": payload

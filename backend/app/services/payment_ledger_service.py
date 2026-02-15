@@ -10,7 +10,7 @@ when LEDGER_ENABLED feature flag is active.
 
 import hashlib
 import uuid
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 from typing import Optional, Dict, Any, Tuple
 
@@ -111,7 +111,7 @@ class PaymentLedgerService:
             description=description,
             extra_data=metadata,
             previous_entry_id=previous_entry.id if previous_entry else None,
-            business_date=datetime.utcnow(),
+            business_date=datetime.now(timezone.utc),
         )
 
         self.db.add(entry)
@@ -175,7 +175,7 @@ class PaymentLedgerService:
             description=reason or "Refund",
             extra_data={"original_payment_id": original_payment_id},
             previous_entry_id=previous_entry.id if previous_entry else None,
-            business_date=datetime.utcnow(),
+            business_date=datetime.now(timezone.utc),
         )
 
         self.db.add(entry)
@@ -236,7 +236,7 @@ class PaymentLedgerService:
         # Create alert
         alert = CashVarianceAlert(
             venue_id=venue_id,
-            business_date=datetime.utcnow(),
+            business_date=datetime.now(timezone.utc),
             shift_id=shift_id,
             drawer_id=drawer_id,
             expected_amount_cents=expected_cents,
@@ -274,7 +274,7 @@ class PaymentLedgerService:
                     "shift_id": shift_id,
                 },
                 previous_entry_id=previous_entry.id if previous_entry else None,
-                business_date=datetime.utcnow(),
+                business_date=datetime.now(timezone.utc),
             )
             self.db.add(entry)
 
@@ -353,10 +353,10 @@ class PaymentLedgerService:
 
     def _generate_entry_number(self, venue_id: int) -> str:
         """Generate sequential entry number."""
-        today = datetime.utcnow().strftime("%Y%m%d")
+        today = datetime.now(timezone.utc).strftime("%Y%m%d")
         count = self.db.query(PaymentLedgerEntry).filter(
             PaymentLedgerEntry.venue_id == venue_id,
-            func.date(PaymentLedgerEntry.created_at) == datetime.utcnow().date()
+            func.date(PaymentLedgerEntry.created_at) == datetime.now(timezone.utc).date()
         ).count()
         return f"PAY-{today}-{count + 1:05d}"
 
@@ -368,7 +368,7 @@ class PaymentLedgerService:
         existing = self.db.query(IdempotencyKey).filter(
             IdempotencyKey.key == key,
             IdempotencyKey.is_completed == True,
-            IdempotencyKey.expires_at > datetime.utcnow()
+            IdempotencyKey.expires_at > datetime.now(timezone.utc)
         ).first()
 
         if existing and existing.ledger_entry_id:
@@ -390,8 +390,8 @@ class PaymentLedgerService:
             request_hash=hashlib.sha256(key.encode()).hexdigest(),
             is_processing=False,
             is_completed=True,
-            completed_at=datetime.utcnow(),
-            expires_at=datetime.utcnow() + timedelta(hours=24),
+            completed_at=datetime.now(timezone.utc),
+            expires_at=datetime.now(timezone.utc) + timedelta(hours=24),
             ledger_entry_id=entry.id,
         )
         self.db.add(idemp)

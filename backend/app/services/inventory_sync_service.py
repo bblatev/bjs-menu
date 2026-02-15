@@ -4,7 +4,7 @@ Automatically deducts stock when orders are placed
 """
 from sqlalchemy.orm import Session
 from typing import Dict, Any, List
-from datetime import datetime
+from datetime import datetime, timezone
 import logging
 
 from app.models import (
@@ -144,7 +144,7 @@ class OrderInventorySyncService:
                 reference_type="order",
                 reference_id=order_id,
                 notes=f"Auto-deducted for order #{order_id}",
-                created_at=datetime.utcnow()
+                created_at=datetime.now(timezone.utc)
             )
             self.db.add(movement)
 
@@ -193,7 +193,7 @@ class OrderInventorySyncService:
                     reference_type="order",
                     reference_id=order_id,
                     notes=f"Reversed for cancelled order #{order_id}",
-                    created_at=datetime.utcnow()
+                    created_at=datetime.now(timezone.utc)
                 )
                 self.db.add(reversal)
 

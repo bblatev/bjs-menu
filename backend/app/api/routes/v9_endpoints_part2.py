@@ -6,7 +6,7 @@ Financial Controls, CRM, IoT, Compliance, AI, Legal/Training/Crisis, Platform/QR
 from fastapi import APIRouter, Depends, HTTPException, Query, BackgroundTasks, UploadFile, File, Request
 from sqlalchemy.orm import Session
 from typing import List, Optional, Dict, Any
-from datetime import datetime, date, timedelta
+from datetime import datetime, date, timedelta, timezone
 from decimal import Decimal
 
 from app.db.session import get_db
@@ -290,7 +290,7 @@ async def update_clv_from_order(
         guest_id=customer_id,
         venue_id=venue_id,
         order_total=order.total or Decimal("0"),
-        order_date=order.created_at or datetime.utcnow()
+        order_date=order.created_at or datetime.now(timezone.utc)
     )
 
 
@@ -504,7 +504,7 @@ async def get_temperature_history(
 ):
     """Get temperature history for a venue/device"""
     from datetime import timedelta
-    start = datetime.utcnow() - timedelta(hours=hours)
+    start = datetime.now(timezone.utc) - timedelta(hours=hours)
     return TemperatureMonitoringService.get_temperature_history(
         db=db,
         venue_id=venue_id,
@@ -1583,8 +1583,8 @@ async def generate_nra_file(export_id: int):
             ET.SubElement(header, "COMPANY_NAME").text = venue_name
             ET.SubElement(header, "PERIOD_START").text = export_record.period_start.strftime("%Y-%m-%d")
             ET.SubElement(header, "PERIOD_END").text = export_record.period_end.strftime("%Y-%m-%d")
-            ET.SubElement(header, "EXPORT_DATE").text = datetime.utcnow().strftime("%Y-%m-%d")
-            ET.SubElement(header, "EXPORT_TIME").text = datetime.utcnow().strftime("%H:%M:%S")
+            ET.SubElement(header, "EXPORT_DATE").text = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+            ET.SubElement(header, "EXPORT_TIME").text = datetime.now(timezone.utc).strftime("%H:%M:%S")
 
             # Transactions section
             transactions = ET.SubElement(root, "TRANSACTIONS")
@@ -1660,7 +1660,7 @@ async def generate_nra_file(export_id: int):
             checksum = hashlib.sha256(xml_content.encode('utf-8')).hexdigest()
 
             # Save file
-            timestamp = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
+            timestamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
             filename = f"NRA_EXPORT_{export_id}_{timestamp}.xml"
 
             # Save to exports directory
@@ -1677,7 +1677,7 @@ async def generate_nra_file(export_id: int):
             export_record.file_size_bytes = len(xml_content.encode('utf-8'))
             export_record.file_checksum = checksum
             export_record.status = "generated"
-            export_record.generated_at = datetime.utcnow()
+            export_record.generated_at = datetime.now(timezone.utc)
 
             db.commit()
 

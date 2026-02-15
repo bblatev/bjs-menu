@@ -8,7 +8,7 @@ from fastapi.responses import StreamingResponse
 from app.core.rate_limit import limiter
 from sqlalchemy.orm import Session
 from typing import List, Optional, Dict, Any
-from datetime import datetime
+from datetime import datetime, timezone
 from pydantic import BaseModel, Field
 import io
 
@@ -237,7 +237,7 @@ label_templates: Dict[int, Dict] = {
         "dpi": 203,
         "gap_mm": 2,
         "is_default": True,
-        "created_at": datetime.utcnow(),
+        "created_at": datetime.now(timezone.utc),
         "updated_at": None
     },
     2: {
@@ -256,7 +256,7 @@ label_templates: Dict[int, Dict] = {
         "dpi": 203,
         "gap_mm": 2,
         "is_default": False,
-        "created_at": datetime.utcnow(),
+        "created_at": datetime.now(timezone.utc),
         "updated_at": None
     }
 }
@@ -297,9 +297,9 @@ async def create_label_template(
     template = {
         "id": template_counter,
         "venue_id": current_user.venue_id,
-        **data.dict(),
+        **data.model_dump(),
         "is_default": False,
-        "created_at": datetime.utcnow(),
+        "created_at": datetime.now(timezone.utc),
         "updated_at": None
     }
 
@@ -345,8 +345,8 @@ async def update_label_template(
     if template.get("venue_id") != current_user.venue_id:
         raise HTTPException(status_code=403, detail="Access denied")
 
-    template.update(data.dict())
-    template["updated_at"] = datetime.utcnow()
+    template.update(data.model_dump())
+    template["updated_at"] = datetime.now(timezone.utc)
 
     return LabelTemplateResponse(**template)
 
@@ -493,7 +493,7 @@ async def preview_label(
         raise HTTPException(status_code=400, detail="Invalid item type")
 
     # Generate label image
-    label_bytes = generate_label_image(data.template.dict(), item_data)
+    label_bytes = generate_label_image(data.template.model_dump(), item_data)
 
     return StreamingResponse(
         io.BytesIO(label_bytes),
@@ -550,7 +550,7 @@ async def print_labels(
     # For now, return job info
     return {
         "success": True,
-        "job_id": f"PRINT_{datetime.utcnow().timestamp()}",
+        "job_id": f"PRINT_{datetime.now(timezone.utc).timestamp()}",
         "template_name": template["name"],
         "items_count": len(items_data),
         "labels_per_item": data.quantity_each,
@@ -667,7 +667,7 @@ async def batch_print_all_labels(
 
     # Create print job
     return {
-        "job_id": f"BATCH_{datetime.utcnow().timestamp()}",
+        "job_id": f"BATCH_{datetime.now(timezone.utc).timestamp()}",
         "total_labels": len(item_ids),
         "status": "queued",
         "message": f"Batch print job created for {len(item_ids)} labels"

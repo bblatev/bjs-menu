@@ -4,7 +4,7 @@ Financial Services - Chart of Accounts, Journal Entries, Bank Reconciliation, Bu
 from sqlalchemy.orm import Session
 from sqlalchemy import func
 from typing import Dict, Any, List, Optional
-from datetime import datetime, date
+from datetime import datetime, date, timezone
 import logging
 
 from app.models.financial_models import (
@@ -173,7 +173,7 @@ class JournalEntryService:
             JournalEntry.venue_id == venue_id
         ).order_by(JournalEntry.id.desc()).first()
 
-        entry_number = f"JE-{datetime.utcnow().strftime('%Y%m')}-{(last_entry.id + 1) if last_entry else 1:04d}"
+        entry_number = f"JE-{datetime.now(timezone.utc).strftime('%Y%m')}-{(last_entry.id + 1) if last_entry else 1:04d}"
 
         # Create journal entry
         entry = JournalEntry(
@@ -186,7 +186,7 @@ class JournalEntryService:
             status="posted",
             reference_type=reference_type,
             reference_id=reference_id,
-            posted_at=datetime.utcnow(),
+            posted_at=datetime.now(timezone.utc),
             created_by=created_by
         )
 
@@ -368,7 +368,7 @@ class BankReconciliationService:
             statement_date=statement_date,
             statement_balance=statement_balance,
             status="in_progress",
-            started_at=datetime.utcnow()
+            started_at=datetime.now(timezone.utc)
         )
 
         self.db.add(reconciliation)
@@ -399,7 +399,7 @@ class BankReconciliationService:
             raise ValueError("Bank transaction not found")
 
         bank_txn.is_reconciled = True
-        bank_txn.reconciled_at = datetime.utcnow()
+        bank_txn.reconciled_at = datetime.now(timezone.utc)
         bank_txn.matched_record_type = system_record_type
         bank_txn.matched_record_id = system_record_id
 
@@ -431,7 +431,7 @@ class BankReconciliationService:
         reconciliation.reconciled_balance = reconciled_balance
         reconciliation.difference = float(reconciliation.statement_balance) - reconciled_balance
         reconciliation.status = "completed"
-        reconciliation.completed_at = datetime.utcnow()
+        reconciliation.completed_at = datetime.now(timezone.utc)
 
         self.db.commit()
 
@@ -578,7 +578,7 @@ class DailyReconciliationService:
             business_date=business_date,
             status="in_progress",
             opened_by=closed_by,
-            opened_at=datetime.utcnow()
+            opened_at=datetime.now(timezone.utc)
         )
 
         self.db.add(reconciliation)
@@ -622,7 +622,7 @@ class DailyReconciliationService:
             denomination_counts=denomination_counts,
             total_amount=total,
             counted_by=counted_by,
-            counted_at=datetime.utcnow()
+            counted_at=datetime.now(timezone.utc)
         )
 
         self.db.add(cash_count)
@@ -658,7 +658,7 @@ class DailyReconciliationService:
 
         reconciliation.status = "completed"
         reconciliation.closed_by = closed_by
-        reconciliation.closed_at = datetime.utcnow()
+        reconciliation.closed_at = datetime.now(timezone.utc)
         reconciliation.notes = notes
 
         # Calculate variance

@@ -3,7 +3,7 @@ Support Service - Production Ready
 Full database integration with SLA tracking
 """
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Optional, List, Dict, Any
 from sqlalchemy.orm import Session
 from sqlalchemy import func
@@ -45,7 +45,7 @@ class SupportService:
         
         # Calculate SLA deadlines
         sla = self.SLA_CONFIG.get(priority, self.SLA_CONFIG["medium"])
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         
         ticket = SupportTicket(
             ticket_code=ticket_code,
@@ -212,7 +212,7 @@ class SupportService:
         
         # Track first response
         if sender_type == "support" and not ticket.first_response_at:
-            ticket.first_response_at = datetime.utcnow()
+            ticket.first_response_at = datetime.now(timezone.utc)
             ticket.status = "in_progress"
         
         # Update status based on sender
@@ -247,7 +247,7 @@ class SupportService:
         ticket.status = status
         
         if status == "resolved":
-            ticket.resolved_at = datetime.utcnow()
+            ticket.resolved_at = datetime.now(timezone.utc)
             ticket.resolution_notes = resolution_notes
         
         self.db.commit()
@@ -284,7 +284,7 @@ class SupportService:
         
         # Recalculate SLA
         sla = self.SLA_CONFIG.get(ticket.priority, self.SLA_CONFIG["medium"])
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         ticket.resolution_due = now + timedelta(hours=sla["resolution"])
         
         self.db.commit()
@@ -453,7 +453,7 @@ class SupportService:
         period_days: int = 30
     ) -> Dict[str, Any]:
         """Get support performance metrics"""
-        cutoff = datetime.utcnow() - timedelta(days=period_days)
+        cutoff = datetime.now(timezone.utc) - timedelta(days=period_days)
         
         query = self.db.query(SupportTicket).filter(
             SupportTicket.created_at >= cutoff

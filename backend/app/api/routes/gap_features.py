@@ -9,7 +9,7 @@ Exposes all Phase 2-7 gap features:
 - SSO & Enterprise Security
 """
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, List, Optional
 from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, Query, Body, Request
@@ -422,7 +422,7 @@ async def get_api_usage(
     from app.services.developer_portal_service import DeveloperPortalService
 
     service = DeveloperPortalService(db)
-    end_date = datetime.utcnow()
+    end_date = datetime.now(timezone.utc)
     start_date = end_date - timedelta(days=days)
 
     stats = await service.get_api_usage_stats(developer_id, start_date, end_date)
@@ -1212,7 +1212,7 @@ async def get_review_analytics(
     from app.services.ab_testing_service import ReviewAutomationService
 
     service = ReviewAutomationService(db)
-    end_date = datetime.utcnow()
+    end_date = datetime.now(timezone.utc)
     start_date = end_date - timedelta(days=days)
 
     analytics = await service.get_review_analytics(venue_id, start_date, end_date)

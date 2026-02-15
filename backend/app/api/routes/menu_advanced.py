@@ -3,7 +3,7 @@
 
 from fastapi import APIRouter, HTTPException, UploadFile, File, Request
 from typing import List, Optional, Dict
-from datetime import datetime
+from datetime import datetime, timezone
 from pydantic import BaseModel, Field
 
 from app.db.session import DbSession
@@ -150,7 +150,7 @@ def get_price_levels(request: Request, db: DbSession = None, current_user: Optio
 def create_price_level(request: Request, data: PriceLevelCreate, db: DbSession = None, current_user: CurrentUser = None):
     """Create a new price level."""
     global _next_price_level_id
-    now = datetime.utcnow().isoformat()
+    now = datetime.now(timezone.utc).isoformat()
     pl = {
         "id": _next_price_level_id,
         "name": data.name,

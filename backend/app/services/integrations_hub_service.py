@@ -3,7 +3,7 @@ Integrations Hub Service - Production Ready
 Full database integration with 200+ third-party integrations
 """
 
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional, Dict, Any
 from sqlalchemy.orm import Session
 
@@ -291,7 +291,7 @@ class IntegrationsHubService:
             existing.status = "connected"
             existing.credentials = credentials
             existing.settings = settings
-            existing.connected_at = datetime.utcnow()
+            existing.connected_at = datetime.now(timezone.utc)
             existing.disconnected_at = None
             self.db.commit()
             connection_id = existing.id
@@ -305,7 +305,7 @@ class IntegrationsHubService:
                 status="connected",
                 credentials=credentials,
                 settings=settings or {},
-                connected_at=datetime.utcnow()
+                connected_at=datetime.now(timezone.utc)
             )
             self.db.add(connection)
             self.db.commit()
@@ -335,7 +335,7 @@ class IntegrationsHubService:
             return {"success": False, "error": "Integration not connected"}
         
         connection.status = "disconnected"
-        connection.disconnected_at = datetime.utcnow()
+        connection.disconnected_at = datetime.now(timezone.utc)
         self.db.commit()
         
         return {
@@ -390,7 +390,7 @@ class IntegrationsHubService:
             integration_id=connection.id,
             sync_type=sync_type,
             status="started",
-            started_at=datetime.utcnow()
+            started_at=datetime.now(timezone.utc)
         )
         self.db.add(sync_log)
         self.db.flush()
@@ -401,10 +401,10 @@ class IntegrationsHubService:
         # Update sync log
         sync_log.status = "completed"
         sync_log.records_synced = records_synced
-        sync_log.completed_at = datetime.utcnow()
+        sync_log.completed_at = datetime.now(timezone.utc)
         
         # Update connection last sync
-        connection.last_sync_at = datetime.utcnow()
+        connection.last_sync_at = datetime.now(timezone.utc)
         connection.last_sync_status = "success"
         
         self.db.commit()
@@ -506,5 +506,5 @@ class IntegrationsHubService:
                 "by_category": by_category,
                 "popular_available": len([i for i in self.INTEGRATION_CATALOG.values() if i.get("popular")])
             },
-            "generated_at": datetime.utcnow().isoformat()
+            "generated_at": datetime.now(timezone.utc).isoformat()
         }

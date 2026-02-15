@@ -4,7 +4,7 @@ Combo Menus & Set Meals API
 from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.orm import Session
 from typing import List, Optional
-from datetime import datetime, time
+from datetime import datetime, timezone, time
 from pydantic import BaseModel, ConfigDict
 
 from app.db.session import get_db
@@ -158,7 +158,7 @@ def get_available_combos(
     current_user: StaffUser = Depends(get_current_user)
 ):
     """Get currently available combos (based on time/day restrictions)"""
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
     current_time = now.time()
     current_day = now.weekday()
 
@@ -220,7 +220,7 @@ def update_combo(
     if not combo:
         raise HTTPException(status_code=404, detail="Combo not found")
 
-    for field, value in data.dict(exclude_unset=True).items():
+    for field, value in data.model_dump(exclude_unset=True).items():
         setattr(combo, field, value)
 
     db.commit()

@@ -4,7 +4,7 @@ Cloud Kitchen / Ghost Kitchen Service - BJS V6
 Multi-brand virtual kitchen operations with database integration.
 """
 
-from datetime import datetime, timedelta, date, time
+from datetime import datetime, timedelta, timezone, date, time
 from typing import List, Dict, Any, Optional
 from enum import Enum
 from pydantic import BaseModel, ConfigDict
@@ -120,7 +120,7 @@ class CloudKitchenService:
             return {"success": False, "error": "Brand not found"}
 
         brand.status = BrandStatus.ACTIVE.value
-        brand.activated_at = datetime.utcnow()
+        brand.activated_at = datetime.now(timezone.utc)
         self.db.commit()
 
         logger.info(f"Activated brand {brand_id}")
@@ -162,7 +162,7 @@ class CloudKitchenService:
 
         brand.status = status
         if status == "active":
-            brand.activated_at = datetime.utcnow()
+            brand.activated_at = datetime.now(timezone.utc)
         self.db.commit()
 
         return {"success": True, "brand_id": brand_id, "status": brand.status}
@@ -592,7 +592,7 @@ class CloudKitchenService:
             station_assignments=station_assignments,
             total=total,
             status="received",
-            estimated_ready=datetime.utcnow() + timedelta(minutes=brand.avg_prep_time_minutes or 20)
+            estimated_ready=datetime.now(timezone.utc) + timedelta(minutes=brand.avg_prep_time_minutes or 20)
         )
 
         self.db.add(order)
@@ -643,7 +643,7 @@ class CloudKitchenService:
             return {"success": False, "error": "Order not found"}
 
         order.status = "completed"
-        order.completed_at = datetime.utcnow()
+        order.completed_at = datetime.now(timezone.utc)
 
         # Update station order counts
         assigned_stations = set((order.station_assignments or {}).values())

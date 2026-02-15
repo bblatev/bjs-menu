@@ -1,3 +1,4 @@
+from datetime import timezone
 """Ratings API routes - item and service ratings."""
 
 
@@ -77,7 +78,7 @@ def rate_item(request: Request, body: ItemRatingCreate, db: DbSession):
     global _next_item_id
     if not 1 <= body.rating <= 5:
         raise HTTPException(status_code=400, detail="Rating must be between 1 and 5")
-    rating = {"id": _next_item_id, "order_item_id": body.order_item_id, "item_id": None, "rating": body.rating, "comment": body.comment, "created_at": datetime.utcnow().isoformat()}
+    rating = {"id": _next_item_id, "order_item_id": body.order_item_id, "item_id": None, "rating": body.rating, "comment": body.comment, "created_at": datetime.now(timezone.utc).isoformat()}
     _item_ratings.append(rating)
     _next_item_id += 1
     return ItemRatingResponse(**rating)
@@ -162,7 +163,7 @@ def rate_service(request: Request, body: ServiceRatingCreate, db: DbSession):
     global _next_service_id
     if not 1 <= body.rating <= 5:
         raise HTTPException(status_code=400, detail="Rating must be between 1 and 5")
-    rating = {"id": _next_service_id, "rating": body.rating, "comment": body.comment, "created_at": datetime.utcnow().isoformat()}
+    rating = {"id": _next_service_id, "rating": body.rating, "comment": body.comment, "created_at": datetime.now(timezone.utc).isoformat()}
     _service_ratings.append(rating)
     _next_service_id += 1
     return ServiceRatingResponse(**rating)

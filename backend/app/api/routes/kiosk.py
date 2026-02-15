@@ -4,7 +4,7 @@ Self-service kiosk configuration and ordering
 """
 from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.orm import Session
-from datetime import datetime
+from datetime import datetime, timezone
 
 from app.db.session import get_db
 from app.core.rbac import get_current_user
@@ -138,7 +138,7 @@ async def create_kiosk_order(
         db.flush()
 
     # Generate order number
-    today = datetime.utcnow().strftime("%Y%m%d")
+    today = datetime.now(timezone.utc).strftime("%Y%m%d")
     count = db.query(Order).filter(
         Order.order_number.like(f"K{today}%")
     ).count()

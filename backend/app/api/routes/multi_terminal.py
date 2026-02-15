@@ -5,7 +5,7 @@ TouchSale feature: Work with the same bill from any terminal
 from fastapi import APIRouter, Depends, HTTPException, Request, status, WebSocket, WebSocketDisconnect
 from sqlalchemy.orm import Session
 from typing import List, Optional, Dict, Any
-from datetime import datetime
+from datetime import datetime, timezone
 from pydantic import BaseModel, Field
 import json
 import asyncio
@@ -108,7 +108,7 @@ async def broadcast_order_update(order_id: int, update_data: Dict[str, Any], exc
         "type": "order_update",
         "order_id": order_id,
         "data": update_data,
-        "timestamp": datetime.utcnow().isoformat()
+        "timestamp": datetime.now(timezone.utc).isoformat()
     })
 
     for terminal_id, ws in terminal_connections.items():
@@ -142,7 +142,7 @@ async def register_terminal(
         "terminal_name": data.terminal_name,
         "location": data.location,
         "venue_id": current_user.venue_id,
-        "connected_at": datetime.utcnow(),
+        "connected_at": datetime.now(timezone.utc),
         "order_ids": [],
         "active": True
     }
@@ -260,7 +260,7 @@ async def lock_order(
     # Lock the order
     order_locks[order_id] = {
         "terminal_id": data.terminal_id,
-        "locked_at": datetime.utcnow(),
+        "locked_at": datetime.now(timezone.utc),
         "staff_id": current_user.id,
         "staff_name": current_user.full_name,
         "reason": data.lock_reason
@@ -486,7 +486,7 @@ async def apply_shared_update(
     items = db.query(OrderItem).filter(OrderItem.order_id == order_id).all()
     order.subtotal = sum(item.total_price for item in items)
     order.total = order.subtotal + (order.tax or 0) - (order.discount_amount or 0)
-    order.updated_at = datetime.utcnow()
+    order.updated_at = datetime.now(timezone.utc)
 
     db.commit()
 
@@ -527,7 +527,7 @@ async def websocket_terminal_connection(
         await websocket.send_json({
             "type": "connected",
             "terminal_id": terminal_id,
-            "timestamp": datetime.utcnow().isoformat()
+            "timestamp": datetime.now(timezone.utc).isoformat()
         })
 
         # Keep connection alive and handle incoming messages

@@ -4,7 +4,7 @@
 from fastapi import APIRouter, HTTPException, Query, Request
 from sqlalchemy import func, or_
 from typing import List, Optional
-from datetime import datetime
+from datetime import datetime, timezone
 from pydantic import BaseModel
 
 from app.db.session import DbSession
@@ -48,7 +48,7 @@ _next_msg_id = 1
 def send_message(request: Request, data: MessageCreate, db: DbSession, current_user: CurrentUser = None):
     """Send a message to a staff member, role, or broadcast to all."""
     global _next_msg_id
-    now = datetime.utcnow().isoformat()
+    now = datetime.now(timezone.utc).isoformat()
     msg = {
         "id": _next_msg_id, "sender_id": 0, "sender_name": "System",
         "recipient_id": data.recipient_id, "recipient_name": None,
@@ -105,7 +105,7 @@ def mark_as_read(request: Request, message_id: int, db: DbSession, current_user:
     for m in _messages:
         if m["id"] == message_id:
             m["read"] = True
-            m["read_at"] = datetime.utcnow().isoformat()
+            m["read_at"] = datetime.now(timezone.utc).isoformat()
             return {"message": "Marked as read"}
     raise HTTPException(status_code=404, detail="Message not found")
 
@@ -114,7 +114,7 @@ def mark_as_read(request: Request, message_id: int, db: DbSession, current_user:
 @limiter.limit("30/minute")
 def mark_all_as_read(request: Request, db: DbSession, current_user: OptionalCurrentUser = None):
     """Mark all messages as read."""
-    now = datetime.utcnow().isoformat()
+    now = datetime.now(timezone.utc).isoformat()
     for m in _messages:
         if not m["read"]:
             m["read"] = True
@@ -139,7 +139,7 @@ def delete_message(request: Request, message_id: int, db: DbSession, current_use
 def broadcast_message(request: Request, db: DbSession, current_user: OptionalCurrentUser = None, subject: str = "", body: str = "", priority: str = "normal"):
     """Broadcast a message to all staff."""
     global _next_msg_id
-    now = datetime.utcnow().isoformat()
+    now = datetime.now(timezone.utc).isoformat()
     msg = {
         "id": _next_msg_id, "sender_id": 0, "sender_name": "System",
         "recipient_id": None, "recipient_name": None,

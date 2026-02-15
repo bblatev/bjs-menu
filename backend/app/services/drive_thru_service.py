@@ -5,7 +5,7 @@ Lane management, order display, vehicle timing, license plate recognition
 with full database integration.
 """
 
-from datetime import datetime, timedelta, date
+from datetime import datetime, timedelta, timezone, date
 from typing import List, Dict, Any, Optional
 from enum import Enum
 from pydantic import BaseModel, ConfigDict
@@ -251,7 +251,7 @@ class DriveThruService:
             license_plate=license_plate,
             is_preorder=is_preorder,
             status=VehicleStatus.AT_MENU.value,
-            entered_at=datetime.utcnow()
+            entered_at=datetime.now(timezone.utc)
         )
 
         self.db.add(vehicle)
@@ -289,7 +289,7 @@ class DriveThruService:
             return {"success": False, "error": "Vehicle not found"}
 
         vehicle.status = VehicleStatus.ORDERING.value
-        vehicle.order_started_at = datetime.utcnow()
+        vehicle.order_started_at = datetime.now(timezone.utc)
         self.db.commit()
 
         return {"success": True, "vehicle_id": vehicle_id, "status": vehicle.status}
@@ -309,7 +309,7 @@ class DriveThruService:
             return {"success": False, "error": "Vehicle not found"}
 
         vehicle.order_id = order_id
-        vehicle.order_completed_at = datetime.utcnow()
+        vehicle.order_completed_at = datetime.now(timezone.utc)
         vehicle.status = VehicleStatus.AT_PAYMENT.value
         self.db.commit()
 
@@ -334,7 +334,7 @@ class DriveThruService:
         if not vehicle:
             return {"success": False, "error": "Vehicle not found"}
 
-        vehicle.payment_at = datetime.utcnow()
+        vehicle.payment_at = datetime.now(timezone.utc)
         vehicle.status = VehicleStatus.AT_PICKUP.value
         self.db.commit()
 
@@ -359,7 +359,7 @@ class DriveThruService:
         if not vehicle:
             return {"success": False, "error": "Vehicle not found"}
 
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         vehicle.pickup_at = now
         vehicle.exited_at = now
         vehicle.status = VehicleStatus.COMPLETED.value
@@ -410,7 +410,7 @@ class DriveThruService:
             return {"success": False, "error": "Vehicle not found"}
 
         vehicle.status = VehicleStatus.ABANDONED.value
-        vehicle.exited_at = datetime.utcnow()
+        vehicle.exited_at = datetime.now(timezone.utc)
 
         # Update lane queue
         lane = self.db.query(DriveThruLane).filter(
@@ -483,7 +483,7 @@ class DriveThruService:
             return {"success": False, "error": "Order display not found"}
 
         display.status = "ready"
-        display.ready_at = datetime.utcnow()
+        display.ready_at = datetime.now(timezone.utc)
         self.db.commit()
 
         return {"success": True, "id": display_id, "status": display.status}

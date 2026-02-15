@@ -2,7 +2,7 @@
 
 import pytest
 from decimal import Decimal
-from datetime import datetime, date, timedelta
+from datetime import datetime, date, timedelta, timezone
 from fastapi.testclient import TestClient
 from io import BytesIO
 
@@ -39,7 +39,7 @@ class TestPOSEndpoints:
         db_session.flush()
 
         sales_line = PosSalesLine(
-            ts=datetime.utcnow(),
+            ts=datetime.now(timezone.utc),
             pos_item_id="ITEM001",
             name="Test Item",
             qty=Decimal("2"),
@@ -64,7 +64,7 @@ class TestPOSEndpoints:
 
         # Create unprocessed line
         unprocessed = PosSalesLine(
-            ts=datetime.utcnow(),
+            ts=datetime.now(timezone.utc),
             name="Unprocessed",
             qty=Decimal("1"),
             location_id=test_location.id,
@@ -73,7 +73,7 @@ class TestPOSEndpoints:
         )
         # Create processed line
         processed = PosSalesLine(
-            ts=datetime.utcnow(),
+            ts=datetime.now(timezone.utc),
             name="Processed",
             qty=Decimal("1"),
             location_id=test_location.id,
@@ -133,7 +133,7 @@ class TestPOSEndpoints:
         db_session.flush()
 
         sales_line = PosSalesLine(
-            ts=datetime.utcnow(),
+            ts=datetime.now(timezone.utc),
             pos_item_id="TESTITEM",
             name="Test Recipe",
             qty=Decimal("3"),
@@ -185,7 +185,7 @@ class TestSyncEndpoints:
 
     def test_sync_pull_with_since(self, client: TestClient, db_session, auth_headers):
         """Test sync pull with since parameter."""
-        since = (datetime.utcnow() - timedelta(hours=1)).isoformat()
+        since = (datetime.now(timezone.utc) - timedelta(hours=1)).isoformat()
         response = client.get(f"/api/v1/sync/pull?since={since}", headers=auth_headers)
         assert response.status_code == 200
 
@@ -200,14 +200,14 @@ class TestSyncEndpoints:
                         "local_id": "local-123",
                         "location_id": test_location.id,
                         "status": "in_progress",
-                        "started_at": datetime.utcnow().isoformat(),
+                        "started_at": datetime.now(timezone.utc).isoformat(),
                         "lines": [
                             {
                                 "local_id": "line-456",
                                 "product_id": test_product.id,
                                 "counted_qty": "10.5",
                                 "method": "barcode",
-                                "counted_at": datetime.utcnow().isoformat()
+                                "counted_at": datetime.now(timezone.utc).isoformat()
                             }
                         ]
                     }
@@ -490,7 +490,7 @@ class TestPOSToInventoryIntegration:
 
         # Create sales line
         sales_line = PosSalesLine(
-            ts=datetime.utcnow(),
+            ts=datetime.now(timezone.utc),
             pos_item_id="BEER001",
             name="Draft Beer",
             qty=Decimal("4"),

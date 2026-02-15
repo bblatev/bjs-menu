@@ -143,14 +143,14 @@ def create_overtime_rules(
         raise HTTPException(status_code=404, detail="Venue not found")
 
     settings = venue.settings or {}
-    settings["overtime_rules"] = rule.dict()
+    settings["overtime_rules"] = rule.model_dump()
     venue.settings = settings
 
     db.commit()
 
     return {
         "message": "Overtime rules configured",
-        "rules": rule.dict()
+        "rules": rule.model_dump()
     }
 
 
@@ -530,7 +530,7 @@ def set_nutritional_info(
     """
     return {
         "recipe_id": recipe_id,
-        "nutrition": nutrition.dict(),
+        "nutrition": nutrition.model_dump(),
         "updated_at": datetime.now().isoformat()
     }
 

@@ -4,7 +4,7 @@ Cash Drawer Management API
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy.orm import Session
 from typing import List, Optional
-from datetime import datetime, timedelta, date
+from datetime import datetime, timedelta, timezone, date
 from pydantic import BaseModel, ConfigDict
 
 from app.core.rate_limit import limiter
@@ -190,7 +190,7 @@ def close_drawer(
     # Calculate variance
     variance = data.counted_amount - drawer.expected_balance
 
-    drawer.closed_at = datetime.utcnow()
+    drawer.closed_at = datetime.now(timezone.utc)
     drawer.actual_balance = data.counted_amount
     drawer.variance = variance
     drawer.status = "closed"
@@ -255,7 +255,7 @@ def get_drawer_history(
     current_user: StaffUser = Depends(get_current_user)
 ):
     """Get cash drawer history"""
-    since = datetime.utcnow() - timedelta(days=days)
+    since = datetime.now(timezone.utc) - timedelta(days=days)
 
     drawers = db.query(CashDrawer).filter(
         CashDrawer.venue_id == current_user.venue_id,
@@ -337,7 +337,7 @@ def get_variance_report(
     current_user: StaffUser = Depends(get_current_user)
 ):
     """Get cash variance report by staff"""
-    since = datetime.utcnow() - timedelta(days=days)
+    since = datetime.now(timezone.utc) - timedelta(days=days)
 
     # Get closed drawers with variances
     drawers = db.query(CashDrawer).filter(

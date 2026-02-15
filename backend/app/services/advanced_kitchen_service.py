@@ -3,7 +3,7 @@ BJ's Bar V9 - Advanced Kitchen & Production Service
 Handles production forecasting, station load balancing, auto-fire rules, performance metrics
 """
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Optional, List, Dict, Any, Tuple
 from sqlalchemy.orm import Session
 from sqlalchemy import func, and_, or_, desc
@@ -301,7 +301,7 @@ class AdvancedKitchenService:
         else:
             load.load_status = StationLoadStatus.LOW.value
         
-        load.last_updated = datetime.utcnow()
+        load.last_updated = datetime.now(timezone.utc)
         
         db.commit()
         db.refresh(load)
@@ -413,7 +413,7 @@ class AdvancedKitchenService:
     ) -> List[AutoFireRule]:
         """Get applicable auto-fire rules for a course"""
         
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         current_time = now.strftime("%H:%M")
         current_day = now.strftime("%A").lower()
         
@@ -466,7 +466,7 @@ class AdvancedKitchenService:
         for rule in rules:
             if rule.trigger_type == "time_based" and rule.fire_after_minutes:
                 if previous_course_ready_at:
-                    elapsed = (datetime.utcnow() - previous_course_ready_at).total_seconds() / 60
+                    elapsed = (datetime.now(timezone.utc) - previous_course_ready_at).total_seconds() / 60
                     if elapsed >= rule.fire_after_minutes:
                         return {
                             "should_fire": True,
@@ -640,7 +640,7 @@ class AdvancedKitchenService:
         threshold_seconds = threshold_minutes * 60
         
         # Get recent metrics
-        recent = datetime.utcnow() - timedelta(hours=2)
+        recent = datetime.now(timezone.utc) - timedelta(hours=2)
         
         metrics = db.query(KitchenPerformanceMetric).filter(
             KitchenPerformanceMetric.venue_id == venue_id,
@@ -937,7 +937,7 @@ class AdvancedKitchenService:
         for rule in rules:
             if rule.trigger_type == "time_based" and rule.fire_after_minutes:
                 # Check if enough time has passed
-                elapsed = (datetime.utcnow() - order.created_at).total_seconds() / 60
+                elapsed = (datetime.now(timezone.utc) - order.created_at).total_seconds() / 60
                 if elapsed >= rule.fire_after_minutes:
                     for course in (rule.applicable_courses or []):
                         courses_fired.append({

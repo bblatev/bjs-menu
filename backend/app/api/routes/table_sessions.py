@@ -4,7 +4,7 @@ Table Sessions & Guest Duration Tracking API
 from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.orm import Session
 from typing import List, Optional
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from pydantic import BaseModel, ConfigDict
 
 from app.core.rate_limit import limiter
@@ -130,7 +130,7 @@ def get_active_sessions(
 
     # Calculate duration for active sessions
     for session in sessions:
-        session.duration_minutes = int((datetime.utcnow() - session.started_at).total_seconds() / 60)
+        session.duration_minutes = int((datetime.now(timezone.utc) - session.started_at).total_seconds() / 60)
 
     return sessions
 
@@ -175,7 +175,7 @@ def end_session(
 
     # End the session
     session.status = TableSessionStatus.CLOSED
-    session.ended_at = datetime.utcnow()
+    session.ended_at = datetime.now(timezone.utc)
     session.waiter_id = current_user.id  # Update to staff who ended it
     session.duration_minutes = int((session.ended_at - session.started_at).total_seconds() / 60)
 
@@ -259,7 +259,7 @@ def get_duration_stats(
     current_user: StaffUser = Depends(get_current_user)
 ):
     """Get guest stay duration statistics"""
-    since = datetime.utcnow() - timedelta(days=days)
+    since = datetime.now(timezone.utc) - timedelta(days=days)
 
     sessions = db.query(TableSession).filter(
         TableSession.venue_id == current_user.venue_id,

@@ -17,7 +17,7 @@ import time
 import uuid
 import logging
 from typing import Callable, Optional, Dict, Any
-from datetime import datetime
+from datetime import datetime, timezone
 from contextvars import ContextVar
 
 from fastapi import Request, Response
@@ -191,7 +191,7 @@ class MetricsCollector:
             "request_counts": self.request_count,
             "avg_duration_ms": self.request_duration,
             "error_counts": self.error_count,
-            "collected_at": datetime.utcnow().isoformat(),
+            "collected_at": datetime.now(timezone.utc).isoformat(),
         }
 
     def get_prometheus_format(self) -> str:
@@ -285,7 +285,7 @@ def setup_observability(app):
     async def health_check():
         return {
             "status": "healthy",
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
             "features": {
                 "correlation_ids": is_enabled("CORRELATION_IDS_ENABLED"),
                 "prometheus_metrics": is_enabled("PROMETHEUS_METRICS"),

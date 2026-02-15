@@ -2,7 +2,7 @@
 Platform Features & QR/Self-Service - Sections V and Z
 Feature flags, white-label, QR payments, and self-service
 """
-from datetime import datetime, date, timedelta
+from datetime import datetime, date, timedelta, timezone
 from decimal import Decimal
 from typing import Optional, List, Dict, Any
 from sqlalchemy.orm import Session
@@ -121,7 +121,7 @@ class PlatformService:
             if hasattr(flag, key):
                 setattr(flag, key, value)
         
-        flag.updated_at = datetime.utcnow()
+        flag.updated_at = datetime.now(timezone.utc)
         db.commit()
         db.refresh(flag)
         
@@ -205,7 +205,7 @@ class PlatformService:
             config.custom_domain = custom_domain
             config.email_from_name = email_from_name
             config.email_from_address = email_from_address
-            config.updated_at = datetime.utcnow()
+            config.updated_at = datetime.now(timezone.utc)
         
         db.commit()
         db.refresh(config)
@@ -304,7 +304,7 @@ class QRSelfServiceService:
             number_of_splits=None,
             amount_paid=0.0,
             payments=[],
-            expires_at=datetime.utcnow() + timedelta(minutes=30)
+            expires_at=datetime.now(timezone.utc) + timedelta(minutes=30)
         )
         db.add(session)
         db.commit()
@@ -347,7 +347,7 @@ class QRSelfServiceService:
             return None
 
         # Check if expired
-        if session.expires_at and session.expires_at < datetime.utcnow():
+        if session.expires_at and session.expires_at < datetime.now(timezone.utc):
             session.status = "expired"
             db.commit()
             return None
@@ -428,7 +428,7 @@ class QRSelfServiceService:
             raise ValueError(f"Session is not active (status: {session.status})")
 
         # Check expiration
-        if session.expires_at and session.expires_at < datetime.utcnow():
+        if session.expires_at and session.expires_at < datetime.now(timezone.utc):
             session.status = "expired"
             db.commit()
             raise ValueError("Session has expired")
@@ -441,7 +441,7 @@ class QRSelfServiceService:
             "payment_method": payment_method,
             "payer_name": payer_name,
             "transaction_id": transaction_id,
-            "paid_at": datetime.utcnow().isoformat()
+            "paid_at": datetime.now(timezone.utc).isoformat()
         }
 
         current_payments = session.payments or []
@@ -456,7 +456,7 @@ class QRSelfServiceService:
         remaining = session.bill_total - session.amount_paid
         if remaining <= 0:
             session.status = "completed"
-            session.completed_at = datetime.utcnow()
+            session.completed_at = datetime.now(timezone.utc)
         elif session.amount_paid > 0:
             session.status = "partial"
 
@@ -511,7 +511,7 @@ class QRSelfServiceService:
             table_id=table_id,
             status="pending",
             new_order_id=None,
-            expires_at=datetime.utcnow() + timedelta(hours=24)
+            expires_at=datetime.now(timezone.utc) + timedelta(hours=24)
         )
         db.add(session)
         db.commit()
@@ -548,7 +548,7 @@ class QRSelfServiceService:
             return None
 
         # Check if expired
-        if session.expires_at and session.expires_at < datetime.utcnow():
+        if session.expires_at and session.expires_at < datetime.now(timezone.utc):
             session.status = "expired"
             db.commit()
             return None
@@ -606,7 +606,7 @@ class QRSelfServiceService:
             raise ValueError(f"Session is not active (status: {session.status})")
 
         # Check expiration
-        if session.expires_at and session.expires_at < datetime.utcnow():
+        if session.expires_at and session.expires_at < datetime.now(timezone.utc):
             session.status = "expired"
             db.commit()
             raise ValueError("Session has expired")
@@ -708,7 +708,7 @@ class QRSelfServiceService:
             "table_number": table_number,
             "qr_type": qr_type,
             "url": url,
-            "generated_at": datetime.utcnow().isoformat()
+            "generated_at": datetime.now(timezone.utc).isoformat()
         }
     
     # ==================== SELF-SERVICE KIOSK ====================
@@ -816,7 +816,7 @@ class QRSelfServiceService:
         import string
 
         # Generate order number
-        order_number = f"K{datetime.utcnow().strftime('%H%M%S')}{random.choice(string.ascii_uppercase)}"
+        order_number = f"K{datetime.now(timezone.utc).strftime('%H%M%S')}{random.choice(string.ascii_uppercase)}"
 
         # Create order
         new_order = Order(

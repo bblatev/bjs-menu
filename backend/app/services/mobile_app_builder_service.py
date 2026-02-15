@@ -4,7 +4,7 @@ Create custom branded iOS and Android apps for restaurants
 Like Toast's Branded Mobile App feature
 """
 from typing import List, Optional, Dict, Any
-from datetime import datetime
+from datetime import datetime, timezone
 from sqlalchemy.orm import Session
 
 
@@ -418,14 +418,14 @@ class MobileAppBuilderService:
             platform=MobileAppPlatform(platform),
             status="queued",
             release_notes=release_notes,
-            queued_at=datetime.utcnow(),
+            queued_at=datetime.now(timezone.utc),
             created_by=created_by
         )
         self.db.add(build)
 
         # Update app status
         app.status = MobileAppStatus.BUILDING
-        app.last_build_at = datetime.utcnow()
+        app.last_build_at = datetime.now(timezone.utc)
 
         self.db.commit()
 
@@ -453,8 +453,8 @@ class MobileAppBuilderService:
 
         # Simulate build process
         build.status = "completed"
-        build.started_at = datetime.utcnow()
-        build.completed_at = datetime.utcnow()
+        build.started_at = datetime.now(timezone.utc)
+        build.completed_at = datetime.now(timezone.utc)
         build.build_duration_seconds = 180  # 3 minutes
         build.build_url = f"https://builds.v99pos.com/{build.app_id}/{build.platform.value}/{build.version}/app"
         build.build_size_mb = 45.2
@@ -527,11 +527,11 @@ class MobileAppBuilderService:
 
         # Mark as released
         build.is_released = True
-        build.released_at = datetime.utcnow()
+        build.released_at = datetime.now(timezone.utc)
 
         # Update app status
         app.status = MobileAppStatus.PUBLISHED
-        app.published_at = datetime.utcnow()
+        app.published_at = datetime.now(timezone.utc)
 
         # Set store URLs (in production, these would be actual store links)
         if build.platform.value == "ios":
@@ -614,8 +614,8 @@ class MobileAppBuilderService:
         # In production, this would integrate with FCM/APNS
         # Simulate sending
         campaign.status = "sent"
-        campaign.sent_at = datetime.utcnow()
-        campaign.completed_at = datetime.utcnow()
+        campaign.sent_at = datetime.now(timezone.utc)
+        campaign.completed_at = datetime.now(timezone.utc)
         campaign.total_sent = 1000  # Simulated
         campaign.total_delivered = 950
 

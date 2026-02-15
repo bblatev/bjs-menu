@@ -6,7 +6,7 @@ Competitor: Toast Terminal SDK, Square Terminal API, Clover SDK
 
 import hashlib
 import secrets
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, List, Optional, Tuple
 from uuid import UUID, uuid4
 from sqlalchemy import select, and_, or_, func, desc
@@ -116,7 +116,7 @@ class HardwareSDKService:
             device_token_hash=device_token_hash,
             status="registered",
             is_active=True,
-            created_at=datetime.utcnow()
+            created_at=datetime.now(timezone.utc)
         )
         self.db.add(device)
         await self.db.commit()
@@ -155,7 +155,7 @@ class HardwareSDKService:
             return None
 
         # Update last seen
-        device.last_seen_at = datetime.utcnow()
+        device.last_seen_at = datetime.now(timezone.utc)
         device.status = "online"
         await self.db.commit()
 
@@ -187,7 +187,7 @@ class HardwareSDKService:
 
         device.status = status
         device.status_details = status_details or {}
-        device.last_seen_at = datetime.utcnow()
+        device.last_seen_at = datetime.now(timezone.utc)
         await self.db.commit()
         return True
 
@@ -260,7 +260,7 @@ class HardwareSDKService:
             device_id=device_id,
             session_type=session_type,
             status="active",
-            created_at=datetime.utcnow()
+            created_at=datetime.now(timezone.utc)
         )
         self.db.add(session)
         await self.db.commit()
@@ -297,7 +297,7 @@ class HardwareSDKService:
             command=command,
             params=params,
             status="pending",
-            created_at=datetime.utcnow()
+            created_at=datetime.now(timezone.utc)
         )
         self.db.add(cmd)
         await self.db.commit()
@@ -354,7 +354,7 @@ class HardwareSDKService:
         cmd.result = result
         cmd.error = error
         if status in ["completed", "failed"]:
-            cmd.completed_at = datetime.utcnow()
+            cmd.completed_at = datetime.now(timezone.utc)
 
         await self.db.commit()
         return True
@@ -419,7 +419,7 @@ class HardwareSDKService:
 
         # Check device connectivity
         is_online = device.last_seen_at and \
-                   (datetime.utcnow() - device.last_seen_at).total_seconds() < 300
+                   (datetime.now(timezone.utc) - device.last_seen_at).total_seconds() < 300
 
         diagnostics = {
             "device_id": str(device_id),
@@ -493,7 +493,7 @@ class HardwareSDKService:
             event_type=event_type,
             message=message,
             data=data or {},
-            created_at=datetime.utcnow()
+            created_at=datetime.now(timezone.utc)
         )
         self.db.add(log)
         await self.db.commit()
@@ -534,7 +534,7 @@ class BNPLService:
         if existing:
             existing.credentials_encrypted = self._encrypt_credentials(credentials)
             existing.settings = settings or {}
-            existing.updated_at = datetime.utcnow()
+            existing.updated_at = datetime.now(timezone.utc)
             await self.db.commit()
             return {"status": "updated", "provider": provider}
 
@@ -545,7 +545,7 @@ class BNPLService:
             credentials_encrypted=self._encrypt_credentials(credentials),
             settings=settings or {},
             is_active=True,
-            created_at=datetime.utcnow()
+            created_at=datetime.now(timezone.utc)
         )
         self.db.add(config)
         await self.db.commit()
@@ -688,7 +688,7 @@ class BNPLService:
             status="pending",
             redirect_url=session_data.get("redirect_url"),
             customer_info=customer_info,
-            created_at=datetime.utcnow()
+            created_at=datetime.now(timezone.utc)
         )
         self.db.add(transaction)
         await self.db.commit()
@@ -863,7 +863,7 @@ class BNPLService:
         # (Implementation would call provider-specific capture API)
 
         transaction.status = "captured"
-        transaction.captured_at = datetime.utcnow()
+        transaction.captured_at = datetime.now(timezone.utc)
         await self.db.commit()
 
         return {
@@ -902,7 +902,7 @@ class BNPLService:
             transaction.status = "partially_refunded"
 
         transaction.refunded_amount = (transaction.refunded_amount or 0) + refund_amount
-        transaction.refunded_at = datetime.utcnow()
+        transaction.refunded_at = datetime.now(timezone.utc)
         await self.db.commit()
 
         return {
@@ -962,7 +962,7 @@ class BNPLService:
         new_status = status_mapping.get(event_type.lower() if event_type else "", transaction.status)
         transaction.status = new_status
         transaction.webhook_data = payload
-        transaction.updated_at = datetime.utcnow()
+        transaction.updated_at = datetime.now(timezone.utc)
 
         await self.db.commit()
 

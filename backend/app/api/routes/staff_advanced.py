@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy.orm import Session
 from sqlalchemy import and_, or_
 from typing import List, Optional
-from datetime import datetime, timedelta, date
+from datetime import datetime, timedelta, timezone, date
 from pydantic import BaseModel, ConfigDict
 
 from app.db.session import get_db
@@ -189,7 +189,7 @@ async def create_shift_trade_request(
             )
 
     # Set default expiration (7 days)
-    expires_at = data.expires_at or datetime.utcnow() + timedelta(days=7)
+    expires_at = data.expires_at or datetime.now(timezone.utc) + timedelta(days=7)
 
     # Create trade request
     trade_request = ShiftTradeRequest(
@@ -249,7 +249,7 @@ async def list_shift_trades(
     query = query.filter(
         or_(
             ShiftTradeRequest.expires_at.is_(None),
-            ShiftTradeRequest.expires_at > datetime.utcnow()
+            ShiftTradeRequest.expires_at > datetime.now(timezone.utc)
         )
     )
 
@@ -287,7 +287,7 @@ async def accept_shift_trade(
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Trade not available for you")
 
     trade.accepted_by_id = current_user.id
-    trade.accepted_at = datetime.utcnow()
+    trade.accepted_at = datetime.now(timezone.utc)
     trade.status = "accepted" if not trade.requires_approval else "pending_approval"
 
     # If no manager approval required, swap shifts now
@@ -320,7 +320,7 @@ async def approve_shift_trade(
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Trade not awaiting approval")
 
     trade.approved_by_id = current_user.id
-    trade.approved_at = datetime.utcnow()
+    trade.approved_at = datetime.now(timezone.utc)
     trade.status = "approved"
 
     # Execute the trade
@@ -352,7 +352,7 @@ async def reject_shift_trade(
     trade.status = "rejected"
     trade.rejection_reason = reason
     trade.approved_by_id = current_user.id
-    trade.approved_at = datetime.utcnow()
+    trade.approved_at = datetime.now(timezone.utc)
 
     db.commit()
 
@@ -487,7 +487,7 @@ async def approve_time_off(
 
     time_off.status = "approved"
     time_off.reviewed_by = current_user.id
-    time_off.reviewed_at = datetime.utcnow()
+    time_off.reviewed_at = datetime.now(timezone.utc)
     db.commit()
 
     return {"message": "Time off request approved", "id": request_id}
@@ -515,7 +515,7 @@ async def deny_time_off(
 
     time_off.status = "denied"
     time_off.reviewed_by = current_user.id
-    time_off.reviewed_at = datetime.utcnow()
+    time_off.reviewed_at = datetime.now(timezone.utc)
     time_off.notes = reason
     db.commit()
 

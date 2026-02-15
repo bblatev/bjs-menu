@@ -4,7 +4,7 @@ Automated invoice scanning and data extraction using AI/ML
 Supports 18+ languages like Syrve
 """
 from typing import Optional, Dict, Any
-from datetime import datetime, date
+from datetime import datetime, date, timezone
 from sqlalchemy.orm import Session
 
 
@@ -76,7 +76,7 @@ class InvoiceOCRService:
 
         # Update status to processing
         job.status = InvoiceOCRStatus.PROCESSING
-        job.processing_started_at = datetime.utcnow()
+        job.processing_started_at = datetime.now(timezone.utc)
         self.db.commit()
 
         try:
@@ -131,7 +131,7 @@ class InvoiceOCRService:
             else:
                 job.status = InvoiceOCRStatus.NEEDS_REVIEW
 
-            job.processing_completed_at = datetime.utcnow()
+            job.processing_completed_at = datetime.now(timezone.utc)
             job.processing_time_ms = int(
                 (job.processing_completed_at - job.processing_started_at).total_seconds() * 1000
             )
@@ -155,7 +155,7 @@ class InvoiceOCRService:
         except Exception as e:
             job.status = InvoiceOCRStatus.ERROR
             job.error_message = str(e)
-            job.processing_completed_at = datetime.utcnow()
+            job.processing_completed_at = datetime.now(timezone.utc)
             self.db.commit()
 
             return {
@@ -175,9 +175,9 @@ class InvoiceOCRService:
             "vendor_name": "Sample Supplier Inc.",
             "vendor_tax_id": "123456789",
             "vendor_address": "123 Main St, City, Country",
-            "invoice_number": f"INV-{datetime.utcnow().strftime('%Y%m%d')}-001",
-            "invoice_date": datetime.utcnow().strftime("%Y-%m-%d"),
-            "due_date": datetime.utcnow().strftime("%Y-%m-%d"),
+            "invoice_number": f"INV-{datetime.now(timezone.utc).strftime('%Y%m%d')}-001",
+            "invoice_date": datetime.now(timezone.utc).strftime("%Y-%m-%d"),
+            "due_date": datetime.now(timezone.utc).strftime("%Y-%m-%d"),
             "currency": "USD",
             "subtotal": 1000.00,
             "tax_amount": 200.00,
@@ -395,7 +395,7 @@ class InvoiceOCRService:
         # Update job status
         job.status = InvoiceOCRStatus.APPROVED
         job.reviewed_by = user_id
-        job.reviewed_at = datetime.utcnow()
+        job.reviewed_at = datetime.now(timezone.utc)
         job.created_invoice_id = invoice.id
 
         self.db.commit()
@@ -419,7 +419,7 @@ class InvoiceOCRService:
         job.status = InvoiceOCRStatus.REJECTED
         job.review_notes = reason
         job.reviewed_by = user_id
-        job.reviewed_at = datetime.utcnow()
+        job.reviewed_at = datetime.now(timezone.utc)
 
         self.db.commit()
 
@@ -608,7 +608,7 @@ class InvoiceOCRService:
                 template.template_rules[f"corrected_{field}"] = {
                     "original": getattr(job, field),
                     "corrected": corrected_value,
-                    "timestamp": datetime.utcnow().isoformat()
+                    "timestamp": datetime.now(timezone.utc).isoformat()
                 }
                 template.times_used += 1
 
@@ -622,7 +622,7 @@ class InvoiceOCRService:
                         f"corrected_{field}": {
                             "original": getattr(job, field),
                             "corrected": corrected_value,
-                            "timestamp": datetime.utcnow().isoformat()
+                            "timestamp": datetime.now(timezone.utc).isoformat()
                         }
                     },
                     times_used=1

@@ -13,7 +13,7 @@ from app.core.rate_limit import limiter
 from sqlalchemy.orm import Session
 from sqlalchemy import func, or_, and_, desc
 from typing import List, Optional
-from datetime import datetime, timedelta, date
+from datetime import datetime, timedelta, timezone, date
 from pydantic import BaseModel, ConfigDict
 
 from app.db.session import get_db
@@ -335,12 +335,12 @@ async def moderate_review(
         raise HTTPException(status_code=404, detail="Review not found")
 
     review.status = data.status
-    review.moderated_at = datetime.utcnow()
+    review.moderated_at = datetime.now(timezone.utc)
     review.moderated_by = current_user.id
 
     if data.response_text:
         review.response_text = data.response_text
-        review.responded_at = datetime.utcnow()
+        review.responded_at = datetime.now(timezone.utc)
         review.responded_by = current_user.id
 
     db.commit()
@@ -706,7 +706,7 @@ async def send_sms_campaign(
         raise HTTPException(status_code=400, detail="Campaign already sent or in progress")
 
     campaign.status = "sending"
-    campaign.started_at = datetime.utcnow()
+    campaign.started_at = datetime.now(timezone.utc)
     db.commit()
 
     background_tasks.add_task(_send_sms_campaign, campaign_id, db)
@@ -805,7 +805,7 @@ async def calculate_rfm_scores(
     for customer in customers:
         # Calculate recency (days since last order)
         if customer.last_visit:
-            recency = (datetime.utcnow() - customer.last_visit).days
+            recency = (datetime.now(timezone.utc) - customer.last_visit).days
         else:
             recency = 999
 
@@ -1018,7 +1018,7 @@ def _update_rating_aggregate(db: Session, menu_item_id: int):
         aggregate.avg_presentation = sum(presentation_ratings) / len(presentation_ratings) if presentation_ratings else None
         aggregate.avg_portion = sum(portion_ratings) / len(portion_ratings) if portion_ratings else None
         aggregate.avg_value = sum(value_ratings) / len(value_ratings) if value_ratings else None
-        aggregate.updated_at = datetime.utcnow()
+        aggregate.updated_at = datetime.now(timezone.utc)
     else:
         aggregate = MenuItemRatingAggregate(
             menu_item_id=menu_item_id,
@@ -1064,7 +1064,7 @@ async def _send_sms_campaign(campaign_id: int, db: Session):
     campaign = db.query(SMSCampaign).filter(SMSCampaign.id == campaign_id).first()
     if campaign:
         campaign.status = "completed"
-        campaign.completed_at = datetime.utcnow()
+        campaign.completed_at = datetime.now(timezone.utc)
         campaign.total_sent = campaign.estimated_recipients
         campaign.total_delivered = int(campaign.estimated_recipients * 0.95)  # Assume 95% delivery
         db.commit()

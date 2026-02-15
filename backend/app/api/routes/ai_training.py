@@ -7,7 +7,7 @@ adapted for the bjs-menu system.
 import logging
 import os
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional, List, Dict
 
@@ -136,7 +136,7 @@ async def upload_training_image(
     with open(filepath, "wb") as f:
         f.write(image_data)
 
-    now = datetime.utcnow().isoformat()
+    now = datetime.now(timezone.utc).isoformat()
     training_image = {
         "id": _next_image_id,
         "product_id": product_id,
@@ -190,7 +190,7 @@ async def upload_training_images_batch(
             with open(filepath, "wb") as f:
                 f.write(image_data)
 
-            now = datetime.utcnow().isoformat()
+            now = datetime.now(timezone.utc).isoformat()
             training_image = {
                 "id": _next_image_id,
                 "product_id": product_id,
@@ -383,10 +383,10 @@ async def recognize_bottle(
         raise HTTPException(status_code=400, detail=f"File must be an image, got: {content_type}")
 
     image_data = await image.read()
-    start_time = datetime.utcnow()
+    start_time = datetime.now(timezone.utc)
 
     if not _training_images:
-        inference_time = (datetime.utcnow() - start_time).total_seconds() * 1000
+        inference_time = (datetime.now(timezone.utc) - start_time).total_seconds() * 1000
         return RecognitionResponse(
             results=[], inference_time_ms=round(inference_time, 2),
             top_match=None, session_id=None,
@@ -395,7 +395,7 @@ async def recognize_bottle(
         )
 
     # Placeholder recognition - return empty results
-    inference_time = (datetime.utcnow() - start_time).total_seconds() * 1000
+    inference_time = (datetime.now(timezone.utc) - start_time).total_seconds() * 1000
     session_id = str(uuid.uuid4())
 
     return RecognitionResponse(
@@ -420,8 +420,8 @@ async def compare_images(
     data1 = await image1.read()
     data2 = await image2.read()
 
-    start_time = datetime.utcnow()
-    inference_time = (datetime.utcnow() - start_time).total_seconds() * 1000
+    start_time = datetime.now(timezone.utc)
+    inference_time = (datetime.now(timezone.utc) - start_time).total_seconds() * 1000
 
     return {
         "similarity": 0.0,

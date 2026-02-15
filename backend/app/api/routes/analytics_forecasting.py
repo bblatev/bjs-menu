@@ -1,3 +1,4 @@
+from datetime import timezone
 """
 Analytics & Forecasting API Endpoints
 Demand forecasting, trend analysis, predictive analytics
@@ -95,7 +96,7 @@ async def get_demand_forecast(
         "venue_id": current_user.venue_id,
         "forecast_days": forecast_days,
         "method": method,
-        "generated_at": datetime.utcnow().isoformat(),
+        "generated_at": datetime.now(timezone.utc).isoformat(),
         "forecasts": [
             {
                 "item_id": r.item_id,
@@ -293,7 +294,7 @@ async def predict_stock_requirements(
         "venue_id": current_user.venue_id,
         "lead_time_days": lead_time_days,
         "forecast_days": forecast_days,
-        "generated_at": datetime.utcnow().isoformat(),
+        "generated_at": datetime.now(timezone.utc).isoformat(),
         "requirements": requirements,
         "summary": {
             "high_urgency": len([r for r in requirements if r["urgency"] == "high"]),
@@ -398,7 +399,7 @@ async def get_analytics_dashboard(
 
     return {
         "venue_id": current_user.venue_id,
-        "generated_at": datetime.utcnow().isoformat(),
+        "generated_at": datetime.now(timezone.utc).isoformat(),
         "sales_trend": {
             "direction": sales_analysis["trend"]["direction"],
             "change_percent": sales_analysis["trend"]["change_percent"],

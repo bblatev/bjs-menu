@@ -2,7 +2,7 @@
 Compliance & Audit Service - Section X
 Immutable audit logs, fiscal archives, NRA compliance, age verification
 """
-from datetime import datetime, date, timedelta
+from datetime import datetime, date, timedelta, timezone
 from decimal import Decimal
 from typing import Optional, List, Dict, Any
 from sqlalchemy.orm import Session
@@ -50,7 +50,7 @@ class ComplianceService:
             "entity_type": entity_type,
             "entity_id": entity_id,
             "action_details": action_details,
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
             "previous_checksum": previous_checksum
         }
         
@@ -155,7 +155,7 @@ class ComplianceService:
             "errors": errors,
             "first_entry_id": logs[0].id if logs else None,
             "last_entry_id": logs[-1].id if logs else None,
-            "verification_timestamp": datetime.utcnow().isoformat()
+            "verification_timestamp": datetime.now(timezone.utc).isoformat()
         }
     
     @staticmethod
@@ -223,7 +223,7 @@ class ComplianceService:
             fiscal_device_id=fiscal_device_id,
             receipt_data=receipt_data,
             signature=signature,
-            archived_at=datetime.utcnow()
+            archived_at=datetime.now(timezone.utc)
         )
         db.add(archive)
         db.commit()
@@ -364,7 +364,7 @@ class ComplianceService:
                 "export_type": export_type,
                 "period_start": str(start_date),
                 "period_end": str(end_date),
-                "generated_at": datetime.utcnow().isoformat(),
+                "generated_at": datetime.now(timezone.utc).isoformat(),
                 "receipt_count": len(receipts),
                 "total_amount": str(total_amount),
                 "total_vat": str(total_vat),
@@ -541,7 +541,7 @@ class ComplianceService:
                 "customer_id": customer_id,
                 "status": "failed",
                 "message": "Customer not found",
-                "requested_at": datetime.utcnow().isoformat()
+                "requested_at": datetime.now(timezone.utc).isoformat()
             }
 
         # Anonymize customer personal data
@@ -551,7 +551,7 @@ class ComplianceService:
         customer.name = anonymized_name
         customer.email = f"deleted_{customer_id}@anonymized.local"
         customer.phone = None
-        customer.notes = f"[GDPR Deletion - {datetime.utcnow().isoformat()}]"
+        customer.notes = f"[GDPR Deletion - {datetime.now(timezone.utc).isoformat()}]"
         customer.allergies = None
         customer.dietary_preferences = None
         customer.favorite_items = None
@@ -626,7 +626,7 @@ class ComplianceService:
             "status": "completed",
             "message": "Personal data has been anonymized/deleted per GDPR requirements.",
             "anonymized_items": anonymized_items,
-            "completed_at": datetime.utcnow().isoformat()
+            "completed_at": datetime.now(timezone.utc).isoformat()
         }
 
     @staticmethod
@@ -645,7 +645,7 @@ class ComplianceService:
         export_data = {
             "export_id": export_id,
             "customer_id": customer_id,
-            "generated_at": datetime.utcnow().isoformat(),
+            "generated_at": datetime.now(timezone.utc).isoformat(),
             "data_categories": {}
         }
 
@@ -661,7 +661,7 @@ class ComplianceService:
                 "customer_id": customer_id,
                 "status": "failed",
                 "message": "Customer not found",
-                "requested_at": datetime.utcnow().isoformat()
+                "requested_at": datetime.now(timezone.utc).isoformat()
             }
 
         # Personal profile data
@@ -767,7 +767,7 @@ class ComplianceService:
             "status": "completed",
             "message": "Data export generated successfully.",
             "data": export_data,
-            "generated_at": datetime.utcnow().isoformat()
+            "generated_at": datetime.now(timezone.utc).isoformat()
         }
 
 

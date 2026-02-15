@@ -3,7 +3,7 @@ BJ's Bar V9 - Advanced Operations Service
 Handles enterprise controls, terminal health, emergency modes, cash management
 """
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Optional, List, Dict, Any
 from sqlalchemy.orm import Session
 from sqlalchemy import func, and_, or_
@@ -88,7 +88,7 @@ class AdvancedOperationsService:
     ) -> Dict[str, Any]:
         """Check if user has permission with any overrides applied"""
         
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         
         # Get override if exists
         override = db.query(LocationPermissionOverride).filter(
@@ -170,7 +170,7 @@ class AdvancedOperationsService:
             staff_user_id=staff_id,
             override_type=override_type,
             max_value_limit=max_value,
-            valid_from=valid_from or datetime.utcnow(),
+            valid_from=valid_from or datetime.now(timezone.utc),
             valid_until=valid_until,
             permission_key=override_type,
             created_by=granted_by_id
@@ -188,7 +188,7 @@ class AdvancedOperationsService:
     ) -> List[LocationPermissionOverride]:
         """Get active permission overrides for a staff member"""
 
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         query = self.db.query(LocationPermissionOverride).filter(
             LocationPermissionOverride.staff_user_id == staff_id
         )
@@ -223,7 +223,7 @@ class AdvancedOperationsService:
         if not override:
             return {"success": False, "message": "Override not found"}
 
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
 
         # Check if still valid
         if override.valid_until and override.valid_until < now:
@@ -252,7 +252,7 @@ class AdvancedOperationsService:
             return False
 
         # Set valid_until to now to revoke
-        override.valid_until = datetime.utcnow()
+        override.valid_until = datetime.now(timezone.utc)
         self.db.commit()
         return True
     
@@ -284,7 +284,7 @@ class AdvancedOperationsService:
             existing.app_version = app_version or existing.app_version
             existing.ip_address = ip_address or existing.ip_address
             existing.mac_address = mac_address or existing.mac_address
-            existing.last_heartbeat = datetime.utcnow()
+            existing.last_heartbeat = datetime.now(timezone.utc)
             existing.status = TerminalHealthStatus.ONLINE.value
             db.commit()
             return existing
@@ -298,7 +298,7 @@ class AdvancedOperationsService:
             ip_address=ip_address,
             mac_address=mac_address,
             status=TerminalHealthStatus.ONLINE.value,
-            last_heartbeat=datetime.utcnow()
+            last_heartbeat=datetime.now(timezone.utc)
         )
         
         db.add(terminal)
@@ -327,9 +327,9 @@ class AdvancedOperationsService:
                 db, venue_id, terminal_id
             )
         
-        terminal.last_heartbeat = datetime.utcnow()
+        terminal.last_heartbeat = datetime.now(timezone.utc)
         terminal.status = TerminalHealthStatus.ONLINE.value
-        terminal.last_activity_at = datetime.utcnow()
+        terminal.last_activity_at = datetime.now(timezone.utc)
         
         if current_user_id:
             terminal.current_user_id = current_user_id
@@ -355,7 +355,7 @@ class AdvancedOperationsService:
             TerminalHealth.venue_id == venue_id
         ).all()
         
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         offline_threshold = timedelta(minutes=5)
         
         results = []
@@ -452,7 +452,7 @@ class AdvancedOperationsService:
         if existing:
             existing.terminal_name = terminal_name or existing.terminal_name
             existing.ip_address = ip_address or existing.ip_address
-            existing.last_heartbeat = datetime.utcnow()
+            existing.last_heartbeat = datetime.now(timezone.utc)
             existing.status = TerminalHealthStatus.ONLINE.value
             self.db.commit()
             return existing
@@ -462,7 +462,7 @@ class AdvancedOperationsService:
             terminal_name=terminal_name or f"Terminal {terminal_id}",
             ip_address=ip_address,
             status=TerminalHealthStatus.ONLINE.value,
-            last_heartbeat=datetime.utcnow()
+            last_heartbeat=datetime.now(timezone.utc)
         )
 
         self.db.add(terminal)
@@ -489,7 +489,7 @@ class AdvancedOperationsService:
         if not terminal:
             terminal = self.register_terminal(terminal_id)
 
-        terminal.last_heartbeat = datetime.utcnow()
+        terminal.last_heartbeat = datetime.now(timezone.utc)
         terminal.status = TerminalHealthStatus.ONLINE.value
         terminal.receipt_printer_status = printer_status
 
@@ -507,7 +507,7 @@ class AdvancedOperationsService:
     ) -> List[TerminalHealth]:
         """Get terminals that haven't sent heartbeat recently"""
 
-        threshold = datetime.utcnow() - timedelta(minutes=threshold_minutes)
+        threshold = datetime.now(timezone.utc) - timedelta(minutes=threshold_minutes)
 
         terminals = self.db.query(TerminalHealth).filter(
             or_(
@@ -625,7 +625,7 @@ class AdvancedOperationsService:
         config = AdvancedOperationsService.get_or_create_emergency_config(db, venue_id)
         
         config.current_mode = mode
-        config.mode_activated_at = datetime.utcnow()
+        config.mode_activated_at = datetime.now(timezone.utc)
         config.mode_activated_by = activated_by
         config.mode_reason = reason
         
@@ -696,7 +696,7 @@ class AdvancedOperationsService:
         if not config:
             config = EmergencyModeConfig(
                 current_mode=level,
-                mode_activated_at=datetime.utcnow(),
+                mode_activated_at=datetime.now(timezone.utc),
                 mode_activated_by=activated_by_id,
                 mode_reason=reason,
                 safe_mode_allowed_operations=allowed_operations or ["view_menu", "take_order", "cash_payment"]
@@ -704,7 +704,7 @@ class AdvancedOperationsService:
             self.db.add(config)
         else:
             config.current_mode = level
-            config.mode_activated_at = datetime.utcnow()
+            config.mode_activated_at = datetime.now(timezone.utc)
             config.mode_activated_by = activated_by_id
             config.mode_reason = reason
             if allowed_operations:
@@ -878,7 +878,7 @@ class AdvancedOperationsService:
     ) -> List[CashVarianceRecord]:
         """Get cash variance history"""
         
-        start_date = datetime.utcnow() - timedelta(days=days)
+        start_date = datetime.now(timezone.utc) - timedelta(days=days)
         
         query = db.query(CashVarianceRecord).filter(
             CashVarianceRecord.venue_id == venue_id,
@@ -901,7 +901,7 @@ class AdvancedOperationsService:
     ) -> Dict[str, Any]:
         """Get cash variance analytics"""
         
-        start_date = datetime.utcnow() - timedelta(days=days)
+        start_date = datetime.now(timezone.utc) - timedelta(days=days)
         
         records = db.query(CashVarianceRecord).filter(
             CashVarianceRecord.venue_id == venue_id,
@@ -1070,7 +1070,7 @@ class AdvancedOperationsService:
         
         config = AdvancedOperationsService.get_or_create_timeout_config(db, venue_id)
         
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         
         # Get role-specific timeout if exists
         inactivity_timeout = config.inactivity_timeout_seconds

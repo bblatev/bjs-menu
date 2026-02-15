@@ -14,7 +14,7 @@ from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Request
 from sqlalchemy.orm import Session
 from typing import List, Optional, Dict
 from pydantic import BaseModel
-from datetime import datetime, time, timedelta, date
+from datetime import datetime, timezone, time, timedelta, date
 import logging
 import uuid
 from pathlib import Path
@@ -424,7 +424,7 @@ async def create_daypart_pricing(
         "id": rule_id,
         "venue_id": current_user.venue_id,
         "name": data.name,
-        "display_name": data.display_name.dict(),
+        "display_name": data.display_name.model_dump(),
         "price_type": data.price_type,
         "price_adjustment": data.price_adjustment,
         "start_time": data.start_time,
@@ -436,7 +436,7 @@ async def create_daypart_pricing(
         "active": data.active,
         "valid_from": data.valid_from,
         "valid_until": data.valid_until,
-        "created_at": datetime.utcnow(),
+        "created_at": datetime.now(timezone.utc),
         "created_by": current_user.id
     }
 
@@ -445,7 +445,7 @@ async def create_daypart_pricing(
     return DaypartPricingResponse(
         id=rule_id,
         name=data.name,
-        display_name=data.display_name.dict(),
+        display_name=data.display_name.model_dump(),
         price_type=data.price_type,
         price_adjustment=data.price_adjustment,
         start_time=data.start_time,
@@ -716,7 +716,7 @@ async def upload_menu_item_photo(
             "is_primary": is_primary,
             "sort_order": sort_order,
             "storage_type": storage_type,
-            "uploaded_at": datetime.utcnow().isoformat(),
+            "uploaded_at": datetime.now(timezone.utc).isoformat(),
             "uploaded_by": current_user.id
         }
 
@@ -738,7 +738,7 @@ async def upload_menu_item_photo(
             size=file_size,
             is_primary=is_primary,
             sort_order=sort_order,
-            uploaded_at=datetime.utcnow(),
+            uploaded_at=datetime.now(timezone.utc),
             storage_type=storage_type
         )
 
@@ -952,7 +952,7 @@ async def update_item_allergens_matrix(
         "contains": contains,
         "may_contain": may_contain,
         "cross_contamination_risk": "low" if not may_contain else "medium",
-        "updated_at": datetime.utcnow().isoformat(),
+        "updated_at": datetime.now(timezone.utc).isoformat(),
         "updated_by": current_user.id
     }
 
@@ -1005,7 +1005,7 @@ async def create_batch_with_shelf_life(
     # Calculate use_by_date if shelf life provided
     use_by_date = data.use_by_date
     if not use_by_date and data.shelf_life_hours:
-        use_by_date = datetime.utcnow() + timedelta(hours=data.shelf_life_hours)
+        use_by_date = datetime.now(timezone.utc) + timedelta(hours=data.shelf_life_hours)
 
     # Create batch
     batch = StockBatch(
@@ -1029,7 +1029,7 @@ async def create_batch_with_shelf_life(
     db.refresh(batch)
 
     # Calculate freshness metrics
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
     days_until_expiry = None
     is_expired = False
     is_expiring_soon = False
@@ -1103,7 +1103,7 @@ async def create_prepared_batch(
     """
     global _prepared_batch_id_counter
 
-    prepared_at = datetime.utcnow()
+    prepared_at = datetime.now(timezone.utc)
     use_by_datetime = prepared_at + timedelta(hours=data.shelf_life_hours)
 
     # Get item name if linked
@@ -1190,7 +1190,7 @@ async def list_prepared_batches(
     current_user: StaffUser = Depends(get_current_user)
 ):
     """List prepared batches with freshness status"""
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
     batches = []
 
     for batch in _prepared_batches.values():

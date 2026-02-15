@@ -1,5 +1,5 @@
 """RFM Analytics Service - iiko parity feature"""
-from datetime import datetime, date, timedelta
+from datetime import datetime, date, timedelta, timezone
 from typing import List, Dict, Optional, Any
 from sqlalchemy.orm import Session
 from decimal import Decimal
@@ -70,7 +70,7 @@ class RFMAnalyticsService:
             "total_orders": customer_data["order_count"],
             "total_spent": customer_data["total_spent"],
             "avg_order_value": customer_data["total_spent"] / max(customer_data["order_count"], 1),
-            "calculated_at": datetime.utcnow().isoformat()
+            "calculated_at": datetime.now(timezone.utc).isoformat()
         }
     
     async def _get_customer_order_data(
@@ -81,7 +81,7 @@ class RFMAnalyticsService:
         """Get customer's order history data"""
         # In production: Query actual order data
         return {
-            "last_order_date": (datetime.utcnow() - timedelta(days=15)).date(),
+            "last_order_date": (datetime.now(timezone.utc) - timedelta(days=15)).date(),
             "order_count": 12,
             "total_spent": 540.00
         }
@@ -167,7 +167,7 @@ class RFMAnalyticsService:
                 "Hibernating": 20,
                 "Lost": 15
             },
-            "calculated_at": datetime.utcnow().isoformat()
+            "calculated_at": datetime.now(timezone.utc).isoformat()
         }
     
     async def get_segment_customers(
@@ -183,7 +183,7 @@ class RFMAnalyticsService:
                 "name": f"Customer {i}",
                 "email": f"customer{i}@example.com",
                 "rfm_score": 445 - i * 5,
-                "last_order": (datetime.utcnow() - timedelta(days=i*3)).isoformat(),
+                "last_order": (datetime.now(timezone.utc) - timedelta(days=i*3)).isoformat(),
                 "total_spent": 500 - i * 20,
                 "order_count": 10 - i
             }
@@ -263,5 +263,5 @@ class RFMAnalyticsService:
                 "avg_rfm_score": 345
             },
             "recommendations_count": 3,
-            "generated_at": datetime.utcnow().isoformat()
+            "generated_at": datetime.now(timezone.utc).isoformat()
         }

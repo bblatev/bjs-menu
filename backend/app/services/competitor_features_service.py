@@ -1,3 +1,4 @@
+from datetime import timezone
 """
 Competitor Features Service Stubs
 ==================================
@@ -219,7 +220,7 @@ class WasteAnalyticsService:
             "waste_type": waste_type,
             "cause": cause,
             "is_preventable": False,
-            "recorded_at": datetime.utcnow().isoformat(),
+            "recorded_at": datetime.now(timezone.utc).isoformat(),
         }
 
     def generate_analytics(self, venue_id: int, analytics_date: date,
@@ -284,7 +285,7 @@ class StockTakingService:
             "total_counted_value": 0.0,
             "total_variance_value": 0.0,
             "variance_percent": 0.0,
-            "created_at": datetime.utcnow().isoformat(),
+            "created_at": datetime.now(timezone.utc).isoformat(),
         }
 
     def record_count(self, stock_take_item_id: int, counted_quantity: float,

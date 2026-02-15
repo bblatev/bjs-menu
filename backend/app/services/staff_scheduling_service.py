@@ -5,7 +5,7 @@ Handles shift management, scheduling, and time tracking
 from sqlalchemy.orm import Session
 from sqlalchemy import and_, or_
 from typing import Dict, Any, List, Optional
-from datetime import datetime, date, time
+from datetime import datetime, date, timezone, time
 import logging
 
 from app.models.staff_scheduling_models import (
@@ -284,7 +284,7 @@ class TimeClockService:
         if existing:
             raise ValueError("Staff member is already clocked in")
 
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
 
         # Find matching schedule if not provided
         if not schedule_id:
@@ -333,7 +333,7 @@ class TimeClockService:
         if not entry:
             raise ValueError("No active clock-in found")
 
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
 
         entry.clock_out = now
         entry.status = "clocked_out"
@@ -367,7 +367,7 @@ class TimeClockService:
         if entry.break_start and not entry.break_end:
             raise ValueError("Already on break")
 
-        entry.break_start = datetime.utcnow()
+        entry.break_start = datetime.now(timezone.utc)
         entry.status = "on_break"
 
         self.db.commit()
@@ -387,7 +387,7 @@ class TimeClockService:
         if not entry.break_start or entry.break_end:
             raise ValueError("Not currently on break")
 
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         entry.break_end = now
         entry.status = "clocked_in"
 

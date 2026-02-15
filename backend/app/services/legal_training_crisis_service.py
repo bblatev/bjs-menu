@@ -2,7 +2,7 @@
 Legal, Risk, Training & Crisis Management Service - Sections AK, AP, AR
 Incident reports, training management, and crisis mode operations
 """
-from datetime import datetime, date, timedelta
+from datetime import datetime, date, timedelta, timezone
 from decimal import Decimal
 from typing import Optional, List, Dict, Any
 from sqlalchemy.orm import Session
@@ -87,13 +87,13 @@ class LegalRiskService:
             "file_path": file_path,
             "description": description,
             "uploaded_by": uploaded_by,
-            "uploaded_at": datetime.utcnow().isoformat()
+            "uploaded_at": datetime.now(timezone.utc).isoformat()
         }
         
         current_evidence = report.evidence or []
         current_evidence.append(evidence)
         report.evidence = current_evidence
-        report.updated_at = datetime.utcnow()
+        report.updated_at = datetime.now(timezone.utc)
         
         db.commit()
         
@@ -125,7 +125,7 @@ class LegalRiskService:
         report.status = status
         if resolution:
             report.resolution = resolution
-            report.resolved_at = datetime.utcnow()
+            report.resolved_at = datetime.now(timezone.utc)
             report.resolved_by = updated_by
         
         # Add to follow-up actions
@@ -133,12 +133,12 @@ class LegalRiskService:
             "action": f"Status changed to {status}",
             "notes": notes,
             "by": updated_by,
-            "at": datetime.utcnow().isoformat()
+            "at": datetime.now(timezone.utc).isoformat()
         }
         current_actions = report.follow_up_actions or []
         current_actions.append(follow_up)
         report.follow_up_actions = current_actions
-        report.updated_at = datetime.utcnow()
+        report.updated_at = datetime.now(timezone.utc)
         
         db.commit()
         
@@ -206,7 +206,7 @@ class LegalRiskService:
         
         report.insurance_claim_number = claim_number
         report.insurance_claim_details = claim_details
-        report.updated_at = datetime.utcnow()
+        report.updated_at = datetime.now(timezone.utc)
         
         db.commit()
         
@@ -324,7 +324,7 @@ class TrainingService:
         ).first()
         
         if existing and existing.certification_expires:
-            if existing.certification_expires > datetime.utcnow():
+            if existing.certification_expires > datetime.now(timezone.utc):
                 return {
                     "message": "Training already completed and certification is valid",
                     "expires": existing.certification_expires.isoformat()
@@ -336,7 +336,7 @@ class TrainingService:
             module_id=module_id,
             venue_id=module.venue_id,
             status="in_progress",
-            started_at=datetime.utcnow(),
+            started_at=datetime.now(timezone.utc),
             score=None,
             completed_at=None,
             certification_expires=None
@@ -373,16 +373,16 @@ class TrainingService:
         ).first()
         
         record.score = score
-        record.completed_at = datetime.utcnow()
+        record.completed_at = datetime.now(timezone.utc)
         
         if score >= module.passing_score:
             record.status = "completed"
             if module.certification_valid_days:
-                record.certification_expires = datetime.utcnow() + timedelta(days=module.certification_valid_days)
+                record.certification_expires = datetime.now(timezone.utc) + timedelta(days=module.certification_valid_days)
         else:
             record.status = "failed"
         
-        record.updated_at = datetime.utcnow()
+        record.updated_at = datetime.now(timezone.utc)
         db.commit()
         db.refresh(record)
         
@@ -422,7 +422,7 @@ class TrainingService:
         required = []
         expiring_soon = []
         
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         soon = now + timedelta(days=30)
         
         for module in modules:
@@ -476,20 +476,20 @@ class TrainingService:
         """Get certifications expiring soon."""
         from app.models.advanced_features_v9 import StaffTrainingRecord, TrainingModule
         
-        threshold = datetime.utcnow() + timedelta(days=days_ahead)
+        threshold = datetime.now(timezone.utc) + timedelta(days=days_ahead)
         
         expiring = db.query(StaffTrainingRecord).join(TrainingModule).filter(
             TrainingModule.tenant_id == venue_id,
             StaffTrainingRecord.status == "completed",
             StaffTrainingRecord.certification_expires <= threshold,
-            StaffTrainingRecord.certification_expires > datetime.utcnow()
+            StaffTrainingRecord.certification_expires > datetime.now(timezone.utc)
         ).all()
         
         return [{
             "staff_id": r.staff_id,
             "module_id": r.module_id,
             "expires": r.certification_expires.isoformat(),
-            "days_until_expiry": (r.certification_expires - datetime.utcnow()).days
+            "days_until_expiry": (r.certification_expires - datetime.now(timezone.utc)).days
         } for r in expiring]
 
 
@@ -560,10 +560,10 @@ class CrisisManagementService:
         ).update({"is_active": False})
         
         crisis.is_active = True
-        crisis.activated_at = datetime.utcnow()
+        crisis.activated_at = datetime.now(timezone.utc)
         crisis.activated_by = activated_by
         crisis.activation_reason = reason
-        crisis.updated_at = datetime.utcnow()
+        crisis.updated_at = datetime.now(timezone.utc)
         
         db.commit()
         
@@ -596,10 +596,10 @@ class CrisisManagementService:
             return {"message": "No active crisis mode to deactivate"}
         
         active.is_active = False
-        active.deactivated_at = datetime.utcnow()
+        active.deactivated_at = datetime.now(timezone.utc)
         active.deactivated_by = deactivated_by
         active.deactivation_reason = reason
-        active.updated_at = datetime.utcnow()
+        active.updated_at = datetime.now(timezone.utc)
         
         db.commit()
         

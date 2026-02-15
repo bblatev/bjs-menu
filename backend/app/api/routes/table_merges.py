@@ -4,7 +4,7 @@ Table Merge/Split API
 from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.orm import Session
 from typing import List, Optional
-from datetime import datetime
+from datetime import datetime, timezone
 from pydantic import BaseModel, ConfigDict
 
 from app.core.rate_limit import limiter
@@ -178,7 +178,7 @@ def unmerge_tables(
 
     # Mark merge as inactive
     merge.is_active = False
-    merge.unmerged_at = datetime.utcnow()
+    merge.unmerged_at = datetime.now(timezone.utc)
     merge.unmerged_by = current_user.id
 
     db.commit()

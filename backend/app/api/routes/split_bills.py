@@ -5,7 +5,7 @@ Support for splitting bills by guest, item, amount, or percentage
 from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.orm import Session
 from typing import Optional
-from datetime import datetime
+from datetime import datetime, timezone
 
 from app.core.rate_limit import limiter
 from app.db.session import get_db
@@ -252,7 +252,7 @@ async def process_split_bill_payment(
 
     # Process payment
     guest.paid = True
-    guest.paid_at = datetime.utcnow()
+    guest.paid_at = datetime.now(timezone.utc)
     guest.payment_method = payment.payment_method
     guest.tip_amount = payment.tip_amount
 

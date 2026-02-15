@@ -1,7 +1,7 @@
 """Tests for reconciliation, reorder, and export services."""
 
 from decimal import Decimal
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 import pytest
 from fastapi.testclient import TestClient
@@ -32,7 +32,7 @@ class TestReconciliationService:
             location_id=test_location.id,
             status=SessionStatus.COMMITTED,
             created_by=test_user.id,
-            committed_at=datetime.utcnow(),
+            committed_at=datetime.now(timezone.utc),
         )
         db_session.add(session)
         db_session.commit()
@@ -440,7 +440,7 @@ class TestReconciliationAPI:
             location_id=test_location.id,
             status=SessionStatus.COMMITTED,
             created_by=test_user.id,
-            committed_at=datetime.utcnow(),
+            committed_at=datetime.now(timezone.utc),
         )
         db_session.add(session)
         db_session.flush()

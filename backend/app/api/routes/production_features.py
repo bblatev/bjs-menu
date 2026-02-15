@@ -12,7 +12,7 @@ Exposes new production-ready features:
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy.orm import Session
 from typing import Optional, List
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 
 from app.db.session import get_db
@@ -93,7 +93,7 @@ async def get_ledger_status(
     venue_id = current_user.venue_id
 
     # Get today's balance
-    today = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
+    today = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
 
     return {
         "status": "active",

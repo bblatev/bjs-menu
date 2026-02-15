@@ -5,7 +5,7 @@ Franchise fee calculation, royalty tracking, brand compliance, territory mapping
 with full database integration.
 """
 
-from datetime import datetime, date, timedelta
+from datetime import datetime, date, timedelta, timezone
 from typing import List, Dict, Any, Optional
 from enum import Enum
 from pydantic import BaseModel, ConfigDict
@@ -324,7 +324,7 @@ class FranchiseManagementService:
 
         if payment.paid_amount >= float(payment.total_due):
             payment.status = "paid"
-            payment.paid_at = datetime.utcnow()
+            payment.paid_at = datetime.now(timezone.utc)
 
         self.db.commit()
 

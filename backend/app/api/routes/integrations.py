@@ -130,7 +130,7 @@ async def create_webhook(request: Request, webhook: Webhook, db: DbSession):
     ).first()
     webhooks = setting.value if setting and setting.value else []
     new_id = str(len(webhooks) + 1)
-    new_webhook = webhook.dict()
+    new_webhook = webhook.model_dump()
     new_webhook["id"] = new_id
     webhooks.append(new_webhook)
     if setting:
@@ -155,7 +155,7 @@ async def update_webhook(request: Request, webhook_id: str, webhook: Webhook, db
     webhooks = setting.value
     for i, w in enumerate(webhooks):
         if w.get("id") == webhook_id:
-            updated = webhook.dict()
+            updated = webhook.model_dump()
             updated["id"] = webhook_id
             webhooks[i] = updated
             setting.value = webhooks

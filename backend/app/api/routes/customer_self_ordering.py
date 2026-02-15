@@ -17,7 +17,7 @@ Features:
 from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.orm import Session
 from typing import List, Optional
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from pydantic import BaseModel, ConfigDict
 import secrets
 
@@ -156,7 +156,7 @@ async def start_session(
 
     if existing_session:
         # Update last activity and return existing session
-        existing_session.last_activity = datetime.utcnow()
+        existing_session.last_activity = datetime.now(timezone.utc)
         db.commit()
 
         venue_name = venue.name.get(data.language, venue.name.get("en", ""))
@@ -173,7 +173,7 @@ async def start_session(
 
     # Create new session
     session_token = secrets.token_urlsafe(32)
-    expires_at = datetime.utcnow() + timedelta(hours=4)
+    expires_at = datetime.now(timezone.utc) + timedelta(hours=4)
 
     session = CustomerOrderingSession(
         venue_id=venue.id,
@@ -234,7 +234,7 @@ async def close_session(
     session = _get_valid_session(session_token, db)
 
     session.status = "closed"
-    session.closed_at = datetime.utcnow()
+    session.closed_at = datetime.now(timezone.utc)
     db.commit()
 
     return {"message": "Session closed", "session_id": session.id}
@@ -703,17 +703,17 @@ async def place_order(
 
         # Update cart item status
         cart_item.status = "ordered"
-        cart_item.ordered_at = datetime.utcnow()
+        cart_item.ordered_at = datetime.now(timezone.utc)
 
     # Update session stats
     session.total_orders += 1
     session.total_amount += total_amount
-    session.last_activity = datetime.utcnow()
+    session.last_activity = datetime.now(timezone.utc)
 
     db.commit()
     db.refresh(order)
 
-    estimated_ready_at = datetime.utcnow() + timedelta(minutes=max_prep_time)
+    estimated_ready_at = datetime.now(timezone.utc) + timedelta(minutes=max_prep_time)
 
     # Create prep notification
     notification = CustomerPrepTimeNotification(
@@ -844,7 +844,7 @@ async def call_waiter(
         CustomerWaiterCall.session_id == session.id,
         CustomerWaiterCall.call_type == data.call_type,
         CustomerWaiterCall.status == "pending",
-        CustomerWaiterCall.created_at >= datetime.utcnow() - timedelta(minutes=5)
+        CustomerWaiterCall.created_at >= datetime.now(timezone.utc) - timedelta(minutes=5)
     ).first()
 
     if recent_call:
@@ -1056,7 +1056,7 @@ async def mark_notification_read(
 
     if notification:
         notification.read = True
-        notification.read_at = datetime.utcnow()
+        notification.read_at = datetime.now(timezone.utc)
         db.commit()
 
     return {"message": "Notification marked as read"}
@@ -1079,13 +1079,13 @@ def _get_valid_session(session_token: str, db: Session) -> CustomerOrderingSessi
     if not session:
         raise HTTPException(status_code=401, detail="Invalid or expired session")
 
-    if session.expires_at and session.expires_at < datetime.utcnow():
+    if session.expires_at and session.expires_at < datetime.now(timezone.utc):
         session.status = "expired"
         db.commit()
         raise HTTPException(status_code=401, detail="Session expired")
 
     # Update last activity
-    session.last_activity = datetime.utcnow()
+    session.last_activity = datetime.now(timezone.utc)
     db.commit()
 
     return session

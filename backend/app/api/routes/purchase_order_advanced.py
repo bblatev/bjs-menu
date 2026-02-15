@@ -374,8 +374,8 @@ def activate_blanket_order(
         raise HTTPException(status_code=404, detail="Blanket order not found")
     blanket.status = BlanketOrderStatus.ACTIVE
     blanket.approved_by = current_user.id
-    from datetime import datetime
-    blanket.approved_at = datetime.utcnow()
+    from datetime import datetime, timezone
+    blanket.approved_at = datetime.now(timezone.utc)
     db.commit()
     return {"status": "active", "blanket_id": blanket_id}
 
@@ -836,7 +836,7 @@ def update_quality_issue(
     if not issue:
         raise HTTPException(status_code=404, detail="Quality issue not found")
 
-    for field, value in data.dict(exclude_unset=True).items():
+    for field, value in data.model_dump(exclude_unset=True).items():
         setattr(issue, field, value)
 
     if data.status == "resolved" and not issue.resolved_by:
@@ -899,7 +899,7 @@ def update_reorder_config(
     if not config:
         raise HTTPException(status_code=404, detail="Reorder config not found")
 
-    for field, value in data.dict(exclude_unset=True).items():
+    for field, value in data.model_dump(exclude_unset=True).items():
         setattr(config, field, value)
 
     db.commit()
@@ -957,7 +957,7 @@ def acknowledge_reorder_alert(
 
     alert.status = "acknowledged"
     alert.acknowledged_by = current_user.id
-    alert.acknowledged_at = datetime.utcnow()
+    alert.acknowledged_at = datetime.now(timezone.utc)
     db.commit()
     return {"status": "acknowledged", "alert_id": alert_id}
 
@@ -1115,7 +1115,7 @@ def submit_consolidated_order(
         raise HTTPException(status_code=404, detail="Consolidated order not found")
 
     consolidated.status = ConsolidatedOrderStatus.ORDERED
-    consolidated.order_date = datetime.utcnow()
+    consolidated.order_date = datetime.now(timezone.utc)
     db.commit()
     return {"status": "ordered", "consolidated_id": consolidated_id}
 

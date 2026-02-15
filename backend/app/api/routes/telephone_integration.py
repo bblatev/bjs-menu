@@ -7,7 +7,7 @@ import logging
 from fastapi import APIRouter, Depends, HTTPException, WebSocket, WebSocketDisconnect, Request
 from sqlalchemy.orm import Session
 from typing import List, Optional, Dict, Any
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from pydantic import BaseModel, Field
 import asyncio
 import json
@@ -155,11 +155,11 @@ async def create_pbx_connection(
     connection = {
         "id": len(pbx_connections) + 1,
         "venue_id": current_user.venue_id,
-        **data.dict(),
+        **data.model_dump(),
         "is_active": False,
         "connection_status": "disconnected",
         "last_connected_at": None,
-        "created_at": datetime.utcnow()
+        "created_at": datetime.now(timezone.utc)
     }
 
     pbx_connections[connection["id"]] = connection
@@ -200,7 +200,7 @@ async def update_pbx_connection(
     if connection["venue_id"] != current_user.venue_id:
         raise HTTPException(status_code=403, detail="Access denied")
 
-    connection.update(data.dict())
+    connection.update(data.model_dump())
 
     return PBXConnectionResponse(**connection)
 
@@ -226,7 +226,7 @@ async def connect_pbx(
     # Mock connection (production: actual SIP/PBX connection)
     connection["is_active"] = True
     connection["connection_status"] = "connected"
-    connection["last_connected_at"] = datetime.utcnow()
+    connection["last_connected_at"] = datetime.now(timezone.utc)
 
     return {
         "success": True,
@@ -593,7 +593,7 @@ async def get_call_stats(
     current_user: StaffUser = Depends(require_manager)
 ):
     """Get call statistics"""
-    cutoff = datetime.utcnow() - timedelta(days=days)
+    cutoff = datetime.now(timezone.utc) - timedelta(days=days)
 
     recent_logs = [l for l in call_logs if l["timestamp"] > cutoff]
 

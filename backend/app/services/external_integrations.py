@@ -3,7 +3,7 @@ External Integration Service
 Connects to accounting systems, suppliers, and third-party services
 """
 import logging
-from datetime import datetime, date
+from datetime import datetime, date, timezone
 from typing import Dict, Any, List, Optional
 from enum import Enum
 from abc import ABC, abstractmethod
@@ -78,7 +78,7 @@ class IntegrationResult:
         self.data = data
         self.error = error
         self.integration_type = integration_type
-        self.timestamp = datetime.utcnow()
+        self.timestamp = datetime.now(timezone.utc)
 
     def to_dict(self) -> Dict:
         return {

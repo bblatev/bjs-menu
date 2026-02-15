@@ -3,7 +3,7 @@ Advanced CRM & Loyalty Service - Section U
 Guest preferences, CLV, churn prediction, and advanced loyalty features
 """
 import logging
-from datetime import datetime, date, timedelta
+from datetime import datetime, date, timedelta, timezone
 from decimal import Decimal
 from typing import Optional, List, Dict, Any
 from sqlalchemy.orm import Session
@@ -55,7 +55,7 @@ class AdvancedCRMService:
             for key, value in preferences.items():
                 if hasattr(pref, key):
                     setattr(pref, key, value)
-            pref.updated_at = datetime.utcnow()
+            pref.updated_at = datetime.now(timezone.utc)
         
         db.commit()
         db.refresh(pref)
@@ -227,7 +227,7 @@ class AdvancedCRMService:
         # Update segment if changed
         if clv.segment != segment:
             clv.segment = segment
-            clv.updated_at = datetime.utcnow()
+            clv.updated_at = datetime.now(timezone.utc)
             db.commit()
 
         return {
@@ -267,7 +267,7 @@ class AdvancedCRMService:
             CustomerLifetimeValue.venue_id == venue_id
         ).first()
 
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
 
         if not clv:
             clv = CustomerLifetimeValue(
@@ -441,8 +441,8 @@ class AdvancedCRMService:
             pref.vip_tier = vip_tier
             if reason:
                 existing_notes = pref.notes or ""
-                pref.notes = f"{existing_notes}\n[{datetime.utcnow().isoformat()}] VIP status changed: {reason}"
-            pref.updated_at = datetime.utcnow()
+                pref.notes = f"{existing_notes}\n[{datetime.now(timezone.utc).isoformat()}] VIP status changed: {reason}"
+            pref.updated_at = datetime.now(timezone.utc)
         
         db.commit()
         db.refresh(pref)
@@ -565,7 +565,7 @@ class AdvancedCRMService:
             "rating": rating,
             "feedback_type": feedback_type,
             "comments": comments,
-            "recorded_at": datetime.utcnow().isoformat()
+            "recorded_at": datetime.now(timezone.utc).isoformat()
         }
 
         # Store in audit log for immutable record
@@ -582,7 +582,7 @@ class AdvancedCRMService:
             "entity_type": "order",
             "entity_id": order_id,
             "action_details": feedback_data,
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
             "previous_checksum": previous_checksum
         }
 
@@ -622,7 +622,7 @@ class AdvancedCRMService:
             "rating": rating,
             "feedback_type": feedback_type,
             "comments": comments,
-            "recorded_at": datetime.utcnow().isoformat(),
+            "recorded_at": datetime.now(timezone.utc).isoformat(),
             "message": "Thank you for your feedback!"
         }
 

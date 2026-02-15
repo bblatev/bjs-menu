@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import func
 from typing import List, Optional, Dict, Any
 from pydantic import BaseModel, Field
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 from app.db.session import get_db
 from app.core.rbac import get_current_user
@@ -69,7 +69,7 @@ class TabPaymentRequest(BaseModel):
 
 def generate_tab_number(db: Session) -> str:
     """Generate unique tab number"""
-    today = datetime.utcnow()
+    today = datetime.now(timezone.utc)
     prefix = f"TAB-{today.strftime('%Y%m%d')}"
 
     count = db.query(func.count(Tab.id)).filter(
@@ -197,7 +197,7 @@ async def get_tab_stats(
     current_user: StaffUser = Depends(get_current_user)
 ):
     """Get tab statistics for the venue"""
-    today = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
+    today = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
 
     # Open tabs
     open_tabs = db.query(Tab).filter(
@@ -247,7 +247,7 @@ async def get_tab_stats(
         "tabs_closed_today": closed_today,
         "closed_value_today": float(closed_value_today),
         "avg_duration_minutes": round(avg_duration_minutes, 1),
-        "timestamp": datetime.utcnow().isoformat()
+        "timestamp": datetime.now(timezone.utc).isoformat()
     }
 
 
@@ -260,7 +260,7 @@ async def get_expiring_tabs(
     current_user: StaffUser = Depends(get_current_user)
 ):
     """Get tabs that have been open for a long time (potential issues)"""
-    cutoff = datetime.utcnow() - timedelta(hours=4)  # Tabs open > 4 hours
+    cutoff = datetime.now(timezone.utc) - timedelta(hours=4)  # Tabs open > 4 hours
 
     tabs = db.query(Tab).filter(
         Tab.venue_id == current_user.venue_id,
@@ -275,7 +275,7 @@ async def get_expiring_tabs(
             "table_id": tab.table_id,
             "current_total": tab.total,
             "opened_at": tab.opened_at.isoformat() if tab.opened_at else None,
-            "hours_open": round((datetime.utcnow() - tab.opened_at).total_seconds() / 3600, 1) if tab.opened_at else 0,
+            "hours_open": round((datetime.now(timezone.utc) - tab.opened_at).total_seconds() / 3600, 1) if tab.opened_at else 0,
             "warning": "Tab has been open for extended period"
         }
         for tab in tabs
@@ -400,7 +400,7 @@ async def add_items_to_tab(
         items_total += total
 
     # Update tab totals
-    tab.last_activity_at = datetime.utcnow()
+    tab.last_activity_at = datetime.now(timezone.utc)
     db.flush()
     recalculate_tab_totals(db, tab)
 
@@ -461,7 +461,7 @@ async def void_item_from_tab(
     item.voided_by = current_user.id
 
     # Recalculate totals
-    tab.last_activity_at = datetime.utcnow()
+    tab.last_activity_at = datetime.now(timezone.utc)
     recalculate_tab_totals(db, tab)
 
     db.commit()
@@ -511,7 +511,7 @@ async def add_payment_to_tab(
 
     tab.amount_paid += data.amount
     tab.balance_due = tab.total - tab.amount_paid
-    tab.last_activity_at = datetime.utcnow()
+    tab.last_activity_at = datetime.now(timezone.utc)
 
     db.commit()
 
@@ -565,7 +565,7 @@ async def close_tab(
 
     # Close the tab
     tab.status = TabStatus.CLOSED
-    tab.closed_at = datetime.utcnow()
+    tab.closed_at = datetime.now(timezone.utc)
 
     db.commit()
 
@@ -606,7 +606,7 @@ async def transfer_tab(
 
     old_table_id = tab.table_id
     tab.table_id = data.new_table_id
-    tab.last_activity_at = datetime.utcnow()
+    tab.last_activity_at = datetime.now(timezone.utc)
 
     db.commit()
 
@@ -616,7 +616,7 @@ async def transfer_tab(
         "old_table_id": old_table_id,
         "new_table_id": data.new_table_id,
         "transferred_by": current_user.id,
-        "transferred_at": datetime.utcnow().isoformat(),
+        "transferred_at": datetime.now(timezone.utc).isoformat(),
         "message": f"Tab transferred from table {old_table_id} to table {data.new_table_id}"
     }
 
@@ -647,7 +647,7 @@ async def void_tab(
 
     tab.status = TabStatus.VOIDED
     tab.notes = f"VOIDED: {reason}" + (f"\n{tab.notes}" if tab.notes else "")
-    tab.closed_at = datetime.utcnow()
+    tab.closed_at = datetime.now(timezone.utc)
 
     db.commit()
 
