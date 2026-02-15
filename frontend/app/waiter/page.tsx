@@ -103,6 +103,97 @@ export default function WaiterTerminal() {
   // Fiscal state
   const [fiscalStatus, setFiscalStatus] = useState<"idle" | "printing" | "processing">("idle");
 
+  // Phase 1: Move Items
+  const [showMoveItems, setShowMoveItems] = useState(false);
+  const [moveSelectedItems, setMoveSelectedItems] = useState<number[]>([]);
+  const [moveStep, setMoveStep] = useState<1 | 2>(1);
+
+  // Phase 2: Split by Items + Merge Checks
+  const [splitByItemsSelected, setSplitByItemsSelected] = useState<number[]>([]);
+  const [showSplitByItems, setShowSplitByItems] = useState(false);
+  const [showMergeChecks, setShowMergeChecks] = useState(false);
+  const [tableChecks, setTableChecks] = useState<Check[]>([]);
+  const [mergeSelectedChecks, setMergeSelectedChecks] = useState<number[]>([]);
+
+  // Phase 3: Reservations
+  interface Reservation {
+    id: number;
+    guest_name: string;
+    guest_phone?: string | null;
+    guest_email?: string | null;
+    party_size: number;
+    reservation_date: string;
+    duration_minutes: number;
+    status: string;
+    table_ids?: number[] | null;
+    seating_preference?: string | null;
+    special_requests?: string | null;
+    occasion?: string | null;
+  }
+  const [reservations, setReservations] = useState<Reservation[]>([]);
+  const [showBooking, setShowBooking] = useState(false);
+  const [showReservationDetail, setShowReservationDetail] = useState<Reservation | null>(null);
+  const [bookingForm, setBookingForm] = useState({
+    guest_name: "", guest_phone: "", date: new Date().toISOString().split("T")[0],
+    time: "19:00", party_size: 2, table_ids: null as number[] | null,
+    special_requests: "", occasion: ""
+  });
+
+  // Phase 4: Bar Tabs
+  interface Tab {
+    id: number;
+    tab_number?: string;
+    customer_name: string;
+    customer_phone?: string | null;
+    card_last_four?: string | null;
+    pre_auth_amount?: number;
+    subtotal?: number;
+    total: number;
+    balance_due?: number;
+    credit_limit?: number;
+    status: string;
+    opened_at?: string;
+    items?: { id: number; description: string; quantity: number; unit_price: number; total: number }[];
+    items_count?: number;
+  }
+  const [tabs, setTabs] = useState<Tab[]>([]);
+  const [showTabs, setShowTabs] = useState(false);
+  const [showOpenTab, setShowOpenTab] = useState(false);
+  const [activeTab, setActiveTab] = useState<Tab | null>(null);
+  const [tabForm, setTabForm] = useState({ customer_name: "", card_last_four: "", pre_auth_amount: 50 });
+  const [showTabTransfer, setShowTabTransfer] = useState(false);
+
+  // Phase 5: Hold Order + Reorder
+  interface HeldOrder {
+    id: number;
+    original_order_id?: number | null;
+    table_id?: number | null;
+    hold_reason?: string | null;
+    customer_name?: string | null;
+    order_data: Record<string, unknown>;
+    total_amount: number;
+    status: string;
+    held_at: string;
+    expires_at?: string | null;
+  }
+  const [heldOrders, setHeldOrders] = useState<HeldOrder[]>([]);
+  const [showHeldOrders, setShowHeldOrders] = useState(false);
+  const [showHoldOrder, setShowHoldOrder] = useState(false);
+  const [holdReason, setHoldReason] = useState("");
+
+  // Phase 6: Table Merge
+  interface TableMerge {
+    id: number;
+    primary_table_id: number;
+    secondary_tables: number[];
+    is_active: boolean;
+    notes?: string | null;
+  }
+  const [mergeMode, setMergeMode] = useState(false);
+  const [mergeSelected, setMergeSelected] = useState<number[]>([]);
+  const [activeMerges, setActiveMerges] = useState<TableMerge[]>([]);
+  const [showUnmerge, setShowUnmerge] = useState<TableMerge | null>(null);
+
   // Form values
   const [guests, setGuests] = useState(2);
   const [currentSeat, setCurrentSeat] = useState(1);
@@ -153,12 +244,58 @@ export default function WaiterTerminal() {
     }
   };
 
+  // Phase 3: Load reservations
+  const loadReservations = useCallback(async () => {
+    try {
+      const today = new Date().toISOString().split("T")[0];
+      const res = await fetch(`${API()}/reservations/?date=${today}`, { headers: { Authorization: `Bearer ${token()}` } });
+      if (res.ok) {
+        const data = await res.json();
+        setReservations(Array.isArray(data) ? data : data.reservations || []);
+      }
+    } catch { /* ignore */ }
+  }, []);
+
+  // Phase 4: Load tabs
+  const loadTabs = useCallback(async () => {
+    try {
+      const res = await fetch(`${API()}/tabs/?status=open`, { headers: { Authorization: `Bearer ${token()}` } });
+      if (res.ok) {
+        const data = await res.json();
+        setTabs(data.tabs || (Array.isArray(data) ? data : []));
+      }
+    } catch { /* ignore */ }
+  }, []);
+
+  // Phase 5: Load held orders
+  const loadHeldOrders = useCallback(async () => {
+    try {
+      const res = await fetch(`${API()}/held-orders/?status=held`, { headers: { Authorization: `Bearer ${token()}` } });
+      if (res.ok) {
+        const data = await res.json();
+        setHeldOrders(Array.isArray(data) ? data : data.orders || []);
+      }
+    } catch { /* ignore */ }
+  }, []);
+
+  // Phase 6: Load merges
+  const loadMerges = useCallback(async () => {
+    try {
+      const res = await fetch(`${API()}/table-merges/?active_only=true`, { headers: { Authorization: `Bearer ${token()}` } });
+      if (res.ok) {
+        const data = await res.json();
+        setActiveMerges(Array.isArray(data) ? data : []);
+      }
+    } catch { /* ignore */ }
+  }, []);
+
   useEffect(() => {
     if (!localStorage.getItem("access_token")) { window.location.href = "/waiter/login"; return; }
-    Promise.all([loadTables(), loadMenu()]).catch(err => console.error('Failed to load:', err)).finally(() => setLoading(false));
-    const i = setInterval(loadTables, 30000);
+    Promise.all([loadTables(), loadMenu(), loadReservations(), loadTabs(), loadHeldOrders(), loadMerges()])
+      .catch(err => console.error('Failed to load:', err)).finally(() => setLoading(false));
+    const i = setInterval(() => { loadTables(); loadReservations(); loadTabs(); loadHeldOrders(); loadMerges(); }, 30000);
     return () => clearInterval(i);
-  }, [loadTables, loadMenu]);
+  }, [loadTables, loadMenu, loadReservations, loadTabs, loadHeldOrders, loadMerges]);
 
   // Categories
   const categories = ["all", ...new Set(menu.map(m => m.category).filter(Boolean))];
@@ -556,8 +693,376 @@ export default function WaiterTerminal() {
     setShowTransfer(false);
   };
 
+  // Phase 1: Move Items
+  const moveItems = async (toTableId: number) => {
+    if (!check || moveSelectedItems.length === 0) return;
+    setSending(true);
+    try {
+      const res = await fetch(`${API()}/waiter/checks/${check.check_id}/transfer`, {
+        method: "POST", headers: headers(),
+        body: JSON.stringify({ to_table_id: toTableId, items_to_transfer: moveSelectedItems })
+      });
+      if (res.ok) {
+        notify(`Moved ${moveSelectedItems.length} items to table`);
+        setShowMoveItems(false);
+        setMoveSelectedItems([]);
+        setMoveStep(1);
+        await loadCheck(check.check_id);
+        await loadTables();
+      } else {
+        const err = await res.json();
+        notify(err.detail || "Move failed");
+      }
+    } catch { notify("Connection error"); }
+    setSending(false);
+  };
+
+  // Phase 2: Split by Items
+  const splitByItems = async () => {
+    if (!check || splitByItemsSelected.length === 0) return;
+    setSending(true);
+    try {
+      const res = await fetch(`${API()}/waiter-terminal/checks/${check.check_id}/split-items`, {
+        method: "POST", headers: headers(),
+        body: JSON.stringify({ item_ids: splitByItemsSelected })
+      });
+      if (res.ok) {
+        const data = await res.json();
+        notify("Split by items done");
+        setShowSplitByItems(false);
+        setSplitByItemsSelected([]);
+        setShowSplit(false);
+        if (data.original_check) await loadCheck(check.check_id);
+        await loadTables();
+      } else {
+        const err = await res.json();
+        notify(err.detail || "Split failed");
+      }
+    } catch { notify("Connection error"); }
+    setSending(false);
+  };
+
+  const loadTableChecks = async (tableId: number) => {
+    try {
+      const res = await fetch(`${API()}/waiter/checks?table_id=${tableId}`, { headers: { Authorization: `Bearer ${token()}` } });
+      if (res.ok) {
+        const data = await res.json();
+        setTableChecks(data.checks || []);
+      }
+    } catch { /* ignore */ }
+  };
+
+  const mergeChecks = async () => {
+    if (mergeSelectedChecks.length < 2) return;
+    setSending(true);
+    try {
+      const res = await fetch(`${API()}/waiter-terminal/checks/merge`, {
+        method: "POST", headers: headers(),
+        body: JSON.stringify({ check_ids: mergeSelectedChecks })
+      });
+      if (res.ok) {
+        const data = await res.json();
+        notify(`Merged into check #${data.merged_check_id}`);
+        setShowMergeChecks(false);
+        setMergeSelectedChecks([]);
+        if (data.merged_check_id) await loadCheck(data.merged_check_id);
+        await loadTables();
+      } else {
+        const err = await res.json();
+        notify(err.detail || "Merge failed");
+      }
+    } catch { notify("Connection error"); }
+    setSending(false);
+  };
+
+  const createReservation = async () => {
+    setSending(true);
+    try {
+      const res = await fetch(`${API()}/reservations/`, {
+        method: "POST", headers: headers(),
+        body: JSON.stringify({
+          guest_name: bookingForm.guest_name,
+          guest_phone: bookingForm.guest_phone || null,
+          party_size: bookingForm.party_size,
+          date: bookingForm.date,
+          time: bookingForm.time,
+          duration_minutes: 90,
+          table_ids: bookingForm.table_ids,
+          special_requests: bookingForm.special_requests || null,
+          occasion: bookingForm.occasion || null
+        })
+      });
+      if (res.ok) {
+        notify("Reservation created");
+        setShowBooking(false);
+        setBookingForm({ guest_name: "", guest_phone: "", date: new Date().toISOString().split("T")[0], time: "19:00", party_size: 2, table_ids: null, special_requests: "", occasion: "" });
+        await loadReservations();
+      } else {
+        const err = await res.json();
+        notify(err.detail || "Booking failed");
+      }
+    } catch { notify("Connection error"); }
+    setSending(false);
+  };
+
+  const seatReservation = async (resv: Reservation) => {
+    setSending(true);
+    try {
+      const res = await fetch(`${API()}/reservations/${resv.id}/seat`, { method: "POST", headers: headers() });
+      if (res.ok) {
+        notify(`${resv.guest_name} seated`);
+        setShowReservationDetail(null);
+        await loadReservations();
+        await loadTables();
+      } else { notify("Failed to seat"); }
+    } catch { notify("Connection error"); }
+    setSending(false);
+  };
+
+  const cancelReservation = async (resv: Reservation) => {
+    setSending(true);
+    try {
+      const res = await fetch(`${API()}/reservations/${resv.id}/cancel`, { method: "POST", headers: headers() });
+      if (res.ok) {
+        notify("Reservation cancelled");
+        setShowReservationDetail(null);
+        await loadReservations();
+      } else { notify("Cancel failed"); }
+    } catch { notify("Connection error"); }
+    setSending(false);
+  };
+
+  const openTab = async () => {
+    if (!tabForm.customer_name.trim()) { notify("Name required"); return; }
+    setSending(true);
+    try {
+      const res = await fetch(`${API()}/tabs/`, {
+        method: "POST", headers: headers(),
+        body: JSON.stringify({
+          customer_name: tabForm.customer_name,
+          card_last_four: tabForm.card_last_four || null,
+          pre_auth_amount: tabForm.pre_auth_amount,
+          credit_limit: 500
+        })
+      });
+      if (res.ok) {
+        notify("Tab opened");
+        setShowOpenTab(false);
+        setTabForm({ customer_name: "", card_last_four: "", pre_auth_amount: 50 });
+        await loadTabs();
+      } else {
+        const err = await res.json();
+        notify(err.detail || "Failed to open tab");
+      }
+    } catch { notify("Connection error"); }
+    setSending(false);
+  };
+
+  const addToTab = async () => {
+    if (!activeTab || !cart.length) return;
+    setSending(true);
+    try {
+      const res = await fetch(`${API()}/tabs/${activeTab.id}/items`, {
+        method: "POST", headers: headers(),
+        body: JSON.stringify({
+          items: cart.map(c => ({
+            menu_item_id: c.menu_item_id,
+            quantity: c.quantity,
+            modifiers: c.modifiers ? Object.fromEntries(c.modifiers.map((m, i) => [String(i), m])) : null,
+            notes: c.notes || null
+          }))
+        })
+      });
+      if (res.ok) {
+        setCart([]);
+        notify("Added to tab!");
+        await loadTabs();
+        setScreen("tables");
+        setActiveTab(null);
+      } else {
+        const err = await res.json();
+        notify(err.detail || "Failed");
+      }
+    } catch { notify("Connection error"); }
+    setSending(false);
+  };
+
+  const transferTabToTable = async (tableId: number) => {
+    if (!activeTab) return;
+    setSending(true);
+    try {
+      const res = await fetch(`${API()}/tabs/${activeTab.id}/transfer`, {
+        method: "POST", headers: headers(),
+        body: JSON.stringify({ new_table_id: tableId })
+      });
+      if (res.ok) {
+        notify("Tab moved to table");
+        setShowTabTransfer(false);
+        setActiveTab(null);
+        setShowTabs(false);
+        await loadTabs();
+        await loadTables();
+      } else {
+        const err = await res.json();
+        notify(err.detail || "Transfer failed");
+      }
+    } catch { notify("Connection error"); }
+    setSending(false);
+  };
+
+  const closeTab = async (tab: Tab) => {
+    setSending(true);
+    try {
+      const res = await fetch(`${API()}/tabs/${tab.id}/close`, {
+        method: "POST", headers: headers(),
+        body: JSON.stringify({ payment_method: "cash", tip_amount: 0 })
+      });
+      if (res.ok) {
+        notify("Tab closed");
+        await loadTabs();
+      } else {
+        const err = await res.json();
+        notify(err.detail || "Close failed");
+      }
+    } catch { notify("Connection error"); }
+    setSending(false);
+  };
+
+  const holdOrder = async () => {
+    if (!check || !table) return;
+    setSending(true);
+    try {
+      const res = await fetch(`${API()}/held-orders/`, {
+        method: "POST", headers: headers(),
+        body: JSON.stringify({
+          order_id: check.check_id,
+          table_id: table.table_id,
+          hold_reason: holdReason || "Held by waiter",
+          order_data: { check_id: check.check_id, items: check.items, total: check.total },
+          total_amount: check.total,
+          expires_hours: 24
+        })
+      });
+      if (res.ok) {
+        notify("Order held");
+        setShowHoldOrder(false);
+        setHoldReason("");
+        await loadHeldOrders();
+        setScreen("tables");
+        setTable(null);
+        setCheck(null);
+      } else {
+        const err = await res.json();
+        notify(err.detail || "Hold failed");
+      }
+    } catch { notify("Connection error"); }
+    setSending(false);
+  };
+
+  const resumeHeldOrder = async (held: HeldOrder, targetTableId?: number) => {
+    setSending(true);
+    try {
+      const url = targetTableId
+        ? `${API()}/held-orders/${held.id}/resume?target_table_id=${targetTableId}`
+        : `${API()}/held-orders/${held.id}/resume`;
+      const res = await fetch(url, { method: "POST", headers: headers() });
+      if (res.ok) {
+        notify("Order resumed");
+        setShowHeldOrders(false);
+        await loadHeldOrders();
+        await loadTables();
+      } else {
+        const err = await res.json();
+        notify(err.detail || "Resume failed");
+      }
+    } catch { notify("Connection error"); }
+    setSending(false);
+  };
+
+  const quickReorder = async (itemId: number) => {
+    setSending(true);
+    try {
+      const res = await fetch(`${API()}/waiter-terminal/quick-reorder/${itemId}?quantity=1`, {
+        method: "POST", headers: headers()
+      });
+      if (res.ok) {
+        notify("Reordered!");
+        if (check) await loadCheck(check.check_id);
+      } else {
+        const err = await res.json();
+        notify(err.detail || "Reorder failed");
+      }
+    } catch { notify("Connection error"); }
+    setSending(false);
+  };
+
+  const mergeTables = async () => {
+    if (mergeSelected.length < 2) return;
+    setSending(true);
+    try {
+      const [primary, ...secondary] = mergeSelected;
+      const res = await fetch(`${API()}/table-merges/`, {
+        method: "POST", headers: headers(),
+        body: JSON.stringify({ primary_table_id: primary, secondary_table_ids: secondary })
+      });
+      if (res.ok) {
+        notify(`Merged ${mergeSelected.length} tables`);
+        setMergeMode(false);
+        setMergeSelected([]);
+        await loadMerges();
+        await loadTables();
+      } else {
+        const err = await res.json();
+        notify(err.detail || "Merge failed");
+      }
+    } catch { notify("Connection error"); }
+    setSending(false);
+  };
+
+  const unmergeTables = async (merge: TableMerge) => {
+    setSending(true);
+    try {
+      const res = await fetch(`${API()}/table-merges/${merge.id}/unmerge`, { method: "POST", headers: headers() });
+      if (res.ok) {
+        notify("Tables unmerged");
+        setShowUnmerge(null);
+        await loadMerges();
+        await loadTables();
+      } else {
+        const err = await res.json();
+        notify(err.detail || "Unmerge failed");
+      }
+    } catch { notify("Connection error"); }
+    setSending(false);
+  };
+
+  // Helper: get reservation for a table
+  const getTableReservation = (tableId: number) =>
+    reservations.find(r => r.table_ids?.includes(tableId) && (r.status === "pending" || r.status === "confirmed"));
+
+  // Helper: get merge info for a table
+  const getTableMerge = (tableId: number) =>
+    activeMerges.find(m => m.primary_table_id === tableId || m.secondary_tables.includes(tableId));
+
   // Select table
   const selectTable = (t: Table) => {
+    // Phase 6: merge mode
+    if (mergeMode) {
+      setMergeSelected(prev => prev.includes(t.table_id) ? prev.filter(id => id !== t.table_id) : [...prev, t.table_id]);
+      return;
+    }
+    // Phase 3: reserved table detail
+    const resv = getTableReservation(t.table_id);
+    if (t.status === "reserved" && resv) {
+      setShowReservationDetail(resv);
+      return;
+    }
+    // Phase 6: unmerge option for merged table
+    const merge = getTableMerge(t.table_id);
+    if (merge && t.status === "available") {
+      setShowUnmerge(merge);
+      return;
+    }
     setTable(t);
     setCurrentSeat(1);
     if (t.status === "available") {
@@ -591,13 +1096,18 @@ export default function WaiterTerminal() {
                 {table.guest_count || guests} guests • {table.time_seated_minutes || 0}min
               </div>
             </div>
+          ) : activeTab ? (
+            <div>
+              <div className="font-black text-xl text-indigo-700">Tab: {activeTab.customer_name}</div>
+              <div className="text-gray-500 text-base font-semibold">${(activeTab.total || 0).toFixed(2)}</div>
+            </div>
           ) : (
             <span className="font-bold text-xl text-gray-900">Waiter Terminal</span>
           )}
         </div>
         <div className="flex gap-3">
-          {table && (
-            <button onClick={() => { setTable(null); setCart([]); setCheck(null); setScreen("tables"); }}
+          {(table || activeTab) && (
+            <button onClick={() => { setTable(null); setCart([]); setCheck(null); setActiveTab(null); setScreen("tables"); }}
               className="px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-xl text-base font-bold text-gray-700">
               Close
             </button>
@@ -624,25 +1134,73 @@ export default function WaiterTerminal() {
         {screen === "tables" && (
           <div className="h-full overflow-auto p-3">
             <div className="flex justify-between items-center mb-3">
-              <span className="text-gray-500 text-base font-semibold">{tables.filter(t => t.status === "occupied").length}/{tables.length} occupied</span>
-              <button onClick={loadTables} className="text-blue-600 text-base font-semibold">Refresh</button>
+              <span className="text-gray-500 text-sm font-semibold">{tables.filter(t => t.status === "occupied").length}/{tables.length} occ</span>
+              <div className="flex gap-2 items-center flex-wrap">
+                {heldOrders.length > 0 && (
+                  <button onClick={() => setShowHeldOrders(true)} className="px-3 py-1.5 bg-amber-100 text-amber-700 rounded-lg text-sm font-bold relative">
+                    Held <span className="ml-1 bg-amber-500 text-white px-1.5 rounded-full text-xs">{heldOrders.length}</span>
+                  </button>
+                )}
+                <button onClick={() => { setShowTabs(true); loadTabs(); }} className="px-3 py-1.5 bg-indigo-100 text-indigo-700 rounded-lg text-sm font-bold relative">
+                  Tabs {tabs.length > 0 && <span className="ml-1 bg-indigo-500 text-white px-1.5 rounded-full text-xs">{tabs.length}</span>}
+                </button>
+                <button onClick={() => setShowBooking(true)} className="px-3 py-1.5 bg-purple-100 text-purple-700 rounded-lg text-sm font-bold">Book</button>
+                <button onClick={() => { setMergeMode(!mergeMode); setMergeSelected([]); }}
+                  className={`px-3 py-1.5 rounded-lg text-sm font-bold ${mergeMode ? "bg-orange-500 text-white" : "bg-orange-100 text-orange-700"}`}>
+                  {mergeMode ? "Cancel" : "Merge"}
+                </button>
+                <button onClick={() => { loadTables(); loadReservations(); loadMerges(); }} className="text-blue-600 text-sm font-semibold">Refresh</button>
+              </div>
             </div>
             <div className="grid grid-cols-3 gap-3">
-              {tables.map(t => (
-                <button key={t.table_id} onClick={() => selectTable(t)}
-                  className={`p-4 rounded-xl text-left active:scale-95 transition shadow-lg text-white ${
-                    t.status === "occupied" ? "bg-gradient-to-br from-red-500 to-red-600" : t.status === "reserved" ? "bg-gradient-to-br from-amber-500 to-amber-600" : "bg-gradient-to-br from-emerald-500 to-emerald-600"
-                  }`}>
-                  <div className="font-black text-2xl">{t.table_name.replace("Table ", "T")}</div>
-                  <div className="text-base font-semibold opacity-90 mt-1">
-                    {t.status === "occupied" ? `${t.guest_count} guests` : `${t.capacity} seats`}
-                  </div>
-                  {t.current_total !== null && t.current_total > 0 && (
-                    <div className="font-black text-xl mt-2">${(t.current_total || 0).toFixed(0)}</div>
-                  )}
-                </button>
-              ))}
+              {tables.map(t => {
+                const resv = getTableReservation(t.table_id);
+                const merge = getTableMerge(t.table_id);
+                const isSelected = mergeMode && mergeSelected.includes(t.table_id);
+                return (
+                  <button key={t.table_id} onClick={() => selectTable(t)}
+                    className={`p-4 rounded-xl text-left active:scale-95 transition shadow-lg text-white relative ${
+                      isSelected ? "bg-gradient-to-br from-orange-500 to-orange-600 ring-4 ring-orange-300" :
+                      t.status === "occupied" ? "bg-gradient-to-br from-red-500 to-red-600" :
+                      t.status === "reserved" ? "bg-gradient-to-br from-amber-500 to-amber-600" :
+                      "bg-gradient-to-br from-emerald-500 to-emerald-600"
+                    }`}>
+                    {mergeMode && (
+                      <div className={`absolute top-2 right-2 w-6 h-6 rounded-full border-2 border-white flex items-center justify-center ${isSelected ? "bg-white" : "bg-transparent"}`}>
+                        {isSelected && <svg className="w-4 h-4 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>}
+                      </div>
+                    )}
+                    {merge && !mergeMode && (
+                      <div className="absolute top-2 right-2 text-xs bg-white/30 px-1.5 rounded-full font-bold">
+                        {merge.primary_table_id === t.table_id ? "P" : "M"}
+                      </div>
+                    )}
+                    <div className="font-black text-2xl">{t.table_name.replace("Table ", "T")}</div>
+                    <div className="text-base font-semibold opacity-90 mt-1">
+                      {t.status === "occupied" ? `${t.guest_count} guests` : `${t.capacity} seats`}
+                    </div>
+                    {t.current_total !== null && t.current_total > 0 && (
+                      <div className="font-black text-xl mt-2">${(t.current_total || 0).toFixed(0)}</div>
+                    )}
+                    {resv && (
+                      <div className="mt-1 text-xs bg-white/20 rounded px-1.5 py-0.5 truncate">
+                        {resv.reservation_date.split("T")[1]?.slice(0,5) || resv.reservation_date.slice(11,16)} {resv.guest_name}
+                      </div>
+                    )}
+                  </button>
+                );
+              })}
             </div>
+            {/* Merge floating bar */}
+            {mergeMode && mergeSelected.length >= 2 && (
+              <div className="fixed bottom-20 left-3 right-3 bg-orange-500 text-white rounded-xl p-3 flex justify-between items-center shadow-2xl z-40">
+                <span className="font-bold">Merge {mergeSelected.length} tables</span>
+                <div className="flex gap-2">
+                  <button onClick={() => { setMergeMode(false); setMergeSelected([]); }} className="px-4 py-2 bg-orange-400 rounded-lg font-medium">Cancel</button>
+                  <button onClick={mergeTables} disabled={sending} className="px-4 py-2 bg-white text-orange-600 rounded-lg font-bold">{sending ? "..." : "Merge"}</button>
+                </div>
+              </div>
+            )}
           </div>
         )}
 
@@ -783,10 +1341,17 @@ export default function WaiterTerminal() {
                   <span className="text-gray-500 text-lg font-semibold">Subtotal</span>
                   <span className="font-black text-2xl text-gray-900">${(cartTotal || 0).toFixed(2)}</span>
                 </div>
-                <button onClick={sendOrder} disabled={!table || sending}
-                  className="w-full py-4 bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-xl font-black text-xl disabled:bg-gray-300 active:scale-[0.98] shadow-lg">
-                  {sending ? "Sending..." : "Send to Kitchen"}
-                </button>
+                {activeTab ? (
+                  <button onClick={addToTab} disabled={sending}
+                    className="w-full py-4 bg-gradient-to-r from-indigo-500 to-indigo-600 text-white rounded-xl font-black text-xl disabled:bg-gray-300 active:scale-[0.98] shadow-lg">
+                    {sending ? "Adding..." : `Add to Tab (${activeTab.customer_name})`}
+                  </button>
+                ) : (
+                  <button onClick={sendOrder} disabled={!table || sending}
+                    className="w-full py-4 bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-xl font-black text-xl disabled:bg-gray-300 active:scale-[0.98] shadow-lg">
+                    {sending ? "Sending..." : "Send to Kitchen"}
+                  </button>
+                )}
               </div>
             )}
           </div>
@@ -808,7 +1373,12 @@ export default function WaiterTerminal() {
                     <div className="flex items-center gap-2">
                       <span className="font-bold text-gray-900">${(item.total || 0).toFixed(2)}</span>
                       {item.status !== "voided" && (
-                        <button onClick={() => setShowVoid(item)} className="text-red-500 text-xs">Void</button>
+                        <>
+                          <button onClick={() => quickReorder(item.id)} disabled={sending} className="text-blue-500 text-xs" title="Reorder">
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
+                          </button>
+                          <button onClick={() => setShowVoid(item)} className="text-red-500 text-xs">Void</button>
+                        </>
                       )}
                     </div>
                   </div>
@@ -852,18 +1422,18 @@ export default function WaiterTerminal() {
               </div>
 
               {/* Actions */}
-              <div className="mt-4 grid grid-cols-2 gap-2">
+              <div className="mt-4 grid grid-cols-3 gap-2">
                 <button onClick={() => setShowDiscount(true)} className="py-2 bg-white border border-gray-200 rounded-lg text-sm text-gray-700 font-medium shadow-sm">Discount</button>
-                <button onClick={() => setShowSplit(true)} className="py-2 bg-white border border-gray-200 rounded-lg text-sm text-gray-700 font-medium shadow-sm">Split Check</button>
-                <button onClick={() => setShowFiscal(true)} className="py-2 bg-gradient-to-r from-purple-500 to-purple-600 text-white rounded-lg text-sm font-medium shadow-sm">
-                  <span className="flex items-center justify-center gap-1">
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
-                    </svg>
-                    Fiscal
-                  </span>
-                </button>
+                <button onClick={() => setShowSplit(true)} className="py-2 bg-white border border-gray-200 rounded-lg text-sm text-gray-700 font-medium shadow-sm">Split</button>
+                <button onClick={() => { setShowMoveItems(true); setMoveStep(1); setMoveSelectedItems([]); }}
+                  className="py-2 bg-white border border-gray-200 rounded-lg text-sm text-gray-700 font-medium shadow-sm">Move Items</button>
+                <button onClick={() => setShowFiscal(true)} className="py-2 bg-gradient-to-r from-purple-500 to-purple-600 text-white rounded-lg text-sm font-medium shadow-sm">Fiscal</button>
                 <button onClick={() => setShowTransfer(true)} className="py-2 bg-white border border-gray-200 rounded-lg text-sm text-gray-700 font-medium shadow-sm">Transfer</button>
+                <button onClick={() => setShowHoldOrder(true)} className="py-2 bg-amber-100 border border-amber-300 text-amber-700 rounded-lg text-sm font-medium shadow-sm">Hold</button>
+                {table && (
+                  <button onClick={() => { loadTableChecks(table.table_id); setShowMergeChecks(true); setMergeSelectedChecks([]); }}
+                    className="py-2 bg-white border border-gray-200 rounded-lg text-sm text-gray-700 font-medium shadow-sm col-span-3">Merge Checks</button>
+                )}
               </div>
 
               {/* Quick Drawer Button */}
@@ -936,7 +1506,7 @@ export default function WaiterTerminal() {
           <svg className="w-7 h-7" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" /></svg>
           <span className="text-sm font-bold mt-1">Tables</span>
         </button>
-        <button onClick={() => table ? setScreen("menu") : notify("Select table")} className={`flex-1 flex flex-col items-center py-2 ${screen === "menu" ? "text-blue-600" : "text-gray-400"}`}>
+        <button onClick={() => (table || activeTab) ? setScreen("menu") : notify("Select table")} className={`flex-1 flex flex-col items-center py-2 ${screen === "menu" ? "text-blue-600" : "text-gray-400"}`}>
           <svg className="w-7 h-7" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" /></svg>
           <span className="text-sm font-bold mt-1">Menu</span>
         </button>
@@ -1047,7 +1617,7 @@ export default function WaiterTerminal() {
       )}
 
       {/* Split Modal */}
-      {showSplit && (
+      {showSplit && !showSplitByItems && (
         <div className="fixed inset-0 bg-black/50 flex items-end z-50">
           <div className="bg-white w-full rounded-t-2xl p-4 shadow-2xl">
             <div className="w-10 h-1 bg-gray-300 rounded-full mx-auto mb-4" />
@@ -1070,8 +1640,59 @@ export default function WaiterTerminal() {
                   <button onClick={splitEven} className="ml-auto px-4 py-2 bg-blue-600 text-white rounded-lg font-medium shadow">Split</button>
                 </div>
               </div>
+              <button onClick={() => { setShowSplitByItems(true); setSplitByItemsSelected([]); }} className="w-full py-3 bg-gray-100 rounded-xl text-left px-4">
+                <div className="font-medium text-gray-900">Split by Items</div>
+                <div className="text-gray-500 text-sm">Select specific items for a new check</div>
+              </button>
             </div>
             <button onClick={() => setShowSplit(false)} className="w-full py-3 bg-gray-100 hover:bg-gray-200 rounded-xl text-gray-700">Cancel</button>
+          </div>
+        </div>
+      )}
+
+      {/* Split by Items Modal */}
+      {showSplitByItems && check && (
+        <div className="fixed inset-0 bg-black/50 flex items-end z-50">
+          <div className="bg-white w-full rounded-t-2xl p-4 max-h-[80vh] overflow-auto shadow-2xl">
+            <div className="w-10 h-1 bg-gray-300 rounded-full mx-auto mb-4" />
+            <h2 className="text-lg font-bold mb-2 text-gray-900">Split by Items</h2>
+            <p className="text-gray-500 text-sm mb-3">Select items for the new check</p>
+            <div className="space-y-2 mb-4">
+              <button onClick={() => {
+                const allIds = check.items.filter(i => i.status !== "voided").map(i => i.id);
+                setSplitByItemsSelected(splitByItemsSelected.length === allIds.length ? [] : allIds);
+              }} className="text-blue-600 text-sm font-medium">
+                {splitByItemsSelected.length === check.items.filter(i => i.status !== "voided").length ? "Deselect All" : "Select All"}
+              </button>
+              {check.items.filter(i => i.status !== "voided").map(item => (
+                <button key={item.id} onClick={() => setSplitByItemsSelected(prev =>
+                  prev.includes(item.id) ? prev.filter(id => id !== item.id) : [...prev, item.id]
+                )} className={`w-full p-3 rounded-lg text-left flex justify-between items-center ${
+                  splitByItemsSelected.includes(item.id) ? "bg-blue-50 border-2 border-blue-500" : "bg-gray-50 border border-gray-200"
+                }`}>
+                  <div>
+                    <div className="font-medium text-gray-900">{item.quantity}x {typeof item.name === "string" ? item.name : "Item"}</div>
+                    {item.seat && <div className="text-xs text-gray-500">Seat {item.seat}</div>}
+                  </div>
+                  <span className="font-bold text-gray-900">${(item.total || 0).toFixed(2)}</span>
+                </button>
+              ))}
+            </div>
+            {splitByItemsSelected.length > 0 && (
+              <div className="bg-blue-50 rounded-lg p-3 mb-4 flex justify-between">
+                <span className="text-blue-700 font-medium">New check subtotal</span>
+                <span className="text-blue-700 font-bold">
+                  ${check.items.filter(i => splitByItemsSelected.includes(i.id)).reduce((s, i) => s + (i.total || 0), 0).toFixed(2)}
+                </span>
+              </div>
+            )}
+            <div className="flex gap-2">
+              <button onClick={() => { setShowSplitByItems(false); setSplitByItemsSelected([]); }} className="flex-1 py-3 bg-gray-100 hover:bg-gray-200 rounded-xl text-gray-700">Back</button>
+              <button onClick={splitByItems} disabled={sending || splitByItemsSelected.length === 0}
+                className="flex-1 py-3 bg-blue-600 text-white rounded-xl font-bold shadow-lg disabled:bg-gray-300">
+                {sending ? "..." : "Create New Check"}
+              </button>
+            </div>
           </div>
         </div>
       )}
@@ -1251,6 +1872,411 @@ export default function WaiterTerminal() {
             <button onClick={() => setShowFiscal(false)} className="w-full py-3 bg-gray-100 hover:bg-gray-200 rounded-xl text-gray-700 font-medium">
               Close
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* Move Items Modal (Phase 1) */}
+      {showMoveItems && check && (
+        <div className="fixed inset-0 bg-black/50 flex items-end z-50">
+          <div className="bg-white w-full rounded-t-2xl p-4 max-h-[80vh] overflow-auto shadow-2xl">
+            <div className="w-10 h-1 bg-gray-300 rounded-full mx-auto mb-4" />
+            {moveStep === 1 ? (
+              <>
+                <h2 className="text-lg font-bold mb-2 text-gray-900">Move Items</h2>
+                <p className="text-gray-500 text-sm mb-3">Select items to move</p>
+                <button onClick={() => {
+                  const allIds = check.items.filter(i => i.status !== "voided").map(i => i.id);
+                  setMoveSelectedItems(moveSelectedItems.length === allIds.length ? [] : allIds);
+                }} className="text-blue-600 text-sm font-medium mb-2">
+                  {moveSelectedItems.length === check.items.filter(i => i.status !== "voided").length ? "Deselect All" : "Select All"}
+                </button>
+                <div className="space-y-2 mb-4">
+                  {check.items.filter(i => i.status !== "voided").map(item => (
+                    <button key={item.id} onClick={() => setMoveSelectedItems(prev =>
+                      prev.includes(item.id) ? prev.filter(id => id !== item.id) : [...prev, item.id]
+                    )} className={`w-full p-3 rounded-lg text-left flex justify-between items-center ${
+                      moveSelectedItems.includes(item.id) ? "bg-blue-50 border-2 border-blue-500" : "bg-gray-50 border border-gray-200"
+                    }`}>
+                      <div>
+                        <div className="font-medium text-gray-900">{item.quantity}x {typeof item.name === "string" ? item.name : "Item"}</div>
+                        {item.seat && <div className="text-xs text-gray-500">Seat {item.seat}</div>}
+                      </div>
+                      <span className="font-bold text-gray-900">${(item.total || 0).toFixed(2)}</span>
+                    </button>
+                  ))}
+                </div>
+                <div className="flex gap-2">
+                  <button onClick={() => { setShowMoveItems(false); setMoveSelectedItems([]); }} className="flex-1 py-3 bg-gray-100 hover:bg-gray-200 rounded-xl text-gray-700">Cancel</button>
+                  <button onClick={() => setMoveStep(2)} disabled={moveSelectedItems.length === 0}
+                    className="flex-1 py-3 bg-blue-600 text-white rounded-xl font-bold shadow-lg disabled:bg-gray-300">
+                    Next ({moveSelectedItems.length})
+                  </button>
+                </div>
+              </>
+            ) : (
+              <>
+                <h2 className="text-lg font-bold mb-2 text-gray-900">Select Destination</h2>
+                <p className="text-gray-500 text-sm mb-3">Moving {moveSelectedItems.length} items</p>
+                <div className="grid grid-cols-4 gap-2 max-h-60 overflow-auto mb-4">
+                  {tables.filter(t => t.table_id !== table?.table_id).map(t => (
+                    <button key={t.table_id} onClick={() => moveItems(t.table_id)}
+                      className={`p-3 rounded-lg text-sm font-medium shadow ${
+                        t.status === "occupied" ? "bg-gradient-to-br from-red-500 to-red-600 text-white" : "bg-gradient-to-br from-emerald-500 to-emerald-600 text-white"
+                      }`}>
+                      {t.table_name.replace("Table ", "")}
+                    </button>
+                  ))}
+                </div>
+                <div className="flex gap-2">
+                  <button onClick={() => setMoveStep(1)} className="flex-1 py-3 bg-gray-100 hover:bg-gray-200 rounded-xl text-gray-700">Back</button>
+                  <button onClick={() => { setShowMoveItems(false); setMoveSelectedItems([]); setMoveStep(1); }} className="flex-1 py-3 bg-gray-100 hover:bg-gray-200 rounded-xl text-gray-700">Cancel</button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Merge Checks Modal (Phase 2) */}
+      {showMergeChecks && (
+        <div className="fixed inset-0 bg-black/50 flex items-end z-50">
+          <div className="bg-white w-full rounded-t-2xl p-4 max-h-[80vh] overflow-auto shadow-2xl">
+            <div className="w-10 h-1 bg-gray-300 rounded-full mx-auto mb-4" />
+            <h2 className="text-lg font-bold mb-2 text-gray-900">Merge Checks</h2>
+            <p className="text-gray-500 text-sm mb-3">Select checks to merge (min 2)</p>
+            {tableChecks.length < 2 ? (
+              <p className="text-gray-400 text-center py-4">Only one check on this table</p>
+            ) : (
+              <div className="space-y-2 mb-4">
+                {tableChecks.map(c => (
+                  <button key={c.check_id} onClick={() => setMergeSelectedChecks(prev =>
+                    prev.includes(c.check_id) ? prev.filter(id => id !== c.check_id) : [...prev, c.check_id]
+                  )} className={`w-full p-3 rounded-lg text-left flex justify-between items-center ${
+                    mergeSelectedChecks.includes(c.check_id) ? "bg-blue-50 border-2 border-blue-500" : "bg-gray-50 border border-gray-200"
+                  }`}>
+                    <div>
+                      <div className="font-medium text-gray-900">Check #{c.check_id}</div>
+                      <div className="text-xs text-gray-500">{c.items.length} items</div>
+                    </div>
+                    <span className="font-bold text-gray-900">${(c.total || 0).toFixed(2)}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+            <div className="flex gap-2">
+              <button onClick={() => { setShowMergeChecks(false); setMergeSelectedChecks([]); }} className="flex-1 py-3 bg-gray-100 hover:bg-gray-200 rounded-xl text-gray-700">Cancel</button>
+              <button onClick={mergeChecks} disabled={sending || mergeSelectedChecks.length < 2}
+                className="flex-1 py-3 bg-blue-600 text-white rounded-xl font-bold shadow-lg disabled:bg-gray-300">
+                {sending ? "..." : `Merge ${mergeSelectedChecks.length} Checks`}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Booking Modal (Phase 3) */}
+      {showBooking && (
+        <div className="fixed inset-0 bg-black/50 flex items-end z-50">
+          <div className="bg-white w-full rounded-t-2xl p-4 max-h-[85vh] overflow-auto shadow-2xl">
+            <div className="w-10 h-1 bg-gray-300 rounded-full mx-auto mb-4" />
+            <h2 className="text-lg font-bold mb-4 text-gray-900">New Reservation</h2>
+            <div className="space-y-3">
+              <div>
+                <label className="text-gray-500 text-xs">Guest Name *</label>
+                <input value={bookingForm.guest_name} onChange={e => setBookingForm({ ...bookingForm, guest_name: e.target.value })}
+                  className="w-full bg-gray-100 rounded-lg p-3 text-sm text-gray-900 border border-gray-200" placeholder="Name" />
+              </div>
+              <div>
+                <label className="text-gray-500 text-xs">Phone</label>
+                <input value={bookingForm.guest_phone} onChange={e => setBookingForm({ ...bookingForm, guest_phone: e.target.value })}
+                  className="w-full bg-gray-100 rounded-lg p-3 text-sm text-gray-900 border border-gray-200" placeholder="Phone" type="tel" />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-gray-500 text-xs">Date</label>
+                  <input value={bookingForm.date} onChange={e => setBookingForm({ ...bookingForm, date: e.target.value })}
+                    className="w-full bg-gray-100 rounded-lg p-3 text-sm text-gray-900 border border-gray-200" type="date" />
+                </div>
+                <div>
+                  <label className="text-gray-500 text-xs">Time</label>
+                  <select value={bookingForm.time} onChange={e => setBookingForm({ ...bookingForm, time: e.target.value })}
+                    className="w-full bg-gray-100 rounded-lg p-3 text-sm text-gray-900 border border-gray-200">
+                    {Array.from({ length: 40 }, (_, i) => {
+                      const h = Math.floor(i / 4) + 10;
+                      const m = (i % 4) * 15;
+                      const t = `${h.toString().padStart(2, "0")}:${m.toString().padStart(2, "0")}`;
+                      return <option key={t} value={t}>{t}</option>;
+                    })}
+                  </select>
+                </div>
+              </div>
+              <div>
+                <label className="text-gray-500 text-xs">Party Size</label>
+                <div className="flex items-center gap-4 mt-1">
+                  <button onClick={() => setBookingForm({ ...bookingForm, party_size: Math.max(1, bookingForm.party_size - 1) })}
+                    className="w-10 h-10 bg-gray-100 rounded-lg font-bold text-gray-700">-</button>
+                  <span className="text-xl font-bold text-gray-900">{bookingForm.party_size}</span>
+                  <button onClick={() => setBookingForm({ ...bookingForm, party_size: Math.min(20, bookingForm.party_size + 1) })}
+                    className="w-10 h-10 bg-gray-100 rounded-lg font-bold text-gray-700">+</button>
+                </div>
+              </div>
+              <div>
+                <label className="text-gray-500 text-xs">Special Requests</label>
+                <textarea value={bookingForm.special_requests} onChange={e => setBookingForm({ ...bookingForm, special_requests: e.target.value })}
+                  className="w-full bg-gray-100 rounded-lg p-3 text-sm text-gray-900 border border-gray-200" rows={2} placeholder="Notes..." />
+              </div>
+            </div>
+            <div className="flex gap-2 mt-4">
+              <button onClick={() => setShowBooking(false)} className="flex-1 py-3 bg-gray-100 hover:bg-gray-200 rounded-xl text-gray-700">Cancel</button>
+              <button onClick={createReservation} disabled={sending || !bookingForm.guest_name.trim()}
+                className="flex-1 py-3 bg-gradient-to-r from-purple-500 to-purple-600 text-white rounded-xl font-bold shadow-lg disabled:bg-gray-300">
+                {sending ? "..." : "Book"}
+              </button>
+            </div>
+            {/* Today's reservations list */}
+            {reservations.length > 0 && (
+              <div className="mt-4 border-t border-gray-200 pt-3">
+                <div className="text-gray-500 text-xs mb-2">Today&apos;s Reservations ({reservations.length})</div>
+                <div className="space-y-2 max-h-40 overflow-auto">
+                  {reservations.map(r => (
+                    <div key={r.id} className="bg-gray-50 rounded-lg p-2 flex justify-between items-center text-sm">
+                      <div>
+                        <span className="font-medium text-gray-900">{r.guest_name}</span>
+                        <span className="text-gray-500 ml-2">{r.party_size}p</span>
+                        <span className="text-gray-500 ml-2">{r.reservation_date.split("T")[1]?.slice(0,5) || ""}</span>
+                      </div>
+                      <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${
+                        r.status === "confirmed" ? "bg-green-100 text-green-700" :
+                        r.status === "seated" ? "bg-blue-100 text-blue-700" :
+                        r.status === "cancelled" ? "bg-red-100 text-red-700" :
+                        "bg-gray-100 text-gray-600"
+                      }`}>{r.status}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Reservation Detail Modal (Phase 3) */}
+      {showReservationDetail && (
+        <div className="fixed inset-0 bg-black/50 flex items-end z-50">
+          <div className="bg-white w-full rounded-t-2xl p-4 shadow-2xl">
+            <div className="w-10 h-1 bg-gray-300 rounded-full mx-auto mb-4" />
+            <h2 className="text-lg font-bold mb-2 text-gray-900">Reservation</h2>
+            <div className="bg-purple-50 rounded-xl p-4 mb-4 space-y-2">
+              <div className="flex justify-between"><span className="text-gray-500">Guest</span><span className="font-bold text-gray-900">{showReservationDetail.guest_name}</span></div>
+              <div className="flex justify-between"><span className="text-gray-500">Party</span><span className="font-medium text-gray-900">{showReservationDetail.party_size} people</span></div>
+              <div className="flex justify-between"><span className="text-gray-500">Time</span><span className="font-medium text-gray-900">{showReservationDetail.reservation_date.split("T")[1]?.slice(0,5) || ""}</span></div>
+              {showReservationDetail.guest_phone && (
+                <div className="flex justify-between"><span className="text-gray-500">Phone</span><span className="font-medium text-gray-900">{showReservationDetail.guest_phone}</span></div>
+              )}
+              {showReservationDetail.special_requests && (
+                <div className="flex justify-between"><span className="text-gray-500">Notes</span><span className="font-medium text-gray-900 text-right max-w-[60%]">{showReservationDetail.special_requests}</span></div>
+              )}
+              <div className="flex justify-between"><span className="text-gray-500">Status</span><span className={`font-bold ${showReservationDetail.status === "confirmed" ? "text-green-600" : "text-amber-600"}`}>{showReservationDetail.status}</span></div>
+            </div>
+            <div className="flex gap-2">
+              <button onClick={() => setShowReservationDetail(null)} className="flex-1 py-3 bg-gray-100 hover:bg-gray-200 rounded-xl text-gray-700">Close</button>
+              <button onClick={() => cancelReservation(showReservationDetail)} disabled={sending}
+                className="flex-1 py-3 bg-red-500 text-white rounded-xl font-bold shadow-lg">{sending ? "..." : "Cancel"}</button>
+              <button onClick={() => seatReservation(showReservationDetail)} disabled={sending}
+                className="flex-1 py-3 bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-xl font-bold shadow-lg">{sending ? "..." : "Seat Now"}</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Tabs List Modal (Phase 4) */}
+      {showTabs && (
+        <div className="fixed inset-0 bg-black/50 flex items-end z-50">
+          <div className="bg-white w-full rounded-t-2xl p-4 max-h-[85vh] overflow-auto shadow-2xl">
+            <div className="w-10 h-1 bg-gray-300 rounded-full mx-auto mb-4" />
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-lg font-bold text-gray-900">Open Tabs</h2>
+              <button onClick={() => { setShowTabs(false); setShowOpenTab(true); }}
+                className="px-3 py-1.5 bg-indigo-600 text-white rounded-lg text-sm font-bold">+ New Tab</button>
+            </div>
+            {tabs.length === 0 ? (
+              <p className="text-gray-400 text-center py-8">No open tabs</p>
+            ) : (
+              <div className="space-y-2 mb-4">
+                {tabs.map(t => (
+                  <div key={t.id} className="bg-gray-50 rounded-xl p-3 border border-gray-200">
+                    <div className="flex justify-between items-start mb-2">
+                      <div>
+                        <div className="font-bold text-gray-900">{t.customer_name}</div>
+                        {t.card_last_four && <div className="text-xs text-gray-500">Card ****{t.card_last_four}</div>}
+                        <div className="text-xs text-gray-500">{t.items_count || 0} items</div>
+                      </div>
+                      <div className="text-right">
+                        <div className="font-black text-lg text-gray-900">${(t.total || 0).toFixed(2)}</div>
+                      </div>
+                    </div>
+                    <div className="flex gap-2">
+                      <button onClick={() => {
+                        setActiveTab(t);
+                        setShowTabs(false);
+                        setTable(null);
+                        setScreen("menu");
+                      }} className="flex-1 py-2 bg-indigo-100 text-indigo-700 rounded-lg text-xs font-bold">Add Items</button>
+                      <button onClick={() => { setActiveTab(t); setShowTabTransfer(true); }}
+                        className="flex-1 py-2 bg-blue-100 text-blue-700 rounded-lg text-xs font-bold">To Table</button>
+                      <button onClick={() => closeTab(t)} disabled={sending}
+                        className="flex-1 py-2 bg-green-100 text-green-700 rounded-lg text-xs font-bold">Close</button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+            <button onClick={() => setShowTabs(false)} className="w-full py-3 bg-gray-100 hover:bg-gray-200 rounded-xl text-gray-700">Close</button>
+          </div>
+        </div>
+      )}
+
+      {/* Open Tab Modal (Phase 4) */}
+      {showOpenTab && (
+        <div className="fixed inset-0 bg-black/50 flex items-end z-50">
+          <div className="bg-white w-full rounded-t-2xl p-4 shadow-2xl">
+            <div className="w-10 h-1 bg-gray-300 rounded-full mx-auto mb-4" />
+            <h2 className="text-lg font-bold mb-4 text-gray-900">Open New Tab</h2>
+            <div className="space-y-3">
+              <div>
+                <label className="text-gray-500 text-xs">Customer Name *</label>
+                <input value={tabForm.customer_name} onChange={e => setTabForm({ ...tabForm, customer_name: e.target.value })}
+                  className="w-full bg-gray-100 rounded-lg p-3 text-sm text-gray-900 border border-gray-200" placeholder="Name" />
+              </div>
+              <div>
+                <label className="text-gray-500 text-xs">Card Last 4 Digits</label>
+                <input value={tabForm.card_last_four} onChange={e => setTabForm({ ...tabForm, card_last_four: e.target.value.slice(0, 4) })}
+                  className="w-full bg-gray-100 rounded-lg p-3 text-sm text-gray-900 border border-gray-200" placeholder="1234" maxLength={4} />
+              </div>
+              <div>
+                <label className="text-gray-500 text-xs">Pre-Auth Amount</label>
+                <div className="flex gap-2 mt-1">
+                  {[25, 50, 100, 200].map(v => (
+                    <button key={v} onClick={() => setTabForm({ ...tabForm, pre_auth_amount: v })}
+                      className={`flex-1 py-2 rounded-lg text-sm font-medium ${tabForm.pre_auth_amount === v ? "bg-indigo-600 text-white" : "bg-gray-100 text-gray-700"}`}>
+                      ${v}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+            <div className="flex gap-2 mt-4">
+              <button onClick={() => setShowOpenTab(false)} className="flex-1 py-3 bg-gray-100 hover:bg-gray-200 rounded-xl text-gray-700">Cancel</button>
+              <button onClick={openTab} disabled={sending || !tabForm.customer_name.trim()}
+                className="flex-1 py-3 bg-gradient-to-r from-indigo-500 to-indigo-600 text-white rounded-xl font-bold shadow-lg disabled:bg-gray-300">
+                {sending ? "..." : "Open Tab"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Tab Transfer to Table Modal (Phase 4) */}
+      {showTabTransfer && activeTab && (
+        <div className="fixed inset-0 bg-black/50 flex items-end z-50">
+          <div className="bg-white w-full rounded-t-2xl p-4 shadow-2xl">
+            <div className="w-10 h-1 bg-gray-300 rounded-full mx-auto mb-4" />
+            <h2 className="text-lg font-bold mb-2 text-gray-900">Move Tab to Table</h2>
+            <p className="text-gray-500 text-sm mb-3">{activeTab.customer_name}&apos;s tab (${(activeTab.total || 0).toFixed(2)})</p>
+            <div className="grid grid-cols-4 gap-2 max-h-60 overflow-auto mb-4">
+              {tables.map(t => (
+                <button key={t.table_id} onClick={() => transferTabToTable(t.table_id)}
+                  className={`p-3 rounded-lg text-sm font-medium shadow ${
+                    t.status === "occupied" ? "bg-gradient-to-br from-red-500 to-red-600 text-white" : "bg-gradient-to-br from-emerald-500 to-emerald-600 text-white"
+                  }`}>
+                  {t.table_name.replace("Table ", "")}
+                </button>
+              ))}
+            </div>
+            <button onClick={() => { setShowTabTransfer(false); setActiveTab(null); }} className="w-full py-3 bg-gray-100 hover:bg-gray-200 rounded-xl text-gray-700">Cancel</button>
+          </div>
+        </div>
+      )}
+
+      {/* Held Orders Modal (Phase 5) */}
+      {showHeldOrders && (
+        <div className="fixed inset-0 bg-black/50 flex items-end z-50">
+          <div className="bg-white w-full rounded-t-2xl p-4 max-h-[80vh] overflow-auto shadow-2xl">
+            <div className="w-10 h-1 bg-gray-300 rounded-full mx-auto mb-4" />
+            <h2 className="text-lg font-bold mb-4 text-gray-900">Held Orders</h2>
+            {heldOrders.length === 0 ? (
+              <p className="text-gray-400 text-center py-8">No held orders</p>
+            ) : (
+              <div className="space-y-2 mb-4">
+                {heldOrders.map(h => (
+                  <div key={h.id} className="bg-amber-50 rounded-xl p-3 border border-amber-200">
+                    <div className="flex justify-between items-start mb-2">
+                      <div>
+                        <div className="font-bold text-gray-900">{h.customer_name || `Order #${h.original_order_id || h.id}`}</div>
+                        <div className="text-xs text-gray-500">{h.hold_reason}</div>
+                        <div className="text-xs text-gray-400">Held: {new Date(h.held_at).toLocaleTimeString()}</div>
+                        {h.expires_at && <div className="text-xs text-red-500">Expires: {new Date(h.expires_at).toLocaleTimeString()}</div>}
+                      </div>
+                      <div className="font-black text-lg text-gray-900">${(h.total_amount || 0).toFixed(2)}</div>
+                    </div>
+                    <div className="flex gap-2">
+                      <button onClick={() => resumeHeldOrder(h)} disabled={sending}
+                        className="flex-1 py-2 bg-green-500 text-white rounded-lg text-xs font-bold">Resume</button>
+                      <button onClick={() => {
+                        const tblId = prompt("Enter table number to resume at:");
+                        if (tblId) {
+                          const foundTable = tables.find(t => t.table_name.includes(tblId) || t.table_id === parseInt(tblId));
+                          if (foundTable) resumeHeldOrder(h, foundTable.table_id);
+                          else notify("Table not found");
+                        }
+                      }} className="flex-1 py-2 bg-blue-100 text-blue-700 rounded-lg text-xs font-bold">Resume at Table</button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+            <button onClick={() => setShowHeldOrders(false)} className="w-full py-3 bg-gray-100 hover:bg-gray-200 rounded-xl text-gray-700">Close</button>
+          </div>
+        </div>
+      )}
+
+      {/* Hold Order Modal (Phase 5) */}
+      {showHoldOrder && check && (
+        <div className="fixed inset-0 bg-black/50 flex items-end z-50">
+          <div className="bg-white w-full rounded-t-2xl p-4 shadow-2xl">
+            <div className="w-10 h-1 bg-gray-300 rounded-full mx-auto mb-4" />
+            <h2 className="text-lg font-bold mb-2 text-gray-900">Hold Order</h2>
+            <p className="text-gray-500 text-sm mb-3">Park this order for later (${(check.total || 0).toFixed(2)})</p>
+            <input value={holdReason} onChange={e => setHoldReason(e.target.value)}
+              className="w-full bg-gray-100 rounded-lg p-3 text-sm text-gray-900 border border-gray-200 mb-4" placeholder="Reason (optional)" />
+            <div className="flex gap-2">
+              <button onClick={() => setShowHoldOrder(false)} className="flex-1 py-3 bg-gray-100 hover:bg-gray-200 rounded-xl text-gray-700">Cancel</button>
+              <button onClick={holdOrder} disabled={sending}
+                className="flex-1 py-3 bg-gradient-to-r from-amber-500 to-amber-600 text-white rounded-xl font-bold shadow-lg">
+                {sending ? "..." : "Hold Order"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Unmerge Modal (Phase 6) */}
+      {showUnmerge && (
+        <div className="fixed inset-0 bg-black/50 flex items-end z-50">
+          <div className="bg-white w-full rounded-t-2xl p-4 shadow-2xl">
+            <div className="w-10 h-1 bg-gray-300 rounded-full mx-auto mb-4" />
+            <h2 className="text-lg font-bold mb-2 text-gray-900">Merged Table</h2>
+            <p className="text-gray-500 text-sm mb-4">
+              Primary: Table {showUnmerge.primary_table_id} + {showUnmerge.secondary_tables.length} merged table(s)
+            </p>
+            <div className="flex gap-2">
+              <button onClick={() => setShowUnmerge(null)} className="flex-1 py-3 bg-gray-100 hover:bg-gray-200 rounded-xl text-gray-700">Close</button>
+              <button onClick={() => unmergeTables(showUnmerge)} disabled={sending}
+                className="flex-1 py-3 bg-red-500 text-white rounded-xl font-bold shadow-lg">
+                {sending ? "..." : "Unmerge"}
+              </button>
+            </div>
           </div>
         </div>
       )}
