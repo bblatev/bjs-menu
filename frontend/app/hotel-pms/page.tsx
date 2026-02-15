@@ -307,9 +307,9 @@ export default function HotelPMSPage() {
           <div className="grid grid-cols-4 gap-4">
             {[
               { label: 'Active Guests', value: guests.length, icon: '👤', color: 'blue' },
-              { label: 'Today\'s Charges', value: `$${charges.filter(c => c.status !== 'voided').reduce((sum, c) => sum + c.amount, 0).toFixed(2)}`, icon: '💰', color: 'green' },
+              { label: 'Today\'s Charges', value: `$${(charges.filter(c => c.status !== 'voided').reduce((sum, c) => sum + c.amount, 0) || 0).toFixed(2)}`, icon: '💰', color: 'green' },
               { label: 'Pending Charges', value: charges.filter(c => c.status === 'pending').length, icon: '⏳', color: 'amber' },
-              { label: 'F&B Credits', value: `$${guests.reduce((sum, g) => sum + g.fb_credit_balance, 0).toFixed(2)}`, icon: '🎫', color: 'purple' },
+              { label: 'F&B Credits', value: `$${(guests.reduce((sum, g) => sum + g.fb_credit_balance, 0) || 0).toFixed(2)}`, icon: '🎫', color: 'purple' },
             ].map((stat, index) => (
               <motion.div
                 key={stat.label}
@@ -369,7 +369,7 @@ export default function HotelPMSPage() {
                         <div className="text-sm text-surface-500">Room {charge.room_number} • {charge.description}</div>
                       </div>
                       <div className="text-right">
-                        <div className="font-semibold text-surface-900">${charge.amount.toFixed(2)}</div>
+                        <div className="font-semibold text-surface-900">${(charge.amount || 0).toFixed(2)}</div>
                         <span className={`px-2 py-0.5 rounded-full text-xs ${getStatusColor(charge.status)}`}>
                           {charge.status}
                         </span>
@@ -447,13 +447,13 @@ export default function HotelPMSPage() {
                       </td>
                       <td className="px-6 py-4 text-right">
                         {guest.fb_credit_balance > 0 ? (
-                          <span className="text-green-600 font-medium">${guest.fb_credit_balance.toFixed(2)}</span>
+                          <span className="text-green-600 font-medium">${(guest.fb_credit_balance || 0).toFixed(2)}</span>
                         ) : (
                           <span className="text-surface-400">$0.00</span>
                         )}
                       </td>
                       <td className="px-6 py-4 text-right font-medium text-surface-900">
-                        ${guest.total_charges.toFixed(2)}
+                        ${(guest.total_charges || 0).toFixed(2)}
                       </td>
                     </tr>
                   ))}
@@ -488,7 +488,7 @@ export default function HotelPMSPage() {
                       </td>
                       <td className="px-6 py-4 text-surface-600">{charge.description}</td>
                       <td className="px-6 py-4 text-right font-semibold text-surface-900">
-                        ${charge.amount.toFixed(2)}
+                        ${(charge.amount || 0).toFixed(2)}
                       </td>
                       <td className="px-6 py-4 text-center">
                         <span className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(charge.status)}`}>

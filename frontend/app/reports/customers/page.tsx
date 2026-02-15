@@ -264,7 +264,7 @@ export default function ReportsCustomersPage() {
                     </div>
                     <div>
                       <p className="text-xs text-surface-500">Avg Order</p>
-                      <p className="text-sm font-semibold text-surface-900">{customer.avgOrderValue.toFixed(2)} лв</p>
+                      <p className="text-sm font-semibold text-surface-900">{(customer.avgOrderValue || 0).toFixed(2)} лв</p>
                     </div>
                     <div>
                       <p className="text-xs text-surface-500">Loyalty Points</p>

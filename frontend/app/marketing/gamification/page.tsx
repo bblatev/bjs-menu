@@ -401,7 +401,7 @@ export default function MarketingGamificationPage() {
             <span className="text-3xl">✅</span>
             <span className="text-sm text-green-600 font-medium">↑ 22%</span>
           </div>
-          <div className="text-2xl font-bold text-surface-900">{challengeCompletionRate.toFixed(0)}%</div>
+          <div className="text-2xl font-bold text-surface-900">{(challengeCompletionRate || 0).toFixed(0)}%</div>
           <div className="text-sm text-surface-500">Completion Rate</div>
         </motion.div>
 
@@ -677,12 +677,12 @@ export default function MarketingGamificationPage() {
                       <div className="flex gap-4 text-sm text-surface-600">
                         <span>🏆 {entry.badges_earned} badges</span>
                         <span>📍 {entry.visits} visits</span>
-                        <span>💰 {(entry.total_spend ?? 0).toLocaleString()} BGN</span>
+                        <span>💰 {(entry.total_spend || 0).toLocaleString()} BGN</span>
                       </div>
                     </div>
 
                     <div className="text-right">
-                      <div className="text-2xl font-bold text-amber-600">{(entry.points ?? 0).toLocaleString()}</div>
+                      <div className="text-2xl font-bold text-amber-600">{(entry.points || 0).toLocaleString()}</div>
                       <div className="text-xs text-surface-500">points</div>
                     </div>
                   </motion.div>

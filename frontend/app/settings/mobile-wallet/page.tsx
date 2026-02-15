@@ -443,7 +443,7 @@ export default function MobileWalletPage() {
                           </span>
                         </td>
                         <td className="px-4 py-3 text-right font-medium text-surface-900">
-                          ${(session.amount / 100).toFixed(2)}
+                          ${((session.amount / 100) || 0).toFixed(2)}
                         </td>
                         <td className="px-4 py-3">
                           <span className={`px-2 py-1 rounded-full text-xs font-medium ${status.bg} ${status.text}`}>

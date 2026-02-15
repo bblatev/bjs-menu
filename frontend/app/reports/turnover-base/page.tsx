@@ -92,7 +92,7 @@ export default function TurnoverBasePricesPage() {
   };
 
   const formatPercentage = (value: number) => {
-    return `${value.toFixed(1)}%`;
+    return `${(value || 0).toFixed(1)}%`;
   };
 
   const getMarginColor = (margin: number) => {
@@ -108,10 +108,10 @@ export default function TurnoverBasePricesPage() {
     const headers = ['Категория', 'Реална приходи', 'Базова цена', 'Марж', 'Марж %', 'Продадени'];
     const rows = report.by_category.map((c) => [
       c.category,
-      c.actual_revenue.toFixed(2),
-      c.base_revenue.toFixed(2),
-      c.markup_amount.toFixed(2),
-      c.gross_margin_percentage.toFixed(1),
+      (c.actual_revenue || 0).toFixed(2),
+      (c.base_revenue || 0).toFixed(2),
+      (c.markup_amount || 0).toFixed(2),
+      (c.gross_margin_percentage || 0).toFixed(1),
       c.items_sold,
     ]);
 

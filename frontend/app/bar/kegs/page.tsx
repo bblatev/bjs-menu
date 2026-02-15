@@ -237,7 +237,7 @@ export default function KegsPage() {
                 <div className="mb-4">
                   <div className="flex justify-between text-sm mb-1">
                     <span className="text-gray-400">Volume</span>
-                    <span>{keg.fill_percentage.toFixed(1)}%</span>
+                    <span>{(keg.fill_percentage || 0).toFixed(1)}%</span>
                   </div>
                   <div className="h-3 bg-gray-700 rounded-full overflow-hidden">
                     <div
@@ -246,7 +246,7 @@ export default function KegsPage() {
                     />
                   </div>
                   <div className="flex justify-between text-xs text-gray-500 mt-1">
-                    <span>{(keg.current_volume_ml / 1000).toFixed(1)}L remaining</span>
+                    <span>{((keg.current_volume_ml / 1000) || 0).toFixed(1)}L remaining</span>
                     <span>{keg.size_liters}L total</span>
                   </div>
                 </div>
@@ -263,11 +263,11 @@ export default function KegsPage() {
                   </div>
                   <div className="bg-gray-700/50 rounded-lg p-2">
                     <div className="text-gray-400">Dispensed</div>
-                    <div className="font-semibold">{(keg.dispensed_ml / 1000).toFixed(1)}L</div>
+                    <div className="font-semibold">{((keg.dispensed_ml / 1000) || 0).toFixed(1)}L</div>
                   </div>
                   <div className="bg-gray-700/50 rounded-lg p-2">
                     <div className="text-gray-400">Yield</div>
-                    <div className="font-semibold">{keg.yield_percentage?.toFixed(1) || '-'}%</div>
+                    <div className="font-semibold">{(keg.yield_percentage || 0).toFixed(1) || '-'}%</div>
                   </div>
                 </div>
 

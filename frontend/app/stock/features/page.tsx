@@ -818,7 +818,7 @@ export default function StockFeaturesPage() {
                         </div>
                         <div>
                           <p className="text-2xl font-bold text-orange-600">
-                            {session.total_variance_value?.toFixed(2) || '0.00'} EUR
+                            {(session.total_variance_value || 0).toFixed(2) || '0.00'} EUR
                           </p>
                           <p className="text-sm text-gray-500">Variance</p>
                         </div>
@@ -888,20 +888,20 @@ export default function StockFeaturesPage() {
                       <div className="grid grid-cols-4 gap-4">
                         <div className="text-center">
                           <div className={`text-2xl font-bold ${perf.on_time_delivery_rate >= 90 ? 'text-green-600' : perf.on_time_delivery_rate >= 70 ? 'text-yellow-600' : 'text-red-600'}`}>
-                            {perf.on_time_delivery_rate.toFixed(0)}%
+                            {(perf.on_time_delivery_rate || 0).toFixed(0)}%
                           </div>
                           <p className="text-sm text-gray-500">On-Time</p>
                         </div>
                         <div className="text-center">
-                          <div className="text-2xl font-bold text-purple-600">{perf.quality_rating.toFixed(1)}/5</div>
+                          <div className="text-2xl font-bold text-purple-600">{(perf.quality_rating || 0).toFixed(1)}/5</div>
                           <p className="text-sm text-gray-500">Quality</p>
                         </div>
                         <div className="text-center">
-                          <div className="text-2xl font-bold">{perf.average_lead_time_days.toFixed(1)}d</div>
+                          <div className="text-2xl font-bold">{(perf.average_lead_time_days || 0).toFixed(1)}d</div>
                           <p className="text-sm text-gray-500">Lead Time</p>
                         </div>
                         <div className="text-center">
-                          <div className="text-2xl font-bold text-green-600">{perf.total_value.toFixed(0)} EUR</div>
+                          <div className="text-2xl font-bold text-green-600">{(perf.total_value || 0).toFixed(0)} EUR</div>
                           <p className="text-sm text-gray-500">Total Value</p>
                         </div>
                       </div>

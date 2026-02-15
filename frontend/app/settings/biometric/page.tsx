@@ -433,7 +433,7 @@ export default function BiometricSettingsPage() {
                     <p className="text-sm text-gray-600">Неизвестни / Unknown</p>
                   </div>
                   <div className="text-center p-4 bg-purple-50 rounded-lg">
-                    <p className="text-2xl font-bold text-purple-600">{accessStats.success_rate.toFixed(1)}%</p>
+                    <p className="text-2xl font-bold text-purple-600">{(accessStats.success_rate || 0).toFixed(1)}%</p>
                     <p className="text-sm text-gray-600">Успеваемост / Success</p>
                   </div>
                 </div>
@@ -490,7 +490,7 @@ export default function BiometricSettingsPage() {
                           <div>
                             <p className="font-medium">{fp.template_id}</p>
                             <p className="text-sm text-gray-500">
-                              Качество / Quality: {(fp.quality_score * 100).toFixed(0)}% |
+                              Качество / Quality: {((fp.quality_score * 100) || 0).toFixed(0)}% |
                               {new Date(fp.created_at).toLocaleDateString()}
                             </p>
                           </div>

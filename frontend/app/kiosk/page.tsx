@@ -352,15 +352,15 @@ export default function KioskManagementPage() {
           </div>
           <div className="bg-gray-100 rounded-xl p-4">
             <div className="text-gray-600 text-xs">Revenue</div>
-            <div className="text-2xl font-bold text-green-400">{overallStats.totalRevenue.toFixed(0)} лв</div>
+            <div className="text-2xl font-bold text-green-400">{(overallStats.totalRevenue || 0).toFixed(0)} лв</div>
           </div>
           <div className="bg-gray-100 rounded-xl p-4">
             <div className="text-gray-600 text-xs">Avg Order</div>
-            <div className="text-2xl font-bold text-purple-400">{overallStats.avgOrderValue.toFixed(2)} лв</div>
+            <div className="text-2xl font-bold text-purple-400">{(overallStats.avgOrderValue || 0).toFixed(2)} лв</div>
           </div>
           <div className="bg-gray-100 rounded-xl p-4">
             <div className="text-gray-600 text-xs">Conversion</div>
-            <div className="text-2xl font-bold text-cyan-400">{overallStats.conversionRate.toFixed(1)}%</div>
+            <div className="text-2xl font-bold text-cyan-400">{(overallStats.conversionRate || 0).toFixed(1)}%</div>
           </div>
         </div>
 
@@ -426,7 +426,7 @@ export default function KioskManagementPage() {
                       {kiosk.screen_state === 'in_use' && (
                         <div className="text-center">
                           <span className="text-blue-400 text-sm">In Use</span>
-                          <div className="text-gray-900 font-bold">{kiosk.current_session?.cart_total.toFixed(2)} лв</div>
+                          <div className="text-gray-900 font-bold">{(kiosk.current_session?.cart_total || 0).toFixed(2)} лв</div>
                         </div>
                       )}
                       {kiosk.screen_state === 'payment' && <span className="text-green-400">Processing Payment...</span>}
@@ -452,7 +452,7 @@ export default function KioskManagementPage() {
                     {/* Daily Stats */}
                     <div className="grid grid-cols-2 gap-2 text-xs">
                       <div className="text-gray-500">Orders: <span className="text-gray-900">{kiosk.daily_stats.completed_orders}</span></div>
-                      <div className="text-gray-500">Revenue: <span className="text-green-400">{kiosk.daily_stats.total_revenue.toFixed(0)} лв</span></div>
+                      <div className="text-gray-500">Revenue: <span className="text-green-400">{(kiosk.daily_stats.total_revenue || 0).toFixed(0)} лв</span></div>
                     </div>
                   </div>
                 ))}
@@ -601,7 +601,7 @@ export default function KioskManagementPage() {
                         </td>
                         <td className="px-6 py-4 text-right">
                           <div className="text-gray-900">{kiosk.daily_stats.completed_orders} orders</div>
-                          <div className="text-green-400">{kiosk.daily_stats.total_revenue.toFixed(0)} лв</div>
+                          <div className="text-green-400">{(kiosk.daily_stats.total_revenue || 0).toFixed(0)} лв</div>
                         </td>
                         <td className="px-6 py-4 text-center">
                           <div className="flex justify-center gap-2">
@@ -675,7 +675,7 @@ export default function KioskManagementPage() {
 
                     <div className="border-t border-gray-200 pt-3 flex justify-between items-center">
                       <span className="text-gray-600">Cart Total</span>
-                      <span className="text-2xl font-bold text-green-400">{kiosk.current_session?.cart_total.toFixed(2)} лв</span>
+                      <span className="text-2xl font-bold text-green-400">{(kiosk.current_session?.cart_total || 0).toFixed(2)} лв</span>
                     </div>
 
                     <div className="flex gap-2 mt-4">
@@ -1201,7 +1201,7 @@ export default function KioskManagementPage() {
                     <div className="text-gray-500 text-sm">Completed</div>
                   </div>
                   <div className="text-center">
-                    <div className="text-2xl font-bold text-blue-400">{selectedKiosk.daily_stats.total_revenue.toFixed(0)} лв</div>
+                    <div className="text-2xl font-bold text-blue-400">{(selectedKiosk.daily_stats.total_revenue || 0).toFixed(0)} лв</div>
                     <div className="text-gray-500 text-sm">Revenue</div>
                   </div>
                 </div>

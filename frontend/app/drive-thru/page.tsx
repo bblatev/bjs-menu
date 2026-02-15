@@ -356,7 +356,7 @@ export default function DriveThruPage() {
                                 <div key={idx}>{i.quantity}x {i.name}</div>
                               ))}
                             </div>
-                            <div className="font-bold mt-1">{lane.currentVehicle.order.total.toFixed(2)} лв</div>
+                            <div className="font-bold mt-1">{(lane.currentVehicle.order.total || 0).toFixed(2)} лв</div>
                           </div>
                         )}
 
@@ -491,7 +491,7 @@ export default function DriveThruPage() {
                 <div className="text-gray-400">Превозни средства днес</div>
               </div>
               <div className="bg-gray-50 rounded-xl p-5">
-                <div className="text-3xl font-bold text-green-400">{stats.revenue.toFixed(0)} лв</div>
+                <div className="text-3xl font-bold text-green-400">{(stats.revenue || 0).toFixed(0)} лв</div>
                 <div className="text-gray-400">Приходи днес</div>
               </div>
               <div className="bg-gray-50 rounded-xl p-5">

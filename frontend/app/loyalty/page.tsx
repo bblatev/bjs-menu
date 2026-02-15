@@ -212,7 +212,7 @@ function GiftCardsTab() {
   };
 
   const formatCurrency = (amount: number) => {
-    return `${amount.toFixed(2)} лв.`;
+    return `${(amount || 0).toFixed(2)} лв.`;
   };
 
   const getStatusColor = (status: string) => {

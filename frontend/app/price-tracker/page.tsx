@@ -452,7 +452,7 @@ export default function PriceTrackerPage() {
               <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="bg-gray-100 rounded-2xl p-4">
                 <div className="text-gray-600 text-sm">Avg Price Change</div>
                 <div className={`text-3xl font-bold ${stats.avgChange > 5 ? 'text-red-400' : 'text-yellow-400'}`}>
-                  {stats.avgChange.toFixed(1)}%
+                  {(stats.avgChange || 0).toFixed(1)}%
                 </div>
                 <div className="text-white/40 text-sm mt-1">across all items</div>
               </motion.div>
@@ -508,7 +508,7 @@ export default function PriceTrackerPage() {
                           />
                         </div>
                         <span className={`w-16 text-right font-bold ${trend.changePercent > 0 ? 'text-red-400' : 'text-green-400'}`}>
-                          {trend.changePercent > 0 ? '+' : ''}{trend.changePercent.toFixed(1)}%
+                          {trend.changePercent > 0 ? '+' : ''}{(trend.changePercent || 0).toFixed(1)}%
                         </span>
                       </div>
                       <div className="text-white/40 text-xs">
@@ -544,7 +544,7 @@ export default function PriceTrackerPage() {
                     </div>
                     <div className="flex items-center gap-4">
                       <span className={`font-bold ${alert.trend === 'up' ? 'text-red-400' : 'text-green-400'}`}>
-                        {alert.changePercent > 0 ? '+' : ''}{alert.changePercent.toFixed(1)}%
+                        {alert.changePercent > 0 ? '+' : ''}{(alert.changePercent || 0).toFixed(1)}%
                       </span>
                       {!alert.acknowledged && (
                         <button
@@ -633,14 +633,14 @@ export default function PriceTrackerPage() {
                         <div className="text-gray-500 text-sm">{alert.category}</div>
                       </td>
                       <td className="px-4 py-3 text-gray-700">{alert.supplier}</td>
-                      <td className="px-4 py-3 text-right text-gray-900">{alert.previousPrice.toFixed(2)} лв</td>
-                      <td className="px-4 py-3 text-right text-gray-900 font-medium">{alert.currentPrice.toFixed(2)} лв</td>
+                      <td className="px-4 py-3 text-right text-gray-900">{(alert.previousPrice || 0).toFixed(2)} лв</td>
+                      <td className="px-4 py-3 text-right text-gray-900 font-medium">{(alert.currentPrice || 0).toFixed(2)} лв</td>
                       <td className="px-4 py-3 text-right">
                         <div className={`font-bold ${alert.trend === 'up' ? 'text-red-400' : 'text-green-400'}`}>
-                          {alert.changePercent > 0 ? '+' : ''}{alert.changePercent.toFixed(1)}%
+                          {alert.changePercent > 0 ? '+' : ''}{(alert.changePercent || 0).toFixed(1)}%
                         </div>
                         <div className="text-gray-500 text-xs">
-                          {alert.changeAmount > 0 ? '+' : ''}{alert.changeAmount.toFixed(2)} лв
+                          {alert.changeAmount > 0 ? '+' : ''}{(alert.changeAmount || 0).toFixed(2)} лв
                         </div>
                       </td>
                       <td className="px-4 py-3 text-right">
@@ -715,19 +715,19 @@ export default function PriceTrackerPage() {
                   <div className="grid grid-cols-2 gap-4 text-sm">
                     <div>
                       <span className="text-gray-600">Current</span>
-                      <div className="text-gray-900 font-bold">{item.currentPrice.toFixed(2)} лв</div>
+                      <div className="text-gray-900 font-bold">{(item.currentPrice || 0).toFixed(2)} лв</div>
                     </div>
                     <div>
                       <span className="text-gray-600">Average</span>
-                      <div className="text-gray-900">{item.avgPrice.toFixed(2)} лв</div>
+                      <div className="text-gray-900">{(item.avgPrice || 0).toFixed(2)} лв</div>
                     </div>
                     <div>
                       <span className="text-gray-600">Min</span>
-                      <div className="text-green-400">{item.minPrice.toFixed(2)} лв</div>
+                      <div className="text-green-400">{(item.minPrice || 0).toFixed(2)} лв</div>
                     </div>
                     <div>
                       <span className="text-gray-600">Max</span>
-                      <div className="text-red-400">{item.maxPrice.toFixed(2)} лв</div>
+                      <div className="text-red-400">{(item.maxPrice || 0).toFixed(2)} лв</div>
                     </div>
                   </div>
 
@@ -735,7 +735,7 @@ export default function PriceTrackerPage() {
                     <div className="flex justify-between text-sm">
                       <span className="text-gray-600">Volatility</span>
                       <span className={`font-medium ${item.volatility > 7 ? 'text-red-400' : item.volatility > 4 ? 'text-yellow-400' : 'text-green-400'}`}>
-                        {item.volatility.toFixed(1)}%
+                        {(item.volatility || 0).toFixed(1)}%
                       </span>
                     </div>
                   </div>
@@ -794,7 +794,7 @@ export default function PriceTrackerPage() {
                             </td>
                             <td className="px-4 py-3 text-right">
                               <span className={`font-bold ${isBest ? 'text-green-400' : 'text-white'}`}>
-                                {supplier.price.toFixed(2)} лв
+                                {(supplier.price || 0).toFixed(2)} лв
                               </span>
                               {isBest && <span className="ml-2 text-green-400 text-xs">Best</span>}
                             </td>
@@ -881,7 +881,7 @@ export default function PriceTrackerPage() {
                     <div className={`w-24 text-right font-bold ${impact.variance > 0 ? 'text-red-400' : 'text-green-400'}`}>
                       {impact.variance > 0 ? '+' : ''}{impact.variance} лв
                       <div className="text-xs font-normal text-gray-500">
-                        {impact.variancePercent > 0 ? '+' : ''}{impact.variancePercent.toFixed(1)}%
+                        {impact.variancePercent > 0 ? '+' : ''}{(impact.variancePercent || 0).toFixed(1)}%
                       </div>
                     </div>
                   </div>
@@ -1173,7 +1173,7 @@ export default function PriceTrackerPage() {
                     const isLast = idx === selectedItem.prices.length - 1;
                     return (
                       <div key={idx} className="flex-1 flex flex-col items-center">
-                        <div className="text-gray-500 text-xs mb-1">{p.price.toFixed(2)}</div>
+                        <div className="text-gray-500 text-xs mb-1">{(p.price || 0).toFixed(2)}</div>
                         <div
                           className={`w-full rounded-t ${isLast ? 'bg-orange-500' : 'bg-white/30'}`}
                           style={{ height: `${Math.max(height, 10)}%` }}
@@ -1188,19 +1188,19 @@ export default function PriceTrackerPage() {
               <div className="grid grid-cols-4 gap-4 mb-6">
                 <div className="bg-gray-50 rounded-xl p-4 text-center">
                   <div className="text-gray-600 text-sm">Current</div>
-                  <div className="text-xl font-bold text-gray-900">{selectedItem.currentPrice.toFixed(2)} лв</div>
+                  <div className="text-xl font-bold text-gray-900">{(selectedItem.currentPrice || 0).toFixed(2)} лв</div>
                 </div>
                 <div className="bg-gray-50 rounded-xl p-4 text-center">
                   <div className="text-gray-600 text-sm">Average</div>
-                  <div className="text-xl font-bold text-gray-900">{selectedItem.avgPrice.toFixed(2)} лв</div>
+                  <div className="text-xl font-bold text-gray-900">{(selectedItem.avgPrice || 0).toFixed(2)} лв</div>
                 </div>
                 <div className="bg-green-500/20 rounded-xl p-4 text-center">
                   <div className="text-green-300 text-sm">Min</div>
-                  <div className="text-xl font-bold text-green-400">{selectedItem.minPrice.toFixed(2)} лв</div>
+                  <div className="text-xl font-bold text-green-400">{(selectedItem.minPrice || 0).toFixed(2)} лв</div>
                 </div>
                 <div className="bg-red-500/20 rounded-xl p-4 text-center">
                   <div className="text-red-300 text-sm">Max</div>
-                  <div className="text-xl font-bold text-red-400">{selectedItem.maxPrice.toFixed(2)} лв</div>
+                  <div className="text-xl font-bold text-red-400">{(selectedItem.maxPrice || 0).toFixed(2)} лв</div>
                 </div>
               </div>
 

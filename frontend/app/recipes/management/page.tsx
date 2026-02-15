@@ -248,7 +248,7 @@ export default function RecipeManagementPage() {
           <div className="text-gray-400 text-sm">Avg Cost/Portion</div>
           <div className="text-2xl font-bold text-orange-400">
             {recipes.length > 0 && recipes[0].cost_per_portion
-              ? `${recipes[0].cost_per_portion.toFixed(2)} лв`
+              ? `${(recipes[0].cost_per_portion || 0).toFixed(2)} лв`
               : "N/A"}
           </div>
         </div>
@@ -286,7 +286,7 @@ export default function RecipeManagementPage() {
                 <div className="text-sm text-gray-300 flex justify-between">
                   <span>{recipe.yield_quantity} {recipe.yield_unit}</span>
                   {recipe.cost_per_portion && (
-                    <span className="text-orange-300">{recipe.cost_per_portion.toFixed(2)} лв</span>
+                    <span className="text-orange-300">{(recipe.cost_per_portion || 0).toFixed(2)} лв</span>
                   )}
                 </div>
               </button>
@@ -345,7 +345,7 @@ export default function RecipeManagementPage() {
                           <td className="py-3">{recipe.prep_time_minutes || "-"} min</td>
                           <td className="py-3">{recipe.cook_time_minutes || "-"} min</td>
                           <td className="py-3 text-orange-400">
-                            {recipe.cost_per_portion?.toFixed(2) || "-"} лв
+                            {(recipe.cost_per_portion || 0).toFixed(2) || "-"} лв
                           </td>
                           <td className="py-3 capitalize">{recipe.difficulty_level || "-"}</td>
                         </tr>
@@ -420,8 +420,8 @@ export default function RecipeManagementPage() {
                           <td className="py-3">{ing.ingredient_name || `Item #${ing.ingredient_id}`}</td>
                           <td className="py-3">{ing.quantity}</td>
                           <td className="py-3">{ing.unit}</td>
-                          <td className="py-3">{ing.unit_cost?.toFixed(2) || "-"} лв</td>
-                          <td className="py-3 text-orange-400">{ing.total_cost?.toFixed(2) || "-"} лв</td>
+                          <td className="py-3">{(ing.unit_cost || 0).toFixed(2) || "-"} лв</td>
+                          <td className="py-3 text-orange-400">{(ing.total_cost || 0).toFixed(2) || "-"} лв</td>
                         </tr>
                       ))}
                     </tbody>
@@ -438,19 +438,19 @@ export default function RecipeManagementPage() {
                     <div className="grid grid-cols-4 gap-4 mb-6">
                       <div className="bg-gray-100 rounded-lg p-4 text-center">
                         <div className="text-gray-400 text-sm">Ingredient Cost</div>
-                        <div className="text-2xl font-bold">{currentCost.ingredient_cost?.toFixed(2)} лв</div>
+                        <div className="text-2xl font-bold">{(currentCost.ingredient_cost || 0).toFixed(2)} лв</div>
                       </div>
                       <div className="bg-gray-100 rounded-lg p-4 text-center">
                         <div className="text-gray-400 text-sm">Labor Cost</div>
-                        <div className="text-2xl font-bold">{currentCost.labor_cost?.toFixed(2) || "0.00"} лв</div>
+                        <div className="text-2xl font-bold">{(currentCost.labor_cost || 0).toFixed(2) || "0.00"} лв</div>
                       </div>
                       <div className="bg-gray-100 rounded-lg p-4 text-center">
                         <div className="text-gray-400 text-sm">Total Cost</div>
-                        <div className="text-2xl font-bold text-orange-400">{currentCost.total_cost?.toFixed(2)} лв</div>
+                        <div className="text-2xl font-bold text-orange-400">{(currentCost.total_cost || 0).toFixed(2)} лв</div>
                       </div>
                       <div className="bg-gray-100 rounded-lg p-4 text-center">
                         <div className="text-gray-400 text-sm">Cost/Portion</div>
-                        <div className="text-2xl font-bold text-green-400">{currentCost.cost_per_portion?.toFixed(2)} лв</div>
+                        <div className="text-2xl font-bold text-green-400">{(currentCost.cost_per_portion || 0).toFixed(2)} лв</div>
                       </div>
                     </div>
                     <h4 className="font-semibold mb-3">Cost History</h4>
@@ -458,7 +458,7 @@ export default function RecipeManagementPage() {
                       {costHistory.map((history) => (
                         <div key={history.id} className="bg-gray-100 rounded-lg p-3 flex justify-between items-center">
                           <span>{new Date(history.calculated_at).toLocaleDateString()}</span>
-                          <span className="text-orange-400">{history.cost_per_portion.toFixed(2)} лв/portion</span>
+                          <span className="text-orange-400">{(history.cost_per_portion || 0).toFixed(2)} лв/portion</span>
                         </div>
                       ))}
                     </div>
@@ -510,12 +510,12 @@ export default function RecipeManagementPage() {
                     <h4 className="font-semibold mb-3">Scaled Ingredients</h4>
                     <div className="bg-gray-100 rounded-lg p-4">
                       <div className="text-sm text-gray-400 mb-2">
-                        Scaling factor: {scaledRecipe.scaling_factor?.toFixed(2)}x
+                        Scaling factor: {(scaledRecipe.scaling_factor || 0).toFixed(2)}x
                       </div>
                       {scaledRecipe.scaled_ingredients?.map((ing: any, i: number) => (
                         <div key={i} className="flex justify-between py-2 border-b border-gray-200">
                           <span>{ing.name}</span>
-                          <span className="text-orange-400">{ing.scaled_quantity.toFixed(2)} {ing.unit}</span>
+                          <span className="text-orange-400">{(ing.scaled_quantity || 0).toFixed(2)} {ing.unit}</span>
                         </div>
                       ))}
                     </div>

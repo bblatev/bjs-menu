@@ -658,7 +658,7 @@ export default function BarTabsPage() {
                       className="px-3 py-2 bg-white text-gray-300 rounded hover:bg-gray-100 text-center"
                     >
                       <div className="font-bold">{pct}%</div>
-                      <div className="text-xs">${(selectedTab.subtotal * pct / 100).toFixed(2)}</div>
+                      <div className="text-xs">${((selectedTab.subtotal * pct / 100) || 0).toFixed(2)}</div>
                     </button>
                   ))}
                 </div>

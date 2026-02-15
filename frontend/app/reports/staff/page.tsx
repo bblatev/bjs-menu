@@ -251,7 +251,7 @@ export default function ReportsStaffPage() {
                         </div>
                         <div>
                           <p className="text-xs text-surface-500">Avg Order</p>
-                          <p className="text-sm font-semibold text-surface-900">{staff.avgOrderValue.toFixed(1)} лв</p>
+                          <p className="text-sm font-semibold text-surface-900">{(staff.avgOrderValue || 0).toFixed(1)} лв</p>
                         </div>
                       </div>
 

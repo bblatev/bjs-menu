@@ -64,7 +64,7 @@ export default function AnalyticsLaborPage() {
     }
   };
 
-  const formatCurrency = (amount: number) => `€${amount.toFixed(2)}`;
+  const formatCurrency = (amount: number) => `€${(amount || 0).toFixed(2)}`;
 
   const getSeverityColor = (severity: string) => {
     switch (severity) {
@@ -219,7 +219,7 @@ export default function AnalyticsLaborPage() {
           <div className="space-y-4">
             {stats?.cost_by_department.map((dept, i) => {
               const totalCost = stats.cost_by_department.reduce((sum, d) => sum + d.cost, 0);
-              const percentage = ((dept.cost / totalCost) * 100).toFixed(0);
+              const percentage = (((dept.cost / totalCost) * 100) || 0).toFixed(0);
               const avgHourlyRate = dept.cost / dept.hours;
 
               return (
@@ -283,10 +283,10 @@ export default function AnalyticsLaborPage() {
                           ? 'bg-gradient-to-t from-warning-500 to-warning-400'
                           : 'bg-gradient-to-t from-error-500 to-error-400'
                       }`}
-                      title={`${percentage.toFixed(1)}% labor cost`}
+                      title={`${(percentage || 0).toFixed(1)}% labor cost`}
                     />
                   </div>
-                  <span className="text-xs font-medium text-surface-900 mt-2">{percentage.toFixed(1)}%</span>
+                  <span className="text-xs font-medium text-surface-900 mt-2">{(percentage || 0).toFixed(1)}%</span>
                   <span className="text-xs text-surface-500 mt-0.5">{day.day}</span>
                 </div>
               );

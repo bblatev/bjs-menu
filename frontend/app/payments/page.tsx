@@ -250,7 +250,7 @@ export default function PaymentsPage() {
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <div className="bg-white dark:bg-surface-800 rounded-xl p-4 shadow-sm border border-gray-200 dark:border-surface-700">
             <p className="text-sm text-gray-600 dark:text-gray-400">Total Revenue</p>
-            <p className="text-2xl font-bold text-gray-900 dark:text-white">${stats.totalAmount.toFixed(2)}</p>
+            <p className="text-2xl font-bold text-gray-900 dark:text-white">${(stats.totalAmount || 0).toFixed(2)}</p>
           </div>
           <div className="bg-white dark:bg-surface-800 rounded-xl p-4 shadow-sm border border-gray-200 dark:border-surface-700">
             <p className="text-sm text-gray-600 dark:text-gray-400">Success Rate</p>

@@ -316,7 +316,7 @@ export default function MultiLocationPage() {
             </div>
             <div className="bg-gradient-to-br from-purple-50 to-purple-100 rounded-xl p-4">
               <div className="text-purple-600 text-xs font-medium">Avg Ticket</div>
-              <div className="text-2xl font-bold text-purple-700">{consolidatedStats.avg_ticket.toFixed(2)} лв</div>
+              <div className="text-2xl font-bold text-purple-700">{(consolidatedStats.avg_ticket || 0).toFixed(2)} лв</div>
             </div>
             <div className="bg-gradient-to-br from-orange-50 to-orange-100 rounded-xl p-4">
               <div className="text-orange-600 text-xs font-medium">Active Locations</div>
@@ -328,11 +328,11 @@ export default function MultiLocationPage() {
             </div>
             <div className="bg-gradient-to-br from-yellow-50 to-yellow-100 rounded-xl p-4">
               <div className="text-yellow-600 text-xs font-medium">Avg Labor %</div>
-              <div className="text-2xl font-bold text-yellow-700">{consolidatedStats.avg_labor_cost.toFixed(1)}%</div>
+              <div className="text-2xl font-bold text-yellow-700">{(consolidatedStats.avg_labor_cost || 0).toFixed(1)}%</div>
             </div>
             <div className="bg-gradient-to-br from-red-50 to-red-100 rounded-xl p-4">
               <div className="text-red-600 text-xs font-medium">Avg Food Cost %</div>
-              <div className="text-2xl font-bold text-red-700">{consolidatedStats.avg_food_cost.toFixed(1)}%</div>
+              <div className="text-2xl font-bold text-red-700">{(consolidatedStats.avg_food_cost || 0).toFixed(1)}%</div>
             </div>
             <div className="bg-gradient-to-br from-emerald-50 to-emerald-100 rounded-xl p-4">
               <div className="text-emerald-600 text-xs font-medium">Top Performer</div>

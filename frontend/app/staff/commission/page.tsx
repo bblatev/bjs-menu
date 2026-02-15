@@ -238,7 +238,7 @@ export default function StaffCommissionPage() {
                       </span>
                     </td>
                     <td className="text-right py-3 px-4 text-surface-900 font-medium">
-                      {member.hourly_rate.toFixed(2)} лв/ч
+                      {(member.hourly_rate || 0).toFixed(2)} лв/ч
                     </td>
                     <td className="text-center py-3 px-4">
                       {editingId === member.id ? (

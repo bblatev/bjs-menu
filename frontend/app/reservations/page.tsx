@@ -1228,7 +1228,7 @@ export default function ReservationsPage() {
                   disabled={depositAmount <= 0}
                   className="flex-1 px-4 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50"
                 >
-                  Collect {depositAmount.toFixed(2)} лв
+                  Collect {(depositAmount || 0).toFixed(2)} лв
                 </button>
               </div>
             </div>
@@ -1425,7 +1425,7 @@ export default function ReservationsPage() {
                 <p className="text-gray-600 text-sm">Refund for:</p>
                 <p className="font-medium text-gray-900">{selectedReservationForRefund.guest_name}</p>
                 <p className="text-sm text-gray-600">
-                  Deposit paid: {selectedReservationForRefund.deposit_amount?.toFixed(2)} лв
+                  Deposit paid: {(selectedReservationForRefund.deposit_amount || 0).toFixed(2)} лв
                 </p>
               </div>
 
@@ -1468,7 +1468,7 @@ export default function ReservationsPage() {
                   disabled={refundAmount <= 0}
                   className="flex-1 px-4 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50"
                 >
-                  Refund {refundAmount.toFixed(2)} лв
+                  Refund {(refundAmount || 0).toFixed(2)} лв
                 </button>
               </div>
             </div>

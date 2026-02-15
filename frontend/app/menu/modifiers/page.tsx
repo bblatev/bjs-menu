@@ -573,8 +573,8 @@ export default function MenuModifiersPage() {
                                     option.price_delta > 0 ? 'text-green-400' : 'text-red-400'
                                   }`}>
                                     {option.price_delta === 0 ? 'Free' :
-                                     option.price_delta > 0 ? `+${option.price_delta.toFixed(2)} lv` :
-                                     `${option.price_delta.toFixed(2)} lv`}
+                                     option.price_delta > 0 ? `+${(option.price_delta || 0).toFixed(2)} lv` :
+                                     `${(option.price_delta || 0).toFixed(2)} lv`}
                                   </span>
                                   <div className="flex gap-1">
                                     <button

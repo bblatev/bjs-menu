@@ -169,7 +169,7 @@ export default function KitchenReportsPage() {
             </div>
             <p className="text-3xl font-display font-bold text-surface-900">{metrics.avgPrepTime}m</p>
             <p className="text-xs text-success-600 mt-1">
-              {((1 - metrics.avgPrepTime / metrics.avgPrepTimeTarget) * 100).toFixed(1)}% under target
+              {(((1 - metrics.avgPrepTime / metrics.avgPrepTimeTarget) * 100) || 0).toFixed(1)}% under target
             </p>
           </div>
           <div className="bg-white rounded-xl p-5 shadow-sm border border-surface-100">

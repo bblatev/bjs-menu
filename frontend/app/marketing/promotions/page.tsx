@@ -401,7 +401,7 @@ export default function MarketingPromotionsPage() {
           <div className="flex items-center justify-between mb-2">
             <span className="text-3xl">📊</span>
           </div>
-          <div className="text-2xl font-bold text-surface-900">{avgDiscount.toFixed(0)}%</div>
+          <div className="text-2xl font-bold text-surface-900">{(avgDiscount || 0).toFixed(0)}%</div>
           <div className="text-sm text-surface-500">Avg Discount</div>
         </motion.div>
       </div>
@@ -523,11 +523,11 @@ export default function MarketingPromotionsPage() {
                 <div className="text-xs text-surface-500">Uses</div>
               </div>
               <div>
-                <div className="text-lg font-bold text-green-600">{(promo.revenue_generated ?? 0).toLocaleString()}</div>
+                <div className="text-lg font-bold text-green-600">{(promo.revenue_generated || 0).toLocaleString()}</div>
                 <div className="text-xs text-surface-500">Revenue</div>
               </div>
               <div>
-                <div className="text-lg font-bold text-surface-900">{promo.avg_order_value.toFixed(0)}</div>
+                <div className="text-lg font-bold text-surface-900">{(promo.avg_order_value || 0).toFixed(0)}</div>
                 <div className="text-xs text-surface-500">Avg Order</div>
               </div>
             </div>

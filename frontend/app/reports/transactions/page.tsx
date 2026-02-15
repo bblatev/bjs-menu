@@ -230,11 +230,11 @@ export default function TransactionsReportPage() {
       t.table_name,
       t.waiter_name,
       t.items_count,
-      t.subtotal.toFixed(2),
-      t.tax.toFixed(2),
-      t.discount.toFixed(2),
-      t.tip.toFixed(2),
-      t.total.toFixed(2),
+      (t.subtotal || 0).toFixed(2),
+      (t.tax || 0).toFixed(2),
+      (t.discount || 0).toFixed(2),
+      (t.tip || 0).toFixed(2),
+      (t.total || 0).toFixed(2),
       t.payment_method,
       t.guest_count
     ]);
@@ -353,27 +353,27 @@ export default function TransactionsReportPage() {
             </div>
             <div className="bg-white rounded-xl p-4 shadow-sm border">
               <div className="text-xs text-gray-500 font-medium">Total Revenue</div>
-              <div className="text-2xl font-bold text-green-600">{data.summary.total_revenue.toFixed(2)} лв</div>
+              <div className="text-2xl font-bold text-green-600">{(data.summary.total_revenue || 0).toFixed(2)} лв</div>
             </div>
             <div className="bg-white rounded-xl p-4 shadow-sm border">
               <div className="text-xs text-gray-500 font-medium">Total Tax</div>
-              <div className="text-2xl font-bold text-blue-600">{data.summary.total_tax.toFixed(2)} лв</div>
+              <div className="text-2xl font-bold text-blue-600">{(data.summary.total_tax || 0).toFixed(2)} лв</div>
             </div>
             <div className="bg-white rounded-xl p-4 shadow-sm border">
               <div className="text-xs text-gray-500 font-medium">Total Discounts</div>
-              <div className="text-2xl font-bold text-orange-600">{data.summary.total_discounts.toFixed(2)} лв</div>
+              <div className="text-2xl font-bold text-orange-600">{(data.summary.total_discounts || 0).toFixed(2)} лв</div>
             </div>
             <div className="bg-white rounded-xl p-4 shadow-sm border">
               <div className="text-xs text-gray-500 font-medium">Total Tips</div>
-              <div className="text-2xl font-bold text-purple-600">{data.summary.total_tips.toFixed(2)} лв</div>
+              <div className="text-2xl font-bold text-purple-600">{(data.summary.total_tips || 0).toFixed(2)} лв</div>
             </div>
             <div className="bg-white rounded-xl p-4 shadow-sm border">
               <div className="text-xs text-gray-500 font-medium">Avg Ticket</div>
-              <div className="text-2xl font-bold text-gray-900">{data.summary.avg_ticket.toFixed(2)} лв</div>
+              <div className="text-2xl font-bold text-gray-900">{(data.summary.avg_ticket || 0).toFixed(2)} лв</div>
             </div>
             <div className="bg-white rounded-xl p-4 shadow-sm border">
               <div className="text-xs text-gray-500 font-medium">Avg Guests</div>
-              <div className="text-2xl font-bold text-gray-900">{data.summary.avg_guests.toFixed(1)}</div>
+              <div className="text-2xl font-bold text-gray-900">{(data.summary.avg_guests || 0).toFixed(1)}</div>
             </div>
           </div>
         )}
@@ -420,11 +420,11 @@ export default function TransactionsReportPage() {
                       <td className="px-4 py-3 text-sm text-gray-900">{t.table_name}</td>
                       <td className="px-4 py-3 text-sm text-gray-900">{t.waiter_name}</td>
                       <td className="px-4 py-3 text-sm text-right text-gray-600">{t.items_count}</td>
-                      <td className="px-4 py-3 text-sm text-right text-gray-900">{t.subtotal.toFixed(2)}</td>
-                      <td className="px-4 py-3 text-sm text-right text-gray-500">{t.tax.toFixed(2)}</td>
-                      <td className="px-4 py-3 text-sm text-right text-orange-600">{t.discount > 0 ? `-${t.discount.toFixed(2)}` : '-'}</td>
-                      <td className="px-4 py-3 text-sm text-right text-purple-600">{t.tip > 0 ? t.tip.toFixed(2) : '-'}</td>
-                      <td className="px-4 py-3 text-sm text-right font-bold text-green-600">{t.total.toFixed(2)}</td>
+                      <td className="px-4 py-3 text-sm text-right text-gray-900">{(t.subtotal || 0).toFixed(2)}</td>
+                      <td className="px-4 py-3 text-sm text-right text-gray-500">{(t.tax || 0).toFixed(2)}</td>
+                      <td className="px-4 py-3 text-sm text-right text-orange-600">{t.discount > 0 ? `-${(t.discount || 0).toFixed(2)}` : '-'}</td>
+                      <td className="px-4 py-3 text-sm text-right text-purple-600">{t.tip > 0 ? (t.tip || 0).toFixed(2) : '-'}</td>
+                      <td className="px-4 py-3 text-sm text-right font-bold text-green-600">{(t.total || 0).toFixed(2)}</td>
                       <td className="px-4 py-3 text-center">
                         <span className={`px-2 py-1 rounded text-xs font-medium ${t.payment_method === 'cash' ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700'}`}>
                           {t.payment_method}
@@ -457,12 +457,12 @@ export default function TransactionsReportPage() {
                         style={{ width: `${maxHourlyRevenue > 0 ? (h.revenue / maxHourlyRevenue) * 100 : 0}%` }} />
                       <div className="absolute inset-0 flex items-center justify-between px-3">
                         <span className="text-xs font-medium text-gray-700">{h.orders} orders</span>
-                        <span className="text-xs font-bold text-gray-900">{h.revenue.toFixed(2)} лв</span>
+                        <span className="text-xs font-bold text-gray-900">{(h.revenue || 0).toFixed(2)} лв</span>
                       </div>
                     </div>
                   </div>
                   <div className="w-24 text-right text-sm text-gray-500">
-                    Avg: {h.avg_ticket.toFixed(2)} лв
+                    Avg: {(h.avg_ticket || 0).toFixed(2)} лв
                   </div>
                 </div>
               ))}
@@ -488,11 +488,11 @@ export default function TransactionsReportPage() {
                   <tr key={w.waiter_id} className="hover:bg-gray-50">
                     <td className="px-4 py-3 font-medium text-gray-900">{w.waiter_name}</td>
                     <td className="px-4 py-3 text-right text-gray-600">{w.orders}</td>
-                    <td className="px-4 py-3 text-right font-bold text-green-600">{w.revenue.toFixed(2)} лв</td>
-                    <td className="px-4 py-3 text-right text-purple-600">{w.tips.toFixed(2)} лв</td>
-                    <td className="px-4 py-3 text-right text-gray-900">{w.avg_ticket.toFixed(2)} лв</td>
+                    <td className="px-4 py-3 text-right font-bold text-green-600">{(w.revenue || 0).toFixed(2)} лв</td>
+                    <td className="px-4 py-3 text-right text-purple-600">{(w.tips || 0).toFixed(2)} лв</td>
+                    <td className="px-4 py-3 text-right text-gray-900">{(w.avg_ticket || 0).toFixed(2)} лв</td>
                     <td className="px-4 py-3 text-right text-gray-500">
-                      {((w.revenue / (data.summary?.total_revenue || 1)) * 100).toFixed(1)}%
+                      {(((w.revenue / (data.summary?.total_revenue || 1)) * 100) || 0).toFixed(1)}%
                     </td>
                   </tr>
                 ))}
@@ -517,8 +517,8 @@ export default function TransactionsReportPage() {
                         style={{ width: `${p.percentage}%` }} />
                     </div>
                     <div className="flex justify-between mt-1 text-sm">
-                      <span className="text-gray-500">{p.percentage.toFixed(1)}%</span>
-                      <span className="font-bold">{p.total.toFixed(2)} лв</span>
+                      <span className="text-gray-500">{(p.percentage || 0).toFixed(1)}%</span>
+                      <span className="font-bold">{(p.total || 0).toFixed(2)} лв</span>
                     </div>
                   </div>
                 ))}
@@ -539,8 +539,8 @@ export default function TransactionsReportPage() {
                       </div>
                     </div>
                     <div className="text-right">
-                      <div className="font-bold text-lg">{p.total.toFixed(2)} лв</div>
-                      <div className="text-xs text-gray-500">{p.percentage.toFixed(1)}% of total</div>
+                      <div className="font-bold text-lg">{(p.total || 0).toFixed(2)} лв</div>
+                      <div className="text-xs text-gray-500">{(p.percentage || 0).toFixed(1)}% of total</div>
                     </div>
                   </div>
                 ))}

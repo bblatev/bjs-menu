@@ -293,7 +293,7 @@ export default function NewOrderPage() {
                       >
                         <p className="font-medium text-surface-900">{item.name}</p>
                         <p className="text-sm text-surface-500">{item.category}</p>
-                        <p className="text-lg font-bold text-primary-600 mt-2">{item.price.toFixed(2)} лв</p>
+                        <p className="text-lg font-bold text-primary-600 mt-2">{(item.price || 0).toFixed(2)} лв</p>
                       </button>
                     ))
                   )}
@@ -320,7 +320,7 @@ export default function NewOrderPage() {
                   <div key={oi.menuItem.id} className="flex items-center justify-between p-3 bg-surface-50 rounded-xl">
                     <div className="flex-1">
                       <p className="font-medium text-surface-900">{oi.menuItem.name}</p>
-                      <p className="text-sm text-surface-500">{oi.menuItem.price.toFixed(2)} лв</p>
+                      <p className="text-sm text-surface-500">{(oi.menuItem.price || 0).toFixed(2)} лв</p>
                     </div>
                     <div className="flex items-center gap-2">
                       <button
@@ -344,7 +344,7 @@ export default function NewOrderPage() {
             <div className="p-4 border-t border-surface-100 space-y-4">
               <div className="flex items-center justify-between">
                 <span className="text-surface-600">Общо</span>
-                <span className="text-2xl font-display font-bold text-surface-900">{total.toFixed(2)} лв</span>
+                <span className="text-2xl font-display font-bold text-surface-900">{(total || 0).toFixed(2)} лв</span>
               </div>
               <button
                 onClick={handleSubmit}

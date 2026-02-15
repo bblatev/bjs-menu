@@ -592,22 +592,22 @@ export default function RecipeCostsPage() {
                         <span className="text-gray-400">{recipe.category}</span>
                       </td>
                       <td className="px-4 py-3 text-right">
-                        <span className="text-white">{recipe.selling_price.toFixed(2)} лв</span>
+                        <span className="text-white">{(recipe.selling_price || 0).toFixed(2)} лв</span>
                       </td>
                       <td className="px-4 py-3 text-right">
-                        <span className="text-gray-300">{recipe.total_cost.toFixed(2)} лв</span>
+                        <span className="text-gray-300">{(recipe.total_cost || 0).toFixed(2)} лв</span>
                       </td>
                       <td className="px-4 py-3 text-center">
                         <span className={`font-medium ${getCostColor(recipe.food_cost_percentage, recipe.target_cost_percentage)}`}>
-                          {recipe.food_cost_percentage.toFixed(1)}%
+                          {(recipe.food_cost_percentage || 0).toFixed(1)}%
                         </span>
                         <span className="text-xs text-gray-500 ml-1">/ {recipe.target_cost_percentage}%</span>
                       </td>
                       <td className="px-4 py-3 text-right">
-                        <span className="text-green-400">{recipe.gross_profit.toFixed(2)} лв</span>
+                        <span className="text-green-400">{(recipe.gross_profit || 0).toFixed(2)} лв</span>
                       </td>
                       <td className="px-4 py-3 text-center">
-                        <span className="text-white">{recipe.profit_margin.toFixed(1)}%</span>
+                        <span className="text-white">{(recipe.profit_margin || 0).toFixed(1)}%</span>
                       </td>
                       <td className="px-4 py-3 text-center">
                         <span className={`px-2 py-1 rounded-full text-xs border ${getStatusColor(recipe.status)}`}>
@@ -646,20 +646,20 @@ export default function RecipeCostsPage() {
                 <div className="grid grid-cols-4 gap-4">
                   <div className="bg-gray-700/50 rounded-lg p-4 text-center">
                     <p className="text-sm text-gray-400">Продажна цена</p>
-                    <p className="text-2xl font-bold text-white">{selectedRecipe.selling_price.toFixed(2)} лв</p>
+                    <p className="text-2xl font-bold text-white">{(selectedRecipe.selling_price || 0).toFixed(2)} лв</p>
                   </div>
                   <div className="bg-gray-700/50 rounded-lg p-4 text-center">
                     <p className="text-sm text-gray-400">Себестойност</p>
-                    <p className="text-2xl font-bold text-white">{selectedRecipe.total_cost.toFixed(2)} лв</p>
+                    <p className="text-2xl font-bold text-white">{(selectedRecipe.total_cost || 0).toFixed(2)} лв</p>
                   </div>
                   <div className="bg-gray-700/50 rounded-lg p-4 text-center">
                     <p className="text-sm text-gray-400">Брутна печалба</p>
-                    <p className="text-2xl font-bold text-green-400">{selectedRecipe.gross_profit.toFixed(2)} лв</p>
+                    <p className="text-2xl font-bold text-green-400">{(selectedRecipe.gross_profit || 0).toFixed(2)} лв</p>
                   </div>
                   <div className="bg-gray-700/50 rounded-lg p-4 text-center">
                     <p className="text-sm text-gray-400">Food Cost</p>
                     <p className={`text-2xl font-bold ${getCostColor(selectedRecipe.food_cost_percentage, selectedRecipe.target_cost_percentage)}`}>
-                      {selectedRecipe.food_cost_percentage.toFixed(1)}%
+                      {(selectedRecipe.food_cost_percentage || 0).toFixed(1)}%
                     </p>
                   </div>
                 </div>
@@ -683,8 +683,8 @@ export default function RecipeCostsPage() {
                           <tr key={ing.id} className="border-t border-gray-600/50">
                             <td className="px-4 py-2 text-white">{ing.name}</td>
                             <td className="px-4 py-2 text-right text-gray-300">{ing.quantity} {ing.unit}</td>
-                            <td className="px-4 py-2 text-right text-gray-300">{ing.cost_per_unit.toFixed(2)} лв</td>
-                            <td className="px-4 py-2 text-right text-white">{ing.total_cost.toFixed(2)} лв</td>
+                            <td className="px-4 py-2 text-right text-gray-300">{(ing.cost_per_unit || 0).toFixed(2)} лв</td>
+                            <td className="px-4 py-2 text-right text-white">{(ing.total_cost || 0).toFixed(2)} лв</td>
                             <td className="px-4 py-2 text-right">
                               <div className="flex items-center justify-end gap-2">
                                 <div className="w-16 h-2 bg-gray-600 rounded-full overflow-hidden">
@@ -693,7 +693,7 @@ export default function RecipeCostsPage() {
                                     style={{ width: `${ing.percentage}%` }}
                                   />
                                 </div>
-                                <span className="text-gray-400 text-sm w-12">{ing.percentage.toFixed(1)}%</span>
+                                <span className="text-gray-400 text-sm w-12">{(ing.percentage || 0).toFixed(1)}%</span>
                               </div>
                             </td>
                           </tr>
@@ -702,7 +702,7 @@ export default function RecipeCostsPage() {
                       <tfoot>
                         <tr className="border-t border-gray-500 bg-gray-700/30">
                           <td colSpan={3} className="px-4 py-2 text-white font-medium">Общо</td>
-                          <td className="px-4 py-2 text-right text-white font-bold">{selectedRecipe.total_cost.toFixed(2)} лв</td>
+                          <td className="px-4 py-2 text-right text-white font-bold">{(selectedRecipe.total_cost || 0).toFixed(2)} лв</td>
                           <td className="px-4 py-2 text-right text-gray-400">100%</td>
                         </tr>
                       </tfoot>
@@ -721,10 +721,10 @@ export default function RecipeCostsPage() {
                           key={ing.id}
                           className={`${colors[index % colors.length]} h-full transition-all relative group`}
                           style={{ width: `${ing.percentage}%` }}
-                          title={`${ing.name}: ${ing.percentage.toFixed(1)}%`}
+                          title={`${ing.name}: ${(ing.percentage || 0).toFixed(1)}%`}
                         >
                           <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 bg-gray-900 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 whitespace-nowrap z-10">
-                            {ing.name}: {ing.percentage.toFixed(1)}%
+                            {ing.name}: {(ing.percentage || 0).toFixed(1)}%
                           </div>
                         </div>
                       );
@@ -750,7 +750,7 @@ export default function RecipeCostsPage() {
                     <ul className="list-disc list-inside text-gray-300 space-y-1 text-sm">
                       <li>Разгледайте възможност за намаляване на количеството на най-скъпите съставки</li>
                       <li>Потърсете алтернативни доставчици с по-конкурентни цени</li>
-                      <li>Обмислете увеличение на продажната цена с {((selectedRecipe.food_cost_percentage - selectedRecipe.target_cost_percentage) / 100 * selectedRecipe.selling_price).toFixed(2)} лв</li>
+                      <li>Обмислете увеличение на продажната цена с {(((selectedRecipe.food_cost_percentage - selectedRecipe.target_cost_percentage) / 100 * selectedRecipe.selling_price) || 0).toFixed(2)} лв</li>
                       <li>Проверете за сезонни алтернативи на съставките</li>
                     </ul>
                   </div>

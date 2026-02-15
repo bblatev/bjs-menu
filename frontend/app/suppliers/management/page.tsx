@@ -399,7 +399,7 @@ export default function SupplierManagementPage() {
                   </span>
                   {supplier.rating && (
                     <span className="flex items-center gap-1">
-                      ⭐ {supplier.rating.toFixed(1)}
+                      ⭐ {(supplier.rating || 0).toFixed(1)}
                     </span>
                   )}
                 </div>
@@ -458,7 +458,7 @@ export default function SupplierManagementPage() {
                         <td className="py-3">
                           {supplier.rating ? (
                             <span className={getScoreColor(supplier.rating)}>
-                              ⭐ {supplier.rating.toFixed(1)}
+                              ⭐ {(supplier.rating || 0).toFixed(1)}
                             </span>
                           ) : "-"}
                         </td>
@@ -573,25 +573,25 @@ export default function SupplierManagementPage() {
                             Period ending: {new Date(rating.rating_period_end).toLocaleDateString()}
                           </span>
                           <span className={`text-2xl font-bold ${getScoreColor(rating.overall_score)}`}>
-                            {rating.overall_score.toFixed(1)} / 5.0
+                            {(rating.overall_score || 0).toFixed(1)} / 5.0
                           </span>
                         </div>
                         <div className="grid grid-cols-3 gap-4">
                           <div className="text-center">
                             <div className={`text-xl font-bold ${getScoreColor(rating.quality_score)}`}>
-                              {rating.quality_score.toFixed(1)}
+                              {(rating.quality_score || 0).toFixed(1)}
                             </div>
                             <div className="text-sm text-gray-400">Quality</div>
                           </div>
                           <div className="text-center">
                             <div className={`text-xl font-bold ${getScoreColor(rating.delivery_score)}`}>
-                              {rating.delivery_score.toFixed(1)}
+                              {(rating.delivery_score || 0).toFixed(1)}
                             </div>
                             <div className="text-sm text-gray-400">Delivery</div>
                           </div>
                           <div className="text-center">
                             <div className={`text-xl font-bold ${getScoreColor(rating.price_score)}`}>
-                              {rating.price_score.toFixed(1)}
+                              {(rating.price_score || 0).toFixed(1)}
                             </div>
                             <div className="text-sm text-gray-400">Price</div>
                           </div>
@@ -685,7 +685,7 @@ export default function SupplierManagementPage() {
                               {price.supplier_name || `Supplier ${price.supplier_id}`}
                               {idx === 0 && <span className="ml-2 text-green-400 text-xs">Best Price</span>}
                             </td>
-                            <td className="py-3">${price.unit_price?.toFixed(2) || price.price?.toFixed(2)}</td>
+                            <td className="py-3">${(price.unit_price || 0).toFixed(2) || (price.price || 0).toFixed(2)}</td>
                             <td className="py-3">{price.min_order_quantity || '-'}</td>
                             <td className="py-3">{price.lead_time_days ? `${price.lead_time_days} days` : '-'}</td>
                           </tr>

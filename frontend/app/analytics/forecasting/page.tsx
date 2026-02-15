@@ -130,14 +130,14 @@ export default function ForecastingPage() {
                   {dashboardData.sales_trend.direction === 'up' ? '↗' : dashboardData.sales_trend.direction === 'down' ? '↘' : '→'}
                 </span>
                 <span className={`text-lg font-semibold ${dashboardData.sales_trend.change_percent > 0 ? 'text-green-600' : 'text-red-600'}`}>
-                  {dashboardData.sales_trend.change_percent > 0 ? '+' : ''}{dashboardData.sales_trend.change_percent.toFixed(1)}%
+                  {dashboardData.sales_trend.change_percent > 0 ? '+' : ''}{(dashboardData.sales_trend.change_percent || 0).toFixed(1)}%
                 </span>
               </div>
             </motion.div>
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}
               className="bg-white rounded-xl p-6 shadow-sm border">
               <div className="text-sm text-surface-500">Next 7 Days</div>
-              <div className="mt-2 text-2xl font-bold text-primary-600">{dashboardData.demand_forecast.next_7_days.toFixed(0)} units</div>
+              <div className="mt-2 text-2xl font-bold text-primary-600">{(dashboardData.demand_forecast.next_7_days || 0).toFixed(0)} units</div>
             </motion.div>
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}
               className="bg-white rounded-xl p-6 shadow-sm border">
@@ -187,7 +187,7 @@ export default function ForecastingPage() {
                     <td className="px-6 py-4">
                       <span className={`px-2 py-1 rounded-full text-xs font-medium ${getTrendColor(item.trend)}`}>{item.trend}</span>
                     </td>
-                    <td className="px-6 py-4">{item.forecast_values.slice(0,3).map(v => v.toFixed(0)).join(', ')}...</td>
+                    <td className="px-6 py-4">{item.forecast_values.slice(0,3).map(v => (v || 0).toFixed(0)).join(', ')}...</td>
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-2">
                         <div className="w-16 h-2 bg-surface-200 rounded-full overflow-hidden">

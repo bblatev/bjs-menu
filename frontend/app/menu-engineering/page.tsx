@@ -212,7 +212,7 @@ export default function MenuEngineeringPage() {
         <div className="bg-white p-4 rounded-xl border border-surface-200 shadow-sm">
           <p className="text-xs text-surface-500 uppercase">Avg Food Cost</p>
           <p className={`text-xl font-bold ${avgFoodCost <= 30 ? 'text-success-600' : avgFoodCost <= 35 ? 'text-warning-600' : 'text-error-600'}`}>
-            {avgFoodCost.toFixed(1)}%
+            {(avgFoodCost || 0).toFixed(1)}%
           </p>
         </div>
         <div className="bg-white p-4 rounded-xl border border-surface-200 shadow-sm">
@@ -422,7 +422,7 @@ export default function MenuEngineeringPage() {
                         <td className="px-4 py-3 text-right text-surface-700">{item.sold_count}</td>
                         <td className="px-4 py-3 text-right font-medium text-surface-900">${item.revenue.toLocaleString()}</td>
                         <td className="px-4 py-3 text-right font-medium text-success-600">${item.profit.toLocaleString()}</td>
-                        <td className="px-4 py-3 text-right text-surface-700">{cumulativePercentage.toFixed(1)}%</td>
+                        <td className="px-4 py-3 text-right text-surface-700">{(cumulativePercentage || 0).toFixed(1)}%</td>
                         <td className="px-4 py-3 text-center">
                           {item.trend === 'up' && <span className="text-success-600">↑</span>}
                           {item.trend === 'down' && <span className="text-error-600">↓</span>}
@@ -478,7 +478,7 @@ export default function MenuEngineeringPage() {
                       <div className={`px-3 py-1 rounded-lg text-sm font-medium ${
                         rec.change_percentage > 0 ? 'bg-success-100 text-success-700' : 'bg-primary-100 text-primary-700'
                       }`}>
-                        {rec.change_percentage > 0 ? '+' : ''}{rec.change_percentage.toFixed(1)}%
+                        {rec.change_percentage > 0 ? '+' : ''}{(rec.change_percentage || 0).toFixed(1)}%
                       </div>
                       <div className="text-right w-32">
                         <p className="text-sm font-medium text-success-600">{rec.expected_impact}</p>

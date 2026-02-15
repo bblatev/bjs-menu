@@ -238,19 +238,19 @@ export default function FeedbackPage() {
           </div>
           <div className="bg-secondary rounded-lg p-4">
             <div className="text-gray-400 text-xs">Avg Rating</div>
-            <div className="text-2xl font-bold text-yellow-400">{stats.avg_rating.toFixed(1)} ★</div>
+            <div className="text-2xl font-bold text-yellow-400">{(stats.avg_rating || 0).toFixed(1)} ★</div>
           </div>
           <div className="bg-secondary rounded-lg p-4">
             <div className="text-gray-400 text-xs">Food</div>
-            <div className="text-2xl font-bold text-primary">{stats.avg_food.toFixed(1)}</div>
+            <div className="text-2xl font-bold text-primary">{(stats.avg_food || 0).toFixed(1)}</div>
           </div>
           <div className="bg-secondary rounded-lg p-4">
             <div className="text-gray-400 text-xs">Service</div>
-            <div className="text-2xl font-bold text-blue-400">{stats.avg_service.toFixed(1)}</div>
+            <div className="text-2xl font-bold text-blue-400">{(stats.avg_service || 0).toFixed(1)}</div>
           </div>
           <div className="bg-secondary rounded-lg p-4">
             <div className="text-gray-400 text-xs">Ambiance</div>
-            <div className="text-2xl font-bold text-purple-400">{stats.avg_ambiance.toFixed(1)}</div>
+            <div className="text-2xl font-bold text-purple-400">{(stats.avg_ambiance || 0).toFixed(1)}</div>
           </div>
           <div className="bg-secondary rounded-lg p-4">
             <div className="text-gray-400 text-xs">Positive</div>
@@ -334,9 +334,9 @@ export default function FeedbackPage() {
             />
           </div>
           <div className="flex justify-between mt-2 text-sm">
-            <span className="text-green-400">{(stats.total_reviews ? (stats.positive_count / stats.total_reviews) * 100 : 0).toFixed(0)}% Positive</span>
-            <span className="text-yellow-400">{(stats.total_reviews ? (stats.neutral_count / stats.total_reviews) * 100 : 0).toFixed(0)}% Neutral</span>
-            <span className="text-red-400">{(stats.total_reviews ? (stats.negative_count / stats.total_reviews) * 100 : 0).toFixed(0)}% Negative</span>
+            <span className="text-green-400">{((stats.total_reviews ? (stats.positive_count / stats.total_reviews) * 100 : 0) || 0).toFixed(0)}% Positive</span>
+            <span className="text-yellow-400">{((stats.total_reviews ? (stats.neutral_count / stats.total_reviews) * 100 : 0) || 0).toFixed(0)}% Neutral</span>
+            <span className="text-red-400">{((stats.total_reviews ? (stats.negative_count / stats.total_reviews) * 100 : 0) || 0).toFixed(0)}% Negative</span>
           </div>
         </div>
       )}

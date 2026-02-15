@@ -184,7 +184,7 @@ export default function VarianceAnalysisPage() {
           <div className="bg-white p-4 rounded-xl border border-surface-200 shadow-sm">
             <p className="text-sm text-surface-500">Total Variance</p>
             <p className={`text-2xl font-bold ${stats.total_variance_cost < 0 ? 'text-error-600' : 'text-success-600'}`}>
-              ${Math.abs(stats.total_variance_cost).toFixed(2)}
+              ${(Math.abs(stats.total_variance_cost) || 0).toFixed(2)}
             </p>
             <p className="text-xs text-surface-500">{stats.total_variance_cost < 0 ? 'Loss' : 'Gain'}</p>
           </div>
@@ -203,7 +203,7 @@ export default function VarianceAnalysisPage() {
           <div className="bg-white p-4 rounded-xl border border-surface-200 shadow-sm">
             <p className="text-sm text-surface-500">Avg per Item</p>
             <p className={`text-2xl font-bold ${stats.avg_variance_per_item < 0 ? 'text-error-600' : 'text-success-600'}`}>
-              ${Math.abs(stats.avg_variance_per_item).toFixed(2)}
+              ${(Math.abs(stats.avg_variance_per_item) || 0).toFixed(2)}
             </p>
           </div>
         </div>
@@ -221,7 +221,7 @@ export default function VarianceAnalysisPage() {
                   <span className="text-sm font-medium text-surface-700 flex items-center gap-2">
                     <span>{cause.icon}</span> {cause.label}
                   </span>
-                  <span className="text-sm font-medium text-error-600">${cause.total.toFixed(2)}</span>
+                  <span className="text-sm font-medium text-error-600">${(cause.total || 0).toFixed(2)}</span>
                 </div>
                 <div className="h-3 bg-surface-200 rounded-full overflow-hidden">
                   <div
@@ -248,7 +248,7 @@ export default function VarianceAnalysisPage() {
                 </div>
                 <span className="text-xs text-surface-500 mt-2">{t.period}</span>
                 <span className={`text-xs font-medium ${t.variance_cost < 0 ? 'text-error-600' : 'text-success-600'}`}>
-                  ${Math.abs(t.variance_cost).toFixed(0)}
+                  ${(Math.abs(t.variance_cost) || 0).toFixed(0)}
                 </span>
               </div>
             ))}
@@ -314,12 +314,12 @@ export default function VarianceAnalysisPage() {
                   </td>
                   <td className="px-4 py-3 text-center">
                     <span className={`font-medium ${record.variance_quantity < 0 ? 'text-error-600' : 'text-success-600'}`}>
-                      {record.variance_quantity > 0 ? '+' : ''}{record.variance_quantity} ({record.variance_percentage.toFixed(1)}%)
+                      {record.variance_quantity > 0 ? '+' : ''}{record.variance_quantity} ({(record.variance_percentage || 0).toFixed(1)}%)
                     </span>
                   </td>
                   <td className="px-4 py-3 text-center">
                     <span className={`font-bold ${record.variance_cost < 0 ? 'text-error-600' : 'text-success-600'}`}>
-                      {record.variance_cost < 0 ? '-' : '+'}${Math.abs(record.variance_cost).toFixed(2)}
+                      {record.variance_cost < 0 ? '-' : '+'}${(Math.abs(record.variance_cost) || 0).toFixed(2)}
                     </span>
                   </td>
                   <td className="px-4 py-3 text-center">
@@ -385,7 +385,7 @@ export default function VarianceAnalysisPage() {
                 <div className={`p-4 rounded-lg text-center ${selectedRecord.variance_cost < 0 ? 'bg-error-50' : 'bg-success-50'}`}>
                   <p className="text-sm text-surface-500">Cost Impact</p>
                   <p className={`text-xl font-bold ${selectedRecord.variance_cost < 0 ? 'text-error-600' : 'text-success-600'}`}>
-                    ${Math.abs(selectedRecord.variance_cost).toFixed(2)}
+                    ${(Math.abs(selectedRecord.variance_cost) || 0).toFixed(2)}
                   </p>
                 </div>
               </div>

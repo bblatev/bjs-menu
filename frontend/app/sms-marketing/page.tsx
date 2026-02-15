@@ -122,7 +122,7 @@ export default function SMSMarketingPage() {
         </div>
         <div className="bg-white p-4 rounded shadow">
           <div className="text-gray-500 text-sm">Delivery Rate</div>
-          <div className="text-2xl font-bold text-blue-600">{stats.delivery_rate.toFixed(1)}%</div>
+          <div className="text-2xl font-bold text-blue-600">{(stats.delivery_rate || 0).toFixed(1)}%</div>
         </div>
         <div className="bg-white p-4 rounded shadow">
           <div className="text-gray-500 text-sm">Revenue Attributed</div>
@@ -193,7 +193,7 @@ export default function SMSMarketingPage() {
                 </td>
                 <td className="p-3">{c.recipients}</td>
                 <td className="p-3">{c.delivered}</td>
-                <td className="p-3">{c.recipients > 0 ? ((c.delivered / c.recipients) * 100).toFixed(1) : 0}%</td>
+                <td className="p-3">{c.recipients > 0 ? (((c.delivered / c.recipients) * 100) || 0).toFixed(1) : 0}%</td>
                 <td className="p-3">
                   {c.status === 'draft' && (
                     <button onClick={() => sendCampaign(c.id)} className="text-blue-600 hover:underline mr-2">Send</button>

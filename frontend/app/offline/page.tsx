@@ -130,7 +130,7 @@ export default function OfflinePOSPage() {
                 {pendingOrders.map((order) => (
                   <tr key={order.id} className="border-b">
                     <td className="py-3">{order.order_number}</td>
-                    <td className="py-3">{order.total.toFixed(2)} лв</td>
+                    <td className="py-3">{(order.total || 0).toFixed(2)} лв</td>
                     <td className="py-3">
                       <span className="px-2 py-1 rounded-full text-xs bg-yellow-100 text-yellow-800">
                         {order.status}

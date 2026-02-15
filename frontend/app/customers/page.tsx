@@ -349,7 +349,7 @@ export default function CustomersPage() {
   };
 
   const formatCurrency = (amount: number) => {
-    return `${amount.toFixed(2)} лв.`;
+    return `${(amount || 0).toFixed(2)} лв.`;
   };
 
   // Calculate stats
@@ -475,7 +475,7 @@ export default function CustomersPage() {
         </div>
         <div className="bg-secondary rounded-lg p-4">
           <div className="text-gray-400 text-sm">Visits/Month</div>
-          <div className="text-2xl font-bold text-purple-500">{avgVisitFrequency.toFixed(1)}</div>
+          <div className="text-2xl font-bold text-purple-500">{(avgVisitFrequency || 0).toFixed(1)}</div>
         </div>
       </div>
 
@@ -572,7 +572,7 @@ export default function CustomersPage() {
                     title={formatCurrency(trend.amount)}
                   />
                   <span className="text-gray-400 text-xs mt-2">{trend.month}</span>
-                  <span className="text-gray-900 text-xs">{(trend.amount / 1000).toFixed(1)}k</span>
+                  <span className="text-gray-900 text-xs">{((trend.amount / 1000) || 0).toFixed(1)}k</span>
                 </div>
               ))}
             </div>
@@ -589,7 +589,7 @@ export default function CustomersPage() {
                   <div key={source}>
                     <div className="flex justify-between text-sm mb-1">
                       <span className="text-gray-300 capitalize">{source}</span>
-                      <span className="text-gray-900">{count} ({percentage.toFixed(0)}%)</span>
+                      <span className="text-gray-900">{count} ({(percentage || 0).toFixed(0)}%)</span>
                     </div>
                     <div className="h-2 bg-white rounded-full overflow-hidden">
                       <div
@@ -765,7 +765,7 @@ export default function CustomersPage() {
                     )}
                     {customer.visit_frequency && (
                       <span className="px-2 py-0.5 bg-purple-900/50 rounded text-xs text-purple-300">
-                        {customer.visit_frequency.toFixed(1)} visits/mo
+                        {(customer.visit_frequency || 0).toFixed(1)} visits/mo
                       </span>
                     )}
                   </div>
@@ -840,7 +840,7 @@ export default function CustomersPage() {
                 <div className="bg-white rounded-lg p-3">
                   <div className="text-gray-400 text-xs">Visits/Month</div>
                   <div className="text-purple-400 font-bold">
-                    {selectedCustomer.visit_frequency?.toFixed(1) || 0}
+                    {(selectedCustomer.visit_frequency || 0).toFixed(1) || 0}
                   </div>
                 </div>
                 <div className="bg-white rounded-lg p-3">
