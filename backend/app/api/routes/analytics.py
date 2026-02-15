@@ -119,7 +119,25 @@ def get_labor_analytics(request: Request, db: DbSession):
         dept = p.staff_name or "Unknown"
         departments[dept] = departments.get(dept, 0) + float(p.gross_pay or 0)
     by_department = [{"department": k, "cost": v} for k, v in departments.items()]
-    return {"total_cost": total_cost, "labor_percentage": 0, "by_department": by_department, "overtime": overtime}
+    total_hours = sum(float(p.regular_hours or 0) + float(p.overtime_hours or 0) for p in payroll)
+    avg_hourly = round(total_cost / total_hours, 2) if total_hours > 0 else 0
+    cost_by_dept = [{"department": k, "cost": v, "hours": 0} for k, v in departments.items()]
+
+    return {
+        "stats": {
+            "total_labor_cost": total_cost,
+            "avg_hourly_cost": avg_hourly,
+            "labor_percentage": 0,
+            "total_hours_scheduled": total_hours,
+            "efficiency_score": 0,
+            "overtime_hours": overtime,
+            "cost_by_department": cost_by_dept,
+            "cost_by_day": [],
+            "shift_coverage": [],
+            "top_performers": [],
+        },
+        "issues": [],
+    }
 
 
 @router.get("/video")

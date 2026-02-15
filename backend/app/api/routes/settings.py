@@ -138,11 +138,18 @@ async def get_all_settings(request: Request, db: DbSession, current_user: Curren
         "sms_enabled": False,
         "push_enabled": True,
     }
+    fiscal = _get_all_for_category(db, "fiscal") or {
+        "fiscalPrinter": {"enabled": False, "model": "", "port": "", "baudRate": 115200},
+        "taxSettings": {"vatRate": 20.0, "taxNumber": "", "companyName": "", "companyAddress": ""},
+        "nraCompliance": {"suptoDeclare": True, "autoSend": False, "testMode": True},
+        "receiptSettings": {"header": "", "footer": "", "showLogo": False, "receiptWidth": 42},
+    }
     return {
         "settings": {
             "general": general,
             "security": security,
             "notifications": notifications,
+            "fiscal": fiscal,
         }
     }
 

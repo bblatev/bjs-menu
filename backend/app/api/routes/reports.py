@@ -42,7 +42,31 @@ def get_sales_report(
     revenue = sum(float(m.total_revenue or 0) for m in metrics)
     orders = sum(int(m.total_orders or 0) for m in metrics)
     avg_ticket = round(revenue / orders, 2) if orders > 0 else 0
-    return {"revenue": round(revenue, 2), "orders": orders, "average_ticket": avg_ticket, "items_sold": 0, "by_category": [], "by_hour": []}
+
+    # Build dailySales from metrics
+    daily_sales = []
+    for m in reversed(metrics):
+        day_rev = float(m.total_revenue or 0)
+        day_orders = int(m.total_orders or 0)
+        daily_sales.append({
+            "date": m.date.isoformat() if hasattr(m.date, 'isoformat') else str(m.date),
+            "revenue": round(day_rev, 2),
+            "orders": day_orders,
+            "avgTicket": round(day_rev / day_orders, 2) if day_orders > 0 else 0,
+        })
+
+    return {
+        "stats": [
+            {"label": "Total Revenue", "value": f"{revenue:,.2f}", "subvalue": f"{len(metrics)} days", "change": "+0%", "up": True, "color": "green"},
+            {"label": "Total Orders", "value": str(orders), "subvalue": f"{len(metrics)} days", "change": "+0%", "up": True, "color": "blue"},
+            {"label": "Avg Ticket", "value": f"{avg_ticket:.2f}", "subvalue": "per order", "change": "+0%", "up": True, "color": "purple"},
+            {"label": "Items Sold", "value": "0", "subvalue": "total", "change": "+0%", "up": True, "color": "orange"},
+        ],
+        "dailySales": daily_sales,
+        "topItems": [],
+        "categoryBreakdown": [],
+        "revenueByTime": [],
+    }
 
 
 @router.get("/staff")

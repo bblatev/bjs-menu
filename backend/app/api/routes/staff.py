@@ -44,6 +44,7 @@ def _staff_to_dict(staff: StaffUser) -> dict:
     """Convert StaffUser to response dict."""
     return {
         "id": staff.id,
+        "name": staff.full_name,
         "full_name": staff.full_name,
         "role": staff.role,
         "active": staff.is_active,

@@ -1306,14 +1306,26 @@ def get_order_stats(request: Request, db: DbSession):
     ).scalar()
     total_revenue = float(revenue_result) if revenue_result else 0
 
+    ready = db.query(GuestOrderModel).filter(GuestOrderModel.status == "ready").count()
+    served = db.query(GuestOrderModel).filter(GuestOrderModel.status == "served").count()
+    cancelled = db.query(GuestOrderModel).filter(GuestOrderModel.status == "cancelled").count()
+    avg_val = round(total_revenue / completed, 2) if completed > 0 else 0
+
     return {
         "total_orders": total_orders,
         "pending": pending,
+        "new_orders": pending,
         "in_progress": in_progress,
+        "preparing": in_progress,
+        "ready": ready,
+        "served": served,
         "completed": completed,
-        "cancelled": db.query(GuestOrderModel).filter(GuestOrderModel.status == "cancelled").count(),
+        "paid": completed,
+        "cancelled": cancelled,
         "total_revenue": total_revenue,
-        "average_order_value": total_revenue / completed if completed > 0 else 0,
+        "average_order_value": avg_val,
+        "avg_order_value": avg_val,
+        "avg_prep_time": 0,
     }
 
 
@@ -1333,14 +1345,26 @@ def get_guest_order_stats(request: Request, db: DbSession):
     ).scalar()
     total_revenue = float(revenue_result) if revenue_result else 0
 
+    ready = db.query(GuestOrderModel).filter(GuestOrderModel.status == "ready").count()
+    served = db.query(GuestOrderModel).filter(GuestOrderModel.status == "served").count()
+    cancelled = db.query(GuestOrderModel).filter(GuestOrderModel.status == "cancelled").count()
+    avg_val = round(total_revenue / completed, 2) if completed > 0 else 0
+
     return {
         "total_orders": total_orders,
         "pending": pending,
+        "new_orders": pending,
         "in_progress": in_progress,
+        "preparing": in_progress,
+        "ready": ready,
+        "served": served,
         "completed": completed,
-        "cancelled": db.query(GuestOrderModel).filter(GuestOrderModel.status == "cancelled").count(),
+        "paid": completed,
+        "cancelled": cancelled,
         "total_revenue": total_revenue,
-        "average_order_value": total_revenue / completed if completed > 0 else 0,
+        "average_order_value": avg_val,
+        "avg_order_value": avg_val,
+        "avg_prep_time": 0,
     }
 
 
