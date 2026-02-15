@@ -724,8 +724,32 @@ def get_stock_valuation(
     location_id: Optional[int] = None,
 ):
     """Get stock valuation data."""
-    from app.api.routes.stock_management import get_stock_valuation as _get_valuation
-    return _get_valuation(db=db, location_id=location_id)
+    from app.models.stock import StockOnHand
+    query = db.query(StockOnHand)
+    if location_id:
+        query = query.filter(StockOnHand.location_id == location_id)
+    stock_items = query.all()
+    by_location = {}
+    grand_total = Decimal("0")
+    for s in stock_items:
+        product = db.query(Product).filter(Product.id == s.product_id).first()
+        if not product:
+            continue
+        location = db.query(Location).filter(Location.id == s.location_id).first()
+        loc_name = location.name if location else f"Location {s.location_id}"
+        if loc_name not in by_location:
+            by_location[loc_name] = {"location_id": s.location_id, "total_value": 0, "total_items": 0, "items": []}
+        unit_cost = product.cost_price or Decimal("0")
+        item_value = s.qty * unit_cost
+        grand_total += item_value
+        by_location[loc_name]["total_value"] += float(item_value)
+        by_location[loc_name]["total_items"] += 1
+        by_location[loc_name]["items"].append({
+            "product_id": product.id, "product_name": product.name,
+            "qty": float(s.qty), "unit": product.unit,
+            "unit_cost": float(unit_cost), "total_value": float(item_value),
+        })
+    return {"grand_total_value": float(grand_total), "locations": by_location}
 
 
 # ==================== WASTE ====================
@@ -1118,8 +1142,39 @@ def get_par_levels(
     location_id: int = Query(1),
 ):
     """Get par level analysis."""
-    from app.api.routes.stock_management import get_par_levels as _get_par
-    return _get_par(db=db, location_id=location_id, period=period)
+    from app.models.stock import StockOnHand, StockMovement, MovementReason
+    from sqlalchemy import func
+    products = db.query(Product).filter(Product.active == True).all()
+    items = []
+    days_map = {"week": 7, "month": 30, "quarter": 90}
+    period_days = days_map.get(period, 7)
+    start_date = datetime.now(timezone.utc) - timedelta(days=period_days)
+    for product in products:
+        stock = db.query(StockOnHand).filter(
+            StockOnHand.product_id == product.id, StockOnHand.location_id == location_id,
+        ).first()
+        usage = db.query(func.sum(func.abs(StockMovement.qty_delta)).label("total_used")).filter(
+            StockMovement.product_id == product.id, StockMovement.location_id == location_id,
+            StockMovement.reason == MovementReason.SALE.value, StockMovement.ts >= start_date,
+        ).scalar() or Decimal("0")
+        avg_daily = float(usage) / period_days if period_days > 0 else 0
+        current_qty = float(stock.qty) if stock else 0
+        par = float(product.par_level) if product.par_level else None
+        days_of_stock = current_qty / avg_daily if avg_daily > 0 else 999
+        lead_time = product.lead_time_days or 1
+        suggested_par = avg_daily * (lead_time + 3)
+        items.append({
+            "product_id": product.id, "product_name": product.name, "unit": product.unit,
+            "current_qty": current_qty, "par_level": par, "suggested_par": round(suggested_par, 1),
+            "avg_daily_usage": round(avg_daily, 2), "days_of_stock": round(days_of_stock, 1),
+            "lead_time_days": lead_time,
+            "status": "critical" if days_of_stock < lead_time else "low" if par and current_qty < par else "ok",
+            "reorder_needed": par and current_qty < par if par else days_of_stock < lead_time * 1.5,
+        })
+    items.sort(key=lambda x: x["days_of_stock"])
+    return {"period": period, "period_days": period_days, "location_id": location_id,
+            "items": items, "total_items": len(items),
+            "items_needing_reorder": len([i for i in items if i.get("reorder_needed")])}
 
 
 # ==================== VARIANCE ====================
@@ -1133,8 +1188,20 @@ def get_variance_analysis(
     location_id: int = Query(1),
 ):
     """Get variance analysis."""
-    from app.api.routes.stock_management import get_variance_analysis as _get_variance
-    return _get_variance(db=db, location_id=location_id, period=period)
+    from app.services.stock_deduction_service import StockDeductionService
+    stock_service = StockDeductionService(db)
+    days_map = {"week": 7, "month": 30, "quarter": 90}
+    period_days = days_map.get(period, 7)
+    end_date = datetime.now(timezone.utc)
+    start_date = end_date - timedelta(days=period_days)
+    result = stock_service.calculate_shrinkage(
+        location_id=location_id,
+        start_date=start_date,
+        end_date=end_date,
+    )
+    result["period"] = period
+    result["period_days"] = period_days
+    return result
 
 
 # ==================== IMPORT / EXPORT ====================
