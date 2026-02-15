@@ -378,10 +378,19 @@ def get_stock_movements(
         query = query.filter(StockMovement.reason == reason)
 
     movements = query.order_by(StockMovement.ts.desc()).limit(limit).all()
+
+    # Build product name lookup
+    product_ids = {m.product_id for m in movements}
+    products_map = {}
+    if product_ids:
+        products = db.query(Product).filter(Product.id.in_(product_ids)).all()
+        products_map = {p.id: p.name for p in products}
+
     return [
         {
             "id": m.id,
             "product_id": m.product_id,
+            "product_name": products_map.get(m.product_id, f"Product {m.product_id}"),
             "location_id": m.location_id,
             "qty_delta": float(m.qty_delta),
             "reason": m.reason,

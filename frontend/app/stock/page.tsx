@@ -35,7 +35,7 @@ interface StockMovement {
   id: string;
   item_id: number;
   item_name: string;
-  type: 'in' | 'out' | 'adjustment' | 'waste';
+  type: string;
   quantity: number;
   reason: string;
   date: string;
@@ -440,10 +440,22 @@ export default function StockPage() {
 
   const getMovementTypeStyle = (type: string) => {
     switch (type) {
-      case 'in': return 'bg-green-100 text-green-800';
-      case 'out': return 'bg-blue-100 text-blue-800';
-      case 'adjustment': return 'bg-purple-100 text-purple-800';
-      case 'waste': return 'bg-red-100 text-red-800';
+      case 'in':
+      case 'purchase':
+      case 'receive':
+        return 'bg-green-100 text-green-800';
+      case 'out':
+      case 'sale':
+        return 'bg-blue-100 text-blue-800';
+      case 'adjustment':
+        return 'bg-purple-100 text-purple-800';
+      case 'waste':
+      case 'damage':
+        return 'bg-red-100 text-red-800';
+      case 'transfer_in':
+        return 'bg-teal-100 text-teal-800';
+      case 'transfer_out':
+        return 'bg-orange-100 text-orange-800';
       default: return 'bg-gray-100 text-gray-800';
     }
   };
@@ -798,8 +810,8 @@ export default function StockPage() {
                         </div>
                       </div>
                       <div className="text-right">
-                        <p className={`font-bold ${movement.type === 'in' ? 'text-green-600' : movement.type === 'waste' ? 'text-red-600' : 'text-gray-900'}`}>
-                          {movement.type === 'in' ? '+' : '-'}{Math.abs(movement.quantity)}
+                        <p className={`font-bold ${movement.quantity > 0 ? 'text-green-600' : movement.type === 'waste' || movement.type === 'damage' ? 'text-red-600' : 'text-blue-600'}`}>
+                          {movement.quantity > 0 ? '+' : ''}{movement.quantity}
                         </p>
                         <p className="text-xs text-gray-500">{new Date(movement.date).toLocaleString()} by {movement.user}</p>
                       </div>
