@@ -453,8 +453,87 @@ def get_stock_alerts(
     location_id: int = Query(1),
 ):
     """Get stock alerts (low stock, out of stock, expiring)."""
-    from app.api.routes.stock_management import get_stock_alerts as _get_alerts
-    return _get_alerts(request=request, db=db, location_id=location_id)
+    alerts = []
+
+    stock_items = db.query(StockOnHand).filter(
+        StockOnHand.location_id == location_id
+    ).all()
+
+    for s in stock_items:
+        product = db.query(Product).filter(Product.id == s.product_id).first()
+        if not product:
+            continue
+
+        if s.qty <= 0:
+            alerts.append({
+                "type": "out_of_stock",
+                "severity": "critical",
+                "product_id": product.id,
+                "product_name": product.name,
+                "current_qty": float(s.qty),
+                "par_level": float(product.par_level) if product.par_level else None,
+                "unit": product.unit,
+                "message": f"{product.name} is out of stock",
+            })
+        elif product.par_level and s.qty < product.par_level:
+            alerts.append({
+                "type": "low_stock",
+                "severity": "warning",
+                "product_id": product.id,
+                "product_name": product.name,
+                "current_qty": float(s.qty),
+                "par_level": float(product.par_level),
+                "unit": product.unit,
+                "message": f"{product.name} is below par level ({s.qty}/{product.par_level} {product.unit})",
+            })
+        elif product.min_stock and s.qty < product.min_stock:
+            alerts.append({
+                "type": "below_minimum",
+                "severity": "warning",
+                "product_id": product.id,
+                "product_name": product.name,
+                "current_qty": float(s.qty),
+                "min_stock": float(product.min_stock),
+                "unit": product.unit,
+                "message": f"{product.name} is below minimum stock",
+            })
+
+    # Expiring soon alerts
+    try:
+        from app.models.advanced_features import InventoryBatch
+        expiring = db.query(InventoryBatch).filter(
+            InventoryBatch.location_id == location_id,
+            InventoryBatch.is_expired == False,
+            InventoryBatch.current_quantity > 0,
+            InventoryBatch.expiration_date <= date.today() + timedelta(days=7),
+        ).all()
+
+        for batch in expiring:
+            product = db.query(Product).filter(Product.id == batch.product_id).first()
+            days_left = (batch.expiration_date - date.today()).days if batch.expiration_date else None
+            alerts.append({
+                "type": "expiring_soon" if days_left and days_left > 0 else "expired",
+                "severity": "critical" if days_left and days_left <= 0 else "warning",
+                "product_id": batch.product_id,
+                "product_name": product.name if product else f"Product {batch.product_id}",
+                "batch_number": batch.batch_number,
+                "expiration_date": batch.expiration_date.isoformat() if batch.expiration_date else None,
+                "days_remaining": days_left,
+                "quantity": float(batch.current_quantity),
+                "message": f"Batch {batch.batch_number} expires in {days_left} days" if days_left and days_left > 0 else f"Batch {batch.batch_number} has expired",
+            })
+    except Exception as e:
+        logger.debug(f"Optional: query expiring batch alerts: {e}")
+
+    severity_order = {"critical": 0, "warning": 1, "info": 2}
+    alerts.sort(key=lambda x: severity_order.get(x["severity"], 99))
+
+    return {
+        "alerts": alerts,
+        "total": len(alerts),
+        "critical": len([a for a in alerts if a["severity"] == "critical"]),
+        "warnings": len([a for a in alerts if a["severity"] == "warning"]),
+    }
 
 
 # ==================== BATCHES ====================

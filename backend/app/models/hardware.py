@@ -114,11 +114,11 @@ class WaiterCall(Base, TimestampMixin):
     __table_args__ = {'extend_existing': True}
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    table_id: Mapped[int] = mapped_column(Integer, nullable=False)
+    table_id: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
     table_number: Mapped[str] = mapped_column(String(50), nullable=False)
     call_type: Mapped[str] = mapped_column(String(50), nullable=False)  # assistance, check, refill, other
     message: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
-    status: Mapped[str] = mapped_column(String(50), default="pending", nullable=False)  # pending, acknowledged, completed
+    status: Mapped[str] = mapped_column(String(50), default="pending", nullable=False, index=True)  # pending, acknowledged, completed
     acknowledged_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
     acknowledged_by: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)  # staff_id
     completed_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)

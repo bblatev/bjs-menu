@@ -1,6 +1,5 @@
 """Internal Messaging API routes - staff-to-staff messaging system."""
 
-from __future__ import annotations
 
 from fastapi import APIRouter, HTTPException, Query, Request
 from sqlalchemy import func, or_

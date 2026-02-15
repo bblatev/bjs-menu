@@ -4,8 +4,6 @@ Provides training image management and recognition endpoints
 adapted for the bjs-menu system.
 """
 
-from __future__ import annotations
-
 import logging
 import os
 import uuid

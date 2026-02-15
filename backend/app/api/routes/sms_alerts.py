@@ -1,6 +1,5 @@
 """Manager SMS Alerts API routes - automatic SMS notifications for important events."""
 
-from __future__ import annotations
 
 from fastapi import APIRouter, HTTPException, BackgroundTasks, Request
 from typing import List, Optional

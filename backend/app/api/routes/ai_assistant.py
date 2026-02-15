@@ -1,6 +1,5 @@
 """AI Assistant API routes - Conversational AI, P&L Analysis, Demand Forecasting, Auto-Planning."""
 
-from __future__ import annotations
 
 from fastapi import APIRouter, HTTPException, Query, Request
 from typing import List, Optional

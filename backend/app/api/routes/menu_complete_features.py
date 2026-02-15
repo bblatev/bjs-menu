@@ -14,7 +14,6 @@ Features:
 9. Menu Performance Analytics
 """
 
-from __future__ import annotations
 
 import logging
 from fastapi import APIRouter, HTTPException, Query, Request

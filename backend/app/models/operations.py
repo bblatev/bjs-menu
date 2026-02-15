@@ -196,7 +196,7 @@ class AuditLogEntry(Base):
     user_name = Column(String(200), nullable=True)
     action = Column(String(50), nullable=False, index=True)
     entity_type = Column(String(50), nullable=True, index=True)
-    entity_id = Column(String(50), nullable=True)
+    entity_id = Column(String(50), nullable=True, index=True)
     details = Column(JSON, nullable=True)
     ip_address = Column(String(50), nullable=True)
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), index=True)

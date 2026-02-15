@@ -1,6 +1,5 @@
 """Purchase order routes."""
 
-from __future__ import annotations
 
 import io
 import logging

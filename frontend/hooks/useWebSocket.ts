@@ -195,13 +195,16 @@ export function useWebSocket(options: UseWebSocketOptions): UseWebSocketReturn {
     send('unsubscribe', { channels: removeChannels });
   }, [send]);
 
-  // Connect on mount
+  // Serialize channels for stable dependency comparison
+  const channelsKey = channels.join(',');
+
+  // Connect on mount and reconnect when venueId or channels change
   useEffect(() => {
     connect();
     return () => {
       disconnect();
     };
-  }, [venueId]); // Only reconnect when venueId changes
+  }, [venueId, channelsKey]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return {
     isConnected,

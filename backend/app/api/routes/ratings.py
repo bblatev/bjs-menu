@@ -1,6 +1,5 @@
 """Ratings API routes - item and service ratings."""
 
-from __future__ import annotations
 
 from fastapi import APIRouter, HTTPException, Query, Request
 from sqlalchemy import func

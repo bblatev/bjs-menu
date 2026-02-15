@@ -173,7 +173,8 @@ else:
                 "line": record.lineno,
             })
 
-    handler = logging.StreamHandler()
+    import sys
+    handler = logging.StreamHandler(sys.stdout)
     handler.setFormatter(JSONFormatter())
     logging.basicConfig(level=getattr(logging, settings.log_level), handlers=[handler])
 logger = logging.getLogger(__name__)

@@ -1,6 +1,5 @@
 """Reconciliation, reorder, and export routes."""
 
-from __future__ import annotations
 
 from datetime import datetime
 from decimal import Decimal

@@ -1,6 +1,5 @@
 """Enhanced comprehensive reporting endpoints for POS system."""
 
-from __future__ import annotations
 
 from fastapi import APIRouter, HTTPException, Query, Request
 from sqlalchemy import func, desc, extract

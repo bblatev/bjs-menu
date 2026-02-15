@@ -1,6 +1,5 @@
 """Advanced Menu Management API routes - photo management, price levels, cross-selling, dayparts, combos, global modifiers."""
 
-from __future__ import annotations
 
 from fastapi import APIRouter, HTTPException, UploadFile, File, Request
 from typing import List, Optional, Dict

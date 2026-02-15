@@ -1,6 +1,5 @@
 """Menu Admin API routes - CRUD operations for categories and menu items."""
 
-from __future__ import annotations
 
 from fastapi import APIRouter, HTTPException, Query, Request
 from typing import List, Optional, Dict
