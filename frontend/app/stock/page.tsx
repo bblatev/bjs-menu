@@ -144,7 +144,14 @@ export default function StockPage() {
 
       if (response.ok) {
         const data = await response.json();
-        setItems(Array.isArray(data) ? data : (data.items || data.stock || []));
+        const raw = Array.isArray(data) ? data : (data.items || data.stock || []);
+        // Map backend field names to frontend interface
+        setItems(raw.map((item: any) => ({
+          ...item,
+          low_stock_threshold: item.low_stock_threshold ?? item.min_stock ?? item.par_level ?? 0,
+          cost_per_unit: item.cost_per_unit ?? item.cost_price ?? 0,
+          is_active: item.is_active ?? true,
+        })));
       } else {
         setItems([]);
       }
@@ -167,15 +174,16 @@ export default function StockPage() {
 
       if (response.ok) {
         const data = await response.json();
-        setMovements(data.map((m: { id: number; stock_item_id?: number; item_id?: number; stock_item_name?: string; item_name?: string; movement_type?: string; type?: string; quantity: number; reason?: string; notes?: string; created_at?: string; date?: string; created_by_name?: string; user?: string }) => ({
+        const movementList = Array.isArray(data) ? data : (data.movements || []);
+        setMovements(movementList.map((m: any) => ({
           id: String(m.id),
-          item_id: m.stock_item_id || m.item_id,
-          item_name: m.stock_item_name || m.item_name || 'Unknown Item',
-          type: m.movement_type || m.type,
-          quantity: m.quantity,
-          reason: m.reason || m.notes || '',
-          date: m.created_at || m.date,
-          user: m.created_by_name || m.user || 'System',
+          item_id: m.product_id || m.stock_item_id || m.item_id,
+          item_name: m.product_name || m.stock_item_name || m.item_name || 'Item #' + (m.product_id || ''),
+          type: m.reason || m.movement_type || m.type || 'adjustment',
+          quantity: m.qty_delta != null ? m.qty_delta : m.quantity,
+          reason: m.notes || m.reason || '',
+          date: m.timestamp || m.created_at || m.date,
+          user: m.created_by_name || m.created_by || m.user || 'System',
         })));
       } else {
         setMovements([]);
@@ -226,13 +234,14 @@ export default function StockPage() {
 
       if (response.ok) {
         const data = await response.json();
-        setAlerts(data.map((a: { id: number; stock_item_id?: number; item_id?: number; stock_item_name?: string; item_name?: string; alert_type?: string; type?: string; message?: string; description?: string; created_at: string; acknowledged?: boolean; is_acknowledged?: boolean }) => ({
-          id: String(a.id),
-          item_id: a.stock_item_id || a.item_id,
-          item_name: a.stock_item_name || a.item_name || 'Unknown Item',
-          type: a.alert_type || a.type,
+        const alertList = Array.isArray(data) ? data : (data.alerts || []);
+        setAlerts(alertList.map((a: any, idx: number) => ({
+          id: String(a.id || idx),
+          item_id: a.product_id || a.stock_item_id || a.item_id,
+          item_name: a.product_name || a.stock_item_name || a.item_name || 'Unknown Item',
+          type: a.type || a.alert_type || 'low_stock',
           message: a.message || a.description || '',
-          created_at: a.created_at,
+          created_at: a.created_at || new Date().toISOString(),
           acknowledged: a.acknowledged || a.is_acknowledged || false,
         })));
       } else {
@@ -248,15 +257,21 @@ export default function StockPage() {
     const token = localStorage.getItem("access_token");
 
     try {
+      const params = new URLSearchParams();
+      params.append("name", form.name);
+      if (form.quantity) params.append("quantity", String(form.quantity));
+      if (form.unit) params.append("unit", form.unit);
+      if (form.cost_per_unit) params.append("cost_price", String(form.cost_per_unit));
+      if (form.low_stock_threshold) params.append("par_level", String(form.low_stock_threshold));
+      if (form.sku) params.append("barcode", form.sku);
+
       const response = await fetch(
-        `${API_URL}/stock/`,
+        `${API_URL}/stock/?${params.toString()}`,
         {
           method: "POST",
           headers: {
-            "Content-Type": "application/json",
             Authorization: `Bearer ${token}`,
           },
-          body: JSON.stringify(form),
         }
       );
 
@@ -264,6 +279,10 @@ export default function StockPage() {
         setShowModal(false);
         setForm({ name: "", sku: "", quantity: 0, unit: "kg", low_stock_threshold: 10, cost_per_unit: 0, category: "ingredients", supplier: "", location: "" });
         loadStock();
+        toast.success("Item created successfully");
+      } else {
+        const err = await response.json().catch(() => null);
+        toast.error(err?.detail || "Failed to create item");
       }
     } catch {
       toast.error("Error creating item");
@@ -275,15 +294,24 @@ export default function StockPage() {
     const token = localStorage.getItem("access_token");
 
     try {
+      // Backend expects query params: product_id, quantity (signed), reason, notes
+      const qty = movementForm.type === 'out' || movementForm.type === 'waste'
+        ? -Math.abs(movementForm.quantity)
+        : Math.abs(movementForm.quantity);
+
+      const params = new URLSearchParams();
+      params.append("product_id", String(movementForm.item_id));
+      params.append("quantity", String(qty));
+      params.append("reason", movementForm.type);
+      if (movementForm.reason) params.append("notes", movementForm.reason);
+
       const response = await fetch(
-        `${API_URL}/stock/movements/`,
+        `${API_URL}/stock/movements/?${params.toString()}`,
         {
           method: "POST",
           headers: {
-            "Content-Type": "application/json",
             Authorization: `Bearer ${token}`,
           },
-          body: JSON.stringify(movementForm),
         }
       );
 
@@ -292,6 +320,10 @@ export default function StockPage() {
         setMovementForm({ item_id: 0, type: 'in', quantity: 0, reason: '' });
         loadStock();
         loadMovements();
+        toast.success("Movement recorded");
+      } else {
+        const err = await response.json().catch(() => null);
+        toast.error(err?.detail || "Failed to record movement");
       }
     } catch {
       toast.error("Error recording movement");
@@ -1031,7 +1063,7 @@ export default function StockPage() {
                   >
                     <option value={0}>Select item...</option>
                     {items.map(item => (
-                      <option key={item.id} value={item.id}>{getItemName(item)}</option>
+                      <option key={item.id} value={(item as any).product_id || item.id}>{getItemName(item)}</option>
                     ))}
                   </select>
                 </div>
@@ -1160,7 +1192,7 @@ export default function StockPage() {
                 </button>
                 <button
                   onClick={() => {
-                    setMovementForm({ ...movementForm, item_id: showItemDetail.id });
+                    setMovementForm({ ...movementForm, item_id: (showItemDetail as any).product_id || showItemDetail.id });
                     setShowItemDetail(null);
                     setShowMovementModal(true);
                   }}
