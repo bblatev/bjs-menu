@@ -233,15 +233,15 @@ export default function WasteManagementPage() {
         <div className="grid grid-cols-6 gap-4">
           <div className="bg-white rounded-xl p-4 shadow-sm border border-surface-100">
             <p className="text-xs font-semibold uppercase tracking-wider text-surface-400">Today</p>
-            <p className="text-2xl font-display font-bold text-error-600 mt-1">{(stats.totalWasteToday ?? 0).toFixed(2)} lv</p>
+            <p className="text-2xl font-display font-bold text-error-600 mt-1">{stats.totalWasteToday.toFixed(2)} lv</p>
           </div>
           <div className="bg-white rounded-xl p-4 shadow-sm border border-surface-100">
             <p className="text-xs font-semibold uppercase tracking-wider text-surface-400">This Week</p>
-            <p className="text-2xl font-display font-bold text-warning-600 mt-1">{(stats.totalWasteWeek ?? 0).toFixed(2)} lv</p>
+            <p className="text-2xl font-display font-bold text-warning-600 mt-1">{stats.totalWasteWeek.toFixed(2)} lv</p>
           </div>
           <div className="bg-white rounded-xl p-4 shadow-sm border border-surface-100">
             <p className="text-xs font-semibold uppercase tracking-wider text-surface-400">This Month</p>
-            <p className="text-2xl font-display font-bold text-surface-900 mt-1">{(stats.totalWasteMonth ?? 0).toFixed(2)} lv</p>
+            <p className="text-2xl font-display font-bold text-surface-900 mt-1">{stats.totalWasteMonth.toFixed(2)} lv</p>
           </div>
           <div className="bg-white rounded-xl p-4 shadow-sm border border-surface-100">
             <p className="text-xs font-semibold uppercase tracking-wider text-surface-400">Waste %</p>
@@ -254,7 +254,7 @@ export default function WasteManagementPage() {
           </div>
           <div className="bg-white rounded-xl p-4 shadow-sm border border-surface-100">
             <p className="text-xs font-semibold uppercase tracking-wider text-surface-400">Cost Saved</p>
-            <p className="text-2xl font-display font-bold text-success-600 mt-1">{(stats.costSaved ?? 0).toFixed(2)} lv</p>
+            <p className="text-2xl font-display font-bold text-success-600 mt-1">{stats.costSaved.toFixed(2)} lv</p>
             <p className="text-xs text-surface-500">vs last month</p>
           </div>
         </div>
@@ -274,7 +274,7 @@ export default function WasteManagementPage() {
                 <div className="flex-1">
                   <div className="flex items-center justify-between mb-1">
                     <span className="text-sm font-medium text-surface-900">{reason.label}</span>
-                    <span className="text-sm text-surface-500">{(reason.cost ?? 0).toFixed(2)} lv ({reason.count})</span>
+                    <span className="text-sm text-surface-500">{reason.cost.toFixed(2)} lv ({reason.count})</span>
                   </div>
                   <div className="h-2 bg-surface-100 rounded-full overflow-hidden">
                     <div
@@ -358,7 +358,7 @@ export default function WasteManagementPage() {
                           </span>
                         </td>
                         <td className="px-4 py-3 text-right font-medium text-error-600">
-                          -{(record.cost ?? 0).toFixed(2)} lv
+                          -{record.cost.toFixed(2)} lv
                         </td>
                         <td className="px-4 py-3 text-sm text-surface-500">
                           <div>{record.recorded_by}</div>
@@ -375,7 +375,7 @@ export default function WasteManagementPage() {
                     Total ({filteredRecords.length} records)
                   </td>
                   <td className="px-4 py-3 text-right font-bold text-error-600">
-                    -{(totalFilteredCost ?? 0).toFixed(2)} lv
+                    -{totalFilteredCost.toFixed(2)} lv
                   </td>
                   <td></td>
                 </tr>
@@ -521,7 +521,7 @@ export default function WasteManagementPage() {
               {newRecord.quantity > 0 && newRecord.cost_per_unit > 0 && (
                 <div className="p-3 bg-error-50 rounded-lg">
                   <p className="text-sm text-error-700">
-                    Total waste cost: <span className="font-bold">{((newRecord.quantity * newRecord.cost_per_unit) ?? 0).toFixed(2)} lv</span>
+                    Total waste cost: <span className="font-bold">{(newRecord.quantity * newRecord.cost_per_unit).toFixed(2)} lv</span>
                   </p>
                 </div>
               )}

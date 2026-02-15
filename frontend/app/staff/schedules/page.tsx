@@ -460,7 +460,7 @@ export default function StaffSchedulesPage() {
               let end = new Date(`2000-01-01 ${shift.end_time}`);
               if (end < start) end.setDate(end.getDate() + 1);
               return total + (end.getTime() - start.getTime()) / 1000 / 60 / 60 - (shift.break_minutes / 60);
-(            }, 0) ?? 0).toFixed(0)}h
+            }, 0).toFixed(0)}h
           </div>
         </div>
         <div className="bg-secondary rounded-lg p-4">
@@ -482,7 +482,7 @@ export default function StaffSchedulesPage() {
               if (end < start) end.setDate(end.getDate() + 1);
               const hours = (end.getTime() - start.getTime()) / 1000 / 60 / 60 - (shift.break_minutes / 60);
               return total + hours * staffMember.hourly_rate;
-(            }, 0) ?? 0).toFixed(0)}
+            }, 0).toFixed(0)}
           </div>
         </div>
       </div>
@@ -532,7 +532,7 @@ export default function StaffSchedulesPage() {
                   <div className="text-gray-400 text-sm flex items-center gap-2">
                     {member.role}
                     <span className={`text-xs ${isOvertime ? 'text-red-400' : 'text-green-400'}`}>
-                      {(hoursWorked ?? 0).toFixed(0)}h
+                      {hoursWorked.toFixed(0)}h
                     </span>
                   </div>
                 </div>

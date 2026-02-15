@@ -427,7 +427,7 @@ export default function PriceListsPage() {
                         productPrices.map(pp => (
                           <tr key={pp.id} className="hover:bg-gray-50">
                             <td className="px-4 py-3 text-sm">{getProductName(pp.product_id)}</td>
-                            <td className="px-4 py-3 text-sm font-mono">${(pp.price ?? 0).toFixed(2)}</td>
+                            <td className="px-4 py-3 text-sm font-mono">${pp.price.toFixed(2)}</td>
                             <td className="px-4 py-3 text-sm text-gray-500">
                               {pp.adjustment_type === "percent_markup" && pp.adjustment_value && `+${pp.adjustment_value}%`}
                               {pp.adjustment_type === "percent_discount" && pp.adjustment_value && `-${pp.adjustment_value}%`}

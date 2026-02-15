@@ -268,7 +268,7 @@ export default function InvoiceUploadPage() {
                       </div>
                       <div>
                         <p className="font-medium text-surface-900">{file.name}</p>
-                        <p className="text-sm text-surface-500">{((file.size / 1024) ?? 0).toFixed(1)} KB</p>
+                        <p className="text-sm text-surface-500">{(file.size / 1024).toFixed(1)} KB</p>
                       </div>
                     </div>
                     <button
@@ -461,7 +461,7 @@ export default function InvoiceUploadPage() {
                         />
                       </td>
                       <td className="px-4 py-3 text-right font-medium">
-                        ${(item.total ?? 0).toFixed(2)}
+                        ${item.total.toFixed(2)}
                       </td>
                       <td className="px-4 py-3 text-center">
                         {item.matched_stock_item ? (
@@ -475,7 +475,7 @@ export default function InvoiceUploadPage() {
                       <td className="px-4 py-3 text-center">
                         {item.price_variance !== undefined && item.price_variance !== 0 ? (
                           <span className={`text-sm font-medium ${item.price_variance > 0 ? 'text-error-600' : 'text-success-600'}`}>
-                            {item.price_variance > 0 ? '+' : ''}${(item.price_variance ?? 0).toFixed(2)}
+                            {item.price_variance > 0 ? '+' : ''}${item.price_variance.toFixed(2)}
                           </span>
                         ) : (
                           <span className="text-surface-400">—</span>
@@ -493,15 +493,15 @@ export default function InvoiceUploadPage() {
             <div className="max-w-xs ml-auto space-y-2">
               <div className="flex justify-between">
                 <span className="text-surface-600">Subtotal</span>
-                <span className="font-medium">${(extractedData.subtotal ?? 0).toFixed(2)}</span>
+                <span className="font-medium">${extractedData.subtotal.toFixed(2)}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-surface-600">Tax (20%)</span>
-                <span className="font-medium">${(extractedData.tax_amount ?? 0).toFixed(2)}</span>
+                <span className="font-medium">${extractedData.tax_amount.toFixed(2)}</span>
               </div>
               <div className="flex justify-between text-lg pt-2 border-t border-surface-200">
                 <span className="font-semibold">Total</span>
-                <span className="font-bold text-primary-600">${(extractedData.total_amount ?? 0).toFixed(2)}</span>
+                <span className="font-bold text-primary-600">${extractedData.total_amount.toFixed(2)}</span>
               </div>
             </div>
           </div>
@@ -548,7 +548,7 @@ export default function InvoiceUploadPage() {
                 <div key={index} className="flex items-center gap-4 p-4 bg-surface-50 rounded-lg">
                   <div className="flex-1">
                     <p className="font-medium text-surface-900">{item.category}</p>
-                    <p className="text-sm text-surface-500">${(item.amount ?? 0).toFixed(2)}</p>
+                    <p className="text-sm text-surface-500">${item.amount.toFixed(2)}</p>
                   </div>
                   <select className="flex-1 px-3 py-2 border border-surface-300 rounded-lg focus:ring-2 focus:ring-primary-500">
                     <option>{item.glAccount}</option>

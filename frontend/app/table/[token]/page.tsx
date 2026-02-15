@@ -374,7 +374,7 @@ export default function TableOrderPage() {
           <p className="text-gray-500 mb-4">Your server has been notified and will be with you shortly.</p>
           <div className="bg-blue-50 rounded-2xl p-4 mb-6">
             <p className="text-sm text-blue-600 mb-1">Total amount</p>
-            <p className="text-3xl font-bold text-blue-700">{(totalOrderedAmount ?? 0).toFixed(2)} лв</p>
+            <p className="text-3xl font-bold text-blue-700">{totalOrderedAmount.toFixed(2)} лв</p>
           </div>
           <button
             onClick={() => setPaymentRequested(false)}
@@ -476,7 +476,7 @@ export default function TableOrderPage() {
                   {tableOrders.filter(o => !['completed', 'cancelled'].includes(o.status)).length} active order{tableOrders.filter(o => !['completed', 'cancelled'].includes(o.status)).length !== 1 ? 's' : ''}
                 </span>
               </div>
-              <span className="text-sm font-bold text-emerald-700">{(totalOrderedAmount ?? 0).toFixed(2)} лв</span>
+              <span className="text-sm font-bold text-emerald-700">{totalOrderedAmount.toFixed(2)} лв</span>
             </button>
           )}
         </div>
@@ -576,7 +576,7 @@ export default function TableOrderPage() {
                             )}
                             <div className="mt-2.5 flex items-center justify-between">
                               <span className="text-base font-bold text-gray-900">
-                                {(item.price ?? 0).toFixed(2)} <span className="text-xs font-medium text-gray-400">лв</span>
+                                {item.price.toFixed(2)} <span className="text-xs font-medium text-gray-400">лв</span>
                               </span>
                               {item.available ? (
                                 qty > 0 ? (
@@ -635,7 +635,7 @@ export default function TableOrderPage() {
                 <span className="w-6 h-6 bg-white/20 rounded-full flex items-center justify-center text-sm font-bold">{itemCount}</span>
                 <span>View Cart</span>
               </div>
-              <span className="font-bold">{(total ?? 0).toFixed(2)} лв</span>
+              <span className="font-bold">{total.toFixed(2)} лв</span>
             </button>
           </div>
         </div>
@@ -678,7 +678,7 @@ export default function TableOrderPage() {
                       <div className="flex-1 min-w-0">
                         <h4 className="font-semibold text-sm text-gray-900 truncate">{item.menuItem.name}</h4>
                         <p className="text-sm text-orange-600 font-medium mt-0.5">
-                          {((item.menuItem.price * item.quantity) ?? 0).toFixed(2)} лв
+                          {(item.menuItem.price * item.quantity).toFixed(2)} лв
                         </p>
                       </div>
                       <div className="flex items-center gap-1.5">
@@ -710,7 +710,7 @@ export default function TableOrderPage() {
               <div className="px-5 py-4 border-t border-gray-100 bg-white">
                 <div className="flex items-center justify-between mb-4">
                   <span className="text-gray-500 font-medium">Total</span>
-                  <span className="font-bold text-2xl text-gray-900">{(total ?? 0).toFixed(2)} <span className="text-sm font-medium text-gray-400">лв</span></span>
+                  <span className="font-bold text-2xl text-gray-900">{total.toFixed(2)} <span className="text-sm font-medium text-gray-400">лв</span></span>
                 </div>
                 <button
                   onClick={placeOrder}
@@ -781,7 +781,7 @@ export default function TableOrderPage() {
                             {order.items.slice(0, 4).map((item, idx) => (
                               <div key={idx} className="flex items-center justify-between text-sm">
                                 <span className="text-gray-600">{item.quantity}x {item.name}</span>
-                                <span className="text-gray-500 font-medium">{((item.price * item.quantity) ?? 0).toFixed(2)}</span>
+                                <span className="text-gray-500 font-medium">{(item.price * item.quantity).toFixed(2)}</span>
                               </div>
                             ))}
                             {order.items.length > 4 && (
@@ -791,7 +791,7 @@ export default function TableOrderPage() {
                         )}
                         <div className="flex items-center justify-between pt-2 border-t border-gray-200/50">
                           <span className="text-xs text-gray-400">{order.items_count} items</span>
-                          <span className="font-bold text-gray-900">{(order.total ?? 0).toFixed(2)} лв</span>
+                          <span className="font-bold text-gray-900">{order.total.toFixed(2)} лв</span>
                         </div>
                       </div>
                     );
@@ -804,7 +804,7 @@ export default function TableOrderPage() {
               <div className="px-5 py-4 border-t border-gray-100 bg-white">
                 <div className="flex items-center justify-between mb-4">
                   <span className="text-gray-500 font-medium">Total</span>
-                  <span className="font-bold text-2xl text-gray-900">{(totalOrderedAmount ?? 0).toFixed(2)} <span className="text-sm font-medium text-gray-400">лв</span></span>
+                  <span className="font-bold text-2xl text-gray-900">{totalOrderedAmount.toFixed(2)} <span className="text-sm font-medium text-gray-400">лв</span></span>
                 </div>
                 <button
                   onClick={() => {
@@ -846,15 +846,15 @@ export default function TableOrderPage() {
               <div className="bg-gray-50 rounded-2xl p-4 space-y-2">
                 <div className="flex justify-between text-sm">
                   <span className="text-gray-500">Subtotal</span>
-                  <span className="text-gray-700">{((paymentSummary?.subtotal || totalOrderedAmount * 0.92) ?? 0).toFixed(2)} лв</span>
+                  <span className="text-gray-700">{(paymentSummary?.subtotal || totalOrderedAmount * 0.92).toFixed(2)} лв</span>
                 </div>
                 <div className="flex justify-between text-sm">
                   <span className="text-gray-500">Tax</span>
-                  <span className="text-gray-700">{((paymentSummary?.tax || totalOrderedAmount * 0.08) ?? 0).toFixed(2)} лв</span>
+                  <span className="text-gray-700">{(paymentSummary?.tax || totalOrderedAmount * 0.08).toFixed(2)} лв</span>
                 </div>
                 <div className="border-t border-gray-200 pt-2 mt-2 flex justify-between">
                   <span className="font-bold text-gray-900">Total</span>
-                  <span className="font-bold text-gray-900 text-lg">{((paymentSummary?.balance_due || totalOrderedAmount) ?? 0).toFixed(2)} лв</span>
+                  <span className="font-bold text-gray-900 text-lg">{(paymentSummary?.balance_due || totalOrderedAmount).toFixed(2)} лв</span>
                 </div>
               </div>
 
@@ -921,7 +921,7 @@ export default function TableOrderPage() {
                   {(
                     (paymentSummary?.balance_due || totalOrderedAmount) +
                     (customTip ? parseFloat(customTip) || 0 : (paymentSummary?.balance_due || totalOrderedAmount) * selectedTip / 100)
-(                  ) ?? 0).toFixed(2)} <span className="text-lg">лв</span>
+                  ).toFixed(2)} <span className="text-lg">лв</span>
                 </p>
                 {(selectedTip > 0 || customTip) && (
                   <p className="text-xs text-emerald-500 mt-1">
@@ -976,21 +976,21 @@ export default function TableOrderPage() {
               <div className="bg-gray-50 rounded-2xl p-4 space-y-2.5 text-sm">
                 <div className="flex justify-between">
                   <span className="text-gray-500">Subtotal</span>
-                  <span className="text-gray-700">{(receipt.subtotal? ?? 0).toFixed(2)} лв</span>
+                  <span className="text-gray-700">{receipt.subtotal?.toFixed(2)} лв</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-500">Tax</span>
-                  <span className="text-gray-700">{(receipt.tax? ?? 0).toFixed(2)} лв</span>
+                  <span className="text-gray-700">{receipt.tax?.toFixed(2)} лв</span>
                 </div>
                 {receipt.tip > 0 && (
                   <div className="flex justify-between">
                     <span className="text-gray-500">Tip</span>
-                    <span className="text-gray-700">{(receipt.tip? ?? 0).toFixed(2)} лв</span>
+                    <span className="text-gray-700">{receipt.tip?.toFixed(2)} лв</span>
                   </div>
                 )}
                 <div className="border-t border-gray-200 pt-2 flex justify-between font-bold">
                   <span className="text-gray-900">Total Charged</span>
-                  <span className="text-gray-900">{(receipt.total_charged? ?? 0).toFixed(2)} лв</span>
+                  <span className="text-gray-900">{receipt.total_charged?.toFixed(2)} лв</span>
                 </div>
                 <div className="flex justify-between text-xs text-gray-400 pt-1">
                   <span>Method: <span className="capitalize">{receipt.payment_method}</span></span>

@@ -543,7 +543,7 @@ export default function FinancialManagementPage() {
           </motion.div>
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.5 }} className="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
             <div className="text-gray-500 text-sm">Бюджет използван</div>
-            <div className="text-2xl font-bold text-purple-600">{(budgetUtilization ?? 0).toFixed(0)}%</div>
+            <div className="text-2xl font-bold text-purple-600">{budgetUtilization.toFixed(0)}%</div>
             <div className="w-full bg-gray-200 rounded-full h-1.5 mt-2">
               <div className={`h-1.5 rounded-full ${budgetUtilization > 90 ? 'bg-red-500' : budgetUtilization > 75 ? 'bg-yellow-500' : 'bg-green-500'}`} style={{ width: `${Math.min(budgetUtilization, 100)}%` }} />
             </div>
@@ -910,7 +910,7 @@ export default function FinancialManagementPage() {
                         <div className="flex items-center gap-2">
                           <span className="text-gray-900 font-medium text-lg">{vendor.name}</span>
                           <span className={`px-2 py-0.5 rounded text-xs ${getStatusColor(vendor.status)}`}>{getStatusLabel(vendor.status)}</span>
-                          <span className="text-yellow-500 text-sm">★ {(vendor.rating ?? 0).toFixed(1)}</span>
+                          <span className="text-yellow-500 text-sm">★ {vendor.rating.toFixed(1)}</span>
                         </div>
                         <div className="text-gray-600 text-sm">{vendor.contact_person} • {vendor.phone}</div>
                         <div className="text-gray-500 text-xs">{vendor.email}</div>
@@ -1001,7 +1001,7 @@ export default function FinancialManagementPage() {
 
                 <div className="bg-blue-50 p-4 rounded-lg">
                   <div className="flex justify-between text-blue-800 font-bold text-lg"><span>НЕТНА ПЕЧАЛБА</span><span>{(103600 - totalSpent).toLocaleString()}.00 лв</span></div>
-                  <div className="flex justify-between text-blue-600 text-sm mt-2"><span>Марж</span><span>{((((103600 - totalSpent) / 145000) * 100) ?? 0).toFixed(1)}%</span></div>
+                  <div className="flex justify-between text-blue-600 text-sm mt-2"><span>Марж</span><span>{(((103600 - totalSpent) / 145000) * 100).toFixed(1)}%</span></div>
                 </div>
               </div>
             </div>
@@ -1213,9 +1213,9 @@ export default function FinancialManagementPage() {
                 <div><div className="text-gray-500 text-xs">Условия</div><div className="text-gray-900">{selectedInvoice.payment_terms}</div></div>
               </div>
               <div className="bg-gray-50 rounded-lg p-4 mb-6">
-                <div className="flex justify-between text-gray-600 mb-2"><span>Сума без ДДС:</span><span>{(selectedInvoice.subtotal ?? 0).toFixed(2)} лв</span></div>
-                <div className="flex justify-between text-gray-600 mb-2"><span>ДДС:</span><span>{(selectedInvoice.tax_amount ?? 0).toFixed(2)} лв</span></div>
-                <div className="flex justify-between text-gray-900 font-bold text-lg pt-2 border-t border-gray-200"><span>Общо:</span><span>{(selectedInvoice.total ?? 0).toFixed(2)} лв</span></div>
+                <div className="flex justify-between text-gray-600 mb-2"><span>Сума без ДДС:</span><span>{selectedInvoice.subtotal.toFixed(2)} лв</span></div>
+                <div className="flex justify-between text-gray-600 mb-2"><span>ДДС:</span><span>{selectedInvoice.tax_amount.toFixed(2)} лв</span></div>
+                <div className="flex justify-between text-gray-900 font-bold text-lg pt-2 border-t border-gray-200"><span>Общо:</span><span>{selectedInvoice.total.toFixed(2)} лв</span></div>
               </div>
               <div className="flex gap-3">
                 <button className="flex-1 py-3 bg-gray-100 text-gray-700 rounded-xl hover:bg-gray-200">📥 PDF</button>
@@ -1241,7 +1241,7 @@ export default function FinancialManagementPage() {
                     <h2 className="text-2xl font-bold text-gray-900">{selectedVendor.name}</h2>
                     <div className="flex items-center gap-2 mt-1">
                       <span className={`px-2 py-0.5 rounded text-xs ${getStatusColor(selectedVendor.status)}`}>{getStatusLabel(selectedVendor.status)}</span>
-                      <span className="text-yellow-500">★ {(selectedVendor.rating ?? 0).toFixed(1)}</span>
+                      <span className="text-yellow-500">★ {selectedVendor.rating.toFixed(1)}</span>
                     </div>
                   </div>
                 </div>

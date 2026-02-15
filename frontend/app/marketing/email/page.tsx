@@ -207,8 +207,8 @@ export default function EmailMarketingPage() {
   const totalSent = campaigns.reduce((sum, c) => sum + c.delivered_count, 0);
   const totalOpened = campaigns.reduce((sum, c) => sum + c.opened_count, 0);
   const totalClicked = campaigns.reduce((sum, c) => sum + c.clicked_count, 0);
-  const avgOpenRate = totalSent > 0 ? (((totalOpened / totalSent) * 100) ?? 0).toFixed(1) : '0';
-  const avgClickRate = totalOpened > 0 ? (((totalClicked / totalOpened) * 100) ?? 0).toFixed(1) : '0';
+  const avgOpenRate = totalSent > 0 ? ((totalOpened / totalSent) * 100).toFixed(1) : '0';
+  const avgClickRate = totalOpened > 0 ? ((totalClicked / totalOpened) * 100).toFixed(1) : '0';
 
   if (loading) {
     return (
@@ -332,8 +332,8 @@ export default function EmailMarketingPage() {
       {activeTab === 'campaigns' && (
         <div className="space-y-4">
           {campaigns.map((campaign, index) => {
-            const openRate = campaign.delivered_count > 0 ? (((campaign.opened_count / campaign.delivered_count) * 100) ?? 0).toFixed(1) : '0';
-            const clickRate = campaign.opened_count > 0 ? (((campaign.clicked_count / campaign.opened_count) * 100) ?? 0).toFixed(1) : '0';
+            const openRate = campaign.delivered_count > 0 ? ((campaign.opened_count / campaign.delivered_count) * 100).toFixed(1) : '0';
+            const clickRate = campaign.opened_count > 0 ? ((campaign.clicked_count / campaign.opened_count) * 100).toFixed(1) : '0';
 
             return (
               <motion.div

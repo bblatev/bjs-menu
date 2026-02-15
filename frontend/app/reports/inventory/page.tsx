@@ -299,7 +299,7 @@ export default function ReportsInventoryPage() {
 
                       <div className="flex items-center justify-between text-xs text-surface-500">
                         <span>Reorder at: {item.reorderLevel} {item.unit}</span>
-                        <span>Value: {((item.currentStock * item.costPerUnit) ?? 0).toFixed(2)} лв</span>
+                        <span>Value: {(item.currentStock * item.costPerUnit).toFixed(2)} лв</span>
                         <span>Last: {new Date(item.lastRestock).toLocaleDateString('bg-BG', { day: 'numeric', month: 'short' })}</span>
                       </div>
                     </div>
@@ -337,7 +337,7 @@ export default function ReportsInventoryPage() {
                   </div>
                   <div className="flex items-center justify-between text-xs text-surface-500">
                     <span>{cat.items} items</span>
-                    <span className="font-semibold text-success-600">{(cat.value ?? 0).toFixed(0)} лв</span>
+                    <span className="font-semibold text-success-600">{cat.value.toFixed(0)} лв</span>
                   </div>
                   <div className="h-1.5 bg-surface-100 rounded-full overflow-hidden">
                     <motion.div

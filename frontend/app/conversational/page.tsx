@@ -554,7 +554,7 @@ export default function ConversationalOrderingPage() {
                         </div>
                         <div className="flex justify-between items-center">
                           <span className="text-gray-500 text-xs">{session.items.length} items</span>
-                          <span className="text-green-400 font-semibold">{(session.total ?? 0).toFixed(2)} лв</span>
+                          <span className="text-green-400 font-semibold">{session.total.toFixed(2)} лв</span>
                         </div>
                       </div>
                     ))}
@@ -604,7 +604,7 @@ export default function ConversationalOrderingPage() {
                             style={{ width: `${85 + Math.random() * 12}%` }}
                           ></div>
                         </div>
-                        <span className="text-purple-400 text-xs">{((85 + Math.random() * 12) ?? 0).toFixed(1)}%</span>
+                        <span className="text-purple-400 text-xs">{(85 + Math.random() * 12).toFixed(1)}%</span>
                       </div>
                     </div>
                   ))}
@@ -645,7 +645,7 @@ export default function ConversationalOrderingPage() {
                         </span>
                       </div>
                       <div className="text-gray-500 text-sm">{session.order_type} • {session.items.length} items</div>
-                      <div className="text-green-400 font-semibold mt-1">{(session.total ?? 0).toFixed(2)} лв</div>
+                      <div className="text-green-400 font-semibold mt-1">{session.total.toFixed(2)} лв</div>
                     </div>
                   ))}
                 </div>
@@ -681,7 +681,7 @@ export default function ConversationalOrderingPage() {
                             <div className="mt-2 pt-2 border-t border-gray-300 text-xs">
                               <span className="bg-purple-500/50 px-2 py-0.5 rounded">{msg.intent}</span>
                               {msg.confidence && (
-                                <span className="ml-2 text-gray-600">{((msg.confidence * 100) ?? 0).toFixed(0)}%</span>
+                                <span className="ml-2 text-gray-600">{(msg.confidence * 100).toFixed(0)}%</span>
                               )}
                               {msg.entities && msg.entities.length > 0 && (
                                 <div className="mt-1 flex flex-wrap gap-1">
@@ -706,12 +706,12 @@ export default function ConversationalOrderingPage() {
                       {selectedSession.items.map(item => (
                         <div key={item.id} className="flex justify-between text-sm">
                           <span className="text-gray-900">{item.quantity}x {item.name}</span>
-                          <span className="text-gray-700">{(item.price ?? 0).toFixed(2)} лв</span>
+                          <span className="text-gray-700">{item.price.toFixed(2)} лв</span>
                         </div>
                       ))}
                       <div className="border-t border-gray-200 pt-2 flex justify-between font-semibold">
                         <span className="text-gray-900">Total</span>
-                        <span className="text-green-400">{(selectedSession.total ?? 0).toFixed(2)} лв</span>
+                        <span className="text-green-400">{selectedSession.total.toFixed(2)} лв</span>
                       </div>
                     </div>
                   </div>
@@ -910,7 +910,7 @@ export default function ConversationalOrderingPage() {
                                   <span className={`ml-2 ${
                                     msg.confidence > 0.8 ? 'text-green-400' : msg.confidence > 0.5 ? 'text-yellow-400' : 'text-red-400'
                                   }`}>
-                                    {((msg.confidence * 100) ?? 0).toFixed(0)}% confidence
+                                    {(msg.confidence * 100).toFixed(0)}% confidence
                                   </span>
                                 )}
                               </div>

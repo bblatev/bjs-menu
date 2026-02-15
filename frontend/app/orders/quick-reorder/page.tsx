@@ -346,7 +346,7 @@ export default function QuickReorderPage() {
                         </p>
                       </div>
                       <span className="text-orange-500 font-bold text-lg">
-                        {(order.total ?? 0).toFixed(2)} lv
+                        {order.total.toFixed(2)} lv
                       </span>
                     </div>
 
@@ -360,7 +360,7 @@ export default function QuickReorderPage() {
                             {item.quantity}x {item.name}
                           </span>
                           <span className="text-gray-500">
-                            {((item.unit_price * item.quantity) ?? 0).toFixed(2)} lv
+                            {(item.unit_price * item.quantity).toFixed(2)} lv
                           </span>
                         </div>
                       ))}
@@ -414,7 +414,7 @@ export default function QuickReorderPage() {
                       </div>
                       <div className="flex items-center gap-3">
                         <span className="text-orange-500 font-medium">
-                          {(item.price? ?? 0).toFixed(2)} lv
+                          {item.price?.toFixed(2)} lv
                         </span>
                         <button
                           onClick={() => {
@@ -473,7 +473,7 @@ export default function QuickReorderPage() {
                       </div>
                       <div className="flex items-center gap-3">
                         <span className="text-orange-500 font-medium">
-                          {(item.price? ?? 0).toFixed(2)} lv
+                          {item.price?.toFixed(2)} lv
                         </span>
                         <button
                           onClick={() => {
@@ -563,7 +563,7 @@ export default function QuickReorderPage() {
                         <div className="flex-1">
                           <p className="text-gray-900 font-medium">{item.name}</p>
                           <p className="text-gray-500 text-sm">
-                            {(item.unit_price ?? 0).toFixed(2)} lv each
+                            {item.unit_price.toFixed(2)} lv each
                           </p>
                         </div>
                         <div className="flex items-center gap-2">
@@ -603,7 +603,7 @@ export default function QuickReorderPage() {
               <div className="flex justify-between items-center p-4 bg-orange-50 rounded-xl mb-6">
                 <span className="text-gray-700 font-medium">Total</span>
                 <span className="text-orange-600 text-2xl font-bold">
-                  {(reorderTotal ?? 0).toFixed(2)} lv
+                  {reorderTotal.toFixed(2)} lv
                 </span>
               </div>
 

@@ -224,7 +224,7 @@ function DashboardContent() {
     {
       label: "Приходи днес",
       value: `${todayRevenue.toLocaleString('bg-BG')} лв`,
-      subvalue: `€${((todayRevenue / 1.96) ?? 0).toFixed(0)}`,
+      subvalue: `€${(todayRevenue / 1.96).toFixed(0)}`,
       icon: '💰',
       color: 'success'
     },
@@ -237,8 +237,8 @@ function DashboardContent() {
     },
     {
       label: 'Средна сметка',
-      value: `${(avgTicket ?? 0).toFixed(0)} лв`,
-      subvalue: `€${((avgTicket / 1.96) ?? 0).toFixed(2)}`,
+      value: `${avgTicket.toFixed(0)} лв`,
+      subvalue: `€${(avgTicket / 1.96).toFixed(2)}`,
       icon: '🧾',
       color: 'accent'
     },
@@ -274,7 +274,7 @@ function DashboardContent() {
     items: order.items?.length || 0,
     time: getTimeAgo(order.created_at),
     status: order.status as 'new' | 'preparing' | 'ready',
-    total: `${(order.total ?? 0).toFixed(0)} лв`,
+    total: `${order.total.toFixed(0)} лв`,
     orderNumber: order.order_number,
   }));
 

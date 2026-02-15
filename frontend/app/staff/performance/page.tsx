@@ -259,7 +259,7 @@ export default function StaffPerformancePage() {
         <div className="bg-white p-4 rounded-xl border border-surface-200 shadow-sm">
           <p className="text-xs text-surface-500 uppercase">Avg Rating</p>
           <p className={`text-xl font-bold ${getRatingColor(avgRating)}`}>
-            {(avgRating ?? 0).toFixed(1)} <span className="text-yellow-500">★</span>
+            {avgRating.toFixed(1)} <span className="text-yellow-500">★</span>
           </p>
         </div>
         <div className="bg-white p-4 rounded-xl border border-surface-200 shadow-sm">
@@ -273,7 +273,7 @@ export default function StaffPerformancePage() {
         <div className="bg-white p-4 rounded-xl border border-surface-200 shadow-sm">
           <p className="text-xs text-surface-500 uppercase">Avg Sales/Hour</p>
           <p className="text-xl font-bold text-surface-900">
-            ${((leaderboard.filter(l => l.metrics.sales_per_hour > 0).reduce((s, l) => s + l.metrics.sales_per_hour, 0) / leaderboard.filter(l => l.metrics.sales_per_hour > 0).length) ?? 0).toFixed(2)}
+            ${(leaderboard.filter(l => l.metrics.sales_per_hour > 0).reduce((s, l) => s + l.metrics.sales_per_hour, 0) / leaderboard.filter(l => l.metrics.sales_per_hour > 0).length).toFixed(2)}
           </p>
         </div>
       </div>
@@ -346,7 +346,7 @@ export default function StaffPerformancePage() {
                     </div>
                     <div className="text-center">
                       <p className="text-xs text-surface-500">Avg Ticket</p>
-                      <p className="font-bold text-surface-900">${(m.avg_ticket ?? 0).toFixed(2)}</p>
+                      <p className="font-bold text-surface-900">${m.avg_ticket.toFixed(2)}</p>
                     </div>
                     <div className="text-center">
                       <p className="text-xs text-surface-500">Tips</p>
@@ -355,12 +355,12 @@ export default function StaffPerformancePage() {
                     <div className="text-center">
                       <p className="text-xs text-surface-500">Rating</p>
                       <p className={`font-bold ${getRatingColor(m.customer_rating)}`}>
-                        {(m.customer_rating ?? 0).toFixed(1)} ★
+                        {m.customer_rating.toFixed(1)} ★
                       </p>
                     </div>
                     <div className="text-center">
                       <p className="text-xs text-surface-500">Sales/Hour</p>
-                      <p className="font-bold text-primary-600">${(m.sales_per_hour ?? 0).toFixed(2)}</p>
+                      <p className="font-bold text-primary-600">${m.sales_per_hour.toFixed(2)}</p>
                     </div>
                   </div>
 
@@ -461,7 +461,7 @@ export default function StaffPerformancePage() {
                         ★
                       </span>
                     ))}
-                    <span className="ml-2 font-bold text-surface-900">{(entry.metrics.customer_rating ?? 0).toFixed(1)}</span>
+                    <span className="ml-2 font-bold text-surface-900">{entry.metrics.customer_rating.toFixed(1)}</span>
                   </div>
                 </div>
               ))}

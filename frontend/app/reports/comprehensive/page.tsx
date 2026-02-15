@@ -160,11 +160,11 @@ export default function ComprehensiveReportsPage() {
 
   const formatValue = (metric: KPIMetric) => {
     if (metric.unit === '%') {
-      return `${(metric.value ?? 0).toFixed(1)}${metric.unit}`;
+      return `${metric.value.toFixed(1)}${metric.unit}`;
     } else if (metric.unit === 'лв') {
-      return `${(metric.value ?? 0).toFixed(2)} ${metric.unit}`;
+      return `${metric.value.toFixed(2)} ${metric.unit}`;
     } else {
-      return `${(metric.value ?? 0).toFixed(0)}${metric.unit}`;
+      return `${metric.value.toFixed(0)}${metric.unit}`;
     }
   };
 
@@ -252,7 +252,7 @@ export default function ComprehensiveReportsPage() {
                     <span className={`text-xs font-bold px-2 py-1 rounded-full ${
                       metric.change_direction === 'up' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
                     }`}>
-                      {metric.change_direction === 'up' ? '↑' : '↓'} {(Math.abs(metric.change_percentage) ?? 0).toFixed(1)}%
+                      {metric.change_direction === 'up' ? '↑' : '↓'} {Math.abs(metric.change_percentage).toFixed(1)}%
                     </span>
                   )}
                 </div>

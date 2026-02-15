@@ -272,15 +272,15 @@ export default function SpillagePage() {
         <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-4 mb-6">
           <div className="bg-secondary rounded-lg p-4">
             <div className="text-gray-400 text-xs">Spillage Cost</div>
-            <div className="text-2xl font-bold text-blue-400">${(stats.total_spillage_cost ?? 0).toFixed(2)}</div>
+            <div className="text-2xl font-bold text-blue-400">${stats.total_spillage_cost.toFixed(2)}</div>
           </div>
           <div className="bg-secondary rounded-lg p-4">
             <div className="text-gray-400 text-xs">Breakage Cost</div>
-            <div className="text-2xl font-bold text-red-400">${(stats.total_breakage_cost ?? 0).toFixed(2)}</div>
+            <div className="text-2xl font-bold text-red-400">${stats.total_breakage_cost.toFixed(2)}</div>
           </div>
           <div className="bg-secondary rounded-lg p-4">
             <div className="text-gray-400 text-xs">Variance Cost</div>
-            <div className="text-2xl font-bold text-yellow-400">${(stats.total_variance_cost ?? 0).toFixed(2)}</div>
+            <div className="text-2xl font-bold text-yellow-400">${stats.total_variance_cost.toFixed(2)}</div>
           </div>
           <div className="bg-secondary rounded-lg p-4">
             <div className="text-gray-400 text-xs">Spillage %</div>
@@ -288,7 +288,7 @@ export default function SpillagePage() {
           </div>
           <div className="bg-secondary rounded-lg p-4">
             <div className="text-gray-400 text-xs">Total Waste</div>
-            <div className="text-2xl font-bold text-gray-900">${(totalSpillage ?? 0).toFixed(2)}</div>
+            <div className="text-2xl font-bold text-gray-900">${totalSpillage.toFixed(2)}</div>
           </div>
           <div className="bg-secondary rounded-lg p-4">
             <div className="text-gray-400 text-xs">Top Wasted</div>
@@ -365,7 +365,7 @@ export default function SpillagePage() {
                         </span>
                         <span className="text-gray-900 font-semibold">{record.item_name}</span>
                       </div>
-                      <span className="text-red-400 font-bold">-${(record.cost ?? 0).toFixed(2)}</span>
+                      <span className="text-red-400 font-bold">-${record.cost.toFixed(2)}</span>
                     </div>
                     <div className="flex items-center justify-between text-sm">
                       <div className="text-gray-400">
@@ -396,7 +396,7 @@ export default function SpillagePage() {
                           <span className={`w-3 h-3 rounded ${REASONS[reason as keyof typeof REASONS]?.color || 'bg-gray-500'}`} />
                           {REASONS[reason as keyof typeof REASONS]?.label || reason}
                         </span>
-                        <span className="text-gray-900 font-bold">${(cost ?? 0).toFixed(2)}</span>
+                        <span className="text-gray-900 font-bold">${cost.toFixed(2)}</span>
                       </div>
                       <div className="h-2 bg-white rounded-full overflow-hidden">
                         <div
@@ -416,7 +416,7 @@ export default function SpillagePage() {
                   {groupByBartender().map(([name, cost]) => (
                     <div key={name} className="flex items-center justify-between">
                       <span className="text-gray-300">{name}</span>
-                      <span className="text-red-400 font-bold">${(cost ?? 0).toFixed(2)}</span>
+                      <span className="text-red-400 font-bold">${cost.toFixed(2)}</span>
                     </div>
                   ))}
                 </div>
@@ -457,10 +457,10 @@ export default function SpillagePage() {
                       {item.variance > 0 ? '+' : ''}{item.variance}
                     </td>
                     <td className={`p-3 text-right font-bold ${item.variance_percentage < 0 ? 'text-red-400' : 'text-green-400'}`}>
-                      {item.variance_percentage > 0 ? '+' : ''}{(item.variance_percentage ?? 0).toFixed(1)}%
+                      {item.variance_percentage > 0 ? '+' : ''}{item.variance_percentage.toFixed(1)}%
                     </td>
                     <td className={`p-3 text-right font-bold ${item.variance_cost < 0 ? 'text-red-400' : 'text-green-400'}`}>
-                      {item.variance_cost > 0 ? '+' : ''}${(item.variance_cost ?? 0).toFixed(2)}
+                      {item.variance_cost > 0 ? '+' : ''}${item.variance_cost.toFixed(2)}
                     </td>
                     <td className="p-3 text-center">
                       <span className={`inline-flex items-center gap-1 ${getStatusColor(item.status)}`}>
@@ -478,7 +478,7 @@ export default function SpillagePage() {
                 <tr>
                   <td colSpan={6} className="p-3 text-right text-gray-900 font-bold">Total Variance Cost:</td>
                   <td className="p-3 text-right text-red-400 font-bold text-lg">
-                    ${(variances.reduce((sum, v) => sum + v.variance_cost, 0) ?? 0).toFixed(2)}
+                    ${variances.reduce((sum, v) => sum + v.variance_cost, 0).toFixed(2)}
                   </td>
                   <td></td>
                 </tr>

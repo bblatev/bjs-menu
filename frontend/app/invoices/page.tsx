@@ -472,7 +472,7 @@ export default function InvoicesPage() {
                     <td className="px-4 py-3 text-center">
                       {invoice.has_variance ? (
                         <span className="text-error-600 font-medium">
-                          ${(invoice.variance_amount ?? 0).toFixed(2)}
+                          ${invoice.variance_amount.toFixed(2)}
                         </span>
                       ) : (
                         <span className="text-success-600">✓</span>

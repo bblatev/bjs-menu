@@ -421,7 +421,7 @@ export default function InvoiceOCRPage() {
                   <td className="px-6 py-4">
                     {job.extracted_data?.total ? (
                       <span className="font-semibold text-surface-900">
-                        ${(job.extracted_data.total ?? 0).toFixed(2)}
+                        ${job.extracted_data.total.toFixed(2)}
                       </span>
                     ) : (
                       <span className="text-surface-400">-</span>
@@ -566,8 +566,8 @@ export default function InvoiceOCRPage() {
                         <tr key={i}>
                           <td className="px-3 py-2">{item.description}</td>
                           <td className="px-3 py-2 text-right">{item.quantity}</td>
-                          <td className="px-3 py-2 text-right">${(item.unit_price ?? 0).toFixed(2)}</td>
-                          <td className="px-3 py-2 text-right font-medium">${(item.total ?? 0).toFixed(2)}</td>
+                          <td className="px-3 py-2 text-right">${item.unit_price.toFixed(2)}</td>
+                          <td className="px-3 py-2 text-right font-medium">${item.total.toFixed(2)}</td>
                           <td className="px-3 py-2 text-center">
                             <span className={`text-xs ${getConfidenceColor(item.confidence)}`}>
                               {Math.round(item.confidence * 100)}%

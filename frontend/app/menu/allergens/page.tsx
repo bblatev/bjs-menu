@@ -391,7 +391,7 @@ export default function AllergensNutritionPage() {
                     <p className="text-gray-500 text-sm">{item.name.bg}</p>
                     <p className="text-gray-500 text-xs mt-1">{item.category}</p>
                   </div>
-                  <span className="text-orange-400 font-bold">{(item.price ?? 0).toFixed(2)} lv</span>
+                  <span className="text-orange-400 font-bold">{item.price.toFixed(2)} lv</span>
                 </div>
 
                 {/* Allergens */}

@@ -419,7 +419,7 @@ export default function DemandForecastingPage() {
                     style={{ height: `${data.demand_index * 100}px` }}
                   />
                   <span className="text-xs text-gray-400 mt-2">{data.month}</span>
-                  <span className="text-xs text-gray-500">{((data.demand_index * 100) ?? 0).toFixed(0)}%</span>
+                  <span className="text-xs text-gray-500">{(data.demand_index * 100).toFixed(0)}%</span>
                 </div>
               ))}
             </div>
@@ -546,7 +546,7 @@ export default function DemandForecastingPage() {
                           <span className="text-white">{item.current_stock} {item.unit}</span>
                         </td>
                         <td className="px-4 py-3 text-right">
-                          <span className="text-gray-300">{(item.avg_daily_usage ?? 0).toFixed(1)} {item.unit}/ден</span>
+                          <span className="text-gray-300">{item.avg_daily_usage.toFixed(1)} {item.unit}/ден</span>
                         </td>
                         <td className="px-4 py-3 text-right">
                           <span className="text-white font-medium">
@@ -558,7 +558,7 @@ export default function DemandForecastingPage() {
                             {getTrendIcon(item.trend)}
                           </span>
                           <span className="text-xs text-gray-400 ml-1">
-                            x{(item.seasonality_factor ?? 0).toFixed(2)}
+                            x{item.seasonality_factor.toFixed(2)}
                           </span>
                         </td>
                         <td className="px-4 py-3 text-center">
@@ -633,7 +633,7 @@ export default function DemandForecastingPage() {
                   </div>
                   <div className="bg-gray-700/50 rounded-lg p-4 text-center">
                     <p className="text-sm text-gray-400">Средна дневна употреба</p>
-                    <p className="text-2xl font-bold text-white">{(selectedItem.avg_daily_usage ?? 0).toFixed(1)} {selectedItem.unit}</p>
+                    <p className="text-2xl font-bold text-white">{selectedItem.avg_daily_usage.toFixed(1)} {selectedItem.unit}</p>
                   </div>
                   <div className="bg-gray-700/50 rounded-lg p-4 text-center">
                     <p className="text-sm text-gray-400">Дни до изчерпване</p>
@@ -668,7 +668,7 @@ export default function DemandForecastingPage() {
                       </div>
                       <div className="flex justify-between">
                         <span className="text-gray-300">Сезонен фактор:</span>
-                        <span className="text-white font-medium">x{(selectedItem.seasonality_factor ?? 0).toFixed(2)}</span>
+                        <span className="text-white font-medium">x{selectedItem.seasonality_factor.toFixed(2)}</span>
                       </div>
                       <div className="flex justify-between">
                         <span className="text-gray-300">Точност:</span>

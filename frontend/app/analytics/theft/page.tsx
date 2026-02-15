@@ -64,7 +64,7 @@ export default function AnalyticsTheftPage() {
     }
   };
 
-  const formatCurrency = (amount: number) => `€${(amount ?? 0).toFixed(2)}`;
+  const formatCurrency = (amount: number) => `€${amount.toFixed(2)}`;
 
   const getSeverityColor = (severity: string) => {
     switch (severity) {
@@ -306,7 +306,7 @@ export default function AnalyticsTheftPage() {
             <div className="space-y-3">
               {stats?.alerts_by_type.map((item, i) => {
                 const total = stats.alerts_by_type.reduce((sum, t) => sum + t.count, 0);
-                const percentage = (((item.count / total) * 100) ?? 0).toFixed(0);
+                const percentage = ((item.count / total) * 100).toFixed(0);
                 return (
                   <div key={i} className="space-y-2">
                     <div className="flex justify-between text-sm">

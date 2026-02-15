@@ -512,7 +512,7 @@ export default function DeliveryAggregatorsPage() {
                         <div className="text-sm text-gray-600">#{order.orderNumber}</div>
                       </div>
                       <div className="text-right">
-                        <div className="font-bold text-lg">{(order.total ?? 0).toFixed(2)} лв</div>
+                        <div className="font-bold text-lg">{order.total.toFixed(2)} лв</div>
                         <div className="text-xs text-gray-500">{new Date(order.placedAt).toLocaleTimeString('bg-BG')}</div>
                       </div>
                     </div>
@@ -645,7 +645,7 @@ export default function DeliveryAggregatorsPage() {
                         <div className="text-xs text-gray-500">Поръчки днес</div>
                       </div>
                       <div className="bg-gray-50 rounded-lg p-3">
-                        <div className="text-2xl font-bold">{(platform.revenue ?? 0).toFixed(0)} лв</div>
+                        <div className="text-2xl font-bold">{platform.revenue.toFixed(0)} лв</div>
                         <div className="text-xs text-gray-500">Приходи</div>
                       </div>
                     </div>
@@ -707,8 +707,8 @@ export default function DeliveryAggregatorsPage() {
                     <tr key={zone.id} className="border-b hover:bg-gray-50">
                       <td className="p-3 font-medium">{zone.name}</td>
                       <td className="p-3">{zone.radiusKm} км</td>
-                      <td className="p-3">{(zone.deliveryFee ?? 0).toFixed(2)} лв</td>
-                      <td className="p-3">{(zone.minOrder ?? 0).toFixed(2)} лв</td>
+                      <td className="p-3">{zone.deliveryFee.toFixed(2)} лв</td>
+                      <td className="p-3">{zone.minOrder.toFixed(2)} лв</td>
                       <td className="p-3">
                         <span className={`px-2 py-1 rounded text-xs font-medium ${zone.active ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-600'}`}>
                           {zone.active ? 'Активна' : 'Неактивна'}
@@ -775,7 +775,7 @@ export default function DeliveryAggregatorsPage() {
                 <div className="text-gray-600">Поръчки днес</div>
               </div>
               <div className="bg-white rounded-xl shadow-sm border p-5">
-                <div className="text-3xl font-bold text-green-600">{(stats.revenueToday ?? 0).toFixed(2)} лв</div>
+                <div className="text-3xl font-bold text-green-600">{stats.revenueToday.toFixed(2)} лв</div>
                 <div className="text-gray-600">Приходи днес</div>
               </div>
               <div className="bg-white rounded-xl shadow-sm border p-5">
@@ -783,7 +783,7 @@ export default function DeliveryAggregatorsPage() {
                 <div className="text-gray-600">Ср. време за приготвяне</div>
               </div>
               <div className="bg-white rounded-xl shadow-sm border p-5">
-                <div className="text-3xl font-bold text-yellow-600">{(stats.avgCommission ?? 0).toFixed(0)}%</div>
+                <div className="text-3xl font-bold text-yellow-600">{stats.avgCommission.toFixed(0)}%</div>
                 <div className="text-gray-600">Средна комисионна</div>
               </div>
             </div>
@@ -810,7 +810,7 @@ export default function DeliveryAggregatorsPage() {
                           {platform.name}
                         </td>
                         <td className="p-3">{platform.ordersToday}</td>
-                        <td className="p-3">{(platform.revenue ?? 0).toFixed(2)} лв</td>
+                        <td className="p-3">{platform.revenue.toFixed(2)} лв</td>
                         <td className="p-3">{platform.commission}%</td>
                         <td className="p-3">
                           <span className="px-2 py-1 rounded text-xs font-medium bg-green-100 text-green-800">

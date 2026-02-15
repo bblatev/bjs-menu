@@ -596,7 +596,7 @@ export default function StockPage() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-gray-500">Total Value</p>
-                <p className="text-2xl font-bold text-green-600">{(totalValue ?? 0).toFixed(2)} EUR</p>
+                <p className="text-2xl font-bold text-green-600">{totalValue.toFixed(2)} EUR</p>
               </div>
               <div className="w-12 h-12 bg-green-100 rounded-xl flex items-center justify-center text-2xl">
                 💰
@@ -707,10 +707,10 @@ export default function StockPage() {
                             </span>
                           </td>
                           <td className="px-6 py-4 text-right text-gray-600">
-                            {item.cost_per_unit ? `${(item.cost_per_unit ?? 0).toFixed(2)} EUR` : "-"}
+                            {item.cost_per_unit ? `${item.cost_per_unit.toFixed(2)} EUR` : "-"}
                           </td>
                           <td className="px-6 py-4 text-right font-medium text-gray-900">
-                            {item.cost_per_unit ? `${((item.quantity * item.cost_per_unit) ?? 0).toFixed(2)} EUR` : "-"}
+                            {item.cost_per_unit ? `${(item.quantity * item.cost_per_unit).toFixed(2)} EUR` : "-"}
                           </td>
                           <td className="px-6 py-4 text-center">
                             <button
@@ -1119,7 +1119,7 @@ export default function StockPage() {
                   <p className="text-sm text-gray-500">Total Value</p>
                   <p className="text-2xl font-bold text-green-600">
                     {showItemDetail.cost_per_unit
-                      ? `${((showItemDetail.quantity * showItemDetail.cost_per_unit) ?? 0).toFixed(2)} EUR`
+                      ? `${(showItemDetail.quantity * showItemDetail.cost_per_unit).toFixed(2)} EUR`
                       : '-'
                     }
                   </p>
@@ -1130,7 +1130,7 @@ export default function StockPage() {
                 <div className="flex justify-between py-2 border-b border-gray-100">
                   <span className="text-gray-500">Unit Cost</span>
                   <span className="font-medium text-gray-900">
-                    {showItemDetail.cost_per_unit ? `${(showItemDetail.cost_per_unit ?? 0).toFixed(2)} EUR` : '-'}
+                    {showItemDetail.cost_per_unit ? `${showItemDetail.cost_per_unit.toFixed(2)} EUR` : '-'}
                   </span>
                 </div>
                 <div className="flex justify-between py-2 border-b border-gray-100">

@@ -532,7 +532,7 @@ export default function MenuFeaturesPage() {
                           <h3 className="font-semibold">{v.name?.en || v.name?.bg}</h3>
                           <p className="text-sm text-gray-500 capitalize">{v.variant_type}</p>
                         </div>
-                        <div className="text-xl font-bold text-orange-500">{(v.price ?? 0).toFixed(2)} lv</div>
+                        <div className="text-xl font-bold text-orange-500">{v.price.toFixed(2)} lv</div>
                       </div>
                       {v.sku && <p className="text-xs text-gray-400 mt-2">SKU: {v.sku}</p>}
                       {v.is_default && (
@@ -613,7 +613,7 @@ export default function MenuFeaturesPage() {
                       </div>
                       <div className="flex items-center gap-4">
                         <span className="text-orange-500 font-bold">
-                          {combo.pricing_type === "fixed" && `${(combo.fixed_price? ?? 0).toFixed(2)} lv`}
+                          {combo.pricing_type === "fixed" && `${combo.fixed_price?.toFixed(2)} lv`}
                           {combo.pricing_type === "percentage_discount" && `${combo.discount_percent}% OFF`}
                         </span>
                         <span className="text-gray-400 text-sm">{combo.combo_items?.length || 0} items</span>
@@ -703,7 +703,7 @@ export default function MenuFeaturesPage() {
                       <p className="text-sm text-gray-600 mb-3">{offer.description?.en || offer.description?.bg}</p>
                       <div className="flex justify-between text-sm">
                         <span className="text-orange-600 font-bold">
-                          {offer.discount_percent ? `${offer.discount_percent}% OFF` : `${(offer.fixed_price? ?? 0).toFixed(2)} lv`}
+                          {offer.discount_percent ? `${offer.discount_percent}% OFF` : `${offer.fixed_price?.toFixed(2)} lv`}
                         </span>
                         <span className="text-gray-500">
                           {new Date(offer.start_date).toLocaleDateString()} - {new Date(offer.end_date).toLocaleDateString()}
@@ -969,7 +969,7 @@ export default function MenuFeaturesPage() {
                           }}
                         />
                         <span>{item.name.en || item.name.bg}</span>
-                        <span className="text-gray-400 ml-auto">{(item.price ?? 0).toFixed(2)} lv</span>
+                        <span className="text-gray-400 ml-auto">{item.price.toFixed(2)} lv</span>
                       </label>
                     ))}
                   </div>

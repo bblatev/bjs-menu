@@ -257,7 +257,7 @@ export default function ServerSectionsPage() {
           <div className="text-gray-400 text-xs">Avg Covers/Server</div>
           <div className="text-2xl font-bold text-cyan-400">
             {servers.filter(s => s.status === 'on_shift' && s.role === 'Server').length > 0
-              ? ((totalCovers / servers.filter(s => s.status === 'on_shift' && s.role === 'Server').length) ?? 0).toFixed(1)
+              ? (totalCovers / servers.filter(s => s.status === 'on_shift' && s.role === 'Server').length).toFixed(1)
               : 0}
           </div>
         </div>

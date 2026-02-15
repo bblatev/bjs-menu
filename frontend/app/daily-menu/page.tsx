@@ -443,7 +443,7 @@ export default function DailyMenuPage() {
                       <p className="text-white font-medium">{menu.name}</p>
                       {menu.set_price && (
                         <p className="text-white/80 text-sm">
-                          {(menu.set_price ?? 0).toFixed(2)} lv
+                          {menu.set_price.toFixed(2)} lv
                         </p>
                       )}
                       {menu.available_from && menu.available_until && (
@@ -505,7 +505,7 @@ export default function DailyMenuPage() {
                         </div>
                         {menu.set_price && (
                           <span className="text-orange-500 font-bold text-xl">
-                            {(menu.set_price ?? 0).toFixed(2)} lv
+                            {menu.set_price.toFixed(2)} lv
                           </span>
                         )}
                       </div>
@@ -675,7 +675,7 @@ export default function DailyMenuPage() {
                           <td className="py-3 px-4">
                             {menu.set_price ? (
                               <span className="text-orange-500 font-medium">
-                                {(menu.set_price ?? 0).toFixed(2)} lv
+                                {menu.set_price.toFixed(2)} lv
                               </span>
                             ) : (
                               <span className="text-gray-400 text-sm">
@@ -821,7 +821,7 @@ export default function DailyMenuPage() {
                             <p className="font-medium truncate">{menu.name}</p>
                             {menu.set_price && (
                               <p className="text-xs opacity-75">
-                                {(menu.set_price ?? 0).toFixed(2)} lv
+                                {menu.set_price.toFixed(2)} lv
                               </p>
                             )}
                           </div>
@@ -1013,12 +1013,12 @@ export default function DailyMenuPage() {
                           <div className="flex items-center gap-4">
                             <div className="text-right">
                               <span className="text-orange-500 font-medium">
-                                {(item.special_price ?? 0).toFixed(2)} lv
+                                {item.special_price.toFixed(2)} lv
                               </span>
                               {item.special_price !==
                                 getProductPrice(item.product_id) && (
                                 <span className="text-gray-400 text-sm line-through ml-2">
-                                  {(getProductPrice(item.product_id) ?? 0).toFixed(2)}{" "}
+                                  {getProductPrice(item.product_id).toFixed(2)}{" "}
                                   lv
                                 </span>
                               )}
@@ -1098,7 +1098,7 @@ export default function DailyMenuPage() {
                     {products.map((product) => (
                       <option key={product.id} value={product.id}>
                         {product.name.en || product.name.bg} -{" "}
-                        {(product.price ?? 0).toFixed(2)} lv
+                        {product.price.toFixed(2)} lv
                       </option>
                     ))}
                   </select>

@@ -519,7 +519,7 @@ export default function PayrollPage() {
           <div className="text-gray-600 text-sm">Employees</div>
         </div>
         <div className="bg-white p-4 rounded-lg shadow">
-          <div className="text-2xl font-bold text-gray-800">{(totals.totalHours ?? 0).toFixed(0)}h</div>
+          <div className="text-2xl font-bold text-gray-800">{totals.totalHours.toFixed(0)}h</div>
           <div className="text-gray-600 text-sm">Total Hours</div>
         </div>
         <div className="bg-white p-4 rounded-lg shadow">
@@ -527,15 +527,15 @@ export default function PayrollPage() {
           <div className="text-gray-600 text-sm">Overtime</div>
         </div>
         <div className="bg-white p-4 rounded-lg shadow">
-          <div className="text-2xl font-bold text-green-600">{(totals.totalTips ?? 0).toFixed(2)} BGN</div>
+          <div className="text-2xl font-bold text-green-600">{totals.totalTips.toFixed(2)} BGN</div>
           <div className="text-gray-600 text-sm">Total Tips</div>
         </div>
         <div className="bg-white p-4 rounded-lg shadow">
-          <div className="text-2xl font-bold text-purple-600">{(totals.totalGross ?? 0).toFixed(2)} BGN</div>
+          <div className="text-2xl font-bold text-purple-600">{totals.totalGross.toFixed(2)} BGN</div>
           <div className="text-gray-600 text-sm">Gross Pay</div>
         </div>
         <div className="bg-white p-4 rounded-lg shadow">
-          <div className="text-2xl font-bold text-green-700">{(totals.totalNet ?? 0).toFixed(2)} BGN</div>
+          <div className="text-2xl font-bold text-green-700">{totals.totalNet.toFixed(2)} BGN</div>
           <div className="text-gray-600 text-sm">Net Pay</div>
         </div>
       </div>
@@ -577,7 +577,7 @@ export default function PayrollPage() {
                   <td className="px-4 py-3 capitalize text-gray-600">{entry.role}</td>
                   {viewMode === "detailed" && (
                     <>
-                      <td className="px-4 py-3 text-right">{(entry.hourly_rate ?? 0).toFixed(2)} BGN/h</td>
+                      <td className="px-4 py-3 text-right">{entry.hourly_rate.toFixed(2)} BGN/h</td>
                       <td className="px-4 py-3 text-right">{entry.regular_hours}h</td>
                       <td className="px-4 py-3 text-right text-orange-600">
                         {entry.overtime_hours > 0 ? `${entry.overtime_hours}h` : "-"}
@@ -591,14 +591,14 @@ export default function PayrollPage() {
                     )}
                   </td>
                   <td className="px-4 py-3 text-right text-green-600">
-                    {entry.tips > 0 ? `${(entry.tips ?? 0).toFixed(2)}` : "-"}
+                    {entry.tips > 0 ? `${entry.tips.toFixed(2)}` : "-"}
                   </td>
                   <td className="px-4 py-3 text-right text-blue-600">
-                    {entry.bonuses > 0 ? `${(entry.bonuses ?? 0).toFixed(2)}` : "-"}
+                    {entry.bonuses > 0 ? `${entry.bonuses.toFixed(2)}` : "-"}
                   </td>
-                  <td className="px-4 py-3 text-right font-medium">{(entry.gross_pay ?? 0).toFixed(2)}</td>
-                  <td className="px-4 py-3 text-right text-red-600">-{(entry.deductions ?? 0).toFixed(2)}</td>
-                  <td className="px-4 py-3 text-right font-bold text-green-700">{(entry.net_pay ?? 0).toFixed(2)}</td>
+                  <td className="px-4 py-3 text-right font-medium">{entry.gross_pay.toFixed(2)}</td>
+                  <td className="px-4 py-3 text-right text-red-600">-{entry.deductions.toFixed(2)}</td>
+                  <td className="px-4 py-3 text-right font-bold text-green-700">{entry.net_pay.toFixed(2)}</td>
                   <td className="px-4 py-3 text-center">
                     <span className={`px-2 py-1 rounded text-sm ${getStatusColor(entry.status)}`}>
                       {entry.status}
@@ -640,13 +640,13 @@ export default function PayrollPage() {
               <td colSpan={viewMode === "detailed" ? 6 : 3} className="px-4 py-3">
                 TOTALS
               </td>
-              <td className="px-4 py-3 text-right text-green-600">{(totals.totalTips ?? 0).toFixed(2)}</td>
+              <td className="px-4 py-3 text-right text-green-600">{totals.totalTips.toFixed(2)}</td>
               <td className="px-4 py-3 text-right text-blue-600">
-                {(payrollEntries.reduce((acc, e) => acc + e.bonuses, 0) ?? 0).toFixed(2)}
+                {payrollEntries.reduce((acc, e) => acc + e.bonuses, 0).toFixed(2)}
               </td>
-              <td className="px-4 py-3 text-right">{(totals.totalGross ?? 0).toFixed(2)}</td>
-              <td className="px-4 py-3 text-right text-red-600">-{(totals.totalDeductions ?? 0).toFixed(2)}</td>
-              <td className="px-4 py-3 text-right text-green-700">{(totals.totalNet ?? 0).toFixed(2)}</td>
+              <td className="px-4 py-3 text-right">{totals.totalGross.toFixed(2)}</td>
+              <td className="px-4 py-3 text-right text-red-600">-{totals.totalDeductions.toFixed(2)}</td>
+              <td className="px-4 py-3 text-right text-green-700">{totals.totalNet.toFixed(2)}</td>
               <td colSpan={2}></td>
             </tr>
           </tfoot>
@@ -661,28 +661,28 @@ export default function PayrollPage() {
             <div className="flex justify-between">
               <span>Base Pay:</span>
               <span className="font-medium">
-                {(payrollEntries.reduce((acc, e) => acc + e.base_pay, 0) ?? 0).toFixed(2)} BGN
+                {payrollEntries.reduce((acc, e) => acc + e.base_pay, 0).toFixed(2)} BGN
               </span>
             </div>
             <div className="flex justify-between">
               <span>Overtime Pay:</span>
               <span className="font-medium text-orange-600">
-                {(payrollEntries.reduce((acc, e) => acc + e.overtime_pay, 0) ?? 0).toFixed(2)} BGN
+                {payrollEntries.reduce((acc, e) => acc + e.overtime_pay, 0).toFixed(2)} BGN
               </span>
             </div>
             <div className="flex justify-between">
               <span>Tips:</span>
-              <span className="font-medium text-green-600">{(totals.totalTips ?? 0).toFixed(2)} BGN</span>
+              <span className="font-medium text-green-600">{totals.totalTips.toFixed(2)} BGN</span>
             </div>
             <div className="flex justify-between">
               <span>Bonuses:</span>
               <span className="font-medium text-blue-600">
-                {(payrollEntries.reduce((acc, e) => acc + e.bonuses, 0) ?? 0).toFixed(2)} BGN
+                {payrollEntries.reduce((acc, e) => acc + e.bonuses, 0).toFixed(2)} BGN
               </span>
             </div>
             <div className="border-t pt-2 flex justify-between font-bold">
               <span>Total Gross:</span>
-              <span>{(totals.totalGross ?? 0).toFixed(2)} BGN</span>
+              <span>{totals.totalGross.toFixed(2)} BGN</span>
             </div>
           </div>
         </div>
@@ -698,7 +698,7 @@ export default function PayrollPage() {
               return (
                 <div key={role} className="flex justify-between">
                   <span className="capitalize">{role} ({roleCount}):</span>
-                  <span className="font-medium">{(roleTotal ?? 0).toFixed(2)} BGN</span>
+                  <span className="font-medium">{roleTotal.toFixed(2)} BGN</span>
                 </div>
               );
             })}
@@ -719,7 +719,7 @@ export default function PayrollPage() {
                     {status}
                   </span>
                   <span className="font-medium">
-                    {count} ({(total ?? 0).toFixed(2)} BGN)
+                    {count} ({total.toFixed(2)} BGN)
                   </span>
                 </div>
               );
@@ -839,23 +839,23 @@ export default function PayrollPage() {
                       <div className="space-y-1 text-sm">
                         <div className="flex justify-between">
                           <span>Base Pay:</span>
-                          <span>{(basePay ?? 0).toFixed(2)} BGN</span>
+                          <span>{basePay.toFixed(2)} BGN</span>
                         </div>
                         <div className="flex justify-between">
                           <span>Overtime ({staffMember.hourly_rate * 1.5} BGN/h):</span>
-                          <span>{(overtimePay ?? 0).toFixed(2)} BGN</span>
+                          <span>{overtimePay.toFixed(2)} BGN</span>
                         </div>
                         <div className="flex justify-between">
                           <span>Gross Pay:</span>
-                          <span className="font-medium">{(grossPay ?? 0).toFixed(2)} BGN</span>
+                          <span className="font-medium">{grossPay.toFixed(2)} BGN</span>
                         </div>
                         <div className="flex justify-between text-red-600">
                           <span>Deductions:</span>
-                          <span>-{(deductions ?? 0).toFixed(2)} BGN</span>
+                          <span>-{deductions.toFixed(2)} BGN</span>
                         </div>
                         <div className="flex justify-between font-bold text-green-700 pt-1 border-t">
                           <span>Net Pay:</span>
-                          <span>{(netPay ?? 0).toFixed(2)} BGN</span>
+                          <span>{netPay.toFixed(2)} BGN</span>
                         </div>
                       </div>
                     );

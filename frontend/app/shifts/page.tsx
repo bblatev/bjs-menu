@@ -254,7 +254,7 @@ export default function ShiftSchedulingPage() {
     const [endH, endM] = end.split(":").map(Number);
     let hours = endH - startH + (endM - startM) / 60;
     if (hours < 0) hours += 24; // Overnight shift
-    return ((hours - breakMins / 60) ?? 0).toFixed(1);
+    return (hours - breakMins / 60).toFixed(1);
   };
 
   const getTotalWeeklyHours = (staffId: number) => {
@@ -266,7 +266,7 @@ export default function ShiftSchedulingPage() {
         total += parseFloat(calculateHours(shift.start_time, shift.end_time, shift.break_minutes));
       });
     });
-    return (total ?? 0).toFixed(1);
+    return total.toFixed(1);
   };
 
   const prevWeek = () => {
@@ -551,7 +551,7 @@ export default function ShiftSchedulingPage() {
         </div>
         <div className="bg-white p-4 rounded-lg shadow">
           <div className="text-2xl font-bold text-green-600">
-            {(shifts.reduce((acc, s) => acc + parseFloat(calculateHours(s.start_time, s.end_time, s.break_minutes)), 0) ?? 0).toFixed(0)}h
+            {shifts.reduce((acc, s) => acc + parseFloat(calculateHours(s.start_time, s.end_time, s.break_minutes)), 0).toFixed(0)}h
           </div>
           <div className="text-gray-600">Total Hours This Week</div>
         </div>
@@ -561,7 +561,7 @@ export default function ShiftSchedulingPage() {
         </div>
         <div className="bg-white p-4 rounded-lg shadow">
           <div className="text-2xl font-bold text-purple-600">
-            {((shifts.reduce((acc, s) => acc + parseFloat(calculateHours(s.start_time, s.end_time, s.break_minutes)), 0) / staff.length) ?? 0).toFixed(1)}h
+            {(shifts.reduce((acc, s) => acc + parseFloat(calculateHours(s.start_time, s.end_time, s.break_minutes)), 0) / staff.length).toFixed(1)}h
           </div>
           <div className="text-gray-600">Avg Hours/Staff</div>
         </div>

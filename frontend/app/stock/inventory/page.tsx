@@ -453,7 +453,7 @@ export default function StockInventoryPage() {
                       <td className="py-3 font-medium">{batch.batch_number}</td>
                       <td className="py-3 text-gray-400">{batch.lot_number || "-"}</td>
                       <td className="py-3">{batch.quantity}</td>
-                      <td className="py-3">{(batch.unit_cost? ?? 0).toFixed(2)} лв</td>
+                      <td className="py-3">{batch.unit_cost?.toFixed(2)} лв</td>
                       <td className="py-3">
                         {batch.expiry_date ? (
                           <span className={
@@ -536,7 +536,7 @@ export default function StockInventoryPage() {
                       </div>
                       <div className="text-sm mt-1">
                         Value Impact: <span className={adjustment.total_value_impact >= 0 ? "text-green-400" : "text-red-400"}>
-                          {adjustment.total_value_impact >= 0 ? "+" : ""}{(adjustment.total_value_impact ?? 0).toFixed(2)} лв
+                          {adjustment.total_value_impact >= 0 ? "+" : ""}{adjustment.total_value_impact.toFixed(2)} лв
                         </span>
                       </div>
                     </div>
@@ -619,7 +619,7 @@ export default function StockInventoryPage() {
                 <div className="bg-gray-100 rounded-lg p-6 text-center">
                   <div className="text-gray-400 text-sm mb-2">Total Stock Value (FIFO)</div>
                   <div className="text-3xl font-bold text-green-400">
-                    {(valuation.total_value? ?? 0).toFixed(2) || "0.00"} лв
+                    {valuation.total_value?.toFixed(2) || "0.00"} лв
                   </div>
                 </div>
                 <div className="bg-gray-100 rounded-lg p-6 text-center">
@@ -631,7 +631,7 @@ export default function StockInventoryPage() {
                 <div className="bg-gray-100 rounded-lg p-6 text-center">
                   <div className="text-gray-400 text-sm mb-2">Average Item Value</div>
                   <div className="text-3xl font-bold text-orange-400">
-                    {(valuation.avg_value? ?? 0).toFixed(2) || "0.00"} лв
+                    {valuation.avg_value?.toFixed(2) || "0.00"} лв
                   </div>
                 </div>
               </div>

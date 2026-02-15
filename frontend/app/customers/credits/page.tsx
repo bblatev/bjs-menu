@@ -259,7 +259,7 @@ export default function CustomerCreditsPage() {
           <div className="bg-blue-50 rounded-2xl p-5 border border-blue-100">
             <p className="text-blue-600 text-sm font-medium">Total Credit Extended</p>
             <p className="text-blue-900 text-2xl font-bold mt-1">
-              {(totalCreditExtended ?? 0).toFixed(2)} lv
+              {totalCreditExtended.toFixed(2)} lv
             </p>
             <p className="text-blue-500 text-xs mt-1">
               {credits.length} accounts
@@ -268,7 +268,7 @@ export default function CustomerCreditsPage() {
           <div className="bg-red-50 rounded-2xl p-5 border border-red-100">
             <p className="text-red-600 text-sm font-medium">Outstanding Balance</p>
             <p className="text-red-900 text-2xl font-bold mt-1">
-              {(totalOutstanding ?? 0).toFixed(2)} lv
+              {totalOutstanding.toFixed(2)} lv
             </p>
             <p className="text-red-500 text-xs mt-1">
               {credits.filter((c) => c.current_balance > 0).length} with balance
@@ -277,7 +277,7 @@ export default function CustomerCreditsPage() {
           <div className="bg-green-50 rounded-2xl p-5 border border-green-100">
             <p className="text-green-600 text-sm font-medium">Available Credit</p>
             <p className="text-green-900 text-2xl font-bold mt-1">
-              {(totalAvailable ?? 0).toFixed(2)} lv
+              {totalAvailable.toFixed(2)} lv
             </p>
             <p className="text-green-500 text-xs mt-1">Remaining capacity</p>
           </div>
@@ -400,7 +400,7 @@ export default function CustomerCreditsPage() {
                       </td>
                       <td className="py-4 px-4 text-right">
                         <span className="text-gray-900 font-medium">
-                          {(credit.credit_limit ?? 0).toFixed(2)} lv
+                          {credit.credit_limit.toFixed(2)} lv
                         </span>
                       </td>
                       <td className="py-4 px-4 text-right">
@@ -412,7 +412,7 @@ export default function CustomerCreditsPage() {
                                 : "text-gray-900"
                             }`}
                           >
-                            {(credit.current_balance ?? 0).toFixed(2)} lv
+                            {credit.current_balance.toFixed(2)} lv
                           </span>
                           {credit.credit_limit > 0 && (
                             <div className="w-20 h-1.5 bg-gray-200 rounded-full mt-1 ml-auto">
@@ -434,14 +434,14 @@ export default function CustomerCreditsPage() {
                       </td>
                       <td className="py-4 px-4 text-right">
                         <span className="text-green-600 font-medium">
-                          {(credit.available_credit ?? 0).toFixed(2)} lv
+                          {credit.available_credit.toFixed(2)} lv
                         </span>
                       </td>
                       <td className="py-4 px-4">
                         {credit.last_payment_date ? (
                           <div>
                             <p className="text-gray-900 text-sm">
-                              {(credit.last_payment_amount? ?? 0).toFixed(2)} lv
+                              {credit.last_payment_amount?.toFixed(2)} lv
                             </p>
                             <p className="text-gray-500 text-xs">
                               {new Date(credit.last_payment_date).toLocaleDateString()}
@@ -570,7 +570,7 @@ export default function CustomerCreditsPage() {
                     </p>
                     <p className="text-gray-500 text-sm">{selectedCustomer.phone}</p>
                     <p className="text-gray-500 text-sm">
-                      Lifetime: {(selectedCustomer.total_spent? ?? 0).toFixed(2) || 0} lv
+                      Lifetime: {selectedCustomer.total_spent?.toFixed(2) || 0} lv
                     </p>
                   </div>
                 )}
@@ -644,7 +644,7 @@ export default function CustomerCreditsPage() {
                     {selectedCredit.customer?.name}
                   </p>
                   <p className="text-red-600 text-lg font-bold mt-1">
-                    Outstanding: {(selectedCredit.current_balance ?? 0).toFixed(2)} lv
+                    Outstanding: {selectedCredit.current_balance.toFixed(2)} lv
                   </p>
                 </div>
 
@@ -659,7 +659,7 @@ export default function CustomerCreditsPage() {
                     max={selectedCredit.current_balance}
                     value={paymentAmount}
                     onChange={(e) => setPaymentAmount(e.target.value)}
-                    placeholder={`Max: ${(selectedCredit.current_balance ?? 0).toFixed(2)}`}
+                    placeholder={`Max: ${selectedCredit.current_balance.toFixed(2)}`}
                     className="w-full px-4 py-3 bg-gray-50 text-gray-900 rounded-xl mt-1 border border-gray-200"
                   />
                   <button
@@ -728,7 +728,7 @@ export default function CustomerCreditsPage() {
                   <div className="flex justify-between mt-2">
                     <span className="text-gray-500 text-sm">Available Credit:</span>
                     <span className="text-green-600 font-medium">
-                      {(selectedCredit.available_credit ?? 0).toFixed(2)} lv
+                      {selectedCredit.available_credit.toFixed(2)} lv
                     </span>
                   </div>
                 </div>

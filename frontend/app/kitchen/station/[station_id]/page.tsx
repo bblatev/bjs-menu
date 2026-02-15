@@ -289,7 +289,7 @@ export default function KitchenStationPage() {
                 <div className={`text-xl font-bold mb-4 ${
                   order.order_type === 'takeaway' ? 'text-amber-400' : 'text-primary'
                 }`}>
-                  {(order.total? ?? 0).toFixed(2)} €.
+                  {order.total?.toFixed(2)} €.
                 </div>
 
                 <div className="flex gap-2 flex-wrap">

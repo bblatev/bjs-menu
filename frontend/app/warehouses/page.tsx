@@ -394,7 +394,7 @@ export default function WarehousesPage() {
               </div>
             ) : (
               <>
-                <div className="text-2xl font-bold text-green-600">{((totalStats.totalValue / 1000) ?? 0).toFixed(1)}K BGN</div>
+                <div className="text-2xl font-bold text-green-600">{(totalStats.totalValue / 1000).toFixed(1)}K BGN</div>
                 <div className="text-sm text-gray-600">Total Value</div>
               </>
             )}
@@ -511,7 +511,7 @@ export default function WarehousesPage() {
                                 <div className="text-gray-500">Items</div>
                               </div>
                               <div>
-                                <div className="font-bold">{((warehouse.total_value / 1000) ?? 0).toFixed(1)}K</div>
+                                <div className="font-bold">{(warehouse.total_value / 1000).toFixed(1)}K</div>
                                 <div className="text-gray-500">Value</div>
                               </div>
                               <div>
@@ -835,7 +835,7 @@ export default function WarehousesPage() {
                                 {item.min_level} / {item.max_level}
                               </td>
                               <td className="p-3 text-right font-medium">
-                                {(item.total_value ?? 0).toFixed(2)} BGN
+                                {item.total_value.toFixed(2)} BGN
                               </td>
                               <td className="p-3 text-center">
                                 <span className={`px-2 py-1 rounded-full text-xs font-medium ${

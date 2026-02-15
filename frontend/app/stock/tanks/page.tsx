@@ -175,7 +175,7 @@ export default function TanksPage() {
             <div className="flex flex-wrap gap-2">
               {alerts.map(alert => (
                 <span key={alert.tank_id} className="px-3 py-1 bg-red-900/50 rounded-lg text-sm">
-                  {alert.tank_name}: {(alert.fill_percentage ?? 0).toFixed(0)}%
+                  {alert.tank_name}: {alert.fill_percentage.toFixed(0)}%
                 </span>
               ))}
             </div>
@@ -269,7 +269,7 @@ export default function TanksPage() {
                   />
                   <div className="absolute inset-0 flex items-center justify-center">
                     <span className="text-2xl font-bold drop-shadow-lg">
-                      {(tank.fill_percentage ?? 0).toFixed(0)}%
+                      {tank.fill_percentage.toFixed(0)}%
                     </span>
                   </div>
                   {/* Level markers */}
@@ -284,7 +284,7 @@ export default function TanksPage() {
                 <div className="grid grid-cols-2 gap-3 text-sm mb-4">
                   <div className="bg-gray-700/50 rounded-lg p-2">
                     <div className="text-gray-400">Current</div>
-                    <div className="font-semibold">{(tank.current_level_liters ?? 0).toFixed(1)}L</div>
+                    <div className="font-semibold">{tank.current_level_liters.toFixed(1)}L</div>
                   </div>
                   <div className="bg-gray-700/50 rounded-lg p-2">
                     <div className="text-gray-400">Capacity</div>
@@ -294,7 +294,7 @@ export default function TanksPage() {
                     <div className="bg-gray-700/50 rounded-lg p-2 col-span-2">
                       <div className="text-gray-400">Days Until Empty</div>
                       <div className={`font-semibold ${tank.days_until_empty < 3 ? 'text-red-400' : ''}`}>
-                        {(tank.days_until_empty ?? 0).toFixed(0)} days
+                        {tank.days_until_empty.toFixed(0)} days
                       </div>
                     </div>
                   )}
@@ -460,7 +460,7 @@ export default function TanksPage() {
                         className="w-24 px-2 py-1 bg-gray-700 border border-gray-600 rounded"
                       />
                       <span className="text-gray-400">
-                        {(((updateForm.current_level_liters / selectedTank.capacity_liters) * 100) ?? 0).toFixed(0)}%
+                        {((updateForm.current_level_liters / selectedTank.capacity_liters) * 100).toFixed(0)}%
                       </span>
                     </div>
                   </div>
