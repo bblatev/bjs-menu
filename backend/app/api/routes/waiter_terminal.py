@@ -318,7 +318,7 @@ async def create_waiter_order(
     # Verify table exists and is in waiter's venue
     table = db.query(Table).filter(
         Table.id == body.table_id,
-        Table.venue_id == current_user.venue_id
+        or_(Table.location_id == current_user.venue_id, Table.location_id.is_(None))
     ).first()
 
     if not table:
@@ -409,6 +409,7 @@ async def create_waiter_order(
         db.add(order_item)
         order_items.append({
             "id": None,  # Will be set after flush
+            "menu_item_id": menu_item.id,
             "name": menu_item.name,
             "quantity": item_data.quantity,
             "price": price,
@@ -886,7 +887,7 @@ async def transfer_tab(
 
     table = db.query(Table).filter(
         Table.id == body.table_id,
-        Table.venue_id == current_user.venue_id
+        or_(Table.location_id == current_user.venue_id, Table.location_id.is_(None))
     ).first()
 
     if not table:
@@ -1408,7 +1409,7 @@ async def apply_discount(
                 raise HTTPException(status_code=403, detail="Manager PIN required for discounts over 10%")
             # Verify manager PIN
             managers = db.query(StaffUser).filter(
-                StaffUser.venue_id == current_user.venue_id,
+                or_(StaffUser.location_id == current_user.venue_id, StaffUser.location_id.is_(None)),
                 StaffUser.role.in_([StaffRole.ADMIN, StaffRole.MANAGER]),
                 StaffUser.pin_code.isnot(None)
             ).all()
@@ -1493,7 +1494,7 @@ async def void_item(
         if not body.manager_pin:
             raise HTTPException(status_code=403, detail="Manager PIN required to void items")
         managers = db.query(StaffUser).filter(
-            StaffUser.venue_id == current_user.venue_id,
+            StaffUser.location_id == current_user.venue_id,
             StaffUser.role.in_([StaffRole.ADMIN, StaffRole.MANAGER]),
             StaffUser.pin_code.isnot(None)
         ).all()
@@ -1569,7 +1570,7 @@ async def comp_item(
         if not body.manager_pin:
             raise HTTPException(status_code=403, detail="Manager PIN required to comp items")
         managers = db.query(StaffUser).filter(
-            StaffUser.venue_id == current_user.venue_id,
+            StaffUser.location_id == current_user.venue_id,
             StaffUser.role.in_([StaffRole.ADMIN, StaffRole.MANAGER]),
             StaffUser.pin_code.isnot(None)
         ).all()
@@ -1621,7 +1622,7 @@ async def get_floor_plan(
     current_user: StaffUser = Depends(get_current_user)
 ):
     """Get floor plan with table statuses"""
-    query = db.query(Table).filter(Table.venue_id == current_user.venue_id)
+    query = db.query(Table).filter(or_(Table.location_id == current_user.venue_id, Table.location_id.is_(None)))
 
     if section:
         query = query.filter(Table.section == section)
@@ -1680,7 +1681,7 @@ async def seat_table(
     """Seat guests at a table"""
     table = db.query(Table).filter(
         Table.id == table_id,
-        Table.venue_id == current_user.venue_id
+        or_(Table.location_id == current_user.venue_id, Table.location_id.is_(None))
     ).first()
 
     if not table:
@@ -1734,7 +1735,7 @@ async def transfer_table(
 
     new_waiter = db.query(StaffUser).filter(
         StaffUser.id == body.to_waiter_id,
-        StaffUser.venue_id == current_user.venue_id
+        or_(StaffUser.location_id == current_user.venue_id, StaffUser.location_id.is_(None))
     ).first()
 
     if not new_waiter:
@@ -1886,7 +1887,6 @@ async def get_quick_menu(
 ):
     """Get quick menu for waiter terminal"""
     query = db.query(MenuItem).filter(
-        MenuItem.venue_id == current_user.venue_id,
         MenuItem.available == True
     )
 
