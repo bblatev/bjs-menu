@@ -994,6 +994,8 @@ def list_tip_pools(
     result = []
     for p in pools:
         distributions = db.query(TipDistribution).filter(TipDistribution.pool_id == p.id).all()
+        staff_ids = [d.staff_id for d in distributions]
+        staff_names = _prefetch_staff_names(db, staff_ids)
         result.append({
             "id": p.id,
             "date": p.date.isoformat(),
@@ -1008,6 +1010,8 @@ def list_tip_pools(
             "distributions": [
                 {
                     "staff_id": d.staff_id,
+                    "staff_name": staff_names.get(d.staff_id, "Unknown"),
+                    "role": "staff",
                     "hours_worked": d.hours_worked,
                     "points": d.points,
                     "share_percentage": d.share_percentage,
@@ -1136,17 +1140,42 @@ def get_tip_earnings(
         TipPool.date >= start_date
     ).group_by(TipDistribution.staff_id).all()
 
+    # Calculate paid vs pending per staff
+    paid_by_staff = {}
+    pending_by_staff = {}
+    paid_dists = db.query(
+        TipDistribution.staff_id,
+        func.sum(TipDistribution.amount).label("total"),
+        TipDistribution.is_paid,
+    ).join(TipPool).filter(
+        TipPool.date >= start_date
+    ).group_by(TipDistribution.staff_id, TipDistribution.is_paid).all()
+    for pd in paid_dists:
+        if pd.is_paid:
+            paid_by_staff[pd.staff_id] = float(pd.total or 0)
+        else:
+            pending_by_staff[pd.staff_id] = float(pd.total or 0)
+
     result = []
     for d in distributions:
         staff = db.query(StaffUser).filter(StaffUser.id == d.staff_id).first()
         if staff:
+            total = float(d.total or 0)
+            paid_amt = paid_by_staff.get(d.staff_id, 0)
+            pending_amt = pending_by_staff.get(d.staff_id, 0)
             result.append({
+                "id": d.staff_id,
                 "staff_id": d.staff_id,
+                "name": staff.full_name,
                 "staff_name": staff.full_name,
                 "role": staff.role,
-                "total_tips": float(d.total or 0),
+                "hours": float(d.hours or 0),
                 "hours_worked": float(d.hours or 0),
-                "avg_per_hour": round(float(d.total or 0) / float(d.hours or 1), 2),
+                "earned": total,
+                "total_tips": total,
+                "pending": pending_amt,
+                "paid": paid_amt,
+                "avg_per_hour": round(total / float(d.hours or 1), 2),
             })
 
     return result
