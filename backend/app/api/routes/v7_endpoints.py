@@ -102,6 +102,13 @@ class BlockType(str, Enum):
 # TIER 1: RESERVATION DEPOSITS (6 endpoints)
 # ============================================================================
 
+@router.get("/")
+@limiter.limit("60/minute")
+async def get_v7_root(request: Request, db: Session = Depends(get_db)):
+    """V7 API features status."""
+    return {"module": "v7", "version": "7.0", "status": "active", "features": ["sms-templates", "sms-campaigns", "catering-packages", "kitchen-sheets"]}
+
+
 @router.post("/{venue_id}/deposits/policy")
 @limiter.limit("30/minute")
 async def configure_deposit_policy(

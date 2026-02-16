@@ -295,6 +295,13 @@ class ParLevelConfigResponse(BaseModel):
 # MENU ENGINEERING ENDPOINTS
 # =============================================================================
 
+@router.get("/")
+@limiter.limit("60/minute")
+async def get_competitor_features_root(request: Request, db: Session = Depends(get_db)):
+    """Competitor feature parity overview."""
+    return {"module": "competitor-features", "status": "active", "features": ["menu-engineering", "86-board", "demand-forecast", "variance-analysis"], "endpoints": ["/menu-engineering/reports", "/86/config", "/forecast/items"]}
+
+
 @router.post("/menu-engineering/report", response_model=MenuEngineeringReportResponse)
 @limiter.limit("30/minute")
 async def generate_menu_engineering_report(

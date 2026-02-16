@@ -85,6 +85,13 @@ router = APIRouter()
 # SUPPLIER RETURNS ENDPOINTS
 # =============================================================================
 
+@router.get("/")
+@limiter.limit("60/minute")
+async def get_purchase_order_advanced_root(request: Request, db: Session = Depends(get_db)):
+    """Advanced purchase order features."""
+    return {"module": "purchase-order-advanced", "status": "active", "endpoints": ["/returns", "/credit-notes", "/blanket-orders"]}
+
+
 @router.post("/returns", response_model=SupplierReturnResponse)
 @limiter.limit("30/minute")
 def create_supplier_return(

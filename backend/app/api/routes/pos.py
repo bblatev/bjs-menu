@@ -40,6 +40,13 @@ class BarTabItemAdd(BaseModel):
     notes: Optional[str] = None
 
 
+@router.get("/")
+@limiter.limit("60/minute")
+def get_pos_root(request: Request, db: DbSession):
+    """POS system status overview."""
+    return get_pos_status(request=request, db=db)
+
+
 @router.get("/status")
 @limiter.limit("60/minute")
 def get_pos_status(request: Request, db: DbSession):

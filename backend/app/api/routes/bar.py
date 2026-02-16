@@ -83,6 +83,13 @@ class SpillageRecordCreate(BaseModel):
 
 # ==================== ROUTES ====================
 
+@router.get("/")
+@limiter.limit("60/minute")
+def get_bar_root(request: Request, db: DbSession):
+    """Bar overview."""
+    return get_bar_stats(request=request, db=db)
+
+
 @router.get("/tabs")
 @limiter.limit("60/minute")
 def get_bar_tabs(

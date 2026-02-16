@@ -27,6 +27,13 @@ from app.core.rate_limit import limiter
 router = APIRouter()
 
 
+@router.get("/")
+@limiter.limit("60/minute")
+def get_sync_root(request: Request, db: DbSession):
+    """Sync status overview."""
+    return get_sync_changes(request=request, db=db)
+
+
 @router.get("/changes")
 @limiter.limit("60/minute")
 def get_sync_changes(

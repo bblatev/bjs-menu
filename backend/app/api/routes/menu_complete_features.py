@@ -286,6 +286,13 @@ _next_ids = {
 # MENU ITEM VARIANTS
 # =============================================================================
 
+@router.get("/")
+@limiter.limit("60/minute")
+def get_menu_complete_features_root(request: Request, db: DbSession):
+    """Menu features overview."""
+    return list_menu_tags(request=request, db=db)
+
+
 @router.post("/items/{item_id}/variants", response_model=MenuItemVariantResponse)
 @limiter.limit("30/minute")
 def create_menu_item_variant(

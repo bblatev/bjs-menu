@@ -28,6 +28,13 @@ class WaiterCallStats(BaseModel):
     calls_by_hour: dict
 
 
+@router.get("/")
+@limiter.limit("60/minute")
+def get_waiter_calls_root(request: Request, db: Session = Depends(get_db)):
+    """Waiter calls overview."""
+    return get_active_calls(request=request, db=db)
+
+
 @router.post("/", response_model=WaiterCallResponse, status_code=201)
 @limiter.limit("30/minute")
 def create_waiter_call(request: Request, call_data: WaiterCallCreate, db: Session = Depends(get_db)):

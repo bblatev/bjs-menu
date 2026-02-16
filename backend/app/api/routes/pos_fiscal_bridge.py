@@ -20,6 +20,13 @@ def _get_bridge_config(db: DbSession) -> dict:
     return {}
 
 
+@router.get("/")
+@limiter.limit("60/minute")
+async def get_pos_fiscal_bridge_root(request: Request, db: DbSession):
+    """POS fiscal bridge status."""
+    return await get_bridge_status(request=request, db=db)
+
+
 @router.get("/status")
 @limiter.limit("60/minute")
 async def get_bridge_status(request: Request, db: DbSession):

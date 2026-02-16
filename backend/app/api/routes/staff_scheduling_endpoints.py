@@ -80,6 +80,13 @@ class PunchOut(BaseModel):
 
 # ========================= SHIFT DEFINITIONS =========================
 
+@router.get("/")
+@limiter.limit("60/minute")
+async def get_staff_scheduling_root(request: Request, db: Session = Depends(get_db)):
+    """Staff scheduling overview."""
+    return {"module": "staff-scheduling", "status": "active", "endpoints": ["/shift-definitions", "/schedules", "/availability/{staff_id}", "/time-clock/status", "/time-clock/entries"]}
+
+
 @router.get("/shift-definitions")
 @limiter.limit("60/minute")
 async def get_shift_definitions(

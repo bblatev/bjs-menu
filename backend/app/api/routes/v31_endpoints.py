@@ -16,6 +16,13 @@ from app.core.rate_limit import limiter
 v31_router = APIRouter(tags=["V3.1 Complete Parity"])
 
 
+@v31_router.get("/")
+@limiter.limit("60/minute")
+async def get_v31_root(request: Request, db: Session = Depends(get_db)):
+    """V3.1 API features status."""
+    return {"module": "v3.1-features", "version": "3.1", "status": "active", "features": ["multi-location", "payroll", "integrations", "benchmarking", "hardware", "support"]}
+
+
 # ==================== MULTI-LOCATION ENDPOINTS ====================
 locations_router = APIRouter(prefix="/locations", tags=["Multi-Location Management"])
 

@@ -60,6 +60,13 @@ def _filing_to_schema(filing: TaxFilingModel) -> TaxFiling:
 # --------------- Endpoints ---------------
 
 
+@router.get("/")
+@limiter.limit("60/minute")
+async def get_tax_root(request: Request, db: DbSession):
+    """Tax filings overview."""
+    return await get_tax_filings(request=request, db=db)
+
+
 @router.get("/filings")
 @limiter.limit("60/minute")
 async def get_tax_filings(request: Request, db: DbSession, year: int = Query(2026)):

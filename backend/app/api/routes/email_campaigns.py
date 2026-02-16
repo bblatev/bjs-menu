@@ -141,6 +141,13 @@ class CampaignStatsResponse(BaseModel):
 # Templates
 # ============================================================================
 
+@router.get("/")
+@limiter.limit("60/minute")
+async def get_email_campaigns_root(request: Request):
+    """Email campaigns overview."""
+    return await list_templates(request=request)
+
+
 @router.post("/templates", response_model=TemplateResponse)
 @limiter.limit("30/minute")
 async def create_template(request: Request, template_request: CreateTemplateRequest):

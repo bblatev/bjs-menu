@@ -116,6 +116,13 @@ class CancelReservationRequest(BaseModel):
 
 # ==================== STOCK OVERVIEW ====================
 
+@router.get("/")
+@limiter.limit("60/minute")
+def get_stock_management_root(request: Request, db: DbSession):
+    """Stock management overview."""
+    return get_stock_overview(request=request, db=db)
+
+
 @router.get("/overview")
 @limiter.limit("60/minute")
 def get_stock_overview(

@@ -44,6 +44,13 @@ router = APIRouter()
 
 # ==================== Reconciliation Endpoints ====================
 
+@router.get("/")
+@limiter.limit("60/minute")
+def get_reconciliation_root(request: Request, db: DbSession):
+    """Reconciliation overview."""
+    return get_reconciliation_results(request=request, db=db)
+
+
 @router.get("/results")
 @limiter.limit("60/minute")
 def get_reconciliation_results(

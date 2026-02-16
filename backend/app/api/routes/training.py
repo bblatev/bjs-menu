@@ -97,6 +97,13 @@ class TrainingStatusResponse(BaseModel):
 # Session Management
 # ============================================================================
 
+@router.get("/")
+@limiter.limit("60/minute")
+async def get_training_root(request: Request):
+    """Training mode overview."""
+    return await get_active_sessions(request=request)
+
+
 @router.post("/sessions/start", response_model=SessionResponse)
 @limiter.limit("30/minute")
 async def start_training_session(request: Request, body: StartSessionRequest = None):

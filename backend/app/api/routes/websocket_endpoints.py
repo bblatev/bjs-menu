@@ -35,6 +35,13 @@ async def validate_ws_token(token: Optional[str]) -> Optional[int]:
         return None
 
 
+@router.get("/")
+@limiter.limit("60/minute")
+def get_ws_root(request: Request):
+    """WebSocket endpoints status."""
+    return {"module": "websocket", "status": "active", "endpoints": ["/venue/{venue_id}", "/kitchen/{venue_id}", "/hardware/{venue_id}"], "stats_endpoint": "/stats"}
+
+
 @router.websocket("/venue/{venue_id}")
 async def venue_websocket(
     websocket: WebSocket,

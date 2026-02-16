@@ -127,6 +127,13 @@ class WaiterCallRequest(BaseModel):
 # SESSION MANAGEMENT
 # =============================================================================
 
+@router.get("/")
+@limiter.limit("60/minute")
+async def get_self_order_root(request: Request, db: Session = Depends(get_db)):
+    """Self-ordering module overview."""
+    return {"module": "self-order", "status": "active", "endpoints": ["/session/validate", "/menu", "/cart", "/order/status/{order_id}"]}
+
+
 @router.post("/session/start", response_model=SessionResponse)
 @limiter.limit("30/minute")
 async def start_session(

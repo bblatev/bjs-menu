@@ -60,6 +60,13 @@ class SustainabilityReport(BaseModel):
 
 # ==================== ENDPOINTS ====================
 
+@router.get("/")
+@limiter.limit("60/minute")
+async def get_sustainability_root(request: Request, db: Session = Depends(get_db)):
+    """Sustainability module overview."""
+    return {"module": "sustainability", "status": "active", "endpoints": ["/carbon-footprint/menu", "/waste/statistics", "/report"]}
+
+
 @router.get("/carbon-footprint/menu", response_model=List[CarbonFootprint])
 @limiter.limit("60/minute")
 def get_menu_carbon_footprints(

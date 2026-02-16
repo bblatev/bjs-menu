@@ -96,6 +96,13 @@ class FBCreditCreate(BaseModel):
 
 # ==================== INTEGRATION MARKETPLACE ====================
 
+@router.get("/")
+@limiter.limit("60/minute")
+async def get_enterprise_features_root(request: Request, db: Session = Depends(get_db)):
+    """Enterprise features overview."""
+    return await list_marketplace_integrations(request=request, db=db)
+
+
 @router.get("/marketplace/integrations")
 @limiter.limit("60/minute")
 async def list_marketplace_integrations(

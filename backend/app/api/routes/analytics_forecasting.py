@@ -54,6 +54,13 @@ class StockPredictionRequest(BaseModel):
 # DEMAND FORECASTING ENDPOINTS
 # =============================================================================
 
+@router.get("/")
+@limiter.limit("60/minute")
+async def get_analytics_forecasting_root(request: Request, db: Session = Depends(get_db)):
+    """Analytics forecasting overview."""
+    return await get_analytics_dashboard(request=request, db=db)
+
+
 @router.get("/forecast/demand", response_model=Dict[str, Any])
 @limiter.limit("60/minute")
 async def get_demand_forecast(

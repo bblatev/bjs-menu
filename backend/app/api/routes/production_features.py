@@ -29,6 +29,13 @@ router = APIRouter()
 # FEATURE FLAGS ENDPOINTS
 # ============================================================================
 
+@router.get("/")
+@limiter.limit("60/minute")
+async def get_production_features_root(request: Request, db: Session = Depends(get_db)):
+    """Production features overview."""
+    return {"module": "production-features", "status": "active", "endpoints": ["/flags", "/ledger/status", "/ledger/integrity", "/sync/status/{terminal_id}"]}
+
+
 @router.get("/flags")
 @limiter.limit("60/minute")
 async def get_feature_flags(

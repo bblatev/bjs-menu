@@ -122,6 +122,13 @@ class ExpenseCreate(BaseModel):
 
 # ==================== DELIVERY AGGREGATOR ENDPOINTS ====================
 
+@router.get("/")
+@limiter.limit("60/minute")
+async def get_v6_root(request: Request, db: Session = Depends(get_db)):
+    """V6 API features status."""
+    return {"module": "v6-features", "version": "6.0", "status": "active", "features": ["delivery-platforms", "driver-management", "delivery-zones", "delivery-stats"]}
+
+
 @router.post("/{venue_id}/delivery/connect")
 @limiter.limit("30/minute")
 async def connect_delivery_platform(request: Request, venue_id: int, body_data: PlatformConnectRequest, db: Session = Depends(get_db)):

@@ -303,6 +303,13 @@ class QuickActionResponse(BaseModel):
 # ORDER MANAGEMENT ENDPOINTS
 # ============================================================================
 
+@router.get("/")
+@limiter.limit("60/minute")
+async def get_waiter_terminal_root(request: Request, db: Session = Depends(get_db)):
+    """Waiter terminal overview."""
+    return await get_floor_plan(request=request, db=db)
+
+
 @router.post("/orders", response_model=WaiterOrderResponse)
 @limiter.limit("30/minute")
 async def create_waiter_order(

@@ -97,6 +97,13 @@ class OrderTotalsResponse(BaseModel):
 
 # ==================== ENDPOINTS ====================
 
+@router.get("/")
+@limiter.limit("60/minute")
+async def get_currency_root(request: Request, db: Session = Depends(get_db)):
+    """Currency management overview."""
+    return {"module": "currency", "status": "active", "default_currency": "EUR", "supported_currencies": ["EUR", "BGN", "USD"], "endpoints": ["/convert", "/rates", "/settings"]}
+
+
 @router.get(
     "/currency/status",
     response_model=CurrencyStatusResponse,

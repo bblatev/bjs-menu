@@ -123,6 +123,13 @@ async def broadcast_order_update(order_id: int, update_data: Dict[str, Any], exc
 # TERMINAL SESSION MANAGEMENT
 # =============================================================================
 
+@router.get("/")
+@limiter.limit("60/minute")
+async def get_multi_terminal_root(request: Request, db: Session = Depends(get_db)):
+    """Multi-terminal overview."""
+    return await list_active_terminals(request=request, db=db)
+
+
 @router.post("/session/register")
 @limiter.limit("30/minute")
 async def register_terminal(

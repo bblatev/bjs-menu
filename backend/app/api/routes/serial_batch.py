@@ -102,6 +102,13 @@ class WriteoffRequest(BaseModel):
 
 # ==================== SERIAL NUMBER ENDPOINTS ====================
 
+@router.get("/")
+@limiter.limit("60/minute")
+async def get_serial_batch_root(request: Request, db: Session = Depends(get_db)):
+    """Serial and batch tracking overview."""
+    return {"module": "serial-batch", "status": "active", "endpoints": ["/serial-numbers", "/batches", "/batch-items"]}
+
+
 @router.post(
     "/serial-numbers",
     response_model=SerialNumberResponse,

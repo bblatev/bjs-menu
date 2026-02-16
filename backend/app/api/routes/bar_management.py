@@ -184,6 +184,13 @@ class RecipeResponse(BaseModel):
 
 # ========== BAR DASHBOARD ENDPOINTS ==========
 
+@router.get("/")
+@limiter.limit("60/minute")
+async def get_bar_management_root(request: Request):
+    """Bar management overview."""
+    return await get_bar_stats(request=request)
+
+
 @router.get("/stats", response_model=BarStatsResponse)
 @limiter.limit("60/minute")
 async def get_bar_stats(

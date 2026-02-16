@@ -101,6 +101,13 @@ class PaymentResponse(BaseModel):
 # Terminal Registration
 # ============================================================================
 
+@router.get("/")
+@limiter.limit("60/minute")
+async def get_card_terminals_root(request: Request):
+    """Card terminals overview."""
+    return await list_terminals(request=request)
+
+
 @router.post("/terminals", response_model=TerminalResponse)
 @limiter.limit("30/minute")
 async def register_terminal(request: Request, data: RegisterTerminalRequest):

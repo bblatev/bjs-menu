@@ -84,6 +84,13 @@ class CreateDeliveryRequest(BaseModel):
 # UNIFIED ENDPOINTS
 # =============================================================================
 
+@router.get("/")
+@limiter.limit("60/minute")
+async def get_delivery_platforms_root(request: Request, db: Session = Depends(get_db)):
+    """Delivery platforms overview."""
+    return {"module": "delivery-platforms", "status": "active", "platforms": ["ubereats", "doordash", "opentable"], "endpoints": ["/orders", "/reservations"]}
+
+
 @router.get("/orders")
 @limiter.limit("60/minute")
 async def get_all_delivery_orders(

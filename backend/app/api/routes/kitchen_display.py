@@ -11,6 +11,13 @@ from app.models.restaurant import KitchenOrder
 router = APIRouter()
 
 
+@router.get("/")
+@limiter.limit("60/minute")
+async def get_kitchen_display_root(request: Request, db: DbSession):
+    """Kitchen display overview."""
+    return await get_display_stations(request=request, db=db)
+
+
 @router.get("/stations")
 @limiter.limit("60/minute")
 async def get_display_stations(request: Request, db: DbSession):

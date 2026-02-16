@@ -270,6 +270,13 @@ def _menu_item_to_admin_dict(item: MenuItem, db) -> dict:
 
 # ==================== ROUTES ====================
 
+@router.get("/")
+@limiter.limit("60/minute")
+def get_guest_orders_root(request: Request, db: DbSession):
+    """Guest ordering overview."""
+    return {"module": "guest-orders", "status": "active", "endpoints": ["/menu/items", "/menu/categories", "/menu/display", "/menu/table/{token}"]}
+
+
 @router.get("/menu/table/{token}")
 @limiter.limit("60/minute")
 def get_table_menu(

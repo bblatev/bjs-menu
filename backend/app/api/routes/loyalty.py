@@ -13,6 +13,13 @@ from app.core.rate_limit import limiter
 router = APIRouter()
 
 
+@router.get("/")
+@limiter.limit("60/minute")
+def get_loyalty_root(request: Request, db: DbSession):
+    """Loyalty program overview."""
+    return get_loyalty_program(request=request, db=db)
+
+
 @router.get("/program")
 @limiter.limit("60/minute")
 def get_loyalty_program(request: Request, db: DbSession):

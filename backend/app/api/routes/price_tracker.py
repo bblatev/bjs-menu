@@ -14,6 +14,13 @@ from app.models.operations import AppSetting
 router = APIRouter()
 
 
+@router.get("/")
+@limiter.limit("60/minute")
+async def get_price_tracker_root(request: Request, db: DbSession):
+    """Price tracker overview."""
+    return await get_price_alerts(request=request, db=db)
+
+
 @router.get("/alerts")
 @limiter.limit("60/minute")
 async def get_price_alerts(request: Request, db: DbSession, date_range: str = Query("week"), acknowledged: bool = Query(None)):

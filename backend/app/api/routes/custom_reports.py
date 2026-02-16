@@ -108,6 +108,13 @@ class ReportResponse(BaseModel):
 # Data Sources & Columns
 # ============================================================================
 
+@router.get("/")
+@limiter.limit("60/minute")
+async def get_custom_reports_root(request: Request):
+    """Custom reports overview."""
+    return await get_data_sources(request=request)
+
+
 @router.get("/data-sources")
 @limiter.limit("60/minute")
 async def get_data_sources(request: Request):

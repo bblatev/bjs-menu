@@ -105,6 +105,13 @@ _next_image_id = 1
 
 # ==================== TRAINING ENDPOINTS ====================
 
+@router.get("/")
+@limiter.limit("60/minute")
+def get_ai_training_root(request: Request, db: DbSession):
+    """AI training overview."""
+    return get_training_stats(request=request, db=db)
+
+
 @router.post("/training/upload", response_model=TrainingImageResponse)
 @limiter.limit("30/minute")
 async def upload_training_image(

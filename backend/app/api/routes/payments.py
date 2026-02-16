@@ -94,6 +94,13 @@ class PaymentMethodResponse(BaseModel):
 # Payment Intents
 # ============================================================================
 
+@router.get("/")
+@limiter.limit("60/minute")
+def get_payments_root(request: Request, db: DbSession):
+    """Payments module overview."""
+    return {"module": "payments", "status": "active", "endpoints": ["/status", "/intents", "/customers", "/terminal", "/transactions"]}
+
+
 @router.post("/intents", response_model=PaymentIntentResponse)
 @limiter.limit("5/minute")
 async def create_payment_intent(request: Request, current_user: CurrentUser, body: CreatePaymentIntentRequest):

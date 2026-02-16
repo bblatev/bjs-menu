@@ -172,6 +172,13 @@ def _handle_menu_query(db: DbSession, text: str) -> dict:
     }
 
 
+@router.get("/")
+@limiter.limit("60/minute")
+def get_voice_root(request: Request, db: DbSession):
+    """Voice assistant service status."""
+    return {"module": "voice", "status": "active", "supported_intents": ["create_order", "check_tables", "make_reservation", "menu_query", "check_inventory", "process_payment"], "endpoint": "/command"}
+
+
 @router.post("/command")
 @limiter.limit("30/minute")
 async def process_voice_command(request: Request, body: VoiceCommandRequest, db: DbSession):

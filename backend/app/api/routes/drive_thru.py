@@ -22,6 +22,13 @@ from app.schemas import (
 router = APIRouter()
 
 
+@router.get("/")
+@limiter.limit("60/minute")
+async def get_drive_thru_root(request: Request, db: Session = Depends(get_db)):
+    """Drive-thru overview."""
+    return await get_drive_thru_stats(request=request, db=db)
+
+
 @router.post("/orders", response_model=DriveThruOrderResponse)
 @limiter.limit("30/minute")
 async def create_drive_thru_order(

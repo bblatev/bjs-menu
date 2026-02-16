@@ -82,6 +82,13 @@ class QuickDispenseRequest(BaseModel):
 # MOBILE SCAN ENDPOINTS
 # =============================================================================
 
+@router.get("/")
+@limiter.limit("60/minute")
+async def get_mobile_scanner_root(request: Request, db: Session = Depends(get_db)):
+    """Mobile scanner overview."""
+    return await get_device_config(request=request, db=db)
+
+
 @router.post("/scan", response_model=Dict[str, Any])
 @limiter.limit("30/minute")
 async def process_mobile_scan(

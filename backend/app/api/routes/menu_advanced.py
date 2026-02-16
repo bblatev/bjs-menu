@@ -104,6 +104,13 @@ _next_daypart_id = 1
 
 # ==================== PHOTO MANAGEMENT ====================
 
+@router.get("/")
+@limiter.limit("60/minute")
+def get_menu_advanced_root(request: Request, db: DbSession):
+    """Menu advanced features overview."""
+    return get_price_levels(request=request, db=db)
+
+
 @router.post("/items/{item_id}/photos", response_model=PhotoUploadResponse)
 @limiter.limit("30/minute")
 async def upload_item_photo(request: Request, item_id: int, file: UploadFile = File(...), db: DbSession = None, current_user: CurrentUser = None):

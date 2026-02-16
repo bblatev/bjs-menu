@@ -19,6 +19,13 @@ router = APIRouter()
 # RFID INVENTORY REPORTS
 # =============================================================================
 
+@router.get("/")
+@limiter.limit("60/minute")
+async def get_inventory_reports_root(request: Request, db: Session = Depends(get_db)):
+    """Inventory reports dashboard."""
+    return await get_rfid_accuracy_report(request=request, db=db)
+
+
 @router.get("/rfid/accuracy", response_model=Dict[str, Any])
 @limiter.limit("60/minute")
 async def get_rfid_accuracy_report(

@@ -140,6 +140,13 @@ class TrainingProgress(BaseModel):
 
 # ========== SHIFT SWAPPING ENDPOINTS ==========
 
+@router.get("/")
+@limiter.limit("60/minute")
+async def get_staff_advanced_root(request: Request, db: Session = Depends(get_db)):
+    """Staff advanced features overview."""
+    return await list_shift_trades(request=request, db=db)
+
+
 @router.post("/shift-trades", response_model=ShiftTradeResponse)
 @limiter.limit("30/minute")
 async def create_shift_trade_request(

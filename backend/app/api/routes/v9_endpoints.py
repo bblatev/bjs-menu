@@ -84,6 +84,13 @@ router = APIRouter()
 
 # ==================== PERMISSION OVERRIDES ====================
 
+@router.get("/")
+@limiter.limit("60/minute")
+async def get_v9_root(request: Request, db: Session = Depends(get_db)):
+    """V9 API features status."""
+    return {"module": "v9", "version": "9.0", "status": "active", "features": ["permissions", "terminal-health", "safe-mode", "cash-variance"]}
+
+
 @router.post("/permissions/overrides", response_model=PermissionOverrideResponse, tags=["V9 - Operations"])
 @limiter.limit("30/minute")
 async def create_permission_override(

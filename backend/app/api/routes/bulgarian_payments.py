@@ -56,6 +56,13 @@ class PaymentStatusRequest(BaseModel):
 # BORICA ENDPOINTS
 # =============================================================================
 
+@router.get("/")
+@limiter.limit("60/minute")
+async def get_bulgarian_payments_root(request: Request):
+    """Bulgarian payment methods."""
+    return await get_bulgarian_payment_methods(request=request)
+
+
 @router.post("/borica/create")
 @limiter.limit("30/minute")
 async def create_borica_payment(

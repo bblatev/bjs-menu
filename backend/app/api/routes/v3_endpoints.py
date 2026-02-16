@@ -16,6 +16,13 @@ from app.core.rate_limit import limiter
 v3_router = APIRouter(tags=["V3.0 Features"])
 
 
+@v3_router.get("/")
+@limiter.limit("60/minute")
+async def get_v3_root(request: Request, db: Session = Depends(get_db)):
+    """V3 API features status."""
+    return {"module": "v3", "version": "3.0", "status": "active", "features": ["kitchen-display", "mobile-payments", "labor-management", "delivery", "accounting", "reports", "marketing"]}
+
+
 # ==================== KITCHEN DISPLAY ====================
 kitchen_router = APIRouter(prefix="/kitchen", tags=["Kitchen Display"])
 

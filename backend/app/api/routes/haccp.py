@@ -46,6 +46,13 @@ class SafetyCheck(BaseModel):
     notes: Optional[str] = None
 
 
+@router.get("/")
+@limiter.limit("60/minute")
+def get_haccp_root(request: Request, db: DbSession):
+    """HACCP dashboard overview."""
+    return get_haccp_dashboard(request=request, db=db)
+
+
 @router.get("/dashboard")
 @limiter.limit("60/minute")
 def get_haccp_dashboard(request: Request, db: DbSession):

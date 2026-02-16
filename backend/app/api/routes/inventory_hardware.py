@@ -127,6 +127,13 @@ class InventoryCountSession(BaseModel):
 
 # ==================== KEGS ====================
 
+@router.get("/")
+@limiter.limit("60/minute")
+def get_inventory_hardware_root(request: Request, db: DbSession):
+    """Inventory hardware overview."""
+    return list_kegs(request=request, db=db)
+
+
 @router.get("/kegs")
 @limiter.limit("60/minute")
 def list_kegs(

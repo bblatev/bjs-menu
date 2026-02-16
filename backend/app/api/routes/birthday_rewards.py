@@ -107,6 +107,13 @@ class RewardResponse(BaseModel):
 # Rule Management
 # ============================================================================
 
+@router.get("/")
+@limiter.limit("60/minute")
+async def get_birthday_rewards_root(request: Request):
+    """Birthday rewards overview."""
+    return await list_rules(request=request)
+
+
 @router.post("/rules", response_model=RuleResponse)
 @limiter.limit("30/minute")
 async def create_rule(request: Request, body: CreateRuleRequest):

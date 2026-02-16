@@ -18,6 +18,13 @@ from app.core.rate_limit import limiter
 router = APIRouter()
 
 
+@router.get("/")
+@limiter.limit("60/minute")
+async def get_kiosk_root(request: Request, db: Session = Depends(get_db)):
+    """Kiosk mode overview."""
+    return {"module": "kiosk", "status": "active", "endpoints": ["/config", "/orders/{venue_id}/queue", "/orders/{order_number}/status"]}
+
+
 @router.get("/config", response_model=KioskModeConfig)
 @limiter.limit("60/minute")
 async def get_kiosk_config(

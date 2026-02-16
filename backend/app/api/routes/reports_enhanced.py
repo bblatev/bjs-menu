@@ -119,6 +119,13 @@ def get_date_range(period: str, start_date: Optional[str] = None, end_date: Opti
 
 # ==================== ENDPOINTS ====================
 
+@router.get("/")
+@limiter.limit("60/minute")
+def get_reports_enhanced_root(request: Request, db: DbSession):
+    """Enhanced reports overview."""
+    return get_detailed_sales_report(request=request, db=db)
+
+
 @router.get("/sales/detailed")
 @limiter.limit("60/minute")
 def get_detailed_sales_report(

@@ -81,6 +81,13 @@ class RunResponse(BaseModel):
 # Schedule Management
 # ============================================================================
 
+@router.get("/")
+@limiter.limit("60/minute")
+async def get_scheduled_reports_root(request: Request):
+    """Scheduled reports overview."""
+    return await list_schedules(request=request)
+
+
 @router.post("/schedules", response_model=ScheduleResponse)
 @limiter.limit("30/minute")
 async def create_schedule(request: Request, body: CreateScheduleRequest):

@@ -143,6 +143,13 @@ call_notification_sockets: Dict[str, WebSocket] = {}
 # PBX CONNECTION MANAGEMENT
 # =============================================================================
 
+@router.get("/")
+@limiter.limit("60/minute")
+async def get_telephone_root(request: Request, db: Session = Depends(get_db)):
+    """Telephony integration status."""
+    return await list_pbx_connections(request=request, db=db)
+
+
 @router.post("/config", response_model=PBXConnectionResponse)
 @limiter.limit("30/minute")
 async def create_pbx_connection(

@@ -110,6 +110,13 @@ class PrinterConfigRequest(BaseModel):
 # STATUS & CONFIGURATION
 # =============================================================================
 
+@router.get("/")
+@limiter.limit("60/minute")
+async def get_datecs_root(request: Request, db: Session = Depends(get_db)):
+    """Datecs fiscal printer status."""
+    return {"module": "datecs", "status": "active", "endpoints": ["/status", "/models", "/diagnostics"]}
+
+
 @router.get("/status")
 @limiter.limit("60/minute")
 async def get_printer_status(

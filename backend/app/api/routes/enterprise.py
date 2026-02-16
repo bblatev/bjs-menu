@@ -202,6 +202,13 @@ def _save_config(db, store_id: str, data: dict, name: str = ""):
 
 # ==================== MULTI-LOCATION ====================
 
+@router.get("/")
+@limiter.limit("60/minute")
+def get_enterprise_root(request: Request, db: DbSession):
+    """Enterprise locations overview."""
+    return get_enterprise_locations(request=request, db=db)
+
+
 @router.get("/locations")
 @limiter.limit("60/minute")
 def get_enterprise_locations(request: Request, db: DbSession):

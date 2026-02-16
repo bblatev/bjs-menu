@@ -178,6 +178,13 @@ class UnitConversionResponse(BaseModel):
 # BARCODE/QR CODE MANAGEMENT
 # =============================================================================
 
+@router.get("/")
+@limiter.limit("60/minute")
+def get_inventory_complete_features_root(request: Request, db: DbSession):
+    """Inventory features overview."""
+    return list_auto_reorder_rules(request=request, db=db)
+
+
 @router.post("/barcodes", response_model=BarcodeResponse, tags=["Barcode Management"])
 @limiter.limit("30/minute")
 def create_barcode(

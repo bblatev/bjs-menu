@@ -278,6 +278,13 @@ class GRNCreate(BaseModel):
 
 # ==================== MENU MANAGEMENT ENDPOINTS ====================
 
+@router.get("/")
+@limiter.limit("60/minute")
+async def get_enhanced_inventory_root(request: Request, db: Session = Depends(get_db)):
+    """Enhanced inventory features."""
+    return {"module": "enhanced-inventory", "status": "active", "endpoints": ["/menu/versions/{menu_item_id}", "/menu/schedules", "/menu/nutrition/{menu_item_id}", "/menu/allergens/{menu_item_id}", "/menu/bundles/{bundle_item_id}"]}
+
+
 @router.get("/menu/versions/{menu_item_id}")
 @limiter.limit("60/minute")
 def get_menu_item_versions(

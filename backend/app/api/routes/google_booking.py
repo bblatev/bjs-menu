@@ -135,6 +135,13 @@ def reservation_to_google_response(reservation: Reservation) -> GoogleBookingRes
 # HEALTH CHECK
 # ============================================================================
 
+@router.get("/")
+@limiter.limit("60/minute")
+async def get_google_booking_root(request: Request):
+    """Google booking status."""
+    return await health_check(request=request)
+
+
 @router.get("/health", response_model=GoogleHealthCheckResponse)
 @limiter.limit("60/minute")
 async def health_check(request: Request):

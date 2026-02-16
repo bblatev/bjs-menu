@@ -73,6 +73,13 @@ class FilterMenuRequest(BaseModel):
 
 # ========== ALLERGEN ENDPOINTS ==========
 
+@router.get("/")
+@limiter.limit("60/minute")
+async def get_allergens_root(request: Request):
+    """Allergen information overview."""
+    return await get_allergen_list(request=request)
+
+
 @router.post("/items/{menu_item_id}/allergens")
 @limiter.limit("30/minute")
 async def set_item_allergens(

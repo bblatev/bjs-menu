@@ -24,6 +24,13 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 
+@router.get("/")
+@limiter.limit("60/minute")
+async def get_fiscal_printers_root(request: Request, db: DbSession):
+    """Fiscal printers overview."""
+    return await get_manufacturers(request=request, db=db)
+
+
 @router.get("/manufacturers")
 @limiter.limit("60/minute")
 async def get_manufacturers(request: Request, db: DbSession):

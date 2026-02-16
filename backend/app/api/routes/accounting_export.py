@@ -34,6 +34,13 @@ router = APIRouter()
 
 # ============== Endpoints ==============
 
+@router.get("/")
+@limiter.limit("60/minute")
+def get_accounting_export_root(request: Request):
+    """Accounting export overview."""
+    return list_export_formats(request=request)
+
+
 @router.get("/formats")
 @limiter.limit("60/minute")
 def list_export_formats(request: Request):

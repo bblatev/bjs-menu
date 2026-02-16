@@ -95,6 +95,13 @@ sms_service = SMSService(provider="mock")
 
 # ==================== ALERT CONFIGURATION ENDPOINTS ====================
 
+@router.get("/")
+@limiter.limit("60/minute")
+def get_sms_alerts_root(request: Request, db: DbSession):
+    """SMS alerts overview."""
+    return get_alert_stats(request=request, db=db)
+
+
 @router.post("/config", response_model=SMSAlertConfigResponse)
 @limiter.limit("30/minute")
 def create_alert_config(request: Request, data: SMSAlertConfigCreate, db: DbSession, current_user: CurrentUser = None):

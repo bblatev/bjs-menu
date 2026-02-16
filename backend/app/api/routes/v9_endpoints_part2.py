@@ -60,6 +60,13 @@ router_part2 = APIRouter()
 
 # ==================== FINANCIAL CONTROLS - PRIME COST ====================
 
+@router_part2.get("/")
+@limiter.limit("60/minute")
+async def get_v9_part2_root(request: Request, db: Session = Depends(get_db)):
+    """V9 Part 2 API features status."""
+    return {"module": "v9-part2", "version": "9.0", "status": "active", "features": ["financial-controls", "advanced-crm", "iot", "compliance", "ai-automation"]}
+
+
 @router_part2.post("/finance/prime-cost", response_model=Dict[str, Any], tags=["V9 - Financial Controls"])
 @limiter.limit("30/minute")
 async def record_prime_cost(

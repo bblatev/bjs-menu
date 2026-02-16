@@ -166,6 +166,13 @@ class SyncResponse(BaseModel):
 # OAuth Flow
 # ============================================================================
 
+@router.get("/")
+@limiter.limit("60/minute")
+async def get_quickbooks_root(request: Request, db: DbSession):
+    """QuickBooks integration status."""
+    return await get_connection_status(request=request, db=db)
+
+
 @router.get("/auth-url")
 @limiter.limit("60/minute")
 async def get_authorization_url(request: Request, state: str = "random_state"):

@@ -23,6 +23,14 @@ def _get_setting_list(db: DbSession, category: str, key: str = "default") -> lis
 
 
 # Cloud Kitchen
+
+@router.get("/")
+@limiter.limit("60/minute")
+def get_cloud_kitchen_root(request: Request, db: DbSession):
+    """Cloud kitchen overview."""
+    return {"module": "cloud-kitchen", "status": "active", "endpoints": ["/{venue_id}/cloud-kitchen/brands", "/{venue_id}/cloud-kitchen/stations", "/{venue_id}/delivery/platforms", "/{venue_id}/delivery/orders", "/{venue_id}/delivery/zones"]}
+
+
 @router.get("/{venue_id}/cloud-kitchen/brands")
 @limiter.limit("60/minute")
 async def get_cloud_kitchen_brands(request: Request, venue_id: int, db: DbSession):

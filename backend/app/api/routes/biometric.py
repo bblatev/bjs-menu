@@ -61,6 +61,13 @@ class SetScheduleRequest(BaseModel):
 
 # ============== Device Endpoints ==============
 
+@router.get("/")
+@limiter.limit("60/minute")
+def get_biometric_root(request: Request, db: DbSession):
+    """Biometric device status."""
+    return get_device_status(request=request, db=db)
+
+
 @router.get("/device/status")
 @limiter.limit("60/minute")
 def get_device_status(request: Request, db: DbSession):

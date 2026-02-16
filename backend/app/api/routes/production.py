@@ -116,6 +116,13 @@ class ProductionBatchResponse(BaseModel):
 
 # ==================== RECIPE ENDPOINTS ====================
 
+@router.get("/")
+@limiter.limit("60/minute")
+async def get_production_root(request: Request, db: Session = Depends(get_db)):
+    """Production management overview."""
+    return {"module": "production", "status": "active", "endpoints": ["/recipes", "/orders", "/batches", "/stations", "/schedules"]}
+
+
 @router.post(
     "/recipes",
     response_model=RecipeResponse,

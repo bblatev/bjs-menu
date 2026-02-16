@@ -66,6 +66,14 @@ class TransactionResponse(BaseModel):
 
 
 # Cash Drawer Operations
+
+@router.get("/")
+@limiter.limit("60/minute")
+def get_cash_drawers_root(request: Request, db: Session = Depends(get_db)):
+    """Cash drawers overview."""
+    return get_current_drawer(request=request, db=db)
+
+
 @router.post("/open", response_model=CashDrawerResponse)
 @limiter.limit("30/minute")
 def open_drawer(

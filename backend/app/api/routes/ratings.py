@@ -71,6 +71,13 @@ _next_service_id = 1
 
 # ==================== ITEM RATINGS ====================
 
+@router.get("/")
+@limiter.limit("60/minute")
+def get_ratings_root(request: Request, db: DbSession):
+    """Ratings overview."""
+    return get_item_ratings(request=request, db=db)
+
+
 @router.post("/items", response_model=ItemRatingResponse, status_code=201)
 @limiter.limit("30/minute")
 def rate_item(request: Request, body: ItemRatingCreate, db: DbSession):

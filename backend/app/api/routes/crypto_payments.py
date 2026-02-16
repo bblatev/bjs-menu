@@ -162,6 +162,13 @@ def generate_payment_uri(currency: str, address: str, amount: float, payment_id:
 # WALLET CONFIGURATION
 # =============================================================================
 
+@router.get("/")
+@limiter.limit("60/minute")
+async def get_crypto_payments_root(request: Request, db: Session = Depends(get_db)):
+    """Crypto payments overview."""
+    return await list_crypto_wallets(request=request, db=db)
+
+
 @router.post("/wallets", response_model=CryptoWalletResponse)
 @limiter.limit("30/minute")
 async def create_crypto_wallet(

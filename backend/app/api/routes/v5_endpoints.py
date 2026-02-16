@@ -121,6 +121,13 @@ class ChargebackResponse(BaseModel):
 
 # ==================== SMS MARKETING ====================
 
+@router.get("/")
+@limiter.limit("60/minute")
+async def get_v5_root(request: Request, db: Session = Depends(get_db)):
+    """V5 API features status."""
+    return {"module": "v5-features", "version": "5.0", "status": "active", "features": ["sms-campaigns", "catering", "invoice-generation"]}
+
+
 @router.post("/sms/campaigns")
 @limiter.limit("30/minute")
 async def create_sms_campaign(

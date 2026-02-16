@@ -116,6 +116,13 @@ class CashCountRecord(BaseModel):
 
 # ========================= CHART OF ACCOUNTS =========================
 
+@router.get("/")
+@limiter.limit("60/minute")
+async def get_financial_root(request: Request, db: Session = Depends(get_db)):
+    """Financial overview."""
+    return await get_chart_of_accounts(request=request, db=db)
+
+
 @router.get("/chart-of-accounts")
 @limiter.limit("60/minute")
 async def get_chart_of_accounts(

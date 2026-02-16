@@ -58,6 +58,13 @@ class LocalizeOrderRequest(BaseModel):
 # Languages
 # ============================================================================
 
+@router.get("/")
+@limiter.limit("60/minute")
+async def get_kds_localization_root(request: Request):
+    """KDS localization overview."""
+    return await list_supported_languages(request=request)
+
+
 @router.get("/languages")
 @limiter.limit("60/minute")
 async def list_supported_languages(request: Request):

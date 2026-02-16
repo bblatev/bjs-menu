@@ -44,6 +44,13 @@ class BlockType(str, Enum):
 # TIER 3: GUESTBOOK (4 endpoints)
 # ============================================================================
 
+@router.get("/")
+@limiter.limit("60/minute")
+async def get_v7_tier3_root(request: Request, db: Session = Depends(get_db)):
+    """V7 Tier 3 API features status."""
+    return {"module": "v7-tier3", "version": "7.0-tier3", "status": "active", "features": ["guestbook", "fundraising", "chargebacks", "analytics"]}
+
+
 @router.post("/{venue_id}/guestbook")
 @limiter.limit("30/minute")
 async def create_guest(

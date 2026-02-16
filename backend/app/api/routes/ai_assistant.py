@@ -142,6 +142,13 @@ _next_ids = {
 
 # ==================== CONVERSATIONAL AI ENDPOINTS ====================
 
+@router.get("/")
+@limiter.limit("60/minute")
+def get_ai_assistant_root(request: Request, db: DbSession):
+    """AI assistant overview."""
+    return get_ai_insights(request=request, db=db)
+
+
 @router.post("/ai-assistant/query", response_model=AIQueryResponse)
 @limiter.limit("30/minute")
 def process_ai_query(request: Request, data: AIQueryRequest, db: DbSession, current_user: CurrentUser = None):

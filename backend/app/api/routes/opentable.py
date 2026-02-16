@@ -72,6 +72,13 @@ class GuestResponse(BaseModel):
 # Webhook Endpoint
 # ============================================================================
 
+@router.get("/")
+@limiter.limit("60/minute")
+async def get_opentable_root(request: Request):
+    """OpenTable integration status."""
+    return await get_opentable_status(request=request)
+
+
 @router.post("/webhook")
 @limiter.limit("30/minute")
 async def handle_webhook(

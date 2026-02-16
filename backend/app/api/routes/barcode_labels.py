@@ -267,6 +267,13 @@ template_counter = 3
 # TEMPLATE ENDPOINTS
 # =============================================================================
 
+@router.get("/")
+@limiter.limit("60/minute")
+async def get_barcode_labels_root(request: Request, db: Session = Depends(get_db)):
+    """Barcode labels overview."""
+    return await list_label_templates(request=request, db=db)
+
+
 @router.get("/templates", response_model=List[LabelTemplateResponse])
 @limiter.limit("60/minute")
 async def list_label_templates(

@@ -43,6 +43,14 @@ class CashOperationRequest(BaseModel):
 
 
 # Endpoints
+
+@router.get("/")
+@limiter.limit("60/minute")
+async def get_erpnet_root(request: Request, db: Session = Depends(get_db)):
+    """ErpNet fiscal printer status."""
+    return {"module": "erpnet-fp", "status": "active", "endpoints": ["/status", "/printers"]}
+
+
 @router.get("/status")
 @limiter.limit("60/minute")
 async def get_fiscal_status(

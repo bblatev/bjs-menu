@@ -76,6 +76,13 @@ class WebhookConfig(BaseModel):
 # ACCOUNTING INTEGRATION ENDPOINTS
 # =============================================================================
 
+@router.get("/")
+@limiter.limit("60/minute")
+async def get_external_integrations_root(request: Request):
+    """External integrations overview."""
+    return await list_available_accounting_integrations(request=request)
+
+
 @router.get("/accounting/available", response_model=Dict[str, Any])
 @limiter.limit("60/minute")
 async def list_available_accounting_integrations(request: Request):

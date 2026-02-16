@@ -50,6 +50,13 @@ class ChallengeCreate(BaseModel):
 
 # ===================== Badge Endpoints =====================
 
+@router.get("/")
+@limiter.limit("60/minute")
+def get_gamification_root(request: Request, db: DbSession):
+    """Gamification overview."""
+    return get_badges(request=request, db=db)
+
+
 @router.get("/badges")
 @limiter.limit("60/minute")
 def get_badges(request: Request, db: DbSession):

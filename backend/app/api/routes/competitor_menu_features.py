@@ -389,6 +389,13 @@ ALLERGEN_DEFINITIONS = {
 # DAYPART PRICING ENDPOINTS
 # =============================================================================
 
+@router.get("/")
+@limiter.limit("60/minute")
+async def get_competitor_menu_features_root(request: Request, db: Session = Depends(get_db)):
+    """Competitor menu features overview."""
+    return {"module": "competitor-menu-features", "status": "active", "features": ["daypart-pricing", "menu-photos", "allergen-matrix", "batch-shelf-life"], "endpoints": ["/daypart-pricing", "/items/{item_id}/photos", "/allergen-matrix", "/prepared-batches"]}
+
+
 @router.post("/daypart-pricing", response_model=DaypartPricingResponse, tags=["Daypart Pricing"])
 @limiter.limit("30/minute")
 async def create_daypart_pricing(

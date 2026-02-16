@@ -18,6 +18,13 @@ from app.models.operations import (
 router = APIRouter()
 
 
+@router.get("/")
+@limiter.limit("60/minute")
+async def get_vip_root(request: Request, db: DbSession):
+    """VIP program overview."""
+    return await get_vip_tiers(request=request, db=db)
+
+
 @router.get("/tiers")
 @limiter.limit("60/minute")
 async def get_vip_tiers(request: Request, db: DbSession):

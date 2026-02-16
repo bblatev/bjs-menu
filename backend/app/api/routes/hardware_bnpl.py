@@ -82,6 +82,13 @@ class BNPLRefundRequest(BaseModel):
 
 # ==================== HARDWARE DEVICE ENDPOINTS ====================
 
+@router.get("/")
+@limiter.limit("60/minute")
+async def get_hardware_bnpl_root(request: Request, db: Session = Depends(get_db)):
+    """Hardware BNPL overview."""
+    return await list_devices(request=request, db=db)
+
+
 @router.post("/hardware/devices")
 @limiter.limit("30/minute")
 async def register_device(

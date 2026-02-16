@@ -43,6 +43,13 @@ _messages: list = []
 _next_msg_id = 1
 
 
+@router.get("/")
+@limiter.limit("60/minute")
+def get_messaging_root(request: Request, db: DbSession):
+    """Messaging inbox overview."""
+    return get_inbox(request=request, db=db)
+
+
 @router.post("/", response_model=MessageResponse)
 @limiter.limit("30/minute")
 def send_message(request: Request, data: MessageCreate, db: DbSession, current_user: CurrentUser = None):

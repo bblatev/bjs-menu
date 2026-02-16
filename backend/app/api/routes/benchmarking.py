@@ -104,6 +104,13 @@ _DEFAULT_SUMMARY = BenchmarkSummary(
 # --------------- endpoints ---------------
 
 
+@router.get("/")
+@limiter.limit("60/minute")
+async def get_benchmarking_root(request: Request, db: DbSession):
+    """Benchmarking summary."""
+    return await get_benchmark_summary(request=request, db=db)
+
+
 @router.get("/summary")
 @limiter.limit("60/minute")
 async def get_benchmark_summary(request: Request, db: DbSession, period: str = Query("month")):

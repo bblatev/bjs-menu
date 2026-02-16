@@ -124,6 +124,13 @@ def create_pdf_export(data: list, headers: list, title: str = "Report") -> Bytes
 
 # ==================== ENDPOINTS ====================
 
+@router.get("/")
+@limiter.limit("60/minute")
+def get_report_export_root(request: Request, db: DbSession):
+    """Report export overview."""
+    return list_scheduled_reports(request=request, db=db)
+
+
 @router.post("/export/sales")
 @limiter.limit("30/minute")
 def export_sales_report(

@@ -42,6 +42,13 @@ class RecommendationFeedback(BaseModel):
 
 # ==================== ENDPOINTS ====================
 
+@router.get("/")
+@limiter.limit("60/minute")
+def get_ai_recommendations_root(request: Request, db: DbSession):
+    """AI recommendations overview."""
+    return get_personalized_recommendations(request=request, db=db)
+
+
 @router.get("/recommendations/personalized", response_model=PersonalizedRecommendationsResponse)
 @limiter.limit("60/minute")
 def get_personalized_recommendations(

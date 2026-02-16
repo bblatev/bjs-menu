@@ -107,6 +107,13 @@ class ModifierGroupUpdateSchema(BaseModel):
 
 # ==================== CATEGORIES ====================
 
+@router.get("/")
+@limiter.limit("60/minute")
+def get_menu_admin_root(request: Request, db: DbSession):
+    """Menu admin overview."""
+    return list_categories(request=request, db=db)
+
+
 @router.get("/categories", response_model=List[CategoryResponse])
 @limiter.limit("60/minute")
 def list_categories(request: Request, db: DbSession, current_user: OptionalCurrentUser = None):

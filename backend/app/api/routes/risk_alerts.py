@@ -146,6 +146,13 @@ def _row_to_case(staff_id: int, rows: List[RiskAlert]) -> dict:
 
 # ── Endpoints ─────────────────────────────────────────────────────────────────
 
+@router.get("/")
+@limiter.limit("60/minute")
+async def get_risk_alerts_root(request: Request, db: DbSession):
+    """Risk alerts dashboard."""
+    return await get_risk_dashboard(request=request, db=db)
+
+
 @router.get("/dashboard")
 @limiter.limit("60/minute")
 async def get_risk_dashboard(request: Request, db: DbSession):

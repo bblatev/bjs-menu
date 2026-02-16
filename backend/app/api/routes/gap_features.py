@@ -178,6 +178,13 @@ class SSOConfigRequest(BaseModel):
 
 # ==================== MOBILE & OFFLINE ENDPOINTS ====================
 
+@router.get("/")
+@limiter.limit("60/minute")
+async def get_gap_features_root(request: Request, db: Session = Depends(get_db)):
+    """Gap features overview."""
+    return {"module": "gap-features", "status": "active", "features": ["mobile-sync", "push-notifications", "developer-api", "marketplace"], "endpoints": ["/mobile/sync", "/push/notifications", "/marketplace/apps"]}
+
+
 @router.get("/mobile/sync")
 @limiter.limit("60/minute")
 async def get_sync_package(

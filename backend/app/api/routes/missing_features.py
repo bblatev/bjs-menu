@@ -120,6 +120,13 @@ class BudgetVarianceRequest(BaseModel):
 
 # ===================== STAFF/PAYROLL ENDPOINTS =====================
 
+@router.get("/")
+@limiter.limit("60/minute")
+def get_missing_features_root(request: Request, db: Session = Depends(get_db)):
+    """Missing features implementation overview."""
+    return {"module": "missing-features", "status": "active", "features": ["payroll", "recipes", "kitchen", "advanced-tables", "real-time-alerts"], "endpoints": ["/payroll/overtime-rules", "/recipes/{recipe_id}/allergens", "/kitchen/prep-list"]}
+
+
 @router.post("/payroll/overtime-rules", summary="Create overtime calculation rules")
 @limiter.limit("30/minute")
 def create_overtime_rules(

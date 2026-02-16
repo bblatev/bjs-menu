@@ -71,6 +71,13 @@ class PaymentResponse(BaseModel):
 # Payment Session
 # ============================================================================
 
+@router.get("/")
+@limiter.limit("60/minute")
+async def get_mobile_wallet_root(request: Request):
+    """Mobile wallet overview."""
+    return await get_default_configuration(request=request)
+
+
 @router.post("/sessions")
 @limiter.limit("30/minute")
 async def create_payment_session(request: Request, session_data: CreateSessionRequest):
