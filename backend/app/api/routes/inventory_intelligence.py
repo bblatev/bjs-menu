@@ -172,6 +172,13 @@ class CycleCountScheduleResponse(BaseModel):
 
 # ==================== ENDPOINTS ====================
 
+@router.get("/")
+@limiter.limit("60/minute")
+def get_inventory_intelligence_root(request: Request, db: DbSession):
+    """Inventory intelligence overview."""
+    return get_abc_analysis(request=request, db=db)
+
+
 @router.get("/abc-analysis", response_model=ABCAnalysisResponse)
 @limiter.limit("60/minute")
 def get_abc_analysis(
@@ -385,8 +392,9 @@ def get_dead_stock(
     threshold_days: int = Query(30, ge=7, le=365),
 ):
     """Identify dead stock — items with no movement for N days."""
-    cutoff = datetime.now(timezone.utc) - timedelta(days=threshold_days)
-    now = datetime.now(timezone.utc)
+    # Use naive UTC datetimes for SQLite compatibility (SQLite returns naive datetimes)
+    now = datetime.utcnow()
+    cutoff = now - timedelta(days=threshold_days)
 
     # Get products with stock > 0
     on_hand = (

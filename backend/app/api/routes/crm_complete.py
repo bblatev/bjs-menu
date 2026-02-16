@@ -193,6 +193,13 @@ class CustomerEnhancedResponse(BaseModel):
 # CUSTOMER REVIEWS & FEEDBACK
 # ============================================================================
 
+@router.get("/")
+@limiter.limit("60/minute")
+async def get_crm_root(request: Request, db: Session = Depends(get_db)):
+    """CRM overview."""
+    return await list_reviews(request=request, db=db)
+
+
 @router.post("/reviews", response_model=ReviewResponse, status_code=201)
 @limiter.limit("30/minute")
 async def create_review(
@@ -738,6 +745,7 @@ async def get_customer_segments(
     results = []
     for seg_def in segment_defs:
         # Get customers in this segment
+        # Customer uses location_id (not venue_id) and deleted_at (not is_active)
         segment_customers = db.query(Customer).join(
             CustomerRFMScore,
             and_(
@@ -745,13 +753,12 @@ async def get_customer_segments(
                 CustomerRFMScore.segment == seg_def.segment_name
             )
         ).filter(
-            Customer.venue_id == current_user.venue_id,
-            Customer.is_active == True
+            Customer.deleted_at.is_(None)
         ).all()
 
         if segment_customers:
-            total_revenue = sum(c.total_spent for c in segment_customers)
-            avg_order = sum(c.average_order_value for c in segment_customers) / len(segment_customers)
+            total_revenue = sum(c.total_spent or 0 for c in segment_customers)
+            avg_order = sum(c.average_order or 0 for c in segment_customers) / len(segment_customers)
 
             # Calculate average recency
             rfm_scores = db.query(CustomerRFMScore).filter(
@@ -759,8 +766,8 @@ async def get_customer_segments(
                 CustomerRFMScore.segment == seg_def.segment_name
             ).all()
 
-            avg_recency = sum(s.days_since_last_order for s in rfm_scores) / len(rfm_scores) if rfm_scores else 0
-            avg_frequency = sum(s.total_orders for s in rfm_scores) / len(rfm_scores) if rfm_scores else 0
+            avg_recency = sum(s.days_since_last_order or 0 for s in rfm_scores) / len(rfm_scores) if rfm_scores else 0
+            avg_frequency = sum(s.total_orders or 0 for s in rfm_scores) / len(rfm_scores) if rfm_scores else 0
         else:
             total_revenue = 0
             avg_order = 0

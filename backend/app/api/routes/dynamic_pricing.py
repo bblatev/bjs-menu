@@ -87,6 +87,13 @@ class PricingAnalytics(BaseModel):
 
 # ==================== ENDPOINTS ====================
 
+@router.get("/")
+@limiter.limit("60/minute")
+async def get_dynamic_pricing_root(request: Request, db: Session = Depends(get_db)):
+    """Dynamic pricing overview."""
+    return {"module": "dynamic-pricing", "status": "active", "endpoints": ["/active-rules", "/rules", "/item/{item_id}", "/analytics", "/forecast"]}
+
+
 @router.post("/calculate", response_model=PriceCalculationResponse)
 @limiter.limit("30/minute")
 def calculate_dynamic_price(
@@ -163,34 +170,33 @@ def get_active_pricing_rules(
 @limiter.limit("60/minute")
 def list_pricing_rules(
     request: Request,
-    venue_id: int,
+    venue_id: int = Query(1, description="Location/venue ID"),
     active_only: bool = True,
     db: Session = Depends(get_db)
 ):
     """List all pricing rules for venue"""
     query = db.query(DynamicPricingRule).filter(
-        DynamicPricingRule.venue_id == venue_id
+        DynamicPricingRule.location_id == venue_id
     )
 
     if active_only:
-        query = query.filter(DynamicPricingRule.active == True)
+        query = query.filter(DynamicPricingRule.is_active == True)
 
-    rules = query.order_by(DynamicPricingRule.priority.desc()).all()
+    rules = query.all()
 
     rules_list = []
     for rule in rules:
         rules_list.append({
             'id': rule.id,
-            'venue_id': rule.venue_id,
+            'location_id': rule.location_id,
             'name': rule.name,
-            'rule_type': rule.rule_type,
-            'conditions': rule.conditions,
+            'rule_type': rule.trigger_type,
+            'conditions': rule.trigger_conditions,
             'adjustment_type': rule.adjustment_type,
             'adjustment_value': float(rule.adjustment_value),
-            'priority': rule.priority,
-            'active': rule.active,
-            'start_date': rule.start_date.isoformat() if rule.start_date else None,
-            'end_date': rule.end_date.isoformat() if rule.end_date else None,
+            'max_adjustment_percent': rule.max_adjustment_percent,
+            'applies_to': rule.applies_to,
+            'active': rule.is_active,
             'created_at': rule.created_at.isoformat() if rule.created_at else None,
             'updated_at': rule.updated_at.isoformat() if rule.updated_at else None
         })

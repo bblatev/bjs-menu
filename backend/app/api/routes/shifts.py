@@ -113,11 +113,39 @@ def get_shifts(
     return [_row_to_shift(r) for r in rows]
 
 
+@router.get("/shifts/current")
+@limiter.limit("60/minute")
+def get_current_shift(request: Request, db: DbSession):
+    """Get the currently active shift (status=in_progress) or the most recent scheduled shift for today."""
+    today = date_type.today()
+    # First look for an in-progress shift
+    row = (
+        db.query(ShiftSchedule)
+        .filter(ShiftSchedule.status == "in_progress", ShiftSchedule.date == today)
+        .first()
+    )
+    if not row:
+        # Fall back to the next scheduled shift for today
+        row = (
+            db.query(ShiftSchedule)
+            .filter(ShiftSchedule.status == "scheduled", ShiftSchedule.date == today)
+            .order_by(ShiftSchedule.start_time)
+            .first()
+        )
+    if not row:
+        return {"shift": None, "message": "No active or scheduled shift for today"}
+    return {"shift": _row_to_shift(row)}
+
+
 @router.get("/shifts/{shift_id}")
 @limiter.limit("60/minute")
 def get_shift(request: Request, shift_id: str, db: DbSession):
     """Get a specific shift."""
-    row = db.query(ShiftSchedule).filter(ShiftSchedule.id == int(shift_id)).first()
+    try:
+        sid = int(shift_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="shift_id must be an integer")
+    row = db.query(ShiftSchedule).filter(ShiftSchedule.id == sid).first()
     if not row:
         raise HTTPException(status_code=404, detail="Shift not found")
     return _row_to_shift(row)
