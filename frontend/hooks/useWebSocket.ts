@@ -93,7 +93,9 @@ export function useWebSocket(options: UseWebSocketOptions): UseWebSocketReturn {
 
   const getWebSocketUrl = useCallback(() => {
     const channelParam = channels.join(',');
-    return `${WS_URL}/api/v1/ws/venue/${venueId}?channels=${channelParam}`;
+    const token = typeof window !== 'undefined' ? localStorage.getItem('access_token') : null;
+    const tokenParam = token ? `&token=${token}` : '';
+    return `${WS_URL}/api/v1/ws/venue/${venueId}?channels=${channelParam}${tokenParam}`;
   }, [venueId, channels]);
 
   const startPingInterval = useCallback(() => {
