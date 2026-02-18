@@ -371,7 +371,7 @@ async def get_table_statuses(
         statuses.append({
             "table_id": table.id,
             "table_number": table.number,
-            "seats": table.seats,
+            "seats": table.capacity,
             "status": status,
             "order_count": len(active_orders),
             "total": round(total, 2),
@@ -414,24 +414,24 @@ def _format_floor_plan_response(
             table = pos.table
             table_data_dict = table_data.model_dump()
             table_data_dict["table_number"] = table.number if table else "?"
-            table_data_dict["seats"] = table.seats if table else 0
+            table_data_dict["seats"] = table.capacity if table else 0
             table_data_dict["status"] = "occupied" if active_orders else "available"
             table_data_dict["order_count"] = len(active_orders)
             table_data_dict["total"] = sum(o.total or 0 for o in active_orders)
             tables.append(table_data_dict)
         else:
-            tables.append(table_data)
+            tables.append(table_data.model_dump())
 
     # Get areas
     areas = [
-        FloorPlanAreaCreate(
-            name=area.name,
-            color=area.color,
-            x=area.x,
-            y=area.y,
-            width=area.width,
-            height=area.height
-        )
+        {
+            "name": area.name,
+            "color": area.color,
+            "x": area.x,
+            "y": area.y,
+            "width": area.width,
+            "height": area.height,
+        }
         for area in floor_plan.areas
     ]
 
@@ -442,6 +442,7 @@ def _format_floor_plan_response(
         width=floor_plan.width,
         height=floor_plan.height,
         background_image=floor_plan.background_image,
+        is_active=floor_plan.is_active,
         tables=tables,
         areas=areas,
         created_at=floor_plan.created_at,

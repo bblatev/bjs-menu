@@ -66,23 +66,20 @@ export default function TablesPage() {
         setError(null);
 
         const token = localStorage.getItem('access_token');
-
-        if (!token) {
-          setError('Моля, влезте в системата.');
-          setLoading(false);
-          return;
-        }
-
         const url = `${API_URL}/tables/`;
 
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 10000); // 10s timeout
 
+        const headers: Record<string, string> = {
+          'Content-Type': 'application/json',
+        };
+        if (token) {
+          headers['Authorization'] = `Bearer ${token}`;
+        }
+
         const response = await fetch(url, {
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`,
-          },
+          headers,
           signal: controller.signal,
         });
 

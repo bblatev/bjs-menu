@@ -324,14 +324,20 @@ class FloorPlanTablePosition(BaseModel):
 
 class FloorPlanAreaCreate(BaseModel):
     name: str
-    floor: int = 1
-    background_image: Optional[str] = None
+    color: str = "#e5e7eb"
+    x: int = 0
+    y: int = 0
+    width: int = 200
+    height: int = 200
 
 
 class FloorPlanCreate(BaseModel):
-    venue_id: int
-    areas: List[FloorPlanAreaCreate]
-    table_positions: List[FloorPlanTablePosition]
+    name: str = "Floor Plan"
+    width: int = 1200
+    height: int = 800
+    background_image: Optional[str] = None
+    tables: List[FloorPlanTablePosition] = []
+    areas: List[FloorPlanAreaCreate] = []
 
 
 class FloorPlanResponse(BaseModel):
@@ -341,10 +347,11 @@ class FloorPlanResponse(BaseModel):
     width: Optional[int] = None
     height: Optional[int] = None
     background_image: Optional[str] = None
+    is_active: Optional[bool] = None
     areas: List[Dict[str, Any]] = []
     tables: List[Dict[str, Any]] = []
     table_positions: Optional[List[FloorPlanTablePosition]] = None
-    created_at: datetime
+    created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
 
     model_config = ConfigDict(from_attributes=True)
