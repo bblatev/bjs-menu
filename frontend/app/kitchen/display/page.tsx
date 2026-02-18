@@ -156,9 +156,11 @@ export default function KitchenDisplayPage() {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const overdueAudioRef = useRef<HTMLAudioElement | null>(null);
 
+  const isInitialLoadRef = useRef(true);
+
   const fetchStations = useCallback(async () => {
     try {
-      setIsLoadingStations(true);
+      if (isInitialLoadRef.current) setIsLoadingStations(true);
       setStationsError(null);
       const token = localStorage.getItem('access_token');
       const apiUrl = '/api/v1';
@@ -189,7 +191,7 @@ export default function KitchenDisplayPage() {
 
   const fetchTickets = useCallback(async () => {
     try {
-      setIsLoadingTickets(true);
+      if (isInitialLoadRef.current) setIsLoadingTickets(true);
       setTicketsError(null);
       const token = localStorage.getItem('access_token');
       const apiUrl = '/api/v1';
@@ -273,10 +275,13 @@ export default function KitchenDisplayPage() {
   }, []);
 
   useEffect(() => {
-    fetchStations();
-    fetchTickets();
+    const initialLoad = async () => {
+      await Promise.all([fetchStations(), fetchTickets()]);
+      isInitialLoadRef.current = false;
+    };
+    initialLoad();
 
-    // Set up polling for real-time updates
+    // Set up polling for real-time updates (silent refresh, no loading spinner)
     const pollInterval = setInterval(() => {
       fetchTickets();
     }, 5000); // Poll every 5 seconds

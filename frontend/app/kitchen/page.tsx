@@ -224,8 +224,10 @@ export default function KitchenPage() {
   };
 
   useEffect(() => {
+    let isFirstLoad = true;
+
     const loadAllData = async () => {
-      setLoading(true);
+      if (isFirstLoad) setLoading(true);
       setError(null);
       try {
         await Promise.all([
@@ -238,13 +240,16 @@ export default function KitchenPage() {
         setError('Failed to load kitchen data');
         console.error('Error loading kitchen data:', err);
       } finally {
-        setLoading(false);
+        if (isFirstLoad) {
+          setLoading(false);
+          isFirstLoad = false;
+        }
       }
     };
 
     loadAllData();
 
-    // Refresh data every 30 seconds
+    // Refresh data every 30 seconds (silent refresh, no loading spinner)
     const interval = setInterval(loadAllData, 30000);
     return () => clearInterval(interval);
   }, [loadStations, loadAlerts, loadRecentTickets, loadStats]);
