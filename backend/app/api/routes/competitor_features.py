@@ -4,7 +4,7 @@ Competitor Features API Endpoints
 Toast, TouchBistro, iiko feature parity
 """
 
-from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File, Request
+from fastapi import APIRouter, Depends, HTTPException, Query, status, UploadFile, File, Request
 from sqlalchemy.orm import Session
 from sqlalchemy import func
 from typing import List, Optional
@@ -319,7 +319,24 @@ async def generate_menu_engineering_report(
         generated_by=current_user.id
     )
     if not report:
-        raise HTTPException(status_code=404, detail="No sales data found for period")
+        return {
+            "id": 0,
+            "report_name": f"Menu Engineering {body.period_start} to {body.period_end}",
+            "period_start": body.period_start,
+            "period_end": body.period_end,
+            "total_revenue": 0,
+            "total_food_cost": 0,
+            "total_gross_profit": 0,
+            "overall_food_cost_percent": 0,
+            "stars_count": 0,
+            "puzzles_count": 0,
+            "dogs_count": 0,
+            "cash_cows_count": 0,
+            "items_to_promote": [],
+            "items_to_reprice": [],
+            "items_to_remove": [],
+            "generated_at": datetime.now(timezone.utc),
+        }
     return report
 
 
@@ -344,12 +361,16 @@ async def list_menu_engineering_reports(
 async def get_item_profitability(
     request: Request,
     menu_item_id: int,
-    period_start: date,
-    period_end: date,
+    period_start: date = Query(default=None),
+    period_end: date = Query(default=None),
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(get_current_user)
 ):
     """Get profitability analysis for a specific menu item"""
+    if period_start is None:
+        period_start = date.today() - timedelta(days=30)
+    if period_end is None:
+        period_end = date.today()
     service = MenuEngineeringService(db)
     result = service.calculate_item_profitability(
         venue_id=current_user.venue_id,
@@ -500,12 +521,14 @@ async def get_86_logs(
 @limiter.limit("30/minute")
 async def generate_forecasts(
     request: Request,
-    forecast_date: date,
+    forecast_date: date = Query(default=None),
     days_history: int = 30,
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(require_manager)
 ):
     """Generate demand forecasts for a date"""
+    if forecast_date is None:
+        forecast_date = date.today()
     service = DemandForecastingService(db)
 
     # Generate menu item forecasts
@@ -532,11 +555,13 @@ async def generate_forecasts(
 @limiter.limit("60/minute")
 async def get_item_forecasts(
     request: Request,
-    forecast_date: date,
+    forecast_date: date = Query(default=None),
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(get_current_user)
 ):
     """Get menu item forecasts for a date"""
+    if forecast_date is None:
+        forecast_date = date.today()
     forecasts = db.query(DemandForecast).filter(
         DemandForecast.venue_id == current_user.venue_id,
         DemandForecast.forecast_date == forecast_date
@@ -548,11 +573,13 @@ async def get_item_forecasts(
 @limiter.limit("60/minute")
 async def get_ingredient_forecasts(
     request: Request,
-    forecast_date: date,
+    forecast_date: date = Query(default=None),
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(get_current_user)
 ):
     """Get ingredient forecasts for a date"""
+    if forecast_date is None:
+        forecast_date = date.today()
     forecasts = db.query(IngredientForecast).filter(
         IngredientForecast.venue_id == current_user.venue_id,
         IngredientForecast.forecast_date == forecast_date
@@ -640,7 +667,7 @@ async def list_suggested_orders(
 ):
     """List suggested purchase orders"""
     query = db.query(SuggestedPurchaseOrder).filter(
-        SuggestedPurchaseOrder.venue_id == current_user.venue_id
+        SuggestedPurchaseOrder.location_id == current_user.venue_id
     )
 
     if status_filter:
@@ -734,12 +761,14 @@ async def calculate_all_food_costs(
 @limiter.limit("60/minute")
 async def get_food_cost_snapshot(
     request: Request,
-    snapshot_date: date,
+    snapshot_date: date = Query(default=None),
     period_type: str = "daily",
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(get_current_user)
 ):
     """Get or generate food cost snapshot"""
+    if snapshot_date is None:
+        snapshot_date = date.today()
     service = FoodCostService(db)
     snapshot = service.generate_cost_snapshot(
         venue_id=current_user.venue_id,
@@ -773,27 +802,6 @@ async def get_food_cost_trend(
 # SUPPLIER PERFORMANCE ENDPOINTS
 # =============================================================================
 
-@router.get("/supplier-performance/{supplier_id}", response_model=SupplierPerformanceResponse)
-@limiter.limit("60/minute")
-async def get_supplier_performance(
-    request: Request,
-    supplier_id: int,
-    period_start: date,
-    period_end: date,
-    db: Session = Depends(get_db),
-    current_user: StaffUser = Depends(get_current_user)
-):
-    """Get or calculate supplier performance"""
-    service = SupplierPerformanceService(db)
-    perf = service.calculate_performance(
-        venue_id=current_user.venue_id,
-        supplier_id=supplier_id,
-        period_start=period_start,
-        period_end=period_end
-    )
-    return perf
-
-
 @router.get("/supplier-performance/ranking")
 @limiter.limit("60/minute")
 async def get_supplier_ranking(
@@ -819,6 +827,31 @@ async def get_supplier_ranking(
     ).order_by(SupplierPerformance.overall_score.desc()).all()
 
     return perfs
+
+
+@router.get("/supplier-performance/{supplier_id}", response_model=SupplierPerformanceResponse)
+@limiter.limit("60/minute")
+async def get_supplier_performance(
+    request: Request,
+    supplier_id: int,
+    period_start: date = Query(default=None),
+    period_end: date = Query(default=None),
+    db: Session = Depends(get_db),
+    current_user: StaffUser = Depends(get_current_user)
+):
+    """Get or calculate supplier performance"""
+    if period_start is None:
+        period_start = date.today() - timedelta(days=30)
+    if period_end is None:
+        period_end = date.today()
+    service = SupplierPerformanceService(db)
+    perf = service.calculate_performance(
+        venue_id=current_user.venue_id,
+        supplier_id=supplier_id,
+        period_start=period_start,
+        period_end=period_end
+    )
+    return perf
 
 
 @router.post("/supplier-issues", status_code=status.HTTP_201_CREATED)
@@ -983,12 +1016,14 @@ async def list_waste_logs(
 @limiter.limit("60/minute")
 async def get_waste_analytics(
     request: Request,
-    analytics_date: date,
+    analytics_date: date = Query(default=None),
     period_type: str = "daily",
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(get_current_user)
 ):
     """Get or generate waste analytics"""
+    if analytics_date is None:
+        analytics_date = date.today()
     service = WasteAnalyticsService(db)
     analytics = service.generate_analytics(
         venue_id=current_user.venue_id,
@@ -1837,7 +1872,7 @@ async def match_invoice_to_po(
 
     po = db.query(PurchaseOrder).filter(
         PurchaseOrder.id == body.purchase_order_id,
-        PurchaseOrder.venue_id == current_user.venue_id
+        PurchaseOrder.location_id == current_user.venue_id
     ).first()
 
     if not po:

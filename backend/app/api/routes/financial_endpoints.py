@@ -118,9 +118,9 @@ class CashCountRecord(BaseModel):
 
 @router.get("/")
 @limiter.limit("60/minute")
-async def get_financial_root(request: Request, db: Session = Depends(get_db)):
+async def get_financial_root(request: Request, db: Session = Depends(get_db), current_user: StaffUser = Depends(require_manager)):
     """Financial overview."""
-    return await get_chart_of_accounts(request=request, db=db)
+    return await get_chart_of_accounts(request=request, db=db, current_user=current_user)
 
 
 @router.get("/chart-of-accounts")
@@ -372,19 +372,19 @@ async def get_budgets(
 ):
     """Get all budgets"""
     from app.models.operations import Budget
-    query = db.query(Budget).filter(Budget.venue_id == current_user.venue_id)
-    if status:
-        query = query.filter(Budget.status == status)
+    query = db.query(Budget)
     budgets = query.all()
     return [
         {
             "id": b.id,
             "name": b.name,
-            "budget_type": b.budget_type,
-            "period_start": b.period_start.isoformat(),
-            "period_end": b.period_end.isoformat(),
-            "total_amount": float(b.total_amount or 0),
-            "status": b.status
+            "category": b.category,
+            "period": b.period,
+            "year": b.year,
+            "month": b.month,
+            "budgeted_amount": float(b.budgeted_amount or 0),
+            "actual_amount": float(b.actual_amount or 0),
+            "notes": b.notes
         }
         for b in budgets
     ]

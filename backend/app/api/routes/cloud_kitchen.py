@@ -35,7 +35,7 @@ def get_cloud_kitchen_root(request: Request, db: DbSession):
 @limiter.limit("60/minute")
 async def get_cloud_kitchen_brands(request: Request, venue_id: int, db: DbSession):
     """Get virtual brands for cloud kitchen."""
-    return _get_setting_list(db, "cloud_kitchen_brands", venue_id)
+    return _get_setting_list(db, "cloud_kitchen_brands", str(venue_id))
 
 
 class CreateCloudKitchenBrandRequest(BaseModel):
@@ -50,7 +50,7 @@ async def create_cloud_kitchen_brand(request: Request, venue_id: int, data: Crea
     """Create a virtual brand for cloud kitchen."""
     row = db.query(AppSetting).filter(
         AppSetting.category == "cloud_kitchen_brands",
-        AppSetting.key == venue_id,
+        AppSetting.key == str(venue_id),
     ).first()
     brands = row.value if row and isinstance(row.value, list) else []
     new_brand = {
@@ -63,7 +63,7 @@ async def create_cloud_kitchen_brand(request: Request, venue_id: int, data: Crea
     if row:
         row.value = brands
     else:
-        row = AppSetting(category="cloud_kitchen_brands", key=venue_id, value=brands)
+        row = AppSetting(category="cloud_kitchen_brands", key=str(venue_id), value=brands)
         db.add(row)
     db.commit()
     return new_brand
@@ -73,7 +73,7 @@ async def create_cloud_kitchen_brand(request: Request, venue_id: int, data: Crea
 @limiter.limit("60/minute")
 async def get_cloud_kitchen_stations(request: Request, venue_id: int, db: DbSession):
     """Get cloud kitchen stations."""
-    return _get_setting_list(db, "cloud_kitchen_stations", venue_id)
+    return _get_setting_list(db, "cloud_kitchen_stations", str(venue_id))
 
 
 # Delivery
@@ -81,7 +81,7 @@ async def get_cloud_kitchen_stations(request: Request, venue_id: int, db: DbSess
 @limiter.limit("60/minute")
 async def get_delivery_platforms(request: Request, venue_id: int, db: DbSession):
     """Get delivery platform integrations."""
-    return _get_setting_list(db, "delivery_platforms", venue_id)
+    return _get_setting_list(db, "delivery_platforms", str(venue_id))
 
 
 @router.get("/{venue_id}/delivery/orders")
@@ -107,7 +107,7 @@ async def get_delivery_orders(request: Request, venue_id: int, db: DbSession):
 @limiter.limit("60/minute")
 async def get_delivery_zones(request: Request, venue_id: int, db: DbSession):
     """Get delivery zones."""
-    return _get_setting_list(db, "delivery_zones", venue_id)
+    return _get_setting_list(db, "delivery_zones", str(venue_id))
 
 
 @router.get("/{venue_id}/delivery/drivers")
@@ -129,14 +129,14 @@ async def get_delivery_drivers(request: Request, venue_id: int, db: DbSession):
 @limiter.limit("60/minute")
 async def get_drive_thru_lanes(request: Request, venue_id: int, db: DbSession):
     """Get drive-thru lanes."""
-    return _get_setting_list(db, "drive_thru_lanes", venue_id)
+    return _get_setting_list(db, "drive_thru_lanes", str(venue_id))
 
 
 @router.get("/{venue_id}/drive-thru/vehicles")
 @limiter.limit("60/minute")
 async def get_drive_thru_vehicles(request: Request, venue_id: int, db: DbSession):
     """Get vehicles in drive-thru queue from app settings."""
-    return _get_setting_list(db, "drive_thru_vehicles", venue_id)
+    return _get_setting_list(db, "drive_thru_vehicles", str(venue_id))
 
 
 @router.get("/{venue_id}/drive-thru/stats")
@@ -195,8 +195,8 @@ async def get_cloud_kitchen_performance(request: Request, venue_id: int, db: DbS
     total = db.query(sqlfunc.count(DeliveryOrder.id)).scalar() or 0
     revenue = db.query(sqlfunc.sum(DeliveryOrder.total)).scalar() or 0
     # Brands from settings
-    brands = _get_setting_list(db, "cloud_kitchen_brands", venue_id)
-    stations = _get_setting_list(db, "cloud_kitchen_stations", venue_id)
+    brands = _get_setting_list(db, "cloud_kitchen_brands", str(venue_id))
+    stations = _get_setting_list(db, "cloud_kitchen_stations", str(venue_id))
     return {
         "total_orders": total,
         "revenue": float(revenue or 0),

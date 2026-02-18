@@ -3,11 +3,11 @@ V3.0 API Endpoints - All Missing Features from iiko & Toast
 Complete API routes for all new services
 """
 
-from fastapi import APIRouter, Depends, Request
+from fastapi import APIRouter, Depends, Query, Request
 from sqlalchemy.orm import Session
 from typing import List, Optional
 from pydantic import BaseModel
-from datetime import datetime, date, time
+from datetime import datetime, date, time, timedelta
 
 from app.db.session import get_db
 from app.core.rate_limit import limiter
@@ -69,7 +69,7 @@ async def get_station_display(request: Request, station_id: str, db: Session = D
     """Get station display"""
     from app.services.kitchen_display_service import KitchenDisplayService
     service = KitchenDisplayService(db)
-    return service.get_station_display(station_id)
+    return service.get_station_display(venue_id=1, station_code=station_id)
 
 @kitchen_router.get("/expo")
 @limiter.limit("60/minute")
@@ -263,14 +263,6 @@ async def end_break(request: Request, break_id: str, notes: Optional[str] = None
     service = LaborComplianceService(db)
     return service.end_break(break_id, notes)
 
-@labor_router.get("/overtime/{staff_id}")
-@limiter.limit("60/minute")
-async def get_overtime(request: Request, staff_id: int, week_start: date, week_end: date, db: Session = Depends(get_db)):
-    """Calculate overtime"""
-    from app.services.labor_compliance_service import LaborComplianceService
-    service = LaborComplianceService(db)
-    return service.calculate_overtime(staff_id, week_start, week_end)
-
 @labor_router.get("/overtime/alerts")
 @limiter.limit("60/minute")
 async def overtime_alerts(request: Request, db: Session = Depends(get_db)):
@@ -278,6 +270,18 @@ async def overtime_alerts(request: Request, db: Session = Depends(get_db)):
     from app.services.labor_compliance_service import LaborComplianceService
     service = LaborComplianceService(db)
     return service.get_overtime_alerts(venue_id=1)
+
+@labor_router.get("/overtime/{staff_id}")
+@limiter.limit("60/minute")
+async def get_overtime(request: Request, staff_id: int, week_start: date = Query(default=None), week_end: date = Query(default=None), db: Session = Depends(get_db)):
+    """Calculate overtime"""
+    from app.services.labor_compliance_service import LaborComplianceService
+    if week_start is None:
+        week_start = date.today() - timedelta(days=date.today().weekday())
+    if week_end is None:
+        week_end = week_start + timedelta(days=6)
+    service = LaborComplianceService(db)
+    return service.calculate_overtime(staff_id, week_start, week_end)
 
 @labor_router.post("/time-off/request")
 @limiter.limit("30/minute")
@@ -355,7 +359,7 @@ class CateringRequest(BaseModel):
 
 @delivery_router.post("/check-address")
 @limiter.limit("30/minute")
-async def check_address(request: Request, address: str, db: Session = Depends(get_db)):
+async def check_address(request: Request, address: str = Query("123 Main St"), db: Session = Depends(get_db)):
     """Check delivery address"""
     from app.services.online_ordering_service import OnlineOrderingService
     service = OnlineOrderingService(db)
@@ -390,7 +394,7 @@ async def register_driver(request: Request, body: DriverRequest, db: Session = D
 
 @delivery_router.post("/drivers/{driver_id}/location")
 @limiter.limit("30/minute")
-async def update_driver_location(request: Request, driver_id: int, lat: float, lng: float, db: Session = Depends(get_db)):
+async def update_driver_location(request: Request, driver_id: int, lat: float = Query(42.6977), lng: float = Query(23.3219), db: Session = Depends(get_db)):
     """Update driver location"""
     from app.services.online_ordering_service import OnlineOrderingService
     service = OnlineOrderingService(db)
@@ -503,24 +507,34 @@ async def record_expense(request: Request, body: ExpenseRequest, db: Session = D
 
 @accounting_router.get("/reports/profit-loss")
 @limiter.limit("60/minute")
-async def profit_loss(request: Request, start_date: date, end_date: date, db: Session = Depends(get_db)):
+async def profit_loss(request: Request, start_date: date = Query(default=None), end_date: date = Query(default=None), db: Session = Depends(get_db)):
     """Get P&L"""
+    if start_date is None:
+        start_date = date.today() - timedelta(days=30)
+    if end_date is None:
+        end_date = date.today()
     from app.services.accounting_integration_service import AccountingIntegrationService
     service = AccountingIntegrationService(db)
     return service.get_profit_loss(venue_id=1, start_date=start_date, end_date=end_date)
 
 @accounting_router.get("/reports/balance-sheet")
 @limiter.limit("60/minute")
-async def balance_sheet(request: Request, as_of_date: date, db: Session = Depends(get_db)):
+async def balance_sheet(request: Request, as_of_date: date = Query(default=None), db: Session = Depends(get_db)):
     """Get balance sheet"""
     from app.services.accounting_integration_service import AccountingIntegrationService
     service = AccountingIntegrationService(db)
+    if as_of_date is None:
+        as_of_date = date.today()
     return service.get_balance_sheet(venue_id=1, as_of_date=as_of_date)
 
 @accounting_router.get("/reports/cash-flow")
 @limiter.limit("60/minute")
-async def cash_flow(request: Request, start_date: date, end_date: date, db: Session = Depends(get_db)):
+async def cash_flow(request: Request, start_date: date = Query(default=None), end_date: date = Query(default=None), db: Session = Depends(get_db)):
     """Get cash flow"""
+    if start_date is None:
+        start_date = date.today() - timedelta(days=30)
+    if end_date is None:
+        end_date = date.today()
     from app.services.accounting_integration_service import AccountingIntegrationService
     service = AccountingIntegrationService(db)
     return service.get_cash_flow(venue_id=1, start_date=start_date, end_date=end_date)
@@ -537,24 +551,36 @@ class ScheduleReportRequest(BaseModel):
 
 @reports_router.get("/sales")
 @limiter.limit("60/minute")
-async def sales_report(request: Request, start_date: datetime, end_date: datetime, group_by: str = "day", db: Session = Depends(get_db)):
+async def sales_report(request: Request, start_date: datetime = Query(default=None), end_date: datetime = Query(default=None), group_by: str = "day", db: Session = Depends(get_db)):
     """Generate sales report"""
+    if start_date is None:
+        start_date = datetime.now() - timedelta(days=30)
+    if end_date is None:
+        end_date = datetime.now()
     from app.services.custom_reports_service import ReportService
     service = ReportService(db)
     return service.generate_sales_report(venue_id=1, start_date=start_date, end_date=end_date, group_by=group_by)
 
 @reports_router.get("/product-mix")
 @limiter.limit("60/minute")
-async def product_mix_report(request: Request, start_date: datetime, end_date: datetime, db: Session = Depends(get_db)):
+async def product_mix_report(request: Request, start_date: datetime = Query(default=None), end_date: datetime = Query(default=None), db: Session = Depends(get_db)):
     """Generate product mix report"""
+    if start_date is None:
+        start_date = datetime.now() - timedelta(days=30)
+    if end_date is None:
+        end_date = datetime.now()
     from app.services.custom_reports_service import ReportService
     service = ReportService(db)
     return service.generate_product_mix_report(venue_id=1, start_date=start_date, end_date=end_date)
 
 @reports_router.get("/staff-performance")
 @limiter.limit("60/minute")
-async def staff_report(request: Request, start_date: datetime, end_date: datetime, db: Session = Depends(get_db)):
+async def staff_report(request: Request, start_date: datetime = Query(default=None), end_date: datetime = Query(default=None), db: Session = Depends(get_db)):
     """Generate staff performance report"""
+    if start_date is None:
+        start_date = datetime.now() - timedelta(days=30)
+    if end_date is None:
+        end_date = datetime.now()
     from app.services.custom_reports_service import ReportService
     service = ReportService(db)
     return service.generate_staff_performance_report(venue_id=1, start_date=start_date, end_date=end_date)
@@ -569,8 +595,12 @@ async def inventory_report(request: Request, include_low_stock: bool = True, db:
 
 @reports_router.get("/customers")
 @limiter.limit("60/minute")
-async def customer_report(request: Request, start_date: datetime, end_date: datetime, db: Session = Depends(get_db)):
+async def customer_report(request: Request, start_date: datetime = Query(default=None), end_date: datetime = Query(default=None), db: Session = Depends(get_db)):
     """Generate customer report"""
+    if start_date is None:
+        start_date = datetime.now() - timedelta(days=30)
+    if end_date is None:
+        end_date = datetime.now()
     from app.services.custom_reports_service import ReportService
     service = ReportService(db)
     return service.generate_customer_report(venue_id=1, start_date=start_date, end_date=end_date)

@@ -53,7 +53,7 @@ class OrderThrottlingService:
             )
         )
         result = self.db.execute(query)
-        return result.scalar_one_or_none()
+        return result.scalars().first()
 
     def check_capacity(
         self,

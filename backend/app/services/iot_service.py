@@ -756,7 +756,7 @@ class IoTService:
         from app.models.advanced_features_v9 import RFIDTag
 
         query = db.query(RFIDTag).filter(
-            RFIDTag.venue_id == venue_id,
+            RFIDTag.location_id == venue_id,
             RFIDTag.is_active == True
         )
 
@@ -814,7 +814,7 @@ class IoTService:
 
         # Calculate expected tags
         expected_query = db.query(RFIDTag).filter(
-            RFIDTag.venue_id == venue_id,
+            RFIDTag.location_id == venue_id,
             RFIDTag.is_active == True,
             RFIDTag.status == "active"
         )
@@ -908,7 +908,7 @@ class IoTService:
 
         # Get expected tags
         expected_query = db.query(RFIDTag).filter(
-            RFIDTag.venue_id == count.venue_id,
+            RFIDTag.location_id == count.venue_id,
             RFIDTag.is_active == True,
             RFIDTag.status == "active"
         )

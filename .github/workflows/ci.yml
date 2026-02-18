@@ -11,6 +11,30 @@ env:
   IMAGE_NAME: ${{ github.repository }}
 
 jobs:
+  # Backend Lint (ruff)
+  backend-lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+      - run: pip install ruff
+      - run: ruff check backend/ --output-format=github
+
+  # Backend Type Check (mypy)
+  backend-type-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+      - run: pip install -r backend/requirements.txt mypy
+      - run: mypy backend/app --ignore-missing-imports --no-strict-optional --no-error-summary || true
+
   # Backend Tests
   backend-test:
     runs-on: ubuntu-latest

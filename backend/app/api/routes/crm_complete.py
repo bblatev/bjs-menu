@@ -195,9 +195,9 @@ class CustomerEnhancedResponse(BaseModel):
 
 @router.get("/")
 @limiter.limit("60/minute")
-async def get_crm_root(request: Request, db: Session = Depends(get_db)):
+async def get_crm_root(request: Request, db: Session = Depends(get_db), current_user: StaffUser = Depends(get_current_user)):
     """CRM overview."""
-    return await list_reviews(request=request, db=db)
+    return await list_reviews(request=request, db=db, current_user=current_user, limit=50, offset=0)
 
 
 @router.post("/reviews", response_model=ReviewResponse, status_code=201)
@@ -803,8 +803,8 @@ async def calculate_rfm_scores(
 
     # Get all active customers with orders
     customers = db.query(Customer).filter(
-        Customer.venue_id == venue_id,
-        Customer.is_active == True,
+        Customer.location_id == venue_id,
+        Customer.deleted_at.is_(None),
         Customer.total_orders > 0
     ).all()
 
@@ -932,8 +932,8 @@ async def get_upcoming_events(
 
     # Get customers with birthdays in range
     customers = db.query(Customer).filter(
-        Customer.venue_id == current_user.venue_id,
-        Customer.is_active == True,
+        Customer.location_id == current_user.venue_id,
+        Customer.deleted_at.is_(None),
         or_(
             Customer.birthday.isnot(None),
             Customer.birthday.isnot(None)
@@ -1047,8 +1047,8 @@ def _update_rating_aggregate(db: Session, menu_item_id: int):
 def _estimate_campaign_recipients(db: Session, venue_id: int, segment: str, filters: Optional[dict]) -> int:
     """Estimate number of recipients for a campaign"""
     query = db.query(func.count(Customer.id)).filter(
-        Customer.venue_id == venue_id,
-        Customer.is_active == True,
+        Customer.location_id == venue_id,
+        Customer.deleted_at.is_(None),
         Customer.marketing_consent == True
     )
 

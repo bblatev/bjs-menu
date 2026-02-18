@@ -78,7 +78,7 @@ class XeroSettingsUpdate(BaseModel):
 @limiter.limit("60/minute")
 async def get_xero_root(request: Request, db: DbSession):
     """Xero integration status."""
-    return await get_xero_status(request=request, db=db)
+    return get_xero_status(request=request, db=db)
 
 
 @router.get("/status", response_model=XeroConnectionStatus)

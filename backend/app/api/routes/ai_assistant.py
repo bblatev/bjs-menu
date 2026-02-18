@@ -146,7 +146,7 @@ _next_ids = {
 @limiter.limit("60/minute")
 def get_ai_assistant_root(request: Request, db: DbSession):
     """AI assistant overview."""
-    return get_ai_insights(request=request, db=db)
+    return get_ai_insights(request=request, db=db, limit=5)
 
 
 @router.post("/ai-assistant/query", response_model=AIQueryResponse)

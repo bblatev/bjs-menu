@@ -51,7 +51,7 @@ class SustainabilityService:
             return {}
         
         # Get item category and estimate footprint
-        category = item.category.name.get('en', '').lower() if item.category else ''
+        category = item.category.lower() if item.category else ''
         
         # Estimate based on category
         co2_per_serving = 0.0
@@ -113,7 +113,7 @@ class SustainabilityService:
     ) -> List[Dict]:
         """Get carbon footprints for all menu items"""
         items = self.db.query(MenuItem).filter(
-            MenuItem.venue_id == venue_id,
+            MenuItem.location_id == venue_id,
             MenuItem.available == True
         ).all()
         

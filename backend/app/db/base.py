@@ -3,7 +3,7 @@
 from datetime import datetime
 from typing import Optional
 
-from sqlalchemy import DateTime, Integer, func
+from sqlalchemy import Boolean, DateTime, Integer, func
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
 
@@ -46,14 +46,22 @@ class VersionMixin:
                 f"Version conflict: expected {expected}, current {self.version}"
             )
 
+    def increment_version(self) -> None:
+        """Increment the version counter after a successful update."""
+        self.version += 1
+
 
 class SoftDeleteMixin:
-    """Soft-delete support via a ``deleted_at`` timestamp.
+    """Soft-delete support via ``is_deleted`` flag and ``deleted_at`` timestamp.
 
-    Instead of physically removing rows, set ``deleted_at`` to the
-    current UTC time.  Use ``not_deleted()`` as a query filter.
+    Instead of physically removing rows, call ``soft_delete()`` to set
+    ``is_deleted = True`` and ``deleted_at`` to the current UTC time.
+    Use ``not_deleted()`` as a query filter. Call ``restore()`` to undo.
     """
 
+    is_deleted: Mapped[bool] = mapped_column(
+        Boolean, default=False, server_default="0", nullable=False, index=True,
+    )
     deleted_at: Mapped[Optional[datetime]] = mapped_column(
         DateTime(timezone=True), nullable=True, default=None,
     )
@@ -61,9 +69,15 @@ class SoftDeleteMixin:
     def soft_delete(self) -> None:
         """Mark this row as deleted."""
         from datetime import timezone
+        self.is_deleted = True
         self.deleted_at = datetime.now(timezone.utc)
+
+    def restore(self) -> None:
+        """Restore a soft-deleted row."""
+        self.is_deleted = False
+        self.deleted_at = None
 
     @classmethod
     def not_deleted(cls):
-        """SQLAlchemy filter expression: ``WHERE deleted_at IS NULL``."""
-        return cls.deleted_at.is_(None)
+        """SQLAlchemy filter expression: ``WHERE is_deleted = FALSE``."""
+        return cls.is_deleted.is_(False)

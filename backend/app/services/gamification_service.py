@@ -630,7 +630,7 @@ class GamificationService:
                 Order.venue_id == venue_id
             )
         ).filter(
-            Customer.venue_id == venue_id,
+            Customer.location_id == venue_id,
             GameProfile.total_points > 0
         ).group_by(
             Customer.id, GameProfile.id

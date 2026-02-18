@@ -106,7 +106,7 @@ def _build_engineering_items(db: DbSession, days: int = 30):
 @limiter.limit("60/minute")
 def get_menu_engineering_root(request: Request, db: DbSession):
     """Menu engineering overview."""
-    return get_menu_analysis(request=request, db=db)
+    return get_menu_analysis(request=request, db=db, days=30)
 
 
 @router.get("/analysis")

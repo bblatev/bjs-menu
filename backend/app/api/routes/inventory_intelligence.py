@@ -176,7 +176,7 @@ class CycleCountScheduleResponse(BaseModel):
 @limiter.limit("60/minute")
 def get_inventory_intelligence_root(request: Request, db: DbSession):
     """Inventory intelligence overview."""
-    return get_abc_analysis(request=request, db=db)
+    return get_abc_analysis(request=request, db=db, location_id=1, period_days=90, a_threshold=0.80, b_threshold=0.95)
 
 
 @router.get("/abc-analysis", response_model=ABCAnalysisResponse)
@@ -926,10 +926,12 @@ def list_snapshots(
 def compare_snapshots(
     request: Request,
     db: DbSession,
-    snapshot_a_id: int = Query(...),
-    snapshot_b_id: int = Query(...),
+    snapshot_a_id: Optional[int] = Query(None, description="First snapshot ID"),
+    snapshot_b_id: Optional[int] = Query(None, description="Second snapshot ID"),
 ):
     """Compare two inventory snapshots."""
+    if snapshot_a_id is None or snapshot_b_id is None:
+        raise HTTPException(status_code=400, detail="Both snapshot_a_id and snapshot_b_id are required for comparison")
     import json
 
     row_a = db.execute(

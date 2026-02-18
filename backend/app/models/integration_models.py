@@ -358,3 +358,21 @@ class AggregatorOrder(Base):
     cancelled_at = Column(DateTime(timezone=True), nullable=True)
 
     venue = relationship("Venue", backref="aggregator_orders")
+
+
+# ============================================================================
+# INTEGRATION SYNC LOG MODEL (for integrations_hub_service.py)
+# ============================================================================
+
+class IntegrationSyncLog(Base):
+    __tablename__ = "integration_sync_logs"
+    __table_args__ = {'extend_existing': True}
+
+    id = Column(Integer, primary_key=True, index=True)
+    integration_id = Column(Integer, ForeignKey("integrations.id"), nullable=False, index=True)
+    sync_type = Column(String(50), nullable=False, default="full")  # full, incremental, etc.
+    status = Column(String(30), nullable=False, default="started")  # started, completed, failed
+    records_synced = Column(Integer, default=0)
+    errors = Column(JSON, nullable=True)
+    started_at = Column(DateTime(timezone=True), server_default=func.now())
+    completed_at = Column(DateTime(timezone=True), nullable=True)

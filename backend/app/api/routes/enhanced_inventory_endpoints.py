@@ -23,7 +23,7 @@ from app.core.rbac import get_current_user
 
 logger = logging.getLogger(__name__)
 from app.models.enhanced_inventory import (
-    MenuVersionHistory, MenuSchedule, MenuItemNutrition, MenuItemAllergen,
+    MenuVersionHistory, MenuItemVersionHistory, MenuSchedule, MenuItemNutrition, MenuItemAllergen,
     MenuItemBundle, RecipeVersion, RecipeInstruction, RecipeCostHistory,
     EnhancedWarehouse as Warehouse, EnhancedStockBatch as StockBatch,
     EnhancedStockTransfer as StockTransfer, EnhancedStockAdjustment as StockAdjustment,
@@ -295,9 +295,9 @@ def get_menu_item_versions(
 ):
     """Get version history for a menu item"""
     try:
-        versions = db.query(MenuVersionHistory).filter(
-            MenuVersionHistory.menu_item_id == menu_item_id
-        ).order_by(MenuVersionHistory.id.desc()).all()
+        versions = db.query(MenuItemVersionHistory).filter(
+            MenuItemVersionHistory.menu_item_id == menu_item_id
+        ).order_by(MenuItemVersionHistory.id.desc()).all()
         return versions
     except Exception as e:
         logger.error(f"Error fetching menu versions: {e}")
@@ -373,7 +373,7 @@ def restore_menu_version(
 @limiter.limit("60/minute")
 def get_menu_schedules(
     request: Request,
-    venue_id: int,
+    venue_id: int = Query(1, description="Venue ID"),
     menu_item_id: Optional[int] = None,
     db: Session = Depends(get_db),
     current_user = Depends(get_current_user)
@@ -715,7 +715,7 @@ def bulk_update_menu_prices(
 @limiter.limit("60/minute")
 def get_recipes(
     request: Request,
-    venue_id: int,
+    venue_id: int = Query(1, description="Venue ID"),
     category_id: Optional[int] = None,
     search: Optional[str] = None,
     limit: int = Query(50, le=200),
@@ -1056,7 +1056,7 @@ def get_recipe_cost_history(
 @limiter.limit("60/minute")
 def get_warehouses(
     request: Request,
-    venue_id: int,
+    venue_id: int = Query(1, description="Venue ID"),
     include_inactive: bool = False,
     db: Session = Depends(get_db),
     current_user = Depends(get_current_user)
@@ -1154,7 +1154,7 @@ def update_warehouse(
 def get_warehouse_stock(
     request: Request,
     warehouse_id: int,
-    venue_id: int = Query(..., description="Venue ID"),
+    venue_id: int = Query(1, description="Venue ID"),
     include_batches: bool = False,
     low_stock_only: bool = False,
     db: Session = Depends(get_db),
@@ -1180,7 +1180,7 @@ def get_warehouse_stock(
 @limiter.limit("60/minute")
 def get_stock_batches(
     request: Request,
-    venue_id: int = Query(..., description="Venue ID"),
+    venue_id: int = Query(1, description="Venue ID"),
     warehouse_id: Optional[int] = None,
     stock_item_id: Optional[int] = None,
     expiring_within_days: Optional[int] = None,
@@ -1242,7 +1242,7 @@ def create_stock_batch(
 @limiter.limit("60/minute")
 def get_stock_transfers(
     request: Request,
-    venue_id: int,
+    venue_id: int = Query(1, description="Venue ID"),
     status: Optional[str] = None,
     from_warehouse_id: Optional[int] = None,
     to_warehouse_id: Optional[int] = None,
@@ -1355,7 +1355,7 @@ def cancel_stock_transfer(
 @limiter.limit("60/minute")
 def get_stock_adjustments(
     request: Request,
-    venue_id: int,
+    venue_id: int = Query(1, description="Venue ID"),
     warehouse_id: Optional[int] = None,
     status: Optional[str] = None,
     limit: int = Query(50, le=200),
@@ -1484,7 +1484,7 @@ def release_stock_reservation(
 @limiter.limit("60/minute")
 def get_stock_valuation(
     request: Request,
-    venue_id: int,
+    venue_id: int = Query(1, description="Venue ID"),
     warehouse_id: Optional[int] = None,
     valuation_method: str = "fifo",
     db: Session = Depends(get_db),
@@ -1507,7 +1507,7 @@ def get_stock_valuation(
 @limiter.limit("60/minute")
 def get_expiring_stock(
     request: Request,
-    venue_id: int,
+    venue_id: int = Query(1, description="Venue ID"),
     days: int = Query(7, ge=1, le=365),
     db: Session = Depends(get_db),
     current_user = Depends(get_current_user)
@@ -1654,8 +1654,7 @@ def get_price_list_items(
     """Get items in a price list"""
     try:
         return db.query(SupplierPriceListItem).filter(
-            SupplierPriceListItem.price_list_id == price_list_id,
-            SupplierPriceListItem.is_active == True
+            SupplierPriceListItem.price_list_id == price_list_id
         ).all()
     except Exception as e:
         logger.error(f"Error fetching price list items: {e}")
@@ -1666,7 +1665,7 @@ def get_price_list_items(
 def get_best_supplier_price(
     request: Request,
     stock_item_id: int,
-    venue_id: int = Query(...),
+    venue_id: int = Query(1, description="Venue ID"),
     quantity: Decimal = Decimal("1"),
     db: Session = Depends(get_db),
     current_user = Depends(get_current_user)
@@ -1698,8 +1697,7 @@ def get_supplier_documents(
         query = db.query(SupplierDocument).filter(SupplierDocument.supplier_id == supplier_id)
         if document_type:
             query = query.filter(SupplierDocument.document_type == document_type)
-        # Model uses uploaded_at, not created_at
-        return query.order_by(SupplierDocument.uploaded_at.desc()).all()
+        return query.order_by(SupplierDocument.created_at.desc()).all()
     except Exception as e:
         logger.error(f"Error fetching supplier documents: {e}")
         raise HTTPException(status_code=500, detail="Failed to fetch supplier documents")
@@ -1737,7 +1735,7 @@ def upload_supplier_document(
 @limiter.limit("60/minute")
 def get_expiring_supplier_documents(
     request: Request,
-    venue_id: int,
+    venue_id: int = Query(1, description="Venue ID"),
     days: int = Query(30, ge=1, le=365),
     db: Session = Depends(get_db),
     current_user = Depends(get_current_user)
@@ -1800,7 +1798,7 @@ def create_supplier_rating(
 @limiter.limit("60/minute")
 def get_po_templates(
     request: Request,
-    venue_id: int,
+    venue_id: int = Query(1, description="Venue ID"),
     supplier_id: Optional[int] = None,
     db: Session = Depends(get_db),
     current_user = Depends(get_current_user)
@@ -1933,7 +1931,7 @@ def submit_po_approval(
 @limiter.limit("60/minute")
 def get_pending_approval_pos(
     request: Request,
-    venue_id: int,
+    venue_id: int = Query(1, description="Venue ID"),
     db: Session = Depends(get_db),
     current_user = Depends(get_current_user)
 ):
@@ -1947,7 +1945,7 @@ def get_pending_approval_pos(
         if not po_ids:
             return []
         return db.query(PurchaseOrder).filter(
-            PurchaseOrder.venue_id == venue_id,
+            PurchaseOrder.location_id == venue_id,
             PurchaseOrder.id.in_(po_ids)
         ).all()
     except Exception as e:
@@ -1958,7 +1956,7 @@ def get_pending_approval_pos(
 @limiter.limit("60/minute")
 def get_supplier_invoices(
     request: Request,
-    venue_id: int,
+    venue_id: int = Query(1, description="Venue ID"),
     supplier_id: Optional[int] = None,
     status: Optional[str] = None,
     limit: int = Query(50, le=200),
@@ -2033,7 +2031,7 @@ def perform_three_way_match(
 @limiter.limit("60/minute")
 def get_goods_received_notes(
     request: Request,
-    venue_id: int,
+    venue_id: int = Query(1, description="Venue ID"),
     purchase_order_id: Optional[int] = None,
     limit: int = Query(50, le=200),
     offset: int = 0,
@@ -2082,7 +2080,7 @@ def create_goods_received_note(
 @limiter.limit("60/minute")
 def get_po_analytics(
     request: Request,
-    venue_id: int,
+    venue_id: int = Query(1, description="Venue ID"),
     start_date: Optional[date] = None,
     end_date: Optional[date] = None,
     supplier_id: Optional[int] = None,

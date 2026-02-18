@@ -752,7 +752,7 @@ class BenchmarkingService:
 
         if metric in staff_metrics:
             # Staff leaderboard
-            staff_users = self.db.query(StaffUser).filter(StaffUser.active == True).all()
+            staff_users = self.db.query(StaffUser).filter(StaffUser.is_active == True).all()
 
             for staff in staff_users:
                 orders = self.db.query(Order).filter(
@@ -779,7 +779,7 @@ class BenchmarkingService:
                     "id": staff.id,
                     "name": staff.full_name,
                     "type": "staff",
-                    "venue_id": staff.venue_id,
+                    "venue_id": staff.location_id,
                     "value": round(value, 2)
                 })
 

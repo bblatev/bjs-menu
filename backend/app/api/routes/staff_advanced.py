@@ -2,7 +2,7 @@
 Staff Advanced Features API Endpoints
 Shift swapping, time-off, labor forecasting, commissions, training, performance
 """
-from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status, Query
 from sqlalchemy.orm import Session
 from sqlalchemy import and_, or_
 from typing import List, Optional
@@ -142,9 +142,9 @@ class TrainingProgress(BaseModel):
 
 @router.get("/")
 @limiter.limit("60/minute")
-async def get_staff_advanced_root(request: Request, db: Session = Depends(get_db)):
+async def get_staff_advanced_root(request: Request, db: Session = Depends(get_db), current_user: StaffUser = Depends(get_current_user)):
     """Staff advanced features overview."""
-    return await list_shift_trades(request=request, db=db)
+    return await list_shift_trades(request=request, db=db, current_user=current_user)
 
 
 @router.post("/shift-trades", response_model=ShiftTradeResponse)
@@ -535,12 +535,16 @@ async def deny_time_off(
 @limiter.limit("60/minute")
 async def get_labor_forecast(
     request: Request,
-    start_date: date,
-    end_date: date,
+    start_date: Optional[date] = Query(None, description="Start date for forecast"),
+    end_date: Optional[date] = Query(None, description="End date for forecast"),
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(require_manager)
 ):
     """Get labor cost forecast for date range"""
+    if not start_date:
+        start_date = date.today()
+    if not end_date:
+        end_date = date.today()
     forecasts = []
     current_date = start_date
 

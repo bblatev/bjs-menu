@@ -14,7 +14,7 @@ Features:
 - Order history and favorites
 """
 
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy.orm import Session
 from typing import List, Optional
 from datetime import datetime, timedelta, timezone
@@ -144,14 +144,13 @@ async def start_session(
     """Start a new customer ordering session by scanning table QR code"""
     # Validate table token
     table = db.query(Table).filter(
-        Table.table_token == data.table_token,
-        Table.active == True
+        Table.token == data.table_token
     ).first()
 
     if not table:
         raise HTTPException(status_code=404, detail="Invalid table QR code")
 
-    venue = db.query(Venue).filter(Venue.id == table.venue_id).first()
+    venue = db.query(Venue).filter(Venue.id == table.location_id).first()
     if not venue or not venue.active:
         raise HTTPException(status_code=404, detail="Venue not found or inactive")
 
@@ -215,7 +214,7 @@ async def start_session(
 @limiter.limit("60/minute")
 async def validate_session(
     request: Request,
-    session_token: str,
+    session_token: str = Query("", description="Session token"),
     db: Session = Depends(get_db)
 ):
     """Validate if a session is still active"""
@@ -255,7 +254,7 @@ async def close_session(
 @limiter.limit("60/minute")
 async def get_menu(
     request: Request,
-    session_token: str,
+    session_token: str = Query("", description="Session token"),
     category_id: Optional[int] = None,
     search: Optional[str] = None,
     db: Session = Depends(get_db)
@@ -289,7 +288,7 @@ async def get_menu(
         # Get items in category
         item_query = db.query(MenuItem).filter(
             MenuItem.category_id == cat.id,
-            MenuItem.active == True
+            MenuItem.available == True
         )
 
         if search:
@@ -390,7 +389,7 @@ async def get_menu(
 async def get_menu_item_detail(
     request: Request,
     item_id: int,
-    session_token: str,
+    session_token: str = Query("", description="Session token"),
     db: Session = Depends(get_db)
 ):
     """Get detailed information for a single menu item"""
@@ -544,7 +543,7 @@ async def add_to_cart(
 @limiter.limit("60/minute")
 async def get_cart(
     request: Request,
-    session_token: str,
+    session_token: str = Query("", description="Session token"),
     db: Session = Depends(get_db)
 ):
     """Get current cart contents"""
@@ -752,7 +751,7 @@ async def place_order(
 async def get_order_status(
     request: Request,
     order_id: int,
-    session_token: str,
+    session_token: str = Query("", description="Session token"),
     db: Session = Depends(get_db)
 ):
     """Get order status and prep time updates"""
@@ -798,7 +797,7 @@ async def get_order_status(
 @limiter.limit("60/minute")
 async def get_session_orders(
     request: Request,
-    session_token: str,
+    session_token: str = Query("", description="Session token"),
     db: Session = Depends(get_db)
 ):
     """Get all orders placed in this session"""
@@ -881,7 +880,7 @@ async def call_waiter(
 @limiter.limit("60/minute")
 async def get_waiter_calls(
     request: Request,
-    session_token: str,
+    session_token: str = Query("", description="Session token"),
     db: Session = Depends(get_db)
 ):
     """Get status of waiter calls"""
@@ -974,7 +973,7 @@ async def remove_favorite(
 @limiter.limit("60/minute")
 async def get_favorites(
     request: Request,
-    session_token: str,
+    session_token: str = Query("", description="Session token"),
     db: Session = Depends(get_db)
 ):
     """Get customer's favorite items"""
@@ -1013,7 +1012,7 @@ async def get_favorites(
 @limiter.limit("60/minute")
 async def get_notifications(
     request: Request,
-    session_token: str,
+    session_token: str = Query("", description="Session token"),
     unread_only: bool = False,
     db: Session = Depends(get_db)
 ):

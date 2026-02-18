@@ -31,7 +31,7 @@ from decimal import Decimal
 from typing import List, Optional, Dict, Any
 from datetime import datetime, timezone, timedelta
 
-from sqlalchemy import func
+from sqlalchemy import func, text
 from sqlalchemy.orm import Session
 
 from app.models.stock import StockOnHand, StockMovement, MovementReason
@@ -347,11 +347,11 @@ class StockDeductionService:
                 "product_name": product.name,
             }
 
-        # Get or create StockOnHand record
+        # Get or create StockOnHand record (row-level lock for concurrent safety)
         stock = self.db.query(StockOnHand).filter(
             StockOnHand.product_id == product_id,
             StockOnHand.location_id == location_id,
-        ).first()
+        ).with_for_update().first()
 
         if not stock:
             if not allow_negative:
@@ -441,12 +441,13 @@ class StockDeductionService:
             from datetime import date as date_type
 
             # Get non-expired batches ordered by received date (oldest first = FIFO)
+            # Use FOR UPDATE row-level locks to prevent concurrent deduction races
             batches = self.db.query(InventoryBatch).filter(
                 InventoryBatch.product_id == product_id,
                 InventoryBatch.location_id == location_id,
                 InventoryBatch.current_quantity > 0,
                 InventoryBatch.is_quarantined == False,
-            ).order_by(InventoryBatch.received_date.asc()).all()
+            ).order_by(InventoryBatch.received_date.asc()).with_for_update().all()
 
             if not batches:
                 return None  # No batch tracking for this product
@@ -504,15 +505,15 @@ class StockDeductionService:
         if from_type != to_type:
             return None
 
-        # Validate both units are known
+        # Reject unknown units instead of silently defaulting to 1:1
         if from_unit not in UNIT_CONVERSIONS:
-            logger.warning(f"Unknown source unit '{from_unit}' - treating as base unit")
+            raise UnitConversionError(from_unit, to_unit, f"unknown source unit '{from_unit}'")
         if to_unit not in UNIT_CONVERSIONS:
-            logger.warning(f"Unknown target unit '{to_unit}' - treating as base unit")
+            raise UnitConversionError(from_unit, to_unit, f"unknown target unit '{to_unit}'")
 
         # Convert: from_unit → base → to_unit
-        from_factor = UNIT_CONVERSIONS.get(from_unit, Decimal("1"))
-        to_factor = UNIT_CONVERSIONS.get(to_unit, Decimal("1"))
+        from_factor = UNIT_CONVERSIONS[from_unit]
+        to_factor = UNIT_CONVERSIONS[to_unit]
 
         # qty in base units
         base_qty = qty * from_factor

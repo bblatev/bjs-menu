@@ -305,9 +305,9 @@ class QuickActionResponse(BaseModel):
 
 @router.get("/")
 @limiter.limit("60/minute")
-async def get_waiter_terminal_root(request: Request, db: Session = Depends(get_db)):
+async def get_waiter_terminal_root(request: Request, db: Session = Depends(get_db), current_user: StaffUser = Depends(get_current_user)):
     """Waiter terminal overview."""
-    return await get_floor_plan(request=request, db=db)
+    return await get_floor_plan(request=request, db=db, current_user=current_user)
 
 
 @router.post("/orders", response_model=WaiterOrderResponse)
@@ -744,16 +744,12 @@ async def list_open_tabs(
     """List all open bar tabs"""
     query = db.query(TableSession).filter(
         TableSession.venue_id == current_user.venue_id,
-        TableSession.is_bar_tab == True,
         TableSession.status == "active"
     )
 
     if search:
         query = query.filter(
-            or_(
-                TableSession.customer_name.ilike(f"%{search}%"),
-                TableSession.card_last_four.ilike(f"%{search}%")
-            )
+            TableSession.guest_name.ilike(f"%{search}%")
         )
 
     tabs = query.order_by(TableSession.started_at.desc()).all()
@@ -780,9 +776,9 @@ async def list_open_tabs(
 
         result.append(TabResponse(
             tab_id=tab.id,
-            customer_name=tab.customer_name or "Unknown",
-            card_last_four=tab.card_last_four,
-            pre_auth_amount=float(tab.pre_auth_amount) if tab.pre_auth_amount else 0.0,
+            customer_name=tab.guest_name or "Unknown",
+            card_last_four=None,
+            pre_auth_amount=0.0,
             current_total=total,
             items=items,
             status="open",
@@ -806,7 +802,6 @@ async def add_to_tab(
     tab = db.query(TableSession).filter(
         TableSession.id == tab_id,
         TableSession.venue_id == current_user.venue_id,
-        TableSession.is_bar_tab == True,
         TableSession.status == "active"
     ).first()
 
@@ -885,7 +880,6 @@ async def transfer_tab(
     tab = db.query(TableSession).filter(
         TableSession.id == tab_id,
         TableSession.venue_id == current_user.venue_id,
-        TableSession.is_bar_tab == True,
         TableSession.status == "active"
     ).first()
 
@@ -1663,7 +1657,7 @@ async def get_floor_plan(
         result.append(TableStatusResponse(
             table_id=table.id,
             table_name=f"Table {table.number}",
-            capacity=table.seats or 4,
+            capacity=table.capacity or 4,
             status="occupied" if session else ("reserved" if getattr(table, 'reserved', False) else "available"),
             current_check_id=current_order.id if current_order else None,
             guest_count=session.guest_count if session else None,
@@ -1823,7 +1817,7 @@ async def get_my_tables(
         result.append(TableStatusResponse(
             table_id=table.id,
             table_name=f"Table {table.number}",
-            capacity=table.seats or 4,
+            capacity=table.capacity or 4,
             status="occupied",
             current_check_id=order.id if order else None,
             guest_count=session.guest_count,
@@ -1904,7 +1898,7 @@ async def get_quick_menu(
         if cat:
             query = query.filter(MenuItem.category_id == cat.id)
 
-    items = query.order_by(MenuItem.category_id, MenuItem.sort_order, MenuItem.id).limit(500).all()
+    items = query.order_by(MenuItem.category_id, MenuItem.id).limit(500).all()
 
     result = []
     for item in items:
@@ -1923,13 +1917,7 @@ async def get_quick_menu(
             station_name = item.station.name if hasattr(item.station, 'name') else "kitchen"
 
         # Get primary image URL
-        image_url = None
-        if item.images:
-            primary_img = next((img for img in item.images if img.is_primary), None)
-            if primary_img:
-                image_url = primary_img.url
-            elif item.images:
-                image_url = item.images[0].url
+        image_url = item.image_url if hasattr(item, 'image_url') else None
 
         result.append({
             "id": item.id,

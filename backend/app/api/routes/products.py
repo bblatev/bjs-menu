@@ -225,7 +225,7 @@ def import_products(
 @limiter.limit("60/minute")
 def smart_search_products(
     request: Request,
-    q: str = Query(..., min_length=2, description="Search query (barcode, SKU, or name)"),
+    q: Optional[str] = Query(None, min_length=2, description="Search query (barcode, SKU, or name)"),
     limit: int = Query(10, ge=1, le=50),
     db: DbSession = None,
     current_user: CurrentUser = None,
@@ -241,6 +241,12 @@ def smart_search_products(
 
     Returns products sorted by match confidence.
     """
+    if q is None:
+        return {
+            "query": None,
+            "count": 0,
+            "results": [],
+        }
     service = SKUMappingService(db)
     results = service.search_products(q, limit=limit)
 

@@ -81,8 +81,76 @@ class SimpleCache:
         }
 
 
-# Global cache instance
+# Global cache instance (in-memory)
 cache = SimpleCache()
+
+
+class RedisCacheClient:
+    """Redis-backed cache with in-memory fallback."""
+
+    def __init__(self):
+        self._redis = None
+        self._fallback = cache  # Use in-memory SimpleCache as fallback
+
+    def initialize(self, redis_url: str | None = None):
+        if redis_url:
+            try:
+                import redis
+                self._redis = redis.from_url(
+                    redis_url, socket_connect_timeout=2, decode_responses=True,
+                )
+                self._redis.ping()
+                logger.info("Redis cache connected")
+            except Exception as e:
+                logger.warning(f"Redis unavailable, using memory cache: {e}")
+                self._redis = None
+
+    def get(self, key: str) -> Any | None:
+        try:
+            if self._redis:
+                val = self._redis.get(key)
+                return json.loads(val) if val else None
+        except Exception:
+            pass
+        return self._fallback.get(key)
+
+    def set(self, key: str, value: Any, ttl_seconds: int = 300):
+        serialized = json.dumps(value, default=str)
+        try:
+            if self._redis:
+                self._redis.setex(key, ttl_seconds, serialized)
+                return
+        except Exception:
+            pass
+        self._fallback.set(key, value, ttl_seconds)
+
+    def delete(self, key: str):
+        try:
+            if self._redis:
+                self._redis.delete(key)
+                return
+        except Exception:
+            pass
+        self._fallback.delete(key)
+
+    def invalidate_pattern(self, pattern: str):
+        try:
+            if self._redis:
+                cursor = 0
+                while True:
+                    cursor, keys = self._redis.scan(cursor, match=pattern, count=100)
+                    if keys:
+                        self._redis.delete(*keys)
+                    if cursor == 0:
+                        break
+                return
+        except Exception:
+            pass
+        prefix = pattern.replace("*", "")
+        self._fallback.clear_prefix(prefix)
+
+
+redis_cache = RedisCacheClient()
 
 
 def make_cache_key(*args, **kwargs) -> str:

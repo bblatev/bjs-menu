@@ -24,9 +24,9 @@ router = APIRouter()
 
 @router.get("/")
 @limiter.limit("60/minute")
-async def get_drive_thru_root(request: Request, db: Session = Depends(get_db)):
+async def get_drive_thru_root(request: Request, db: Session = Depends(get_db), current_user: StaffUser = Depends(get_current_user)):
     """Drive-thru overview."""
-    return await get_drive_thru_stats(request=request, db=db)
+    return await get_drive_thru_stats(request=request, db=db, current_user=current_user)
 
 
 @router.post("/orders", response_model=DriveThruOrderResponse)
@@ -40,18 +40,18 @@ async def create_drive_thru_order(
     """Create a new drive-thru order"""
     # Get or create drive-thru table for the lane
     lane_table = db.query(Table).filter(
-        Table.venue_id == data.venue_id,
+        Table.location_id == data.venue_id,
         Table.number == f"DT-{data.lane.value.upper()}"
     ).first()
 
 
     if not lane_table:
         lane_table = Table(
-            venue_id=data.venue_id,
+            location_id=data.venue_id,
             number=f"DT-{data.lane.value.upper()}",
-            seats=0,
-            active=True,
-            location=f"Drive-thru {data.lane.value}"
+            capacity=0,
+            status="available",
+            area=f"Drive-thru {data.lane.value}"
         )
         db.add(lane_table)
         db.flush()

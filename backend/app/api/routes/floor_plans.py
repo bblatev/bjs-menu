@@ -56,7 +56,7 @@ async def create_floor_plan(
         # Verify table exists and belongs to venue
         table = db.query(Table).filter(
             Table.id == table_pos.table_id,
-            Table.venue_id == current_user.venue_id
+            Table.location_id == current_user.venue_id
         ).first()
         if not table:
             continue
@@ -121,7 +121,9 @@ async def get_active_floor_plan(
     ).first()
 
     if not floor_plan:
-        raise HTTPException(status_code=404, detail="No active floor plan found")
+        return {"id": 0, "name": "Default", "venue_id": current_user.venue_id,
+                "is_active": False, "tables": [], "areas": [],
+                "table_positions": [], "layout_data": {"tables": []}}
 
     return _format_floor_plan_response(floor_plan, db, current_user.venue_id, include_status=True)
 
@@ -185,7 +187,7 @@ async def update_floor_plan(
     for table_pos in data.tables:
         table = db.query(Table).filter(
             Table.id == table_pos.table_id,
-            Table.venue_id == current_user.venue_id
+            Table.location_id == current_user.venue_id
         ).first()
         if not table:
             continue
@@ -341,8 +343,7 @@ async def get_table_statuses(
 ):
     """Get real-time status of all tables"""
     tables = db.query(Table).filter(
-        Table.venue_id == current_user.venue_id,
-        Table.active == True
+        Table.location_id == current_user.venue_id
     ).all()
 
     statuses = []

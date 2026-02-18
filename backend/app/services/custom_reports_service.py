@@ -382,8 +382,8 @@ class ReportService:
     ) -> Dict[str, Any]:
         """Generate customer insights report"""
         customers = self.db.query(Customer).filter(
-            Customer.venue_id == venue_id,
-            Customer.is_active == True
+            Customer.location_id == venue_id,
+            Customer.deleted_at.is_(None)
         ).all()
         
         # Segment customers by spending

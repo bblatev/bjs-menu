@@ -3,11 +3,11 @@ V3.1 API Endpoints - Complete Parity Features
 API routes for Multi-Location, Payroll, Integrations, Benchmarking, Hardware, Support
 """
 
-from fastapi import APIRouter, Depends, Request
+from fastapi import APIRouter, Depends, Query, Request
 from sqlalchemy.orm import Session
 from typing import List, Optional
 from pydantic import BaseModel
-from datetime import datetime, date
+from datetime import datetime, date, timedelta
 
 from app.db.session import get_db
 from app.core.rate_limit import limiter
@@ -147,11 +147,15 @@ async def create_inventory_transfer(request: Request, body: InventoryTransferReq
 @limiter.limit("60/minute")
 async def get_consolidated_report(
     request: Request,
-    start_date: date,
-    end_date: date,
+    start_date: date = Query(default=None),
+    end_date: date = Query(default=None),
     db: Session = Depends(get_db)
 ):
     """Get consolidated sales report across locations"""
+    if start_date is None:
+        start_date = date.today() - timedelta(days=30)
+    if end_date is None:
+        end_date = date.today()
     from app.services.multi_location_service import MultiLocationService
     service = MultiLocationService(db)
     return service.get_consolidated_sales_report(start_date, end_date)
@@ -247,14 +251,18 @@ async def add_deduction(request: Request, body: DeductionRequest, db: Session = 
 async def calculate_payroll(
     request: Request,
     staff_id: int,
-    pay_period_start: date,
-    pay_period_end: date,
+    pay_period_start: date = Query(default=None),
+    pay_period_end: date = Query(default=None),
     hours_worked: float = 0,
     overtime_hours: float = 0,
     tips: float = 0,
     db: Session = Depends(get_db)
 ):
     """Calculate payroll for an employee"""
+    if pay_period_start is None:
+        pay_period_start = date.today() - timedelta(days=30)
+    if pay_period_end is None:
+        pay_period_end = date.today()
     from app.services.payroll_service import PayrollService
     service = PayrollService(db)
     return service.calculate_payroll(
@@ -322,11 +330,15 @@ async def get_tax_summary(request: Request, staff_id: int, year: int, db: Sessio
 @limiter.limit("60/minute")
 async def get_labor_cost_report(
     request: Request,
-    start_date: date,
-    end_date: date,
+    start_date: date = Query(default=None),
+    end_date: date = Query(default=None),
     db: Session = Depends(get_db)
 ):
     """Get labor cost report"""
+    if start_date is None:
+        start_date = date.today() - timedelta(days=30)
+    if end_date is None:
+        end_date = date.today()
     from app.services.payroll_service import PayrollService
     service = PayrollService(db)
     return service.get_labor_cost_report(venue_id=1, start_date=start_date, end_date=end_date)
@@ -522,7 +534,7 @@ async def get_goals(request: Request, status: Optional[str] = None, db: Session 
 
 @benchmarking_router.get("/trends")
 @limiter.limit("60/minute")
-async def get_trends(request: Request, metrics: str, period: str = "6_months", db: Session = Depends(get_db)):
+async def get_trends(request: Request, metrics: str = Query("revenue", description="Comma-separated metrics"), period: str = Query("6_months", description="Time period"), db: Session = Depends(get_db)):
     """Get performance trends"""
     from app.services.benchmarking_service import BenchmarkingService
     service = BenchmarkingService(db)
@@ -645,8 +657,8 @@ async def create_order(request: Request, body: HardwareOrderRequest, db: Session
 @limiter.limit("60/minute")
 async def get_recommendations(
     request: Request,
-    venue_type: str,
-    covers_per_day: int,
+    venue_type: str = Query("restaurant", description="Type of venue"),
+    covers_per_day: int = Query(100, description="Average covers per day"),
     db: Session = Depends(get_db)
 ):
     """Get hardware recommendations"""
@@ -733,7 +745,7 @@ async def escalate_ticket(request: Request, ticket_id: str, reason: str, db: Ses
 
 @support_router.get("/knowledge-base")
 @limiter.limit("60/minute")
-async def search_kb(request: Request, query: str, category: Optional[str] = None, db: Session = Depends(get_db)):
+async def search_kb(request: Request, query: str = Query("", description="Search query"), category: Optional[str] = Query(None, description="Category filter"), db: Session = Depends(get_db)):
     """Search knowledge base"""
     from app.services.support_service import SupportService
     service = SupportService(db)

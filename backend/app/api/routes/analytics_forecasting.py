@@ -3,7 +3,7 @@ from datetime import timezone
 Analytics & Forecasting API Endpoints
 Demand forecasting, trend analysis, predictive analytics
 """
-from fastapi import APIRouter, Depends, Request
+from fastapi import APIRouter, Depends, Query, Request
 from sqlalchemy.orm import Session
 from typing import List, Optional, Dict, Any
 from datetime import date, datetime, timedelta
@@ -56,9 +56,9 @@ class StockPredictionRequest(BaseModel):
 
 @router.get("/")
 @limiter.limit("60/minute")
-async def get_analytics_forecasting_root(request: Request, db: Session = Depends(get_db)):
+async def get_analytics_forecasting_root(request: Request, db: Session = Depends(get_db), current_user: StaffUser = Depends(get_current_user)):
     """Analytics forecasting overview."""
-    return await get_analytics_dashboard(request=request, db=db)
+    return await get_analytics_dashboard(request=request, db=db, current_user=current_user)
 
 
 @router.get("/forecast/demand", response_model=Dict[str, Any])
@@ -185,8 +185,8 @@ async def create_custom_forecast(
 @limiter.limit("60/minute")
 async def get_sales_trends(
     request: Request,
-    start_date: date,
-    end_date: date,
+    start_date: date = Query(default=None),
+    end_date: date = Query(default=None),
     group_by: str = "day",
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(get_current_user)
@@ -194,6 +194,10 @@ async def get_sales_trends(
     """
     Analyze sales trends over a specified period.
     """
+    if start_date is None:
+        start_date = date.today() - timedelta(days=30)
+    if end_date is None:
+        end_date = date.today()
     # Mock sales data for demonstration
     sales_data = _get_mock_sales_data(
         current_user.venue_id,
@@ -432,12 +436,16 @@ async def get_analytics_dashboard(
 
 def _get_mock_historical_data(
     venue_id: int,
-    start_date: datetime,
-    end_date: datetime,
+    start_date: datetime = Query(default=None),
+    end_date: datetime = Query(default=None),
     category_id: int = None,
     item_ids: List[int] = None
 ) -> List[Dict]:
     """Generate mock historical demand data"""
+    if start_date is None:
+        start_date = date.today() - timedelta(days=30)
+    if end_date is None:
+        end_date = date.today()
     import random
 
     items = [
@@ -475,10 +483,14 @@ def _get_mock_historical_data(
 
 def _get_mock_sales_data(
     venue_id: int,
-    start_date: date,
-    end_date: date
+    start_date: date = Query(default=None),
+    end_date: date = Query(default=None)
 ) -> List[Dict]:
     """Generate mock sales data"""
+    if start_date is None:
+        start_date = date.today() - timedelta(days=30)
+    if end_date is None:
+        end_date = date.today()
     import random
 
     data = []
@@ -499,10 +511,14 @@ def _get_mock_sales_data(
 
 def _get_mock_order_data(
     venue_id: int,
-    start_date: date,
-    end_date: date
+    start_date: date = Query(default=None),
+    end_date: date = Query(default=None)
 ) -> List[Dict]:
     """Generate mock order count data"""
+    if start_date is None:
+        start_date = date.today() - timedelta(days=30)
+    if end_date is None:
+        end_date = date.today()
     import random
 
     data = []
@@ -523,10 +539,14 @@ def _get_mock_order_data(
 
 def _get_mock_customer_data(
     venue_id: int,
-    start_date: date,
-    end_date: date
+    start_date: date = Query(default=None),
+    end_date: date = Query(default=None)
 ) -> List[Dict]:
     """Generate mock customer count data"""
+    if start_date is None:
+        start_date = date.today() - timedelta(days=30)
+    if end_date is None:
+        end_date = date.today()
     import random
 
     data = []

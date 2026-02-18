@@ -532,7 +532,7 @@ class ComplianceService:
         # Get the customer record
         customer = db.query(Customer).filter(
             Customer.id == customer_id,
-            Customer.venue_id == venue_id
+            Customer.location_id == venue_id
         ).first()
 
         if not customer:
@@ -652,7 +652,7 @@ class ComplianceService:
         # Get customer profile
         customer = db.query(Customer).filter(
             Customer.id == customer_id,
-            Customer.venue_id == venue_id
+            Customer.location_id == venue_id
         ).first()
 
         if not customer:

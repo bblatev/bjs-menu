@@ -787,6 +787,43 @@ def get_consumption_plan(
 # DEMAND FORECASTING
 # =============================================================================
 
+@router.get("/forecasting/bulk", tags=["Demand Forecasting"])
+@limiter.limit("60/minute")
+def get_bulk_forecasts(
+    request: Request,
+    category_id: Optional[int] = None,
+    forecast_days: int = 30,
+    db: DbSession = None,
+):
+    """Get demand forecasts for multiple items"""
+    query = db.query(Product)
+    if category_id:
+        query = query.filter(Product.category_id == category_id)
+
+    items = query.limit(50).all()
+
+    forecasts = []
+    for item in items:
+        base_demand = random.uniform(30, 150)
+        current_qty = float(item.quantity) if hasattr(item, 'quantity') else 0
+        coverage_days = current_qty / max(1, base_demand / 30)
+
+        forecasts.append({
+            "stock_item_id": item.id,
+            "stock_item_name": item.name,
+            "forecasted_demand": round(base_demand, 1),
+            "current_stock": current_qty,
+            "coverage_days": round(coverage_days, 1),
+            "needs_reorder": coverage_days < 14
+        })
+
+    return {
+        "forecast_period_days": forecast_days,
+        "forecasts": forecasts,
+        "items_needing_reorder": sum(1 for f in forecasts if f["needs_reorder"])
+    }
+
+
 @router.get("/forecasting/{item_id}", tags=["Demand Forecasting"])
 @limiter.limit("60/minute")
 def get_demand_forecast(
@@ -842,43 +879,6 @@ def get_demand_forecast(
         "recommended_stock_level": round(recommended_stock, 1),
         "recommended_order_date": recommended_order_date,
         "recommended_order_quantity": round(recommended_order_qty, 1) if recommended_order_qty else None
-    }
-
-
-@router.get("/forecasting/bulk", tags=["Demand Forecasting"])
-@limiter.limit("60/minute")
-def get_bulk_forecasts(
-    request: Request,
-    category_id: Optional[int] = None,
-    forecast_days: int = 30,
-    db: DbSession = None,
-):
-    """Get demand forecasts for multiple items"""
-    query = db.query(Product)
-    if category_id:
-        query = query.filter(Product.category_id == category_id)
-
-    items = query.limit(50).all()
-
-    forecasts = []
-    for item in items:
-        base_demand = random.uniform(30, 150)
-        current_qty = float(item.quantity) if hasattr(item, 'quantity') else 0
-        coverage_days = current_qty / max(1, base_demand / 30)
-
-        forecasts.append({
-            "stock_item_id": item.id,
-            "stock_item_name": item.name,
-            "forecasted_demand": round(base_demand, 1),
-            "current_stock": current_qty,
-            "coverage_days": round(coverage_days, 1),
-            "needs_reorder": coverage_days < 14
-        })
-
-    return {
-        "forecast_period_days": forecast_days,
-        "forecasts": forecasts,
-        "items_needing_reorder": sum(1 for f in forecasts if f["needs_reorder"])
     }
 
 
@@ -1902,8 +1902,8 @@ def get_supplier_performance(
 @limiter.limit("60/minute")
 def compare_suppliers_for_item(
     request: Request,
-    stock_item_id: int,
-    db: DbSession,
+    stock_item_id: int = Query(1, description="Stock item ID"),
+    db: DbSession = None,
 ):
     """Compare suppliers for a specific stock item"""
     stock_item = db.query(Product).filter(Product.id == stock_item_id).first()

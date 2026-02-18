@@ -693,7 +693,7 @@ class AccountingIntegrationService:
                 if txn_reference:
                     # Try to find PO by order number
                     po_by_ref = self.db.query(PurchaseOrder).filter(
-                        PurchaseOrder.venue_id == venue_id,
+                        PurchaseOrder.location_id == venue_id,
                         or_(
                             PurchaseOrder.order_number.contains(txn_reference),
                             func.cast(PurchaseOrder.id, String).contains(txn_reference)
@@ -714,7 +714,7 @@ class AccountingIntegrationService:
 
                     # Find POs with matching amount
                     po_by_amount = self.db.query(PurchaseOrder).filter(
-                        PurchaseOrder.venue_id == venue_id,
+                        PurchaseOrder.location_id == venue_id,
                         PurchaseOrder.total >= txn_amount - 0.01,
                         PurchaseOrder.total <= txn_amount + 0.01,
                         or_(
@@ -740,7 +740,7 @@ class AccountingIntegrationService:
                         if supplier.name.lower() in txn_description.lower():
                             # Find recent POs from this supplier with matching amount
                             po_by_supplier = self.db.query(PurchaseOrder).filter(
-                                PurchaseOrder.venue_id == venue_id,
+                                PurchaseOrder.location_id == venue_id,
                                 PurchaseOrder.supplier_id == supplier.id,
                                 PurchaseOrder.total >= txn_amount - 0.01,
                                 PurchaseOrder.total <= txn_amount + 0.01
@@ -919,7 +919,7 @@ class AccountingIntegrationService:
 
         # Cost of goods - estimate from purchase orders
         purchase_orders = self.db.query(PurchaseOrder).filter(
-            PurchaseOrder.venue_id == venue_id,
+            PurchaseOrder.location_id == venue_id,
             PurchaseOrder.order_date >= start_date,
             PurchaseOrder.order_date <= end_date,
             PurchaseOrder.status.in_(['received', 'completed', 'invoiced'])
@@ -1076,7 +1076,7 @@ class AccountingIntegrationService:
         # LIABILITIES
         # Accounts payable - unpaid purchase orders
         unpaid_pos = self.db.query(PurchaseOrder).filter(
-            PurchaseOrder.venue_id == venue_id,
+            PurchaseOrder.location_id == venue_id,
             PurchaseOrder.status.in_(['received', 'pending']),
             PurchaseOrder.order_date <= as_of_date
         ).all()
@@ -1193,14 +1193,14 @@ class AccountingIntegrationService:
 
         # AP change - change in accounts payable
         po_start = self.db.query(PurchaseOrder).filter(
-            PurchaseOrder.venue_id == venue_id,
+            PurchaseOrder.location_id == venue_id,
             PurchaseOrder.status.in_(['received', 'pending']),
             PurchaseOrder.order_date < start_date
         ).all()
         ap_start = sum(float(po.total or 0) for po in po_start)
 
         po_end = self.db.query(PurchaseOrder).filter(
-            PurchaseOrder.venue_id == venue_id,
+            PurchaseOrder.location_id == venue_id,
             PurchaseOrder.status.in_(['received', 'pending']),
             PurchaseOrder.order_date <= end_date
         ).all()
@@ -1211,7 +1211,7 @@ class AccountingIntegrationService:
         # Inventory change
         # Would need historical inventory snapshots - using purchase orders as proxy
         period_purchases = self.db.query(PurchaseOrder).filter(
-            PurchaseOrder.venue_id == venue_id,
+            PurchaseOrder.location_id == venue_id,
             PurchaseOrder.order_date >= start_date,
             PurchaseOrder.order_date <= end_date,
             PurchaseOrder.status.in_(['received', 'completed'])

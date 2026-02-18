@@ -55,7 +55,7 @@ class DynamicPricingService:
         # Get base item
         item = self.db.query(MenuItem).filter(
             MenuItem.id == item_id,
-            MenuItem.venue_id == venue_id
+            MenuItem.location_id == venue_id
         ).first()
         
         if not item:
@@ -237,7 +237,7 @@ class DynamicPricingService:
         
         # Popular if more than average orders
         avg_orders = total_orders / max(1, self.db.query(func.count(MenuItem.id)).filter(
-            MenuItem.venue_id == venue_id
+            MenuItem.location_id == venue_id
         ).scalar())
         
         return item_orders > avg_orders * 1.5

@@ -370,13 +370,17 @@ async def log_haccp_event(
 @limiter.limit("60/minute")
 async def get_haccp_report(
     request: Request,
-    start_date: datetime,
-    end_date: datetime,
+    start_date: Optional[datetime] = Query(None, description="Start date for report"),
+    end_date: Optional[datetime] = Query(None, description="End date for report"),
     venue_id: int = Query(1, description="Venue ID"),
     db: Session = Depends(get_db),
     current_user = Depends(get_current_user)
 ):
     """Generate HACCP compliance report for a date range"""
+    if not start_date:
+        start_date = datetime.now()
+    if not end_date:
+        end_date = datetime.now()
     service = AllergenNutritionService(db)
 
     # Use venue_id from current_user if available, otherwise use query param

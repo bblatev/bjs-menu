@@ -11,7 +11,7 @@ from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, List, Optional, Tuple
 from uuid import UUID, uuid4
 from sqlalchemy import select, and_, or_, func, desc
-from sqlalchemy.ext.asyncio import Session
+from sqlalchemy.orm import Session
 
 from app.models.gap_features_models import (
     IntegrationCredential, ZapierWebhook
@@ -37,7 +37,7 @@ class IntegrationCredentialService:
         from app.core.security import encrypt_data
 
         # Check if credential already exists
-        result = await self.db.execute(
+        result = self.db.execute(
             select(IntegrationCredential).where(
                 and_(
                     IntegrationCredential.venue_id == venue_id,
@@ -51,10 +51,10 @@ class IntegrationCredentialService:
 
         if existing:
             existing.encrypted_credentials = encrypted_credentials
-            existing.metadata = metadata or {}
+            existing.meta_data = metadata or {}
             existing.updated_at = datetime.now(timezone.utc)
-            await self.db.commit()
-            await self.db.refresh(existing)
+            self.db.commit()
+            self.db.refresh(existing)
             return existing
 
         credential = IntegrationCredential(
@@ -62,13 +62,13 @@ class IntegrationCredentialService:
             venue_id=venue_id,
             integration_type=integration_type,
             encrypted_credentials=encrypted_credentials,
-            metadata=metadata or {},
+            meta_data=metadata or {},
             is_active=True,
             created_at=datetime.now(timezone.utc)
         )
         self.db.add(credential)
-        await self.db.commit()
-        await self.db.refresh(credential)
+        self.db.commit()
+        self.db.refresh(credential)
         return credential
 
     async def get_credential(
@@ -79,7 +79,7 @@ class IntegrationCredentialService:
         """Retrieve and decrypt integration credentials."""
         from app.core.security import decrypt_data
 
-        result = await self.db.execute(
+        result = self.db.execute(
             select(IntegrationCredential).where(
                 and_(
                     IntegrationCredential.venue_id == venue_id,
@@ -102,7 +102,7 @@ class IntegrationCredentialService:
         integration_type: str
     ) -> bool:
         """Delete integration credentials."""
-        result = await self.db.execute(
+        result = self.db.execute(
             select(IntegrationCredential).where(
                 and_(
                     IntegrationCredential.venue_id == venue_id,
@@ -115,7 +115,7 @@ class IntegrationCredentialService:
         if credential:
             credential.is_active = False
             credential.encrypted_credentials = ""
-            await self.db.commit()
+            self.db.commit()
             return True
         return False
 
@@ -124,7 +124,7 @@ class IntegrationCredentialService:
         venue_id: UUID
     ) -> List[Dict[str, Any]]:
         """List all configured integrations for a venue."""
-        result = await self.db.execute(
+        result = self.db.execute(
             select(IntegrationCredential).where(
                 and_(
                     IntegrationCredential.venue_id == venue_id,
@@ -141,7 +141,7 @@ class IntegrationCredentialService:
                 "is_connected": True,
                 "connected_at": c.created_at.isoformat(),
                 "last_sync": c.last_sync_at.isoformat() if c.last_sync_at else None,
-                "metadata": c.metadata
+                "metadata": c.meta_data
             }
             for c in credentials
         ]
@@ -470,8 +470,8 @@ class ZapierService:
             created_at=datetime.now(timezone.utc)
         )
         self.db.add(webhook)
-        await self.db.commit()
-        await self.db.refresh(webhook)
+        self.db.commit()
+        self.db.refresh(webhook)
         return webhook
 
     async def delete_webhook(
@@ -480,7 +480,7 @@ class ZapierService:
         venue_id: UUID
     ) -> bool:
         """Delete a Zapier webhook."""
-        result = await self.db.execute(
+        result = self.db.execute(
             select(ZapierWebhook).where(
                 and_(
                     ZapierWebhook.id == webhook_id,
@@ -490,8 +490,8 @@ class ZapierService:
         )
         webhook = result.scalar_one_or_none()
         if webhook:
-            await self.db.delete(webhook)
-            await self.db.commit()
+            self.db.delete(webhook)
+            self.db.commit()
             return True
         return False
 
@@ -500,7 +500,7 @@ class ZapierService:
         venue_id: UUID
     ) -> List[ZapierWebhook]:
         """List all webhooks for a venue."""
-        result = await self.db.execute(
+        result = self.db.execute(
             select(ZapierWebhook).where(
                 and_(
                     ZapierWebhook.venue_id == venue_id,
@@ -519,7 +519,7 @@ class ZapierService:
         """Trigger all webhooks for an event type."""
         import httpx
 
-        result = await self.db.execute(
+        result = self.db.execute(
             select(ZapierWebhook).where(
                 and_(
                     ZapierWebhook.venue_id == venue_id,
@@ -583,7 +583,7 @@ class ZapierService:
                     "error": str(e)
                 })
 
-        await self.db.commit()
+        self.db.commit()
         return results
 
     def _matches_filters(
@@ -725,7 +725,7 @@ class AccountingSyncService:
 
         # Get sales data
         from app.models.orders import Order
-        result = await self.db.execute(
+        result = self.db.execute(
             select(Order).where(
                 and_(
                     Order.venue_id == self.venue_id,
@@ -795,10 +795,10 @@ class AccountingSyncService:
 
         # Get purchase orders
         from app.models.purchase_orders import PurchaseOrder
-        result = await self.db.execute(
+        result = self.db.execute(
             select(PurchaseOrder).where(
                 and_(
-                    PurchaseOrder.venue_id == self.venue_id,
+                    PurchaseOrder.location_id == self.venue_id,
                     PurchaseOrder.created_at >= start_date,
                     PurchaseOrder.created_at <= end_date,
                     PurchaseOrder.status == "received"

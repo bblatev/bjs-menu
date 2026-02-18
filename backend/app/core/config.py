@@ -148,6 +148,25 @@ class Settings(BaseSettings):
     qbo_environment: str = "sandbox"
 
     # ==========================================================================
+    # Xero Accounting
+    # ==========================================================================
+    xero_client_id: Optional[str] = None
+    xero_client_secret: Optional[str] = None
+    xero_redirect_uri: Optional[str] = None
+
+    # ==========================================================================
+    # Firebase Push Notifications
+    # ==========================================================================
+    firebase_credentials_path: Optional[str] = None
+
+    # ==========================================================================
+    # Bulgarian NRA
+    # ==========================================================================
+    nra_company_eik: str = ""
+    nra_company_name: str = ""
+    nra_vat_number: str = ""
+
+    # ==========================================================================
     # General
     # ==========================================================================
     environment: str = "development"

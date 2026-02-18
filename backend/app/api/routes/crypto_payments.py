@@ -2,7 +2,7 @@
 Cryptocurrency Payment API Endpoints
 Square 2025 feature: Bitcoin payments with zero transaction fees
 """
-from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks, Request
+from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks, Request, Query
 from sqlalchemy.orm import Session
 from typing import List, Optional, Dict, Any
 from datetime import datetime, timedelta, timezone
@@ -164,9 +164,9 @@ def generate_payment_uri(currency: str, address: str, amount: float, payment_id:
 
 @router.get("/")
 @limiter.limit("60/minute")
-async def get_crypto_payments_root(request: Request, db: Session = Depends(get_db)):
+async def get_crypto_payments_root(request: Request, db: Session = Depends(get_db), current_user: StaffUser = Depends(require_manager)):
     """Crypto payments overview."""
-    return await list_crypto_wallets(request=request, db=db)
+    return await list_crypto_wallets(request=request, db=db, current_user=current_user)
 
 
 @router.post("/wallets", response_model=CryptoWalletResponse)
@@ -319,9 +319,9 @@ async def get_crypto_rates(
 @limiter.limit("60/minute")
 async def convert_currency(
     request: Request,
-    amount: float,
-    from_currency: str = "BGN",
-    to_currency: str = "BTC",
+    amount: float = Query(0.0, description="Amount to convert"),
+    from_currency: str = Query("BGN", description="Source currency"),
+    to_currency: str = Query("BTC", description="Target currency"),
     current_user: StaffUser = Depends(get_current_user)
 ):
     """Convert between fiat and cryptocurrency"""

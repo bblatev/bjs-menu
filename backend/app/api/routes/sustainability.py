@@ -3,7 +3,7 @@ Sustainability API Endpoints
 Carbon footprint tracking, waste management, and sustainability reporting
 """
 
-from fastapi import APIRouter, Depends, Query, Body, Request
+from fastapi import APIRouter, Depends, Query, Body, Request, HTTPException
 from sqlalchemy.orm import Session
 from typing import List, Optional
 from datetime import datetime, date, timedelta
@@ -23,7 +23,7 @@ router = APIRouter()
 
 class CarbonFootprint(BaseModel):
     item_id: int
-    item_name: dict
+    item_name: str
     co2_kg_per_serving: float
     ingredients_breakdown: dict
     transport_impact: float
@@ -71,7 +71,7 @@ async def get_sustainability_root(request: Request, db: Session = Depends(get_db
 @limiter.limit("60/minute")
 def get_menu_carbon_footprints(
     request: Request,
-    venue_id: int,
+    venue_id: int = Query(1, description="Venue/location ID"),
     db: Session = Depends(get_db)
 ):
     """
@@ -171,22 +171,27 @@ def log_waste_event(
 @limiter.limit("60/minute")
 def get_waste_statistics(
     request: Request,
-    venue_id: int,
-    start_date: date = Query(...),
-    end_date: date = Query(...),
+    venue_id: int = Query(1, description="Venue/location ID"),
+    start_date: Optional[date] = Query(None, description="Start date"),
+    end_date: Optional[date] = Query(None, description="End date"),
     db: Session = Depends(get_db)
 ):
     """
     Get waste statistics for period
-    
+
     Returns:
     - Total waste by weight and cost
     - Breakdown by reason (spoilage, errors, returns)
     - Waste by category
     - Reduction recommendations
     """
+    if start_date is None:
+        start_date = date.today() - timedelta(days=30)
+    if end_date is None:
+        end_date = date.today()
+
     service = SustainabilityService(db)
-    
+
     stats = service.get_waste_statistics(
         venue_id=venue_id,
         start_date=datetime.combine(start_date, datetime.min.time()),
@@ -200,22 +205,27 @@ def get_waste_statistics(
 @limiter.limit("60/minute")
 def get_sustainability_report(
     request: Request,
-    venue_id: int,
-    start_date: date = Query(...),
-    end_date: date = Query(...),
+    venue_id: int = Query(1, description="Venue/location ID"),
+    start_date: Optional[date] = Query(None, description="Start date"),
+    end_date: Optional[date] = Query(None, description="End date"),
     db: Session = Depends(get_db)
 ):
     """
     Generate comprehensive sustainability report
-    
+
     Includes:
     - Carbon footprint analysis
     - Waste statistics
     - Overall sustainability score (A-D grade)
     - Improvement recommendations
     """
+    if start_date is None:
+        start_date = date.today() - timedelta(days=30)
+    if end_date is None:
+        end_date = date.today()
+
     service = SustainabilityService(db)
-    
+
     report = service.get_sustainability_report(
         venue_id=venue_id,
         start_date=datetime.combine(start_date, datetime.min.time()),
@@ -229,7 +239,7 @@ def get_sustainability_report(
 @limiter.limit("60/minute")
 def get_sustainable_vendors(
     request: Request,
-    venue_id: int,
+    venue_id: int = Query(1, description="Venue/location ID"),
     db: Session = Depends(get_db)
 ):
     """
@@ -290,22 +300,27 @@ def log_energy_usage(
 @limiter.limit("60/minute")
 def get_energy_statistics(
     request: Request,
-    venue_id: int,
-    start_date: date = Query(...),
-    end_date: date = Query(...),
+    venue_id: int = Query(1, description="Venue/location ID"),
+    start_date: Optional[date] = Query(None, description="Start date"),
+    end_date: Optional[date] = Query(None, description="End date"),
     db: Session = Depends(get_db)
 ):
     """
     Get energy usage statistics
-    
+
     Returns:
     - Total kWh consumed
     - Cost breakdown
     - CO2 emissions from energy use
     - Usage by source (grid vs solar)
     """
+    if start_date is None:
+        start_date = date.today() - timedelta(days=30)
+    if end_date is None:
+        end_date = date.today()
+
     service = SustainabilityService(db)
-    
+
     stats = service.get_energy_statistics(
         venue_id=venue_id,
         start_date=datetime.combine(start_date, datetime.min.time()),
@@ -319,7 +334,7 @@ def get_energy_statistics(
 @limiter.limit("60/minute")
 def get_sustainability_recommendations(
     request: Request,
-    venue_id: int,
+    venue_id: int = Query(1, description="Venue/location ID"),
     db: Session = Depends(get_db)
 ):
     """
@@ -345,7 +360,7 @@ def get_sustainability_recommendations(
 @limiter.limit("60/minute")
 def get_sustainability_dashboard(
     request: Request,
-    venue_id: int,
+    venue_id: int = Query(1, description="Venue/location ID"),
     db: Session = Depends(get_db)
 ):
     """
@@ -392,18 +407,29 @@ def get_sustainability_dashboard(
 @limiter.limit("60/minute")
 def compare_sustainability(
     request: Request,
-    venue_id: int,
-    period1_start: date = Query(...),
-    period1_end: date = Query(...),
-    period2_start: date = Query(...),
-    period2_end: date = Query(...),
+    venue_id: int = Query(1, description="Venue/location ID"),
+    period1_start: Optional[date] = Query(None, description="Period 1 start date"),
+    period1_end: Optional[date] = Query(None, description="Period 1 end date"),
+    period2_start: Optional[date] = Query(None, description="Period 2 start date"),
+    period2_end: Optional[date] = Query(None, description="Period 2 end date"),
     db: Session = Depends(get_db)
 ):
     """
     Compare sustainability metrics between two periods
-    
+
     Useful for tracking improvement over time
     """
+    today = date.today()
+    if period1_start is None:
+        period1_start = today.replace(day=1) - timedelta(days=1)
+        period1_start = period1_start.replace(day=1)
+    if period1_end is None:
+        period1_end = today.replace(day=1) - timedelta(days=1)
+    if period2_start is None:
+        period2_start = today.replace(day=1)
+    if period2_end is None:
+        period2_end = today
+
     service = SustainabilityService(db)
     
     report1 = service.get_sustainability_report(
@@ -452,7 +478,7 @@ def compare_sustainability(
 @limiter.limit("60/minute")
 def get_sustainability_certificates(
     request: Request,
-    venue_id: int,
+    venue_id: int = Query(1, description="Venue/location ID"),
     db: Session = Depends(get_db)
 ):
     """

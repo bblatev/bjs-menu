@@ -20,6 +20,7 @@ class StaffRoleEnum(str, Enum):
 
 class OrderStatusEnum(str, Enum):
     NEW = "new"
+    DRAFT = "draft"
     ACCEPTED = "accepted"
     PREPARING = "preparing"
     READY = "ready"
@@ -64,6 +65,7 @@ class AutoDiscountType(str, Enum):
     EARLY_BIRD = "early_bird"
     LATE_NIGHT = "late_night"
     WEATHER_BASED = "weather_based"
+    PERCENTAGE = "percentage"
 
 
 class GiftCardStatus(str, Enum):
@@ -335,10 +337,15 @@ class FloorPlanCreate(BaseModel):
 class FloorPlanResponse(BaseModel):
     id: int
     venue_id: int
-    areas: List[Dict[str, Any]]
-    table_positions: List[FloorPlanTablePosition]
+    name: Optional[str] = None
+    width: Optional[int] = None
+    height: Optional[int] = None
+    background_image: Optional[str] = None
+    areas: List[Dict[str, Any]] = []
+    tables: List[Dict[str, Any]] = []
+    table_positions: Optional[List[FloorPlanTablePosition]] = None
     created_at: datetime
-    updated_at: Optional[datetime]
+    updated_at: Optional[datetime] = None
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -706,7 +713,7 @@ class TableResponse(BaseModel):
 
 class VenueStationResponse(BaseModel):
     id: int
-    name: Dict[str, str]
+    name: Any  # JSON column: may be Dict[str, str] or plain string depending on DB backend
     station_type: str
     active: bool
 

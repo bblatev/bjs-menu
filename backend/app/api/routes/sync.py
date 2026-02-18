@@ -31,7 +31,7 @@ router = APIRouter()
 @limiter.limit("60/minute")
 def get_sync_root(request: Request, db: DbSession):
     """Sync status overview."""
-    return get_sync_changes(request=request, db=db)
+    return get_sync_changes(request=request, db=db, since=None)
 
 
 @router.get("/changes")

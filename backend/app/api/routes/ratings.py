@@ -75,7 +75,7 @@ _next_service_id = 1
 @limiter.limit("60/minute")
 def get_ratings_root(request: Request, db: DbSession):
     """Ratings overview."""
-    return get_item_ratings(request=request, db=db)
+    return get_item_ratings(request=request, db=db, menu_item_id=None, min_rating=None, max_rating=None, skip=0, limit=50)
 
 
 @router.post("/items", response_model=ItemRatingResponse, status_code=201)
@@ -191,16 +191,6 @@ def get_service_ratings(request: Request, db: DbSession, table_id: Optional[int]
     return ServiceRatingList(ratings=[ServiceRatingResponse(**r) for r in page], total=total, average=round(avg, 2))
 
 
-@router.get("/service/{rating_id}", response_model=ServiceRatingResponse)
-@limiter.limit("60/minute")
-def get_service_rating(request: Request, rating_id: int, db: DbSession):
-    """Get a specific service rating by ID."""
-    for r in _service_ratings:
-        if r["id"] == rating_id:
-            return ServiceRatingResponse(**r)
-    raise HTTPException(status_code=404, detail="Rating not found")
-
-
 @router.get("/service/stats", response_model=RatingStats)
 @limiter.limit("60/minute")
 def get_service_rating_stats(request: Request, db: DbSession, table_id: Optional[int] = None):
@@ -214,6 +204,16 @@ def get_service_rating_stats(request: Request, db: DbSession, table_id: Optional
             distribution[r["rating"]] += 1
     avg = sum(r["rating"] for r in ratings) / len(ratings)
     return RatingStats(total_ratings=len(ratings), average_rating=round(avg, 2), rating_distribution=distribution)
+
+
+@router.get("/service/{rating_id}", response_model=ServiceRatingResponse)
+@limiter.limit("60/minute")
+def get_service_rating(request: Request, rating_id: int, db: DbSession):
+    """Get a specific service rating by ID."""
+    for r in _service_ratings:
+        if r["id"] == rating_id:
+            return ServiceRatingResponse(**r)
+    raise HTTPException(status_code=404, detail="Rating not found")
 
 
 @router.put("/service/{rating_id}", response_model=ServiceRatingResponse)

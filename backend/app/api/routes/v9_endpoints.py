@@ -803,12 +803,16 @@ async def record_prime_cost(
 @limiter.limit("60/minute")
 async def get_prime_cost_dashboard(
     request: Request,
-    start_date: date,
-    end_date: date,
+    start_date: Optional[date] = Query(None, description="Start date (defaults to 30 days ago)"),
+    end_date: Optional[date] = Query(None, description="End date (defaults to today)"),
     db: Session = Depends(get_db),
     current_user: dict = Depends(get_current_user)
 ):
     """Get prime cost dashboard with trends and analysis"""
+    if start_date is None:
+        start_date = date.today() - timedelta(days=30)
+    if end_date is None:
+        end_date = date.today()
     venue_id = current_user.venue_id
     if not venue_id:
         raise HTTPException(status_code=400, detail="User has no venue assigned")
@@ -820,12 +824,16 @@ async def get_prime_cost_dashboard(
 async def get_item_profitability(
     request: Request,
     menu_item_id: int,
-    start_date: date,
-    end_date: date,
+    start_date: Optional[date] = Query(None, description="Start date (defaults to 30 days ago)"),
+    end_date: Optional[date] = Query(None, description="End date (defaults to today)"),
     db: Session = Depends(get_db),
     current_user: dict = Depends(get_current_user)
 ):
     """Calculate profitability metrics for a menu item"""
+    if start_date is None:
+        start_date = date.today() - timedelta(days=30)
+    if end_date is None:
+        end_date = date.today()
     venue_id = current_user.venue_id
     if not venue_id:
         raise HTTPException(status_code=400, detail="User has no venue assigned")
@@ -836,13 +844,17 @@ async def get_item_profitability(
 @limiter.limit("60/minute")
 async def get_profit_leaderboard(
     request: Request,
-    start_date: date,
-    end_date: date,
+    start_date: Optional[date] = Query(None, description="Start date (defaults to 30 days ago)"),
+    end_date: Optional[date] = Query(None, description="End date (defaults to today)"),
     limit: int = 20,
     db: Session = Depends(get_db),
     current_user: dict = Depends(get_current_user)
 ):
     """Get top and bottom performing items by profitability"""
+    if start_date is None:
+        start_date = date.today() - timedelta(days=30)
+    if end_date is None:
+        end_date = date.today()
     venue_id = current_user.venue_id
     if not venue_id:
         raise HTTPException(status_code=400, detail="User has no venue assigned")
@@ -934,12 +946,16 @@ async def investigate_abuse_alert(
 @limiter.limit("60/minute")
 async def get_abuse_analytics(
     request: Request,
-    start_date: date,
-    end_date: date,
+    start_date: Optional[date] = Query(None, description="Start date (defaults to 30 days ago)"),
+    end_date: Optional[date] = Query(None, description="End date (defaults to today)"),
     db: Session = Depends(get_db),
     current_user: dict = Depends(get_current_user)
 ):
     """Get abuse analytics for a period"""
+    if start_date is None:
+        start_date = date.today() - timedelta(days=30)
+    if end_date is None:
+        end_date = date.today()
     venue_id = current_user.venue_id
     if not venue_id:
         raise HTTPException(status_code=400, detail="User has no venue assigned")
@@ -973,7 +989,7 @@ async def get_guest_preferences(
     return GuestPreferencesService.get_guest_preferences(db, guest_id)
 
 
-@router.get("/crm/service-alerts/{guest_id}", response_model=Dict[str, Any], tags=["V9 - CRM"])
+@router.get("/crm/service-alerts/{guest_id}", response_model=List[Dict[str, Any]], tags=["V9 - CRM"])
 @limiter.limit("60/minute")
 async def get_service_alerts(
     request: Request,
@@ -1244,12 +1260,16 @@ async def acknowledge_temperature_alert(
 @limiter.limit("60/minute")
 async def get_haccp_compliance_report(
     request: Request,
-    start_date: date,
-    end_date: date,
+    start_date: Optional[date] = Query(None, description="Start date (defaults to 30 days ago)"),
+    end_date: Optional[date] = Query(None, description="End date (defaults to today)"),
     db: Session = Depends(get_db),
     current_user: dict = Depends(get_current_user)
 ):
     """Generate HACCP compliance report for inspections"""
+    if start_date is None:
+        start_date = date.today() - timedelta(days=30)
+    if end_date is None:
+        end_date = date.today()
     venue_id = current_user.venue_id
     if not venue_id:
         raise HTTPException(status_code=400, detail="User has no venue assigned")
@@ -1279,14 +1299,18 @@ async def record_pour(
 @limiter.limit("60/minute")
 async def get_pour_analytics(
     request: Request,
-    start_date: date,
-    end_date: date,
+    start_date: Optional[date] = Query(None, description="Start date (defaults to 30 days ago)"),
+    end_date: Optional[date] = Query(None, description="End date (defaults to today)"),
     product_id: Optional[int] = None,
     staff_id: Optional[int] = None,
     db: Session = Depends(get_db),
     current_user: dict = Depends(get_current_user)
 ):
     """Get pour accuracy analytics"""
+    if start_date is None:
+        start_date = date.today() - timedelta(days=30)
+    if end_date is None:
+        end_date = date.today()
     venue_id = current_user.venue_id
     if not venue_id:
         raise HTTPException(status_code=400, detail="User has no venue assigned")
@@ -1394,13 +1418,17 @@ async def archive_fiscal_receipt(
 @limiter.limit("60/minute")
 async def get_fiscal_archive(
     request: Request,
-    start_date: date,
-    end_date: date,
+    start_date: Optional[date] = Query(None, description="Start date (defaults to 30 days ago)"),
+    end_date: Optional[date] = Query(None, description="End date (defaults to today)"),
     receipt_number: Optional[str] = None,
     db: Session = Depends(get_db),
     current_user: dict = Depends(get_current_user)
 ):
     """Get fiscal archive for a period"""
+    if start_date is None:
+        start_date = date.today() - timedelta(days=30)
+    if end_date is None:
+        end_date = date.today()
     venue_id = current_user.venue_id
     if not venue_id:
         raise HTTPException(status_code=400, detail="User has no venue assigned")
@@ -1472,12 +1500,16 @@ async def log_age_verification(
 @limiter.limit("60/minute")
 async def get_age_verification_report(
     request: Request,
-    start_date: date,
-    end_date: date,
+    start_date: Optional[date] = Query(None, description="Start date (defaults to 30 days ago)"),
+    end_date: Optional[date] = Query(None, description="End date (defaults to today)"),
     db: Session = Depends(get_db),
     current_user: dict = Depends(get_current_user)
 ):
     """Get age verification report for compliance"""
+    if start_date is None:
+        start_date = date.today() - timedelta(days=30)
+    if end_date is None:
+        end_date = date.today()
     venue_id = current_user.venue_id
     if not venue_id:
         raise HTTPException(status_code=400, detail="User has no venue assigned")
@@ -1718,11 +1750,13 @@ async def get_menu_optimization_suggestions(
 @limiter.limit("60/minute")
 async def get_staffing_recommendations(
     request: Request,
-    target_date: date,
+    target_date: Optional[date] = Query(None, description="Target date (defaults to today)"),
     db: Session = Depends(get_db),
     current_user: dict = Depends(get_current_user)
 ):
     """Get AI-powered staffing recommendations based on historical data"""
+    if target_date is None:
+        target_date = date.today()
     venue_id = current_user.venue_id
     if not venue_id:
         raise HTTPException(status_code=400, detail="User has no venue assigned")

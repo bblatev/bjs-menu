@@ -34,7 +34,7 @@ async def create_split_bill(
     # Get table
     table = db.query(Table).filter(
         Table.id == data.table_id,
-        Table.venue_id == current_user.venue_id
+        Table.location_id == current_user.venue_id
     ).first()
 
 

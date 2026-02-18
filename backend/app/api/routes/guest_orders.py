@@ -1650,7 +1650,15 @@ def pay_all_table_orders(
     ).all()
 
     if not orders:
-        raise HTTPException(status_code=404, detail="No unpaid orders found for this table")
+        return {
+            "status": "success",
+            "orders_paid": 0,
+            "subtotal": 0,
+            "tip": 0,
+            "total_charged": 0,
+            "payment_method": payment_method,
+            "message": "No unpaid orders found for this table.",
+        }
 
     total_amount = sum(float(o.total) if o.total else 0 for o in orders)
 

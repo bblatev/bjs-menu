@@ -6,7 +6,7 @@ Recipe management, production orders, cost calculation, batch tracking
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy.orm import Session
 from typing import List, Optional, Dict
-from datetime import datetime, date
+from datetime import datetime, date, timedelta
 from decimal import Decimal
 
 from app.db.session import get_db
@@ -45,30 +45,30 @@ class RecipeCreate(BaseModel):
 class RecipeResponse(BaseModel):
     """Recipe details"""
     id: int
-    menu_item_id: int
-    menu_item_name: Dict
-    name: Dict
-    version: int
-    yield_quantity: float
-    yield_unit: str
-    preparation_time: Optional[int]
-    difficulty: str
-    instructions: Optional[Dict]
-    active: bool
-    ingredient_count: int
-    created_at: datetime
+    menu_item_id: Optional[int] = None
+    menu_item_name: Optional[Dict] = None
+    name: Optional[Dict] = None
+    version: Optional[int] = None
+    yield_quantity: Optional[float] = None
+    yield_unit: Optional[str] = None
+    preparation_time: Optional[int] = None
+    difficulty: Optional[str] = None
+    instructions: Optional[Dict] = None
+    active: Optional[bool] = None
+    ingredient_count: Optional[int] = None
+    created_at: Optional[datetime] = None
 
 
 class RecipeCostResponse(BaseModel):
     """Recipe cost breakdown"""
     recipe_id: int
-    recipe_name: Dict
-    total_cost: float
-    yield_quantity: float
-    yield_unit: str
-    cost_per_unit: float
-    ingredients: List[Dict]
-    pricing: Dict
+    recipe_name: Optional[Dict] = None
+    total_cost: float = 0.0
+    yield_quantity: float = 1.0
+    yield_unit: Optional[str] = None
+    cost_per_unit: float = 0.0
+    ingredients: List[Dict] = []
+    pricing: Optional[Dict] = None
 
 
 class ProductionOrderCreate(BaseModel):
@@ -195,7 +195,7 @@ def create_recipe(
             "menu_item_name": recipe.menu_item.name if recipe.menu_item else {},
             "name": recipe.name,
             "version": recipe.version,
-            "yield_quantity": float(recipe.yield_quantity),
+            "yield_quantity": float(recipe.yield_quantity or 0),
             "yield_unit": recipe.yield_unit,
             "preparation_time": recipe.preparation_time,
             "difficulty": recipe.difficulty,
@@ -228,19 +228,27 @@ def get_recipe(
     if not recipe:
         raise HTTPException(status_code=404, detail=f"Recipe {recipe_id} not found")
     
+    # Wrap name in dict for multilingual schema; get ingredient count safely
+    name_val = recipe.name
+    name_dict = name_val if isinstance(name_val, dict) else {"en": name_val} if name_val else {}
+    menu_name = None
+    if recipe.menu_item:
+        mn = recipe.menu_item.name
+        menu_name = mn if isinstance(mn, dict) else {"en": mn} if mn else {}
+    ingredients = getattr(recipe, 'ingredients', None) or getattr(recipe, 'lines', None) or []
     return {
         "id": recipe.id,
         "menu_item_id": recipe.menu_item_id,
-        "menu_item_name": recipe.menu_item.name if recipe.menu_item else {},
-        "name": recipe.name,
+        "menu_item_name": menu_name,
+        "name": name_dict,
         "version": recipe.version,
-        "yield_quantity": float(recipe.yield_quantity),
+        "yield_quantity": float(recipe.yield_quantity or 0),
         "yield_unit": recipe.yield_unit,
         "preparation_time": recipe.preparation_time,
         "difficulty": recipe.difficulty,
-        "instructions": recipe.instructions,
+        "instructions": recipe.instructions if isinstance(recipe.instructions, dict) else None,
         "active": recipe.active,
-        "ingredient_count": len(recipe.ingredients),
+        "ingredient_count": len(ingredients),
         "created_at": recipe.created_at
     }
 
@@ -286,7 +294,7 @@ def list_recipes(
             "menu_item_name": recipe.menu_item.name if recipe.menu_item else {},
             "name": recipe.name,
             "version": recipe.version,
-            "yield_quantity": float(recipe.yield_quantity),
+            "yield_quantity": float(recipe.yield_quantity or 0),
             "yield_unit": recipe.yield_unit,
             "preparation_time": recipe.preparation_time,
             "difficulty": recipe.difficulty,
@@ -392,7 +400,7 @@ def update_recipe(
             "menu_item_name": recipe.menu_item.name if recipe.menu_item else {},
             "name": recipe.name,
             "version": recipe.version,
-            "yield_quantity": float(recipe.yield_quantity),
+            "yield_quantity": float(recipe.yield_quantity or 0),
             "yield_unit": recipe.yield_unit,
             "preparation_time": recipe.preparation_time,
             "difficulty": recipe.difficulty,
@@ -709,14 +717,14 @@ def list_production_batches(
 @limiter.limit("60/minute")
 def get_production_report(
     request: Request,
-    venue_id: int,
-    start_date: date = Query(..., description="Report start date"),
-    end_date: date = Query(..., description="Report end date"),
+    venue_id: int = Query(1, description="Venue ID"),
+    start_date: Optional[date] = Query(None, description="Report start date"),
+    end_date: Optional[date] = Query(None, description="Report end date"),
     db: Session = Depends(get_db)
 ):
     """
     Get production report
-    
+
     Returns:
     - Total orders created
     - Orders completed
@@ -730,8 +738,12 @@ def get_production_report(
     - Cost analysis
     - Efficiency tracking
     """
+    if start_date is None:
+        start_date = date.today() - timedelta(days=30)
+    if end_date is None:
+        end_date = date.today()
     service = ProductionService(db)
-    
+
     start_datetime = datetime.combine(start_date, datetime.min.time())
     end_datetime = datetime.combine(end_date, datetime.max.time())
     

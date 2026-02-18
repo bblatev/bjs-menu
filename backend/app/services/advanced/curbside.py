@@ -151,20 +151,7 @@ class CurbsideService:
             "pending_arrivals": len(pending) - len(arrived),
             "arrived_waiting": len(arrived),
             "avg_wait_time_minutes": avg_wait,
-            "orders": [
-                {
-                    "id": o.id,
-                    "order_id": o.order_id,
-                    "customer_name": o.customer_name,
-                    "vehicle_description": o.vehicle_description,
-                    "vehicle_color": o.vehicle_color,
-                    "parking_spot": o.parking_spot,
-                    "arrived_at": o.customer_arrived_at.isoformat() if o.customer_arrived_at else None,
-                    "wait_minutes": int((datetime.now(timezone.utc) - (o.customer_arrived_at.replace(tzinfo=timezone.utc) if o.customer_arrived_at.tzinfo is None else o.customer_arrived_at)).total_seconds() / 60)
-                        if o.customer_arrived_at else None,
-                }
-                for o in arrived
-            ],
+            "orders": arrived,
         }
 
     def get_stats(

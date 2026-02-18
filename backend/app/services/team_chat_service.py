@@ -8,7 +8,7 @@ from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, List, Optional, Tuple
 from uuid import UUID, uuid4
 from sqlalchemy import select, and_, or_, func, desc
-from sqlalchemy.ext.asyncio import Session
+from sqlalchemy.orm import Session
 
 from app.models.gap_features_models import (
     ChatChannel, ChatMessage, MessageAcknowledgment, TeamAnnouncement
@@ -48,8 +48,8 @@ class TeamChatService:
             created_at=datetime.now(timezone.utc)
         )
         self.db.add(channel)
-        await self.db.commit()
-        await self.db.refresh(channel)
+        self.db.commit()
+        self.db.refresh(channel)
         return channel
 
     async def create_shift_channel(
@@ -62,7 +62,7 @@ class TeamChatService:
         channel_name = f"shift-{shift_date.strftime('%Y%m%d')}-{shift_name.lower().replace(' ', '-')}"
 
         # Check if channel already exists
-        result = await self.db.execute(
+        result = self.db.execute(
             select(ChatChannel).where(
                 and_(
                     ChatChannel.venue_id == venue_id,
@@ -93,7 +93,7 @@ class TeamChatService:
         channel_name = f"dm-{sorted_ids[0][:8]}-{sorted_ids[1][:8]}"
 
         # Check if channel already exists
-        result = await self.db.execute(
+        result = self.db.execute(
             select(ChatChannel).where(
                 and_(
                     ChatChannel.venue_id == venue_id,
@@ -114,7 +114,7 @@ class TeamChatService:
 
     async def get_channel(self, channel_id: UUID) -> Optional[ChatChannel]:
         """Get a channel by ID."""
-        result = await self.db.execute(
+        result = self.db.execute(
             select(ChatChannel).where(ChatChannel.id == channel_id)
         )
         return result.scalar_one_or_none()
@@ -126,7 +126,7 @@ class TeamChatService:
     ) -> List[ChatChannel]:
         """Get all channels a user has access to."""
         # Get public channels and channels user is a member of
-        result = await self.db.execute(
+        result = self.db.execute(
             select(ChatChannel).where(
                 and_(
                     ChatChannel.venue_id == venue_id,
@@ -152,7 +152,7 @@ class TeamChatService:
 
         if user_id not in channel.members:
             channel.members = channel.members + [user_id]
-            await self.db.commit()
+            self.db.commit()
         return True
 
     async def remove_member_from_channel(
@@ -167,7 +167,7 @@ class TeamChatService:
 
         if user_id in channel.members:
             channel.members = [m for m in channel.members if m != user_id]
-            await self.db.commit()
+            self.db.commit()
         return True
 
     # ==================== MESSAGING ====================
@@ -202,8 +202,8 @@ class TeamChatService:
         if channel:
             channel.last_message_at = datetime.now(timezone.utc)
 
-        await self.db.commit()
-        await self.db.refresh(message)
+        self.db.commit()
+        self.db.refresh(message)
         return message
 
     async def edit_message(
@@ -213,7 +213,7 @@ class TeamChatService:
         new_content: str
     ) -> Optional[ChatMessage]:
         """Edit a message (only by sender)."""
-        result = await self.db.execute(
+        result = self.db.execute(
             select(ChatMessage).where(
                 and_(
                     ChatMessage.id == message_id,
@@ -229,8 +229,8 @@ class TeamChatService:
         message.content = new_content
         message.is_edited = True
         message.edited_at = datetime.now(timezone.utc)
-        await self.db.commit()
-        await self.db.refresh(message)
+        self.db.commit()
+        self.db.refresh(message)
         return message
 
     async def delete_message(
@@ -245,13 +245,13 @@ class TeamChatService:
         if not is_admin:
             query = query.where(ChatMessage.sender_id == user_id)
 
-        result = await self.db.execute(query)
+        result = self.db.execute(query)
         message = result.scalar_one_or_none()
 
         if message:
             message.is_deleted = True
             message.deleted_at = datetime.now(timezone.utc)
-            await self.db.commit()
+            self.db.commit()
             return True
         return False
 
@@ -277,7 +277,7 @@ class TeamChatService:
 
         query = query.order_by(desc(ChatMessage.created_at)).limit(limit)
 
-        result = await self.db.execute(query)
+        result = self.db.execute(query)
         messages = list(result.scalars().all())
 
         # Return in chronological order
@@ -307,7 +307,7 @@ class TeamChatService:
 
         search_query = search_query.order_by(desc(ChatMessage.created_at)).limit(limit)
 
-        result = await self.db.execute(search_query)
+        result = self.db.execute(search_query)
         return list(result.scalars().all())
 
     # ==================== READ RECEIPTS ====================
@@ -319,7 +319,7 @@ class TeamChatService:
     ) -> MessageAcknowledgment:
         """Mark a message as read."""
         # Check if already acknowledged
-        result = await self.db.execute(
+        result = self.db.execute(
             select(MessageAcknowledgment).where(
                 and_(
                     MessageAcknowledgment.message_id == message_id,
@@ -339,8 +339,8 @@ class TeamChatService:
             read_at=datetime.now(timezone.utc)
         )
         self.db.add(ack)
-        await self.db.commit()
-        await self.db.refresh(ack)
+        self.db.commit()
+        self.db.refresh(ack)
         return ack
 
     async def mark_channel_read(
@@ -350,7 +350,7 @@ class TeamChatService:
     ) -> int:
         """Mark all messages in a channel as read."""
         # Get unread message IDs
-        result = await self.db.execute(
+        result = self.db.execute(
             select(ChatMessage.id).where(
                 ChatMessage.channel_id == channel_id
             ).except_(
@@ -371,7 +371,7 @@ class TeamChatService:
             )
             self.db.add(ack)
 
-        await self.db.commit()
+        self.db.commit()
         return len(unread_ids)
 
     async def get_unread_count(
@@ -380,7 +380,7 @@ class TeamChatService:
         user_id: UUID
     ) -> int:
         """Get unread message count for a channel."""
-        result = await self.db.execute(
+        result = self.db.execute(
             select(func.count(ChatMessage.id)).where(
                 and_(
                     ChatMessage.channel_id == channel_id,
@@ -425,8 +425,8 @@ class TeamChatService:
             created_at=datetime.now(timezone.utc)
         )
         self.db.add(announcement)
-        await self.db.commit()
-        await self.db.refresh(announcement)
+        self.db.commit()
+        self.db.refresh(announcement)
         return announcement
 
     async def acknowledge_announcement(
@@ -435,7 +435,7 @@ class TeamChatService:
         user_id: UUID
     ) -> bool:
         """Acknowledge an announcement."""
-        result = await self.db.execute(
+        result = self.db.execute(
             select(TeamAnnouncement).where(TeamAnnouncement.id == announcement_id)
         )
         announcement = result.scalar_one_or_none()
@@ -447,7 +447,7 @@ class TeamChatService:
             announcement.acknowledgments = announcement.acknowledgments + [
                 {"user_id": str(user_id), "acknowledged_at": datetime.now(timezone.utc).isoformat()}
             ]
-            await self.db.commit()
+            self.db.commit()
         return True
 
     async def get_active_announcements(
@@ -486,7 +486,7 @@ class TeamChatService:
             desc(TeamAnnouncement.created_at)
         )
 
-        result = await self.db.execute(query)
+        result = self.db.execute(query)
         return list(result.scalars().all())
 
     async def delete_announcement(
@@ -494,14 +494,14 @@ class TeamChatService:
         announcement_id: UUID
     ) -> bool:
         """Soft delete an announcement."""
-        result = await self.db.execute(
+        result = self.db.execute(
             select(TeamAnnouncement).where(TeamAnnouncement.id == announcement_id)
         )
         announcement = result.scalar_one_or_none()
 
         if announcement:
             announcement.is_active = False
-            await self.db.commit()
+            self.db.commit()
             return True
         return False
 
@@ -540,7 +540,7 @@ class LaborComplianceService:
             created_at=datetime.now(timezone.utc)
         )
         self.db.add(rule)
-        await self.db.commit()
+        self.db.commit()
 
         return {
             "id": str(rule.id),
@@ -561,7 +561,7 @@ class LaborComplianceService:
         from app.models.gap_features_models import LaborComplianceRule
 
         # Get all active rules for venue
-        result = await self.db.execute(
+        result = self.db.execute(
             select(LaborComplianceRule).where(
                 and_(
                     LaborComplianceRule.venue_id == venue_id,
@@ -685,7 +685,7 @@ class LaborComplianceService:
 
         week_end = week_start + timedelta(days=7)
 
-        result = await self.db.execute(
+        result = self.db.execute(
             select(Shift).where(
                 and_(
                     Shift.staff_id == staff_id,
@@ -707,7 +707,7 @@ class LaborComplianceService:
         """Get staff info for compliance checking."""
         from app.models import StaffUser as Staff
 
-        result = await self.db.execute(
+        result = self.db.execute(
             select(Staff).where(Staff.id == staff_id)
         )
         staff = result.scalar_one_or_none()
@@ -746,7 +746,7 @@ class LaborComplianceService:
             created_at=datetime.now(timezone.utc)
         )
         self.db.add(violation)
-        await self.db.commit()
+        self.db.commit()
 
         return {
             "id": str(violation.id),
@@ -778,7 +778,7 @@ class LaborComplianceService:
 
         query = query.order_by(desc(LaborComplianceViolation.created_at))
 
-        result = await self.db.execute(query)
+        result = self.db.execute(query)
         violations = result.scalars().all()
 
         return [

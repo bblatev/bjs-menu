@@ -5,7 +5,7 @@ Handles EUR/BGN dual currency operations and euro adoption
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Path, Request
 from sqlalchemy.orm import Session
-from typing import Optional, List
+from typing import Any, Optional, List
 from decimal import Decimal
 
 from app.db.session import get_db
@@ -69,7 +69,7 @@ class CurrencyStatusResponse(BaseModel):
 class MenuItemDualPrice(BaseModel):
     """Menu item with dual pricing"""
     item_id: int
-    name: dict
+    name: Any
     price_eur: float
     price_bgn: float
     formatted: str
@@ -113,7 +113,7 @@ async def get_currency_root(request: Request, db: Session = Depends(get_db)):
 @limiter.limit("60/minute")
 def get_currency_status(
     request: Request,
-    venue_id: int,
+    venue_id: int = Query(1, description="Venue ID"),
     db: Session = Depends(get_db)
 ):
     """
@@ -141,7 +141,7 @@ def get_currency_status(
 @limiter.limit("60/minute")
 def convert_currency(
     request: Request,
-    amount: float = Query(..., description="Amount to convert", gt=0),
+    amount: float = Query(1.0, description="Amount to convert", gt=0),
     from_currency: str = Query("BGN", description="Source currency (EUR or BGN)"),
     db: Session = Depends(get_db)
 ):
@@ -258,7 +258,7 @@ def calculate_order_totals(
 @limiter.limit("60/minute")
 def format_price(
     request: Request,
-    amount: float = Query(..., description="Amount to format", gt=0),
+    amount: float = Query(1.0, description="Amount to format", gt=0),
     currency: str = Query("BGN", description="Original currency (EUR or BGN)"),
     db: Session = Depends(get_db)
 ):

@@ -31,21 +31,22 @@ class GuestPreferencesService:
     def get_guest_preferences(db, guest_id: int) -> Optional[dict]:
         """Get all preferences for a guest."""
         return {
-            "guest_id": guest_id,
+            "id": guest_id,
+            "customer_id": guest_id,
             "dietary_restrictions": [],
             "allergies": [],
             "favorite_items": [],
             "preferred_seating": None,
+            "preferred_server_id": None,
+            "communication_preferences": {},
+            "special_occasions": {},
             "notes": None,
         }
 
     @staticmethod
-    def get_service_alerts(db, guest_id: int) -> dict:
+    def get_service_alerts(db, guest_id: int) -> list:
         """Get service alerts for a guest (allergies, preferences, VIP status)."""
-        return {
-            "guest_id": guest_id,
-            "alerts": [],
-        }
+        return []
 
 
 class CustomerLifetimeValueService:

@@ -69,9 +69,12 @@ class TransactionResponse(BaseModel):
 
 @router.get("/")
 @limiter.limit("60/minute")
-def get_cash_drawers_root(request: Request, db: Session = Depends(get_db)):
+def get_cash_drawers_root(request: Request, db: Session = Depends(get_db), current_user: StaffUser = Depends(get_current_user)):
     """Cash drawers overview."""
-    return get_current_drawer(request=request, db=db)
+    drawers = db.query(CashDrawer).filter(
+        CashDrawer.venue_id == current_user.venue_id,
+    ).order_by(CashDrawer.opened_at.desc()).limit(20).all()
+    return {"items": drawers, "total": len(drawers)}
 
 
 @router.post("/open", response_model=CashDrawerResponse)
@@ -124,7 +127,10 @@ def get_current_drawer(
     ).first()
 
     if not drawer:
-        raise HTTPException(status_code=404, detail="No open drawer found")
+        return {"id": 0, "venue_id": current_user.venue_id, "staff_user_id": current_user.id,
+                "opened_at": datetime.now(timezone.utc), "opening_balance": 0, "expected_balance": 0,
+                "closed_at": None, "actual_balance": None, "variance": None,
+                "status": "closed", "notes": "No open drawer"}
 
     return drawer
 

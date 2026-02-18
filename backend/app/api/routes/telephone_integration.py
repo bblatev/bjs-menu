@@ -145,9 +145,9 @@ call_notification_sockets: Dict[str, WebSocket] = {}
 
 @router.get("/")
 @limiter.limit("60/minute")
-async def get_telephone_root(request: Request, db: Session = Depends(get_db)):
+async def get_telephone_root(request: Request, db: Session = Depends(get_db), current_user: StaffUser = Depends(require_manager)):
     """Telephony integration status."""
-    return await list_pbx_connections(request=request, db=db)
+    return await list_pbx_connections(request=request, db=db, current_user=current_user)
 
 
 @router.post("/config", response_model=PBXConnectionResponse)
@@ -313,7 +313,7 @@ async def lookup_caller(
     # Search for customer
     customer = db.query(Customer).filter(
         Customer.phone.ilike(f"%{normalized[-10:]}%"),  # Last 10 digits
-        Customer.venue_id == current_user.venue_id
+        Customer.location_id == current_user.venue_id
     ).first()
 
     if not customer:
@@ -513,12 +513,12 @@ async def create_reservation_from_call(
 
     customer = db.query(Customer).filter(
         Customer.phone.ilike(f"%{normalized[-10:]}%"),
-        Customer.venue_id == current_user.venue_id
+        Customer.location_id == current_user.venue_id
     ).first()
 
     if not customer:
         customer = Customer(
-            venue_id=current_user.venue_id,
+            location_id=current_user.venue_id,
             name=data.customer_name,
             phone=data.phone_number
         )

@@ -375,7 +375,7 @@ def get_low_stock_report(
     request: Request,
     db: DbSession,
     current_user: CurrentUser,
-    location_id: int = Query(...),
+    location_id: int = Query(1, description="Location ID"),
 ):
     """
     Get detailed low stock report with reorder recommendations.

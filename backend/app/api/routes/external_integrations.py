@@ -3,7 +3,7 @@ from datetime import timezone
 External Integrations API Endpoints
 Connect to accounting systems, suppliers, and third-party services
 """
-from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks, Request
+from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks, Request, Query
 from sqlalchemy.orm import Session
 from typing import List, Optional, Dict, Any
 from datetime import date, datetime
@@ -500,7 +500,7 @@ async def get_sync_status(
 async def get_oauth_url(
     request: Request,
     provider: str,
-    redirect_uri: str,
+    redirect_uri: str = Query("", description="OAuth redirect URI"),
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(get_current_user)
 ):

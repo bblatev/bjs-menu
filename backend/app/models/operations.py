@@ -393,10 +393,13 @@ class ReferralProgram(Base):
     __table_args__ = {'extend_existing': True}
 
     id = Column(Integer, primary_key=True, index=True)
+    venue_id = Column(Integer, ForeignKey("venues.id"), nullable=True, index=True)
     name = Column(String(200), nullable=False)
     reward_type = Column(String(50), default="discount")
     reward_value = Column(Numeric(10, 2), default=0)
     referee_reward_value = Column(Numeric(10, 2), default=0)
+    is_active = Column(Boolean, default=True)
+    max_referrals_per_customer = Column(Integer, nullable=True)
     active = Column(Boolean, default=True)
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 

@@ -12,7 +12,7 @@ from typing import Any, Dict, List, Optional, Tuple
 from uuid import UUID, uuid4
 from urllib.parse import urlencode
 from sqlalchemy import select, and_, or_, func, desc
-from sqlalchemy.ext.asyncio import Session
+from sqlalchemy.orm import Session
 
 from app.models.gap_features_models import (
     SSOConfiguration, SSOSession, SSOProviderType
@@ -57,8 +57,8 @@ class SSOService:
             created_at=datetime.now(timezone.utc)
         )
         self.db.add(sso_config)
-        await self.db.commit()
-        await self.db.refresh(sso_config)
+        self.db.commit()
+        self.db.refresh(sso_config)
         return sso_config
 
     def _validate_config(self, provider_type: str, config: Dict[str, Any]) -> None:
@@ -94,7 +94,7 @@ class SSOService:
         if config_id:
             query = query.where(SSOConfiguration.id == config_id)
 
-        result = await self.db.execute(query)
+        result = self.db.execute(query)
         return result.scalar_one_or_none()
 
     async def get_sso_config_by_domain(
@@ -102,7 +102,7 @@ class SSOService:
         email_domain: str
     ) -> Optional[SSOConfiguration]:
         """Get SSO configuration by email domain."""
-        result = await self.db.execute(
+        result = self.db.execute(
             select(SSOConfiguration).where(
                 and_(
                     SSOConfiguration.is_active == True,
@@ -118,7 +118,7 @@ class SSOService:
         updates: Dict[str, Any]
     ) -> SSOConfiguration:
         """Update SSO configuration."""
-        result = await self.db.execute(
+        result = self.db.execute(
             select(SSOConfiguration).where(SSOConfiguration.id == config_id)
         )
         sso_config = result.scalar_one_or_none()
@@ -131,20 +131,20 @@ class SSOService:
                 setattr(sso_config, key, value)
 
         sso_config.updated_at = datetime.now(timezone.utc)
-        await self.db.commit()
-        await self.db.refresh(sso_config)
+        self.db.commit()
+        self.db.refresh(sso_config)
         return sso_config
 
     async def delete_sso_config(self, config_id: UUID) -> bool:
         """Delete (deactivate) SSO configuration."""
-        result = await self.db.execute(
+        result = self.db.execute(
             select(SSOConfiguration).where(SSOConfiguration.id == config_id)
         )
         sso_config = result.scalar_one_or_none()
 
         if sso_config:
             sso_config.is_active = False
-            await self.db.commit()
+            self.db.commit()
             return True
         return False
 
@@ -506,8 +506,8 @@ class SSOService:
             last_activity_at=datetime.now(timezone.utc)
         )
         self.db.add(session)
-        await self.db.commit()
-        await self.db.refresh(session)
+        self.db.commit()
+        self.db.refresh(session)
         return session
 
     async def get_sso_session(
@@ -515,7 +515,7 @@ class SSOService:
         session_id: UUID
     ) -> Optional[SSOSession]:
         """Get SSO session by ID."""
-        result = await self.db.execute(
+        result = self.db.execute(
             select(SSOSession).where(
                 and_(
                     SSOSession.id == session_id,
@@ -530,7 +530,7 @@ class SSOService:
         user_id: UUID
     ) -> Optional[SSOSession]:
         """Get active SSO session for a user."""
-        result = await self.db.execute(
+        result = self.db.execute(
             select(SSOSession).where(
                 and_(
                     SSOSession.user_id == user_id,
@@ -594,8 +594,8 @@ class SSOService:
         session.token_expires_at = datetime.now(timezone.utc) + timedelta(seconds=expires_in)
         session.last_activity_at = datetime.now(timezone.utc)
 
-        await self.db.commit()
-        await self.db.refresh(session)
+        self.db.commit()
+        self.db.refresh(session)
         return session
 
     async def end_sso_session(
@@ -603,7 +603,7 @@ class SSOService:
         session_id: UUID
     ) -> bool:
         """End an SSO session."""
-        result = await self.db.execute(
+        result = self.db.execute(
             select(SSOSession).where(SSOSession.id == session_id)
         )
         session = result.scalar_one_or_none()
@@ -611,7 +611,7 @@ class SSOService:
         if session:
             session.is_active = False
             session.ended_at = datetime.now(timezone.utc)
-            await self.db.commit()
+            self.db.commit()
             return True
         return False
 
@@ -619,7 +619,7 @@ class SSOService:
         """Clean up expired SSO sessions."""
         now = datetime.now(timezone.utc)
 
-        result = await self.db.execute(
+        result = self.db.execute(
             select(SSOSession).where(
                 and_(
                     SSOSession.is_active == True,
@@ -635,7 +635,7 @@ class SSOService:
             session.ended_at = now
             count += 1
 
-        await self.db.commit()
+        self.db.commit()
         return count
 
     # ==================== USER PROVISIONING ====================
@@ -662,7 +662,7 @@ class SSOService:
             raise ValueError(f"Email domain {domain} not allowed for this SSO configuration")
 
         # Check if user exists
-        result = await self.db.execute(
+        result = self.db.execute(
             select(Staff).where(Staff.email == email)
         )
         existing_user = result.scalar_one_or_none()
@@ -687,6 +687,6 @@ class SSOService:
             created_at=datetime.now(timezone.utc)
         )
         self.db.add(new_user)
-        await self.db.commit()
+        self.db.commit()
 
         return new_user.id, True

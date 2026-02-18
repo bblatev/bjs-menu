@@ -193,8 +193,8 @@ async def get_authorization_url(request: Request, state: str = "random_state"):
 async def oauth_callback(
     request: Request,
     db: DbSession,
-    code: str = Query(...),
-    realmId: str = Query(...),
+    code: str = Query("", description="OAuth authorization code"),
+    realmId: str = Query("", description="QuickBooks realm ID"),
     state: Optional[str] = Query(None),
 ):
     """
@@ -566,10 +566,14 @@ async def get_accounts(request: Request, account_type: Optional[str] = None):
 @limiter.limit("60/minute")
 async def get_profit_and_loss(
     request: Request,
-    start_date: str = Query(..., description="Start date (YYYY-MM-DD)"),
-    end_date: str = Query(..., description="End date (YYYY-MM-DD)"),
+    start_date: Optional[str] = Query(None, description="Start date (YYYY-MM-DD)"),
+    end_date: Optional[str] = Query(None, description="End date (YYYY-MM-DD)"),
 ):
     """Get profit and loss report from QuickBooks."""
+    if start_date is None:
+        start_date = (date.today().replace(day=1)).isoformat()
+    if end_date is None:
+        end_date = date.today().isoformat()
     qbo = get_quickbooks_service()
     if not qbo:
         raise HTTPException(status_code=503, detail="QuickBooks not configured")
@@ -586,9 +590,11 @@ async def get_profit_and_loss(
 @limiter.limit("60/minute")
 async def get_balance_sheet(
     request: Request,
-    as_of_date: str = Query(..., description="As of date (YYYY-MM-DD)"),
+    as_of_date: Optional[str] = Query(None, description="As of date (YYYY-MM-DD)"),
 ):
     """Get balance sheet report from QuickBooks."""
+    if as_of_date is None:
+        as_of_date = date.today().isoformat()
     qbo = get_quickbooks_service()
     if not qbo:
         raise HTTPException(status_code=503, detail="QuickBooks not configured")

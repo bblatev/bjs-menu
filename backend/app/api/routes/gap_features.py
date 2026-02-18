@@ -189,15 +189,15 @@ async def get_gap_features_root(request: Request, db: Session = Depends(get_db))
 @limiter.limit("60/minute")
 async def get_sync_package(
     request: Request,
-    device_id: str,
-    last_sync: Optional[datetime] = None,
+    device_id: str = Query("", description="Device ID"),
+    last_sync: Optional[datetime] = Query(None, description="Last sync timestamp"),
     include_menu: bool = True,
     include_tables: bool = True,
     include_staff: bool = True,
     include_inventory: bool = False,
     db: Session = Depends(get_db),
     current_user: Staff = Depends(get_current_user),
-    venue_id: UUID = Depends(get_current_venue)
+    venue_id: int = Depends(get_current_venue)
 ):
     """Get sync package for offline operation."""
     from app.services.mobile_offline_service import MobileOfflineService
@@ -221,7 +221,7 @@ async def process_offline_transactions(
     body: OfflineTransactionRequest,
     db: Session = Depends(get_db),
     current_user: Staff = Depends(get_current_user),
-    venue_id: UUID = Depends(get_current_venue)
+    venue_id: int = Depends(get_current_venue)
 ):
     """Process transactions created while offline."""
     from app.services.mobile_offline_service import MobileOfflineService
@@ -241,7 +241,7 @@ async def register_push_token(
     body: PushTokenRequest,
     db: Session = Depends(get_db),
     current_user: Staff = Depends(get_current_user),
-    venue_id: UUID = Depends(get_current_venue)
+    venue_id: int = Depends(get_current_venue)
 ):
     """Register a push notification token."""
     from app.services.mobile_offline_service import PushNotificationService
@@ -277,7 +277,7 @@ async def unregister_push_token(
 @limiter.limit("30/minute")
 async def send_push_notification(
     request: Request,
-    user_id: UUID,
+    user_id: str,
     body: NotificationRequest,
     db: Session = Depends(get_db),
     current_user: Staff = Depends(get_current_user)
@@ -349,7 +349,7 @@ async def register_developer(
 @limiter.limit("30/minute")
 async def create_api_key(
     request: Request,
-    developer_id: UUID,
+    developer_id: str,
     body: APIKeyRequest,
     db: Session = Depends(get_db)
 ):
@@ -377,7 +377,7 @@ async def create_api_key(
 @limiter.limit("60/minute")
 async def list_api_keys(
     request: Request,
-    developer_id: UUID,
+    developer_id: str,
     db: Session = Depends(get_db)
 ):
     """List all API keys for a developer."""
@@ -405,8 +405,8 @@ async def list_api_keys(
 @limiter.limit("30/minute")
 async def revoke_api_key(
     request: Request,
-    developer_id: UUID,
-    api_key_id: UUID,
+    developer_id: str,
+    api_key_id: str,
     db: Session = Depends(get_db)
 ):
     """Revoke an API key."""
@@ -421,7 +421,7 @@ async def revoke_api_key(
 @limiter.limit("60/minute")
 async def get_api_usage(
     request: Request,
-    developer_id: UUID,
+    developer_id: str,
     days: int = 30,
     db: Session = Depends(get_db)
 ):
@@ -443,7 +443,7 @@ async def get_api_usage(
 async def submit_app(
     request: Request,
     body: AppSubmissionRequest,
-    developer_id: UUID = Query(...),
+    developer_id: str = Query(...),
     db: Session = Depends(get_db)
 ):
     """Submit a new app to the marketplace."""
@@ -524,12 +524,12 @@ async def get_marketplace_app(
 @limiter.limit("30/minute")
 async def install_app(
     request: Request,
-    app_id: UUID,
+    app_id: str,
     granted_scopes: List[str] = Body(...),
     billing_cycle: str = "monthly",
     db: Session = Depends(get_db),
     current_user: Staff = Depends(get_current_user),
-    venue_id: UUID = Depends(get_current_venue)
+    venue_id: int = Depends(get_current_venue)
 ):
     """Install an app."""
     from app.services.developer_portal_service import MarketplaceService
@@ -552,9 +552,9 @@ async def install_app(
 @limiter.limit("30/minute")
 async def uninstall_app(
     request: Request,
-    app_id: UUID,
+    app_id: str,
     db: Session = Depends(get_db),
-    venue_id: UUID = Depends(get_current_venue)
+    venue_id: int = Depends(get_current_venue)
 ):
     """Uninstall an app."""
     from app.services.developer_portal_service import MarketplaceService
@@ -569,7 +569,7 @@ async def uninstall_app(
 async def get_installed_apps(
     request: Request,
     db: Session = Depends(get_db),
-    venue_id: UUID = Depends(get_current_venue)
+    venue_id: int = Depends(get_current_venue)
 ):
     """Get installed apps for the venue."""
     from app.services.developer_portal_service import MarketplaceService
@@ -597,7 +597,7 @@ async def get_installed_apps(
 async def list_integrations(
     request: Request,
     db: Session = Depends(get_db),
-    venue_id: UUID = Depends(get_current_venue)
+    venue_id: int = Depends(get_current_venue)
 ):
     """List configured integrations."""
     from app.services.third_party_integrations_service import IntegrationCredentialService
@@ -612,7 +612,7 @@ async def configure_integration(
     request: Request,
     body: IntegrationCredentialRequest,
     db: Session = Depends(get_db),
-    venue_id: UUID = Depends(get_current_venue)
+    venue_id: int = Depends(get_current_venue)
 ):
     """Configure an integration."""
     from app.services.third_party_integrations_service import IntegrationCredentialService
@@ -633,7 +633,7 @@ async def delete_integration(
     request: Request,
     integration_type: str,
     db: Session = Depends(get_db),
-    venue_id: UUID = Depends(get_current_venue)
+    venue_id: int = Depends(get_current_venue)
 ):
     """Delete an integration."""
     from app.services.third_party_integrations_service import IntegrationCredentialService
@@ -649,7 +649,7 @@ async def create_zapier_webhook(
     request: Request,
     body: ZapierWebhookRequest,
     db: Session = Depends(get_db),
-    venue_id: UUID = Depends(get_current_venue)
+    venue_id: int = Depends(get_current_venue)
 ):
     """Create a Zapier webhook."""
     from app.services.third_party_integrations_service import ZapierService
@@ -672,7 +672,7 @@ async def create_zapier_webhook(
 async def list_zapier_webhooks(
     request: Request,
     db: Session = Depends(get_db),
-    venue_id: UUID = Depends(get_current_venue)
+    venue_id: int = Depends(get_current_venue)
 ):
     """List Zapier webhooks."""
     from app.services.third_party_integrations_service import ZapierService
@@ -715,7 +715,7 @@ async def create_channel(
     body: ChannelCreateRequest,
     db: Session = Depends(get_db),
     current_user: Staff = Depends(get_current_user),
-    venue_id: UUID = Depends(get_current_venue)
+    venue_id: int = Depends(get_current_venue)
 ):
     """Create a chat channel."""
     from app.services.team_chat_service import TeamChatService
@@ -738,7 +738,7 @@ async def get_channels(
     request: Request,
     db: Session = Depends(get_db),
     current_user: Staff = Depends(get_current_user),
-    venue_id: UUID = Depends(get_current_venue)
+    venue_id: int = Depends(get_current_venue)
 ):
     """Get channels the user has access to."""
     from app.services.team_chat_service import TeamChatService
@@ -763,7 +763,7 @@ async def get_channels(
 @limiter.limit("30/minute")
 async def send_message(
     request: Request,
-    channel_id: UUID,
+    channel_id: str,
     body: MessageRequest,
     db: Session = Depends(get_db),
     current_user: Staff = Depends(get_current_user)
@@ -788,7 +788,7 @@ async def send_message(
 @limiter.limit("60/minute")
 async def get_messages(
     request: Request,
-    channel_id: UUID,
+    channel_id: str,
     limit: int = 50,
     before: Optional[datetime] = None,
     after: Optional[datetime] = None,
@@ -825,7 +825,7 @@ async def get_messages(
 @limiter.limit("30/minute")
 async def mark_channel_read(
     request: Request,
-    channel_id: UUID,
+    channel_id: str,
     db: Session = Depends(get_db),
     current_user: Staff = Depends(get_current_user)
 ):
@@ -844,7 +844,7 @@ async def create_announcement(
     body: AnnouncementRequest,
     db: Session = Depends(get_db),
     current_user: Staff = Depends(get_current_user),
-    venue_id: UUID = Depends(get_current_venue)
+    venue_id: int = Depends(get_current_venue)
 ):
     """Create a team announcement."""
     from app.services.team_chat_service import TeamChatService
@@ -870,7 +870,7 @@ async def get_announcements(
     request: Request,
     db: Session = Depends(get_db),
     current_user: Staff = Depends(get_current_user),
-    venue_id: UUID = Depends(get_current_venue)
+    venue_id: int = Depends(get_current_venue)
 ):
     """Get active announcements."""
     from app.services.team_chat_service import TeamChatService
@@ -901,7 +901,7 @@ async def get_announcements(
 @limiter.limit("30/minute")
 async def acknowledge_announcement(
     request: Request,
-    announcement_id: UUID,
+    announcement_id: str,
     db: Session = Depends(get_db),
     current_user: Staff = Depends(get_current_user)
 ):
@@ -921,7 +921,7 @@ async def create_compliance_rule(
     request: Request,
     body: ComplianceRuleRequest,
     db: Session = Depends(get_db),
-    venue_id: UUID = Depends(get_current_venue)
+    venue_id: int = Depends(get_current_venue)
 ):
     """Create a labor compliance rule."""
     from app.services.team_chat_service import LaborComplianceService
@@ -942,11 +942,11 @@ async def create_compliance_rule(
 @limiter.limit("30/minute")
 async def check_shift_compliance(
     request: Request,
-    staff_id: UUID,
+    staff_id: str,
     shift_start: datetime,
     shift_end: datetime,
     db: Session = Depends(get_db),
-    venue_id: UUID = Depends(get_current_venue)
+    venue_id: int = Depends(get_current_venue)
 ):
     """Check if a proposed shift complies with labor rules."""
     from app.services.team_chat_service import LaborComplianceService
@@ -969,7 +969,7 @@ async def get_violations(
     end_date: Optional[datetime] = None,
     status: Optional[str] = None,
     db: Session = Depends(get_db),
-    venue_id: UUID = Depends(get_current_venue)
+    venue_id: int = Depends(get_current_venue)
 ):
     """Get labor compliance violations."""
     from app.services.team_chat_service import LaborComplianceService
@@ -993,7 +993,7 @@ async def create_experiment(
     body: ExperimentRequest,
     db: Session = Depends(get_db),
     current_user: Staff = Depends(get_current_user),
-    venue_id: UUID = Depends(get_current_venue)
+    venue_id: int = Depends(get_current_venue)
 ):
     """Create an A/B experiment."""
     from app.services.ab_testing_service import ABTestingService
@@ -1021,7 +1021,7 @@ async def list_experiments(
     status: Optional[str] = None,
     experiment_type: Optional[str] = None,
     db: Session = Depends(get_db),
-    venue_id: UUID = Depends(get_current_venue)
+    venue_id: int = Depends(get_current_venue)
 ):
     """List experiments."""
     from app.services.ab_testing_service import ABTestingService
@@ -1051,7 +1051,7 @@ async def list_experiments(
 @limiter.limit("30/minute")
 async def start_experiment(
     request: Request,
-    experiment_id: UUID,
+    experiment_id: str,
     db: Session = Depends(get_db)
 ):
     """Start an experiment."""
@@ -1066,7 +1066,7 @@ async def start_experiment(
 @limiter.limit("30/minute")
 async def pause_experiment(
     request: Request,
-    experiment_id: UUID,
+    experiment_id: str,
     db: Session = Depends(get_db)
 ):
     """Pause an experiment."""
@@ -1081,7 +1081,7 @@ async def pause_experiment(
 @limiter.limit("30/minute")
 async def complete_experiment(
     request: Request,
-    experiment_id: UUID,
+    experiment_id: str,
     winner_variant: Optional[str] = None,
     db: Session = Depends(get_db)
 ):
@@ -1097,9 +1097,9 @@ async def complete_experiment(
 @limiter.limit("60/minute")
 async def get_variant(
     request: Request,
-    experiment_id: UUID,
-    user_id: str,
-    user_type: str = "customer",
+    experiment_id: str,
+    user_id: str = Query("", description="User ID"),
+    user_type: str = Query("customer", description="User type"),
     db: Session = Depends(get_db)
 ):
     """Get the variant assigned to a user."""
@@ -1114,7 +1114,7 @@ async def get_variant(
 @limiter.limit("30/minute")
 async def record_conversion(
     request: Request,
-    experiment_id: UUID,
+    experiment_id: str,
     body: ConversionRequest,
     db: Session = Depends(get_db)
 ):
@@ -1137,7 +1137,7 @@ async def record_conversion(
 @limiter.limit("60/minute")
 async def get_experiment_results(
     request: Request,
-    experiment_id: UUID,
+    experiment_id: str,
     db: Session = Depends(get_db)
 ):
     """Get experiment results and statistics."""
@@ -1156,7 +1156,7 @@ async def create_review_link(
     request: Request,
     body: ReviewLinkRequest,
     db: Session = Depends(get_db),
-    venue_id: UUID = Depends(get_current_venue)
+    venue_id: int = Depends(get_current_venue)
 ):
     """Create a review link."""
     from app.services.ab_testing_service import ReviewAutomationService
@@ -1175,7 +1175,7 @@ async def create_review_link(
 async def get_review_links(
     request: Request,
     db: Session = Depends(get_db),
-    venue_id: UUID = Depends(get_current_venue)
+    venue_id: int = Depends(get_current_venue)
 ):
     """Get review links."""
     from app.services.ab_testing_service import ReviewAutomationService
@@ -1191,7 +1191,7 @@ async def send_review_request(
     request: Request,
     body: ReviewRequestRequest,
     db: Session = Depends(get_db),
-    venue_id: UUID = Depends(get_current_venue)
+    venue_id: int = Depends(get_current_venue)
 ):
     """Send a review request."""
     from app.services.ab_testing_service import ReviewAutomationService
@@ -1213,7 +1213,7 @@ async def get_review_analytics(
     request: Request,
     days: int = 30,
     db: Session = Depends(get_db),
-    venue_id: UUID = Depends(get_current_venue)
+    venue_id: int = Depends(get_current_venue)
 ):
     """Get review request analytics."""
     from app.services.ab_testing_service import ReviewAutomationService
@@ -1233,7 +1233,7 @@ async def get_review_analytics(
 async def create_sso_config(
     request: Request,
     body: SSOConfigRequest,
-    tenant_id: UUID = Query(...),
+    tenant_id: str = Query(...),
     db: Session = Depends(get_db)
 ):
     """Create SSO configuration."""
@@ -1256,7 +1256,7 @@ async def create_sso_config(
 @limiter.limit("60/minute")
 async def get_sso_config(
     request: Request,
-    tenant_id: UUID,
+    tenant_id: str = Query("", description="Tenant ID"),
     db: Session = Depends(get_db)
 ):
     """Get SSO configuration."""
@@ -1281,8 +1281,8 @@ async def get_sso_config(
 @limiter.limit("60/minute")
 async def initiate_sso_login(
     request: Request,
-    tenant_id: UUID,
-    redirect_uri: str,
+    tenant_id: str = Query("", description="Tenant ID"),
+    redirect_uri: str = Query("", description="Redirect URI after login"),
     db: Session = Depends(get_db)
 ):
     """Initiate SSO login flow."""
@@ -1305,7 +1305,7 @@ async def initiate_sso_login(
 @limiter.limit("30/minute")
 async def handle_sso_callback(
     request: Request,
-    tenant_id: UUID,
+    tenant_id: str,
     code: Optional[str] = None,
     saml_response: Optional[str] = Body(None, alias="SAMLResponse"),
     redirect_uri: Optional[str] = None,
@@ -1354,7 +1354,7 @@ async def handle_sso_callback(
 @limiter.limit("30/minute")
 async def sso_logout(
     request: Request,
-    session_id: UUID,
+    session_id: str,
     db: Session = Depends(get_db)
 ):
     """End SSO session."""

@@ -2,7 +2,7 @@
 Multi-Terminal Bill Sharing API Endpoints
 TouchSale feature: Work with the same bill from any terminal
 """
-from fastapi import APIRouter, Depends, HTTPException, Request, status, WebSocket, WebSocketDisconnect
+from fastapi import APIRouter, Depends, HTTPException, Request, status, WebSocket, WebSocketDisconnect, Query
 from sqlalchemy.orm import Session
 from typing import List, Optional, Dict, Any
 from datetime import datetime, timezone
@@ -125,9 +125,9 @@ async def broadcast_order_update(order_id: int, update_data: Dict[str, Any], exc
 
 @router.get("/")
 @limiter.limit("60/minute")
-async def get_multi_terminal_root(request: Request, db: Session = Depends(get_db)):
+async def get_multi_terminal_root(request: Request, db: Session = Depends(get_db), current_user: StaffUser = Depends(get_current_user)):
     """Multi-terminal overview."""
-    return await list_active_terminals(request=request, db=db)
+    return await list_active_terminals(request=request, db=db, current_user=current_user)
 
 
 @router.post("/session/register")
@@ -359,7 +359,7 @@ async def get_order_lock_status(
 async def get_shared_order_view(
     request: Request,
     order_id: int,
-    terminal_id: str,
+    terminal_id: str = Query("", description="Terminal ID"),
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(get_current_user)
 ):

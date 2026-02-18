@@ -33,6 +33,7 @@ class ShiftStatus(str, enum.Enum):
 
 class OrderStatus(str, enum.Enum):
     NEW = "new"
+    DRAFT = "draft"
     ACCEPTED = "accepted"
     PREPARING = "preparing"
     READY = "ready"
@@ -163,7 +164,7 @@ class Order(Base):
     parent_order_id = Column(Integer, ForeignKey("orders.id"), nullable=True)  # For split checks
     order_group_id = Column(String(100), nullable=True, index=True)  # Links multi-station orders
     order_number = Column(String(50), unique=True, nullable=False, index=True)
-    status = Column(Enum(OrderStatus), default=OrderStatus.NEW)
+    status = Column(Enum(OrderStatus, values_callable=lambda x: [e.value for e in x]), default=OrderStatus.NEW)
 
     # Totals
     subtotal = Column(Float, default=0.0)
@@ -274,7 +275,7 @@ class OrderEvent(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     order_id = Column(Integer, ForeignKey("orders.id"), nullable=False, index=True)
-    status = Column(Enum(OrderStatus), nullable=False)
+    status = Column(Enum(OrderStatus, values_callable=lambda x: [e.value for e in x]), nullable=False)
     notes = Column(Text, nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     
@@ -570,7 +571,7 @@ class ReservationDeposit(Base):
     currency = Column(String(10), default="BGN")
 
     # Status tracking
-    status = Column(Enum(DepositStatus), default=DepositStatus.pending)
+    status = Column(Enum(DepositStatus, values_callable=lambda x: [e.value for e in x]), default=DepositStatus.pending)
     payment_link = Column(String(500), nullable=True)
 
     # Collection info
@@ -627,7 +628,7 @@ class StaffShift(Base):
     total_break_minutes = Column(Integer, default=0)
     total_worked_minutes = Column(Integer, nullable=True)
 
-    status = Column(Enum(ShiftStatus), default=ShiftStatus.SCHEDULED)
+    status = Column(Enum(ShiftStatus, values_callable=lambda x: [e.value for e in x]), default=ShiftStatus.SCHEDULED)
     notes = Column(Text, nullable=True)
 
     # Assignment
@@ -1123,7 +1124,7 @@ class Payment(Base):
     card_brand = Column(String(20), nullable=True)
     auth_code = Column(String(50), nullable=True)
     reference_id = Column(String(100), nullable=True)
-    status = Column(Enum(PaymentStatus), default=PaymentStatus.COMPLETED)
+    status = Column(Enum(PaymentStatus, values_callable=lambda x: [e.value for e in x]), default=PaymentStatus.COMPLETED)
     processed_by = Column(Integer, ForeignKey("staff_users.id"), nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 

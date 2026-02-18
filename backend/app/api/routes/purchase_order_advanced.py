@@ -11,7 +11,7 @@ Complete REST API for:
 - Enhanced Quality Control
 """
 
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy.orm import Session
 from typing import Optional, List
 from datetime import date
@@ -108,7 +108,7 @@ def create_supplier_return(
 @limiter.limit("60/minute")
 def list_supplier_returns(
     request: Request,
-    venue_id: int,
+    venue_id: int = Query(1, description="Venue ID"),
     supplier_id: Optional[int] = None,
     status: Optional[ReturnStatus] = None,
     skip: int = 0,
@@ -218,7 +218,7 @@ def create_credit_note(
 @limiter.limit("60/minute")
 def list_credit_notes(
     request: Request,
-    venue_id: int,
+    venue_id: int = Query(1, description="Venue ID"),
     supplier_id: Optional[int] = None,
     status: Optional[CreditNoteStatus] = None,
     with_balance_only: bool = False,
@@ -332,7 +332,7 @@ def create_blanket_order(
 @limiter.limit("60/minute")
 def list_blanket_orders(
     request: Request,
-    venue_id: int,
+    venue_id: int = Query(1, description="Venue ID"),
     supplier_id: Optional[int] = None,
     status: Optional[BlanketOrderStatus] = None,
     skip: int = 0,
@@ -440,7 +440,7 @@ def create_requisition(
 @limiter.limit("60/minute")
 def list_requisitions(
     request: Request,
-    venue_id: int,
+    venue_id: int = Query(1, description="Venue ID"),
     status: Optional[RequisitionStatus] = None,
     requested_by: Optional[int] = None,
     skip: int = 0,
@@ -614,7 +614,7 @@ def create_supplier_payment(
 @limiter.limit("60/minute")
 def list_supplier_payments(
     request: Request,
-    venue_id: int,
+    venue_id: int = Query(1, description="Venue ID"),
     supplier_id: Optional[int] = None,
     status: Optional[str] = None,
     skip: int = 0,
@@ -637,7 +637,7 @@ def list_supplier_payments(
 def get_supplier_balance(
     request: Request,
     supplier_id: int,
-    venue_id: int,
+    venue_id: int = Query(1, description="Venue ID"),
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(get_current_user)
 ):
@@ -650,7 +650,7 @@ def get_supplier_balance(
 @limiter.limit("60/minute")
 def get_aging_report(
     request: Request,
-    venue_id: int,
+    venue_id: int = Query(1, description="Venue ID"),
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(get_current_user)
 ):
@@ -690,7 +690,7 @@ def create_payment_terms(
 @limiter.limit("60/minute")
 def list_payment_terms(
     request: Request,
-    venue_id: int,
+    venue_id: int = Query(1, description="Venue ID"),
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(get_current_user)
 ):
@@ -722,7 +722,7 @@ def create_qc_checklist(
 @limiter.limit("60/minute")
 def list_qc_checklists(
     request: Request,
-    venue_id: int,
+    venue_id: int = Query(1, description="Venue ID"),
     category: Optional[str] = None,
     supplier_id: Optional[int] = None,
     db: Session = Depends(get_db),
@@ -757,7 +757,7 @@ def create_qc_inspection(
 @limiter.limit("60/minute")
 def list_qc_inspections(
     request: Request,
-    venue_id: int,
+    venue_id: int = Query(1, description="Venue ID"),
     grn_id: Optional[int] = None,
     status: Optional[QCStatus] = None,
     skip: int = 0,
@@ -807,7 +807,7 @@ def create_quality_issue(
 @limiter.limit("60/minute")
 def list_quality_issues(
     request: Request,
-    venue_id: int,
+    venue_id: int = Query(1, description="Venue ID"),
     supplier_id: Optional[int] = None,
     status: Optional[str] = None,
     severity: Optional[str] = None,
@@ -875,7 +875,7 @@ def create_reorder_config(
 @limiter.limit("60/minute")
 def list_reorder_configs(
     request: Request,
-    venue_id: int,
+    venue_id: int = Query(1, description="Venue ID"),
     stock_item_id: Optional[int] = None,
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(get_current_user)
@@ -931,7 +931,7 @@ def check_reorder_levels(
 @limiter.limit("60/minute")
 def list_reorder_alerts(
     request: Request,
-    venue_id: int,
+    venue_id: int = Query(1, description="Venue ID"),
     priority: Optional[str] = None,
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(get_current_user)
@@ -989,7 +989,7 @@ def create_delivery_schedule(
 @limiter.limit("60/minute")
 def list_delivery_schedules(
     request: Request,
-    purchase_order_id: int,
+    purchase_order_id: int = Query(1, description="Purchase order ID"),
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(get_current_user)
 ):
@@ -1016,7 +1016,7 @@ def create_backorder(
 @limiter.limit("60/minute")
 def list_backorders(
     request: Request,
-    venue_id: int,
+    venue_id: int = Query(1, description="Venue ID"),
     status: Optional[str] = None,
     purchase_order_id: Optional[int] = None,
     db: Session = Depends(get_db),
@@ -1068,7 +1068,7 @@ def create_consolidated_order(
 @limiter.limit("60/minute")
 def list_consolidated_orders(
     request: Request,
-    tenant_id: int,
+    tenant_id: int = Query(1, description="Tenant ID"),
     status: Optional[ConsolidatedOrderStatus] = None,
     supplier_id: Optional[int] = None,
     skip: int = 0,
@@ -1194,7 +1194,7 @@ def create_debit_note(
 @limiter.limit("60/minute")
 def list_debit_notes(
     request: Request,
-    venue_id: int,
+    venue_id: int = Query(1, description="Venue ID"),
     supplier_id: Optional[int] = None,
     status: Optional[str] = None,
     skip: int = 0,

@@ -91,12 +91,16 @@ async def record_prime_cost(
 @limiter.limit("60/minute")
 async def get_prime_cost_dashboard(
     request: Request,
-    venue_id: int,
-    start_date: date = Query(default_factory=lambda: date.today() - timedelta(days=30)),
-    end_date: date = Query(default_factory=date.today),
+    venue_id: int = Query(1, description="Venue/location ID"),
+    start_date: Optional[date] = Query(None, description="Start date (defaults to 30 days ago)"),
+    end_date: Optional[date] = Query(None, description="End date (defaults to today)"),
     db: Session = Depends(get_db)
 ):
     """Get prime cost dashboard with trends and alerts"""
+    if start_date is None:
+        start_date = date.today() - timedelta(days=30)
+    if end_date is None:
+        end_date = date.today()
     return PrimeCostService.get_prime_cost_dashboard(
         db=db,
         venue_id=venue_id,
@@ -158,7 +162,7 @@ async def check_for_abuse(
 @limiter.limit("60/minute")
 async def get_abuse_alerts(
     request: Request,
-    venue_id: int,
+    venue_id: int = Query(1, description="Venue/location ID"),
     pending_only: bool = True,
     staff_id: Optional[int] = None,
     db: Session = Depends(get_db)
@@ -196,12 +200,16 @@ async def investigate_abuse_alert(
 @limiter.limit("60/minute")
 async def get_abuse_analytics(
     request: Request,
-    venue_id: int,
-    start_date: date = Query(default_factory=lambda: date.today() - timedelta(days=30)),
-    end_date: date = Query(default_factory=date.today),
+    venue_id: int = Query(1, description="Venue/location ID"),
+    start_date: Optional[date] = Query(None, description="Start date (defaults to 30 days ago)"),
+    end_date: Optional[date] = Query(None, description="End date (defaults to today)"),
     db: Session = Depends(get_db)
 ):
     """Get abuse detection analytics"""
+    if start_date is None:
+        start_date = date.today() - timedelta(days=30)
+    if end_date is None:
+        end_date = date.today()
     return AbuseDetectionService.get_abuse_analytics(
         db=db,
         venue_id=venue_id,
@@ -269,7 +277,7 @@ async def get_service_alerts(
 async def get_customer_clv(
     request: Request,
     customer_id: int,
-    venue_id: int,
+    venue_id: int = Query(1, description="Venue/location ID"),
     db: Session = Depends(get_db)
 ):
     """Get customer lifetime value"""
@@ -305,7 +313,7 @@ async def update_clv_from_order(
 @limiter.limit("60/minute")
 async def get_at_risk_customers(
     request: Request,
-    venue_id: int,
+    venue_id: int = Query(1, description="Venue/location ID"),
     risk_threshold: float = 0.6,
     limit: int = 50,
     db: Session = Depends(get_db)
@@ -335,7 +343,7 @@ async def get_customer_segments(
 async def get_segment_customers(
     request: Request,
     segment: str,
-    venue_id: int,
+    venue_id: int = Query(1, description="Venue/location ID"),
     limit: int = 100,
     db: Session = Depends(get_db)
 ):
@@ -412,7 +420,7 @@ async def get_vip_status(
 async def get_personalized_recommendations(
     request: Request,
     customer_id: int,
-    venue_id: int,
+    venue_id: int = Query(1, description="Venue/location ID"),
     limit: int = 5,
     db: Session = Depends(get_db)
 ):
@@ -524,7 +532,7 @@ async def get_temperature_history(
 @limiter.limit("60/minute")
 async def get_temperature_alerts(
     request: Request,
-    venue_id: int,
+    venue_id: int = Query(1, description="Venue/location ID"),
     unacknowledged_only: bool = True,
     db: Session = Depends(get_db)
 ):
@@ -559,12 +567,16 @@ async def acknowledge_temperature_alert(
 @limiter.limit("60/minute")
 async def get_haccp_report(
     request: Request,
-    venue_id: int,
-    start_date: date = Query(default_factory=lambda: date.today() - timedelta(days=7)),
-    end_date: date = Query(default_factory=date.today),
+    venue_id: int = Query(1, description="Venue/location ID"),
+    start_date: Optional[date] = Query(None, description="Start date (defaults to 7 days ago)"),
+    end_date: Optional[date] = Query(None, description="End date (defaults to today)"),
     db: Session = Depends(get_db)
 ):
     """Get HACCP compliance report"""
+    if start_date is None:
+        start_date = date.today() - timedelta(days=7)
+    if end_date is None:
+        end_date = date.today()
     return TemperatureMonitoringService.get_haccp_compliance_report(
         db=db,
         venue_id=venue_id,
@@ -641,7 +653,7 @@ async def create_audit_log(
 @limiter.limit("60/minute")
 async def verify_audit_chain(
     request: Request,
-    venue_id: int,
+    venue_id: int = Query(1, description="Venue/location ID"),
     start_id: Optional[int] = None,
     end_id: Optional[int] = None,
     db: Session = Depends(get_db)
@@ -659,7 +671,7 @@ async def verify_audit_chain(
 @limiter.limit("60/minute")
 async def get_audit_logs(
     request: Request,
-    venue_id: int,
+    venue_id: int = Query(1, description="Venue/location ID"),
     entity_type: Optional[str] = None,
     entity_id: Optional[int] = None,
     staff_id: Optional[int] = None,
@@ -710,11 +722,15 @@ async def get_archived_receipts(
     request: Request,
     venue_id: int,
     receipt_number: Optional[str] = None,
-    start_date: date = Query(default_factory=lambda: date.today() - timedelta(days=30)),
-    end_date: date = Query(default_factory=date.today),
+    start_date: Optional[date] = Query(None, description="Start date (defaults to 30 days ago)"),
+    end_date: Optional[date] = Query(None, description="End date (defaults to today)"),
     db: Session = Depends(get_db)
 ):
     """Retrieve archived fiscal receipts"""
+    if start_date is None:
+        start_date = date.today() - timedelta(days=30)
+    if end_date is None:
+        end_date = date.today()
     return FiscalArchiveService.get_fiscal_archive(
         db=db,
         venue_id=venue_id,
@@ -755,7 +771,7 @@ async def create_nra_export(
 @limiter.limit("60/minute")
 async def get_nra_exports(
     request: Request,
-    venue_id: int,
+    venue_id: int = Query(1, description="Venue/location ID"),
     limit: int = 20,
     db: Session = Depends(get_db)
 ):
@@ -879,7 +895,7 @@ async def record_actual_value(
 async def get_prediction_accuracy(
     request: Request,
     model_id: int,
-    venue_id: int,
+    venue_id: int = Query(1, description="Venue/location ID"),
     days: int = 30,
     db: Session = Depends(get_db)
 ):
@@ -922,7 +938,7 @@ async def create_automation_rule(
 @limiter.limit("60/minute")
 async def get_automation_rules(
     request: Request,
-    venue_id: int,
+    venue_id: int = Query(1, description="Venue/location ID"),
     active_only: bool = True,
     db: Session = Depends(get_db)
 ):
@@ -971,12 +987,14 @@ async def get_menu_optimization_suggestions(
 @limiter.limit("60/minute")
 async def get_staffing_recommendations(
     request: Request,
-    venue_id: int,
-    start_date: date = Query(default_factory=date.today),
+    venue_id: int = Query(1, description="Venue/location ID"),
+    start_date: Optional[date] = Query(None, description="Start date (defaults to today)"),
     days: int = 7,
     db: Session = Depends(get_db)
 ):
     """Get AI-powered staffing recommendations"""
+    if start_date is None:
+        start_date = date.today()
     return StaffingRecommendationService.get_staffing_recommendations(
         db=db,
         venue_id=venue_id,
@@ -1132,7 +1150,7 @@ async def complete_training(
 async def get_staff_training_status(
     request: Request,
     staff_id: int,
-    venue_id: int,
+    venue_id: int = Query(1, description="Venue/location ID"),
     db: Session = Depends(get_db)
 ):
     """Get training status for staff member"""
@@ -1143,7 +1161,7 @@ async def get_staff_training_status(
 @limiter.limit("60/minute")
 async def get_expiring_certifications(
     request: Request,
-    venue_id: int,
+    venue_id: int = Query(1, description="Venue/location ID"),
     days: int = 30,
     db: Session = Depends(get_db)
 ):
@@ -1214,7 +1232,7 @@ async def deactivate_crisis_mode(
 @limiter.limit("60/minute")
 async def get_active_crisis_mode(
     request: Request,
-    venue_id: int,
+    venue_id: int = Query(1, description="Venue/location ID"),
     db: Session = Depends(get_db)
 ):
     """Get currently active crisis mode"""
@@ -1247,7 +1265,7 @@ async def create_feature_flag(
 async def check_feature_flag(
     request: Request,
     flag_name: str,
-    venue_id: int,
+    venue_id: int = Query(1, description="Venue/location ID"),
     user_id: Optional[int] = None,
     db: Session = Depends(get_db)
 ):
@@ -1456,7 +1474,7 @@ async def generate_table_qr(
     # Get venue_id from table
     from app.models import Table
     table = db.query(Table).filter(Table.id == data.table_id).first()
-    venue_id = table.venue_id if table else 1
+    venue_id = table.location_id if table else 1
 
     return QRSelfServiceService.generate_table_qr(
         venue_id=venue_id,

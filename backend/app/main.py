@@ -15,7 +15,12 @@ from starlette.middleware.base import BaseHTTPMiddleware
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 
+from fastapi.responses import RedirectResponse
+
 from app.core.rate_limit import limiter
+from app.core.metrics import MetricsMiddleware, metrics
+from app.core.cache import redis_cache
+from app.core.alerting import alert_manager
 
 from app.api.routes import api_router
 from app.core.config import settings
@@ -42,7 +47,7 @@ PUBLIC_PATH_PREFIXES = [
     "/api/v1/menu-items",        # Guest menu browsing
     "/api/v1/menu/categories",   # Guest menu browsing
     "/api/v1/menu/items",        # Guest menu browsing
-    "/ws/",                      # WebSocket (has its own auth)
+    "/ws/",                      # WebSocket (JWT enforced in endpoint handlers)
 ]
 
 PUBLIC_EXACT_PATHS = [
@@ -180,6 +185,16 @@ else:
 logger = logging.getLogger(__name__)
 auth_logger = logging.getLogger("auth")
 request_logger = logging.getLogger("requests")
+
+
+class HTTPSRedirectMiddleware(BaseHTTPMiddleware):
+    """Redirect HTTP to HTTPS in production (behind reverse proxy)."""
+
+    async def dispatch(self, request: Request, call_next):
+        if not settings.debug and request.headers.get("x-forwarded-proto") == "http":
+            url = request.url.replace(scheme="https")
+            return RedirectResponse(url=str(url), status_code=301)
+        return await call_next(request)
 
 
 class SecurityHeadersMiddleware(BaseHTTPMiddleware):
@@ -460,7 +475,59 @@ async def lifespan(app: FastAPI):
         if retention_db:
             retention_db.close()
 
+    # Initialize Redis cache
+    redis_cache.initialize(getattr(settings, 'redis_url', None))
+
+    # Initialize Firebase push notifications
+    try:
+        from app.services.firebase_service import firebase_push
+        firebase_creds = getattr(settings, 'firebase_credentials_path', None)
+        if firebase_creds:
+            firebase_push.initialize(firebase_creds)
+    except Exception as e:
+        logger.debug(f"Firebase not initialized: {e}")
+
+    # Start background cleanup task for abandoned guest orders
+    import asyncio
+
+    async def _periodic_guest_order_cleanup():
+        """Run guest order cleanup every 10 minutes."""
+        while True:
+            try:
+                await asyncio.sleep(600)  # 10 minutes
+                from app.services.guest_order_cleanup_service import run_guest_order_cleanup
+                result = run_guest_order_cleanup()
+                if result.get("cleaned_up", 0) > 0:
+                    logger.info(f"Periodic cleanup: {result['cleaned_up']} abandoned orders expired")
+            except asyncio.CancelledError:
+                break
+            except Exception as e:
+                logger.warning(f"Periodic guest order cleanup error: {e}")
+
+    cleanup_task = asyncio.create_task(_periodic_guest_order_cleanup())
+    logger.info("Background guest order cleanup started (runs every 10 minutes)")
+
+    # Start task scheduler
+    from app.services.scheduler_service import scheduler
+    scheduler_task = asyncio.create_task(scheduler.start())
+    logger.info("Task scheduler started")
+
     yield
+
+    # Stop scheduler
+    scheduler.stop()
+    scheduler_task.cancel()
+    try:
+        await scheduler_task
+    except asyncio.CancelledError:
+        pass
+
+    # Cancel background tasks on shutdown
+    cleanup_task.cancel()
+    try:
+        await cleanup_task
+    except asyncio.CancelledError:
+        pass
 
     logger.info("Shutting down Inventory Management System")
 
@@ -497,6 +564,13 @@ app.add_middleware(
     expose_headers=["X-Request-ID"],
     max_age=600,  # Cache preflight for 10 minutes
 )
+
+# Metrics middleware (Prometheus-compatible)
+app.add_middleware(MetricsMiddleware)
+
+# HTTPS redirect middleware (production only)
+if not settings.debug:
+    app.add_middleware(HTTPSRedirectMiddleware)
 
 # Security headers middleware
 app.add_middleware(SecurityHeadersMiddleware)
@@ -590,38 +664,102 @@ def root():
     }
 
 
-# WebSocket endpoints for real-time updates
+@app.get("/metrics")
+def prometheus_metrics():
+    """Prometheus-compatible metrics endpoint."""
+    from starlette.responses import PlainTextResponse
+    return PlainTextResponse(metrics.get_prometheus_metrics(), media_type="text/plain")
+
+
+@app.get("/api/v1/scheduler/status")
+def scheduler_status():
+    """Get background task scheduler status."""
+    from app.services.scheduler_service import scheduler
+    return {"tasks": scheduler.get_status()}
+
+
+@app.get("/api/v1/alerts")
+def get_alerts(level: Optional[str] = None, limit: int = 20):
+    """Get recent system alerts."""
+    return {"alerts": alert_manager.get_recent(limit=limit, level=level)}
+
+
+# ===== WebSocket Authentication Helper =====
+
+async def _authenticate_websocket(
+    websocket: WebSocket,
+    token: Optional[str],
+    channel_name: str,
+) -> Optional[int]:
+    """Authenticate a WebSocket connection. Returns user_id or None (rejected).
+
+    All WebSocket channels REQUIRE a valid JWT token. Connections without
+    a token or with an invalid/expired token are rejected with 1008 Policy Violation.
+    """
+    if not token:
+        logger.warning(f"WebSocket rejected for '{channel_name}': no token provided")
+        await websocket.close(code=status.WS_1008_POLICY_VIOLATION)
+        return None
+
+    payload = decode_access_token(token)
+    if not payload:
+        logger.warning(f"WebSocket rejected for '{channel_name}': invalid/expired token")
+        await websocket.close(code=status.WS_1008_POLICY_VIOLATION)
+        return None
+
+    # Check token blacklist (Redis-backed session invalidation)
+    jti = payload.get("jti")
+    if jti:
+        try:
+            import redis as _redis
+            redis_url = getattr(settings, 'redis_url', None)
+            if redis_url:
+                r = _redis.from_url(redis_url, socket_connect_timeout=1)
+                if r.get(f"token_blacklist:{jti}"):
+                    logger.warning(f"WebSocket rejected for '{channel_name}': token blacklisted")
+                    await websocket.close(code=status.WS_1008_POLICY_VIOLATION)
+                    return None
+        except Exception:
+            pass  # Redis unavailable, skip blacklist check
+
+    user_id = int(payload.get("sub", 0))
+    if not user_id:
+        logger.warning(f"WebSocket rejected for '{channel_name}': no user ID in token")
+        await websocket.close(code=status.WS_1008_POLICY_VIOLATION)
+        return None
+
+    return user_id
+
+
+async def _ws_loop(websocket: WebSocket, channel: str, user_id: int):
+    """Standard WebSocket receive loop with ping/pong support."""
+    if not await ws_manager.connect(websocket, channel, user_id=user_id):
+        return
+
+    try:
+        while True:
+            data = await websocket.receive_text()
+            if data == "ping":
+                ws_manager.update_ping(websocket)
+                await websocket.send_text("pong")
+    except WebSocketDisconnect:
+        ws_manager.disconnect(websocket, channel)
+    except Exception as e:
+        logger.error(f"WebSocket error in {channel}: {e}", exc_info=True)
+        ws_manager.disconnect(websocket, channel)
+
+
+# WebSocket endpoints for real-time updates (ALL require JWT authentication)
 @app.websocket("/ws/waiter-calls")
 async def websocket_waiter_calls(
     websocket: WebSocket,
     token: Optional[str] = Query(None)
 ):
-    """WebSocket endpoint for real-time waiter call updates.
-
-    Optional token query parameter for authenticated connections.
-    """
-    user_id = None
-    if token:
-        payload = decode_access_token(token)
-        if payload:
-            user_id = int(payload.get("sub", 0))
-
-    if not await ws_manager.connect(websocket, "waiter-calls", user_id=user_id):
+    """WebSocket endpoint for real-time waiter call updates. Requires JWT token."""
+    user_id = await _authenticate_websocket(websocket, token, "waiter-calls")
+    if user_id is None:
         return
-
-    try:
-        while True:
-            # Keep connection alive, listen for any client messages
-            data = await websocket.receive_text()
-            # Echo back or handle ping/pong
-            if data == "ping":
-                ws_manager.update_ping(websocket)
-                await websocket.send_text("pong")
-    except WebSocketDisconnect:
-        ws_manager.disconnect(websocket, "waiter-calls")
-    except Exception as e:
-        logger.error(f"WebSocket error in waiter-calls: {e}", exc_info=True)
-        ws_manager.disconnect(websocket, "waiter-calls")
+    await _ws_loop(websocket, "waiter-calls", user_id)
 
 
 @app.websocket("/ws/kitchen")
@@ -629,27 +767,11 @@ async def websocket_kitchen(
     websocket: WebSocket,
     token: Optional[str] = Query(None)
 ):
-    """WebSocket endpoint for real-time kitchen updates."""
-    user_id = None
-    if token:
-        payload = decode_access_token(token)
-        if payload:
-            user_id = int(payload.get("sub", 0))
-
-    if not await ws_manager.connect(websocket, "kitchen", user_id=user_id):
+    """WebSocket endpoint for real-time kitchen updates. Requires JWT token."""
+    user_id = await _authenticate_websocket(websocket, token, "kitchen")
+    if user_id is None:
         return
-
-    try:
-        while True:
-            data = await websocket.receive_text()
-            if data == "ping":
-                ws_manager.update_ping(websocket)
-                await websocket.send_text("pong")
-    except WebSocketDisconnect:
-        ws_manager.disconnect(websocket, "kitchen")
-    except Exception as e:
-        logger.error(f"WebSocket error in kitchen: {e}", exc_info=True)
-        ws_manager.disconnect(websocket, "kitchen")
+    await _ws_loop(websocket, "kitchen", user_id)
 
 
 @app.websocket("/ws/orders")
@@ -657,27 +779,11 @@ async def websocket_orders(
     websocket: WebSocket,
     token: Optional[str] = Query(None)
 ):
-    """WebSocket endpoint for real-time order updates."""
-    user_id = None
-    if token:
-        payload = decode_access_token(token)
-        if payload:
-            user_id = int(payload.get("sub", 0))
-
-    if not await ws_manager.connect(websocket, "orders", user_id=user_id):
+    """WebSocket endpoint for real-time order updates. Requires JWT token."""
+    user_id = await _authenticate_websocket(websocket, token, "orders")
+    if user_id is None:
         return
-
-    try:
-        while True:
-            data = await websocket.receive_text()
-            if data == "ping":
-                ws_manager.update_ping(websocket)
-                await websocket.send_text("pong")
-    except WebSocketDisconnect:
-        ws_manager.disconnect(websocket, "orders")
-    except Exception as e:
-        logger.error(f"WebSocket error in orders: {e}", exc_info=True)
-        ws_manager.disconnect(websocket, "orders")
+    await _ws_loop(websocket, "orders", user_id)
 
 
 @app.websocket("/api/v1/ws/venue/{venue_id}")
@@ -687,37 +793,22 @@ async def websocket_venue(
     channels: str = "general",
     token: Optional[str] = Query(None)
 ):
-    """WebSocket endpoint for venue-specific real-time updates with channel support.
+    """WebSocket endpoint for venue-specific real-time updates. Requires JWT token."""
+    user_id = await _authenticate_websocket(websocket, token, f"venue-{venue_id}")
+    if user_id is None:
+        return
 
-    Args:
-        venue_id: The venue ID to connect to
-        channels: Comma-separated list of channels to subscribe to
-        token: Optional JWT token for authentication
-    """
-    # Authenticate if token provided
-    user_id = None
-    if token:
-        payload = decode_access_token(token)
-        if payload:
-            user_id = int(payload.get("sub", 0))
-        else:
-            logger.warning(f"Invalid WebSocket token for venue {venue_id}")
-            await websocket.close(code=status.WS_1008_POLICY_VIOLATION)
-            return
-
-    channel_list = [ch.strip() for ch in channels.split(",") if ch.strip()][:10]  # Limit channels
+    channel_list = [ch.strip() for ch in channels.split(",") if ch.strip()][:10]
     primary_channel = f"venue-{venue_id}"
 
     if not await ws_manager.connect(websocket, primary_channel, user_id=user_id):
         return
 
-    # Subscribe to additional channels (don't re-accept the websocket)
     for channel in channel_list:
         if channel not in ["general", primary_channel]:
             await ws_manager.connect(websocket, channel, user_id=user_id, accept=False)
 
     try:
-        # Send connection confirmation
         await websocket.send_json({
             "event": "connected",
             "data": {"venue_id": venue_id, "channels": channel_list, "user_id": user_id},
@@ -727,7 +818,6 @@ async def websocket_venue(
         while True:
             data = await websocket.receive_text()
 
-            # Enforce message size limit
             if len(data) > ws_manager.MAX_MESSAGE_SIZE:
                 logger.warning(f"WebSocket message too large from venue {venue_id}")
                 continue
@@ -743,9 +833,9 @@ async def websocket_venue(
                         "timestamp": datetime.now(timezone.utc).isoformat()
                     })
                 elif event_type == "subscribe":
-                    new_channels = message.get("channels", [])[:10]  # Limit
+                    new_channels = message.get("channels", [])[:10]
                     for ch in new_channels:
-                        if isinstance(ch, str) and len(ch) <= 64:  # Validate channel name
+                        if isinstance(ch, str) and len(ch) <= 64:
                             await ws_manager.connect(websocket, ch, user_id=user_id, accept=False)
                 elif event_type == "unsubscribe":
                     remove_channels = message.get("channels", [])

@@ -191,9 +191,11 @@ class MenuItem(Base, SoftDeleteMixin):
 
     allergens = Column(JSON, nullable=True)
     modifiers = Column(JSON, nullable=True)
+    recipe_json = Column(JSON, nullable=True)  # Stores photos, nutrition, and recipe data as JSON
 
     location_id = Column(Integer, ForeignKey("locations.id"), nullable=True)
     pos_item_id = Column(String(50), nullable=True)
+    category_id = Column(Integer, ForeignKey("menu_categories.id"), nullable=True)  # FK to category
     recipe_id = Column(Integer, ForeignKey("recipes.id"), nullable=True)  # Link to recipe for stock deduction
 
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))

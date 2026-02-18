@@ -253,6 +253,35 @@ class MarketingAutomationService:
             "criteria": criteria
         }
 
+    def list_automations(self, venue_id: int = None) -> List[Dict[str, Any]]:
+        """List marketing automations (stub)."""
+        return []
+
+    def list_campaigns(self, venue_id: int = None, status: str = None) -> List[Dict[str, Any]]:
+        """List marketing campaigns (stub)."""
+        return []
+
+    def get_campaign_stats(self, campaign_id: str) -> Dict[str, Any]:
+        """Get campaign statistics (stub)."""
+        return {
+            "campaign_id": campaign_id,
+            "sent": 0,
+            "opened": 0,
+            "clicked": 0,
+            "converted": 0,
+            "open_rate": 0.0,
+            "click_rate": 0.0,
+            "conversion_rate": 0.0
+        }
+
+    def get_segment_customers(self, venue_id: int = None, segment_type: str = None) -> List[Dict[str, Any]]:
+        """Get customers in a segment (stub)."""
+        return []
+
+    def get_templates(self) -> List[Dict[str, Any]]:
+        """Get campaign templates (stub)."""
+        return []
+
 
 class AutomatedTriggerService:
     """Manage automated marketing triggers."""
@@ -659,3 +688,37 @@ class LoyaltyService:
             "available_reward_value": reward_value,
             "member_since": loyalty.first_visit_at
         }
+
+
+    def list_automations(self, venue_id: int = None) -> List[Dict[str, Any]]:
+        """List marketing automations (stub)."""
+        return []
+
+    def list_campaigns(self, venue_id: int = None, status: str = None) -> List[Dict[str, Any]]:
+        """List marketing campaigns (stub)."""
+        return []
+
+    def get_campaign_stats(self, campaign_id: str) -> Dict[str, Any]:
+        """Get campaign statistics (stub)."""
+        return {
+            "campaign_id": campaign_id,
+            "sent": 0,
+            "opened": 0,
+            "clicked": 0,
+            "converted": 0,
+            "open_rate": 0.0,
+            "click_rate": 0.0,
+            "conversion_rate": 0.0
+        }
+
+    def get_segment_customers(self, venue_id: int = None, segment_type: str = None) -> List[Dict[str, Any]]:
+        """Get customers in a segment (stub)."""
+        return []
+
+    def get_templates(self) -> List[Dict[str, Any]]:
+        """Get campaign templates (stub)."""
+        return []
+
+
+# Alias for backward-compatible imports
+MarketingService = MarketingAutomationService

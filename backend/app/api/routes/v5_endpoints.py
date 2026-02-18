@@ -174,7 +174,6 @@ async def list_sms_campaigns(
 ):
     """List SMS campaigns"""
     query = db.query(MarketingCampaign).filter(
-        MarketingCampaign.venue_id == venue_id,
         MarketingCampaign.campaign_type == "sms"
     )
 
@@ -190,8 +189,8 @@ async def list_sms_campaigns(
                 "id": c.id,
                 "name": c.name,
                 "status": c.status,
-                "recipients": c.sent_count,
-                "delivered": c.delivered_count,
+                "recipients": c.total_sent or 0,
+                "delivered": c.total_delivered or 0,
                 "created_at": c.created_at.isoformat() if c.created_at else None
             }
             for c in campaigns
@@ -987,8 +986,8 @@ async def get_benchmark_summary(
     ).scalar() or 0
 
     active_staff_count = db.query(func.count(StaffUser.id)).filter(
-        StaffUser.venue_id == venue_id,
-        StaffUser.active == True
+        StaffUser.location_id == venue_id,
+        StaffUser.is_active == True
     ).scalar() or 0
 
     # Estimate labor cost (assuming 8 hours/day, 20 days, 15 BGN/hour average)
@@ -1357,6 +1356,94 @@ async def create_deposit_request(
     }
 
 
+@router.get("/deposits/settings")
+@limiter.limit("60/minute")
+async def get_deposit_settings(
+    request: Request,
+    venue_id: int = Query(1),
+    db: Session = Depends(get_db)
+):
+    """Get deposit settings for venue"""
+    venue_settings = db.query(VenueSettings).filter(VenueSettings.venue_id == venue_id).first()
+
+    default_settings = {
+        "deposits_enabled": True,
+        "default_amount": 50.00,
+        "min_party_size": 6,
+        "required_peak_hours": True,
+        "peak_hours_start": "18:00",
+        "peak_hours_end": "22:00",
+        "weekend_required": True,
+        "currency": "BGN"
+    }
+
+    if venue_settings and venue_settings.settings_data:
+        deposit_settings = venue_settings.settings_data.get("deposit_settings", {})
+        return {**default_settings, **deposit_settings, "venue_id": venue_id}
+
+    return {**default_settings, "venue_id": venue_id}
+
+
+@router.put("/deposits/settings")
+@limiter.limit("30/minute")
+async def update_deposit_settings(
+    request: Request,
+    venue_id: int = Query(1),
+    deposits_enabled: Optional[bool] = Body(None),
+    default_amount: Optional[float] = Body(None),
+    min_party_size: Optional[int] = Body(None),
+    required_peak_hours: Optional[bool] = Body(None),
+    peak_hours_start: Optional[str] = Body(None),
+    peak_hours_end: Optional[str] = Body(None),
+    weekend_required: Optional[bool] = Body(None),
+    currency: Optional[str] = Body(None),
+    db: Session = Depends(get_db)
+):
+    """Update deposit settings for venue"""
+    venue_settings = db.query(VenueSettings).filter(VenueSettings.venue_id == venue_id).first()
+
+    if not venue_settings:
+        venue_settings = VenueSettings(venue_id=venue_id, settings_data={})
+        db.add(venue_settings)
+
+    current_settings = venue_settings.settings_data or {}
+    deposit_settings = current_settings.get("deposit_settings", {
+        "deposits_enabled": True,
+        "default_amount": 50.00,
+        "min_party_size": 6,
+        "required_peak_hours": True,
+        "peak_hours_start": "18:00",
+        "peak_hours_end": "22:00",
+        "weekend_required": True,
+        "currency": "BGN"
+    })
+
+    if deposits_enabled is not None:
+        deposit_settings["deposits_enabled"] = deposits_enabled
+    if default_amount is not None:
+        deposit_settings["default_amount"] = default_amount
+    if min_party_size is not None:
+        deposit_settings["min_party_size"] = min_party_size
+    if required_peak_hours is not None:
+        deposit_settings["required_peak_hours"] = required_peak_hours
+    if peak_hours_start is not None:
+        deposit_settings["peak_hours_start"] = peak_hours_start
+    if peak_hours_end is not None:
+        deposit_settings["peak_hours_end"] = peak_hours_end
+    if weekend_required is not None:
+        deposit_settings["weekend_required"] = weekend_required
+    if currency is not None:
+        deposit_settings["currency"] = currency
+
+    current_settings["deposit_settings"] = deposit_settings
+    venue_settings.settings_data = current_settings
+
+    db.commit()
+    db.refresh(venue_settings)
+
+    return {**deposit_settings, "venue_id": venue_id}
+
+
 @router.get("/deposits/{deposit_id}")
 @limiter.limit("60/minute")
 async def get_deposit(
@@ -1562,101 +1649,6 @@ async def get_reservation_deposits(
         "total_applied": float(sum(d.amount_applied or 0 for d in deposits if d.status == DepositStatus.applied))
     }
 
-
-@router.get("/deposits/settings")
-@limiter.limit("60/minute")
-async def get_deposit_settings(
-    request: Request,
-    venue_id: int = Query(1),
-    db: Session = Depends(get_db)
-):
-    """Get deposit settings for venue"""
-    # Try to get venue settings from database
-    venue_settings = db.query(VenueSettings).filter(VenueSettings.venue_id == venue_id).first()
-
-    # Default deposit settings
-    default_settings = {
-        "deposits_enabled": True,
-        "default_amount": 50.00,
-        "min_party_size": 6,
-        "required_peak_hours": True,
-        "peak_hours_start": "18:00",
-        "peak_hours_end": "22:00",
-        "weekend_required": True,
-        "currency": "BGN"
-    }
-
-    if venue_settings and venue_settings.settings_data:
-        # Merge with deposit settings from venue settings if present
-        deposit_settings = venue_settings.settings_data.get("deposit_settings", {})
-        return {**default_settings, **deposit_settings, "venue_id": venue_id}
-
-    return {**default_settings, "venue_id": venue_id}
-
-
-@router.put("/deposits/settings")
-@limiter.limit("30/minute")
-async def update_deposit_settings(
-    request: Request,
-    venue_id: int = Query(1),
-    deposits_enabled: Optional[bool] = Body(None),
-    default_amount: Optional[float] = Body(None),
-    min_party_size: Optional[int] = Body(None),
-    required_peak_hours: Optional[bool] = Body(None),
-    peak_hours_start: Optional[str] = Body(None),
-    peak_hours_end: Optional[str] = Body(None),
-    weekend_required: Optional[bool] = Body(None),
-    currency: Optional[str] = Body(None),
-    db: Session = Depends(get_db)
-):
-    """Update deposit settings for venue"""
-    # Get or create venue settings
-    venue_settings = db.query(VenueSettings).filter(VenueSettings.venue_id == venue_id).first()
-
-    if not venue_settings:
-        venue_settings = VenueSettings(venue_id=venue_id, settings_data={})
-        db.add(venue_settings)
-
-    # Get current deposit settings or initialize
-    current_settings = venue_settings.settings_data or {}
-    deposit_settings = current_settings.get("deposit_settings", {
-        "deposits_enabled": True,
-        "default_amount": 50.00,
-        "min_party_size": 6,
-        "required_peak_hours": True,
-        "peak_hours_start": "18:00",
-        "peak_hours_end": "22:00",
-        "weekend_required": True,
-        "currency": "BGN"
-    })
-
-    # Update only provided fields
-    if deposits_enabled is not None:
-        deposit_settings["deposits_enabled"] = deposits_enabled
-    if default_amount is not None:
-        deposit_settings["default_amount"] = default_amount
-    if min_party_size is not None:
-        deposit_settings["min_party_size"] = min_party_size
-    if required_peak_hours is not None:
-        deposit_settings["required_peak_hours"] = required_peak_hours
-    if peak_hours_start is not None:
-        deposit_settings["peak_hours_start"] = peak_hours_start
-    if peak_hours_end is not None:
-        deposit_settings["peak_hours_end"] = peak_hours_end
-    if weekend_required is not None:
-        deposit_settings["weekend_required"] = weekend_required
-    if currency is not None:
-        deposit_settings["currency"] = currency
-
-    # Save updated settings
-    current_settings["deposit_settings"] = deposit_settings
-    venue_settings.settings_data = current_settings
-
-    db.commit()
-    db.refresh(venue_settings)
-
-    return {**deposit_settings, "venue_id": venue_id}
-
 # ==================== RFM ANALYTICS ====================
 
 def _calculate_rfm_score(value: float, thresholds: List[float], inverse: bool = False) -> int:
@@ -1749,7 +1741,7 @@ async def get_customer_rfm(
     # Get customer
     customer = db.query(Customer).filter(
         Customer.id == customer_id,
-        Customer.venue_id == venue_id
+        Customer.location_id == venue_id
     ).first()
 
     if not customer:
@@ -1828,8 +1820,8 @@ async def get_rfm_segments(
     """Get all RFM segments with counts - calculated from actual customer/order data"""
     # Get all customers for this venue
     customers = db.query(Customer).filter(
-        Customer.venue_id == venue_id,
-        Customer.is_active == True
+        Customer.location_id == venue_id,
+        Customer.deleted_at.is_(None)
     ).all()
 
     now = datetime.now(timezone.utc)
@@ -1878,8 +1870,8 @@ async def get_segment_customers(
     """Get customers in segment - calculated from actual order data"""
     # Get all customers for this venue
     customers = db.query(Customer).filter(
-        Customer.venue_id == venue_id,
-        Customer.is_active == True
+        Customer.location_id == venue_id,
+        Customer.deleted_at.is_(None)
     ).all()
 
     now = datetime.now(timezone.utc)
@@ -2557,7 +2549,7 @@ async def schedule_break(
     # Verify staff exists
     staff = db.query(StaffUser).filter(
         StaffUser.id == staff_id,
-        StaffUser.venue_id == venue_id
+        StaffUser.location_id == venue_id
     ).first()
     if not staff:
         raise HTTPException(status_code=404, detail="Staff member not found")
@@ -2675,7 +2667,7 @@ async def create_shift_trade(
     # Verify requesting staff exists
     requester = db.query(StaffUser).filter(
         StaffUser.id == requesting_staff_id,
-        StaffUser.venue_id == venue_id
+        StaffUser.location_id == venue_id
     ).first()
     if not requester:
         raise HTTPException(status_code=404, detail="Requesting staff member not found")
@@ -2874,7 +2866,7 @@ async def create_onboarding(
     # Verify staff exists
     staff = db.query(StaffUser).filter(
         StaffUser.id == staff_id,
-        StaffUser.venue_id == venue_id
+        StaffUser.location_id == venue_id
     ).first()
     if not staff:
         raise HTTPException(status_code=404, detail="Staff member not found")
@@ -3197,7 +3189,7 @@ async def get_price_alerts(
         PriceAlert,
         PriceAlertNotification.alert_id == PriceAlert.id
     ).filter(
-        PriceAlert.venue_id == venue_id
+        PriceAlert.is_active == True
     )
 
     if unacknowledged:
@@ -3342,7 +3334,7 @@ async def create_vip_profile(
     # Verify customer exists
     customer = db.query(Customer).filter(
         Customer.id == customer_id,
-        Customer.venue_id == venue_id
+        Customer.location_id == venue_id
     ).first()
     if not customer:
         raise HTTPException(status_code=404, detail="Customer not found")
@@ -3418,7 +3410,7 @@ async def get_vip_profile(
     # Get customer with their VIP status
     customer = db.query(Customer).filter(
         Customer.id == customer_id,
-        Customer.venue_id == venue_id
+        Customer.location_id == venue_id
     ).first()
 
     if not customer:
@@ -3470,21 +3462,13 @@ async def get_upcoming_occasions(
         (CustomerVIPStatus.venue_id == venue_id) &
         (CustomerVIPStatus.is_active == True)
     ).filter(
-        Customer.venue_id == venue_id,
-        Customer.is_active == True
+        Customer.location_id == venue_id,
+        Customer.deleted_at.is_(None)
     ).all()
 
-    # Also include customers with VIP-level loyalty tiers
-    high_tier_customers = db.query(Customer).filter(
-        Customer.venue_id == venue_id,
-        Customer.is_active == True,
-        Customer.loyalty_tier.in_(["gold", "platinum", "vip", "diamond"])
-    ).all()
-
-    # Combine and deduplicate
+    # Customer model doesn't have loyalty_tier column, so skip that filter
+    # All VIP customers come from the CustomerVIPStatus join above
     all_vip_customers = {c.id: c for c in vip_customers}
-    for c in high_tier_customers:
-        all_vip_customers[c.id] = c
 
     occasions = []
     for customer in all_vip_customers.values():
@@ -3499,7 +3483,7 @@ async def get_upcoming_occasions(
                     "occasion_type": "birthday",
                     "occasion_date": this_year_bday.isoformat(),
                     "days_until": (this_year_bday - today).days,
-                    "loyalty_tier": customer.loyalty_tier
+                    "loyalty_tier": getattr(customer, 'segment', None) or "vip"
                 })
 
     # Sort by date
@@ -3618,7 +3602,7 @@ async def get_visit_history(
     # Verify customer exists
     customer = db.query(Customer).filter(
         Customer.id == customer_id,
-        Customer.venue_id == venue_id
+        Customer.location_id == venue_id
     ).first()
     if not customer:
         raise HTTPException(status_code=404, detail="Customer not found")
@@ -4769,6 +4753,99 @@ async def record_chargeback(
         "created_at": db_chargeback.created_at.isoformat() if db_chargeback.created_at else None
     }
 
+@router.get("/chargebacks/stats")
+@limiter.limit("60/minute")
+async def get_chargeback_stats(
+    request: Request,
+    venue_id: int = Query(1),
+    db: Session = Depends(get_db)
+):
+    """Get chargeback statistics for a venue"""
+    total = db.query(Chargeback).filter(Chargeback.venue_id == venue_id).count()
+
+    won = db.query(Chargeback).filter(
+        Chargeback.venue_id == venue_id,
+        Chargeback.status == ChargebackStatus.WON.value
+    ).count()
+
+    lost = db.query(Chargeback).filter(
+        Chargeback.venue_id == venue_id,
+        Chargeback.status == ChargebackStatus.LOST.value
+    ).count()
+
+    pending_statuses = [
+        ChargebackStatus.RECEIVED.value,
+        ChargebackStatus.UNDER_REVIEW.value,
+        ChargebackStatus.EVIDENCE_SUBMITTED.value
+    ]
+    pending = db.query(Chargeback).filter(
+        Chargeback.venue_id == venue_id,
+        Chargeback.status.in_(pending_statuses)
+    ).count()
+
+    total_amount = db.query(func.sum(Chargeback.amount)).filter(
+        Chargeback.venue_id == venue_id
+    ).scalar() or 0
+
+    recovered_amount = db.query(func.sum(Chargeback.amount_recovered)).filter(
+        Chargeback.venue_id == venue_id,
+        Chargeback.won == True
+    ).scalar() or 0
+
+    lost_amount = db.query(func.sum(Chargeback.amount)).filter(
+        Chargeback.venue_id == venue_id,
+        Chargeback.status == ChargebackStatus.LOST.value
+    ).scalar() or 0
+
+    resolved = won + lost
+    win_rate = (won / resolved * 100) if resolved > 0 else 0
+
+    return {
+        "total": total,
+        "won": won,
+        "lost": lost,
+        "pending": pending,
+        "win_rate": round(win_rate, 1),
+        "total_amount": float(total_amount),
+        "recovered_amount": float(recovered_amount),
+        "lost_amount": float(lost_amount)
+    }
+
+@router.get("/chargebacks/overdue")
+@limiter.limit("60/minute")
+async def get_overdue_chargebacks(
+    request: Request,
+    venue_id: int = Query(1),
+    db: Session = Depends(get_db)
+):
+    """Get chargebacks that are past their response due date"""
+    pending_statuses = [
+        ChargebackStatus.RECEIVED.value,
+        ChargebackStatus.UNDER_REVIEW.value
+    ]
+
+    overdue = db.query(Chargeback).filter(
+        Chargeback.venue_id == venue_id,
+        Chargeback.status.in_(pending_statuses),
+        Chargeback.due_date < datetime.now(timezone.utc)
+    ).all()
+
+    return {
+        "count": len(overdue),
+        "chargebacks": [
+            {
+                "id": cb.id,
+                "order_id": cb.order_id,
+                "amount": float(cb.amount) if cb.amount else 0,
+                "reason_code": cb.reason_code,
+                "due_date": cb.due_date.isoformat() if cb.due_date else None,
+                "days_overdue": (datetime.now(timezone.utc) - cb.due_date).days if cb.due_date else 0,
+                "assigned_to": cb.assigned_to
+            }
+            for cb in overdue
+        ]
+    }
+
 @router.get("/chargebacks/{chargeback_id}")
 @limiter.limit("60/minute")
 async def get_chargeback(
@@ -4944,102 +5021,6 @@ async def get_chargebacks(
                 "created_at": cb.created_at.isoformat() if cb.created_at else None
             }
             for cb in chargebacks
-        ]
-    }
-
-@router.get("/chargebacks/stats")
-@limiter.limit("60/minute")
-async def get_chargeback_stats(
-    request: Request,
-    venue_id: int = Query(1),
-    db: Session = Depends(get_db)
-):
-    """Get chargeback statistics for a venue"""
-    # Get counts by status
-    total = db.query(Chargeback).filter(Chargeback.venue_id == venue_id).count()
-
-    won = db.query(Chargeback).filter(
-        Chargeback.venue_id == venue_id,
-        Chargeback.status == ChargebackStatus.WON.value
-    ).count()
-
-    lost = db.query(Chargeback).filter(
-        Chargeback.venue_id == venue_id,
-        Chargeback.status == ChargebackStatus.LOST.value
-    ).count()
-
-    pending_statuses = [
-        ChargebackStatus.RECEIVED.value,
-        ChargebackStatus.UNDER_REVIEW.value,
-        ChargebackStatus.EVIDENCE_SUBMITTED.value
-    ]
-    pending = db.query(Chargeback).filter(
-        Chargeback.venue_id == venue_id,
-        Chargeback.status.in_(pending_statuses)
-    ).count()
-
-    # Calculate total amounts
-    total_amount = db.query(func.sum(Chargeback.amount)).filter(
-        Chargeback.venue_id == venue_id
-    ).scalar() or 0
-
-    recovered_amount = db.query(func.sum(Chargeback.amount_recovered)).filter(
-        Chargeback.venue_id == venue_id,
-        Chargeback.won == True
-    ).scalar() or 0
-
-    lost_amount = db.query(func.sum(Chargeback.amount)).filter(
-        Chargeback.venue_id == venue_id,
-        Chargeback.status == ChargebackStatus.LOST.value
-    ).scalar() or 0
-
-    # Calculate win rate
-    resolved = won + lost
-    win_rate = (won / resolved * 100) if resolved > 0 else 0
-
-    return {
-        "total": total,
-        "won": won,
-        "lost": lost,
-        "pending": pending,
-        "win_rate": round(win_rate, 1),
-        "total_amount": float(total_amount),
-        "recovered_amount": float(recovered_amount),
-        "lost_amount": float(lost_amount)
-    }
-
-@router.get("/chargebacks/overdue")
-@limiter.limit("60/minute")
-async def get_overdue_chargebacks(
-    request: Request,
-    venue_id: int = Query(1),
-    db: Session = Depends(get_db)
-):
-    """Get chargebacks that are past their response due date"""
-    pending_statuses = [
-        ChargebackStatus.RECEIVED.value,
-        ChargebackStatus.UNDER_REVIEW.value
-    ]
-
-    overdue = db.query(Chargeback).filter(
-        Chargeback.venue_id == venue_id,
-        Chargeback.status.in_(pending_statuses),
-        Chargeback.due_date < datetime.now(timezone.utc)
-    ).all()
-
-    return {
-        "count": len(overdue),
-        "chargebacks": [
-            {
-                "id": cb.id,
-                "order_id": cb.order_id,
-                "amount": float(cb.amount) if cb.amount else 0,
-                "reason_code": cb.reason_code,
-                "due_date": cb.due_date.isoformat() if cb.due_date else None,
-                "days_overdue": (datetime.now(timezone.utc) - cb.due_date).days if cb.due_date else 0,
-                "assigned_to": cb.assigned_to
-            }
-            for cb in overdue
         ]
     }
 
@@ -5307,12 +5288,15 @@ async def create_table_block(
 @limiter.limit("60/minute")
 async def get_table_blocks(
     request: Request,
-    venue_id: int = Query(...),
-    block_date: date = Query(...),
+    venue_id: int = Query(1),
+    block_date: Optional[date] = Query(None, description="Block date (defaults to today)"),
     table_id: Optional[int] = Query(None),
     db: Session = Depends(get_db)
 ):
     """Get table blocks for date"""
+    if block_date is None:
+        block_date = date.today()
+
     # Calculate start and end of day
     start_of_day = datetime.combine(block_date, time.min)
     end_of_day = datetime.combine(block_date, time.max)
@@ -5457,12 +5441,19 @@ async def delete_table_block(
 async def check_table_availability(
     request: Request,
     table_id: int,
-    check_date: date = Query(...),
-    start_time: str = Query(...),
-    end_time: str = Query(...),
+    check_date: Optional[date] = Query(None, description="Check date (defaults to today)"),
+    start_time: Optional[str] = Query(None, description="Start time HH:MM"),
+    end_time: Optional[str] = Query(None, description="End time HH:MM"),
     db: Session = Depends(get_db)
 ):
     """Check table availability for a specific time slot"""
+    if check_date is None:
+        check_date = date.today()
+    if start_time is None:
+        start_time = "09:00"
+    if end_time is None:
+        end_time = "22:00"
+
     # Verify table exists
     table = db.query(Table).filter(Table.id == table_id).first()
     if not table:
@@ -5481,8 +5472,8 @@ async def check_table_availability(
 
     # Check for overlapping reservations
     conflicting_reservation = db.query(Reservation).filter(
-        Reservation.table_id == table_id,
-        Reservation.reservation_datetime < end_dt,
+        Reservation.table_ids.contains([table_id]),
+        Reservation.reservation_date < end_dt,
         Reservation.status.in_(['pending', 'confirmed'])
     ).first()
 
@@ -5521,11 +5512,14 @@ async def check_table_availability(
 async def get_table_blocks_by_table(
     request: Request,
     table_id: int,
-    start_date: date = Query(...),
+    start_date: Optional[date] = Query(None, description="Start date (defaults to today)"),
     end_date: Optional[date] = Query(None),
     db: Session = Depends(get_db)
 ):
     """Get all blocks for a specific table within date range"""
+    if start_date is None:
+        start_date = date.today()
+
     # Verify table exists
     table = db.query(Table).filter(Table.id == table_id).first()
     if not table:
@@ -5568,15 +5562,22 @@ async def get_table_blocks_by_table(
 async def get_venue_table_availability(
     request: Request,
     venue_id: int,
-    check_date: date = Query(...),
-    start_time: str = Query(...),
-    end_time: str = Query(...),
+    check_date: Optional[date] = Query(None, description="Check date (defaults to today)"),
+    start_time: Optional[str] = Query(None, description="Start time HH:MM"),
+    end_time: Optional[str] = Query(None, description="End time HH:MM"),
     party_size: Optional[int] = Query(None),
     db: Session = Depends(get_db)
 ):
     """Get availability of all tables at a venue for a time slot"""
+    if check_date is None:
+        check_date = date.today()
+    if start_time is None:
+        start_time = "09:00"
+    if end_time is None:
+        end_time = "22:00"
+
     # Get all tables for venue
-    tables_query = db.query(Table).filter(Table.venue_id == venue_id, Table.is_active == True)
+    tables_query = db.query(Table).filter(Table.location_id == venue_id)
 
     if party_size:
         tables_query = tables_query.filter(Table.capacity >= party_size)
@@ -5601,8 +5602,8 @@ async def get_venue_table_availability(
 
         # Check for reservations
         has_reservation = db.query(Reservation).filter(
-            Reservation.table_id == table.id,
-            Reservation.reservation_datetime < end_dt,
+            Reservation.table_ids.contains([table.id]),
+            Reservation.reservation_date < end_dt,
             Reservation.status.in_(['pending', 'confirmed'])
         ).first() is not None
 

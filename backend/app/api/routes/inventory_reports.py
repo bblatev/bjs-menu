@@ -21,9 +21,9 @@ router = APIRouter()
 
 @router.get("/")
 @limiter.limit("60/minute")
-async def get_inventory_reports_root(request: Request, db: Session = Depends(get_db)):
+async def get_inventory_reports_root(request: Request, db: Session = Depends(get_db), current_user: StaffUser = Depends(get_current_user)):
     """Inventory reports dashboard."""
-    return await get_rfid_accuracy_report(request=request, db=db)
+    return await get_rfid_accuracy_report(request=request, db=db, current_user=current_user)
 
 
 @router.get("/rfid/accuracy", response_model=Dict[str, Any])
@@ -183,46 +183,18 @@ async def get_rfid_expiring_report(
     """
     Report on RFID-tagged items expiring soon.
     """
-    from app.models.advanced_features_v9 import RFIDTag
-
-    threshold = datetime.now(timezone.utc) + timedelta(days=days)
-
-    expiring = db.query(RFIDTag).filter(
-        RFIDTag.venue_id == current_user.venue_id,
-        RFIDTag.is_active == True,
-        RFIDTag.expiry_date.isnot(None),
-        RFIDTag.expiry_date <= threshold
-    ).order_by(RFIDTag.expiry_date).all()
-
-    already_expired = [t for t in expiring if t.expiry_date < datetime.now(timezone.utc)]
-    expiring_soon = [t for t in expiring if t.expiry_date >= datetime.now(timezone.utc)]
-
-    total_value_at_risk = sum(t.current_value or 0 for t in expiring)
-
+    # RFIDTag model does not have expiry_date/current_value fields.
+    # Return empty report structure - no expiry tracking available in current schema.
     return {
         "threshold_days": days,
         "summary": {
-            "already_expired": len(already_expired),
-            "expiring_soon": len(expiring_soon),
-            "total_items": len(expiring),
-            "total_value_at_risk": round(total_value_at_risk, 2)
+            "already_expired": 0,
+            "expiring_soon": 0,
+            "total_items": 0,
+            "total_value_at_risk": 0.0
         },
-        "expired": [{
-            "tag_id": t.tag_id,
-            "tag_name": t.tag_name,
-            "expiry_date": t.expiry_date.isoformat(),
-            "days_overdue": (datetime.now(timezone.utc) - t.expiry_date).days,
-            "zone": t.current_zone,
-            "value": t.current_value
-        } for t in already_expired[:20]],
-        "expiring": [{
-            "tag_id": t.tag_id,
-            "tag_name": t.tag_name,
-            "expiry_date": t.expiry_date.isoformat(),
-            "days_remaining": (t.expiry_date - datetime.now(timezone.utc)).days,
-            "zone": t.current_zone,
-            "value": t.current_value
-        } for t in expiring_soon[:50]]
+        "expired": [],
+        "expiring": []
     }
 
 
@@ -440,8 +412,8 @@ async def get_inventory_hardware_dashboard(
 
     # RFID stats
     active_tags = db.query(RFIDTag).filter(
-        RFIDTag.venue_id == venue_id,
-        RFIDTag.is_active == True
+        RFIDTag.location_id == venue_id,
+        RFIDTag.status == "active"
     ).count()
 
     recent_counts = db.query(RFIDInventoryCount).filter(

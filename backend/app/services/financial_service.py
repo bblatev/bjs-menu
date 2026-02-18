@@ -518,12 +518,22 @@ class BudgetService:
         total_actual = sum(float(item.actual_amount or 0) for item in line_items)
         total_variance = total_budgeted - total_actual
 
+        # Build period info from available fields (Budget has period, year, month - not period_start/end)
+        period_start = None
+        period_end = None
+        if budget.year and budget.month:
+            from datetime import date as _date
+            import calendar
+            period_start = _date(budget.year, budget.month, 1).isoformat()
+            last_day = calendar.monthrange(budget.year, budget.month)[1]
+            period_end = _date(budget.year, budget.month, last_day).isoformat()
+
         return {
             "budget_id": budget_id,
             "budget_name": budget.name,
             "period": {
-                "start": budget.period_start.isoformat(),
-                "end": budget.period_end.isoformat()
+                "start": period_start,
+                "end": period_end
             },
             "summary": {
                 "total_budgeted": total_budgeted,

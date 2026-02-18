@@ -10,7 +10,7 @@ from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, List, Optional, Tuple
 from uuid import UUID, uuid4
 from sqlalchemy import select, and_, or_, func, desc
-from sqlalchemy.ext.asyncio import Session
+from sqlalchemy.orm import Session
 
 
 class HardwareDevice:
@@ -119,8 +119,8 @@ class HardwareSDKService:
             created_at=datetime.now(timezone.utc)
         )
         self.db.add(device)
-        await self.db.commit()
-        await self.db.refresh(device)
+        self.db.commit()
+        self.db.refresh(device)
 
         return {
             "device_id": str(device.id),
@@ -140,7 +140,7 @@ class HardwareSDKService:
 
         token_hash = hashlib.sha256(device_token.encode()).hexdigest()
 
-        result = await self.db.execute(
+        result = self.db.execute(
             select(HardwareDeviceModel).where(
                 and_(
                     HardwareDeviceModel.id == device_id,
@@ -157,7 +157,7 @@ class HardwareSDKService:
         # Update last seen
         device.last_seen_at = datetime.now(timezone.utc)
         device.status = "online"
-        await self.db.commit()
+        self.db.commit()
 
         return {
             "device_id": str(device.id),
@@ -177,7 +177,7 @@ class HardwareSDKService:
         """Update device status."""
         from app.models.gap_features_models import SDKHardwareDevice as HardwareDeviceModel
 
-        result = await self.db.execute(
+        result = self.db.execute(
             select(HardwareDeviceModel).where(HardwareDeviceModel.id == device_id)
         )
         device = result.scalar_one_or_none()
@@ -188,7 +188,7 @@ class HardwareSDKService:
         device.status = status
         device.status_details = status_details or {}
         device.last_seen_at = datetime.now(timezone.utc)
-        await self.db.commit()
+        self.db.commit()
         return True
 
     async def get_venue_devices(
@@ -212,7 +212,7 @@ class HardwareSDKService:
         if station_id:
             query = query.where(HardwareDeviceModel.station_id == station_id)
 
-        result = await self.db.execute(query)
+        result = self.db.execute(query)
         devices = result.scalars().all()
 
         return [
@@ -233,7 +233,7 @@ class HardwareSDKService:
         """Deactivate a device."""
         from app.models.gap_features_models import SDKHardwareDevice as HardwareDeviceModel
 
-        result = await self.db.execute(
+        result = self.db.execute(
             select(HardwareDeviceModel).where(HardwareDeviceModel.id == device_id)
         )
         device = result.scalar_one_or_none()
@@ -241,7 +241,7 @@ class HardwareSDKService:
         if device:
             device.is_active = False
             device.status = "deactivated"
-            await self.db.commit()
+            self.db.commit()
             return True
         return False
 
@@ -263,7 +263,7 @@ class HardwareSDKService:
             created_at=datetime.now(timezone.utc)
         )
         self.db.add(session)
-        await self.db.commit()
+        self.db.commit()
 
         return {
             "session_id": str(session.id),
@@ -300,7 +300,7 @@ class HardwareSDKService:
             created_at=datetime.now(timezone.utc)
         )
         self.db.add(cmd)
-        await self.db.commit()
+        self.db.commit()
 
         return {
             "command_id": str(cmd.id),
@@ -315,7 +315,7 @@ class HardwareSDKService:
         """Get the result of a terminal command."""
         from app.models.gap_features_models import SDKTerminalCommand as TerminalCommand
 
-        result = await self.db.execute(
+        result = self.db.execute(
             select(TerminalCommand).where(TerminalCommand.id == command_id)
         )
         cmd = result.scalar_one_or_none()
@@ -342,7 +342,7 @@ class HardwareSDKService:
         """Update command result (called by device)."""
         from app.models.gap_features_models import SDKTerminalCommand as TerminalCommand
 
-        cmd_result = await self.db.execute(
+        cmd_result = self.db.execute(
             select(TerminalCommand).where(TerminalCommand.id == command_id)
         )
         cmd = cmd_result.scalar_one_or_none()
@@ -356,7 +356,7 @@ class HardwareSDKService:
         if status in ["completed", "failed"]:
             cmd.completed_at = datetime.now(timezone.utc)
 
-        await self.db.commit()
+        self.db.commit()
         return True
 
     # ==================== PRINTER SDK ====================
@@ -409,7 +409,7 @@ class HardwareSDKService:
         """Run diagnostics on a device."""
         from app.models.gap_features_models import SDKHardwareDevice as HardwareDeviceModel
 
-        result = await self.db.execute(
+        result = self.db.execute(
             select(HardwareDeviceModel).where(HardwareDeviceModel.id == device_id)
         )
         device = result.scalar_one_or_none()
@@ -463,7 +463,7 @@ class HardwareSDKService:
 
         query = query.order_by(desc(DeviceLog.created_at)).limit(limit)
 
-        result = await self.db.execute(query)
+        result = self.db.execute(query)
         logs = result.scalars().all()
 
         return [
@@ -496,7 +496,7 @@ class HardwareSDKService:
             created_at=datetime.now(timezone.utc)
         )
         self.db.add(log)
-        await self.db.commit()
+        self.db.commit()
 
 
 class BNPLService:
@@ -521,7 +521,7 @@ class BNPLService:
         from app.models.gap_features_models import BNPLConfiguration
 
         # Check if already configured
-        result = await self.db.execute(
+        result = self.db.execute(
             select(BNPLConfiguration).where(
                 and_(
                     BNPLConfiguration.venue_id == venue_id,
@@ -535,7 +535,7 @@ class BNPLService:
             existing.credentials_encrypted = self._encrypt_credentials(credentials)
             existing.settings = settings or {}
             existing.updated_at = datetime.now(timezone.utc)
-            await self.db.commit()
+            self.db.commit()
             return {"status": "updated", "provider": provider}
 
         config = BNPLConfiguration(
@@ -548,7 +548,7 @@ class BNPLService:
             created_at=datetime.now(timezone.utc)
         )
         self.db.add(config)
-        await self.db.commit()
+        self.db.commit()
 
         return {"status": "configured", "provider": provider}
 
@@ -571,7 +571,7 @@ class BNPLService:
         """Get enabled BNPL providers for a venue."""
         from app.models.gap_features_models import BNPLConfiguration
 
-        result = await self.db.execute(
+        result = self.db.execute(
             select(BNPLConfiguration).where(
                 and_(
                     BNPLConfiguration.venue_id == venue_id,
@@ -644,7 +644,7 @@ class BNPLService:
         import httpx
 
         # Get provider config
-        result = await self.db.execute(
+        result = self.db.execute(
             select(BNPLConfiguration).where(
                 and_(
                     BNPLConfiguration.venue_id == venue_id,
@@ -691,7 +691,7 @@ class BNPLService:
             created_at=datetime.now(timezone.utc)
         )
         self.db.add(transaction)
-        await self.db.commit()
+        self.db.commit()
 
         return {
             "transaction_id": str(transaction.id),
@@ -832,7 +832,7 @@ class BNPLService:
         """Capture an authorized BNPL payment."""
         from app.models.gap_features_models import BNPLTransaction, BNPLConfiguration
 
-        result = await self.db.execute(
+        result = self.db.execute(
             select(BNPLTransaction).where(BNPLTransaction.id == transaction_id)
         )
         transaction = result.scalar_one_or_none()
@@ -844,7 +844,7 @@ class BNPLService:
             raise ValueError(f"Cannot capture transaction with status: {transaction.status}")
 
         # Get provider config
-        config_result = await self.db.execute(
+        config_result = self.db.execute(
             select(BNPLConfiguration).where(
                 and_(
                     BNPLConfiguration.venue_id == transaction.venue_id,
@@ -864,7 +864,7 @@ class BNPLService:
 
         transaction.status = "captured"
         transaction.captured_at = datetime.now(timezone.utc)
-        await self.db.commit()
+        self.db.commit()
 
         return {
             "transaction_id": str(transaction_id),
@@ -881,7 +881,7 @@ class BNPLService:
         """Refund a BNPL payment (full or partial)."""
         from app.models.gap_features_models import BNPLTransaction
 
-        result = await self.db.execute(
+        result = self.db.execute(
             select(BNPLTransaction).where(BNPLTransaction.id == transaction_id)
         )
         transaction = result.scalar_one_or_none()
@@ -903,7 +903,7 @@ class BNPLService:
 
         transaction.refunded_amount = (transaction.refunded_amount or 0) + refund_amount
         transaction.refunded_at = datetime.now(timezone.utc)
-        await self.db.commit()
+        self.db.commit()
 
         return {
             "transaction_id": str(transaction_id),
@@ -935,7 +935,7 @@ class BNPLService:
             return {"status": "unknown_provider"}
 
         # Find transaction
-        result = await self.db.execute(
+        result = self.db.execute(
             select(BNPLTransaction).where(
                 and_(
                     BNPLTransaction.external_session_id == external_id,
@@ -964,7 +964,7 @@ class BNPLService:
         transaction.webhook_data = payload
         transaction.updated_at = datetime.now(timezone.utc)
 
-        await self.db.commit()
+        self.db.commit()
 
         return {
             "transaction_id": str(transaction.id),
@@ -979,7 +979,7 @@ class BNPLService:
         """Get BNPL transaction details."""
         from app.models.gap_features_models import BNPLTransaction
 
-        result = await self.db.execute(
+        result = self.db.execute(
             select(BNPLTransaction).where(BNPLTransaction.id == transaction_id)
         )
         transaction = result.scalar_one_or_none()
@@ -1025,14 +1025,14 @@ class BNPLService:
             query = query.where(BNPLTransaction.created_at <= end_date)
 
         # Count total
-        count_result = await self.db.execute(
+        count_result = self.db.execute(
             select(func.count()).select_from(query.subquery())
         )
         total = count_result.scalar() or 0
 
         # Get paginated results
         query = query.order_by(desc(BNPLTransaction.created_at)).offset(offset).limit(limit)
-        result = await self.db.execute(query)
+        result = self.db.execute(query)
         transactions = result.scalars().all()
 
         return [

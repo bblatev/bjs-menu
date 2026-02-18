@@ -28,6 +28,7 @@ from app.api.routes import (
     promotions, gamification,
     fiscal_printers, pos_fiscal_bridge, cloud_kitchen,
     menu, auto_reorder,
+    auto_86, stock_forecasting, invoice_capture,
 )
 
 api_router = APIRouter()
@@ -241,6 +242,15 @@ api_router.include_router(menu.router, prefix="/menu", tags=["menu", "modifiers"
 
 # Auto-Reorder (frontend-facing /auto-reorder/* endpoints)
 api_router.include_router(auto_reorder.router, prefix="/auto-reorder", tags=["auto-reorder", "inventory"])
+
+# Auto-86 (automatic menu item 86/un-86 based on stock levels)
+api_router.include_router(auto_86.router, prefix="/auto-86", tags=["auto-86", "menu", "stock"])
+
+# Stock Forecasting (predictive demand forecasting, EOQ, reorder suggestions)
+api_router.include_router(stock_forecasting.router, prefix="/stock-forecasting", tags=["stock-forecasting", "demand", "eoq"])
+
+# Invoice Capture (OCR-based invoice processing and PO generation)
+api_router.include_router(invoice_capture.router, prefix="/invoice-capture", tags=["invoice-capture", "ocr", "ap-automation"])
 
 # Multi-location v3.1 (reuse locations router)
 api_router.include_router(locations.router, prefix="/v3.1/locations", tags=["locations", "multi-location", "v3.1"])

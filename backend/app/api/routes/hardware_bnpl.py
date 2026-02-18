@@ -84,9 +84,9 @@ class BNPLRefundRequest(BaseModel):
 
 @router.get("/")
 @limiter.limit("60/minute")
-async def get_hardware_bnpl_root(request: Request, db: Session = Depends(get_db)):
+async def get_hardware_bnpl_root(request: Request, db: Session = Depends(get_db), current_user: Staff = Depends(get_current_user), venue_id: int = Depends(get_current_venue)):
     """Hardware BNPL overview."""
-    return await list_devices(request=request, db=db)
+    return await list_devices(request=request, db=db, current_user=current_user, venue_id=venue_id)
 
 
 @router.post("/hardware/devices")
@@ -96,7 +96,7 @@ async def register_device(
     body: DeviceRegistrationRequest,
     db: Session = Depends(get_db),
     current_user: Staff = Depends(get_current_user),
-    venue_id: UUID = Depends(get_current_venue)
+    venue_id: int = Depends(get_current_venue)
 ):
     """Register a new hardware device."""
     from app.services.hardware_sdk_service import HardwareSDKService
@@ -144,10 +144,10 @@ async def authenticate_device(
 async def list_devices(
     request: Request,
     device_type: Optional[str] = None,
-    station_id: Optional[UUID] = None,
+    station_id: Optional[str] = None,
     db: Session = Depends(get_db),
     current_user: Staff = Depends(get_current_user),
-    venue_id: UUID = Depends(get_current_venue)
+    venue_id: int = Depends(get_current_venue)
 ):
     """List hardware devices for venue."""
     from app.services.hardware_sdk_service import HardwareSDKService
@@ -165,7 +165,7 @@ async def list_devices(
 @limiter.limit("60/minute")
 async def get_device(
     request: Request,
-    device_id: UUID,
+    device_id: str,
     db: Session = Depends(get_db),
     current_user: Staff = Depends(get_current_user)
 ):
@@ -181,7 +181,7 @@ async def get_device(
 @limiter.limit("30/minute")
 async def update_device_status(
     request: Request,
-    device_id: UUID,
+    device_id: str,
     body: DeviceStatusUpdate,
     db: Session = Depends(get_db)
 ):
@@ -205,7 +205,7 @@ async def update_device_status(
 @limiter.limit("30/minute")
 async def deactivate_device(
     request: Request,
-    device_id: UUID,
+    device_id: str,
     db: Session = Depends(get_db),
     current_user: Staff = Depends(get_current_user)
 ):
@@ -225,7 +225,7 @@ async def deactivate_device(
 @limiter.limit("60/minute")
 async def run_diagnostics(
     request: Request,
-    device_id: UUID,
+    device_id: str,
     db: Session = Depends(get_db),
     current_user: Staff = Depends(get_current_user)
 ):
@@ -244,7 +244,7 @@ async def run_diagnostics(
 @limiter.limit("60/minute")
 async def get_device_logs(
     request: Request,
-    device_id: UUID,
+    device_id: str,
     limit: int = 100,
     since: Optional[datetime] = None,
     db: Session = Depends(get_db),
@@ -268,7 +268,7 @@ async def get_device_logs(
 @limiter.limit("30/minute")
 async def create_terminal_session(
     request: Request,
-    device_id: UUID,
+    device_id: str,
     session_type: str = "payment",
     db: Session = Depends(get_db)
 ):
@@ -287,7 +287,7 @@ async def create_terminal_session(
 @limiter.limit("30/minute")
 async def send_terminal_command(
     request: Request,
-    device_id: UUID,
+    device_id: str,
     body: TerminalCommandRequest,
     db: Session = Depends(get_db)
 ):
@@ -310,7 +310,7 @@ async def send_terminal_command(
 @limiter.limit("60/minute")
 async def get_command_result(
     request: Request,
-    command_id: UUID,
+    command_id: str,
     db: Session = Depends(get_db)
 ):
     """Get the result of a terminal command."""
@@ -329,7 +329,7 @@ async def get_command_result(
 @limiter.limit("30/minute")
 async def update_command_result(
     request: Request,
-    command_id: UUID,
+    command_id: str,
     status: str = Body(...),
     result: Optional[Dict[str, Any]] = Body(None),
     error: Optional[str] = Body(None),
@@ -358,7 +358,7 @@ async def update_command_result(
 @limiter.limit("30/minute")
 async def print_receipt(
     request: Request,
-    device_id: UUID,
+    device_id: str,
     body: PrintReceiptRequest,
     db: Session = Depends(get_db)
 ):
@@ -378,7 +378,7 @@ async def print_receipt(
 @limiter.limit("30/minute")
 async def open_cash_drawer(
     request: Request,
-    device_id: UUID,
+    device_id: str,
     db: Session = Depends(get_db)
 ):
     """Open cash drawer."""
@@ -393,7 +393,7 @@ async def open_cash_drawer(
 @limiter.limit("30/minute")
 async def display_message(
     request: Request,
-    device_id: UUID,
+    device_id: str,
     body: CustomerDisplayRequest,
     db: Session = Depends(get_db)
 ):
@@ -417,7 +417,7 @@ async def configure_bnpl_provider(
     body: BNPLConfigRequest,
     db: Session = Depends(get_db),
     current_user: Staff = Depends(get_current_user),
-    venue_id: UUID = Depends(get_current_venue)
+    venue_id: int = Depends(get_current_venue)
 ):
     """Configure a BNPL provider."""
     from app.services.hardware_sdk_service import BNPLService
@@ -438,7 +438,7 @@ async def get_enabled_providers(
     request: Request,
     db: Session = Depends(get_db),
     current_user: Staff = Depends(get_current_user),
-    venue_id: UUID = Depends(get_current_venue)
+    venue_id: int = Depends(get_current_venue)
 ):
     """Get enabled BNPL providers."""
     from app.services.hardware_sdk_service import BNPLService
@@ -455,7 +455,7 @@ async def create_bnpl_session(
     body: BNPLSessionRequest,
     db: Session = Depends(get_db),
     current_user: Staff = Depends(get_current_user),
-    venue_id: UUID = Depends(get_current_venue)
+    venue_id: int = Depends(get_current_venue)
 ):
     """Create a BNPL checkout session."""
     from app.services.hardware_sdk_service import BNPLService
@@ -481,7 +481,7 @@ async def create_bnpl_session(
 @limiter.limit("60/minute")
 async def get_bnpl_transaction(
     request: Request,
-    transaction_id: UUID,
+    transaction_id: str,
     db: Session = Depends(get_db),
     current_user: Staff = Depends(get_current_user)
 ):
@@ -501,7 +501,7 @@ async def get_bnpl_transaction(
 @limiter.limit("30/minute")
 async def capture_bnpl_payment(
     request: Request,
-    transaction_id: UUID,
+    transaction_id: str,
     db: Session = Depends(get_db),
     current_user: Staff = Depends(get_current_user)
 ):
@@ -520,7 +520,7 @@ async def capture_bnpl_payment(
 @limiter.limit("30/minute")
 async def refund_bnpl_payment(
     request: Request,
-    transaction_id: UUID,
+    transaction_id: str,
     body: BNPLRefundRequest,
     db: Session = Depends(get_db),
     current_user: Staff = Depends(get_current_user)
@@ -552,7 +552,7 @@ async def list_bnpl_transactions(
     offset: int = 0,
     db: Session = Depends(get_db),
     current_user: Staff = Depends(get_current_user),
-    venue_id: UUID = Depends(get_current_venue)
+    venue_id: int = Depends(get_current_venue)
 ):
     """List BNPL transactions."""
     from app.services.hardware_sdk_service import BNPLService

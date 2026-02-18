@@ -11,7 +11,7 @@ from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, List, Optional, Tuple
 from uuid import UUID, uuid4
 from sqlalchemy import select, and_, or_, func, desc
-from sqlalchemy.ext.asyncio import Session
+from sqlalchemy.orm import Session
 
 from app.models.gap_features_models import (
     Developer, APIKey, APILog, MarketplaceApp, AppInstallation,
@@ -41,7 +41,7 @@ class DeveloperPortalService:
     ) -> Developer:
         """Register a new developer account."""
         # Check if developer already exists
-        result = await self.db.execute(
+        result = self.db.execute(
             select(Developer).where(Developer.email == email)
         )
         existing = result.scalar_one_or_none()
@@ -63,20 +63,20 @@ class DeveloperPortalService:
             created_at=datetime.now(timezone.utc)
         )
         self.db.add(developer)
-        await self.db.commit()
-        await self.db.refresh(developer)
+        self.db.commit()
+        self.db.refresh(developer)
         return developer
 
     async def verify_developer(self, developer_id: UUID) -> bool:
         """Verify a developer account."""
-        result = await self.db.execute(
+        result = self.db.execute(
             select(Developer).where(Developer.id == developer_id)
         )
         developer = result.scalar_one_or_none()
         if developer:
             developer.is_verified = True
             developer.verified_at = datetime.now(timezone.utc)
-            await self.db.commit()
+            self.db.commit()
             return True
         return False
 
@@ -93,7 +93,7 @@ class DeveloperPortalService:
             "enterprise": {"per_minute": 5000, "per_day": 5000000}
         }
 
-        result = await self.db.execute(
+        result = self.db.execute(
             select(Developer).where(Developer.id == developer_id)
         )
         developer = result.scalar_one_or_none()
@@ -104,20 +104,20 @@ class DeveloperPortalService:
         developer.tier = tier
         developer.rate_limit_per_minute = limits["per_minute"]
         developer.rate_limit_per_day = limits["per_day"]
-        await self.db.commit()
-        await self.db.refresh(developer)
+        self.db.commit()
+        self.db.refresh(developer)
         return developer
 
     async def get_developer(self, developer_id: UUID) -> Optional[Developer]:
         """Get developer by ID."""
-        result = await self.db.execute(
+        result = self.db.execute(
             select(Developer).where(Developer.id == developer_id)
         )
         return result.scalar_one_or_none()
 
     async def get_developer_by_email(self, email: str) -> Optional[Developer]:
         """Get developer by email."""
-        result = await self.db.execute(
+        result = self.db.execute(
             select(Developer).where(Developer.email == email)
         )
         return result.scalar_one_or_none()
@@ -148,7 +148,7 @@ class DeveloperPortalService:
         key_limits = {"free": 2, "starter": 5, "professional": 20, "enterprise": 100}
         max_keys = key_limits.get(developer.tier, 2)
 
-        result = await self.db.execute(
+        result = self.db.execute(
             select(func.count(APIKey.id)).where(
                 and_(
                     APIKey.developer_id == developer_id,
@@ -185,8 +185,8 @@ class DeveloperPortalService:
             created_at=datetime.now(timezone.utc)
         )
         self.db.add(api_key)
-        await self.db.commit()
-        await self.db.refresh(api_key)
+        self.db.commit()
+        self.db.refresh(api_key)
 
         return api_key, raw_key
 
@@ -197,7 +197,7 @@ class DeveloperPortalService:
         key_hash = hashlib.sha256(raw_key.encode()).hexdigest()
         key_prefix = raw_key[:16]
 
-        result = await self.db.execute(
+        result = self.db.execute(
             select(APIKey).where(
                 and_(
                     APIKey.key_prefix == key_prefix,
@@ -217,13 +217,13 @@ class DeveloperPortalService:
 
         # Update last used
         api_key.last_used_at = datetime.now(timezone.utc)
-        await self.db.commit()
+        self.db.commit()
 
         return api_key
 
     async def revoke_api_key(self, api_key_id: UUID, developer_id: UUID) -> bool:
         """Revoke an API key."""
-        result = await self.db.execute(
+        result = self.db.execute(
             select(APIKey).where(
                 and_(
                     APIKey.id == api_key_id,
@@ -235,13 +235,13 @@ class DeveloperPortalService:
         if api_key:
             api_key.is_active = False
             api_key.revoked_at = datetime.now(timezone.utc)
-            await self.db.commit()
+            self.db.commit()
             return True
         return False
 
     async def list_api_keys(self, developer_id: UUID) -> List[APIKey]:
         """List all API keys for a developer."""
-        result = await self.db.execute(
+        result = self.db.execute(
             select(APIKey).where(APIKey.developer_id == developer_id)
             .order_by(desc(APIKey.created_at))
         )
@@ -276,7 +276,7 @@ class DeveloperPortalService:
             created_at=datetime.now(timezone.utc)
         )
         self.db.add(log)
-        await self.db.commit()
+        self.db.commit()
         return log
 
     async def get_api_usage_stats(
@@ -287,7 +287,7 @@ class DeveloperPortalService:
     ) -> Dict[str, Any]:
         """Get API usage statistics for a developer."""
         # Get all API keys for developer
-        keys_result = await self.db.execute(
+        keys_result = self.db.execute(
             select(APIKey.id).where(APIKey.developer_id == developer_id)
         )
         key_ids = [k for k in keys_result.scalars().all()]
@@ -303,7 +303,7 @@ class DeveloperPortalService:
             }
 
         # Total requests
-        result = await self.db.execute(
+        result = self.db.execute(
             select(func.count(APILog.id)).where(
                 and_(
                     APILog.api_key_id.in_(key_ids),
@@ -315,7 +315,7 @@ class DeveloperPortalService:
         total_requests = result.scalar() or 0
 
         # Successful requests
-        result = await self.db.execute(
+        result = self.db.execute(
             select(func.count(APILog.id)).where(
                 and_(
                     APILog.api_key_id.in_(key_ids),
@@ -328,7 +328,7 @@ class DeveloperPortalService:
         successful_requests = result.scalar() or 0
 
         # Average response time
-        result = await self.db.execute(
+        result = self.db.execute(
             select(func.avg(APILog.response_time_ms)).where(
                 and_(
                     APILog.api_key_id.in_(key_ids),
@@ -358,7 +358,7 @@ class DeveloperPortalService:
         day_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
 
         # Check per-minute limit
-        result = await self.db.execute(
+        result = self.db.execute(
             select(func.count(APILog.id)).where(
                 and_(
                     APILog.api_key_id == api_key.id,
@@ -369,7 +369,7 @@ class DeveloperPortalService:
         requests_last_minute = result.scalar() or 0
 
         # Check per-day limit
-        result = await self.db.execute(
+        result = self.db.execute(
             select(func.count(APILog.id)).where(
                 and_(
                     APILog.api_key_id == api_key.id,
@@ -424,7 +424,7 @@ class MarketplaceService:
     ) -> MarketplaceApp:
         """Submit a new app for review."""
         # Check if slug is unique
-        result = await self.db.execute(
+        result = self.db.execute(
             select(MarketplaceApp).where(MarketplaceApp.slug == slug)
         )
         if result.scalar_one_or_none():
@@ -454,13 +454,13 @@ class MarketplaceService:
             created_at=datetime.now(timezone.utc)
         )
         self.db.add(app)
-        await self.db.commit()
-        await self.db.refresh(app)
+        self.db.commit()
+        self.db.refresh(app)
         return app
 
     async def submit_for_review(self, app_id: UUID, developer_id: UUID) -> MarketplaceApp:
         """Submit an app for review."""
-        result = await self.db.execute(
+        result = self.db.execute(
             select(MarketplaceApp).where(
                 and_(
                     MarketplaceApp.id == app_id,
@@ -477,13 +477,13 @@ class MarketplaceService:
 
         app.status = AppStatus.PENDING_REVIEW
         app.submitted_at = datetime.now(timezone.utc)
-        await self.db.commit()
-        await self.db.refresh(app)
+        self.db.commit()
+        self.db.refresh(app)
         return app
 
     async def approve_app(self, app_id: UUID) -> MarketplaceApp:
         """Approve an app (admin only)."""
-        result = await self.db.execute(
+        result = self.db.execute(
             select(MarketplaceApp).where(MarketplaceApp.id == app_id)
         )
         app = result.scalar_one_or_none()
@@ -492,8 +492,8 @@ class MarketplaceService:
 
         app.status = AppStatus.APPROVED
         app.published_at = datetime.now(timezone.utc)
-        await self.db.commit()
-        await self.db.refresh(app)
+        self.db.commit()
+        self.db.refresh(app)
         return app
 
     async def reject_app(
@@ -502,7 +502,7 @@ class MarketplaceService:
         rejection_reason: str
     ) -> MarketplaceApp:
         """Reject an app (admin only)."""
-        result = await self.db.execute(
+        result = self.db.execute(
             select(MarketplaceApp).where(MarketplaceApp.id == app_id)
         )
         app = result.scalar_one_or_none()
@@ -511,8 +511,8 @@ class MarketplaceService:
 
         app.status = AppStatus.REJECTED
         app.rejection_reason = rejection_reason
-        await self.db.commit()
-        await self.db.refresh(app)
+        self.db.commit()
+        self.db.refresh(app)
         return app
 
     async def list_apps(
@@ -550,26 +550,26 @@ class MarketplaceService:
 
         # Count total
         count_query = select(func.count()).select_from(query.subquery())
-        count_result = await self.db.execute(count_query)
+        count_result = self.db.execute(count_query)
         total = count_result.scalar() or 0
 
         # Apply pagination
         query = query.offset(offset).limit(limit)
-        result = await self.db.execute(query)
+        result = self.db.execute(query)
         apps = list(result.scalars().all())
 
         return apps, total
 
     async def get_app(self, app_id: UUID) -> Optional[MarketplaceApp]:
         """Get app by ID."""
-        result = await self.db.execute(
+        result = self.db.execute(
             select(MarketplaceApp).where(MarketplaceApp.id == app_id)
         )
         return result.scalar_one_or_none()
 
     async def get_app_by_slug(self, slug: str) -> Optional[MarketplaceApp]:
         """Get app by slug."""
-        result = await self.db.execute(
+        result = self.db.execute(
             select(MarketplaceApp).where(MarketplaceApp.slug == slug)
         )
         return result.scalar_one_or_none()
@@ -586,7 +586,7 @@ class MarketplaceService:
     ) -> AppInstallation:
         """Install an app for a venue."""
         # Check if already installed
-        result = await self.db.execute(
+        result = self.db.execute(
             select(AppInstallation).where(
                 and_(
                     AppInstallation.app_id == app_id,
@@ -622,8 +622,8 @@ class MarketplaceService:
         # Update install count
         app.install_count += 1
 
-        await self.db.commit()
-        await self.db.refresh(installation)
+        self.db.commit()
+        self.db.refresh(installation)
         return installation
 
     async def uninstall_app(
@@ -632,7 +632,7 @@ class MarketplaceService:
         venue_id: UUID
     ) -> bool:
         """Uninstall an app from a venue."""
-        result = await self.db.execute(
+        result = self.db.execute(
             select(AppInstallation).where(
                 and_(
                     AppInstallation.app_id == app_id,
@@ -649,14 +649,14 @@ class MarketplaceService:
         installation.uninstalled_at = datetime.now(timezone.utc)
 
         # Update install count
-        app_result = await self.db.execute(
+        app_result = self.db.execute(
             select(MarketplaceApp).where(MarketplaceApp.id == app_id)
         )
         app = app_result.scalar_one_or_none()
         if app and app.install_count > 0:
             app.install_count -= 1
 
-        await self.db.commit()
+        self.db.commit()
         return True
 
     async def get_installed_apps(
@@ -664,7 +664,7 @@ class MarketplaceService:
         venue_id: UUID
     ) -> List[Tuple[AppInstallation, MarketplaceApp]]:
         """Get all installed apps for a venue."""
-        result = await self.db.execute(
+        result = self.db.execute(
             select(AppInstallation, MarketplaceApp)
             .join(MarketplaceApp, AppInstallation.app_id == MarketplaceApp.id)
             .where(
@@ -689,7 +689,7 @@ class MarketplaceService:
     ) -> AppReview:
         """Add a review for an app."""
         # Verify app is installed at venue
-        result = await self.db.execute(
+        result = self.db.execute(
             select(AppInstallation).where(
                 and_(
                     AppInstallation.app_id == app_id,
@@ -701,7 +701,7 @@ class MarketplaceService:
             raise ValueError("Cannot review an app that is not installed")
 
         # Check for existing review
-        result = await self.db.execute(
+        result = self.db.execute(
             select(AppReview).where(
                 and_(
                     AppReview.app_id == app_id,
@@ -716,9 +716,9 @@ class MarketplaceService:
             existing.title = title
             existing.body = body
             existing.updated_at = datetime.now(timezone.utc)
-            await self.db.commit()
+            self.db.commit()
             await self._update_app_rating(app_id)
-            await self.db.refresh(existing)
+            self.db.refresh(existing)
             return existing
 
         # Create new review
@@ -734,14 +734,14 @@ class MarketplaceService:
             created_at=datetime.now(timezone.utc)
         )
         self.db.add(review)
-        await self.db.commit()
+        self.db.commit()
         await self._update_app_rating(app_id)
-        await self.db.refresh(review)
+        self.db.refresh(review)
         return review
 
     async def _update_app_rating(self, app_id: UUID) -> None:
         """Update app's average rating."""
-        result = await self.db.execute(
+        result = self.db.execute(
             select(
                 func.avg(AppReview.rating),
                 func.count(AppReview.id)
@@ -751,14 +751,14 @@ class MarketplaceService:
         avg_rating = row[0] or 0
         review_count = row[1] or 0
 
-        app_result = await self.db.execute(
+        app_result = self.db.execute(
             select(MarketplaceApp).where(MarketplaceApp.id == app_id)
         )
         app = app_result.scalar_one_or_none()
         if app:
             app.avg_rating = round(float(avg_rating), 2)
             app.review_count = review_count
-            await self.db.commit()
+            self.db.commit()
 
     async def get_app_reviews(
         self,
@@ -768,13 +768,13 @@ class MarketplaceService:
     ) -> Tuple[List[AppReview], int]:
         """Get reviews for an app."""
         # Count total
-        result = await self.db.execute(
+        result = self.db.execute(
             select(func.count(AppReview.id)).where(AppReview.app_id == app_id)
         )
         total = result.scalar() or 0
 
         # Get reviews
-        result = await self.db.execute(
+        result = self.db.execute(
             select(AppReview)
             .where(AppReview.app_id == app_id)
             .order_by(desc(AppReview.created_at))

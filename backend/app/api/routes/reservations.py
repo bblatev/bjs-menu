@@ -281,9 +281,11 @@ def create_reservation_settings(
 def search_guests(
     request: Request,
     db: DbSession,
-    q: str = Query(..., min_length=2),
+    q: Optional[str] = Query(None, min_length=2),
 ):
     """Search guests by phone or email."""
+    if q is None:
+        return []
     from sqlalchemy import or_
 
     guests = db.query(GuestHistory).filter(
@@ -343,9 +345,11 @@ def get_reservation_calendar(
     request: Request,
     db: DbSession,
     location_id: int,
-    target_date: date = Query(...),
+    target_date: Optional[date] = Query(None, description="Target date (defaults to today)"),
 ):
     """Get reservation calendar for a day."""
+    if target_date is None:
+        target_date = date.today()
     reservations = db.query(Reservation).filter(
         Reservation.location_id == location_id,
         Reservation.reservation_date == target_date,

@@ -50,7 +50,7 @@ class AdvancedKitchenService:
             OrderItem.menu_item_id,
             func.sum(OrderItem.quantity).label('total_quantity'),
             func.count(OrderItem.id).label('order_count'),
-            func.strftime('%Y-%m-%d', Order.created_at).label('order_date')
+            func.to_char(Order.created_at, 'YYYY-MM-DD').label('order_date')
         ).join(
             Order, Order.id == OrderItem.order_id
         ).filter(
@@ -59,7 +59,7 @@ class AdvancedKitchenService:
             Order.status != 'cancelled'
         ).group_by(
             OrderItem.menu_item_id,
-            func.strftime('%Y-%m-%d', Order.created_at)
+            func.to_char(Order.created_at, 'YYYY-MM-DD')
         ).all()
         
         # Aggregate by item
@@ -681,7 +681,7 @@ class AdvancedKitchenService:
         historical_orders = self.db.query(
             func.sum(OrderItem.quantity).label('total_quantity'),
             func.count(OrderItem.id).label('order_count'),
-            func.strftime('%Y-%m-%d', Order.created_at).label('order_date')
+            func.to_char(Order.created_at, 'YYYY-MM-DD').label('order_date')
         ).join(
             Order, Order.id == OrderItem.order_id
         ).filter(
@@ -690,7 +690,7 @@ class AdvancedKitchenService:
             Order.created_at < forecast_date,
             Order.status != 'cancelled'
         ).group_by(
-            func.strftime('%Y-%m-%d', Order.created_at)
+            func.to_char(Order.created_at, 'YYYY-MM-DD')
         ).all()
 
         # Calculate forecast

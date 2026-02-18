@@ -130,7 +130,7 @@ def calculate_dynamic_price(
 def get_item_current_price(
     request: Request,
     item_id: int,
-    venue_id: int,
+    venue_id: int = Query(1, description="Venue/location ID"),
     quantity: int = 1,
     db: Session = Depends(get_db)
 ):
@@ -152,7 +152,7 @@ def get_item_current_price(
 @limiter.limit("60/minute")
 def get_active_pricing_rules(
     request: Request,
-    venue_id: int,
+    venue_id: int = Query(1, description="Venue/location ID"),
     db: Session = Depends(get_db)
 ):
     """Get all currently active pricing rules"""
@@ -347,22 +347,27 @@ def toggle_pricing_rule(
 @limiter.limit("60/minute")
 def get_pricing_analytics(
     request: Request,
-    venue_id: int,
-    start_date: date = Query(...),
-    end_date: date = Query(...),
+    venue_id: int = Query(1, description="Venue/location ID"),
+    start_date: Optional[date] = Query(None, description="Start date (defaults to 30 days ago)"),
+    end_date: Optional[date] = Query(None, description="End date (defaults to today)"),
     db: Session = Depends(get_db)
 ):
     """
     Get pricing analytics for specified period
-    
+
     Returns:
     - Total revenue with dynamic pricing
     - Revenue by hour breakdown
     - Peak hours analysis
     - Average order value
     """
+    if start_date is None:
+        start_date = date.today() - timedelta(days=30)
+    if end_date is None:
+        end_date = date.today()
+
     service = DynamicPricingService(db)
-    
+
     analytics = service.get_pricing_analytics(
         venue_id=venue_id,
         start_date=datetime.combine(start_date, datetime.min.time()),
@@ -376,7 +381,7 @@ def get_pricing_analytics(
 @limiter.limit("60/minute")
 def get_demand_forecast(
     request: Request,
-    venue_id: int,
+    venue_id: int = Query(1, description="Venue/location ID"),
     item_id: Optional[int] = None,
     forecast_days: int = Query(7, ge=1, le=30),
     db: Session = Depends(get_db)
@@ -439,7 +444,7 @@ def get_demand_forecast(
 @limiter.limit("60/minute")
 def get_weather_impact(
     request: Request,
-    venue_id: int,
+    venue_id: int = Query(1, description="Venue/location ID"),
     db: Session = Depends(get_db)
 ):
     """
@@ -558,7 +563,7 @@ def get_weather_impact(
 @limiter.limit("60/minute")
 def get_happy_hour_info(
     request: Request,
-    venue_id: int,
+    venue_id: int = Query(1, description="Venue/location ID"),
     db: Session = Depends(get_db)
 ):
     """
@@ -654,7 +659,7 @@ def simulate_pricing(
 @limiter.limit("60/minute")
 def compare_pricing(
     request: Request,
-    venue_id: int,
+    venue_id: int = Query(1, description="Venue/location ID"),
     days: int = Query(7, ge=1, le=30),
     db: Session = Depends(get_db)
 ):
@@ -695,7 +700,7 @@ def compare_pricing(
 @limiter.limit("60/minute")
 def list_price_adjustments(
     request: Request,
-    location_id: int = Query(...),
+    location_id: int = Query(1, description="Location/venue ID"),
     active_only: bool = Query(False),
     limit: int = Query(50, ge=1, le=200),
     db: Session = Depends(get_db),

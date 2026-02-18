@@ -1,0 +1,76 @@
+/* High-contrast mode for accessibility (WCAG 2.1 AAA) */
+@media (prefers-contrast: high) {
+  :root {
+    --bg-primary: #000;
+    --text-primary: #fff;
+    --border-color: #fff;
+    --accent: #ffff00;
+    --error: #ff4444;
+    --success: #44ff44;
+  }
+
+  body {
+    background: var(--bg-primary) !important;
+    color: var(--text-primary) !important;
+  }
+
+  button,
+  input,
+  select,
+  textarea {
+    border: 2px solid var(--border-color) !important;
+    background: var(--bg-primary) !important;
+    color: var(--text-primary) !important;
+  }
+
+  button:focus,
+  input:focus,
+  select:focus,
+  textarea:focus {
+    outline: 3px solid var(--accent) !important;
+    outline-offset: 2px;
+  }
+
+  a {
+    color: var(--accent) !important;
+    text-decoration: underline !important;
+  }
+
+  /* Ensure table borders are visible */
+  table,
+  th,
+  td {
+    border: 1px solid var(--border-color) !important;
+  }
+
+  /* Status badges */
+  .bg-green-100,
+  .bg-green-500 {
+    background: var(--success) !important;
+    color: #000 !important;
+  }
+
+  .bg-red-100,
+  .bg-red-500 {
+    background: var(--error) !important;
+    color: #000 !important;
+  }
+
+  .bg-yellow-100,
+  .bg-yellow-500 {
+    background: var(--accent) !important;
+    color: #000 !important;
+  }
+}
+
+/* Reduced motion for accessibility */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

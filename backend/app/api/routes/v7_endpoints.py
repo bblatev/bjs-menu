@@ -521,8 +521,8 @@ async def estimate_campaign_audience(request: Request, venue_id: int, filters: D
     verify_venue_access(venue_id, current_user)
     # Query actual customer count from database
     query = db.query(func.count(Customer.id)).filter(
-        Customer.venue_id == venue_id,
-        Customer.is_active == True,
+        Customer.location_id == venue_id,
+        Customer.deleted_at.is_(None),
         Customer.marketing_consent == True
     )
 
@@ -547,7 +547,7 @@ async def estimate_campaign_audience(request: Request, venue_id: int, filters: D
     elif segment == "high_spenders":
         # Top 15% by total spent
         avg_spend = db.query(func.avg(Customer.total_spent)).filter(
-            Customer.venue_id == venue_id, Customer.is_active == True
+            Customer.location_id == venue_id, Customer.deleted_at.is_(None)
         ).scalar() or 0
         query = query.filter(Customer.total_spent >= avg_spend * 2)
     elif segment == "loyalty_members":
@@ -640,8 +640,8 @@ async def send_sms_campaign(
     segment = target_audience.get("segment", "all")
 
     query = db.query(func.count(Customer.id)).filter(
-        Customer.venue_id == venue_id,
-        Customer.is_active == True,
+        Customer.location_id == venue_id,
+        Customer.deleted_at.is_(None),
         Customer.marketing_consent == True,
         Customer.phone.isnot(None)
     )

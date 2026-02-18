@@ -169,6 +169,7 @@ class SessionTimeoutService:
             "warning_minutes": warning_minutes,
             "extend_allowed": extend_allowed,
             "max_extensions": max_extensions,
+            "is_active": True,
         }
 
     def get_timeout_config(self, role: str) -> dict:
@@ -180,4 +181,5 @@ class SessionTimeoutService:
             "warning_minutes": 5,
             "extend_allowed": True,
             "max_extensions": 3,
+            "is_active": True,
         }

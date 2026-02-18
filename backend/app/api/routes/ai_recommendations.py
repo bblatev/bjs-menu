@@ -46,7 +46,7 @@ class RecommendationFeedback(BaseModel):
 @limiter.limit("60/minute")
 def get_ai_recommendations_root(request: Request, db: DbSession):
     """AI recommendations overview."""
-    return get_personalized_recommendations(request=request, db=db)
+    return get_personalized_recommendations(request=request, db=db, limit=20)
 
 
 @router.get("/recommendations/personalized", response_model=PersonalizedRecommendationsResponse)
@@ -131,10 +131,12 @@ def get_time_based_recommendations(
 def get_cart_based_recommendations(
     request: Request,
     db: DbSession,
-    cart_items: str = Query(..., description="Comma-separated list of item IDs"),
+    cart_items: Optional[str] = Query(None, description="Comma-separated list of item IDs"),
     limit: int = Query(5, ge=1, le=20),
 ):
     """Get cross-sell recommendations based on cart contents."""
+    if not cart_items:
+        return []
     try:
         cart_item_ids = [int(i.strip()) for i in cart_items.split(",")]
     except ValueError:
@@ -305,7 +307,7 @@ def get_complete_recommendations(
 def get_recommendation_explanation(
     request: Request,
     item_id: int, db: DbSession,
-    recommendation_type: str = Query(..., description="Type of recommendation"),
+    recommendation_type: str = Query("general", description="Type of recommendation"),
 ):
     """Get human-readable explanation for why an item was recommended."""
     return {

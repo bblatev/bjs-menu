@@ -173,9 +173,9 @@ async def check_availability(
 
         # Get all active tables that can accommodate the party
         suitable_tables = db.query(Table).filter(
-            Table.venue_id == DEFAULT_VENUE_ID,
-            Table.active == True,
-            Table.seats >= availability_data.party_size
+            Table.location_id == DEFAULT_VENUE_ID,
+            Table.status != "closed",
+            Table.capacity >= availability_data.party_size
         ).all()
 
         if not suitable_tables:
@@ -244,10 +244,10 @@ async def create_booking(
 
         # Find an available table
         suitable_tables = db.query(Table).filter(
-            Table.venue_id == DEFAULT_VENUE_ID,
-            Table.active == True,
-            Table.seats >= booking_data.party_size
-        ).order_by(Table.seats.asc()).all()  # Prefer smaller tables
+            Table.location_id == DEFAULT_VENUE_ID,
+            Table.status != "closed",
+            Table.capacity >= booking_data.party_size
+        ).order_by(Table.capacity.asc()).all()  # Prefer smaller tables
 
         # Check availability and find a table
         slot_end = slot_time + timedelta(minutes=duration_minutes)
@@ -255,7 +255,7 @@ async def create_booking(
 
         for table in suitable_tables:
             conflict = db.query(Reservation).filter(
-                Reservation.table_id == table.id,
+                Reservation.table_ids.contains([table.id]),
                 Reservation.status.in_([
                     ReservationStatus.pending,
                     ReservationStatus.confirmed,
@@ -294,7 +294,7 @@ async def create_booking(
             duration_minutes=duration_minutes,
             status=ReservationStatus.confirmed,  # Auto-confirm Google bookings
             confirmed_at=datetime.now(timezone.utc),
-            booking_source=BookingSource.google,
+            source=BookingSource.GOOGLE,
             external_booking_id=booking_id,
             special_requests=booking_data.additional_request,
             confirmation_code=secrets.token_hex(4).upper(),
@@ -341,7 +341,7 @@ async def get_booking_status(
             internal_id = int(status_data.booking_id)
             reservation = db.query(Reservation).filter(
                 Reservation.id == internal_id,
-                Reservation.booking_source == BookingSource.google
+                Reservation.source == BookingSource.GOOGLE
             ).first()
         except ValueError:
             pass
@@ -457,7 +457,7 @@ async def list_bookings(
     Used by Google for batch synchronization.
     """
     query = db.query(Reservation).filter(
-        Reservation.booking_source == BookingSource.google
+        Reservation.source == BookingSource.GOOGLE
     )
 
     if start_time:
@@ -522,8 +522,8 @@ async def get_availability_feed(
     # Get venue info
     venue = db.query(Venue).filter(Venue.id == DEFAULT_VENUE_ID).first()
     tables = db.query(Table).filter(
-        Table.venue_id == DEFAULT_VENUE_ID,
-        Table.active == True
+        Table.location_id == DEFAULT_VENUE_ID,
+        Table.status != "closed"
     ).all()
 
     max_capacity = max([t.seats for t in tables], default=4)
@@ -541,7 +541,7 @@ async def get_availability_feed(
             available_count = 0
             for table in tables:
                 conflict = db.query(Reservation).filter(
-                    Reservation.table_id == table.id,
+                    Reservation.table_ids.contains([table.id]),
                     Reservation.status.in_([
                         ReservationStatus.pending,
                         ReservationStatus.confirmed,

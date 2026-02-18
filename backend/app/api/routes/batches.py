@@ -165,6 +165,60 @@ async def get_expired_batches(
     return result
 
 
+@router.get("/summary")
+@limiter.limit("60/minute")
+async def get_batch_summary(
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user: StaffUser = Depends(get_current_user)
+):
+    """Get summary of batch status across all items"""
+    now = datetime.now(timezone.utc)
+    soon = now + timedelta(days=7)
+
+    batches = db.query(StockBatch).join(StockItem).filter(
+        StockItem.venue_id == current_user.venue_id,
+        StockBatch.quantity > 0
+    ).all()
+
+    expired_count = 0
+    expired_value = 0
+    expiring_soon_count = 0
+    expiring_soon_value = 0
+    good_count = 0
+
+    for batch in batches:
+        value = batch.quantity * (batch.cost_per_unit or 0)
+
+        if batch.expiration_date:
+            if batch.expiration_date < now:
+                expired_count += 1
+                expired_value += value
+            elif batch.expiration_date <= soon:
+                expiring_soon_count += 1
+                expiring_soon_value += value
+            else:
+                good_count += 1
+        else:
+            good_count += 1
+
+    return {
+        "total_batches": len(batches),
+        "expired": {
+            "count": expired_count,
+            "value": round(expired_value, 2)
+        },
+        "expiring_soon": {
+            "count": expiring_soon_count,
+            "value": round(expiring_soon_value, 2),
+            "days": 7
+        },
+        "good": {
+            "count": good_count
+        }
+    }
+
+
 @router.get("/{batch_id}", response_model=BatchResponse)
 @limiter.limit("60/minute")
 async def get_batch(
@@ -351,60 +405,6 @@ async def get_batches_for_item(
     batches = query.order_by(StockBatch.expiration_date.asc().nullslast()).all()
 
     return [_format_batch_response(b, stock_item) for b in batches]
-
-
-@router.get("/summary")
-@limiter.limit("60/minute")
-async def get_batch_summary(
-    request: Request,
-    db: Session = Depends(get_db),
-    current_user: StaffUser = Depends(get_current_user)
-):
-    """Get summary of batch status across all items"""
-    now = datetime.now(timezone.utc)
-    soon = now + timedelta(days=7)
-
-    batches = db.query(StockBatch).join(StockItem).filter(
-        StockItem.venue_id == current_user.venue_id,
-        StockBatch.quantity > 0
-    ).all()
-
-    expired_count = 0
-    expired_value = 0
-    expiring_soon_count = 0
-    expiring_soon_value = 0
-    good_count = 0
-
-    for batch in batches:
-        value = batch.quantity * (batch.cost_per_unit or 0)
-
-        if batch.expiration_date:
-            if batch.expiration_date < now:
-                expired_count += 1
-                expired_value += value
-            elif batch.expiration_date <= soon:
-                expiring_soon_count += 1
-                expiring_soon_value += value
-            else:
-                good_count += 1
-        else:
-            good_count += 1
-
-    return {
-        "total_batches": len(batches),
-        "expired": {
-            "count": expired_count,
-            "value": round(expired_value, 2)
-        },
-        "expiring_soon": {
-            "count": expiring_soon_count,
-            "value": round(expiring_soon_value, 2),
-            "days": 7
-        },
-        "good": {
-            "count": good_count
-        }
-    }
 
 
 def _format_batch_response(batch: StockBatch, stock_item: StockItem) -> BatchResponse:

@@ -270,11 +270,11 @@ async def update_booking_status(request: Request, booking_id: str, body: Booking
 @limiter.limit("60/minute")
 async def get_merchant_feed(
     request: Request,
-    name: str,
-    phone: str,
-    address: str,
-    lat: float,
-    lng: float,
+    name: str = "BJ's Bar",
+    phone: str = "+1234567890",
+    address: str = "123 Main St",
+    lat: float = 42.6977,
+    lng: float = 23.3219,
     timezone: str = "America/New_York",
     website: str = "",
 ):

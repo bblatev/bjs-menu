@@ -84,9 +84,9 @@ class QuickDispenseRequest(BaseModel):
 
 @router.get("/")
 @limiter.limit("60/minute")
-async def get_mobile_scanner_root(request: Request, db: Session = Depends(get_db)):
+async def get_mobile_scanner_root(request: Request, db: Session = Depends(get_db), current_user: StaffUser = Depends(get_current_user)):
     """Mobile scanner overview."""
-    return await get_device_config(request=request, db=db)
+    return await get_device_config(request=request, db=db, current_user=current_user)
 
 
 @router.post("/scan", response_model=Dict[str, Any])

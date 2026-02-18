@@ -39,7 +39,7 @@ def get_order_suggestions(
     request: Request,
     db: DbSession,
     current_user: CurrentUser,
-    location_id: int = Query(..., description="Location to check stock for"),
+    location_id: int = Query(1, description="Location to check stock for"),
 ):
     """
     Get order suggestions based on current stock vs target stock.

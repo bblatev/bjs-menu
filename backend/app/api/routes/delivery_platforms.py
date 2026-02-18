@@ -2,7 +2,7 @@
 Delivery Platform Integration API Endpoints
 UberEats, DoorDash, OpenTable, Resy integrations
 """
-from fastapi import APIRouter, Depends, HTTPException, Request, BackgroundTasks
+from fastapi import APIRouter, Depends, HTTPException, Request, BackgroundTasks, Query
 from sqlalchemy.orm import Session
 from pydantic import BaseModel, Field
 from typing import Optional, List
@@ -114,7 +114,7 @@ async def get_all_delivery_orders(
 @limiter.limit("60/minute")
 async def get_all_reservations(
     request: Request,
-    date: str,
+    date: str = Query("", description="Date for reservations"),
     current_user=Depends(get_current_user)
 ):
     """
@@ -730,8 +730,8 @@ async def resy_noshow(
 @limiter.limit("60/minute")
 async def get_resy_availability(
     request: Request,
-    date: str,
-    party_size: int = 2,
+    date: str = Query("", description="Date for availability check"),
+    party_size: int = Query(2, description="Party size"),
     current_user=Depends(get_current_user)
 ):
     """Get Resy availability for a date"""

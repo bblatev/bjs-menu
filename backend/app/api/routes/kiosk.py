@@ -2,7 +2,7 @@
 Kiosk Mode API Endpoints
 Self-service kiosk configuration and ordering
 """
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Request, Query
 from sqlalchemy.orm import Session
 from datetime import datetime, timezone
 
@@ -29,7 +29,7 @@ async def get_kiosk_root(request: Request, db: Session = Depends(get_db)):
 @limiter.limit("60/minute")
 async def get_kiosk_config(
     request: Request,
-    venue_id: int,
+    venue_id: int = Query(1, description="Venue ID"),
     db: Session = Depends(get_db)
 ):
     """Get kiosk configuration for a venue (public endpoint)"""
@@ -129,17 +129,17 @@ async def create_kiosk_order(
 
     # Get or create kiosk table
     kiosk_table = db.query(Table).filter(
-        Table.venue_id == data.venue_id,
+        Table.location_id == data.venue_id,
         Table.number == "KIOSK"
     ).first()
 
     if not kiosk_table:
         kiosk_table = Table(
-            venue_id=data.venue_id,
+            location_id=data.venue_id,
             number="KIOSK",
-            seats=0,
-            active=True,
-            location="Self-service kiosk"
+            capacity=0,
+            status="available",
+            area="Self-service kiosk"
         )
         db.add(kiosk_table)
         db.flush()
@@ -225,7 +225,7 @@ async def get_kiosk_order_queue(
     """Get kiosk order queue for display (public endpoint)"""
     # Get kiosk table
     kiosk_table = db.query(Table).filter(
-        Table.venue_id == venue_id,
+        Table.location_id == venue_id,
         Table.number == "KIOSK"
     ).first()
 

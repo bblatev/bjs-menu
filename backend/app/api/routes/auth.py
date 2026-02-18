@@ -70,8 +70,12 @@ def _clear_pin_failures(db, client_ip: str):
     db.commit()
 
 
-from app.core.rbac import CurrentUser
-from app.core.security import create_access_token, get_password_hash, get_pin_hash, verify_password, verify_pin
+from app.core.rbac import CurrentUser, RequireManager
+from app.core.security import (
+    create_access_token, get_password_hash, get_pin_hash,
+    verify_password, verify_pin, blacklist_token,
+    generate_pin_reset_token, verify_pin_reset_token,
+)
 from app.db.session import DbSession
 from app.models.user import User
 from app.schemas.auth import LoginRequest, PinLoginRequest, Token
@@ -276,3 +280,133 @@ def clear_user_pin(request: Request, current_user: CurrentUser, db: DbSession):
     db.commit()
     logger.info(f"PIN cleared for user: {user.email} (ID: {user.id})")
     return {"message": "PIN cleared successfully"}
+
+
+# ===== Session Management =====
+
+@router.post("/logout")
+@limiter.limit("30/minute")
+def logout(request: Request, current_user: CurrentUser):
+    """Invalidate the current JWT token (logout).
+
+    Adds the token JTI to a Redis-backed blacklist so the token
+    can no longer be used for authentication.
+    """
+    auth_header = request.headers.get("Authorization", "")
+    if auth_header.startswith("Bearer "):
+        token = auth_header.split(" ", 1)[1]
+        blacklist_token(token)
+    logger.info(f"User logged out: {current_user.email} (ID: {current_user.user_id})")
+    return {"message": "Logged out successfully"}
+
+
+# ===== PIN Recovery =====
+
+class PinResetRequestModel(BaseModel):
+    """Request to initiate PIN reset (manager/owner action)."""
+    user_id: int = Field(..., description="User ID whose PIN to reset")
+
+
+class PinResetConfirmModel(BaseModel):
+    """Confirm PIN reset with token."""
+    reset_token: str = Field(..., description="PIN reset token from manager")
+    new_pin: str = Field(..., min_length=4, max_length=6, pattern=r"^\d{4,6}$")
+
+
+@router.post("/pin-reset/request")
+@limiter.limit("10/minute")
+def request_pin_reset(
+    request: Request,
+    data: PinResetRequestModel,
+    current_user: RequireManager,
+    db: DbSession,
+):
+    """Manager/Owner initiates PIN reset for a locked-out user.
+
+    Returns a time-limited reset token (valid for 15 minutes) that the
+    user can use to set a new PIN.
+    """
+    target_user = db.query(User).filter(User.id == data.user_id).first()
+    if not target_user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    reset_token = generate_pin_reset_token(target_user.id)
+
+    # Clear lockout for the target user's IP (best-effort)
+    from app.models.operations import AppSetting
+    db.query(AppSetting).filter(
+        AppSetting.category == "security",
+        AppSetting.key.like(f"pin_lockout:%"),
+    ).delete(synchronize_session=False)
+    db.commit()
+
+    logger.info(
+        f"PIN reset requested for user {target_user.email} (ID: {target_user.id}) "
+        f"by {current_user.email} (ID: {current_user.user_id})"
+    )
+    return {
+        "message": f"PIN reset token generated for {target_user.email}",
+        "reset_token": reset_token,
+        "expires_in_minutes": 15,
+    }
+
+
+@router.post("/pin-reset/confirm")
+@limiter.limit("5/minute")
+def confirm_pin_reset(request: Request, data: PinResetConfirmModel, db: DbSession):
+    """User confirms PIN reset using the token from their manager.
+
+    No existing authentication required - the reset token serves as proof.
+    """
+    user_id = verify_pin_reset_token(data.reset_token)
+    if user_id is None:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid or expired reset token",
+        )
+
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    user.pin_hash = get_pin_hash(data.new_pin)
+    db.commit()
+
+    logger.info(f"PIN reset completed for user: {user.email} (ID: {user.id})")
+    return {"message": "PIN reset successfully. You can now log in with your new PIN."}
+
+
+@router.post("/change-password")
+@limiter.limit("5/minute")
+def change_password(
+    request: Request,
+    current_user: CurrentUser,
+    db: DbSession,
+    data: dict,
+):
+    """Change password for the current user."""
+    user = db.query(User).filter(User.id == current_user.user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    old_password = data.get("old_password", "")
+    new_password = data.get("new_password", "")
+
+    if not old_password or not new_password:
+        raise HTTPException(status_code=400, detail="Both old_password and new_password required")
+    if len(new_password) < 8:
+        raise HTTPException(status_code=400, detail="New password must be at least 8 characters")
+
+    if not verify_password(old_password, user.password_hash):
+        raise HTTPException(status_code=401, detail="Current password is incorrect")
+
+    user.password_hash = get_password_hash(new_password)
+    db.commit()
+
+    # Blacklist current token to force re-login
+    auth_header = request.headers.get("Authorization", "")
+    if auth_header.startswith("Bearer "):
+        blacklist_token(auth_header.split(" ", 1)[1])
+
+    logger.info(f"Password changed for user: {user.email} (ID: {user.id})")
+    return {"message": "Password changed. Please log in again."}

@@ -41,7 +41,7 @@ class InventoryCountStartRequest(BaseModel):
 @limiter.limit("60/minute")
 def get_inventory_complete_root(request: Request, db: DbSession):
     """Inventory dashboard."""
-    return get_inventory_dashboard(request=request, db=db)
+    return get_inventory_dashboard(request=request, db=db, location_id=1)
 
 
 @router.get("/dashboard")

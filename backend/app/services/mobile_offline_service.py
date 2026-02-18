@@ -11,7 +11,7 @@ from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, List, Optional, Tuple
 from uuid import UUID, uuid4
 from sqlalchemy import select, and_, or_, func
-from sqlalchemy.ext.asyncio import Session
+from sqlalchemy.orm import Session
 
 from app.core.config import settings
 from app.models.gap_features_models import (
@@ -106,8 +106,8 @@ class MobileOfflineService:
                 )
             )
 
-        categories_result = await self.db.execute(categories_query)
-        items_result = await self.db.execute(items_query)
+        categories_result = self.db.execute(categories_query)
+        items_result = self.db.execute(items_query)
 
         categories = categories_result.scalars().all()
         items = items_result.scalars().all()
@@ -158,8 +158,8 @@ class MobileOfflineService:
         tables_query = select(Table).where(Table.venue_id == venue_id)
         floor_plans_query = select(FloorPlan).where(FloorPlan.venue_id == venue_id)
 
-        tables_result = await self.db.execute(tables_query)
-        floor_plans_result = await self.db.execute(floor_plans_query)
+        tables_result = self.db.execute(tables_query)
+        floor_plans_result = self.db.execute(floor_plans_query)
 
         tables = tables_result.scalars().all()
         floor_plans = floor_plans_result.scalars().all()
@@ -201,7 +201,7 @@ class MobileOfflineService:
         from app.models import StaffUser as Staff
 
         staff_query = select(Staff).where(Staff.venue_id == venue_id)
-        staff_result = await self.db.execute(staff_query)
+        staff_result = self.db.execute(staff_query)
         staff = staff_result.scalars().all()
 
         return {
@@ -227,7 +227,7 @@ class MobileOfflineService:
         from app.models.stock import StockItem
 
         stock_query = select(StockItem).where(StockItem.venue_id == venue_id)
-        stock_result = await self.db.execute(stock_query)
+        stock_result = self.db.execute(stock_query)
         stock = stock_result.scalars().all()
 
         return {
@@ -253,7 +253,7 @@ class MobileOfflineService:
         """Get venue settings for sync."""
         from app.models.venue import Venue
 
-        venue_result = await self.db.execute(
+        venue_result = self.db.execute(
             select(Venue).where(Venue.id == venue_id)
         )
         venue = venue_result.scalar_one_or_none()
@@ -352,7 +352,7 @@ class MobileOfflineService:
                     "error": str(e)
                 })
 
-        await self.db.commit()
+        self.db.commit()
         return results
 
     async def _check_conflict(
@@ -372,7 +372,7 @@ class MobileOfflineService:
         # Check based on transaction type
         if txn_type == "order":
             from app.models.orders import Order
-            result = await self.db.execute(
+            result = self.db.execute(
                 select(Order).where(Order.id == entity_id)
             )
             order = result.scalar_one_or_none()
@@ -443,7 +443,7 @@ class MobileOfflineService:
 
         elif txn_type == "table_status":
             from app.models.tables import Table
-            result = await self.db.execute(
+            result = self.db.execute(
                 select(Table).where(
                     and_(
                         Table.id == txn_data.get("table_id"),
@@ -481,8 +481,8 @@ class MobileOfflineService:
             is_active=True
         )
         self.db.add(session)
-        await self.db.commit()
-        await self.db.refresh(session)
+        self.db.commit()
+        self.db.refresh(session)
         return session
 
     async def update_session_sync(
@@ -491,25 +491,25 @@ class MobileOfflineService:
         sync_version: int
     ) -> None:
         """Update session's last sync timestamp."""
-        result = await self.db.execute(
+        result = self.db.execute(
             select(EmployeeAppSession).where(EmployeeAppSession.id == session_id)
         )
         session = result.scalar_one_or_none()
         if session:
             session.last_sync_at = datetime.now(timezone.utc)
             session.sync_version = sync_version
-            await self.db.commit()
+            self.db.commit()
 
     async def end_session(self, session_id: UUID) -> None:
         """End a mobile app session."""
-        result = await self.db.execute(
+        result = self.db.execute(
             select(EmployeeAppSession).where(EmployeeAppSession.id == session_id)
         )
         session = result.scalar_one_or_none()
         if session:
             session.is_active = False
             session.ended_at = datetime.now(timezone.utc)
-            await self.db.commit()
+            self.db.commit()
 
     async def get_active_sessions(
         self,
@@ -526,7 +526,7 @@ class MobileOfflineService:
         if staff_id:
             query = query.where(EmployeeAppSession.staff_id == staff_id)
 
-        result = await self.db.execute(query)
+        result = self.db.execute(query)
         return list(result.scalars().all())
 
 
@@ -550,7 +550,7 @@ class PushNotificationService:
     ) -> PushToken:
         """Register a push notification token."""
         # Check if token already exists
-        result = await self.db.execute(
+        result = self.db.execute(
             select(PushToken).where(PushToken.token == token)
         )
         existing = result.scalar_one_or_none()
@@ -564,7 +564,7 @@ class PushNotificationService:
             existing.device_info = device_info or {}
             existing.is_active = True
             existing.last_used_at = datetime.now(timezone.utc)
-            await self.db.commit()
+            self.db.commit()
             return existing
 
         # Create new token
@@ -580,19 +580,19 @@ class PushNotificationService:
             created_at=datetime.now(timezone.utc)
         )
         self.db.add(push_token)
-        await self.db.commit()
-        await self.db.refresh(push_token)
+        self.db.commit()
+        self.db.refresh(push_token)
         return push_token
 
     async def unregister_token(self, token: str) -> bool:
         """Unregister a push notification token."""
-        result = await self.db.execute(
+        result = self.db.execute(
             select(PushToken).where(PushToken.token == token)
         )
         push_token = result.scalar_one_or_none()
         if push_token:
             push_token.is_active = False
-            await self.db.commit()
+            self.db.commit()
             return True
         return False
 
@@ -607,7 +607,7 @@ class PushNotificationService:
     ) -> PushNotification:
         """Send a push notification to a user."""
         # Get active tokens for user
-        result = await self.db.execute(
+        result = self.db.execute(
             select(PushToken).where(
                 and_(
                     PushToken.user_id == user_id,
@@ -654,8 +654,8 @@ class PushNotificationService:
                 if "invalid" in str(e).lower() or "unregistered" in str(e).lower():
                     token.is_active = False
 
-        await self.db.commit()
-        await self.db.refresh(notification)
+        self.db.commit()
+        self.db.refresh(notification)
         return notification
 
     async def send_to_venue_staff(
@@ -675,7 +675,7 @@ class PushNotificationService:
                 PushToken.is_active == True
             )
         )
-        result = await self.db.execute(query)
+        result = self.db.execute(query)
         tokens = result.scalars().all()
 
         sent_count = 0
@@ -788,7 +788,7 @@ class PushNotificationService:
 
         query = query.order_by(PushNotification.created_at.desc()).limit(limit)
 
-        result = await self.db.execute(query)
+        result = self.db.execute(query)
         return list(result.scalars().all())
 
     async def mark_as_read(
@@ -797,7 +797,7 @@ class PushNotificationService:
         user_id: UUID
     ) -> bool:
         """Mark a notification as read."""
-        result = await self.db.execute(
+        result = self.db.execute(
             select(PushNotification).where(
                 and_(
                     PushNotification.id == notification_id,
@@ -808,6 +808,6 @@ class PushNotificationService:
         notification = result.scalar_one_or_none()
         if notification:
             notification.read_at = datetime.now(timezone.utc)
-            await self.db.commit()
+            self.db.commit()
             return True
         return False

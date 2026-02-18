@@ -10,7 +10,7 @@ from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, List, Optional, Tuple
 from uuid import UUID, uuid4
 from sqlalchemy import select, and_, or_, func, desc
-from sqlalchemy.ext.asyncio import Session
+from sqlalchemy.orm import Session
 
 from app.models.gap_features_models import (
     ABExperiment, ExperimentAssignment, ExperimentStatus
@@ -63,8 +63,8 @@ class ABTestingService:
             created_at=datetime.now(timezone.utc)
         )
         self.db.add(experiment)
-        await self.db.commit()
-        await self.db.refresh(experiment)
+        self.db.commit()
+        self.db.refresh(experiment)
         return experiment
 
     async def start_experiment(self, experiment_id: UUID) -> ABExperiment:
@@ -78,8 +78,8 @@ class ABTestingService:
 
         experiment.status = ExperimentStatus.RUNNING
         experiment.started_at = datetime.now(timezone.utc)
-        await self.db.commit()
-        await self.db.refresh(experiment)
+        self.db.commit()
+        self.db.refresh(experiment)
         return experiment
 
     async def pause_experiment(self, experiment_id: UUID) -> ABExperiment:
@@ -92,8 +92,8 @@ class ABTestingService:
             raise ValueError("Can only pause running experiments")
 
         experiment.status = ExperimentStatus.PAUSED
-        await self.db.commit()
-        await self.db.refresh(experiment)
+        self.db.commit()
+        self.db.refresh(experiment)
         return experiment
 
     async def resume_experiment(self, experiment_id: UUID) -> ABExperiment:
@@ -106,8 +106,8 @@ class ABTestingService:
             raise ValueError("Can only resume paused experiments")
 
         experiment.status = ExperimentStatus.RUNNING
-        await self.db.commit()
-        await self.db.refresh(experiment)
+        self.db.commit()
+        self.db.refresh(experiment)
         return experiment
 
     async def complete_experiment(
@@ -123,13 +123,13 @@ class ABTestingService:
         experiment.status = ExperimentStatus.COMPLETED
         experiment.ended_at = datetime.now(timezone.utc)
         experiment.winner_variant = winner_variant
-        await self.db.commit()
-        await self.db.refresh(experiment)
+        self.db.commit()
+        self.db.refresh(experiment)
         return experiment
 
     async def get_experiment(self, experiment_id: UUID) -> Optional[ABExperiment]:
         """Get experiment by ID."""
-        result = await self.db.execute(
+        result = self.db.execute(
             select(ABExperiment).where(ABExperiment.id == experiment_id)
         )
         return result.scalar_one_or_none()
@@ -150,7 +150,7 @@ class ABTestingService:
 
         query = query.order_by(desc(ABExperiment.created_at))
 
-        result = await self.db.execute(query)
+        result = self.db.execute(query)
         return list(result.scalars().all())
 
     # ==================== USER ASSIGNMENT ====================
@@ -178,7 +178,7 @@ class ABTestingService:
             return None  # User not in experiment
 
         # Check for existing assignment
-        result = await self.db.execute(
+        result = self.db.execute(
             select(ExperimentAssignment).where(
                 and_(
                     ExperimentAssignment.experiment_id == experiment_id,
@@ -208,7 +208,7 @@ class ABTestingService:
             assigned_at=datetime.now(timezone.utc)
         )
         self.db.add(new_assignment)
-        await self.db.commit()
+        self.db.commit()
 
         return variant
 
@@ -247,7 +247,7 @@ class ABTestingService:
     ) -> bool:
         """Record a conversion event for an experiment."""
         # Get assignment
-        result = await self.db.execute(
+        result = self.db.execute(
             select(ExperimentAssignment).where(
                 and_(
                     ExperimentAssignment.experiment_id == experiment_id,
@@ -265,7 +265,7 @@ class ABTestingService:
         assignment.conversion_value = metric_value
         assignment.conversion_metadata = metadata or {}
 
-        await self.db.commit()
+        self.db.commit()
         return True
 
     async def get_experiment_results(
@@ -293,7 +293,7 @@ class ABTestingService:
             variant_id = variant.get("id")
 
             # Get assignment stats
-            result = await self.db.execute(
+            result = self.db.execute(
                 select(
                     func.count(ExperimentAssignment.id).label("total"),
                     func.sum(
@@ -398,7 +398,7 @@ class ReviewAutomationService:
         from app.models.gap_features_models import ReviewLink
 
         # Check if link already exists
-        result = await self.db.execute(
+        result = self.db.execute(
             select(ReviewLink).where(
                 and_(
                     ReviewLink.venue_id == venue_id,
@@ -411,7 +411,7 @@ class ReviewAutomationService:
         if existing:
             existing.link_url = link_url
             existing.updated_at = datetime.now(timezone.utc)
-            await self.db.commit()
+            self.db.commit()
             return {
                 "id": str(existing.id),
                 "platform": platform,
@@ -427,7 +427,7 @@ class ReviewAutomationService:
             created_at=datetime.now(timezone.utc)
         )
         self.db.add(link)
-        await self.db.commit()
+        self.db.commit()
 
         return {
             "id": str(link.id),
@@ -442,7 +442,7 @@ class ReviewAutomationService:
         """Get all review links for a venue."""
         from app.models.gap_features_models import ReviewLink
 
-        result = await self.db.execute(
+        result = self.db.execute(
             select(ReviewLink).where(ReviewLink.venue_id == venue_id)
         )
         links = result.scalars().all()
@@ -469,7 +469,7 @@ class ReviewAutomationService:
         from app.models.gap_features_models import ReviewRequest
 
         # Check if request already sent for this order
-        result = await self.db.execute(
+        result = self.db.execute(
             select(ReviewRequest).where(
                 and_(
                     ReviewRequest.order_id == order_id,
@@ -500,7 +500,7 @@ class ReviewAutomationService:
             created_at=datetime.now(timezone.utc)
         )
         self.db.add(request)
-        await self.db.commit()
+        self.db.commit()
 
         return {
             "id": str(request.id),
@@ -517,7 +517,7 @@ class ReviewAutomationService:
 
         now = datetime.now(timezone.utc)
 
-        result = await self.db.execute(
+        result = self.db.execute(
             select(ReviewRequest).where(
                 and_(
                     ReviewRequest.venue_id == venue_id,
@@ -574,7 +574,7 @@ class ReviewAutomationService:
                 request.error_message = str(e)
                 failed += 1
 
-        await self.db.commit()
+        self.db.commit()
 
         return {
             "processed": sent + failed,
@@ -586,7 +586,7 @@ class ReviewAutomationService:
         """Get customer info."""
         from app.models.customers import Customer
 
-        result = await self.db.execute(
+        result = self.db.execute(
             select(Customer).where(Customer.id == customer_id)
         )
         customer = result.scalar_one_or_none()
@@ -627,7 +627,7 @@ class ReviewAutomationService:
         """Track a review link click."""
         from app.models.gap_features_models import ReviewLink
 
-        result = await self.db.execute(
+        result = self.db.execute(
             select(ReviewLink).where(ReviewLink.id == link_id)
         )
         link = result.scalar_one_or_none()
@@ -635,7 +635,7 @@ class ReviewAutomationService:
         if link:
             link.click_count = (link.click_count or 0) + 1
             link.last_clicked_at = datetime.now(timezone.utc)
-            await self.db.commit()
+            self.db.commit()
             return True
         return False
 
@@ -647,15 +647,16 @@ class ReviewAutomationService:
     ) -> Dict[str, Any]:
         """Get review request analytics."""
         from app.models.gap_features_models import ReviewRequest
+        from sqlalchemy import case, Integer
 
-        result = await self.db.execute(
+        result = self.db.execute(
             select(
                 func.count(ReviewRequest.id).label("total"),
                 func.sum(
-                    func.cast(ReviewRequest.status == "sent", func.Integer)
+                    case((ReviewRequest.status == "sent", 1), else_=0)
                 ).label("sent"),
                 func.sum(
-                    func.cast(ReviewRequest.status == "failed", func.Integer)
+                    case((ReviewRequest.status == "failed", 1), else_=0)
                 ).label("failed")
             ).where(
                 and_(
@@ -669,7 +670,7 @@ class ReviewAutomationService:
 
         # Get link clicks
         from app.models.gap_features_models import ReviewLink
-        result = await self.db.execute(
+        result = self.db.execute(
             select(
                 ReviewLink.platform,
                 func.sum(ReviewLink.click_count).label("clicks")

@@ -87,6 +87,9 @@ class Reservation(Base):
     is_vip = Column(Boolean, default=False)
     vip_notes = Column(Text, nullable=True)
 
+    # External booking integration
+    external_booking_id = Column(String(100), nullable=True, index=True)
+
     # Internal notes
     internal_notes = Column(Text, nullable=True)
     created_by = Column(Integer, ForeignKey("users.id"), nullable=True)

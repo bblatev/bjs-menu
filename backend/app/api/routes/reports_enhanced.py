@@ -239,8 +239,8 @@ def get_food_cost_report(
 
     item_breakdown = []
     for p in products:
-        cost = float(p.cost or 0)
-        price = float(p.price or 0)
+        cost = float(p.cost_price or 0)
+        price = cost * 3 if cost > 0 else 0  # estimate selling price as 3x cost
         margin = ((price - cost) / price * 100) if price > 0 else 0
         item_breakdown.append({
             "item_id": p.id,

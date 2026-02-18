@@ -1,6 +1,6 @@
 """API Routes for Advanced Competitor Features."""
 
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from decimal import Decimal
 from typing import List, Optional, Dict, Any
 
@@ -202,11 +202,15 @@ def get_waste_entries(
 def get_waste_summary(
     request: Request,
     location_id: int,
-    start_date: date,
-    end_date: date,
+    start_date: date = Query(default=None),
+    end_date: date = Query(default=None),
     db: Session = Depends(get_db),
 ):
     """Get waste summary for a period."""
+    if start_date is None:
+        start_date = date.today() - timedelta(days=30)
+    if end_date is None:
+        end_date = date.today()
     service = WasteTrackingService(db)
     return service.get_summary(location_id, start_date, end_date)
 
@@ -216,10 +220,12 @@ def get_waste_summary(
 def generate_waste_forecast(
     request: Request,
     location_id: int,
-    forecast_date: date,
+    forecast_date: date = Query(default=None),
     db: Session = Depends(get_db),
 ):
     """Generate AI-based waste forecast."""
+    if forecast_date is None:
+        forecast_date = date.today()
     service = WasteTrackingService(db)
     return service.generate_forecast(location_id, forecast_date)
 
@@ -233,10 +239,12 @@ def generate_waste_forecast(
 def generate_labor_forecast(
     request: Request,
     location_id: int,
-    forecast_date: date,
+    forecast_date: date = Query(default=None),
     db: Session = Depends(get_db),
 ):
     """Generate ML-based labor forecast."""
+    if forecast_date is None:
+        forecast_date = date.today()
     service = LaborForecastingService(db)
     return service.generate_forecast(location_id, forecast_date)
 
@@ -472,7 +480,7 @@ def create_delivery_provider(
 def get_delivery_quotes(
     request: Request,
     location_id: int,
-    address: str,
+    address: str = Query("123 Main St"),
     distance: float = 3.0,
     db: Session = Depends(get_db),
 ):

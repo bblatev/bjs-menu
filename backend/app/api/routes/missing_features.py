@@ -364,7 +364,7 @@ def add_staff_bonus(
 @limiter.limit("60/minute")
 def generate_tax_report(
     request: Request,
-    year: int = Query(..., description="Tax year"),
+    year: int = Query(2025, description="Tax year"),
     quarter: Optional[int] = Query(None, ge=1, le=4, description="Quarter (1-4)"),
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(get_current_user)
@@ -604,7 +604,7 @@ def scale_recipe(
 @limiter.limit("60/minute")
 def generate_prep_list(
     request: Request,
-    date_for: date = Query(..., description="Date to generate prep for"),
+    date_for: Optional[date] = Query(None, description="Date to generate prep for"),
     shift: Optional[str] = Query(None, description="morning, afternoon, evening"),
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(get_current_user)
@@ -620,6 +620,8 @@ def generate_prep_list(
 
     Outputs list of items to prep with quantities.
     """
+    if date_for is None:
+        date_for = date.today()
     day_of_week = date_for.strftime("%A")
 
     return {
@@ -973,7 +975,7 @@ def generate_profit_loss_statement(
 @limiter.limit("60/minute")
 def get_budget_variance(
     request: Request,
-    budget_id: int = Query(..., description="Budget ID to analyze"),
+    budget_id: int = Query(1, description="Budget ID to analyze"),
     period: str = Query("month", description="Period: day, week, month, quarter"),
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(get_current_user)
@@ -1042,8 +1044,8 @@ def get_budget_variance(
 @limiter.limit("60/minute")
 def get_cash_flow_report(
     request: Request,
-    start_date: date = Query(..., description="Report start date"),
-    end_date: date = Query(..., description="Report end date"),
+    start_date: Optional[date] = Query(None, description="Report start date"),
+    end_date: Optional[date] = Query(None, description="Report end date"),
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(get_current_user)
 ):
@@ -1055,6 +1057,10 @@ def get_cash_flow_report(
     - Investing activities (equipment, improvements)
     - Financing activities (loans, owner draws)
     """
+    if start_date is None:
+        start_date = date.today() - timedelta(days=30)
+    if end_date is None:
+        end_date = date.today()
     return {
         "report_type": "Cash Flow Statement",
         "period": {
@@ -1111,7 +1117,7 @@ def get_real_time_table_status(
     Returns table status, time seated, estimated turnover, etc.
     """
     tables = db.query(Table).filter(
-        Table.venue_id == current_user.venue_id
+        Table.location_id == current_user.venue_id
     ).all()
 
     table_status = []
@@ -1156,7 +1162,7 @@ def get_real_time_table_status(
 @limiter.limit("60/minute")
 def estimate_wait_time(
     request: Request,
-    party_size: int = Query(..., ge=1, le=20, description="Number of guests"),
+    party_size: int = Query(2, ge=1, le=20, description="Number of guests"),
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(get_current_user)
 ):

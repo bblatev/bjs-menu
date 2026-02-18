@@ -7,7 +7,7 @@ Complete API routes for all V6 features.
 from fastapi import APIRouter, HTTPException, Query, Body, Depends, Request
 from sqlalchemy.orm import Session
 from typing import List, Dict, Optional
-from datetime import datetime, date, timezone
+from datetime import datetime, date, timezone, timedelta
 from pydantic import BaseModel
 import uuid
 
@@ -135,7 +135,7 @@ async def connect_delivery_platform(request: Request, venue_id: int, body_data: 
     """Connect to delivery platform (Glovo, Wolt, Bolt Food, Foodpanda, Uber Eats)"""
     # Check if already connected
     existing = db.query(Integration).filter(
-        Integration.venue_id == venue_id,
+        Integration.location_id == venue_id,
         Integration.integration_id == body_data.platform,
         Integration.category == "delivery",
         Integration.status == "connected"
@@ -146,23 +146,18 @@ async def connect_delivery_platform(request: Request, venue_id: int, body_data: 
 
     # Create new integration
     integration = Integration(
-        venue_id=venue_id,
+        location_id=venue_id,
         integration_id=body_data.platform,
-        integration_name=body_data.platform.replace("_", " ").title(),
+        name=body_data.platform.replace("_", " ").title(),
         category="delivery",
         status="connected",
-        credentials={
+        config={
             "api_key": body_data.api_key,
             "api_secret": body_data.api_secret,
-            "store_id": body_data.store_id
-        },
-        settings={
+            "store_id": body_data.store_id,
             "auto_accept": body_data.auto_accept,
             "commission_percent": body_data.commission_percent
-        },
-        sync_frequency="realtime",
-        last_sync_at=datetime.now(timezone.utc),
-        last_sync_status="success"
+        }
     )
     db.add(integration)
     db.commit()
@@ -182,7 +177,7 @@ async def connect_delivery_platform(request: Request, venue_id: int, body_data: 
 async def disconnect_delivery_platform(request: Request, venue_id: int, platform: str, db: Session = Depends(get_db)):
     """Disconnect from delivery platform"""
     integration = db.query(Integration).filter(
-        Integration.venue_id == venue_id,
+        Integration.location_id == venue_id,
         Integration.integration_id == platform,
         Integration.category == "delivery",
         Integration.status == "connected"
@@ -203,7 +198,7 @@ async def disconnect_delivery_platform(request: Request, venue_id: int, platform
 async def get_connected_platforms(request: Request, venue_id: int, db: Session = Depends(get_db)):
     """Get all connected delivery platforms"""
     integrations = db.query(Integration).filter(
-        Integration.venue_id == venue_id,
+        Integration.location_id == venue_id,
         Integration.category == "delivery",
         Integration.status == "connected"
     ).all()
@@ -484,8 +479,12 @@ async def update_driver_location(request: Request, venue_id: int, driver_id: str
 
 @router.get("/{venue_id}/delivery/stats")
 @limiter.limit("60/minute")
-async def get_delivery_stats(request: Request, venue_id: int, start: datetime = Query(...), end: datetime = Query(...), db: Session = Depends(get_db)):
+async def get_delivery_stats(request: Request, venue_id: int, start: Optional[datetime] = Query(None, description="Start datetime"), end: Optional[datetime] = Query(None, description="End datetime"), db: Session = Depends(get_db)):
     """Get delivery platform statistics"""
+    if start is None:
+        start = datetime.now(timezone.utc) - timedelta(days=30)
+    if end is None:
+        end = datetime.now(timezone.utc)
     # Get all orders in the date range
     orders = db.query(AggregatorOrder).filter(
         AggregatorOrder.venue_id == venue_id,
@@ -756,8 +755,12 @@ async def record_temperature(request: Request, venue_id: int, reading: Temperatu
 
 @router.get("/{venue_id}/haccp/temperature")
 @limiter.limit("60/minute")
-async def get_temperature_readings(request: Request, venue_id: int, ccp_id: Optional[str] = None, start: date = Query(...), end: date = Query(...), db: Session = Depends(get_db)):
+async def get_temperature_readings(request: Request, venue_id: int, ccp_id: Optional[str] = None, start: Optional[date] = Query(None, description="Start date"), end: Optional[date] = Query(None, description="End date"), db: Session = Depends(get_db)):
     """Get temperature readings"""
+    if start is None:
+        start = date.today() - timedelta(days=30)
+    if end is None:
+        end = date.today()
     service = HACCPFoodSafetyService(db)
     readings = service.get_temperature_readings(venue_id, ccp_id, start, end)
     return {"venue_id": venue_id, "readings": [r.model_dump() for r in readings]}
@@ -789,8 +792,12 @@ async def get_expiring_food_batches(request: Request, venue_id: int, days: int =
 
 @router.get("/{venue_id}/haccp/report")
 @limiter.limit("60/minute")
-async def get_haccp_compliance_report(request: Request, venue_id: int, start: date = Query(...), end: date = Query(...), db: Session = Depends(get_db)):
+async def get_haccp_compliance_report(request: Request, venue_id: int, start: Optional[date] = Query(None, description="Start date"), end: Optional[date] = Query(None, description="End date"), db: Session = Depends(get_db)):
     """Generate HACCP compliance report"""
+    if start is None:
+        start = date.today() - timedelta(days=30)
+    if end is None:
+        end = date.today()
     service = HACCPFoodSafetyService(db)
     report = service.generate_haccp_report(venue_id, start, end)
     return report
@@ -873,8 +880,12 @@ async def get_kitchen_stations(request: Request, venue_id: int, db: Session = De
 
 @router.get("/{venue_id}/cloud-kitchen/performance")
 @limiter.limit("60/minute")
-async def get_cloud_kitchen_performance(request: Request, venue_id: int, start: datetime = Query(...), end: datetime = Query(...), db: Session = Depends(get_db)):
+async def get_cloud_kitchen_performance(request: Request, venue_id: int, start: Optional[datetime] = Query(None, description="Start datetime"), end: Optional[datetime] = Query(None, description="End datetime"), db: Session = Depends(get_db)):
     """Get cloud kitchen performance metrics"""
+    if start is None:
+        start = datetime.now(timezone.utc) - timedelta(days=30)
+    if end is None:
+        end = datetime.now(timezone.utc)
     service = CloudKitchenService(db)
     performance = service.get_brand_performance(venue_id, start, end)
     return {"venue_id": venue_id, "brands": performance}
@@ -926,8 +937,12 @@ async def calculate_royalty(request: Request, franchisee_id: str, period_start: 
 
 @router.get("/franchise/franchisees/{franchisee_id}/performance")
 @limiter.limit("60/minute")
-async def get_franchisee_performance(request: Request, franchisee_id: str, start: date = Query(...), end: date = Query(...), db: Session = Depends(get_db)):
+async def get_franchisee_performance(request: Request, franchisee_id: str, start: Optional[date] = Query(None, description="Start date"), end: Optional[date] = Query(None, description="End date"), db: Session = Depends(get_db)):
     """Get franchisee performance metrics"""
+    if start is None:
+        start = date.today() - timedelta(days=30)
+    if end is None:
+        end = date.today()
     service = FranchiseManagementService(db)
     performance = service.get_franchise_performance(franchisee_id, start, end)
     return {"franchisee_id": franchisee_id, "performance": performance}
@@ -1056,8 +1071,12 @@ async def create_expense(request: Request, venue_id: int, expense: ExpenseCreate
 
 @router.get("/{venue_id}/finance/expenses")
 @limiter.limit("60/minute")
-async def get_expenses(request: Request, venue_id: int, start: date = Query(...), end: date = Query(...), category: Optional[str] = None, db: Session = Depends(get_db)):
+async def get_expenses(request: Request, venue_id: int, start: Optional[date] = Query(None, description="Start date"), end: Optional[date] = Query(None, description="End date"), category: Optional[str] = None, db: Session = Depends(get_db)):
     """Get expenses"""
+    if start is None:
+        start = date.today() - timedelta(days=30)
+    if end is None:
+        end = date.today()
     service = FinancialManagementService(db)
     from app.services.v6_features.financial_management_service import ExpenseCategory
     category_enum = ExpenseCategory(category) if category else None
@@ -1067,8 +1086,12 @@ async def get_expenses(request: Request, venue_id: int, start: date = Query(...)
 
 @router.get("/{venue_id}/finance/expenses/summary")
 @limiter.limit("60/minute")
-async def get_expense_summary(request: Request, venue_id: int, start: date = Query(...), end: date = Query(...), db: Session = Depends(get_db)):
+async def get_expense_summary(request: Request, venue_id: int, start: Optional[date] = Query(None, description="Start date"), end: Optional[date] = Query(None, description="End date"), db: Session = Depends(get_db)):
     """Get expense summary by category"""
+    if start is None:
+        start = date.today() - timedelta(days=30)
+    if end is None:
+        end = date.today()
     service = FinancialManagementService(db)
     summary = service.get_expense_summary(venue_id, start, end)
     return {"venue_id": venue_id, **summary}
@@ -1083,16 +1106,30 @@ async def get_cash_flow_forecast(request: Request, venue_id: int, days: int = 30
 
 @router.get("/{venue_id}/finance/break-even")
 @limiter.limit("60/minute")
-async def get_break_even_analysis(request: Request, venue_id: int, start: date = Query(...), end: date = Query(...), revenue: float = Query(...), avg_check: float = Query(...), db: Session = Depends(get_db)):
+async def get_break_even_analysis(request: Request, venue_id: int, start: Optional[date] = Query(None, description="Start date"), end: Optional[date] = Query(None, description="End date"), revenue: Optional[float] = Query(None, description="Revenue"), avg_check: Optional[float] = Query(None, description="Average check amount"), db: Session = Depends(get_db)):
     """Get break-even analysis"""
+    if start is None:
+        start = date.today() - timedelta(days=30)
+    if end is None:
+        end = date.today()
+    if revenue is None:
+        revenue = 0.0
+    if avg_check is None:
+        avg_check = 0.0
     service = FinancialManagementService(db)
     analysis = service.calculate_break_even(venue_id, start, end, revenue, avg_check)
     return {"venue_id": venue_id, **analysis}
 
 @router.get("/{venue_id}/finance/profit-margins")
 @limiter.limit("60/minute")
-async def get_profit_margins(request: Request, venue_id: int, start: date = Query(...), end: date = Query(...), revenue: float = Query(...), db: Session = Depends(get_db)):
+async def get_profit_margins(request: Request, venue_id: int, start: Optional[date] = Query(None, description="Start date"), end: Optional[date] = Query(None, description="End date"), revenue: Optional[float] = Query(None, description="Revenue"), db: Session = Depends(get_db)):
     """Get profit margin analysis"""
+    if start is None:
+        start = date.today() - timedelta(days=30)
+    if end is None:
+        end = date.today()
+    if revenue is None:
+        revenue = 0.0
     service = FinancialManagementService(db)
     margins = service.get_profit_margins(venue_id, start, end, revenue)
     return {"venue_id": venue_id, **margins}
@@ -1108,8 +1145,10 @@ async def set_budget(request: Request, venue_id: int, category: str, monthly_bud
 
 @router.get("/{venue_id}/finance/budget/status")
 @limiter.limit("60/minute")
-async def get_budget_status(request: Request, venue_id: int, month: date = Query(...), db: Session = Depends(get_db)):
+async def get_budget_status(request: Request, venue_id: int, month: Optional[date] = Query(None, description="Month date"), db: Session = Depends(get_db)):
     """Get budget status"""
+    if month is None:
+        month = date.today()
     service = FinancialManagementService(db)
     status = service.get_budget_status(venue_id, month)
     return {"venue_id": venue_id, **status}
@@ -1135,8 +1174,10 @@ async def create_storno(request: Request, venue_id: int, document_id: str, reaso
 
 @router.get("/{venue_id}/nra/daily-report")
 @limiter.limit("60/minute")
-async def get_daily_z_report(request: Request, venue_id: int, report_date: date = Query(...), db: Session = Depends(get_db)):
+async def get_daily_z_report(request: Request, venue_id: int, report_date: Optional[date] = Query(None, description="Report date"), db: Session = Depends(get_db)):
     """Get daily Z-report for NRA"""
+    if report_date is None:
+        report_date = date.today()
     service = NRATaxComplianceService(db)
     report = service.generate_daily_report(venue_id, report_date)
     return {"venue_id": venue_id, "report_date": str(report_date), "report": report.model_dump()}
@@ -1151,8 +1192,12 @@ async def send_report_to_nra(request: Request, venue_id: int, report_id: str, db
 
 @router.get("/{venue_id}/nra/saft-export")
 @limiter.limit("60/minute")
-async def export_saft(request: Request, venue_id: int, start: date = Query(...), end: date = Query(...), db: Session = Depends(get_db)):
+async def export_saft(request: Request, venue_id: int, start: Optional[date] = Query(None, description="Start date"), end: Optional[date] = Query(None, description="End date"), db: Session = Depends(get_db)):
     """Export SAF-T format for tax audit"""
+    if start is None:
+        start = date.today() - timedelta(days=30)
+    if end is None:
+        end = date.today()
     service = NRATaxComplianceService(db)
     result = service.generate_saft_export(venue_id, start, end)
     return {"venue_id": venue_id, "format": "SAF-T", **result}

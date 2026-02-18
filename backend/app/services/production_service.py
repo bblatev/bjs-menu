@@ -186,38 +186,60 @@ class ProductionService:
         
         total_cost = Decimal('0')
         ingredients_cost = []
-        
-        for ingredient in recipe.ingredients:
-            # Get current stock item cost
-            stock_item = ingredient.stock_item
-            
+
+        # Support both 'ingredients' (RecipeIngredient backref) and 'lines' (RecipeLine) relationships
+        ingredient_list = getattr(recipe, 'ingredients', None) or getattr(recipe, 'lines', None) or []
+
+        for ingredient in ingredient_list:
+            # Get current stock item cost - support both RecipeIngredient and RecipeLine
+            stock_item = getattr(ingredient, 'stock_item', None)
+            product = getattr(ingredient, 'product', None)
+
             # Calculate cost for this ingredient
-            unit_cost = ingredient.cost_per_unit or stock_item.unit_cost or Decimal('0')
-            ingredient_total = ingredient.quantity * unit_cost
-            total_cost += ingredient_total
-            
-            ingredients_cost.append({
-                'stock_item_id': stock_item.id,
-                'name': stock_item.name,
-                'quantity': float(ingredient.quantity),
-                'unit': ingredient.unit,
-                'unit_cost': float(unit_cost),
-                'total_cost': float(ingredient_total),
-                'is_optional': ingredient.is_optional
-            })
-        
+            if stock_item:
+                unit_cost = getattr(ingredient, 'cost_per_unit', None) or getattr(stock_item, 'unit_cost', None) or Decimal('0')
+                item_qty = getattr(ingredient, 'quantity', None) or getattr(ingredient, 'qty', Decimal('0'))
+                ingredient_total = Decimal(str(item_qty or 0)) * Decimal(str(unit_cost or 0))
+                total_cost += ingredient_total
+
+                ingredients_cost.append({
+                    'stock_item_id': stock_item.id,
+                    'name': stock_item.name,
+                    'quantity': float(item_qty or 0),
+                    'unit': ingredient.unit,
+                    'unit_cost': float(unit_cost),
+                    'total_cost': float(ingredient_total),
+                    'is_optional': getattr(ingredient, 'is_optional', False)
+                })
+            elif product:
+                unit_cost = getattr(product, 'cost_price', None) or Decimal('0')
+                item_qty = getattr(ingredient, 'qty', None) or getattr(ingredient, 'quantity', Decimal('0'))
+                ingredient_total = Decimal(str(item_qty or 0)) * Decimal(str(unit_cost or 0))
+                total_cost += ingredient_total
+
+                ingredients_cost.append({
+                    'stock_item_id': product.id,
+                    'name': product.name,
+                    'quantity': float(item_qty or 0),
+                    'unit': ingredient.unit,
+                    'unit_cost': float(unit_cost),
+                    'total_cost': float(ingredient_total),
+                    'is_optional': getattr(ingredient, 'is_optional', False)
+                })
+
         # Calculate cost per yield unit
-        cost_per_unit = total_cost / recipe.yield_quantity if recipe.yield_quantity > 0 else Decimal('0')
-        
+        yield_qty = recipe.yield_quantity if recipe.yield_quantity and recipe.yield_quantity > 0 else Decimal('1')
+        cost_per_unit = total_cost / yield_qty
+
         # Calculate recommended selling price (typical margin: 3x cost)
         recommended_price = cost_per_unit * Decimal('3')
-        
+
         # Get current menu item selling price
         menu_item = recipe.menu_item
-        current_price = menu_item.price if menu_item else Decimal('0')
-        
+        current_price = menu_item.price if menu_item and menu_item.price is not None else Decimal('0')
+
         # Calculate profit margin
-        if current_price > 0:
+        if current_price and current_price > 0:
             profit = current_price - cost_per_unit
             margin_percent = (profit / current_price) * 100
         else:
@@ -226,10 +248,10 @@ class ProductionService:
         
         return {
             'recipe_id': recipe.id,
-            'recipe_name': recipe.name,
+            'recipe_name': recipe.name if isinstance(recipe.name, dict) else {"en": recipe.name} if recipe.name else {},
             'total_cost': float(total_cost),
-            'yield_quantity': float(recipe.yield_quantity),
-            'yield_unit': recipe.yield_unit,
+            'yield_quantity': float(recipe.yield_quantity or 1),
+            'yield_unit': recipe.yield_unit or "portion",
             'cost_per_unit': float(cost_per_unit),
             'ingredients': ingredients_cost,
             'pricing': {

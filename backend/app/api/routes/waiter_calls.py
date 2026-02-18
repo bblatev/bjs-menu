@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy.orm import Session
-from sqlalchemy import func
+from sqlalchemy import func, cast, String
 from typing import List, Optional
 from datetime import datetime, date, timedelta, timezone
 from app.db.session import get_db
@@ -136,13 +136,13 @@ def get_call_stats(
     ).group_by(WaiterCall.call_type).all()
     calls_by_reason = {(r[0] or "other"): r[1] for r in reason_counts}
 
-    # Calls by hour - SQLite compatible
+    # Calls by hour - PostgreSQL compatible
     hour_counts = db.query(
-        func.strftime('%H', WaiterCall.created_at).label('hour'),
+        cast(func.extract('hour', WaiterCall.created_at), String).label('hour'),
         func.count(WaiterCall.id)
     ).filter(
         WaiterCall.created_at >= today_start
-    ).group_by(func.strftime('%H', WaiterCall.created_at)).all()
+    ).group_by(func.extract('hour', WaiterCall.created_at)).all()
     calls_by_hour = {h[0]: h[1] for h in hour_counts}
 
     return WaiterCallStats(

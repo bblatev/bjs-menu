@@ -1128,7 +1128,8 @@ class RFIDTagType(str, enum.Enum):
     STAFF = "staff"  # Staff badges (for reference)
 
 
-# RFIDTag is defined in hardware.py - DO NOT define here
+# RFIDTag is defined in hardware.py - re-export for backward compatibility
+from app.models.hardware import RFIDTag
 
 
 class RFIDReading(Base):
@@ -1692,39 +1693,37 @@ class AutomatedAction(Base):
 class FeatureFlag(Base):
     """Per-location feature flags"""
     __tablename__ = "feature_flags"
-    __table_args__ = {'extend_existing': True}
+    __table_args__ = (
+        UniqueConstraint('venue_id', 'flag_key', name='uq_venue_feature_flag'),
+        {'extend_existing': True},
+    )
 
     id = Column(Integer, primary_key=True, index=True)
     venue_id = Column(Integer, ForeignKey("venues.id"), nullable=True)  # Null = global
     tenant_id = Column(Integer, nullable=True)
-    
+
     flag_key = Column(String(100), nullable=False, index=True)
     flag_name = Column(String(200), nullable=True)
     description = Column(Text, nullable=True)
-    
+
     # State
     is_enabled = Column(Boolean, default=False)
     rollout_percentage = Column(Integer, default=100)  # 0-100
-    
+
     # Targeting
     target_roles = Column(JSON, nullable=True)  # Specific roles
     target_users = Column(JSON, nullable=True)  # Specific user IDs
-    
+
     # Schedule
     enabled_from = Column(DateTime(timezone=True), nullable=True)
     enabled_until = Column(DateTime(timezone=True), nullable=True)
-    
+
     # Tracking
     created_by = Column(Integer, ForeignKey("staff_users.id"), nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
-    
+
     venue = relationship("Venue", backref="feature_flags")
-    tenant = relationship("Tenant", backref="feature_flags")
-    
-    __table_args__ = (
-        UniqueConstraint('venue_id', 'flag_key', name='uq_venue_feature_flag'),
-    )
 
 
 class WhiteLabelConfig(Base):
@@ -1768,7 +1767,7 @@ class WhiteLabelConfig(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
     
-    tenant = relationship("Tenant", backref="white_label_config")
+    venue = relationship("Venue", backref="white_label_config")
 
 
 # =============================================================================

@@ -9,6 +9,10 @@ from sqlalchemy.sql import func
 from app.db.base import Base
 import enum
 
+# Re-export models defined in other modules but expected here by services
+from app.models.location import Location
+from app.models.hardware import Integration
+
 
 # ==================== MULTI-LOCATION MODELS ====================
 

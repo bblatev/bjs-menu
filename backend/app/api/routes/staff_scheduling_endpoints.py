@@ -1,10 +1,10 @@
 """
 Staff Scheduling and Time Clock API Endpoints
 """
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy.orm import Session
 from typing import Optional
-from datetime import date, datetime, time
+from datetime import date, datetime, time, timedelta
 from pydantic import BaseModel, Field
 
 from app.db.session import get_db
@@ -140,13 +140,17 @@ async def create_shift_definition(
 @limiter.limit("60/minute")
 async def get_schedules(
     request: Request,
-    start_date: date,
-    end_date: date,
+    start_date: date = Query(default=None),
+    end_date: date = Query(default=None),
     staff_id: Optional[int] = None,
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(require_manager)
 ):
     """Get schedules for a date range"""
+    if start_date is None:
+        start_date = date.today() - timedelta(days=30)
+    if end_date is None:
+        end_date = date.today()
     service = get_shift_scheduling_service(db)
     return service.get_schedules(
         venue_id=current_user.venue_id,
@@ -185,12 +189,16 @@ async def create_schedule(
 @limiter.limit("30/minute")
 async def publish_schedules(
     request: Request,
-    start_date: date,
-    end_date: date,
+    start_date: date = Query(default=None),
+    end_date: date = Query(default=None),
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(require_manager)
 ):
     """Publish draft schedules for a date range"""
+    if start_date is None:
+        start_date = date.today() - timedelta(days=30)
+    if end_date is None:
+        end_date = date.today()
     service = get_shift_scheduling_service(db)
     return service.publish_schedules(
         venue_id=current_user.venue_id,
@@ -203,12 +211,16 @@ async def publish_schedules(
 @limiter.limit("30/minute")
 async def generate_schedules(
     request: Request,
-    start_date: date,
-    end_date: date,
+    start_date: date = Query(default=None),
+    end_date: date = Query(default=None),
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(require_manager)
 ):
     """Auto-generate schedules based on shift definitions and availability"""
+    if start_date is None:
+        start_date = date.today() - timedelta(days=30)
+    if end_date is None:
+        end_date = date.today()
     # This would be a more complex algorithm in production
     # For now, return a placeholder
     return {
@@ -362,13 +374,17 @@ async def get_clock_status(
 @limiter.limit("60/minute")
 async def get_time_entries(
     request: Request,
-    start_date: date,
-    end_date: date,
+    start_date: date = Query(default=None),
+    end_date: date = Query(default=None),
     staff_id: Optional[int] = None,
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(require_manager)
 ):
     """Get time clock entries for a date range"""
+    if start_date is None:
+        start_date = date.today() - timedelta(days=30)
+    if end_date is None:
+        end_date = date.today()
     service = get_time_clock_service(db)
     return service.get_time_entries(
         venue_id=current_user.venue_id,
@@ -384,12 +400,16 @@ async def get_time_entries(
 @limiter.limit("60/minute")
 async def get_labor_analytics(
     request: Request,
-    start_date: date,
-    end_date: date,
+    start_date: date = Query(default=None),
+    end_date: date = Query(default=None),
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(require_manager)
 ):
     """Get labor analytics and hours summary"""
+    if start_date is None:
+        start_date = date.today() - timedelta(days=30)
+    if end_date is None:
+        end_date = date.today()
     service = get_time_clock_service(db)
     return service.get_hours_summary(
         venue_id=current_user.venue_id,
@@ -402,12 +422,16 @@ async def get_labor_analytics(
 @limiter.limit("60/minute")
 async def get_labor_cost_report(
     request: Request,
-    start_date: date,
-    end_date: date,
+    start_date: date = Query(default=None),
+    end_date: date = Query(default=None),
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(require_manager)
 ):
     """Get labor cost report"""
+    if start_date is None:
+        start_date = date.today() - timedelta(days=30)
+    if end_date is None:
+        end_date = date.today()
     service = get_time_clock_service(db)
     hours_summary = service.get_hours_summary(
         venue_id=current_user.venue_id,

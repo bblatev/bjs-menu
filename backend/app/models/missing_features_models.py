@@ -2150,40 +2150,40 @@ class PromotionRedemption(Base):
     )
 
 
-# SMSTemplate is defined elsewhere - commented out to avoid duplicate
-# class SMSTemplate(Base):
-#     """SMS message templates for various notifications"""
-#     __tablename__ = "sms_templates"
-#     __table_args__ = {'extend_existing': True}
+class SMSTemplate(Base):
+    """SMS message templates for various notifications"""
+    __tablename__ = "sms_templates"
+    __table_args__ = (
+        Index('ix_sms_template_venue_type', 'venue_id', 'template_type'),
+        {'extend_existing': True},
+    )
 
-#     id = Column(Integer, primary_key=True, index=True)
-#     venue_id = Column(Integer, ForeignKey("venues.id"), nullable=True, index=True)
+    id = Column(Integer, primary_key=True, index=True)
+    venue_id = Column(Integer, ForeignKey("venues.id"), nullable=True, index=True)
 
-#     name = Column(String(100), nullable=False)
-#     template_type = Column(String(50), nullable=False)  # reservation, waitlist, order, marketing, custom
-#     message_template = Column(Text, nullable=False)  # Template with {{placeholders}}
+    name = Column(String(100), nullable=False)
+    template_type = Column(String(50), nullable=True)  # reservation, waitlist, order, marketing, custom
+    content = Column(Text, nullable=True)  # Template content (used by v7_endpoints)
+    message_template = Column(Text, nullable=True)  # Template with {{placeholders}}
+    category = Column(String(100), nullable=True)  # general, marketing, transactional, etc.
 
-#     # System vs custom
-#     is_system_template = Column(Boolean, default=False)
-#     is_active = Column(Boolean, default=True)
+    # System vs custom
+    is_system_template = Column(Boolean, default=False)
+    is_active = Column(Boolean, default=True)
 
-#     # Multilingual support
-#     language = Column(String(5), default="en")
+    # Multilingual support
+    language = Column(String(5), default="en")
 
-#     # Character count tracking
-#     character_count = Column(Integer, default=0)
-#     segment_count = Column(Integer, default=1)  # SMS segments needed
+    # Character count tracking
+    character_count = Column(Integer, default=0)
+    segment_count = Column(Integer, default=1)  # SMS segments needed
 
-#     created_at = Column(DateTime, default=datetime.utcnow)
-#     updated_at = Column(DateTime, onupdate=datetime.utcnow)
-#     created_by = Column(Integer, ForeignKey("staff_users.id"), nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, onupdate=datetime.utcnow)
+    created_by = Column(Integer, ForeignKey("staff_users.id"), nullable=True)
 
-#     # Relationships
-#     venue = relationship("Venue", backref="mf_sms_templates")
-
-#     __table_args__ = (
-#         Index('ix_sms_template_venue_type', 'venue_id', 'template_type'),
-#     )
+    # Relationships
+    venue = relationship("Venue", backref="mf_sms_templates")
 
 
 class CateringPackage(Base):

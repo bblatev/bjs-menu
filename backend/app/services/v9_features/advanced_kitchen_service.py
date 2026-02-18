@@ -100,8 +100,13 @@ class KitchenPerformanceService:
     def get_performance_metrics(self, start_date: datetime, end_date: datetime) -> dict:
         """Get kitchen performance metrics."""
         return {
-            "avg_ticket_time_minutes": 0.0,
-            "orders_completed": 0,
-            "orders_delayed": 0,
-            "station_utilization": {},
+            "period_start": start_date,
+            "period_end": end_date,
+            "total_tickets": 0,
+            "average_ticket_time": 0.0,
+            "tickets_over_sla": 0,
+            "sla_compliance_rate": 100.0,
+            "station_metrics": [],
+            "peak_hour_performance": {},
+            "bottleneck_stations": [],
         }

@@ -138,8 +138,9 @@ class PayrollService:
     OVERTIME_MULTIPLIER = 1.5
     STANDARD_HOURS_PER_WEEK = 40
 
-    def __init__(self):
+    def __init__(self, db=None):
         # In-memory storage (use database in production)
+        self._db = db
         self._staff: Dict[str, StaffMember] = {}
         self._time_entries: Dict[str, TimeEntry] = {}
         self._pay_periods: Dict[str, PayPeriod] = {}
@@ -498,6 +499,32 @@ class PayrollService:
             "average_per_period": round(
                 sum(p.total_net for p in completed) / len(completed), 2
             ) if completed else 0,
+        }
+
+    def get_employee_pay_stubs(
+        self,
+        staff_id: int,
+        year: Optional[int] = None,
+    ) -> List[Dict[str, Any]]:
+        """Get pay stubs for an employee (stub)."""
+        return []
+
+    def generate_tax_summary(
+        self,
+        staff_id: int,
+        year: int,
+    ) -> Dict[str, Any]:
+        """Generate annual tax summary for an employee (stub)."""
+        return {
+            "staff_id": staff_id,
+            "year": year,
+            "total_gross": 0.0,
+            "total_federal_tax": 0.0,
+            "total_state_tax": 0.0,
+            "total_social_security": 0.0,
+            "total_medicare": 0.0,
+            "total_deductions": 0.0,
+            "total_net": 0.0,
         }
 
     def get_labor_cost_report(

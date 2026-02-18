@@ -63,7 +63,7 @@ def start_session(
     # Verify table exists and is available
     table = db.query(Table).filter(
         Table.id == data.table_id,
-        Table.venue_id == current_user.venue_id
+        Table.location_id == current_user.venue_id
     ).first()
     if not table:
         raise HTTPException(status_code=404, detail="Table not found")
@@ -129,8 +129,14 @@ def get_active_sessions(
     ).all()
 
     # Calculate duration for active sessions
+    now = datetime.now(timezone.utc)
     for session in sessions:
-        session.duration_minutes = int((datetime.now(timezone.utc) - session.started_at).total_seconds() / 60)
+        if session.started_at:
+            started = session.started_at
+            # Ensure both datetimes have consistent timezone awareness
+            if started.tzinfo is None:
+                started = started.replace(tzinfo=timezone.utc)
+            session.duration_minutes = int((now - started).total_seconds() / 60)
 
     return sessions
 

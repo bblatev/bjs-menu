@@ -20,6 +20,9 @@ class NRAResult:
     def dict(self):
         return {k: v for k, v in self.__dict__.items() if not k.startswith("_")}
 
+    def model_dump(self):
+        return self.dict()
+
 
 class NRATaxComplianceService:
     """Service for NRA tax compliance operations."""

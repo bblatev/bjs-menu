@@ -37,10 +37,10 @@ def get_tables(
     return [TableResponse(
         id=table.id,
         number=table.number,
-        seats=table.seats,
+        seats=table.capacity,
 
-        venue_id=table.venue_id,
-        active=table.active,
+        venue_id=table.location_id,
+        active=table.status != "closed",
         created_at=table.created_at
     ) for table in tables]
 

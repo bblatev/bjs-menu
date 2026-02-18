@@ -780,7 +780,7 @@ def list_benchmarks(
 def compare_to_benchmarks(
     request: Request,
     db: DbSession,
-    location_id: int,
+    location_id: int = Query(1, description="Location ID"),
 ):
     """Compare location performance to industry benchmarks."""
     # Get recent metrics
@@ -789,7 +789,14 @@ def compare_to_benchmarks(
     ).order_by(DailyMetrics.date.desc()).limit(30).all()
 
     if not recent:
-        raise HTTPException(status_code=404, detail="No metrics found")
+        return PerformanceReport(
+            location_id=location_id,
+            period="last_30_days",
+            comparisons=[],
+            overall_score=50,
+            strengths=[],
+            improvement_areas=[]
+        )
 
     # Get benchmarks
     benchmarks = db.query(Benchmark).all()

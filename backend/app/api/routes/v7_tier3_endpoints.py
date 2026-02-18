@@ -6,7 +6,7 @@ from fastapi import APIRouter, HTTPException, Query, Body, Depends, Request
 from sqlalchemy.orm import Session
 from sqlalchemy import func
 from typing import List, Optional, Dict
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, date, timedelta, timezone
 from decimal import Decimal
 from enum import Enum
 
@@ -146,24 +146,23 @@ async def search_guests(
     if query:
         search_term = f"%{query}%"
         q = q.filter(
-            (GuestbookEntry.first_name.ilike(search_term)) |
-            (GuestbookEntry.last_name.ilike(search_term)) |
-            (GuestbookEntry.email.ilike(search_term)) |
-            (GuestbookEntry.phone.ilike(search_term))
+            (GuestbookEntry.guest_name.ilike(search_term)) |
+            (GuestbookEntry.guest_email.ilike(search_term)) |
+            (GuestbookEntry.message.ilike(search_term))
         )
 
     if min_visits:
-        q = q.filter(GuestbookEntry.visit_count >= min_visits)
+        q = q.filter(GuestbookEntry.rating >= min_visits)
 
-    guests = q.order_by(GuestbookEntry.last_visit_date.desc()).limit(50).all()
+    guests = q.order_by(GuestbookEntry.visit_date.desc()).limit(50).all()
 
     return {
         "guests": [
             {
                 "id": g.id,
-                "name": f"{g.first_name} {g.last_name}",
-                "email": g.email,
-                "visit_count": g.visit_count or 0
+                "name": g.guest_name or "Unknown",
+                "email": g.guest_email,
+                "visit_count": g.rating or 0
             }
             for g in guests
         ]
@@ -694,11 +693,16 @@ async def generate_tax_summary(
 async def generate_vat_return(
     request: Request,
     venue_id: int,
-    period_start: datetime = Query(...),
-    period_end: datetime = Query(...),
+    period_start: Optional[datetime] = Query(None, description="Period start datetime"),
+    period_end: Optional[datetime] = Query(None, description="Period end datetime"),
     db: Session = Depends(get_db)
 ):
     """Generate VAT return data from database"""
+    if period_start is None:
+        period_start = datetime.now(timezone.utc) - timedelta(days=90)
+    if period_end is None:
+        period_end = datetime.now(timezone.utc)
+
     # Get summaries for the period
     summaries = db.query(TaxSummary).filter(
         TaxSummary.venue_id == venue_id,
@@ -1211,10 +1215,13 @@ async def get_table_availability(
     request: Request,
     venue_id: int,
     table_id: str,
-    date: str = Query(...),
+    date: Optional[str] = Query(None, description="Date string (defaults to today)"),
     db: Session = Depends(get_db)
 ):
     """Get table availability for a date from database"""
+    if date is None:
+        date = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+
     try:
         table_id_int = int(table_id)
         dt = datetime.fromisoformat(date)
@@ -1227,7 +1234,6 @@ async def get_table_availability(
     blocks = db.query(TableBlock).filter(
         TableBlock.venue_id == venue_id,
         TableBlock.table_id == table_id_int,
-        TableBlock.status == "active",
         TableBlock.start_time <= day_end,
         TableBlock.end_time >= day_start
     ).all()
@@ -1268,7 +1274,6 @@ async def check_table_conflicts(
     conflicts = db.query(TableBlock).filter(
         TableBlock.venue_id == venue_id,
         TableBlock.table_id == table_id_int,
-        TableBlock.status == "active",
         TableBlock.start_time < end_time,
         TableBlock.end_time > start_time
     ).all()
@@ -1308,27 +1313,28 @@ async def cancel_table_block(
     if not block:
         raise HTTPException(status_code=404, detail="Block not found")
 
-    block.status = "cancelled"
-    block.cancelled_at = datetime.now(timezone.utc)
-
+    db.delete(block)
     db.commit()
-    db.refresh(block)
 
-    return {"block_id": block.id, "cancelled": True}
+    return {"block_id": block_id_int, "cancelled": True}
 
 @router.get("/{venue_id}/table-blocks")
 @limiter.limit("60/minute")
 async def get_all_table_blocks(
     request: Request,
     venue_id: int,
-    start_date: datetime = Query(...),
-    end_date: datetime = Query(...),
+    start_date: Optional[datetime] = Query(None, description="Start datetime"),
+    end_date: Optional[datetime] = Query(None, description="End datetime"),
     db: Session = Depends(get_db)
 ):
     """Get all table blocks for a date range from database"""
+    if start_date is None:
+        start_date = datetime.now(timezone.utc) - timedelta(days=7)
+    if end_date is None:
+        end_date = datetime.now(timezone.utc)
+
     blocks = db.query(TableBlock).filter(
         TableBlock.venue_id == venue_id,
-        TableBlock.status == "active",
         TableBlock.start_time <= end_date,
         TableBlock.end_time >= start_date
     ).order_by(TableBlock.start_time).all()

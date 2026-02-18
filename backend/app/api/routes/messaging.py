@@ -95,6 +95,15 @@ def get_unread_count(request: Request, db: DbSession, current_user: OptionalCurr
     return {"unread_count": count}
 
 
+@router.get("/staff-list")
+@limiter.limit("60/minute")
+def get_staff_for_messaging(request: Request, db: DbSession, current_user: OptionalCurrentUser = None):
+    """Get list of staff members for messaging."""
+    from app.models.staff import StaffUser
+    staff = db.query(StaffUser).filter(StaffUser.is_active == True).order_by(StaffUser.full_name).all()
+    return [{"id": s.id, "name": s.full_name, "role": s.role} for s in staff]
+
+
 @router.get("/{message_id}", response_model=MessageResponse)
 @limiter.limit("60/minute")
 def get_message(request: Request, message_id: int, db: DbSession, current_user: OptionalCurrentUser = None):
@@ -157,12 +166,3 @@ def broadcast_message(request: Request, db: DbSession, current_user: OptionalCur
     _messages.append(msg)
     _next_msg_id += 1
     return {"message": "Broadcast sent", "message_id": msg["id"]}
-
-
-@router.get("/staff-list")
-@limiter.limit("60/minute")
-def get_staff_for_messaging(request: Request, db: DbSession, current_user: OptionalCurrentUser = None):
-    """Get list of staff members for messaging."""
-    from app.models.staff import StaffUser
-    staff = db.query(StaffUser).filter(StaffUser.is_active == True).order_by(StaffUser.full_name).all()
-    return [{"id": s.id, "name": s.full_name, "role": s.role} for s in staff]

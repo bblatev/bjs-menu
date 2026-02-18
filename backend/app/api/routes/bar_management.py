@@ -186,9 +186,9 @@ class RecipeResponse(BaseModel):
 
 @router.get("/")
 @limiter.limit("60/minute")
-async def get_bar_management_root(request: Request):
+async def get_bar_management_root(request: Request, db: Session = Depends(get_db), current_user=Depends(get_current_user)):
     """Bar management overview."""
-    return await get_bar_stats(request=request)
+    return await get_bar_stats(request=request, period="today", db=db, current_user=current_user)
 
 
 @router.get("/stats", response_model=BarStatsResponse)
@@ -215,7 +215,7 @@ async def get_bar_stats(
     try:
         # Get total sales for bar items
         sales_result = db.query(
-            func.sum(OrderItem.quantity * OrderItem.price).label('total_sales'),
+            func.sum(OrderItem.quantity * OrderItem.unit_price).label('total_sales'),
             func.count(OrderItem.id).label('item_count')
         ).join(Order).join(MenuItem).filter(
             Order.venue_id == venue_id,
@@ -255,13 +255,12 @@ async def get_bar_stats(
         # Get low stock items count
         low_stock = db.query(func.count(StockItem.id)).filter(
             StockItem.venue_id == venue_id,
-            StockItem.current_stock < StockItem.reorder_point,
-            StockItem.category.in_(['Liquor', 'Spirits', 'Beer', 'Wine', 'Mixers'])
+            StockItem.quantity < StockItem.low_stock_threshold,
+            StockItem.is_active == True
         ).scalar() or 0
 
         # Count active recipes (menu items in drink categories)
         active_recipes = db.query(func.count(MenuItem.id)).filter(
-            MenuItem.venue_id == venue_id,
             MenuItem.available == True,
             MenuItem.category.in_(['Cocktails', 'Beverages', 'Drinks', 'Wine', 'Beer', 'Spirits'])
         ).scalar() or 0

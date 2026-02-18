@@ -657,7 +657,7 @@ class PLAnalysisService:
             order_count=analysis.metrics["order_count"],
             avg_ticket=Decimal(str(analysis.metrics["avg_ticket"])),
             guest_count=analysis.metrics["guest_count"],
-            metadata={"insights": analysis.insights}
+            meta_data={"insights": analysis.insights}
         )
 
         self.db.add(snapshot)
