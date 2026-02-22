@@ -52,6 +52,7 @@ export default function Items86Page() {
 
         // Load 86'd items
         const items86Response = await fetch(`${API_URL}/kitchen/86/list`, {
+          credentials: 'include',
           headers: { 'Authorization': `Bearer ${token}` },
         });
         if (items86Response.ok) {
@@ -71,6 +72,7 @@ export default function Items86Page() {
 
         // Load menu categories
         const categoriesResponse = await fetch(`${API_URL}/menu/categories`, {
+          credentials: 'include',
           headers: { 'Authorization': `Bearer ${token}` },
         });
         if (categoriesResponse.ok) {
@@ -83,6 +85,7 @@ export default function Items86Page() {
 
         // Load menu items
         const itemsResponse = await fetch(`${API_URL}/menu/items`, {
+          credentials: 'include',
           headers: { 'Authorization': `Bearer ${token}` },
         });
         if (itemsResponse.ok) {
@@ -107,6 +110,7 @@ export default function Items86Page() {
       const token = localStorage.getItem('access_token');
 
       const response = await fetch(`${API_URL}/kitchen/86/${itemId}`, {
+        credentials: 'include',
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${token}` },
       });
@@ -139,6 +143,7 @@ export default function Items86Page() {
       const token = localStorage.getItem('access_token');
 
       const response = await fetch(`${API_URL}/kitchen/86`, {
+        credentials: 'include',
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -253,7 +258,7 @@ export default function Items86Page() {
             </div>
           </div>
           <Link
-            href="/kitchen/display"
+            href="/kitchen"
             className="px-4 py-2 bg-error-500 text-gray-900 rounded-lg text-sm font-medium hover:bg-error-600"
           >
             View in KDS

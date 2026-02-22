@@ -72,6 +72,7 @@ export default function KitchenReportsPage() {
     try {
       const token = localStorage.getItem('access_token');
       const response = await fetch(`${API_URL}/reports/kitchen?range=${dateRange}`, {
+        credentials: 'include',
         headers: { Authorization: `Bearer ${token}` },
       });
 
@@ -275,7 +276,7 @@ export default function KitchenReportsPage() {
         <div className="bg-white rounded-2xl shadow-sm border border-surface-100 overflow-hidden">
           <div className="px-6 py-4 border-b border-surface-100 flex items-center justify-between">
             <h2 className="font-semibold text-surface-900">Station Performance</h2>
-            <Link href="/kitchen/stations" className="text-sm text-primary-600 hover:text-primary-700">
+            <Link href="/kitchen" className="text-sm text-primary-600 hover:text-primary-700">
               Manage
             </Link>
           </div>

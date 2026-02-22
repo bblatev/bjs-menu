@@ -10,7 +10,7 @@ from app.api.routes import (
     auth, suppliers, products, locations, inventory, orders,
     pos, recipes, ai, sync, reports, reconciliation,
     invoices, marketing, reservations, delivery, analytics,
-    advanced_features, kitchen, kitchen_display, kitchen_alerts,
+    advanced_features, kitchen, kitchen_alerts,
     tables, waiter, menu_engineering,
     enterprise, inventory_hardware, guest_orders, staff, customers,
     price_lists, menu_complete, purchase_orders,
@@ -67,7 +67,6 @@ api_router.include_router(advanced_features.router, tags=["advanced-features"])
 
 # Kitchen and Tables
 api_router.include_router(kitchen.router, prefix="/kitchen", tags=["kitchen", "kds"])
-api_router.include_router(kitchen_display.router, prefix="/kitchen-display", tags=["kitchen", "kds"])
 api_router.include_router(kitchen_alerts.router, prefix="/kitchen-alerts", tags=["kitchen", "kds"])
 api_router.include_router(tables.router, prefix="/tables", tags=["tables", "floor-plan"])
 

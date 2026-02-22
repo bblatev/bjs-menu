@@ -178,8 +178,6 @@ export default function Navigation() {
       href: '/kitchen',
       icon: '👨‍🍳',
       children: [
-        { name: t('kitchen_display'), href: '/kitchen/display', icon: '📺' },
-        { name: t('stations'), href: '/kitchen/stations', icon: '🏭' },
         { name: t('items_86'), href: '/kitchen/86-items', icon: '🚫' },
         { name: t('recipes'), href: '/recipes/management', icon: '📖' },
       ],

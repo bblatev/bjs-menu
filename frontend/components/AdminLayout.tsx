@@ -7,7 +7,7 @@ import dynamic from 'next/dynamic';
 import { ThemeToggle } from '@/components/ui/ThemeProvider';
 import { SkipLink } from '@/components/ui/SkipLink';
 import { getVenueId } from '@/lib/auth';
-import { TOKEN_KEY } from '@/lib/api';
+import { TOKEN_KEY, APP_VERSION } from '@/lib/api';
 
 const RealtimeNotifications = dynamic(
   () => import('./RealtimeNotifications'),
@@ -37,8 +37,6 @@ const navigationGroups = [
     name: 'Kitchen & Bar',
     items: [
       { name: 'Kitchen Display', href: '/kitchen', icon: '👨‍🍳' },
-      { name: 'KDS Display', href: '/kitchen/display', icon: '🖥️' },
-      { name: 'Kitchen Stations', href: '/kitchen/stations', icon: '🍳' },
       { name: 'Kitchen Requests', href: '/kitchen/requests', icon: '📩' },
       { name: 'KDS Localization', href: '/kitchen/localization', icon: '🌐' },
       { name: '86\'d Items', href: '/kitchen/86-items', icon: '🚫' },
@@ -510,7 +508,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
               </Link>
 
               {/* Version */}
-              <span className="text-xs text-surface-400 font-mono">v9.0.0</span>
+              <span className="text-xs text-surface-400 font-mono">v{APP_VERSION}</span>
             </div>
           </div>
         </header>
