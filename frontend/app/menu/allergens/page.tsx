@@ -94,6 +94,7 @@ export default function AllergensNutritionPage() {
     try {
       const token = localStorage.getItem('access_token');
       const response = await fetch(`${API_URL}/menu-admin/items-with-allergens`, {
+        credentials: 'include',
         headers: {
           'Authorization': `Bearer ${token}`,
         },
@@ -135,6 +136,7 @@ export default function AllergensNutritionPage() {
     try {
       const token = localStorage.getItem('access_token');
       const response = await fetch(`${API_URL}/menu-admin/items/${editingItem.id}/allergens-nutrition`, {
+        credentials: 'include',
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',

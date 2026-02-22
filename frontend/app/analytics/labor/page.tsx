@@ -32,8 +32,6 @@ export default function AnalyticsLaborPage() {
   const [stats, setStats] = useState<LaborStats | null>(null);
   const [issues, setIssues] = useState<ScheduleIssue[]>([]);
   const [loading, setLoading] = useState(true);
-  const [selectedView, setSelectedView] = useState<'cost' | 'efficiency'>('cost');
-
   useEffect(() => {
     loadLaborData();
   }, []);
@@ -43,6 +41,7 @@ export default function AnalyticsLaborPage() {
     try {
       const token = localStorage.getItem('access_token');
       const response = await fetch(`${API_URL}/analytics/labor`, {
+        credentials: 'include',
         headers: { Authorization: `Bearer ${token}` },
       });
 

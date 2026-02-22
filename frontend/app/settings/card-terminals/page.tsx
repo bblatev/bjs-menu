@@ -78,7 +78,6 @@ export default function CardTerminalsPage() {
   const [stats, setStats] = useState<any>({});
   const [showAddModal, setShowAddModal] = useState(false);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
-  const [selectedTerminal, setSelectedTerminal] = useState<Terminal | null>(null);
   const [activeTab, setActiveTab] = useState<'terminals' | 'payments'>('terminals');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -106,10 +105,10 @@ export default function CardTerminalsPage() {
     setError(null);
     try {
       const [terminalsRes, typesRes, paymentsRes, statsRes] = await Promise.all([
-        fetch(`${API_URL}/card-terminals/terminals`, { headers: getAuthHeaders() }),
-        fetch(`${API_URL}/card-terminals/terminal-types`, { headers: getAuthHeaders() }),
-        fetch(`${API_URL}/card-terminals/payments?limit=20`, { headers: getAuthHeaders() }),
-        fetch(`${API_URL}/card-terminals/stats`, { headers: getAuthHeaders() }),
+        fetch(`${API_URL}/card-terminals/terminals`, { credentials: 'include', headers: getAuthHeaders() }),
+        fetch(`${API_URL}/card-terminals/terminal-types`, { credentials: 'include', headers: getAuthHeaders() }),
+        fetch(`${API_URL}/card-terminals/payments?limit=20`, { credentials: 'include', headers: getAuthHeaders() }),
+        fetch(`${API_URL}/card-terminals/stats`, { credentials: 'include', headers: getAuthHeaders() }),
       ]);
 
       if (terminalsRes.ok) {
@@ -139,6 +138,7 @@ export default function CardTerminalsPage() {
   const registerTerminal = async () => {
     try {
       const res = await fetch(`${API_URL}/card-terminals/terminals`, {
+        credentials: 'include',
         method: 'POST',
         headers: getAuthHeaders(),
         body: JSON.stringify(newTerminal),
@@ -158,6 +158,7 @@ export default function CardTerminalsPage() {
     if (!confirm('Are you sure you want to delete this terminal?')) return;
     try {
       const res = await fetch(`${API_URL}/card-terminals/terminals/${terminalId}`, {
+        credentials: 'include',
         method: 'DELETE',
         headers: getAuthHeaders(),
       });
@@ -172,6 +173,7 @@ export default function CardTerminalsPage() {
   const createTestPayment = async () => {
     try {
       const res = await fetch(`${API_URL}/card-terminals/payments`, {
+        credentials: 'include',
         method: 'POST',
         headers: getAuthHeaders(),
         body: JSON.stringify(testPayment),
@@ -190,6 +192,7 @@ export default function CardTerminalsPage() {
   const displayMessage = async (terminalId: string, message: string) => {
     try {
       await fetch(`${API_URL}/card-terminals/terminals/${terminalId}/display`, {
+        credentials: 'include',
         method: 'POST',
         headers: getAuthHeaders(),
         body: JSON.stringify({ message }),
@@ -202,6 +205,7 @@ export default function CardTerminalsPage() {
   const clearDisplay = async (terminalId: string) => {
     try {
       await fetch(`${API_URL}/card-terminals/terminals/${terminalId}/clear`, {
+        credentials: 'include',
         method: 'POST',
         headers: getAuthHeaders(),
       });

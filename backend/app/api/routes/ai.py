@@ -6,7 +6,7 @@ import uuid
 from datetime import datetime, timezone
 from decimal import Decimal
 from pathlib import Path
-from typing import Annotated, Optional, List
+from typing import Annotated, Optional, List, Dict
 
 from fastapi import APIRouter, File, Form, HTTPException, Request, UploadFile, status
 
@@ -636,9 +636,10 @@ async def upload_training_video(
         db.commit()
 
     except Exception as e:
+        logger.error(f"Video processing failed: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Video processing failed: {str(e)}",
+            detail="Video processing failed. Please try again or contact support.",
         )
     finally:
         # Clean up temp file
@@ -922,9 +923,10 @@ async def recognize_bottle(
                     detail="CLIP service not available for recognition",
                 )
         except Exception as e:
+            logger.error(f"Failed to process image for recognition: {e}")
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail=f"Failed to process image: {str(e)}",
+                detail="Failed to process image. Please try again or contact support.",
             )
 
         # Extract OCR text from query image for text-based matching
@@ -1887,19 +1889,21 @@ async def recognize_bottle_v2(
         }
 
     except ImportError as e:
+        logger.error(f"ML pipeline not installed: {e}")
         if monitoring_enabled:
             ai_monitor.record_error("import_error", 0)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"ML pipeline not installed: {str(e)}",
+            detail="ML pipeline is not available. Please contact support.",
         )
     except Exception as e:
+        logger.error(f"Pipeline error during V2 recognition: {e}")
         if monitoring_enabled:
             elapsed = (datetime.now(timezone.utc) - start_time).total_seconds() * 1000
             ai_monitor.record_error("pipeline_error", elapsed)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Pipeline error: {str(e)}",
+            detail="An error occurred during recognition. Please try again or contact support.",
         )
 
 
@@ -2076,4 +2080,197 @@ def label_active_learning_item(
         "message": "Item labeled and added to training set",
         "product_id": product.id,
         "product_name": product.name,
+    }
+
+
+# ============================================================================
+# MERGED FROM ai_training.py
+# Unique endpoints and schemas that were not already present in ai.py.
+# Duplicate endpoints (training/upload, training/upload-batch, training/stats,
+# training/images, training/images/{id} DELETE, recognize) were already
+# implemented above with full DB + CLIP support.
+# ============================================================================
+
+from pydantic import BaseModel, Field
+
+
+class RecognitionConfirmRequest(BaseModel):
+    session_id: str
+    product_id: int
+    is_correct: bool = True
+
+
+class BatchUploadResponse(BaseModel):
+    uploaded: int
+    failed: int
+    errors: List[str]
+
+
+class RetrainResponse(BaseModel):
+    products_processed: int
+    images_processed: int
+    features_extracted: int
+    errors: List[str]
+
+
+class ProductTrainingStatus(BaseModel):
+    product_id: int
+    product_name: str
+    image_count: int
+    is_ready: bool
+    has_aggregated_features: bool
+    recommendation: str
+
+
+# In-memory stores for lightweight training endpoints (from ai_training.py)
+_training_images_mem: list = []
+_recognition_sessions: dict = {}
+_next_image_id_mem = 1
+
+# Training thresholds (from ai_training.py)
+_MIN_TRAINING_IMAGES = 3
+
+
+@router.get("/training/product-status/{product_id}", response_model=ProductTrainingStatus)
+@limiter.limit("60/minute")
+def get_product_training_status(request: Request, product_id: int, db: DbSession = None, current_user: CurrentUser = None):
+    """Get detailed training status for a specific product."""
+    images = [img for img in _training_images_mem if img["product_id"] == product_id]
+    image_count = len(images)
+    has_features = any(img.get("has_features", False) for img in images)
+
+    if image_count == 0:
+        recommendation = "Upload at least 3 training images from different angles"
+    elif image_count < _MIN_TRAINING_IMAGES:
+        recommendation = f"Add {_MIN_TRAINING_IMAGES - image_count} more images for better accuracy"
+    elif not has_features:
+        recommendation = "Re-extract features using the retrain endpoint"
+    else:
+        recommendation = "Product is ready for recognition"
+
+    return ProductTrainingStatus(
+        product_id=product_id,
+        product_name=f"Product {product_id}",
+        image_count=image_count,
+        is_ready=image_count >= _MIN_TRAINING_IMAGES and has_features,
+        has_aggregated_features=False,
+        recommendation=recommendation,
+    )
+
+
+@router.post("/training/retrain", response_model=RetrainResponse)
+@limiter.limit("30/minute")
+def retrain_features(
+    request: Request,
+    product_id: Optional[int] = None,
+    force: bool = False,
+    db: DbSession = None, current_user: CurrentUser = None,
+):
+    """Re-extract features for training images (in-memory store)."""
+    filtered = list(_training_images_mem)
+
+    if product_id:
+        filtered = [img for img in filtered if img["product_id"] == product_id]
+    if not force:
+        filtered = [img for img in filtered if not img.get("has_features", False)]
+
+    products_processed = set()
+    images_processed = 0
+    errors = []
+
+    for img in filtered:
+        try:
+            if not os.path.exists(img["storage_path"]):
+                errors.append(f"Image {img['id']}: File not found")
+                continue
+            # Placeholder: mark features as extracted
+            img["has_features"] = True
+            images_processed += 1
+            products_processed.add(img["product_id"])
+        except Exception as e:
+            errors.append(f"Image {img['id']}: {str(e)[:50]}")
+
+    return RetrainResponse(
+        products_processed=len(products_processed),
+        images_processed=images_processed,
+        features_extracted=images_processed,
+        errors=errors[:10],
+    )
+
+
+@router.post("/training/verify/{image_id}")
+@limiter.limit("30/minute")
+def verify_training_image(request: Request, image_id: int, verified: bool = True, db: DbSession = None, current_user: CurrentUser = None):
+    """Mark a training image as verified (confirmed correct)."""
+    for img in _training_images_mem:
+        if img["id"] == image_id:
+            img["is_verified"] = verified
+            return {"message": f"Image {'verified' if verified else 'unverified'}", "id": image_id}
+    raise HTTPException(status_code=404, detail="Training image not found")
+
+
+@router.post("/recognize/compare")
+@limiter.limit("30/minute")
+async def compare_images(
+    request: Request,
+    image1: UploadFile = File(..., description="First image"),
+    image2: UploadFile = File(..., description="Second image"),
+):
+    """Compare two images and return their similarity."""
+    data1 = await image1.read()
+    data2 = await image2.read()
+
+    start_time = datetime.now(timezone.utc)
+    inference_time = (datetime.now(timezone.utc) - start_time).total_seconds() * 1000
+
+    return {
+        "similarity": 0.0,
+        "is_same_product": False,
+        "confidence_level": "low",
+        "inference_time_ms": round(inference_time, 2),
+    }
+
+
+@router.post("/recognize/confirm")
+@limiter.limit("30/minute")
+def confirm_recognition(
+    request: Request,
+    body: RecognitionConfirmRequest,
+    db: DbSession = None, current_user: CurrentUser = None,
+):
+    """Confirm a recognition result for active learning."""
+    if not body.is_correct:
+        return {
+            "success": True,
+            "message": "Incorrect recognition logged",
+            "training_image_added": False,
+        }
+
+    return {
+        "success": True,
+        "message": "Confirmation recorded",
+        "training_image_added": False,
+    }
+
+
+@router.get("/training/storage-status")
+@limiter.limit("60/minute")
+def get_storage_status(request: Request, current_user: CurrentUser = None):
+    """Get status of training image storage systems."""
+    local_count = 0
+    local_size = 0
+    if TRAINING_DIR.exists():
+        for f in TRAINING_DIR.iterdir():
+            if f.is_file() and f.suffix.lower() in {".jpg", ".jpeg", ".png", ".webp"}:
+                local_count += 1
+                local_size += f.stat().st_size
+
+    return {
+        "minio_available": False,
+        "session_storage": {"type": "memory", "active_sessions": len(_recognition_sessions)},
+        "local_storage": {
+            "directory": str(TRAINING_DIR),
+            "image_count": local_count,
+            "total_size_mb": round(local_size / (1024 * 1024), 2),
+        },
     }

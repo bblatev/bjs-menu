@@ -28,7 +28,7 @@ interface MappingItem {
 export default function QuickBooksIntegrationPage() {
   const [isConnected, setIsConnected] = useState(false);
   const [companyName, setCompanyName] = useState('');
-  const [lastSyncTime, setLastSyncTime] = useState<string | null>(null);
+  const [lastSyncTime] = useState<string | null>(null);
   const [syncLogs, setSyncLogs] = useState<SyncLog[]>([]);
   const [mappings, setMappings] = useState<MappingItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -50,7 +50,6 @@ export default function QuickBooksIntegrationPage() {
 
   const loadIntegrationData = async () => {
     try {
-      const token = localStorage.getItem('access_token');
       // Mock data - would come from API
       setIsConnected(false);
       setSyncLogs([

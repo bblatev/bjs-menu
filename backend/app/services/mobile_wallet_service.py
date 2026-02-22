@@ -57,7 +57,7 @@ class WalletPayment:
     customer_email: Optional[str] = None
     receipt_url: Optional[str] = None
     error_message: Optional[str] = None
-    created_at: datetime = field(default_factory=datetime.utcnow)
+    created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
     completed_at: Optional[datetime] = None
 
 

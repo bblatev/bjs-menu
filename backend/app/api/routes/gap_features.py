@@ -19,6 +19,7 @@ from sqlalchemy.orm import Session
 from app.db.session import get_db
 from app.core.rbac import get_current_user, get_current_venue
 from app.core.rate_limit import limiter
+from app.core.security import validate_redirect_uri
 from app.models import StaffUser as Staff
 
 
@@ -1286,6 +1287,9 @@ async def initiate_sso_login(
     db: Session = Depends(get_db)
 ):
     """Initiate SSO login flow."""
+    if redirect_uri and not validate_redirect_uri(redirect_uri):
+        raise HTTPException(status_code=400, detail="Invalid redirect URI")
+
     from app.services.sso_service import SSOService
 
     service = SSOService(db)
@@ -1312,6 +1316,9 @@ async def handle_sso_callback(
     db: Session = Depends(get_db)
 ):
     """Handle SSO callback."""
+    if redirect_uri and not validate_redirect_uri(redirect_uri):
+        raise HTTPException(status_code=400, detail="Invalid redirect URI")
+
     from app.services.sso_service import SSOService
 
     service = SSOService(db)

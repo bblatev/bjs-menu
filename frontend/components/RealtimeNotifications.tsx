@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNotificationWebSocket, WebSocketMessage, EventType } from '@/hooks/useWebSocket';
 
@@ -22,7 +23,7 @@ interface RealtimeNotificationsProps {
 
 const getNotificationFromEvent = (wsMessage: WebSocketMessage): Notification | null => {
   const baseNotification = {
-    id: typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(36).substring(2, 11)}`,
+    id: crypto.randomUUID(),
     timestamp: new Date(wsMessage.timestamp),
   };
 
@@ -184,6 +185,7 @@ export function RealtimeNotifications({
   maxNotifications = 5,
   autoHideDuration = 5000,
 }: RealtimeNotificationsProps) {
+  const router = useRouter();
   const [notifications, setNotifications] = useState<Notification[]>([]);
 
   const { isConnected, lastMessage } = useNotificationWebSocket(venueId);
@@ -205,7 +207,7 @@ export function RealtimeNotifications({
   useEffect(() => {
     if (notifications.length > 0 && autoHideDuration > 0) {
       const timer = setTimeout(() => {
-        setNotifications((prev) => prev.slice(0, -1));
+        setNotifications((prev) => prev.slice(1));
       }, autoHideDuration);
       return () => clearTimeout(timer);
     }
@@ -218,7 +220,7 @@ export function RealtimeNotifications({
 
   const handleActionClick = (notification: Notification) => {
     if (notification.actionUrl) {
-      window.location.href = notification.actionUrl;
+      router.push(notification.actionUrl);
     }
     removeNotification(notification.id);
   };

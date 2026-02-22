@@ -131,8 +131,8 @@ class CustomReport:
     is_public: bool = False
     owner_id: Optional[int] = None
     venue_id: Optional[int] = None
-    created_at: datetime = field(default_factory=datetime.utcnow)
-    updated_at: datetime = field(default_factory=datetime.utcnow)
+    created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    updated_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
 
 
 @dataclass

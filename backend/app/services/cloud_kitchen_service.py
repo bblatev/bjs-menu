@@ -279,7 +279,7 @@ class CloudKitchenService:
         if not brand or brand.status != BrandStatus.ACTIVE.value:
             return False
 
-        now = datetime.now()
+        now = datetime.now(timezone.utc)
         day = now.strftime("%A").lower()
         hours = (brand.operating_hours or {}).get(day)
 

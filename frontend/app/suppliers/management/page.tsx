@@ -126,6 +126,7 @@ export default function SupplierManagementPage() {
   const fetchSuppliers = async () => {
     try {
       const res = await fetch(`${API_URL}/suppliers/`, {
+        credentials: 'include',
         headers: getAuthHeaders()
       });
       if (res.ok) {
@@ -146,19 +147,19 @@ export default function SupplierManagementPage() {
 
     try {
       // Contacts
-      const contactsRes = await fetch(`${API_URL}/suppliers/${supplierId}/contacts`, { headers });
+      const contactsRes = await fetch(`${API_URL}/suppliers/${supplierId}/contacts`, { credentials: 'include', headers });
       if (contactsRes.ok) setContacts(await contactsRes.json());
 
       // Price Lists
-      const priceListsRes = await fetch(`${API_URL}/suppliers/${supplierId}/price-lists`, { headers });
+      const priceListsRes = await fetch(`${API_URL}/suppliers/${supplierId}/price-lists`, { credentials: 'include', headers });
       if (priceListsRes.ok) setPriceLists(await priceListsRes.json());
 
       // Ratings
-      const ratingsRes = await fetch(`${API_URL}/suppliers/${supplierId}/ratings`, { headers });
+      const ratingsRes = await fetch(`${API_URL}/suppliers/${supplierId}/ratings`, { credentials: 'include', headers });
       if (ratingsRes.ok) setRatings(await ratingsRes.json());
 
       // Documents
-      const docsRes = await fetch(`${API_URL}/suppliers/${supplierId}/documents`, { headers });
+      const docsRes = await fetch(`${API_URL}/suppliers/${supplierId}/documents`, { credentials: 'include', headers });
       if (docsRes.ok) setDocuments(await docsRes.json());
 
     } catch (error) {
@@ -169,6 +170,7 @@ export default function SupplierManagementPage() {
   const fetchExpiringDocuments = async () => {
     try {
       const res = await fetch(`${API_URL}/suppliers/expiring-documents?days=30`, {
+        credentials: 'include',
         headers: getAuthHeaders()
       });
       if (res.ok) setExpiringDocs(await res.json());
@@ -183,6 +185,7 @@ export default function SupplierManagementPage() {
 
     try {
       const res = await fetch(`${API_URL}/suppliers/contacts`, {
+        credentials: 'include',
         method: "POST",
         headers: getAuthHeaders(),
         body: JSON.stringify({
@@ -205,6 +208,7 @@ export default function SupplierManagementPage() {
   const fetchStockItems = async () => {
     try {
       const res = await fetch(`${API_URL}/stock/items`, {
+        credentials: 'include',
         headers: getAuthHeaders()
       });
       if (res.ok) setStockItems(await res.json());
@@ -219,6 +223,7 @@ export default function SupplierManagementPage() {
 
     try {
       const res = await fetch(`${API_URL}/suppliers/ratings`, {
+        credentials: 'include',
         method: "POST",
         headers: getAuthHeaders(),
         body: JSON.stringify({
@@ -244,6 +249,7 @@ export default function SupplierManagementPage() {
 
     try {
       const res = await fetch(`${API_URL}/suppliers/price-lists`, {
+        credentials: 'include',
         method: "POST",
         headers: getAuthHeaders(),
         body: JSON.stringify({
@@ -270,6 +276,7 @@ export default function SupplierManagementPage() {
 
     try {
       const res = await fetch(`${API_URL}/suppliers/documents`, {
+        credentials: 'include',
         method: "POST",
         headers: getAuthHeaders(),
         body: JSON.stringify({
@@ -295,6 +302,7 @@ export default function SupplierManagementPage() {
     setSelectedItem(itemId);
     try {
       const res = await fetch(`${API_URL}/suppliers/best-price/${itemId}`, {
+        credentials: 'include',
         headers: getAuthHeaders()
       });
       if (res.ok) {

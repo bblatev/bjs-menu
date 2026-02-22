@@ -42,7 +42,6 @@ export default function EmailMarketingPage() {
   const [activeTab, setActiveTab] = useState<'campaigns' | 'templates' | 'analytics'>('campaigns');
   const [showTemplateModal, setShowTemplateModal] = useState(false);
   const [showCampaignModal, setShowCampaignModal] = useState(false);
-  const [selectedTemplate, setSelectedTemplate] = useState<EmailTemplate | null>(null);
   const [templateForm, setTemplateForm] = useState({
     name: '',
     subject: '',

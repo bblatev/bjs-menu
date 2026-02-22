@@ -64,6 +64,7 @@ export default function PourCostsPage() {
     try {
       const headers = getAuthHeaders();
       const response = await fetch(`${API_URL}/bar/pour-costs/summary`, {
+        credentials: 'include',
         headers,
       });
 

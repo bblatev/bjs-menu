@@ -12,7 +12,6 @@ This module provides:
 """
 
 import io
-import os
 import re
 import hashlib
 import logging
@@ -31,11 +30,11 @@ logger = logging.getLogger(__name__)
 # Configuration from environment
 # ============================================================================
 
-OCR_GPU_ENABLED = os.getenv("OCR_GPU_ENABLED", "false").lower() == "true"
-OCR_LANGUAGES = os.getenv("OCR_LANGUAGES", "en").split(",")
+OCR_GPU_ENABLED = settings.ocr_gpu_enabled
+OCR_LANGUAGES = [lang.strip() for lang in settings.ocr_languages.split(",")]
 OCR_CONFIDENCE_THRESHOLD = float(settings.ocr_confidence_threshold)
-OCR_CACHE_SIZE = int(os.getenv("OCR_CACHE_SIZE", "500"))
-SEMANTIC_MATCHING_ENABLED = os.getenv("SEMANTIC_MATCHING_ENABLED", "true").lower() == "true"
+OCR_CACHE_SIZE = settings.ocr_cache_size
+SEMANTIC_MATCHING_ENABLED = settings.semantic_matching_enabled
 
 # ============================================================================
 # Lazy-loaded dependencies

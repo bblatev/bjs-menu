@@ -43,7 +43,6 @@ export default function AnalyticsVideoPage() {
   const [events, setEvents] = useState<VideoEvent[]>([]);
   const [stats, setStats] = useState<VideoStats | null>(null);
   const [loading, setLoading] = useState(true);
-  const [selectedCamera, setSelectedCamera] = useState<string>('all');
 
   useEffect(() => {
     loadVideoData();
@@ -54,6 +53,7 @@ export default function AnalyticsVideoPage() {
     try {
       const token = localStorage.getItem('access_token');
       const response = await fetch(`${API_URL}/analytics/video`, {
+        credentials: 'include',
         headers: { Authorization: `Bearer ${token}` },
       });
 

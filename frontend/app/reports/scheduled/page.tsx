@@ -3,9 +3,6 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Link from 'next/link';
-import { PageLoading } from '@/components/ui/LoadingSpinner';
-import { ErrorAlert } from '@/components/ui/ErrorAlert';
-
 import { API_URL, getAuthHeaders } from '@/lib/api';
 
 import { toast } from '@/lib/toast';
@@ -62,8 +59,8 @@ export default function ScheduledReportsPage() {
   const [schedules, setSchedules] = useState<ScheduledReport[]>([]);
   const [showModal, setShowModal] = useState(false);
   const [editingSchedule, setEditingSchedule] = useState<ScheduledReport | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [, setLoading] = useState(true);
+  const [, setError] = useState<string | null>(null);
 
   const [form, setForm] = useState<Partial<ScheduledReport>>({
     name: '',
@@ -87,6 +84,7 @@ export default function ScheduledReportsPage() {
     setError(null);
     try {
       const res = await fetch(`${API_URL}/scheduled-reports/schedules`, {
+        credentials: 'include',
         headers: getAuthHeaders(),
       });
       if (res.ok) {
@@ -130,6 +128,7 @@ export default function ScheduledReportsPage() {
         : `${API_URL}/scheduled-reports/schedules`;
 
       const res = await fetch(url, {
+        credentials: 'include',
         method,
         headers: getAuthHeaders(),
         body: JSON.stringify(form),
@@ -148,6 +147,7 @@ export default function ScheduledReportsPage() {
     if (!confirm('Are you sure you want to delete this scheduled report?')) return;
     try {
       const res = await fetch(`${API_URL}/scheduled-reports/schedules/${scheduleId}`, {
+        credentials: 'include',
         method: 'DELETE',
         headers: getAuthHeaders(),
       });
@@ -162,6 +162,7 @@ export default function ScheduledReportsPage() {
   const toggleActive = async (schedule: ScheduledReport) => {
     try {
       const res = await fetch(`${API_URL}/scheduled-reports/schedules/${schedule.schedule_id}`, {
+        credentials: 'include',
         method: 'PUT',
         headers: getAuthHeaders(),
         body: JSON.stringify({ ...schedule, is_active: !schedule.is_active }),
@@ -177,6 +178,7 @@ export default function ScheduledReportsPage() {
   const runNow = async (scheduleId: string) => {
     try {
       const res = await fetch(`${API_URL}/scheduled-reports/schedules/${scheduleId}/run`, {
+        credentials: 'include',
         method: 'POST',
         headers: getAuthHeaders(),
       });
@@ -207,7 +209,6 @@ export default function ScheduledReportsPage() {
   };
 
   const getReportType = (id: string) => REPORT_TYPES.find(r => r.id === id);
-  const getFrequency = (id: string) => FREQUENCIES.find(f => f.id === id);
 
   return (
     <div className="min-h-screen bg-surface-50">
@@ -277,7 +278,6 @@ export default function ScheduledReportsPage() {
           <div className="space-y-4">
             {schedules.map((schedule) => {
               const reportType = getReportType(schedule.report_type);
-              const frequency = getFrequency(schedule.frequency);
               return (
                 <motion.div
                   key={schedule.schedule_id}

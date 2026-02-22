@@ -43,7 +43,7 @@ class BackgroundTask:
     payload: Dict[str, Any] = field(default_factory=dict)
     status: TaskStatus = TaskStatus.PENDING
     priority: TaskPriority = TaskPriority.NORMAL
-    scheduled_at: datetime = field(default_factory=datetime.utcnow)
+    scheduled_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
     started_at: Optional[datetime] = None
     completed_at: Optional[datetime] = None
     error_message: Optional[str] = None

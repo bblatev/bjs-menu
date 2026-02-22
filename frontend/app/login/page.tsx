@@ -1,10 +1,12 @@
 'use client';
 
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 
-import { API_URL, getAuthHeaders, setAuthToken } from '@/lib/api';
+import { API_URL, APP_VERSION, TOKEN_KEY } from '@/lib/api';
 
 export default function LoginPage() {
+  const router = useRouter();
   const [pin, setPin] = useState('');
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -37,13 +39,14 @@ export default function LoginPage() {
       const res = await fetch(`${API_URL}/auth/login/pin`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify({ pin: pinCode }),
       });
 
       if (res.ok) {
-        const data = await res.json();
-        setAuthToken(data.access_token);
-        window.location.href = '/dashboard';
+        // Store token in localStorage as bridge for pages not yet migrated to cookie auth
+        try { const d = await res.json(); if (d.access_token) localStorage.setItem(TOKEN_KEY, d.access_token); } catch {}
+        router.push('/dashboard');
       } else {
         setError('Invalid PIN');
         setPin('');
@@ -57,11 +60,11 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-primary-600 via-primary-700 to-primary-900 flex items-center justify-center p-4">
-      <div className="bg-white rounded-3xl shadow-2xl p-8 w-full max-w-sm">
+    <main className="min-h-screen bg-gradient-to-br from-primary-600 via-primary-700 to-primary-900 flex items-center justify-center p-4" aria-label="Login">
+      <div className="bg-white rounded-3xl shadow-2xl p-8 w-full max-w-sm" role="form" aria-label="PIN login form">
         {/* Logo */}
         <div className="text-center mb-8">
-          <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-primary-500 to-primary-700 flex items-center justify-center mx-auto mb-4">
+          <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-primary-500 to-primary-700 flex items-center justify-center mx-auto mb-4" aria-hidden="true">
             <span className="text-3xl font-bold text-white">BJ</span>
           </div>
           <h1 className="text-2xl font-bold text-gray-800">BJ&apos;s Bar POS</h1>
@@ -69,10 +72,16 @@ export default function LoginPage() {
         </div>
 
         {/* PIN Display */}
-        <div className="flex justify-center gap-3 mb-8">
+        <div
+          className="flex justify-center gap-3 mb-8"
+          aria-live="polite"
+          aria-label={`PIN entry: ${pin.length} of 4 digits entered`}
+          role="status"
+        >
           {[0, 1, 2, 3].map((i) => (
             <div
               key={i}
+              aria-hidden="true"
               className={`w-14 h-14 rounded-xl border-2 flex items-center justify-center text-2xl font-bold transition-all
                 ${pin.length > i ? 'bg-primary-500 border-primary-500 text-white scale-105' : 'border-gray-300 text-gray-300'}`}
             >
@@ -83,11 +92,11 @@ export default function LoginPage() {
 
         {/* Error Message */}
         {error && (
-          <div className="text-center text-red-500 mb-4 font-medium animate-pulse">{error}</div>
+          <div role="alert" className="text-center text-red-500 mb-4 font-medium animate-pulse">{error}</div>
         )}
 
         {/* Number Pad */}
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-3 gap-3" role="group" aria-label="PIN keypad">
           {['1', '2', '3', '4', '5', '6', '7', '8', '9', 'C', '0', '⌫'].map((key) => (
             <button
               key={key}
@@ -97,6 +106,11 @@ export default function LoginPage() {
                 else handlePinClick(key);
               }}
               disabled={isLoading}
+              aria-label={
+                key === 'C' ? 'Clear PIN' :
+                key === '⌫' ? 'Delete last digit' :
+                `Digit ${key}`
+              }
               className={`h-16 rounded-xl text-2xl font-bold transition-all
                 ${key === 'C' ? 'bg-red-100 text-red-600 hover:bg-red-200' :
                   key === '⌫' ? 'bg-gray-100 text-gray-600 hover:bg-gray-200' :
@@ -110,16 +124,16 @@ export default function LoginPage() {
 
         {/* Loading indicator */}
         {isLoading && (
-          <div className="text-center mt-6 text-primary-500 font-medium">
+          <div className="text-center mt-6 text-primary-500 font-medium" role="status" aria-live="assertive">
             Logging in...
           </div>
         )}
 
         {/* Version */}
         <p className="text-center text-xs text-gray-400 mt-8">
-          BJ&apos;s Bar POS v9.0.0
+          BJ&apos;s Bar POS v{APP_VERSION}
         </p>
       </div>
-    </div>
+    </main>
   );
 }

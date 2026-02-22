@@ -8,9 +8,10 @@ from typing import Optional, List
 
 from sqlalchemy import (
     Column, Integer, String, DateTime, Date, Time, Numeric, Boolean,
-    ForeignKey, Text, JSON, Float,
+    ForeignKey, Text, JSON, Float, UniqueConstraint,
 )
 from sqlalchemy.orm import relationship
+from sqlalchemy.sql import func
 
 from app.db.base import Base
 
@@ -20,17 +21,16 @@ from app.db.base import Base
 class AppSetting(Base):
     """Key-value settings store."""
     __tablename__ = "app_settings"
-    __table_args__ = {'extend_existing': True}
 
     id = Column(Integer, primary_key=True, index=True)
     category = Column(String(50), nullable=False, index=True)  # general, venue, payment, security, fiscal, tax
     key = Column(String(100), nullable=False)
     value = Column(JSON, nullable=True)
-    updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 
     __table_args__ = (
-        # Unique constraint on category + key
-        {"sqlite_autoincrement": True},
+        UniqueConstraint('category', 'key', name='uq_app_setting_category_key'),
+        {'extend_existing': True, 'sqlite_autoincrement': True},
     )
 
 
@@ -48,7 +48,7 @@ class PayrollRun(Base):
     total_gross = Column(Numeric(12, 2), default=0)
     total_net = Column(Numeric(12, 2), default=0)
     total_tax = Column(Numeric(12, 2), default=0)
-    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
     approved_at = Column(DateTime, nullable=True)
     paid_at = Column(DateTime, nullable=True)
 
@@ -75,7 +75,7 @@ class PayrollEntry(Base):
     net_pay = Column(Numeric(10, 2), default=0)
     tips = Column(Numeric(10, 2), default=0)
     status = Column(String(20), default="pending")  # pending, approved, paid
-    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
 
     payroll_run = relationship("PayrollRun", back_populates="entries")
 
@@ -95,7 +95,7 @@ class Notification(Base):
     category = Column(String(50), nullable=True)
     read = Column(Boolean, default=False)
     action_url = Column(String(500), nullable=True)
-    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
 
 
 class NotificationPreference(Base):
@@ -143,7 +143,7 @@ class HACCPTemperatureLog(Base):
     status = Column(String(20), default="normal")  # normal, warning, critical
     recorded_by = Column(String(100), nullable=True)
     notes = Column(Text, nullable=True)
-    recorded_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    recorded_at = Column(DateTime(timezone=True), server_default=func.now())
 
 
 class HACCPSafetyCheck(Base):
@@ -160,7 +160,7 @@ class HACCPSafetyCheck(Base):
     completed_at = Column(DateTime, nullable=True)
     completed_by = Column(String(100), nullable=True)
     notes = Column(Text, nullable=True)
-    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
 
 
 # ===================== FEEDBACK =====================
@@ -181,7 +181,7 @@ class FeedbackReview(Base):
     responded_at = Column(DateTime, nullable=True)
     responded_by = Column(String(100), nullable=True)
     visit_date = Column(Date, nullable=True)
-    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
 
 
 # ===================== AUDIT LOGS =====================
@@ -199,7 +199,7 @@ class AuditLogEntry(Base):
     entity_id = Column(String(50), nullable=True, index=True)
     details = Column(JSON, nullable=True)
     ip_address = Column(String(50), nullable=True)
-    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), index=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), index=True)
 
 
 # ===================== VIP =====================
@@ -218,7 +218,7 @@ class VIPCustomerLink(Base):
     points = Column(Integer, default=0)
     total_spent = Column(Numeric(12, 2), default=0)
     visits = Column(Integer, default=0)
-    joined_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    joined_at = Column(DateTime(timezone=True), server_default=func.now())
     notes = Column(Text, nullable=True)
 
 
@@ -234,7 +234,7 @@ class VIPOccasion(Base):
     occasion_date = Column(Date, nullable=False)
     notes = Column(Text, nullable=True)
     notification_sent = Column(Boolean, default=False)
-    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
 
 
 # ===================== WAREHOUSES =====================
@@ -254,7 +254,7 @@ class Warehouse(Base):
     temperature_max = Column(Float, nullable=True)
     manager = Column(String(200), nullable=True)
     active = Column(Boolean, default=True)
-    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
 
 
 class WarehouseTransfer(Base):
@@ -271,7 +271,7 @@ class WarehouseTransfer(Base):
     status = Column(String(20), default="pending")  # pending, in_transit, completed
     notes = Column(Text, nullable=True)
     created_by = Column(String(100), nullable=True)
-    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
     completed_at = Column(DateTime, nullable=True)
 
 
@@ -296,7 +296,7 @@ class Promotion(Base):
     usage_count = Column(Integer, default=0)
     usage_limit = Column(Integer, nullable=True)
     applicable_items = Column(JSON, nullable=True)
-    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
 
 
 # ===================== GAMIFICATION =====================
@@ -314,7 +314,7 @@ class Badge(Base):
     criteria = Column(JSON, nullable=True)
     points = Column(Integer, default=0)
     active = Column(Boolean, default=True)
-    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
 
 
 class Challenge(Base):
@@ -332,7 +332,7 @@ class Challenge(Base):
     start_date = Column(Date, nullable=True)
     end_date = Column(Date, nullable=True)
     active = Column(Boolean, default=True)
-    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
 
 
 class StaffAchievement(Base):
@@ -346,7 +346,7 @@ class StaffAchievement(Base):
     badge_id = Column(Integer, ForeignKey("badges.id"), nullable=True)
     badge_name = Column(String(200), nullable=True)
     points = Column(Integer, default=0)
-    earned_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    earned_at = Column(DateTime(timezone=True), server_default=func.now())
 
 
 class StaffPoints(Base):
@@ -382,7 +382,7 @@ class RiskAlert(Base):
     acknowledged_by = Column(String(100), nullable=True)
     acknowledged_at = Column(DateTime, nullable=True)
     details = Column(JSON, nullable=True)
-    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
 
 
 # ===================== REFERRALS =====================
@@ -401,7 +401,7 @@ class ReferralProgram(Base):
     is_active = Column(Boolean, default=True)
     max_referrals_per_customer = Column(Integer, nullable=True)
     active = Column(Boolean, default=True)
-    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
 
 
 class ReferralRecord(Base):
@@ -417,7 +417,7 @@ class ReferralRecord(Base):
     status = Column(String(20), default="pending")  # pending, completed, expired
     reward_claimed = Column(Boolean, default=False)
     program_id = Column(Integer, ForeignKey("referral_programs.id"), nullable=True)
-    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
     completed_at = Column(DateTime, nullable=True)
 
 
@@ -438,7 +438,7 @@ class TaxFiling(Base):
     filed_at = Column(DateTime, nullable=True)
     filed_by = Column(String(100), nullable=True)
     notes = Column(Text, nullable=True)
-    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
 
 
 # ===================== FINANCIAL =====================
@@ -457,7 +457,7 @@ class Budget(Base):
     budgeted_amount = Column(Numeric(12, 2), default=0)
     actual_amount = Column(Numeric(12, 2), default=0)
     notes = Column(Text, nullable=True)
-    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
 
 
 class DailyReconciliation(Base):
@@ -477,7 +477,7 @@ class DailyReconciliation(Base):
     completed_by = Column(String(100), nullable=True)
     completed_at = Column(DateTime, nullable=True)
     notes = Column(Text, nullable=True)
-    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
 
 
 # ===================== SHIFT SCHEDULING =====================
@@ -497,4 +497,4 @@ class ShiftSchedule(Base):
     status = Column(String(20), default="scheduled")  # scheduled, confirmed, completed, cancelled
     break_minutes = Column(Integer, default=0)
     notes = Column(Text, nullable=True)
-    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    created_at = Column(DateTime(timezone=True), server_default=func.now())

@@ -44,6 +44,15 @@ class Settings(BaseSettings):
     cors_origins: str = "http://localhost:3000,http://localhost:8000"
 
     # ==========================================================================
+    # Fiscal printer / hardware service URLs
+    # ==========================================================================
+    fpgate_url: str = "http://localhost:4444"
+    erpnet_fp_host: str = "localhost"
+    erpnet_fp_port: int = 8001
+    pos_bridge_host: str = "localhost"
+    pos_bridge_port: int = 9999
+
+    # ==========================================================================
     # Email/SMTP Configuration (centralized from scattered os.getenv calls)
     # ==========================================================================
     smtp_host: str = "smtp.gmail.com"
@@ -59,6 +68,7 @@ class Settings(BaseSettings):
     # ==========================================================================
     sms_provider: str = "local"
     sms_api_key: str = ""
+    sms_api_secret: str = ""
     sms_from_number: str = ""
     email_provider: str = "smtp"
     email_api_key: str = ""
@@ -85,6 +95,10 @@ class Settings(BaseSettings):
     ocr_default_language: str = "bul+eng"
     ocr_dpi: int = 300
     ocr_confidence_threshold: float = 60.0
+    ocr_gpu_enabled: bool = False
+    ocr_languages: str = "en"  # Comma-separated language codes for EasyOCR
+    ocr_cache_size: int = 500
+    semantic_matching_enabled: bool = True
 
     # ==========================================================================
     # Payment Providers
@@ -125,11 +139,18 @@ class Settings(BaseSettings):
     doordash_api_key: Optional[str] = None
     doordash_store_id: str = ""
 
+    opentable_client_id: str = ""
+    opentable_client_secret: str = ""
+    opentable_restaurant_id: str = ""
+
     glovo_api_key: Optional[str] = None
     glovo_store_id: Optional[str] = None
 
     wolt_api_key: Optional[str] = None
     wolt_venue_id: Optional[str] = None
+
+    resy_api_key: str = ""
+    resy_venue_id: str = ""
 
     # ==========================================================================
     # Google Reserve
@@ -138,6 +159,7 @@ class Settings(BaseSettings):
     google_reserve_api_key: Optional[str] = None
     google_reserve_merchant_id: Optional[str] = None
     google_reserve_partner_id: Optional[str] = None
+    google_reserve_webhook_secret: str = ""
 
     # ==========================================================================
     # QuickBooks
@@ -146,6 +168,7 @@ class Settings(BaseSettings):
     qbo_client_secret: Optional[str] = None
     qbo_redirect_uri: Optional[str] = None
     qbo_environment: str = "sandbox"
+    qbo_production: bool = False
 
     # ==========================================================================
     # Xero Accounting

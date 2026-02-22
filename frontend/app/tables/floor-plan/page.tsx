@@ -71,12 +71,6 @@ const statusColors: Record<string, { fill: string; stroke: string; text: string 
   cleaning: { fill: '#6b7280', stroke: '#4b5563', text: '#ffffff' },
 };
 
-const shapeIcons: Record<string, string> = {
-  rectangle: '▭',
-  square: '□',
-  circle: '○',
-};
-
 // ============================================================================
 // Component
 // ============================================================================
@@ -117,8 +111,8 @@ export default function FloorPlanEditor() {
     try {
       // Fetch active floor plan and all tables in parallel
       const [fpRes, tablesRes] = await Promise.all([
-        fetch(`${API_URL}/floor-plans/active`, { headers: getHeaders() }),
-        fetch(`${API_URL}/tables/`, { headers: getHeaders() }),
+        fetch(`${API_URL}/floor-plans/active`, { credentials: 'include', headers: getHeaders() }),
+        fetch(`${API_URL}/tables/`, { credentials: 'include', headers: getHeaders() }),
       ]);
 
       // Parse tables
@@ -192,6 +186,7 @@ export default function FloorPlanEditor() {
       }));
 
       const res = await fetch(`${API_URL}/floor-plans/`, {
+        credentials: 'include',
         method: 'POST',
         headers: getHeaders(),
         body: JSON.stringify({
@@ -223,6 +218,7 @@ export default function FloorPlanEditor() {
     setSaving(true);
     try {
       const res = await fetch(`${API_URL}/floor-plans/${floorPlan.id}`, {
+        credentials: 'include',
         method: 'PUT',
         headers: getHeaders(),
         body: JSON.stringify({

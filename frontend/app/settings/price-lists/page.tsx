@@ -80,7 +80,7 @@ export default function PriceListsPage() {
   const loadPriceLists = useCallback(async () => {
     try {
       const h = { Authorization: `Bearer ${token()}`, "Content-Type": "application/json" };
-      const res = await fetch(`${API()}/price-lists`, { headers: h });
+      const res = await fetch(`${API()}/price-lists`, { credentials: 'include', headers: h });
       if (res.ok) setPriceLists(await res.json());
     } catch (err) {
       console.error('Failed to load price lists:', err);
@@ -90,7 +90,7 @@ export default function PriceListsPage() {
   const loadProducts = useCallback(async () => {
     try {
       const h = { Authorization: `Bearer ${token()}`, "Content-Type": "application/json" };
-      const res = await fetch(`${API()}/waiter/menu/quick`, { headers: h });
+      const res = await fetch(`${API()}/waiter/menu/quick`, { credentials: 'include', headers: h });
       if (res.ok) setProducts(await res.json());
     } catch (err) {
       console.error('Failed to load products:', err);
@@ -98,7 +98,7 @@ export default function PriceListsPage() {
   }, []);
 
   const loadProductPrices = async (priceListId: number) => {
-    const res = await fetch(`${API()}/price-lists/${priceListId}/products`, { headers: headers() });
+    const res = await fetch(`${API()}/price-lists/${priceListId}/products`, { credentials: 'include', headers: headers() });
     if (res.ok) setProductPrices(await res.json());
   };
 
@@ -175,6 +175,7 @@ export default function PriceListsPage() {
     const method = editingList ? "PUT" : "POST";
 
     const res = await fetch(url, {
+      credentials: 'include',
       method,
       headers: headers(),
       body: JSON.stringify(payload),
@@ -197,6 +198,7 @@ export default function PriceListsPage() {
     if (!confirm("Delete this price list?")) return;
 
     const res = await fetch(`${API()}/price-lists/${id}`, {
+      credentials: 'include',
       method: "DELETE",
       headers: headers(),
     });
@@ -222,6 +224,7 @@ export default function PriceListsPage() {
     };
 
     const res = await fetch(`${API()}/price-lists/${selectedPriceList.id}/products/${priceForm.product_id}`, {
+      credentials: 'include',
       method: "POST",
       headers: headers(),
       body: JSON.stringify(payload),

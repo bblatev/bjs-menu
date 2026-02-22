@@ -2,11 +2,15 @@
 
 These endpoints implement the Google Maps Booking API server interface.
 Google will call these endpoints to check availability and create bookings.
+
+Also serves the legacy /google-booking prefix for backward compatibility
+(merged from google_booking.py).
 """
 
 import json
+import logging
 from typing import Optional, List
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from fastapi import APIRouter, HTTPException, Request, Header, Body
 from pydantic import BaseModel
 
@@ -20,6 +24,8 @@ from app.services.google_reserve_service import (
     TimeSlot,
     MerchantInfo,
 )
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -341,7 +347,7 @@ async def get_availability_feed(
     from app.models.reservations import Reservation, ReservationStatus
     db = SessionLocal()
     try:
-        today = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
+        today = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
         end_date = today + timedelta(days=days_ahead)
         existing = db.query(Reservation).filter(
             Reservation.date >= today.date(),
@@ -469,7 +475,7 @@ async def get_google_reserve_stats(request: Request, db: DbSession):
     """Get Google Reserve statistics."""
     from sqlalchemy import func
 
-    thirty_days_ago = datetime.now() - timedelta(days=30)
+    thirty_days_ago = datetime.now(timezone.utc) - timedelta(days=30)
 
     base = db.query(Reservation).filter(
         Reservation.source == BookingSource.GOOGLE,
@@ -519,5 +525,73 @@ async def get_google_reserve_status(request: Request):
             "create_booking": "/api/v1/google-reserve/v3/CreateBooking",
             "update_booking": "/api/v1/google-reserve/v3/UpdateBooking",
             "get_booking_status": "/api/v1/google-reserve/v3/GetBookingStatus",
+            "cancel_booking": "/api/v1/google-reserve/v3/CancelBooking",
         },
+    }
+
+
+# ============================================================================
+# Endpoints merged from google_booking.py
+# ============================================================================
+
+
+class CancelBookingRequest(BaseModel):
+    """Request body for the CancelBooking endpoint."""
+    booking_id: str
+
+
+class HealthCheckResponse(BaseModel):
+    """Response for the health check endpoint."""
+    serving_status: str
+
+
+@router.get("/")
+@limiter.limit("60/minute")
+async def get_google_reserve_root(request: Request):
+    """Root endpoint -- redirects to health check."""
+    return await health_check(request=request)
+
+
+@router.get("/health", response_model=HealthCheckResponse)
+@limiter.limit("60/minute")
+async def health_check(request: Request):
+    """
+    Health check endpoint for Google to verify server availability.
+
+    Google will poll this endpoint to ensure the booking server is operational.
+    """
+    return HealthCheckResponse(serving_status="SERVING")
+
+
+@router.post("/v3/CancelBooking")
+@limiter.limit("30/minute")
+async def cancel_booking(
+    request: Request,
+    body: CancelBookingRequest,
+    db: DbSession,
+    x_goog_signature: Optional[str] = Header(None, alias="X-Goog-Signature"),
+):
+    """
+    Cancel a booking.
+
+    Called when a user cancels through Google Maps.
+    """
+    reservation = db.query(Reservation).filter(
+        Reservation.external_booking_id == body.booking_id
+    ).first()
+
+    if not reservation:
+        raise HTTPException(status_code=404, detail="Booking not found")
+
+    reservation.status = ReservationStatus.CANCELLED
+    reservation.updated_at = datetime.now(timezone.utc)
+
+    db.commit()
+    db.refresh(reservation)
+
+    logger.info(f"Cancelled Google booking: {body.booking_id}")
+
+    return {
+        "booking_id": body.booking_id,
+        "status": "CANCELLED",
     }

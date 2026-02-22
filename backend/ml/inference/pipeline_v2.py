@@ -17,7 +17,7 @@ import os
 import sys
 import uuid
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
@@ -753,7 +753,7 @@ class ActiveLearningQueue:
         """Add item to queue for human review."""
         import cv2
 
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        timestamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
         item_id = item.item_id
 
         # Save crop

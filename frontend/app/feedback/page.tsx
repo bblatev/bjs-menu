@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 
-import { API_URL, getAuthHeaders } from '@/lib/api';
+import { API_URL } from '@/lib/api';
 
 interface Review {
   id: number;
@@ -68,6 +68,7 @@ export default function FeedbackPage() {
       if (period !== 'all') params.append('period', period);
 
       const response = await fetch(`${API_URL}/feedback/reviews?${params}`, {
+        credentials: 'include',
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',
@@ -95,6 +96,7 @@ export default function FeedbackPage() {
       if (period !== 'all') params.append('period', period);
 
       const response = await fetch(`${API_URL}/feedback/stats?${params}`, {
+        credentials: 'include',
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',
@@ -118,6 +120,7 @@ export default function FeedbackPage() {
     try {
       const token = localStorage.getItem('access_token');
       const response = await fetch(`${API_URL}/feedback/reviews/${selectedReview.id}/respond`, {
+        credentials: 'include',
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -142,6 +145,7 @@ export default function FeedbackPage() {
     try {
       const token = localStorage.getItem('access_token');
       const response = await fetch(`${API_URL}/feedback/reviews/${reviewId}/status`, {
+        credentials: 'include',
         method: 'PATCH',
         headers: {
           'Authorization': `Bearer ${token}`,

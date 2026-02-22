@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import AdminLayout from '@/components/AdminLayout';
-import { API_URL, getAuthHeaders } from '@/lib/api';
+import { API_URL } from '@/lib/api';
 
 import { toast } from '@/lib/toast';
 interface AlertConfig {
@@ -39,9 +39,11 @@ export default function NotificationSettingsPage() {
     try {
       const [alertsRes, prefsRes] = await Promise.all([
         fetch(`${API_URL}/notifications/alerts/config`, {
+          credentials: 'include',
           headers: { 'Authorization': `Bearer ${token}` }
         }),
         fetch(`${API_URL}/notifications/preferences`, {
+          credentials: 'include',
           headers: { 'Authorization': `Bearer ${token}` }
         })
       ]);
@@ -66,6 +68,7 @@ export default function NotificationSettingsPage() {
     setSaving(true);
     try {
       await fetch(`${API_URL}/notifications/alerts/config/${alertType}`, {
+        credentials: 'include',
         method: 'PUT',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -85,6 +88,7 @@ export default function NotificationSettingsPage() {
     const token = localStorage.getItem('access_token');
     try {
       await fetch(`${API_URL}/notifications/test/all-channels`, {
+        credentials: 'include',
         method: 'POST',
         headers: { 'Authorization': `Bearer ${token}` }
       });

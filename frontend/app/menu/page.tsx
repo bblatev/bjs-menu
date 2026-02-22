@@ -2,8 +2,10 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
-import { API_URL } from "@/lib/api";
+import { API_URL, getAuthHeaders } from "@/lib/api";
+import { useConfirm } from "@/hooks/useConfirm";
 
 import { toast } from '@/lib/toast';
 interface MultiLang {
@@ -63,6 +65,8 @@ interface MenuItem {
 type TabType = "items" | "categories" | "modifiers";
 
 export default function MenuPage() {
+  const router = useRouter();
+  const confirm = useConfirm();
   const [categories, setCategories] = useState<Category[]>([]);
   const [items, setItems] = useState<MenuItem[]>([]);
   const [stations, setStations] = useState<Station[]>([]);
@@ -122,17 +126,14 @@ export default function MenuPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const getToken = () => localStorage.getItem("access_token");
-
   const loadData = async () => {
     try {
-      const token = getToken();
-      const headers = { Authorization: `Bearer ${token}` };
+      const headers = getAuthHeaders();
 
       const [catsRes, itemsRes, stationsRes] = await Promise.all([
-        fetch(`${API_URL}/menu-admin/categories`, { headers }),
-        fetch(`${API_URL}/menu-admin/items`, { headers }),
-        fetch(`${API_URL}/menu-admin/stations`, { headers }),
+        fetch(`${API_URL}/menu-admin/categories`, { credentials: 'include', headers }),
+        fetch(`${API_URL}/menu-admin/items`, { credentials: 'include', headers }),
+        fetch(`${API_URL}/menu-admin/stations`, { credentials: 'include', headers }),
       ]);
 
       if (catsRes.ok) {
@@ -158,10 +159,9 @@ export default function MenuPage() {
 
   const loadModifiers = async (itemId: number) => {
     try {
-      const token = getToken();
       const res = await fetch(
         `${API_URL}/menu-admin/items/${itemId}/modifiers`,
-        { headers: { Authorization: `Bearer ${token}` } }
+        { credentials: 'include', headers: getAuthHeaders() }
       );
       if (res.ok) {
         setModifierGroups(await res.json());
@@ -175,17 +175,14 @@ export default function MenuPage() {
 
   const handleCreateItem = async (e: React.FormEvent) => {
     e.preventDefault();
-    const token = getToken();
 
     try {
       const response = await fetch(
         `${API_URL}/menu-admin/items`,
         {
+          credentials: 'include',
           method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
+          headers: getAuthHeaders(),
           body: JSON.stringify({
             name: { bg: itemForm.name_bg, en: itemForm.name_en },
             description: { bg: itemForm.description_bg, en: itemForm.description_en },
@@ -214,17 +211,13 @@ export default function MenuPage() {
     e.preventDefault();
     if (!editingItem) return;
 
-    const token = getToken();
-
     try {
       const response = await fetch(
         `${API_URL}/menu-admin/items/${editingItem.id}`,
         {
+          credentials: 'include',
           method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
+          headers: getAuthHeaders(),
           body: JSON.stringify({
             name: { bg: itemForm.name_bg, en: itemForm.name_en },
             description: { bg: itemForm.description_bg, en: itemForm.description_en },
@@ -251,16 +244,15 @@ export default function MenuPage() {
   };
 
   const handleDeleteItem = async (itemId: number) => {
-    if (!confirm("Are you sure you want to delete this item?")) return;
-
-    const token = getToken();
+    if (!(await confirm({ message: "Are you sure you want to delete this item?", variant: 'danger' }))) return;
 
     try {
       const response = await fetch(
         `${API_URL}/menu-admin/items/${itemId}`,
         {
+          credentials: 'include',
           method: "DELETE",
-          headers: { Authorization: `Bearer ${token}` },
+          headers: getAuthHeaders(),
         }
       );
 
@@ -275,14 +267,13 @@ export default function MenuPage() {
   };
 
   const toggleAvailability = async (item: MenuItem) => {
-    const token = getToken();
-
     try {
       const response = await fetch(
         `${API_URL}/menu-admin/items/${item.id}/toggle-available`,
         {
+          credentials: 'include',
           method: "PATCH",
-          headers: { Authorization: `Bearer ${token}` },
+          headers: getAuthHeaders(),
         }
       );
 
@@ -338,17 +329,14 @@ export default function MenuPage() {
 
   const handleCreateCategory = async (e: React.FormEvent) => {
     e.preventDefault();
-    const token = getToken();
 
     try {
       const response = await fetch(
         `${API_URL}/menu-admin/categories`,
         {
+          credentials: 'include',
           method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
+          headers: getAuthHeaders(),
           body: JSON.stringify({
             name: { bg: categoryForm.name_bg, en: categoryForm.name_en },
             description: { bg: categoryForm.description_bg, en: categoryForm.description_en },
@@ -374,17 +362,13 @@ export default function MenuPage() {
     e.preventDefault();
     if (!editingCategory) return;
 
-    const token = getToken();
-
     try {
       const response = await fetch(
         `${API_URL}/menu-admin/categories/${editingCategory.id}`,
         {
+          credentials: 'include',
           method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
+          headers: getAuthHeaders(),
           body: JSON.stringify({
             name: { bg: categoryForm.name_bg, en: categoryForm.name_en },
             description: { bg: categoryForm.description_bg, en: categoryForm.description_en },
@@ -413,16 +397,15 @@ export default function MenuPage() {
       toast.error(`Cannot delete category with ${itemsInCategory} items. Delete items first.`);
       return;
     }
-    if (!confirm("Are you sure you want to delete this category?")) return;
-
-    const token = getToken();
+    if (!(await confirm({ message: "Are you sure you want to delete this category?", variant: 'danger' }))) return;
 
     try {
       const response = await fetch(
         `${API_URL}/menu-admin/categories/${categoryId}`,
         {
+          credentials: 'include',
           method: "DELETE",
-          headers: { Authorization: `Bearer ${token}` },
+          headers: getAuthHeaders(),
         }
       );
 
@@ -480,17 +463,14 @@ export default function MenuPage() {
   const handleCreateModifierGroup = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedItemForModifiers) return;
-    const token = getToken();
 
     try {
       const response = await fetch(
         `${API_URL}/menu-admin/modifiers`,
         {
+          credentials: 'include',
           method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
+          headers: getAuthHeaders(),
           body: JSON.stringify({
             item_id: selectedItemForModifiers.id,
             name: { bg: modifierGroupForm.name_bg, en: modifierGroupForm.name_en },
@@ -517,17 +497,14 @@ export default function MenuPage() {
   const handleUpdateModifierGroup = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingModifierGroup || !selectedItemForModifiers) return;
-    const token = getToken();
 
     try {
       const response = await fetch(
         `${API_URL}/menu-admin/modifiers/${editingModifierGroup.id}`,
         {
+          credentials: 'include',
           method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
+          headers: getAuthHeaders(),
           body: JSON.stringify({
             name: { bg: modifierGroupForm.name_bg, en: modifierGroupForm.name_en },
             required: modifierGroupForm.required,
@@ -552,16 +529,16 @@ export default function MenuPage() {
   };
 
   const handleDeleteModifierGroup = async (groupId: number) => {
-    if (!confirm("Delete this modifier group and all its options?")) return;
+    if (!(await confirm({ message: "Delete this modifier group and all its options?", variant: 'danger' }))) return;
     if (!selectedItemForModifiers) return;
-    const token = getToken();
 
     try {
       const response = await fetch(
         `${API_URL}/menu-admin/modifiers/${groupId}`,
         {
+          credentials: 'include',
           method: "DELETE",
-          headers: { Authorization: `Bearer ${token}` },
+          headers: getAuthHeaders(),
         }
       );
 
@@ -608,17 +585,14 @@ export default function MenuPage() {
   const handleCreateOption = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!targetGroupId || !selectedItemForModifiers) return;
-    const token = getToken();
 
     try {
       const response = await fetch(
         `${API_URL}/menu-admin/modifiers/${targetGroupId}/options`,
         {
+          credentials: 'include',
           method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
+          headers: getAuthHeaders(),
           body: JSON.stringify({
             name: { bg: optionForm.name_bg, en: optionForm.name_en },
             price_delta: optionForm.price_delta,
@@ -642,17 +616,14 @@ export default function MenuPage() {
   const handleUpdateOption = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingOption || !selectedItemForModifiers) return;
-    const token = getToken();
 
     try {
       const response = await fetch(
         `${API_URL}/menu-admin/modifier-options/${editingOption.id}`,
         {
+          credentials: 'include',
           method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
+          headers: getAuthHeaders(),
           body: JSON.stringify({
             name: { bg: optionForm.name_bg, en: optionForm.name_en },
             price_delta: optionForm.price_delta,
@@ -675,16 +646,16 @@ export default function MenuPage() {
   };
 
   const handleDeleteOption = async (optionId: number) => {
-    if (!confirm("Delete this option?")) return;
+    if (!(await confirm({ message: "Delete this option?", variant: 'danger' }))) return;
     if (!selectedItemForModifiers) return;
-    const token = getToken();
 
     try {
       const response = await fetch(
         `${API_URL}/menu-admin/modifier-options/${optionId}`,
         {
+          credentials: 'include',
           method: "DELETE",
-          headers: { Authorization: `Bearer ${token}` },
+          headers: getAuthHeaders(),
         }
       );
 
@@ -735,11 +706,6 @@ export default function MenuPage() {
     return station?.name.en || "Unknown";
   };
 
-  const getCategoryName = (categoryId: number) => {
-    const cat = categories.find((c) => c.id === categoryId);
-    return cat?.name.en || cat?.name.bg || "Unknown";
-  };
-
   if (loading) {
     return (
       <div className="min-h-screen bg-white flex items-center justify-center">
@@ -761,7 +727,7 @@ export default function MenuPage() {
           </div>
           <div className="flex gap-3">
             <button
-              onClick={() => window.location.href = '/menu/inventory'}
+              onClick={() => router.push('/menu/inventory')}
               className="px-4 py-2 bg-purple-500 text-gray-900 rounded-xl hover:bg-purple-600 transition-colors flex items-center gap-2"
             >
               📊 Advanced (Versions, Nutrition)
@@ -1588,7 +1554,7 @@ export default function MenuPage() {
                     className="w-full px-4 py-3 bg-gray-100 text-gray-900 rounded-xl mt-1"
                     placeholder="0 for no change, +2.00 for extra, -1.00 for discount"
                   />
-                  <p className="text-white/40 text-xs mt-1">
+                  <p className="text-gray-500 text-xs mt-1">
                     Use positive for extra cost, negative for discount
                   </p>
                 </div>

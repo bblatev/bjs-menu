@@ -70,9 +70,6 @@ export default function MarketingGamificationPage() {
   const [activeTab, setActiveTab] = useState<'badges' | 'challenges' | 'leaderboard'>('badges');
   const [showBadgeModal, setShowBadgeModal] = useState(false);
   const [showChallengeModal, setShowChallengeModal] = useState(false);
-  const [editingBadge, setEditingBadge] = useState<Badge | null>(null);
-  const [editingChallenge, setEditingChallenge] = useState<Challenge | null>(null);
-
   const [badgeForm, setBadgeForm] = useState({
     name: '',
     description: '',
@@ -107,10 +104,10 @@ export default function MarketingGamificationPage() {
       };
 
       const [badgesRes, challengesRes, leaderboardRes, achievementsRes] = await Promise.all([
-        fetch(`${API_URL}/gamification/badges`, { headers }),
-        fetch(`${API_URL}/gamification/challenges`, { headers }),
-        fetch(`${API_URL}/gamification/leaderboard`, { headers }),
-        fetch(`${API_URL}/gamification/achievements/recent`, { headers }),
+        fetch(`${API_URL}/gamification/badges`, { credentials: 'include', headers }),
+        fetch(`${API_URL}/gamification/challenges`, { credentials: 'include', headers }),
+        fetch(`${API_URL}/gamification/leaderboard`, { credentials: 'include', headers }),
+        fetch(`${API_URL}/gamification/achievements/recent`, { credentials: 'include', headers }),
       ]);
 
       if (badgesRes.ok) {
@@ -180,6 +177,7 @@ export default function MarketingGamificationPage() {
     try {
       const token = localStorage.getItem('access_token');
       const response = await fetch(`${API_URL}/gamification/badges`, {
+        credentials: 'include',
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -217,6 +215,7 @@ export default function MarketingGamificationPage() {
     try {
       const token = localStorage.getItem('access_token');
       const response = await fetch(`${API_URL}/gamification/challenges`, {
+        credentials: 'include',
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -257,6 +256,7 @@ export default function MarketingGamificationPage() {
       try {
         const token = localStorage.getItem('access_token');
         const response = await fetch(`${API_URL}/gamification/badges/${id}`, {
+          credentials: 'include',
           method: 'DELETE',
           headers: {
             'Authorization': `Bearer ${token}`,
@@ -280,6 +280,7 @@ export default function MarketingGamificationPage() {
       try {
         const token = localStorage.getItem('access_token');
         const response = await fetch(`${API_URL}/gamification/challenges/${id}`, {
+          credentials: 'include',
           method: 'DELETE',
           headers: {
             'Authorization': `Bearer ${token}`,
@@ -302,6 +303,7 @@ export default function MarketingGamificationPage() {
     try {
       const token = localStorage.getItem('access_token');
       const response = await fetch(`${API_URL}/gamification/badges/${id}/toggle-active`, {
+        credentials: 'include',
         method: 'PATCH',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -323,6 +325,7 @@ export default function MarketingGamificationPage() {
     try {
       const token = localStorage.getItem('access_token');
       const response = await fetch(`${API_URL}/gamification/challenges/${id}/toggle-active`, {
+        credentials: 'include',
         method: 'PATCH',
         headers: {
           'Authorization': `Bearer ${token}`,

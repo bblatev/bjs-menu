@@ -66,8 +66,8 @@ export default function DemandForecastingPage() {
       // Try to fetch from API, fall back to demo data
       try {
         const [itemsRes, statsRes] = await Promise.all([
-          fetch(`${API_URL}/stock/forecasting?horizon=${forecastHorizon}`, { headers }),
-          fetch(`${API_URL}/stock/forecasting/stats`, { headers })
+          fetch(`${API_URL}/stock/forecasting?horizon=${forecastHorizon}`, { credentials: 'include', headers }),
+          fetch(`${API_URL}/stock/forecasting/stats`, { credentials: 'include', headers })
         ]);
 
         if (itemsRes.ok && statsRes.ok) {

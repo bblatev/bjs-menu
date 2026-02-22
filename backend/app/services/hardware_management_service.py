@@ -13,11 +13,14 @@ Features:
 - Hardware recommendations
 """
 
+import logging
 from datetime import datetime, timedelta, timezone, date
 from typing import Optional, List, Dict, Any
 from sqlalchemy.orm import Session
 from sqlalchemy import desc, func
 import uuid
+
+logger = logging.getLogger(__name__)
 
 from app.models.v31_models import HardwareDevice, HardwareMaintenanceLog, HardwareOrder, HardwareOrderItem
 from app.models import AuditLog
@@ -1065,4 +1068,4 @@ class HardwareManagementService:
         except Exception as e:
             # Don't fail the main operation if audit logging fails
             self.db.rollback()
-            print(f"Failed to create audit log: {str(e)}")
+            logger.warning(f"Failed to create audit log: {e}")

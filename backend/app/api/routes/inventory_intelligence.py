@@ -393,7 +393,7 @@ def get_dead_stock(
 ):
     """Identify dead stock — items with no movement for N days."""
     # Use naive UTC datetimes for SQLite compatibility (SQLite returns naive datetimes)
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
     cutoff = now - timedelta(days=threshold_days)
 
     # Get products with stock > 0

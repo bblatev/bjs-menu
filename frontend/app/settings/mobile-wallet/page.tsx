@@ -1,11 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
 import Link from 'next/link';
-import { PageLoading } from '@/components/ui/LoadingSpinner';
-import { ErrorAlert } from '@/components/ui/ErrorAlert';
-
 import { API_URL, getAuthHeaders } from '@/lib/api';
 
 interface WalletConfig {
@@ -70,8 +66,8 @@ export default function MobileWalletPage() {
   const [sessions, setSessions] = useState<PaymentSession[]>([]);
   const [stats, setStats] = useState<any>({});
   const [saving, setSaving] = useState(false);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [, setLoading] = useState(true);
+  const [, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'config' | 'transactions'>('config');
 
   useEffect(() => {
@@ -83,9 +79,9 @@ export default function MobileWalletPage() {
     setError(null);
     try {
       const [configRes, sessionsRes, statsRes] = await Promise.all([
-        fetch(`${API_URL}/mobile-wallet/config`, { headers: getAuthHeaders() }),
-        fetch(`${API_URL}/mobile-wallet/payments?limit=20`, { headers: getAuthHeaders() }),
-        fetch(`${API_URL}/mobile-wallet/stats`, { headers: getAuthHeaders() }),
+        fetch(`${API_URL}/mobile-wallet/config`, { credentials: 'include', headers: getAuthHeaders() }),
+        fetch(`${API_URL}/mobile-wallet/payments?limit=20`, { credentials: 'include', headers: getAuthHeaders() }),
+        fetch(`${API_URL}/mobile-wallet/stats`, { credentials: 'include', headers: getAuthHeaders() }),
       ]);
 
       if (configRes.ok) {
@@ -112,6 +108,7 @@ export default function MobileWalletPage() {
     setSaving(true);
     try {
       const res = await fetch(`${API_URL}/mobile-wallet/config`, {
+        credentials: 'include',
         method: 'PUT',
         headers: getAuthHeaders(),
         body: JSON.stringify(config),

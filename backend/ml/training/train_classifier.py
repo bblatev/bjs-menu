@@ -16,7 +16,7 @@ import logging
 import math
 import os
 import sys
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
@@ -429,7 +429,7 @@ class ClassifierTrainer:
         scaler = GradScaler() if train_cfg.get("amp", True) else None
 
         # Create run directory
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        timestamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
         self.run_dir = Path(f"runs/classifier/{timestamp}")
         self.run_dir.mkdir(parents=True, exist_ok=True)
 

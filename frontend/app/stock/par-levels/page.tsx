@@ -52,6 +52,7 @@ export default function ParLevelsPage() {
     setLoading(true);
     try {
       const response = await fetch(`${API_URL}/stock/par-levels`, {
+        credentials: 'include',
         headers: getAuthHeaders(),
       });
 

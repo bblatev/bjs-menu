@@ -5,7 +5,7 @@ Handles EUR/BGN conversion and dual currency operations for euro adoption
 
 from typing import Dict, Optional
 from decimal import Decimal, ROUND_HALF_UP
-from datetime import datetime
+from datetime import datetime, timezone
 from sqlalchemy.orm import Session
 
 from app.models import MenuItem
@@ -102,7 +102,7 @@ class CurrencyService:
         
         Dual pricing mandatory from August 8, 2025 to December 31, 2026
         """
-        now = datetime.now()
+        now = datetime.now(timezone.utc)
         
         # Dual pricing mandatory from August 8, 2025
         dual_pricing_start = datetime(2025, 8, 8)
@@ -118,7 +118,7 @@ class CurrencyService:
         
         Returns 'BGN' before January 1, 2026, 'EUR' after
         """
-        now = datetime.now()
+        now = datetime.now(timezone.utc)
         euro_adoption = datetime(2026, 1, 1)
         
         if now >= euro_adoption:
@@ -133,7 +133,7 @@ class CurrencyService:
         Both currencies accepted during dual circulation period:
         January 1, 2026 - January 31, 2026
         """
-        now = datetime.now()
+        now = datetime.now(timezone.utc)
         
         # Dual circulation period: Jan 1 - Jan 31, 2026
         dual_start = datetime(2026, 1, 1)

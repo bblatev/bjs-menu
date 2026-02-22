@@ -5,14 +5,48 @@ from __future__ import annotations
 import secrets
 from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, Optional
+from urllib.parse import urlparse
 import logging
 
-from jose import JWTError, jwt
+import jwt
+from jwt.exceptions import PyJWTError
 import bcrypt
 
 from app.core.config import settings
 
 logger = logging.getLogger(__name__)
+
+# ---------------------------------------------------------------------------
+# Redirect URI validation – prevents open-redirect attacks
+# ---------------------------------------------------------------------------
+
+# Allowed redirect hosts for OAuth callbacks and return URLs
+_ALLOWED_REDIRECT_HOSTS = {
+    "menu.bjs.bar",
+    "localhost",
+    "127.0.0.1",
+}
+
+
+def validate_redirect_uri(uri: str) -> bool:
+    """Validate that a redirect URI points to an allowed host.
+
+    Prevents open redirect attacks by ensuring the URI host is whitelisted.
+    """
+    if not uri:
+        return False
+    try:
+        parsed = urlparse(uri)
+        # Must have a scheme and host
+        if not parsed.scheme or not parsed.netloc:
+            return False
+        # Only allow https in production (http for localhost dev)
+        host = parsed.hostname or ""
+        if host not in _ALLOWED_REDIRECT_HOSTS:
+            return False
+        return True
+    except Exception:
+        return False
 
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
@@ -97,7 +131,7 @@ def decode_access_token(token: str) -> dict[str, Any] | None:
             return None
 
         return payload
-    except JWTError as e:
+    except PyJWTError as e:
         logger.debug(f"JWT decode error: {e}")
         return None
 
@@ -114,7 +148,7 @@ def blacklist_token(token: str) -> bool:
             algorithms=[settings.algorithm],
             options={"require_exp": True, "verify_exp": False}
         )
-    except JWTError:
+    except PyJWTError:
         return False
 
     jti = payload.get("jti")
@@ -147,8 +181,8 @@ def _is_token_blacklisted(jti: str) -> bool:
         if redis_url:
             r = redis.from_url(redis_url, socket_connect_timeout=1)
             return bool(r.get(f"token_blacklist:{jti}"))
-    except Exception:
-        pass
+    except Exception as e:
+        logger.warning(f"Redis blacklist check failed (token may be allowed through): {e}")
 
     # Fallback: in-memory
     expiry = _memory_blacklist.get(jti)
@@ -162,6 +196,57 @@ def _is_token_blacklisted(jti: str) -> bool:
 
 # In-memory blacklist fallback (for when Redis is unavailable)
 _memory_blacklist: Dict[str, datetime] = {}
+
+
+# ---------------------------------------------------------------------------
+# Cookie configuration
+# ---------------------------------------------------------------------------
+COOKIE_ACCESS_NAME = "access_token"
+COOKIE_REFRESH_NAME = "refresh_token"
+COOKIE_CSRF_NAME = "csrf_token"
+COOKIE_SECURE = not settings.debug  # Secure=True in production
+COOKIE_DOMAIN = None  # Use default (current domain)
+COOKIE_SAMESITE = "lax"
+ACCESS_TOKEN_MAX_AGE = settings.access_token_expire_minutes * 60  # in seconds
+REFRESH_TOKEN_MAX_AGE = 7 * 24 * 60 * 60  # 7 days in seconds
+
+
+def create_refresh_token(data: dict[str, Any]) -> str:
+    """Create a long-lived refresh JWT token (7 days)."""
+    to_encode = data.copy()
+    now = datetime.now(timezone.utc)
+    expire = now + timedelta(days=7)
+    to_encode.update({
+        "exp": expire,
+        "iat": now,
+        "jti": secrets.token_urlsafe(16),
+        "purpose": "refresh",
+    })
+    return jwt.encode(to_encode, settings.secret_key, algorithm=settings.algorithm)
+
+
+def decode_refresh_token(token: str) -> dict[str, Any] | None:
+    """Decode and validate a refresh token. Returns payload or None."""
+    try:
+        payload = jwt.decode(
+            token,
+            settings.secret_key,
+            algorithms=[settings.algorithm],
+            options={"require_exp": True}
+        )
+        if payload.get("purpose") != "refresh":
+            return None
+        jti = payload.get("jti")
+        if jti and _is_token_blacklisted(jti):
+            return None
+        return payload
+    except PyJWTError:
+        return None
+
+
+def generate_csrf_token() -> str:
+    """Generate a random CSRF token."""
+    return secrets.token_urlsafe(32)
 
 
 def generate_pin_reset_token(user_id: int) -> str:
@@ -189,5 +274,5 @@ def verify_pin_reset_token(token: str) -> Optional[int]:
         if payload.get("purpose") != "pin_reset":
             return None
         return int(payload["sub"])
-    except (JWTError, KeyError, ValueError):
+    except (PyJWTError, KeyError, ValueError):
         return None

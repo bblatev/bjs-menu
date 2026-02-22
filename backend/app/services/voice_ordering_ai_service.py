@@ -678,11 +678,16 @@ class VoiceOrderingAIService:
         elif provider == "azure":
             return self._azure_speech(audio_data, language)
         else:
-            # Mock response for testing
+            logger.error(
+                "No STT provider configured. Set STT_PROVIDER and corresponding API key "
+                "(e.g., OPENAI_API_KEY for 'openai' provider) to enable speech-to-text. "
+                "Supported providers: openai, google, aws, azure."
+            )
             return {
-                "text": "simulated transcription",
-                "confidence": 0.95,
-                "language_detected": language
+                "text": "",
+                "confidence": 0.0,
+                "language_detected": language,
+                "error": "No STT provider configured"
             }
     
     def _openai_whisper_stt(self, audio_data: bytes, language: str) -> Dict[str, Any]:
@@ -728,12 +733,12 @@ class VoiceOrderingAIService:
                     os.unlink(temp_audio_path)
 
         except Exception as e:
-            print(f"OpenAI Whisper STT error: {e}")
-            # Fallback to mock response on error
+            logger.error(f"OpenAI Whisper STT error: {e}")
             return {
-                "text": "error - using mock transcription",
-                "confidence": 0.50,
-                "language_detected": language
+                "text": "",
+                "confidence": 0.0,
+                "language_detected": language,
+                "error": f"OpenAI Whisper STT failed: {e}"
             }
 
     def _map_language_to_whisper(self, language: str) -> str:
@@ -808,8 +813,8 @@ class VoiceOrderingAIService:
             return f"data:audio/mp3;base64,{audio_base64}"
 
         except Exception as e:
-            print(f"OpenAI TTS error: {e}")
-            # Fallback to mock URL
+            logger.error(f"OpenAI TTS error: {e}")
+            # Fallback to local TTS endpoint when cloud provider fails
             return f"/api/v1/voice/tts?text={text}&lang={language}"
 
     def _select_openai_voice(self, language: str) -> str:

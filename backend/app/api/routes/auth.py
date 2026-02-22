@@ -4,6 +4,7 @@ import logging
 import secrets
 import time
 from fastapi import APIRouter, HTTPException, Request, status
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 
 logger = logging.getLogger("auth")
@@ -72,9 +73,14 @@ def _clear_pin_failures(db, client_ip: str):
 
 from app.core.rbac import CurrentUser, RequireManager
 from app.core.security import (
-    create_access_token, get_password_hash, get_pin_hash,
+    create_access_token, create_refresh_token, decode_refresh_token,
+    get_password_hash, get_pin_hash,
     verify_password, verify_pin, blacklist_token,
     generate_pin_reset_token, verify_pin_reset_token,
+    generate_csrf_token,
+    COOKIE_ACCESS_NAME, COOKIE_REFRESH_NAME, COOKIE_CSRF_NAME,
+    COOKIE_SECURE, COOKIE_DOMAIN, COOKIE_SAMESITE,
+    ACCESS_TOKEN_MAX_AGE, REFRESH_TOKEN_MAX_AGE,
 )
 from app.db.session import DbSession
 from app.models.user import User
@@ -93,11 +99,60 @@ class SetPinRequest(BaseModel):
     pin_code: str = Field(..., min_length=4, max_length=6, pattern=r"^\d{4,6}$")
 
 
+class ChangePasswordRequest(BaseModel):
+    """Request schema for changing user password."""
+    old_password: str = Field(..., min_length=1, max_length=128)
+    new_password: str = Field(..., min_length=8, max_length=128)
+
+
 # Security: Add constant-time delay to prevent timing attacks
 MIN_AUTH_DELAY_MS = 100  # Minimum delay in milliseconds
 
 
-@router.post("/login", response_model=Token)
+def _set_auth_cookies(response: JSONResponse, user: "User") -> JSONResponse:
+    """Set HttpOnly auth cookies on a response after successful login."""
+    token_data = {"sub": str(user.id), "email": user.email, "role": user.role.value}
+    access_token = create_access_token(data=token_data)
+    refresh_token = create_refresh_token(data=token_data)
+    csrf_token = generate_csrf_token()
+
+    # HttpOnly access token (4 hours)
+    response.set_cookie(
+        key=COOKIE_ACCESS_NAME,
+        value=access_token,
+        httponly=True,
+        secure=COOKIE_SECURE,
+        samesite=COOKIE_SAMESITE,
+        domain=COOKIE_DOMAIN,
+        max_age=ACCESS_TOKEN_MAX_AGE,
+        path="/",
+    )
+    # HttpOnly refresh token (7 days) — restricted to refresh endpoint
+    response.set_cookie(
+        key=COOKIE_REFRESH_NAME,
+        value=refresh_token,
+        httponly=True,
+        secure=COOKIE_SECURE,
+        samesite="strict",
+        domain=COOKIE_DOMAIN,
+        max_age=REFRESH_TOKEN_MAX_AGE,
+        path="/api/v1/auth/refresh",
+    )
+    # CSRF token (readable by JS, not HttpOnly)
+    response.set_cookie(
+        key=COOKIE_CSRF_NAME,
+        value=csrf_token,
+        httponly=False,
+        secure=COOKIE_SECURE,
+        samesite=COOKIE_SAMESITE,
+        domain=COOKIE_DOMAIN,
+        max_age=ACCESS_TOKEN_MAX_AGE,
+        path="/",
+    )
+    return response
+
+
+@router.post("/login")
 @limiter.limit("5/minute")
 def login(request: Request, login_request: LoginRequest, db: DbSession):
     """Authenticate user and return JWT token."""
@@ -124,10 +179,13 @@ def login(request: Request, login_request: LoginRequest, db: DbSession):
     token = create_access_token(
         data={"sub": str(user.id), "email": user.email, "role": user.role.value}
     )
-    return Token(access_token=token)
+    # Return token in body for API clients; also set cookies for browser clients
+    response = JSONResponse(content={"access_token": token, "token_type": "bearer"})
+    _set_auth_cookies(response, user)
+    return response
 
 
-@router.post("/login/pin", response_model=Token)
+@router.post("/login/pin")
 @limiter.limit("5/minute")
 def login_with_pin(request: Request, pin_request: PinLoginRequest, db: DbSession):
     """Authenticate user with PIN code.
@@ -202,7 +260,9 @@ def login_with_pin(request: Request, pin_request: PinLoginRequest, db: DbSession
     token = create_access_token(
         data={"sub": str(user.id), "email": user.email, "role": user.role.value}
     )
-    return Token(access_token=token)
+    response = JSONResponse(content={"access_token": token, "token_type": "bearer"})
+    _set_auth_cookies(response, user)
+    return response
 
 
 def _ensure_min_delay(start_time: float):
@@ -287,17 +347,88 @@ def clear_user_pin(request: Request, current_user: CurrentUser, db: DbSession):
 @router.post("/logout")
 @limiter.limit("30/minute")
 def logout(request: Request, current_user: CurrentUser):
-    """Invalidate the current JWT token (logout).
-
-    Adds the token JTI to a Redis-backed blacklist so the token
-    can no longer be used for authentication.
-    """
+    """Invalidate the current JWT token (logout) and clear auth cookies."""
+    # Blacklist access token from header
     auth_header = request.headers.get("Authorization", "")
     if auth_header.startswith("Bearer "):
         token = auth_header.split(" ", 1)[1]
         blacklist_token(token)
+
+    # Blacklist access token from cookie
+    cookie_token = request.cookies.get(COOKIE_ACCESS_NAME)
+    if cookie_token:
+        blacklist_token(cookie_token)
+
+    # Blacklist refresh token from cookie
+    refresh_token = request.cookies.get(COOKIE_REFRESH_NAME)
+    if refresh_token:
+        blacklist_token(refresh_token)
+
     logger.info(f"User logged out: {current_user.email} (ID: {current_user.user_id})")
-    return {"message": "Logged out successfully"}
+
+    response = JSONResponse(content={"message": "Logged out successfully"})
+    # Clear all auth cookies
+    response.delete_cookie(COOKIE_ACCESS_NAME, path="/", domain=COOKIE_DOMAIN)
+    response.delete_cookie(COOKIE_REFRESH_NAME, path="/api/v1/auth/refresh", domain=COOKIE_DOMAIN)
+    response.delete_cookie(COOKIE_CSRF_NAME, path="/", domain=COOKIE_DOMAIN)
+    return response
+
+
+@router.post("/refresh")
+@limiter.limit("10/minute")
+def refresh_tokens(request: Request):
+    """Use refresh token to get new access + refresh tokens.
+
+    The refresh token is sent automatically via HttpOnly cookie
+    (the cookie path is restricted to /api/v1/auth/refresh).
+    """
+    refresh_tok = request.cookies.get(COOKIE_REFRESH_NAME)
+    if not refresh_tok:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="No refresh token",
+        )
+
+    payload = decode_refresh_token(refresh_tok)
+    if not payload:
+        # Clear stale cookies
+        response = JSONResponse(
+            status_code=401,
+            content={"detail": "Invalid or expired refresh token"},
+        )
+        response.delete_cookie(COOKIE_REFRESH_NAME, path="/api/v1/auth/refresh", domain=COOKIE_DOMAIN)
+        return response
+
+    # Blacklist the old refresh token (rotation)
+    blacklist_token(refresh_tok)
+
+    # Issue new tokens
+    token_data = {
+        "sub": payload["sub"],
+        "email": payload.get("email", ""),
+        "role": payload.get("role", "staff"),
+    }
+    new_access = create_access_token(data=token_data)
+    new_refresh = create_refresh_token(data=token_data)
+    csrf_token = generate_csrf_token()
+
+    response = JSONResponse(content={"access_token": new_access, "token_type": "bearer"})
+    response.set_cookie(
+        key=COOKIE_ACCESS_NAME, value=new_access,
+        httponly=True, secure=COOKIE_SECURE, samesite=COOKIE_SAMESITE,
+        domain=COOKIE_DOMAIN, max_age=ACCESS_TOKEN_MAX_AGE, path="/",
+    )
+    response.set_cookie(
+        key=COOKIE_REFRESH_NAME, value=new_refresh,
+        httponly=True, secure=COOKIE_SECURE, samesite="strict",
+        domain=COOKIE_DOMAIN, max_age=REFRESH_TOKEN_MAX_AGE, path="/api/v1/auth/refresh",
+    )
+    response.set_cookie(
+        key=COOKIE_CSRF_NAME, value=csrf_token,
+        httponly=False, secure=COOKIE_SECURE, samesite=COOKIE_SAMESITE,
+        domain=COOKIE_DOMAIN, max_age=ACCESS_TOKEN_MAX_AGE, path="/",
+    )
+    return response
 
 
 # ===== PIN Recovery =====
@@ -382,25 +513,17 @@ def change_password(
     request: Request,
     current_user: CurrentUser,
     db: DbSession,
-    data: dict,
+    data: ChangePasswordRequest,
 ):
     """Change password for the current user."""
     user = db.query(User).filter(User.id == current_user.user_id).first()
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
 
-    old_password = data.get("old_password", "")
-    new_password = data.get("new_password", "")
-
-    if not old_password or not new_password:
-        raise HTTPException(status_code=400, detail="Both old_password and new_password required")
-    if len(new_password) < 8:
-        raise HTTPException(status_code=400, detail="New password must be at least 8 characters")
-
-    if not verify_password(old_password, user.password_hash):
+    if not verify_password(data.old_password, user.password_hash):
         raise HTTPException(status_code=401, detail="Current password is incorrect")
 
-    user.password_hash = get_password_hash(new_password)
+    user.password_hash = get_password_hash(data.new_password)
     db.commit()
 
     # Blacklist current token to force re-login

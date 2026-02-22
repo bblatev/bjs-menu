@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { Button, Card, CardBody } from '@/components/ui';
 
-import { API_URL, getAuthHeaders } from '@/lib/api';
+import { API_URL } from '@/lib/api';
 
 interface CategoryData {
   category: string;
@@ -53,7 +53,7 @@ export default function TurnoverBasePricesPage() {
     return d.toISOString().split('T')[0];
   });
   const [endDate, setEndDate] = useState(() => new Date().toISOString().split('T')[0]);
-  const [selectedCategory, setSelectedCategory] = useState<string>('');
+  const [selectedCategory] = useState<string>('');
   const [viewMode, setViewMode] = useState<'category' | 'item'>('category');
 
   const loadReport = useCallback(async () => {
@@ -66,6 +66,7 @@ export default function TurnoverBasePricesPage() {
       }
 
       const response = await fetch(url, {
+        credentials: 'include',
         headers: { Authorization: `Bearer ${token}` },
       });
 

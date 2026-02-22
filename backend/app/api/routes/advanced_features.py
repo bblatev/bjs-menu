@@ -134,6 +134,10 @@ from app.schemas.advanced_features import (
     TraceabilityQueryResponse,
     BlockchainVerificationResponse,
 )
+import logging
+
+logger = logging.getLogger(__name__)
+
 from app.services.advanced import (
     WasteTrackingService,
     LaborForecastingService,
@@ -207,6 +211,10 @@ def get_waste_summary(
     db: Session = Depends(get_db),
 ):
     """Get waste summary for a period."""
+    from app.models.location import Location
+    location = db.query(Location).filter(Location.id == location_id).first()
+    if not location:
+        raise HTTPException(status_code=404, detail="Location not found")
     if start_date is None:
         start_date = date.today() - timedelta(days=30)
     if end_date is None:
@@ -383,7 +391,8 @@ def analyze_experiment(
         return service.analyze_experiment(experiment_id)
     except (ValueError, Exception) as e:
         if "not found" in str(e).lower():
-            raise HTTPException(status_code=404, detail=str(e))
+            logger.error(f"Resource not found: {e}")
+            raise HTTPException(status_code=404, detail="Resource not found")
         raise
 
 
@@ -444,7 +453,8 @@ def customer_arrived(
     try:
         return service.customer_arrived(order_id, data.parking_spot)
     except ValueError as e:
-        raise HTTPException(status_code=404, detail=str(e))
+        logger.error(f"Resource not found: {e}")
+        raise HTTPException(status_code=404, detail="Resource not found")
 
 
 @router.get("/curbside/status/{location_id}", response_model=CurbsideStatusResponse)
@@ -543,7 +553,8 @@ def suggest_response(
         return service.generate_response(review_id)
     except (ValueError, Exception) as e:
         if "not found" in str(e).lower():
-            raise HTTPException(status_code=404, detail=str(e))
+            logger.error(f"Resource not found: {e}")
+            raise HTTPException(status_code=404, detail="Resource not found")
         raise
 
 
@@ -575,7 +586,8 @@ def purchase_gift_card(
     try:
         return service.purchase_card(**data.model_dump())
     except ValueError as e:
-        raise HTTPException(status_code=404, detail=str(e))
+        logger.error(f"Resource not found: {e}")
+        raise HTTPException(status_code=404, detail="Resource not found")
 
 
 @router.get("/gift-cards/{card_number}/balance", response_model=GiftCardBalanceResponse)
@@ -591,7 +603,8 @@ def check_gift_card_balance(
     try:
         return service.check_balance(card_number, pin)
     except ValueError as e:
-        raise HTTPException(status_code=404, detail=str(e))
+        logger.error(f"Resource not found: {e}")
+        raise HTTPException(status_code=404, detail="Resource not found")
 
 
 @router.post("/gift-cards/redeem")
@@ -606,7 +619,8 @@ def redeem_gift_card(
     try:
         return service.redeem(**data.model_dump())
     except ValueError as e:
-        raise HTTPException(status_code=404, detail=str(e))
+        logger.error(f"Resource not found: {e}")
+        raise HTTPException(status_code=404, detail="Resource not found")
 
 
 # ============================================================================
@@ -1022,7 +1036,8 @@ def get_brand_performance(
     try:
         return service.get_performance(brand_id)
     except ValueError as e:
-        raise HTTPException(status_code=404, detail=str(e))
+        logger.error(f"Resource not found: {e}")
+        raise HTTPException(status_code=404, detail="Resource not found")
 
 
 # ============================================================================
@@ -1054,7 +1069,8 @@ def update_table_milestone(
     try:
         return service.update_milestone(turn_id, data.milestone, data.timestamp)
     except ValueError as e:
-        raise HTTPException(status_code=404, detail=str(e))
+        logger.error(f"Resource not found: {e}")
+        raise HTTPException(status_code=404, detail="Resource not found")
 
 
 @router.get("/table-turn/summary/{location_id}", response_model=TableTurnSummaryResponse)
@@ -1127,7 +1143,8 @@ def get_traceability(
     try:
         return service.query_traceability(trace_id)
     except ValueError as e:
-        raise HTTPException(status_code=404, detail=str(e))
+        logger.error(f"Resource not found: {e}")
+        raise HTTPException(status_code=404, detail="Resource not found")
 
 
 @router.get("/traceability/{trace_id}/verify", response_model=BlockchainVerificationResponse)
@@ -1142,4 +1159,5 @@ def verify_trace(
     try:
         return service.verify_trace(trace_id)
     except ValueError as e:
-        raise HTTPException(status_code=404, detail=str(e))
+        logger.error(f"Resource not found: {e}")
+        raise HTTPException(status_code=404, detail="Resource not found")

@@ -285,7 +285,7 @@ def is_daypart_active(rule: Dict, check_time: datetime = None) -> bool:
     if not rule.get("active", True):
         return False
 
-    now = check_time or datetime.now()
+    now = check_time or datetime.now(timezone.utc)
 
     # Check day of week (0 = Monday)
     if now.weekday() not in rule.get("days_of_week", []):

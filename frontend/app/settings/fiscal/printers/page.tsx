@@ -60,7 +60,7 @@ export default function FiscalPrintersPage() {
   const [loading, setLoading] = useState(true);
   const [manufacturers, setManufacturers] = useState<Manufacturer[]>([]);
   const [printers, setPrinters] = useState<PrinterModel[]>([]);
-  const [connectionTypes, setConnectionTypes] = useState<ConnectionType[]>([]);
+  const [, setConnectionTypes] = useState<ConnectionType[]>([]);
   const [selectedManufacturer, setSelectedManufacturer] = useState<string>('all');
   const [selectedPrinter, setSelectedPrinter] = useState<PrinterModel | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
@@ -89,9 +89,9 @@ export default function FiscalPrintersPage() {
   const loadData = async () => {
     try {
       const [mfrsRes, printersRes, connRes] = await Promise.all([
-        fetch(`${API_URL}/fiscal-printers/manufacturers`, { headers: getAuthHeaders() }),
-        fetch(`${API_URL}/fiscal-printers/models`, { headers: getAuthHeaders() }),
-        fetch(`${API_URL}/fiscal-printers/connection-types`, { headers: getAuthHeaders() }),
+        fetch(`${API_URL}/fiscal-printers/manufacturers`, { credentials: 'include', headers: getAuthHeaders() }),
+        fetch(`${API_URL}/fiscal-printers/models`, { credentials: 'include', headers: getAuthHeaders() }),
+        fetch(`${API_URL}/fiscal-printers/connection-types`, { credentials: 'include', headers: getAuthHeaders() }),
       ]);
 
       if (mfrsRes.ok) {
@@ -125,6 +125,7 @@ export default function FiscalPrintersPage() {
     setShowDetectResults(true);
     try {
       const response = await fetch(`${API_URL}/fiscal-printers/detect`, {
+        credentials: 'include',
         method: 'POST',
         headers: getAuthHeaders(),
       });
@@ -170,6 +171,7 @@ export default function FiscalPrintersPage() {
     setConfiguring(true);
     try {
       const response = await fetch(`${API_URL}/fiscal-printers/configure`, {
+        credentials: 'include',
         method: 'POST',
         headers: getAuthHeaders(),
         body: JSON.stringify({

@@ -5,7 +5,7 @@ from __future__ import annotations
 from decimal import Decimal
 from typing import Optional, List
 
-from sqlalchemy import Boolean, ForeignKey, Integer, Numeric, String, Text, JSON
+from sqlalchemy import Boolean, ForeignKey, Integer, Numeric, String, Text, JSON, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base, TimestampMixin
@@ -50,7 +50,10 @@ class RecipeLine(Base):
     """A single ingredient/component in a recipe."""
 
     __tablename__ = "recipe_lines"
-    __table_args__ = {'extend_existing': True}
+    __table_args__ = (
+        UniqueConstraint('recipe_id', 'product_id', name='uq_recipe_line_recipe_product'),
+        {'extend_existing': True},
+    )
 
     id: Mapped[int] = mapped_column(primary_key=True)
     recipe_id: Mapped[int] = mapped_column(

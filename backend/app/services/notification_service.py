@@ -253,8 +253,12 @@ class NotificationService:
             )
 
     async def _send_mock_sms(self, to: str, message: str) -> NotificationResult:
-        """Mock SMS for testing/development."""
-        logger.info(f"[MOCK SMS] To: {to}, Message: {message}")
+        """Mock SMS for development - logs warning that no real SMS is sent."""
+        logger.warning(
+            f"[MOCK SMS] No SMS provider configured. Message NOT actually sent. "
+            f"To: {to}, Message: {message}. "
+            f"Configure a real SMS provider (twilio, nexmo, infobip) for production use."
+        )
         return NotificationResult(
             success=True,
             channel="sms",
@@ -420,8 +424,12 @@ class NotificationService:
     ) -> NotificationResult:
         """Send email via SMTP (or mock if not configured)."""
         if not self.smtp_host:
-            # Mock mode
-            logger.info(f"[MOCK EMAIL] To: {to}, Subject: {subject}, Body: {body}")
+            # Mock mode - no SMTP configured
+            logger.warning(
+                f"[MOCK EMAIL] No SMTP host configured. Email NOT actually sent. "
+                f"To: {to}, Subject: {subject}. "
+                f"Configure smtp_host or use sendgrid/mailgun for production use."
+            )
             return NotificationResult(
                 success=True,
                 channel="email",
@@ -500,7 +508,7 @@ class NotificationService:
         }
 
         # Prepare alert message
-        timestamp = datetime.now().strftime("%H:%M:%S")
+        timestamp = datetime.now(timezone.utc).strftime("%H:%M:%S")
         sms_message = f"[{venue_name}] {alert_name}: {message} ({timestamp})"
         email_subject = f"[{venue_name}] Alert: {alert_name}"
         email_body = f"""
@@ -573,12 +581,11 @@ def get_notification_service() -> NotificationService:
     """Get or create the notification service singleton."""
     global _notification_service
     if _notification_service is None:
-        # Load config from environment or settings
-        import os
+        # Load config from centralized settings
         _notification_service = NotificationService(
             sms_provider=settings.sms_provider,
             sms_api_key=settings.sms_api_key,
-            sms_api_secret=os.getenv("SMS_API_SECRET"),
+            sms_api_secret=settings.sms_api_secret,
             sms_from_number=settings.sms_from_number,
             email_provider=settings.email_provider,
             email_api_key=settings.email_api_key,

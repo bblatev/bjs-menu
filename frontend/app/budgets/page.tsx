@@ -42,7 +42,6 @@ interface BudgetLineItem {
 
 export default function BudgetsPage() {
   const [budgets, setBudgets] = useState<Budget[]>([]);
-  const [selectedBudget, setSelectedBudget] = useState<Budget | null>(null);
   const [variance, setVariance] = useState<BudgetVariance | null>(null);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
@@ -64,6 +63,7 @@ export default function BudgetsPage() {
     try {
       const token = localStorage.getItem('access_token');
       const response = await fetch(`${API_URL}/financial/budgets`, {
+        credentials: 'include',
         headers: { Authorization: `Bearer ${token}` },
       });
       if (response.ok) {
@@ -81,6 +81,7 @@ export default function BudgetsPage() {
     try {
       const token = localStorage.getItem('access_token');
       const response = await fetch(`${API_URL}/financial/budget-variance/${budgetId}`, {
+        credentials: 'include',
         headers: { Authorization: `Bearer ${token}` },
       });
       if (response.ok) {
@@ -97,6 +98,7 @@ export default function BudgetsPage() {
     try {
       const token = localStorage.getItem('access_token');
       const response = await fetch(`${API_URL}/financial/budgets`, {
+        credentials: 'include',
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

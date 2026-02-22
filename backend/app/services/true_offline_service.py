@@ -166,9 +166,10 @@ class TrueOfflineService:
 
         # Bulgarian NRA fiscal device/service endpoints
         # This would be configured based on the fiscal printer/service being used
+        from app.core.config import settings
         fiscal_endpoints = [
-            "http://localhost:4444/status",  # Local fiscal printer daemon
-            "http://localhost:8182/status",  # Alternative fiscal service
+            f"{settings.fpgate_url}/status",  # Local fiscal printer daemon
+            f"http://{settings.erpnet_fp_host}:8182/status",  # Alternative fiscal service
         ]
 
         for endpoint in fiscal_endpoints:
@@ -419,7 +420,7 @@ class TrueOfflineService:
             exp_year += 2000
             
         exp_date = datetime(exp_year, exp_month, 1)
-        if exp_date < datetime.now():
+        if exp_date < datetime.now(timezone.utc):
             return {"valid": False, "error": "Card expired"}
         
         # Check card length

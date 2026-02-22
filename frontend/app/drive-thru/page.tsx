@@ -44,7 +44,7 @@ interface DriveThruStats {
 
 export default function DriveThruPage() {
   const [activeTab, setActiveTab] = useState<'live' | 'lanes' | 'stats' | 'settings'>('live');
-  const [loading, setLoading] = useState(true);
+  const [, setLoading] = useState(true);
   const [lanes, setLanes] = useState<Lane[]>([]);
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [stats, setStats] = useState<DriveThruStats>({
@@ -62,6 +62,7 @@ export default function DriveThruPage() {
   const fetchLanes = useCallback(async () => {
     try {
       const response = await fetch(`${API_URL}/v6/${getVenueId()}/drive-thru/lanes`, {
+        credentials: 'include',
         headers: getAuthHeaders(),
       });
       if (response.ok) {
@@ -96,6 +97,7 @@ export default function DriveThruPage() {
   const fetchVehicles = useCallback(async () => {
     try {
       const response = await fetch(`${API_URL}/v6/${getVenueId()}/drive-thru/vehicles`, {
+        credentials: 'include',
         headers: getAuthHeaders(),
       });
       if (response.ok) {
@@ -128,7 +130,7 @@ export default function DriveThruPage() {
       const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate());
       const response = await fetch(
         `${API_URL}/v6/${getVenueId()}/drive-thru/stats?start=${startOfDay.toISOString()}&end=${now.toISOString()}`
-      );
+      , { credentials: 'include' });
       if (response.ok) {
         const data = await response.json();
         setStats({
@@ -241,8 +243,6 @@ export default function DriveThruPage() {
   };
 
   const activeVehicles = vehicles.filter(v => v.status !== 'completed');
-  const totalQueue = lanes.reduce((sum, l) => sum + l.queueLength, 0);
-
   return (
     <div className="min-h-screen bg-white text-gray-900 p-6">
       <div className="max-w-7xl mx-auto">

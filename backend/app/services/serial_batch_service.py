@@ -4,7 +4,7 @@ Complete implementation for item tracking, warranty, and expiry management
 """
 
 from typing import List, Dict, Optional
-from datetime import datetime, date, timedelta
+from datetime import datetime, date, timedelta, timezone
 from sqlalchemy.orm import Session
 import logging
 
@@ -58,7 +58,7 @@ class SerialBatchService:
         # Calculate warranty expiry
         warranty_expires = None
         if warranty_months:
-            received_date = datetime.now()
+            received_date = datetime.now(timezone.utc)
             warranty_expires = (
                 received_date + timedelta(days=warranty_months * 30)
             ).date()
@@ -72,7 +72,7 @@ class SerialBatchService:
             expiry_date=expiry_date,
             supplier_id=supplier_id,
             purchase_order_id=purchase_order_id,
-            received_date=datetime.now(),
+            received_date=datetime.now(timezone.utc),
             warranty_months=warranty_months,
             warranty_expires=warranty_expires,
             status='in_stock',
@@ -312,7 +312,7 @@ class SerialBatchService:
             manufacture_date=manufacture_date,
             expiry_date=expiry_date,
             supplier_id=supplier_id,
-            received_date=datetime.now(),
+            received_date=datetime.now(timezone.utc),
             status='active',
             auto_writeoff=auto_writeoff
         )

@@ -6,7 +6,7 @@ Comprehensive endpoints for features identified as missing or incomplete
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy.orm import Session
 from typing import List, Optional, Dict
-from datetime import datetime, date, timedelta
+from datetime import datetime, date, timedelta, timezone
 from decimal import Decimal
 from pydantic import BaseModel, Field
 import json
@@ -230,7 +230,7 @@ def request_shift_swap(
         "shift_id": swap.shift_id,
         "reason": swap.reason,
         "status": "pending",
-        "requested_at": datetime.now().isoformat()
+        "requested_at": datetime.now(timezone.utc).isoformat()
     }
 
     # Store in shift's metadata or create swap_requests table
@@ -295,7 +295,7 @@ def submit_time_off_request(
         "total_days": total_days,
         "hours_requested": time_off.hours_requested or (total_days * 8),
         "status": "pending",
-        "submitted_at": datetime.now().isoformat()
+        "submitted_at": datetime.now(timezone.utc).isoformat()
     }
 
     return {
@@ -503,7 +503,7 @@ def set_recipe_allergens(
         "allergens": allergen_info.allergens,
         "cross_contamination_risk": allergen_info.cross_contamination_risk,
         "dietary_labels": allergen_info.dietary_labels,
-        "updated_at": datetime.now().isoformat()
+        "updated_at": datetime.now(timezone.utc).isoformat()
     }
 
 
@@ -538,7 +538,7 @@ def set_nutritional_info(
     return {
         "recipe_id": recipe_id,
         "nutrition": nutrition.model_dump(),
-        "updated_at": datetime.now().isoformat()
+        "updated_at": datetime.now(timezone.utc).isoformat()
     }
 
 
@@ -699,7 +699,7 @@ def submit_customer_feedback(
 
     return {
         "feedback_id": 1,  # Would be auto-generated
-        "submitted_at": datetime.now().isoformat(),
+        "submitted_at": datetime.now(timezone.utc).isoformat(),
         "ratings": {
             "overall": feedback.overall_rating,
             "food": feedback.food_rating,
@@ -845,7 +845,7 @@ def create_customer_segment(
         "name": segment.name,
         "criteria": segment.criteria,
         "description": segment.description,
-        "created_at": datetime.now().isoformat(),
+        "created_at": datetime.now(timezone.utc).isoformat(),
         "estimated_customers": 150,  # Would calculate based on criteria
         "status": "active"
     }
@@ -1143,7 +1143,7 @@ def get_real_time_table_status(
         })
 
     return {
-        "timestamp": datetime.now().isoformat(),
+        "timestamp": datetime.now(timezone.utc).isoformat(),
         "venue_id": current_user.venue_id,
         "floor_id": floor_id,
         "summary": {
@@ -1179,7 +1179,7 @@ def estimate_wait_time(
 
     return {
         "party_size": party_size,
-        "timestamp": datetime.now().isoformat(),
+        "timestamp": datetime.now(timezone.utc).isoformat(),
         "estimate": {
             "minutes_low": 10,
             "minutes_high": 20,

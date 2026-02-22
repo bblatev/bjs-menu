@@ -48,6 +48,7 @@ export default function ReportsInventoryPage() {
     try {
       const token = localStorage.getItem('access_token');
       const response = await fetch(`${API_URL}/reports/inventory`, {
+        credentials: 'include',
         headers: { Authorization: `Bearer ${token}` },
       });
 

@@ -71,6 +71,7 @@ export default function MarketingCampaignsPage() {
     try {
       const token = localStorage.getItem('access_token');
       const response = await fetch(`${API_URL}/marketing/campaigns`, {
+        credentials: 'include',
         headers: {
           'Authorization': `Bearer ${token}`,
         },
@@ -91,6 +92,7 @@ export default function MarketingCampaignsPage() {
     try {
       const token = localStorage.getItem('access_token');
       const response = await fetch(`${API_URL}/marketing/segments`, {
+        credentials: 'include',
         headers: {
           'Authorization': `Bearer ${token}`,
         },
@@ -116,6 +118,7 @@ export default function MarketingCampaignsPage() {
     try {
       const token = localStorage.getItem('access_token');
       const response = await fetch(`${API_URL}/marketing/campaigns`, {
+        credentials: 'include',
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -145,6 +148,7 @@ export default function MarketingCampaignsPage() {
     try {
       const token = localStorage.getItem('access_token');
       const response = await fetch(`${API_URL}/marketing/campaigns/${editingCampaign.id}`, {
+        credentials: 'include',
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -171,6 +175,7 @@ export default function MarketingCampaignsPage() {
       try {
         const token = localStorage.getItem('access_token');
         const response = await fetch(`${API_URL}/marketing/campaigns/${id}`, {
+          credentials: 'include',
           method: 'DELETE',
           headers: {
             'Authorization': `Bearer ${token}`,
@@ -197,6 +202,7 @@ export default function MarketingCampaignsPage() {
       const newStatus = campaign?.status === 'paused' ? 'active' : 'paused';
 
       const response = await fetch(`${API_URL}/marketing/campaigns/${id}/status`, {
+        credentials: 'include',
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',

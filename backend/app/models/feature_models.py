@@ -4,7 +4,7 @@ Menu engineering, auto-reorder rules, and other feature tables
 """
 from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, Boolean, Text, Numeric, Date, JSON, Enum as SQLEnum
 from sqlalchemy.orm import relationship
-from datetime import datetime
+from datetime import datetime, timezone
 import enum
 
 from app.db.base import Base
@@ -62,8 +62,8 @@ class MenuEngineeringReport(Base):
     # Status
     is_current = Column(Boolean, default=True)
 
-    created_at = Column(DateTime, default=datetime.utcnow)
-    generated_at = Column(DateTime, default=datetime.utcnow)  # Alias for created_at
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    generated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))  # Alias for created_at
 
     # Relationships
     venue = relationship("Venue", backref="menu_engineering_reports")
@@ -105,7 +105,7 @@ class MenuEngineeringItem(Base):
     recommended_price = Column(Numeric(10, 2))
     recommendation_notes = Column(Text)
 
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
     # Relationships
     report = relationship("MenuEngineeringReport", back_populates="items")
@@ -160,8 +160,8 @@ class AutoReorderRule(Base):
     last_triggered_at = Column(DateTime)
     last_order_id = Column(Integer, ForeignKey("purchase_orders.id"))
 
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
     created_by = Column(Integer, ForeignKey("staff_users.id"))
 
     # Relationships
@@ -211,7 +211,7 @@ class AutoReorderLog(Base):
     # Notes
     notes = Column(Text)
 
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
     # Relationships
     venue = relationship("Venue", backref="auto_reorder_logs")
@@ -254,7 +254,7 @@ class DemandForecast(Base):
     # Factors considered
     factors = Column(JSON)  # weather, events, day_of_week, etc.
 
-    generated_at = Column(DateTime, default=datetime.utcnow)
+    generated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
     # Relationships
     venue = relationship("Venue", backref="demand_forecasts")
@@ -288,7 +288,7 @@ class SeasonalityPattern(Base):
     analysis_end = Column(Date)
 
     is_active = Column(Boolean, default=True)
-    last_updated = Column(DateTime, default=datetime.utcnow)
+    last_updated = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
     # Relationships
     venue = relationship("Venue", backref="seasonality_patterns")
@@ -328,7 +328,7 @@ class WastageLog(Base):
     # Disposition
     disposition = Column(String(50))  # discarded, donated, composted, recycled
 
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
     # Relationships
     venue = relationship("Venue", backref="wastage_logs")
@@ -379,7 +379,7 @@ class ProductionBatch(Base):
     haccp_compliant = Column(Boolean, default=True)
     haccp_notes = Column(Text)
 
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
     completed_at = Column(DateTime)
 
     # Relationships
@@ -422,8 +422,8 @@ class SpecialEvent(Base):
     is_recurring = Column(Boolean, default=False)
     recurrence_rule = Column(String(200))  # RRULE format
 
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
 
     # Relationships
     venue = relationship("Venue", backref="special_events")
@@ -473,8 +473,8 @@ class VIPCustomer(Base):
     # Notes
     host_notes = Column(Text)  # Notes for front-of-house staff
 
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
     created_by = Column(Integer, ForeignKey("staff_users.id"))
 
     # Relationships
@@ -523,7 +523,7 @@ class Referral(Base):
     utm_medium = Column(String(100))
     utm_campaign = Column(String(100))
 
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
     # Relationships
     program = relationship("ReferralProgram", backref="referrals")

@@ -4,15 +4,6 @@ import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { API_URL, getAuthHeaders } from '@/lib/api';
 
-interface PaymentMethod {
-  id: string;
-  type: 'card' | 'apple_pay' | 'google_pay' | 'link';
-  brand?: string;
-  last4?: string;
-  expMonth?: number;
-  expYear?: number;
-}
-
 interface PaymentTransaction {
   id: string;
   orderId: string;
@@ -65,11 +56,11 @@ export default function PaymentsPage() {
     setIsLoading(true);
     try {
       const headers = getAuthHeaders();
-      const [txRes, statusRes, walletRes, walletStatsRes] = await Promise.allSettled([
-        fetch(`${API_URL}/payments/transactions`, { headers }),
-        fetch(`${API_URL}/payments/status`, { headers }),
-        fetch(`${API_URL}/mobile-wallet/config`, { headers }),
-        fetch(`${API_URL}/mobile-wallet/stats`, { headers }),
+      const [txRes, _statusRes, walletRes, walletStatsRes] = await Promise.allSettled([
+        fetch(`${API_URL}/payments/transactions`, { credentials: 'include', headers }),
+        fetch(`${API_URL}/payments/status`, { credentials: 'include', headers }),
+        fetch(`${API_URL}/mobile-wallet/config`, { credentials: 'include', headers }),
+        fetch(`${API_URL}/mobile-wallet/stats`, { credentials: 'include', headers }),
       ]);
 
       // Load transactions from API or use defaults

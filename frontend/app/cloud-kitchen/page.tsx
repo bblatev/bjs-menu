@@ -72,6 +72,7 @@ export default function CloudKitchenPage() {
   const fetchBrands = useCallback(async () => {
     try {
       const response = await fetch(`${API_URL}/v6/${getVenueId()}/cloud-kitchen/brands`, {
+        credentials: 'include',
         headers: getAuthHeaders(),
       });
       if (response.ok) {
@@ -102,6 +103,7 @@ export default function CloudKitchenPage() {
   const fetchStations = useCallback(async () => {
     try {
       const response = await fetch(`${API_URL}/v6/${getVenueId()}/cloud-kitchen/stations`, {
+        credentials: 'include',
         headers: getAuthHeaders(),
       });
       if (response.ok) {
@@ -130,7 +132,7 @@ export default function CloudKitchenPage() {
       const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate());
       const response = await fetch(
         `${API_URL}/v6/${getVenueId()}/cloud-kitchen/performance?start=${startOfDay.toISOString()}&end=${now.toISOString()}`
-      );
+      , { credentials: 'include' });
       if (response.ok) {
         const data = await response.json();
         // Calculate average rating and prep time from brands data

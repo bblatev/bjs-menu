@@ -95,8 +95,8 @@ export default function MenuCombosPage() {
       const headers = { 'Authorization': `Bearer ${token}` };
 
       const [combosRes, itemsRes] = await Promise.all([
-        fetch(`${API_URL}/menu-admin/combos`, { headers }),
-        fetch(`${API_URL}/menu-admin/items`, { headers }),
+        fetch(`${API_URL}/menu-admin/combos`, { credentials: 'include', headers }),
+        fetch(`${API_URL}/menu-admin/items`, { credentials: 'include', headers }),
       ]);
 
       if (combosRes.ok) {
@@ -163,6 +163,7 @@ export default function MenuCombosPage() {
         : `${API_URL}/menu-admin/combos`;
 
       const response = await fetch(url, {
+        credentials: 'include',
         method: editingCombo ? 'PUT' : 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -191,6 +192,7 @@ export default function MenuCombosPage() {
     try {
       const token = localStorage.getItem('access_token');
       const response = await fetch(`${API_URL}/menu-admin/combos/${id}`, {
+        credentials: 'include',
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -309,6 +311,7 @@ export default function MenuCombosPage() {
     try {
       const token = localStorage.getItem('access_token');
       const response = await fetch(`${API_URL}/menu-admin/combos/${id}/toggle-available`, {
+        credentials: 'include',
         method: 'PATCH',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -329,6 +332,7 @@ export default function MenuCombosPage() {
     try {
       const token = localStorage.getItem('access_token');
       const response = await fetch(`${API_URL}/menu-admin/combos/${id}/toggle-featured`, {
+        credentials: 'include',
         method: 'PATCH',
         headers: {
           'Authorization': `Bearer ${token}`,

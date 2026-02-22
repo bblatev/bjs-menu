@@ -3,9 +3,9 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
-import { Button, Card, CardBody, Badge } from '@/components/ui';
+import { Button, Card, CardBody } from '@/components/ui';
 
-import { API_URL, getAuthHeaders } from '@/lib/api';
+import { API_URL } from '@/lib/api';
 
 import { toast } from '@/lib/toast';
 interface StaffMember {
@@ -39,6 +39,7 @@ export default function StaffCommissionPage() {
     try {
       const token = localStorage.getItem('access_token');
       const response = await fetch(`${API_URL}/staff`, {
+        credentials: 'include',
         headers: { Authorization: `Bearer ${token}` },
       });
 
@@ -76,6 +77,7 @@ export default function StaffCommissionPage() {
     try {
       const token = localStorage.getItem('access_token');
       const response = await fetch(`${API_URL}/staff/${staffId}/commission`, {
+        credentials: 'include',
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',

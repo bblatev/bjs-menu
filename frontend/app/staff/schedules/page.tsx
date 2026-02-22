@@ -54,9 +54,8 @@ export default function StaffSchedulesPage() {
   const [timeOffs, setTimeOffs] = useState<TimeOff[]>([]);
   const [selectedWeek, setSelectedWeek] = useState<Date>(getStartOfWeek(new Date()));
   const [showShiftModal, setShowShiftModal] = useState(false);
-  const [showTimeOffModal, setShowTimeOffModal] = useState(false);
-  const [selectedStaff, setSelectedStaff] = useState<number | null>(null);
-  const [selectedDate, setSelectedDate] = useState<string>('');
+  const [, setSelectedStaff] = useState<number | null>(null);
+  const [, setSelectedDate] = useState<string>('');
   const [editingShift, setEditingShift] = useState<Shift | null>(null);
   const [viewMode, setViewMode] = useState<'week' | 'day' | 'staff'>('week');
 
@@ -96,7 +95,7 @@ export default function StaffSchedulesPage() {
     return date.toLocaleDateString('en-US', { weekday: 'short', day: 'numeric' });
   }
 
-  const [loading, setLoading] = useState(true);
+  const [, setLoading] = useState(true);
 
   useEffect(() => {
     loadData();
@@ -120,6 +119,7 @@ export default function StaffSchedulesPage() {
       const response = await fetch(
         `${API_URL}/staff/schedules/staff`,
         {
+          credentials: 'include',
           headers: { Authorization: `Bearer ${token}` },
         }
       );
@@ -144,6 +144,7 @@ export default function StaffSchedulesPage() {
       const response = await fetch(
         `${API_URL}/staff/shifts?start_date=${startDate}&end_date=${endDate}`,
         {
+          credentials: 'include',
           headers: { Authorization: `Bearer ${token}` },
         }
       );
@@ -168,6 +169,7 @@ export default function StaffSchedulesPage() {
       const response = await fetch(
         `${API_URL}/staff/time-off?start_date=${startDate}&end_date=${endDate}`,
         {
+          credentials: 'include',
           headers: { Authorization: `Bearer ${token}` },
         }
       );
@@ -246,6 +248,7 @@ export default function StaffSchedulesPage() {
         : `${API_URL}/staff/shifts`;
 
       const response = await fetch(url, {
+        credentials: 'include',
         method: editingShift ? 'PUT' : 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -275,6 +278,7 @@ export default function StaffSchedulesPage() {
       const response = await fetch(
         `${API_URL}/staff/shifts/${shiftId}`,
         {
+          credentials: 'include',
           method: 'DELETE',
           headers: { Authorization: `Bearer ${token}` },
         }
@@ -301,6 +305,7 @@ export default function StaffSchedulesPage() {
       const response = await fetch(
         `${API_URL}/staff/shifts/copy-week`,
         {
+          credentials: 'include',
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -334,6 +339,7 @@ export default function StaffSchedulesPage() {
       const response = await fetch(
         `${API_URL}/staff/shifts/publish`,
         {
+          credentials: 'include',
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',

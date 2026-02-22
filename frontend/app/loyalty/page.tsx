@@ -64,8 +64,6 @@ function GiftCardsTab() {
     expires_in_days: 365,
   });
 
-  const getToken = () => localStorage.getItem('access_token');
-
   useEffect(() => {
     loadGiftCards();
     loadStats();
@@ -74,9 +72,9 @@ function GiftCardsTab() {
 
   const loadGiftCards = async () => {
     try {
-      const token = getToken();
       const res = await fetch(`${API_URL}/gift-cards/`, {
-        headers: { Authorization: `Bearer ${token}` },
+        credentials: 'include',
+        headers: getAuthHeaders(),
       });
       if (res.ok) {
         const data = await res.json();
@@ -91,9 +89,9 @@ function GiftCardsTab() {
 
   const loadStats = async () => {
     try {
-      const token = getToken();
       const res = await fetch(`${API_URL}/gift-cards/stats/summary`, {
-        headers: { Authorization: `Bearer ${token}` },
+        credentials: 'include',
+        headers: getAuthHeaders(),
       });
       if (res.ok) {
         const data = await res.json();
@@ -106,9 +104,9 @@ function GiftCardsTab() {
 
   const loadTransactions = async (cardId: number) => {
     try {
-      const token = getToken();
       const res = await fetch(`${API_URL}/gift-cards/${cardId}/transactions`, {
-        headers: { Authorization: `Bearer ${token}` },
+        credentials: 'include',
+        headers: getAuthHeaders(),
       });
       if (res.ok) {
         const data = await res.json();
@@ -121,13 +119,10 @@ function GiftCardsTab() {
 
   const createGiftCard = async () => {
     try {
-      const token = getToken();
       const res = await fetch(`${API_URL}/gift-cards/`, {
+        credentials: 'include',
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
+        headers: getAuthHeaders(),
         body: JSON.stringify(createForm),
       });
 
@@ -157,10 +152,10 @@ function GiftCardsTab() {
     if (!confirm('Are you sure you want to cancel this gift card?')) return;
 
     try {
-      const token = getToken();
       const res = await fetch(`${API_URL}/gift-cards/${cardId}/cancel`, {
+        credentials: 'include',
         method: 'POST',
-        headers: { Authorization: `Bearer ${token}` },
+        headers: getAuthHeaders(),
       });
 
       if (res.ok) {
@@ -179,9 +174,9 @@ function GiftCardsTab() {
     if (!searchCode.trim()) return;
 
     try {
-      const token = getToken();
       const res = await fetch(`${API_URL}/gift-cards/lookup/${searchCode.trim()}`, {
-        headers: { Authorization: `Bearer ${token}` },
+        credentials: 'include',
+        headers: getAuthHeaders(),
       });
 
       if (res.ok) {
@@ -700,19 +695,18 @@ export default function LoyaltyPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const getToken = () => localStorage.getItem('access_token');
-
   const loadData = async () => {
     try {
-      const token = getToken();
-      if (!token) {
+      const headers = getAuthHeaders();
+      if (!headers['Authorization']) {
         router.push('/login');
         return;
       }
 
       // Load loyalty program
       const programRes = await fetch(`${API_URL}/loyalty/program`, {
-        headers: { Authorization: `Bearer ${token}` },
+        credentials: 'include',
+        headers: getAuthHeaders(),
       });
       if (programRes.ok) {
         const data = await programRes.json();
@@ -721,7 +715,8 @@ export default function LoyaltyPage() {
 
       // Load members
       const membersRes = await fetch(`${API_URL}/loyalty/members`, {
-        headers: { Authorization: `Bearer ${token}` },
+        credentials: 'include',
+        headers: getAuthHeaders(),
       });
       if (membersRes.ok) {
         const data = await membersRes.json();
@@ -730,7 +725,8 @@ export default function LoyaltyPage() {
 
       // Load promotions
       const promosRes = await fetch(`${API_URL}/promotions/`, {
-        headers: { Authorization: `Bearer ${token}` },
+        credentials: 'include',
+        headers: getAuthHeaders(),
       });
       if (promosRes.ok) {
         const data = await promosRes.json();
@@ -745,13 +741,10 @@ export default function LoyaltyPage() {
 
   const saveProgram = async (updates: Partial<LoyaltyProgram>) => {
     try {
-      const token = getToken();
       await fetch(`${API_URL}/loyalty/program`, {
+        credentials: 'include',
         method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
+        headers: getAuthHeaders(),
         body: JSON.stringify(updates),
       });
       loadData();
@@ -762,17 +755,14 @@ export default function LoyaltyPage() {
 
   const savePromotion = async () => {
     try {
-      const token = getToken();
       const url = editingPromo
         ? `${API_URL}/promotions/${editingPromo.id}`
         : `${API_URL}/promotions/`;
 
       await fetch(url, {
+        credentials: 'include',
         method: editingPromo ? 'PUT' : 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
+        headers: getAuthHeaders(),
         body: JSON.stringify(promoForm),
       });
 
@@ -787,13 +777,10 @@ export default function LoyaltyPage() {
 
   const togglePromotion = async (id: number, active: boolean) => {
     try {
-      const token = getToken();
       await fetch(`${API_URL}/promotions/${id}`, {
+        credentials: 'include',
         method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
+        headers: getAuthHeaders(),
         body: JSON.stringify({ active }),
       });
       loadData();
@@ -805,10 +792,10 @@ export default function LoyaltyPage() {
   const deletePromotion = async (id: number) => {
     if (!confirm('Are you sure you want to delete this promotion?')) return;
     try {
-      const token = getToken();
       await fetch(`${API_URL}/promotions/${id}`, {
+        credentials: 'include',
         method: 'DELETE',
-        headers: { Authorization: `Bearer ${token}` },
+        headers: getAuthHeaders(),
       });
       loadData();
     } catch (err) {

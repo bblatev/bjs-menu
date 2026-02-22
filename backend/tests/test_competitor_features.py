@@ -4,7 +4,7 @@ Tests for: invoices, marketing, reservations, delivery, analytics routes.
 """
 
 import io
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, timedelta, timezone
 from decimal import Decimal
 from typing import Generator
 
@@ -395,7 +395,7 @@ class TestReservations:
                 "location_id": test_location.id,
                 "customer_name": "John Doe",
                 "party_size": 4,
-                "reservation_time": str(datetime.now() + timedelta(hours=2)),
+                "reservation_time": str(datetime.now(timezone.utc) + timedelta(hours=2)),
                 "phone": "+1234567890",
             },
             headers=auth_headers,
@@ -721,7 +721,7 @@ class TestEdgeCases:
                 "location_id": test_location.id,
                 "customer_name": "Test",
                 "party_size": 2,
-                "reservation_time": str(datetime.now() - timedelta(hours=2)),
+                "reservation_time": str(datetime.now(timezone.utc) - timedelta(hours=2)),
                 "phone": "+1234567890",
             },
             headers=auth_headers,
@@ -752,7 +752,7 @@ class TestEdgeCases:
             "location_id": test_location.id,
             "customer_name": "Test",
             "party_size": 4,
-            "reservation_time": str(datetime.now() + timedelta(hours=3)),
+            "reservation_time": str(datetime.now(timezone.utc) + timedelta(hours=3)),
             "phone": "+1234567890",
         }
 
@@ -791,7 +791,7 @@ class TestPerformance:
                     "location_id": test_location.id,
                     "customer_name": f"Customer {i}",
                     "party_size": 2 + i,
-                    "reservation_time": str(datetime.now() + timedelta(hours=i + 1)),
+                    "reservation_time": str(datetime.now(timezone.utc) + timedelta(hours=i + 1)),
                     "phone": f"+123456789{i}",
                 },
                 headers=auth_headers,

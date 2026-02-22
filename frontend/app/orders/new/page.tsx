@@ -46,8 +46,8 @@ export default function NewOrderPage() {
       try {
         // Fetch real data from API
         const [tablesRes, menuRes] = await Promise.allSettled([
-          fetch(`${API_URL}/tables/`, { headers }),
-          fetch(`${API_URL}/menu-admin/items`, { headers }),
+          fetch(`${API_URL}/tables/`, { credentials: 'include', headers }),
+          fetch(`${API_URL}/menu-admin/items`, { credentials: 'include', headers }),
         ]);
 
         // Process tables
@@ -131,6 +131,7 @@ export default function NewOrderPage() {
     try {
       // Create order via API
       const response = await fetch(`${API_URL}/orders`, {
+        credentials: 'include',
         method: 'POST',
         headers,
         body: JSON.stringify({

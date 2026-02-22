@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 
-import { API_URL, getAuthHeaders } from '@/lib/api';
+import { API_URL } from '@/lib/api';
 
 import { toast } from '@/lib/toast';
 interface CateringEvent {
@@ -74,7 +74,7 @@ export default function CateringPage() {
   const [error, setError] = useState<string | null>(null);
   const [filter, setFilter] = useState('all');
   const [showEventModal, setShowEventModal] = useState(false);
-  const [showPackageModal, setShowPackageModal] = useState(false);
+  const [, setShowPackageModal] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState<CateringEvent | null>(null);
   const [eventStep, setEventStep] = useState(1);
 
@@ -111,9 +111,9 @@ export default function CateringPage() {
       };
 
       const [eventsRes, packagesRes, staffRes] = await Promise.all([
-        fetch(`${API_URL}/v5/catering/events`, { headers }),
-        fetch(`${API_URL}/v5/catering/packages`, { headers }),
-        fetch(`${API_URL}/v5/catering/staff`, { headers }),
+        fetch(`${API_URL}/v5/catering/events`, { credentials: 'include', headers }),
+        fetch(`${API_URL}/v5/catering/packages`, { credentials: 'include', headers }),
+        fetch(`${API_URL}/v5/catering/staff`, { credentials: 'include', headers }),
       ]);
 
       if (!eventsRes.ok) {
@@ -187,6 +187,7 @@ export default function CateringPage() {
     try {
       const token = localStorage.getItem('access_token');
       const response = await fetch(`${API_URL}/v5/catering/events`, {
+        credentials: 'include',
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -231,6 +232,7 @@ export default function CateringPage() {
     try {
       const token = localStorage.getItem('access_token');
       const response = await fetch(`${API_URL}/v5/catering/events/${eventId}/status`, {
+        credentials: 'include',
         method: 'PATCH',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -757,7 +759,7 @@ export default function CateringPage() {
                       { stage: 'Quoted', count: 32, color: 'bg-blue-500' },
                       { stage: 'Confirmed', count: 24, color: 'bg-green-500' },
                       { stage: 'Completed', count: 18, color: 'bg-purple-500' },
-                    ].map((item, idx) => (
+                    ].map((item, _idx) => (
                       <div key={item.stage}>
                         <div className="flex justify-between text-sm mb-1">
                           <span className="text-gray-900">{item.stage}</span>

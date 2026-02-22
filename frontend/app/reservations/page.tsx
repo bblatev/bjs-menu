@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 
 import { API_URL, getAuthHeaders } from '@/lib/api';
 import { getVenueId } from '@/lib/auth';
+import { useConfirm } from '@/hooks/useConfirm';
 
 import { toast } from '@/lib/toast';
 interface Reservation {
@@ -47,6 +48,7 @@ const statusColors: Record<string, string> = {
 
 export default function ReservationsPage() {
   const router = useRouter();
+  const confirm = useConfirm();
   const [reservations, setReservations] = useState<Reservation[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -97,20 +99,17 @@ export default function ReservationsPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedDate]);
 
-  const getToken = () => localStorage.getItem('access_token');
-
   const loadReservations = async () => {
     try {
       setError(null);
-      const token = getToken();
-      if (!token) {
+      if (!localStorage.getItem('access_token')) {
         router.push('/login');
         return;
       }
 
       const response = await fetch(
         `${API_URL}/reservations/?date=${selectedDate}`,
-        { headers: { Authorization: `Bearer ${token}` } }
+        { credentials: 'include', headers: getAuthHeaders() }
       );
 
       if (response.ok) {
@@ -142,9 +141,9 @@ export default function ReservationsPage() {
 
   const loadTables = async () => {
     try {
-      const token = getToken();
       const response = await fetch(`${API_URL}/tables/`, {
-        headers: { Authorization: `Bearer ${token}` },
+        credentials: 'include',
+        headers: getAuthHeaders(),
       });
       if (response.ok) {
         const data = await response.json();
@@ -157,7 +156,6 @@ export default function ReservationsPage() {
 
   const saveReservation = async () => {
     try {
-      const token = getToken();
       const url = editingReservation
         ? `${API_URL}/reservations/${editingReservation.id}`
         : `${API_URL}/reservations/`;
@@ -166,11 +164,9 @@ export default function ReservationsPage() {
       const reservationDateTime = `${formData.reservation_date}T${formData.reservation_time}:00`;
 
       const response = await fetch(url, {
+        credentials: 'include',
         method: editingReservation ? 'PUT' : 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
+        headers: getAuthHeaders(),
         body: JSON.stringify({
           guest_name: formData.guest_name,
           guest_phone: formData.guest_phone,
@@ -201,13 +197,10 @@ export default function ReservationsPage() {
 
   const updateStatus = async (id: number, status: string) => {
     try {
-      const token = getToken();
       await fetch(`${API_URL}/reservations/${id}/status`, {
+        credentials: 'include',
         method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
+        headers: getAuthHeaders(),
         body: JSON.stringify({ status }),
       });
       loadReservations();
@@ -233,12 +226,12 @@ export default function ReservationsPage() {
   };
 
   const deleteReservation = async (id: number) => {
-    if (!confirm('Are you sure you want to delete this reservation?')) return;
+    if (!(await confirm({ message: 'Are you sure you want to delete this reservation?', variant: 'danger' }))) return;
     try {
-      const token = getToken();
       const response = await fetch(`${API_URL}/reservations/${id}`, {
+        credentials: 'include',
         method: 'DELETE',
-        headers: { Authorization: `Bearer ${token}` },
+        headers: getAuthHeaders(),
       });
       if (response.ok) {
         loadReservations();
@@ -251,7 +244,6 @@ export default function ReservationsPage() {
   const checkAvailability = async () => {
     setCheckingAvailability(true);
     try {
-      const token = getToken();
       const params = new URLSearchParams({
         date: formData.reservation_date,
         time: formData.reservation_time,
@@ -259,7 +251,8 @@ export default function ReservationsPage() {
         duration: formData.duration_minutes.toString(),
       });
       const response = await fetch(`${API_URL}/reservations/check-availability?${params}`, {
-        headers: { Authorization: `Bearer ${token}` },
+        credentials: 'include',
+        headers: getAuthHeaders(),
       });
       if (response.ok) {
         const data = await response.json();
@@ -274,9 +267,9 @@ export default function ReservationsPage() {
 
   const loadPlatforms = async () => {
     try {
-      const token = getToken();
       const response = await fetch(`${API_URL}/reservations/${getVenueId()}/platforms`, {
-        headers: { Authorization: `Bearer ${token}` },
+        credentials: 'include',
+        headers: getAuthHeaders(),
       });
       if (response.ok) {
         const data = await response.json();
@@ -290,13 +283,10 @@ export default function ReservationsPage() {
   const collectDeposit = async () => {
     if (!selectedReservationForDeposit) return;
     try {
-      const token = getToken();
       const response = await fetch(`${API_URL}/reservations/${getVenueId()}/deposits`, {
+        credentials: 'include',
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
+        headers: getAuthHeaders(),
         body: JSON.stringify({
           reservation_id: selectedReservationForDeposit.id,
           amount: depositAmount,
@@ -315,10 +305,10 @@ export default function ReservationsPage() {
 
   const syncExternalReservations = async () => {
     try {
-      const token = getToken();
       await fetch(`${API_URL}/reservations/${getVenueId()}/external/sync`, {
+        credentials: 'include',
         method: 'POST',
-        headers: { Authorization: `Bearer ${token}` },
+        headers: getAuthHeaders(),
       });
       loadReservations();
     } catch (err) {
@@ -329,9 +319,9 @@ export default function ReservationsPage() {
   // Load Turn Times Analytics
   const loadTurnTimes = async () => {
     try {
-      const token = getToken();
       const response = await fetch(`${API_URL}/reservations/${getVenueId()}/turn-times?date=${selectedDate}`, {
-        headers: { Authorization: `Bearer ${token}` },
+        credentials: 'include',
+        headers: getAuthHeaders(),
       });
       if (response.ok) {
         const data = await response.json();
@@ -345,9 +335,9 @@ export default function ReservationsPage() {
   // Load Party Size Optimization
   const loadPartySizeOptimization = async () => {
     try {
-      const token = getToken();
       const response = await fetch(`${API_URL}/reservations/${getVenueId()}/party-size-optimization?date=${selectedDate}`, {
-        headers: { Authorization: `Bearer ${token}` },
+        credentials: 'include',
+        headers: getAuthHeaders(),
       });
       if (response.ok) {
         const data = await response.json();
@@ -362,13 +352,10 @@ export default function ReservationsPage() {
   const autoAssignTables = async () => {
     setAutoAssigning(true);
     try {
-      const token = getToken();
       const response = await fetch(`${API_URL}/reservations/${getVenueId()}/auto-assign-tables`, {
+        credentials: 'include',
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
+        headers: getAuthHeaders(),
         body: JSON.stringify({ date: selectedDate }),
       });
       if (response.ok) {
@@ -386,9 +373,9 @@ export default function ReservationsPage() {
   // Load Cancellation Policies
   const loadCancellationPolicies = async () => {
     try {
-      const token = getToken();
       const response = await fetch(`${API_URL}/reservations/${getVenueId()}/cancellation-policy`, {
-        headers: { Authorization: `Bearer ${token}` },
+        credentials: 'include',
+        headers: getAuthHeaders(),
       });
       if (response.ok) {
         const data = await response.json();
@@ -402,13 +389,10 @@ export default function ReservationsPage() {
   // Create Cancellation Policy
   const createCancellationPolicy = async (policy: any) => {
     try {
-      const token = getToken();
       const response = await fetch(`${API_URL}/reservations/${getVenueId()}/cancellation-policy`, {
+        credentials: 'include',
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
+        headers: getAuthHeaders(),
         body: JSON.stringify(policy),
       });
       if (response.ok) {
@@ -423,13 +407,11 @@ export default function ReservationsPage() {
   const processRefund = async () => {
     if (!selectedReservationForRefund) return;
     try {
-      const token = getToken();
       const venueId = getVenueId();
       const response = await fetch(`${API_URL}/reservations/${venueId}/reservations/${selectedReservationForRefund.id}/refund?amount=${refundAmount}`, {
+        credentials: 'include',
         method: 'POST',
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
+        headers: getAuthHeaders(),
       });
       if (response.ok) {
         setShowRefundModal(false);
@@ -445,9 +427,9 @@ export default function ReservationsPage() {
   // Load Webhook Logs
   const loadWebhookLogs = async () => {
     try {
-      const token = getToken();
       const response = await fetch(`${API_URL}/reservations/${getVenueId()}/webhooks/logs`, {
-        headers: { Authorization: `Bearer ${token}` },
+        credentials: 'include',
+        headers: getAuthHeaders(),
       });
       if (response.ok) {
         const data = await response.json();
@@ -484,10 +466,6 @@ export default function ReservationsPage() {
       notes: reservation.notes || '',
     });
     setShowModal(true);
-  };
-
-  const formatTime = (time: string) => {
-    return time.substring(0, 5);
   };
 
   const formatReservationTime = (dateStr: string) => {

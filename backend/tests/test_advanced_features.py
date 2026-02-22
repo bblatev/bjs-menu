@@ -10,7 +10,7 @@ This test suite provides 20x coverage improvement with:
 
 import io
 import json
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, timedelta, timezone
 from decimal import Decimal
 from typing import Generator
 from unittest.mock import AsyncMock, MagicMock, patch
@@ -898,7 +898,7 @@ class TestWaitTime:
                 "location_id": test_location.id,
                 "party_size": 4,
                 "day_of_week": date.today().weekday(),
-                "hour_of_day": datetime.now().hour,
+                "hour_of_day": datetime.now(timezone.utc).hour,
             },
             headers=auth_headers,
         )
@@ -1171,7 +1171,7 @@ class TestTableTurn:
             "/api/v1/advanced/table-turn/1/milestone",
             json={
                 "milestone": "order_placed",
-                "timestamp": datetime.now().isoformat(),
+                "timestamp": datetime.now(timezone.utc).isoformat(),
             },
             headers=auth_headers,
         )

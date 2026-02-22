@@ -13,7 +13,7 @@ from app.db.session import get_db
 from app.core.rbac import get_current_user
 from app.core.rate_limit import limiter
 from app.models import StaffUser
-from app.services.v9_features.iot_service import IoTService
+from app.services.iot_service import IoTService
 
 logger = logging.getLogger(__name__)
 

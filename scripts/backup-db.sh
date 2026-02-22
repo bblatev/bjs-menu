@@ -29,6 +29,7 @@ fi
 
 # Create backup directory if it doesn't exist
 mkdir -p "${BACKUP_DIR}"
+chmod 700 "${BACKUP_DIR}"
 
 # Detect database type from DATABASE_URL
 DATABASE_URL="${DATABASE_URL:-sqlite:///./data/bjsbar.db}"
@@ -72,6 +73,7 @@ if [[ "${DATABASE_URL}" == sqlite* ]]; then
 
     # Compress
     gzip "${BACKUP_FILE}"
+    chmod 600 "${BACKUP_FILE}.gz"
     # Clean up WAL/SHM copies if they exist
     rm -f "${BACKUP_FILE}-wal" "${BACKUP_FILE}-shm"
 
@@ -96,6 +98,7 @@ elif [[ "${DATABASE_URL}" == postgresql* ]]; then
     fi
 
     gzip "${BACKUP_FILE}"
+    chmod 600 "${BACKUP_FILE}.gz"
     FINAL_FILE="${BACKUP_FILE}.gz"
     GLOB_PATTERN="bjsbar_*.sql.gz"
 

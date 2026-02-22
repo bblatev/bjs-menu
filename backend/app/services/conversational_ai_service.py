@@ -5,7 +5,7 @@ import json
 from datetime import datetime, timedelta, timezone
 from typing import Optional, List, Dict, Any, Tuple
 from sqlalchemy.orm import Session
-from sqlalchemy import func, text
+from sqlalchemy import func, func as sa_func, text
 
 from app.models.analytics import ConversationalQuery, DailyMetrics, MenuAnalysis
 from app.models.pos import PosSalesLine
@@ -164,13 +164,16 @@ class ConversationalAIService:
 
     def _extract_product(self, query: str) -> Optional[Dict[str, Any]]:
         """Extract product references from query."""
-        # Get all products for matching
-        products = self.db.query(Product).all()
-
-        for product in products:
-            if product.name and product.name.lower() in query:
+        # Search for products matching the query using DB-side filtering
+        words = query.lower().split()
+        for word in words:
+            if len(word) < 3:  # skip short words
+                continue
+            product = self.db.query(Product).filter(
+                sa_func.lower(Product.name).contains(word)
+            ).first()
+            if product:
                 return {"id": product.id, "name": product.name}
-
         return None
 
     def _extract_metric(self, query: str) -> Optional[str]:

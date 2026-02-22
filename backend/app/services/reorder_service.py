@@ -3,7 +3,7 @@
 import json
 import math
 from decimal import Decimal
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Dict, List, Optional
 import logging
 
@@ -86,7 +86,7 @@ class ReorderService:
         days: int = 30,
     ) -> Dict[int, Decimal]:
         """Get average daily sales for products over recent period."""
-        end_date = datetime.now()
+        end_date = datetime.now(timezone.utc)
         start_date = end_date - timedelta(days=days)
 
         sales = self.pos_adapter.get_sales_aggregate(

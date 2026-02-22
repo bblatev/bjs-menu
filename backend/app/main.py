@@ -25,6 +25,8 @@ from app.core.alerting import alert_manager
 from app.api.routes import api_router
 from app.core.config import settings
 from app.core.security import decode_access_token
+from app.core.csrf import CSRFMiddleware
+from app.core.rbac import RequireManager
 from app.db.session import engine, SessionLocal
 from app.db.base import Base
 from app.services.audit_service import log_action as _audit_log_action
@@ -39,6 +41,7 @@ PUBLIC_PATH_PREFIXES = [
     "/openapi.json",
     "/api/v1/auth/login",
     "/api/v1/auth/register",
+    "/api/v1/auth/refresh",
     "/api/v1/guest-orders/menu",
     "/api/v1/guest-orders/create",
     "/api/v1/orders/guest",
@@ -159,13 +162,16 @@ class ConnectionManager:
 ws_manager = ConnectionManager()
 
 # Configure logging - use JSON format in production, human-readable in dev
+root_logger = logging.getLogger()
+root_logger.setLevel(getattr(logging, settings.log_level))
+root_logger.handlers.clear()
+
 if settings.debug:
-    logging.basicConfig(
-        level=getattr(logging, settings.log_level),
-        format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-    )
+    handler = logging.StreamHandler()
+    handler.setFormatter(logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s"))
 else:
     import json as _json
+    import sys
 
     class JSONFormatter(logging.Formatter):
         def format(self, record):
@@ -178,10 +184,10 @@ else:
                 "line": record.lineno,
             })
 
-    import sys
     handler = logging.StreamHandler(sys.stdout)
     handler.setFormatter(JSONFormatter())
-    logging.basicConfig(level=getattr(logging, settings.log_level), handlers=[handler])
+
+root_logger.addHandler(handler)
 logger = logging.getLogger(__name__)
 auth_logger = logging.getLogger("auth")
 request_logger = logging.getLogger("requests")
@@ -204,12 +210,11 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         response = await call_next(request)
         response.headers["X-Content-Type-Options"] = "nosniff"
         response.headers["X-Frame-Options"] = "DENY"
-        response.headers["X-XSS-Protection"] = "1; mode=block"
         response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
         csp_origins = " ".join(settings.cors_origins_list)
         response.headers["Content-Security-Policy"] = (
             "default-src 'self'; "
-            "script-src 'self' 'unsafe-inline' https://js.stripe.com; "
+            "script-src 'self' https://js.stripe.com; "
             "style-src 'self' 'unsafe-inline'; "
             "img-src 'self' data: blob: https://api.qrserver.com; "
             f"connect-src 'self' ws: wss: https://api.stripe.com {csp_origins}; "
@@ -261,19 +266,22 @@ class AuthEnforcementMiddleware(BaseHTTPMiddleware):
 
             # All other GET endpoints require authentication
             if path.startswith("/api/v1/"):
+                payload = None
                 auth_header = request.headers.get("Authorization", "")
-                if not auth_header.startswith("Bearer "):
+                if auth_header.startswith("Bearer "):
+                    token = auth_header.split(" ", 1)[1]
+                    if token:
+                        payload = decode_access_token(token)
+                # Fall back to cookie if no Bearer or Bearer was invalid
+                if payload is None and "access_token" in request.cookies:
+                    payload = decode_access_token(request.cookies["access_token"])
+
+                if payload is None or not all(
+                    payload.get(k) for k in ("sub", "email", "role")
+                ):
                     return JSONResponse(
                         status_code=401,
                         content={"detail": "Authentication required"},
-                        headers={"WWW-Authenticate": "Bearer"},
-                    )
-                token = auth_header.split(" ", 1)[1]
-                payload = decode_access_token(token)
-                if payload is None:
-                    return JSONResponse(
-                        status_code=401,
-                        content={"detail": "Invalid or expired token"},
                         headers={"WWW-Authenticate": "Bearer"},
                     )
             return await call_next(request)
@@ -284,10 +292,12 @@ class AuthEnforcementMiddleware(BaseHTTPMiddleware):
             "/api/v1/auth/login",
             "/api/v1/auth/login/pin",
             "/api/v1/auth/register",
+            "/api/v1/auth/refresh",
             "/api/v1/orders/guest",
             "/api/v1/guest-orders/create",
             "/api/v1/orders/table/",
             "/api/v1/waiter/calls",
+            "/api/v1/payments/webhook",
         ]
         for pub_path in public_write_paths:
             if path.startswith(pub_path):
@@ -295,20 +305,22 @@ class AuthEnforcementMiddleware(BaseHTTPMiddleware):
 
         # All other POST/PUT/PATCH/DELETE on /api/v1/* require authentication
         if path.startswith("/api/v1/"):
+            payload = None
             auth_header = request.headers.get("Authorization", "")
-            if not auth_header.startswith("Bearer "):
+            if auth_header.startswith("Bearer "):
+                token = auth_header.split(" ", 1)[1]
+                if token:
+                    payload = decode_access_token(token)
+            # Fall back to cookie if no Bearer or Bearer was invalid
+            if payload is None and "access_token" in request.cookies:
+                payload = decode_access_token(request.cookies["access_token"])
+
+            if payload is None or not all(
+                payload.get(k) for k in ("sub", "email", "role")
+            ):
                 return JSONResponse(
                     status_code=401,
                     content={"detail": "Authentication required for this operation"},
-                    headers={"WWW-Authenticate": "Bearer"},
-                )
-
-            token = auth_header.split(" ", 1)[1]
-            payload = decode_access_token(token)
-            if payload is None:
-                return JSONResponse(
-                    status_code=401,
-                    content={"detail": "Invalid or expired token"},
                     headers={"WWW-Authenticate": "Bearer"},
                 )
 
@@ -391,13 +403,18 @@ class AuditLoggingMiddleware(BaseHTTPMiddleware):
                 # Extract user info from JWT if present
                 user_id = None
                 user_name = ""
+                payload = None
                 auth_header = request.headers.get("Authorization", "")
                 if auth_header.startswith("Bearer "):
                     token = auth_header.split(" ", 1)[1]
-                    payload = decode_access_token(token)
-                    if payload:
-                        user_id = int(payload.get("sub", 0)) or None
-                        user_name = payload.get("email", "")
+                    if token:
+                        payload = decode_access_token(token)
+                if payload is None and "access_token" in request.cookies:
+                    payload = decode_access_token(request.cookies["access_token"])
+
+                if payload:
+                    user_id = int(payload.get("sub", 0)) or None
+                    user_name = payload.get("email", "")
 
                 # Parse entity type and ID from URL path
                 # e.g. /api/v1/menu/items/5 -> entity_type=menu_items, entity_id=5
@@ -546,25 +563,6 @@ app = FastAPI(
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
-# CORS middleware - origins configured via CORS_ORIGINS env variable
-# Restrict methods and headers for better security
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=settings.cors_origins_list,
-    allow_credentials=True,
-    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-    allow_headers=[
-        "Content-Type",
-        "Authorization",
-        "Accept",
-        "Origin",
-        "X-Requested-With",
-        "X-Request-ID",
-    ],
-    expose_headers=["X-Request-ID"],
-    max_age=600,  # Cache preflight for 10 minutes
-)
-
 # Metrics middleware (Prometheus-compatible)
 app.add_middleware(MetricsMiddleware)
 
@@ -578,11 +576,35 @@ app.add_middleware(SecurityHeadersMiddleware)
 # Authentication enforcement middleware (POST/PUT/PATCH/DELETE require auth)
 app.add_middleware(AuthEnforcementMiddleware)
 
+# CSRF protection middleware (enforces double-submit cookie for cookie-based auth)
+app.add_middleware(CSRFMiddleware)
+
 # Audit logging middleware (records state changes to audit_log_entries table)
 app.add_middleware(AuditLoggingMiddleware)
 
 # Request logging middleware
 app.add_middleware(RequestLoggingMiddleware)
+
+# CORS middleware - MUST be added last so it runs first (Starlette LIFO order).
+# This ensures CORS headers are present on ALL responses, including 401s from
+# AuthEnforcementMiddleware. Origins configured via CORS_ORIGINS env variable.
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=settings.cors_origins_list,
+    allow_credentials=True,
+    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allow_headers=[
+        "Content-Type",
+        "Authorization",
+        "Accept",
+        "Origin",
+        "X-Requested-With",
+        "X-Request-ID",
+        "X-CSRF-Token",
+    ],
+    expose_headers=["X-Request-ID"],
+    max_age=600,  # Cache preflight for 10 minutes
+)
 
 # Include API routes
 app.include_router(api_router, prefix=settings.api_v1_prefix)
@@ -611,7 +633,7 @@ def readiness_check():
         checks["database"] = "healthy"
     except Exception as e:
         logger.error(f"Database health check failed: {e}")
-        checks["database"] = f"unhealthy: {str(e)}"
+        checks["database"] = "unhealthy"
     finally:
         if db:
             db.close()
@@ -630,7 +652,7 @@ def readiness_check():
         checks["redis"] = "not installed"
     except Exception as e:
         logger.error(f"Redis health check failed: {e}")
-        checks["redis"] = f"unhealthy: {str(e)}"
+        checks["redis"] = "unhealthy"
 
     # Check WebSocket manager
     try:
@@ -665,21 +687,22 @@ def root():
 
 
 @app.get("/metrics")
-def prometheus_metrics():
+@limiter.limit("30/minute")
+def prometheus_metrics(request: Request, current_user: RequireManager):
     """Prometheus-compatible metrics endpoint."""
     from starlette.responses import PlainTextResponse
     return PlainTextResponse(metrics.get_prometheus_metrics(), media_type="text/plain")
 
 
 @app.get("/api/v1/scheduler/status")
-def scheduler_status():
+def scheduler_status(current_user: RequireManager):
     """Get background task scheduler status."""
     from app.services.scheduler_service import scheduler
     return {"tasks": scheduler.get_status()}
 
 
 @app.get("/api/v1/alerts")
-def get_alerts(level: Optional[str] = None, limit: int = 20):
+def get_alerts(current_user: RequireManager, level: Optional[str] = None, limit: int = 20):
     """Get recent system alerts."""
     return {"alerts": alert_manager.get_recent(limit=limit, level=level)}
 
@@ -693,17 +716,24 @@ async def _authenticate_websocket(
 ) -> Optional[int]:
     """Authenticate a WebSocket connection. Returns user_id or None (rejected).
 
-    All WebSocket channels REQUIRE a valid JWT token. Connections without
-    a token or with an invalid/expired token are rejected with 1008 Policy Violation.
-    """
-    if not token:
-        logger.warning(f"WebSocket rejected for '{channel_name}': no token provided")
-        await websocket.close(code=status.WS_1008_POLICY_VIOLATION)
-        return None
+    Checks in order:
+    1. Explicit token parameter (from query string)
+    2. access_token cookie (HttpOnly, sent during WS handshake)
 
-    payload = decode_access_token(token)
+    Connections without valid auth are rejected with 1008 Policy Violation.
+    """
+    # Try explicit token first, fall back to cookie
+    payload = None
+    if token:
+        payload = decode_access_token(token)
+    # Fall back to cookie if no token or token was invalid
     if not payload:
-        logger.warning(f"WebSocket rejected for '{channel_name}': invalid/expired token")
+        cookie_token = websocket.cookies.get("access_token")
+        if cookie_token:
+            payload = decode_access_token(cookie_token)
+
+    if not payload:
+        logger.warning(f"WebSocket rejected for '{channel_name}': no valid token")
         await websocket.close(code=status.WS_1008_POLICY_VIOLATION)
         return None
 
@@ -719,8 +749,8 @@ async def _authenticate_websocket(
                     logger.warning(f"WebSocket rejected for '{channel_name}': token blacklisted")
                     await websocket.close(code=status.WS_1008_POLICY_VIOLATION)
                     return None
-        except Exception:
-            pass  # Redis unavailable, skip blacklist check
+        except Exception as e:
+            logger.debug(f"Redis blacklist check unavailable for WebSocket: {e}")
 
     user_id = int(payload.get("sub", 0))
     if not user_id:

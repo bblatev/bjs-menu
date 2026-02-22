@@ -5,7 +5,7 @@ Gamification System Database Models
 from sqlalchemy import Column, Integer, String, Boolean, Float, DateTime, ForeignKey, Text, JSON
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
-from datetime import datetime
+from datetime import datetime, timezone
 import enum
 
 from app.db.base import Base
@@ -34,8 +34,8 @@ class GameProfile(Base):
     # Social
     social_shares_count = Column(Integer, default=0)
 
-    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
+    updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
 
     # Relationships
     customer = relationship("Customer", back_populates="game_profile")
@@ -53,7 +53,7 @@ class UserAchievement(Base):
     game_profile_id = Column(Integer, ForeignKey("game_profiles.id"), nullable=False)
     achievement_id = Column(String(100), nullable=False)  # Maps to ACHIEVEMENTS dict
 
-    unlocked_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    unlocked_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
     points_awarded = Column(Integer, default=0)
 
     # Social sharing
@@ -83,7 +83,7 @@ class UserChallenge(Base):
     target_progress = Column(Integer, nullable=False)
 
     # Timing
-    started_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    started_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
     expires_at = Column(DateTime)
     completed_at = Column(DateTime)
 
@@ -126,7 +126,7 @@ class PointTransaction(Base):
     reason = Column(Text)
     extra_data = Column(JSON)  # Additional context (renamed from metadata to avoid SQLAlchemy conflict)
 
-    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
 
     # Relationships
     game_profile = relationship("GameProfile", back_populates="point_transactions")
@@ -158,7 +158,7 @@ class LeaderboardEntry(Base):
     level_name = Column(String(50))
 
     # Freshness
-    calculated_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    calculated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
 
     # Relationships
     venue = relationship("Venue")
@@ -180,7 +180,7 @@ class SocialShare(Base):
 
     points_earned = Column(Integer, default=0)
 
-    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
 
     # Relationships
     customer = relationship("Customer")

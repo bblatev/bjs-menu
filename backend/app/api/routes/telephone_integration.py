@@ -78,7 +78,7 @@ class IncomingCallEvent(BaseModel):
     """Incoming call notification"""
     caller_number: str
     called_number: str
-    timestamp: datetime = Field(default_factory=datetime.utcnow)
+    timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     trunk_id: Optional[str] = None
 
 
@@ -337,7 +337,7 @@ async def lookup_caller(
     # Check for active reservation
     active_reservation = db.query(Reservation).filter(
         Reservation.customer_id == customer.id,
-        Reservation.date >= datetime.now().date(),
+        Reservation.date >= datetime.now(timezone.utc).date(),
         Reservation.status.in_(["pending", "confirmed"])
     ).first()
 

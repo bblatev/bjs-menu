@@ -51,7 +51,7 @@ export default function WebhooksPage() {
   const [showModal, setShowModal] = useState(false);
   const [showDeliveriesModal, setShowDeliveriesModal] = useState(false);
   const [selectedWebhook, setSelectedWebhook] = useState<Webhook | null>(null);
-  const [editingWebhook, setEditingWebhook] = useState<Webhook | null>(null);
+  const [, setEditingWebhook] = useState<Webhook | null>(null);
   const [formData, setFormData] = useState({
     name: '',
     url: '',
@@ -64,7 +64,6 @@ export default function WebhooksPage() {
 
   const loadWebhooks = async () => {
     try {
-      const token = localStorage.getItem('access_token');
       // Mock data
       setWebhooks([
         {
@@ -101,7 +100,6 @@ export default function WebhooksPage() {
 
   const handleCreate = async () => {
     try {
-      const token = localStorage.getItem('access_token');
       // Would call API
       const newWebhook: Webhook = {
         id: webhooks.length + 1,

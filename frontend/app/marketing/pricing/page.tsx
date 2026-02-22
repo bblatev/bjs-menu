@@ -79,6 +79,7 @@ export default function DynamicPricingPage() {
     try {
       const token = localStorage.getItem('access_token');
       const response = await fetch(`${API_URL}/marketing/pricing-rules`, {
+        credentials: 'include',
         headers: {
           'Authorization': `Bearer ${token}`,
         },
@@ -136,6 +137,7 @@ export default function DynamicPricingPage() {
         : `${API_URL}/marketing/pricing-rules`;
 
       const response = await fetch(url, {
+        credentials: 'include',
         method: editingRule ? 'PUT' : 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -163,6 +165,7 @@ export default function DynamicPricingPage() {
       try {
         const token = localStorage.getItem('access_token');
         const response = await fetch(`${API_URL}/marketing/pricing-rules/${id}`, {
+          credentials: 'include',
           method: 'DELETE',
           headers: {
             'Authorization': `Bearer ${token}`,
@@ -241,6 +244,7 @@ export default function DynamicPricingPage() {
     try {
       const token = localStorage.getItem('access_token');
       const response = await fetch(`${API_URL}/marketing/pricing-rules/${id}/toggle-active`, {
+        credentials: 'include',
         method: 'PATCH',
         headers: {
           'Authorization': `Bearer ${token}`,

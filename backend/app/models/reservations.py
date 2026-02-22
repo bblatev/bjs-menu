@@ -1,9 +1,8 @@
 """Reservations and Waitlist models - TouchBistro style."""
 
-from datetime import datetime, timezone
 from enum import Enum
 from typing import Optional, List
-from sqlalchemy import Column, Integer, String, Float, DateTime, Text, Boolean, ForeignKey, Enum as SQLEnum, JSON
+from sqlalchemy import Column, Integer, String, Float, DateTime, Text, Boolean, ForeignKey, Enum as SQLEnum, JSON, Numeric, func
 from sqlalchemy.orm import relationship
 from app.db.base import Base
 
@@ -46,7 +45,7 @@ class Reservation(Base):
     guest_name = Column(String(200), nullable=False)
     guest_phone = Column(String(50), nullable=True)
     guest_email = Column(String(255), nullable=True)
-    customer_id = Column(Integer, nullable=True)  # Link to customer record
+    customer_id = Column(Integer, ForeignKey("customers.id", ondelete="SET NULL"), nullable=True)  # Link to customer record
 
     # Reservation details
     party_size = Column(Integer, nullable=False)
@@ -75,7 +74,7 @@ class Reservation(Base):
 
     # No-show protection
     credit_card_on_file = Column(Boolean, default=False)
-    no_show_fee = Column(Float, nullable=True)
+    no_show_fee = Column(Numeric(10, 2), nullable=True)
     no_show_charged = Column(Boolean, default=False)
 
     # Special requests
@@ -94,8 +93,8 @@ class Reservation(Base):
     internal_notes = Column(Text, nullable=True)
     created_by = Column(Integer, ForeignKey("users.id"), nullable=True)
 
-    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
-    updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
 
     # Relationships
     location = relationship("Location", backref="reservations")
@@ -112,14 +111,14 @@ class Waitlist(Base):
     # Guest info
     guest_name = Column(String(200), nullable=False)
     guest_phone = Column(String(50), nullable=True)
-    customer_id = Column(Integer, nullable=True)
+    customer_id = Column(Integer, ForeignKey("customers.id", ondelete="SET NULL"), nullable=True)
 
     # Party details
     party_size = Column(Integer, nullable=False)
     seating_preference = Column(String(100), nullable=True)
 
     # Wait time
-    added_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    added_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     estimated_wait_minutes = Column(Integer, nullable=True)
     quoted_wait_minutes = Column(Integer, nullable=True)  # What we told guest
     actual_wait_minutes = Column(Integer, nullable=True)  # Actual wait
@@ -142,7 +141,7 @@ class Waitlist(Base):
     # Notes
     notes = Column(Text, nullable=True)
 
-    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
 
     # Relationships
     location = relationship("Location", backref="waitlist_entries")
@@ -154,7 +153,7 @@ class TableAvailability(Base):
     __table_args__ = {'extend_existing': True}
 
     id = Column(Integer, primary_key=True, index=True)
-    table_id = Column(Integer, nullable=False)
+    table_id = Column(Integer, ForeignKey("tables.id", ondelete="CASCADE"), nullable=False)
     location_id = Column(Integer, ForeignKey("locations.id"), nullable=True)
 
     # Availability window
@@ -167,7 +166,7 @@ class TableAvailability(Base):
     blocked_reason = Column(String(200), nullable=True)  # "private_event", "maintenance"
     reservation_id = Column(Integer, ForeignKey("reservations.id"), nullable=True)
 
-    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
 
 
 class ReservationSettings(Base):
@@ -219,8 +218,8 @@ class ReservationSettings(Base):
     google_reserve_enabled = Column(Boolean, default=False)
     online_booking_enabled = Column(Boolean, default=True)
 
-    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
-    updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
 
 
 class GuestHistory(Base):
@@ -254,5 +253,5 @@ class GuestHistory(Base):
     first_visit_at = Column(DateTime, nullable=True)
     last_visit_at = Column(DateTime, nullable=True)
 
-    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
-    updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)

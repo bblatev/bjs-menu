@@ -3,13 +3,10 @@
 from enum import Enum
 from typing import Annotated, Optional
 
-from fastapi import Depends, HTTPException, status
-from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+from fastapi import Depends, HTTPException, Request, status
 
 from app.core.security import decode_access_token
-
-security = HTTPBearer()
-optional_security = HTTPBearer(auto_error=False)
+from app.db.session import SessionLocal
 
 
 class UserRole(str, Enum):
@@ -50,17 +47,32 @@ class TokenData:
         self.full_name = full_name or email.split("@")[0]
 
 
-async def get_current_user(
-    credentials: Annotated[HTTPAuthorizationCredentials, Depends(security)]
-) -> TokenData:
-    """Get the current authenticated user from JWT token."""
-    token = credentials.credentials
-    payload = decode_access_token(token)
+async def get_current_user(request: Request) -> TokenData:
+    """Get the current authenticated user from JWT token.
+
+    Checks in order:
+    1. Authorization: Bearer <token> header
+    2. access_token cookie (HttpOnly)
+    """
+    payload = None
+
+    # Try Authorization header first
+    auth_header = request.headers.get("Authorization", "")
+    if auth_header.startswith("Bearer "):
+        token = auth_header.split(" ", 1)[1]
+        if token:
+            payload = decode_access_token(token)
+
+    # Fall back to cookie if no Bearer or Bearer was invalid
+    if payload is None:
+        cookie_token = request.cookies.get("access_token")
+        if cookie_token:
+            payload = decode_access_token(cookie_token)
 
     if payload is None:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid or expired token",
+            detail="Not authenticated",
             headers={"WWW-Authenticate": "Bearer"},
         )
 
@@ -81,6 +93,24 @@ async def get_current_user(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid role in token",
         )
+
+    # Verify user is still active in the database
+    try:
+        from app.models.user import User
+        db = SessionLocal()
+        try:
+            user = db.query(User).filter(User.id == int(user_id)).first()
+            if user is None or not user.is_active:
+                raise HTTPException(
+                    status_code=status.HTTP_401_UNAUTHORIZED,
+                    detail="User account is disabled",
+                )
+        finally:
+            db.close()
+    except HTTPException:
+        raise
+    except Exception:
+        pass  # If DB check fails, allow through (token was valid)
 
     venue_id = payload.get("venue_id", 1)
     full_name = payload.get("full_name", "")
@@ -117,15 +147,27 @@ RequireStaff = Annotated[TokenData, Depends(require_role(UserRole.STAFF))]
 CurrentUser = Annotated[TokenData, Depends(get_current_user)]
 
 
-async def get_optional_current_user(
-    credentials: Annotated[Optional[HTTPAuthorizationCredentials], Depends(optional_security)] = None,
-) -> Optional[TokenData]:
-    """Get the current user if a valid token is provided, otherwise return None."""
-    if credentials is None:
-        return None
+async def get_optional_current_user(request: Request) -> Optional[TokenData]:
+    """Get the current user if a valid token is provided, otherwise return None.
 
-    token = credentials.credentials
-    payload = decode_access_token(token)
+    Checks in order:
+    1. Authorization: Bearer <token> header
+    2. access_token cookie (HttpOnly)
+    """
+    payload = None
+
+    # Try Authorization header first
+    auth_header = request.headers.get("Authorization", "")
+    if auth_header.startswith("Bearer "):
+        token = auth_header.split(" ", 1)[1]
+        if token:
+            payload = decode_access_token(token)
+
+    # Fall back to cookie if no Bearer or Bearer was invalid
+    if payload is None:
+        cookie_token = request.cookies.get("access_token")
+        if cookie_token:
+            payload = decode_access_token(cookie_token)
 
     if payload is None:
         return None

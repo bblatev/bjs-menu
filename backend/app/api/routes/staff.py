@@ -1,7 +1,7 @@
 """Staff management routes - comprehensive CRUD for staff, shifts, time clock, performance, tips."""
 
 import logging
-from typing import List, Optional, Dict
+from typing import List, Literal, Optional, Dict
 from datetime import datetime, date, time, timedelta, timezone
 from fastapi import APIRouter, HTTPException, Body, Query, Request
 from sqlalchemy import func, and_, or_
@@ -13,6 +13,7 @@ from app.models.staff import (
     TableAssignment, PerformanceMetric, PerformanceGoal,
     TipPool, TipDistribution
 )
+from app.core.rbac import RequireManager, RequireOwner, CurrentUser
 from app.core.rate_limit import limiter
 from app.schemas.pagination import paginate_query
 from app.schemas.staff import (
@@ -136,7 +137,7 @@ def list_staff(
 
 @router.post("/staff")
 @limiter.limit("30/minute")
-def create_staff(request: Request, db: DbSession, data: StaffCreate):
+def create_staff(request: Request, db: DbSession, data: StaffCreate, current_user: RequireManager):
     """Create a new staff member."""
     if data.role not in ["admin", "manager", "kitchen", "bar", "waiter"]:
         raise HTTPException(status_code=400, detail="Invalid role")
@@ -194,9 +195,9 @@ def list_shifts(
 ):
     """List shifts for a date range."""
     if not start_date:
-        start_date = (datetime.now().date() - timedelta(days=30)).strftime("%Y-%m-%d")
+        start_date = (datetime.now(timezone.utc).date() - timedelta(days=30)).strftime("%Y-%m-%d")
     if not end_date:
-        end_date = datetime.now().date().strftime("%Y-%m-%d")
+        end_date = datetime.now(timezone.utc).date().strftime("%Y-%m-%d")
     try:
         start = datetime.strptime(start_date, "%Y-%m-%d").date()
         end = datetime.strptime(end_date, "%Y-%m-%d").date()
@@ -219,7 +220,7 @@ def list_shifts(
 
 @router.post("/staff/shifts")
 @limiter.limit("30/minute")
-def create_shift(request: Request, db: DbSession, data: ShiftCreate):
+def create_shift(request: Request, db: DbSession, data: ShiftCreate, current_user: RequireManager):
     """Create a new shift."""
     # Validate staff exists
     staff = db.query(StaffUser).filter(StaffUser.id == data.staff_id).first()
@@ -364,9 +365,9 @@ def list_time_off(
 ):
     """List time off requests for a date range."""
     if not start_date:
-        start_date = (datetime.now().date() - timedelta(days=30)).strftime("%Y-%m-%d")
+        start_date = (datetime.now(timezone.utc).date() - timedelta(days=30)).strftime("%Y-%m-%d")
     if not end_date:
-        end_date = (datetime.now().date() + timedelta(days=60)).strftime("%Y-%m-%d")
+        end_date = (datetime.now(timezone.utc).date() + timedelta(days=60)).strftime("%Y-%m-%d")
     try:
         start = datetime.strptime(start_date, "%Y-%m-%d").date()
         end = datetime.strptime(end_date, "%Y-%m-%d").date()
@@ -380,13 +381,15 @@ def list_time_off(
         )
     ).all()
 
+    staff_ids = [r.staff_id for r in requests]
+    staff_names = _prefetch_staff_names(db, staff_ids)
+
     result = []
     for r in requests:
-        staff = db.query(StaffUser).filter(StaffUser.id == r.staff_id).first()
         result.append({
             "id": r.id,
             "staff_id": r.staff_id,
-            "staff_name": staff.full_name if staff else None,
+            "staff_name": staff_names.get(r.staff_id, "Unknown"),
             "start_date": r.start_date.isoformat(),
             "end_date": r.end_date.isoformat(),
             "type": r.type,
@@ -399,7 +402,7 @@ def list_time_off(
 
 @router.post("/staff/time-off")
 @limiter.limit("30/minute")
-def create_time_off(request: Request, db: DbSession, data: TimeOffCreate):
+def create_time_off(request: Request, db: DbSession, data: TimeOffCreate, current_user: CurrentUser):
     """Create a time off request."""
     staff = db.query(StaffUser).filter(StaffUser.id == data.staff_id).first()
     if not staff:
@@ -436,7 +439,7 @@ def create_time_off(request: Request, db: DbSession, data: TimeOffCreate):
 
 @router.patch("/staff/time-off/{request_id}/approve")
 @limiter.limit("30/minute")
-def approve_time_off(request: Request, db: DbSession, request_id: int):
+def approve_time_off(request: Request, db: DbSession, request_id: int, current_user: RequireManager):
     """Approve a time off request."""
     time_off_request = db.query(TimeOffRequest).filter(TimeOffRequest.id == request_id).first()
     if not time_off_request:
@@ -513,9 +516,9 @@ def list_time_entries(
 ):
     """List time clock entries for a date range."""
     if not start_date:
-        start_date = (datetime.now().date() - timedelta(days=30)).strftime("%Y-%m-%d")
+        start_date = (datetime.now(timezone.utc).date() - timedelta(days=30)).strftime("%Y-%m-%d")
     if not end_date:
-        end_date = datetime.now().date().strftime("%Y-%m-%d")
+        end_date = datetime.now(timezone.utc).date().strftime("%Y-%m-%d")
     try:
         start = datetime.strptime(start_date, "%Y-%m-%d").date()
         end = datetime.strptime(end_date, "%Y-%m-%d").date()
@@ -544,7 +547,7 @@ def list_time_entries(
 
 @router.post("/staff/time-clock/punch-in")
 @limiter.limit("30/minute")
-def punch_in(request: Request, db: DbSession, data: dict = Body(...)):
+def punch_in(request: Request, db: DbSession, current_user: CurrentUser, data: dict = Body(...)):
     """Clock in."""
     staff_id = data.get("staff_id")
     method = data.get("method", "web")
@@ -580,7 +583,7 @@ def punch_in(request: Request, db: DbSession, data: dict = Body(...)):
 
 @router.post("/staff/time-clock/punch-out")
 @limiter.limit("30/minute")
-def punch_out(request: Request, db: DbSession, data: dict = Body(...)):
+def punch_out(request: Request, db: DbSession, current_user: CurrentUser, data: dict = Body(...)):
     """Clock out."""
     staff_id = data.get("staff_id")
 
@@ -696,7 +699,7 @@ def get_leaderboard(
     request: Request,
     db: DbSession,
     period: str = Query("month"),
-    sort_by: str = Query("sales"),
+    sort_by: Literal["sales", "orders", "tips", "rating"] = Query("sales"),
 ):
     """Get performance leaderboard."""
     _init_default_staff(db)
@@ -717,13 +720,29 @@ def get_leaderboard(
 
     leaderboard = []
 
+    # Batch fetch all metrics for the period
+    all_metrics = db.query(PerformanceMetric).filter(
+        PerformanceMetric.staff_id.in_([s.id for s in staff]),
+        PerformanceMetric.period_date >= start_date,
+        PerformanceMetric.period_date <= today,
+    ).all()
+    metrics_by_staff = {}
+    for m in all_metrics:
+        metrics_by_staff.setdefault(m.staff_id, []).append(m)
+
+    # Batch fetch all time clock entries for the period
+    start_date_dt = datetime.combine(start_date, time.min)
+    all_entries = db.query(TimeClockEntry).filter(
+        TimeClockEntry.staff_id.in_([s.id for s in staff]),
+        TimeClockEntry.clock_in >= start_date_dt,
+    ).all()
+    entries_by_staff = {}
+    for e in all_entries:
+        entries_by_staff.setdefault(e.staff_id, []).append(e)
+
     for i, s in enumerate(staff):
         # Get performance metrics for the period
-        metrics = db.query(PerformanceMetric).filter(
-            PerformanceMetric.staff_id == s.id,
-            PerformanceMetric.period_date >= start_date,
-            PerformanceMetric.period_date <= today,
-        ).all()
+        metrics = metrics_by_staff.get(s.id, [])
 
         sales = sum(m.sales_amount for m in metrics) if metrics else 0
         orders = sum(m.orders_count for m in metrics) if metrics else 0
@@ -739,10 +758,7 @@ def get_leaderboard(
                 rating = sum(r[0] * r[1] for r in rated) / total_reviews if total_reviews > 0 else 0
 
         # Get hours from time clock entries
-        entries = db.query(TimeClockEntry).filter(
-            TimeClockEntry.staff_id == s.id,
-            func.date(TimeClockEntry.clock_in) >= start_date,
-        ).all()
+        entries = entries_by_staff.get(s.id, [])
         hours = sum(e.total_hours or 0 for e in entries)
 
         leaderboard.append({
@@ -814,7 +830,7 @@ def get_performance_goals(request: Request, db: DbSession):
 
 @router.put("/staff/performance/goals")
 @limiter.limit("30/minute")
-def update_performance_goals(request: Request, db: DbSession, data: List[dict] = Body(...)):
+def update_performance_goals(request: Request, db: DbSession, current_user: RequireManager, data: List[dict] = Body(...)):
     """Update performance goals."""
     for goal_data in data:
         goal_id = goal_data.get("id")
@@ -1216,7 +1232,7 @@ def get_staff(request: Request, db: DbSession, staff_id: int):
 
 @router.put("/staff/{staff_id}")
 @limiter.limit("30/minute")
-def update_staff(request: Request, db: DbSession, staff_id: int, data: StaffUpdate):
+def update_staff(request: Request, db: DbSession, staff_id: int, data: StaffUpdate, current_user: RequireManager):
     """Update a staff member."""
     staff = db.query(StaffUser).filter(StaffUser.id == staff_id).first()
     if not staff:
@@ -1242,7 +1258,7 @@ def update_staff(request: Request, db: DbSession, staff_id: int, data: StaffUpda
 
 @router.delete("/staff/{staff_id}")
 @limiter.limit("30/minute")
-def delete_staff(request: Request, db: DbSession, staff_id: int):
+def delete_staff(request: Request, db: DbSession, staff_id: int, current_user: RequireOwner):
     """Soft-delete a staff member."""
     staff = db.query(StaffUser).filter(StaffUser.id == staff_id, StaffUser.not_deleted()).first()
     if not staff:
@@ -1284,7 +1300,7 @@ def deactivate_staff(request: Request, db: DbSession, staff_id: int):
 
 @router.patch("/staff/{staff_id}/pin")
 @limiter.limit("30/minute")
-def set_staff_pin(request: Request, db: DbSession, staff_id: int, data: dict = Body(...)):
+def set_staff_pin(request: Request, db: DbSession, staff_id: int, current_user: RequireOwner, data: dict = Body(...)):
     """Set PIN for a staff member."""
     staff = db.query(StaffUser).filter(StaffUser.id == staff_id).first()
     if not staff:
@@ -1355,9 +1371,9 @@ def get_service_deduction_report(
     Shows gross sales, commission earned, service fees, and net earnings.
     """
     if not start_date:
-        start_date = (datetime.now().date() - timedelta(days=30)).strftime("%Y-%m-%d")
+        start_date = (datetime.now(timezone.utc).date() - timedelta(days=30)).strftime("%Y-%m-%d")
     if not end_date:
-        end_date = datetime.now().date().strftime("%Y-%m-%d")
+        end_date = datetime.now(timezone.utc).date().strftime("%Y-%m-%d")
     try:
         start = datetime.strptime(start_date, "%Y-%m-%d").date()
         end = datetime.strptime(end_date, "%Y-%m-%d").date()
@@ -1443,7 +1459,7 @@ def get_service_deduction_report(
 
 @router.patch("/staff/{staff_id}/commission")
 @limiter.limit("30/minute")
-def update_staff_commission(request: Request, db: DbSession, staff_id: int, data: dict = Body(...)):
+def update_staff_commission(request: Request, db: DbSession, staff_id: int, current_user: RequireManager, data: dict = Body(...)):
     """Update commission and service fee settings for a staff member."""
     staff = db.query(StaffUser).filter(StaffUser.id == staff_id).first()
     if not staff:

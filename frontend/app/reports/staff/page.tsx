@@ -63,6 +63,7 @@ export default function ReportsStaffPage() {
     try {
       const token = localStorage.getItem('access_token');
       const response = await fetch(`${API_URL}/reports/staff?range=${dateRange}`, {
+        credentials: 'include',
         headers: { Authorization: `Bearer ${token}` },
       });
 

@@ -118,7 +118,7 @@ def calculate_dynamic_price(
         item_id=body.item_id,
         venue_id=body.venue_id,
         quantity=body.quantity,
-        current_time=datetime.now(),
+        current_time=datetime.now(timezone.utc),
         weather_data=body.weather_data
     )
     
@@ -141,7 +141,7 @@ def get_item_current_price(
         item_id=item_id,
         venue_id=venue_id,
         quantity=quantity,
-        current_time=datetime.now(),
+        current_time=datetime.now(timezone.utc),
         weather_data=None
     )
     
@@ -160,7 +160,7 @@ def get_active_pricing_rules(
     
     rules = service.get_active_pricing_rules(
         venue_id=venue_id,
-        current_time=datetime.now()
+        current_time=datetime.now(timezone.utc)
     )
     
     return rules
@@ -397,7 +397,7 @@ def get_demand_forecast(
     from datetime import timedelta
     
     forecasts = []
-    base_date = datetime.now()
+    base_date = datetime.now(timezone.utc)
     
     # Simple forecast based on historical patterns
     for day in range(forecast_days):
@@ -571,7 +571,7 @@ def get_happy_hour_info(
     
     Returns current status and details
     """
-    now = datetime.now()
+    now = datetime.now(timezone.utc)
     hour = now.hour
     
     is_active = 16 <= hour < 19
@@ -619,7 +619,7 @@ def simulate_pricing(
     service = DynamicPricingService(db)
     
     # Create simulated datetime
-    now = datetime.now()
+    now = datetime.now(timezone.utc)
     simulated_time = now.replace(hour=hour, minute=0, second=0)
     if is_weekend:
         # Adjust to next Saturday
@@ -671,7 +671,7 @@ def compare_pricing(
     from app.models import Order
     from sqlalchemy import func
     
-    since_date = datetime.now() - timedelta(days=days)
+    since_date = datetime.now(timezone.utc) - timedelta(days=days)
     
     # Get actual revenue
     actual_revenue = db.query(func.sum(Order.total)).filter(

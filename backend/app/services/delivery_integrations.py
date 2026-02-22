@@ -11,7 +11,6 @@ from datetime import datetime, timedelta, timezone
 from dataclasses import dataclass, field
 from enum import Enum
 from decimal import Decimal
-import os
 from app.core.config import settings
 
 logger = logging.getLogger(__name__)
@@ -605,9 +604,9 @@ class OpenTableService:
     BASE_URL = "https://platform.opentable.com/sync/v2"
 
     def __init__(self):
-        self.client_id = os.getenv("OPENTABLE_CLIENT_ID", "")
-        self.client_secret = os.getenv("OPENTABLE_CLIENT_SECRET", "")
-        self.restaurant_id = os.getenv("OPENTABLE_RESTAURANT_ID", "")
+        self.client_id = settings.opentable_client_id
+        self.client_secret = settings.opentable_client_secret
+        self.restaurant_id = settings.opentable_restaurant_id
         self._access_token: Optional[str] = None
         self._token_expires: Optional[datetime] = None
 
@@ -842,8 +841,8 @@ class ResyService:
     BASE_URL = "https://api.resy.com/3"
 
     def __init__(self):
-        self.api_key = os.getenv("RESY_API_KEY", "")
-        self.venue_id = os.getenv("RESY_VENUE_ID", "")
+        self.api_key = settings.resy_api_key
+        self.venue_id = settings.resy_venue_id
 
     async def get_reservations(
         self,

@@ -101,7 +101,7 @@ export default function MarketingPage() {
   const [loading, setLoading] = useState(true);
   const [showCreateCampaign, setShowCreateCampaign] = useState(false);
   const [showCreatePromotion, setShowCreatePromotion] = useState(false);
-  const [selectedCampaign, setSelectedCampaign] = useState<Campaign | null>(null);
+  const [, setSelectedCampaign] = useState<Campaign | null>(null);
 
   useEffect(() => {
     loadMarketingData();
@@ -115,10 +115,10 @@ export default function MarketingPage() {
       };
 
       const [campaignsRes, promotionsRes, segmentsRes, statsRes] = await Promise.all([
-        fetch(`${API_URL}/marketing/campaigns?limit=10`, { headers }),
-        fetch(`${API_URL}/marketing/promotions?limit=10`, { headers }),
-        fetch(`${API_URL}/marketing/segments`, { headers }),
-        fetch(`${API_URL}/marketing/stats`, { headers }),
+        fetch(`${API_URL}/marketing/campaigns?limit=10`, { credentials: 'include', headers }),
+        fetch(`${API_URL}/marketing/promotions?limit=10`, { credentials: 'include', headers }),
+        fetch(`${API_URL}/marketing/segments`, { credentials: 'include', headers }),
+        fetch(`${API_URL}/marketing/stats`, { credentials: 'include', headers }),
       ]);
 
       if (campaignsRes.ok) {

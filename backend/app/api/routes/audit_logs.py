@@ -10,6 +10,7 @@ from sqlalchemy import func
 from app.core.rate_limit import limiter
 from app.db.session import DbSession
 from app.models.operations import AuditLogEntry
+from app.schemas.pagination import paginate_query
 
 router = APIRouter()
 
@@ -65,7 +66,8 @@ async def get_audit_logs(
     user_id: str = Query(None),
     start_date: str = Query(None),
     end_date: str = Query(None),
-    limit: int = Query(100),
+    skip: int = Query(0, ge=0),
+    limit: int = Query(50, ge=1, le=500),
 ):
     """Get audit logs with filters."""
     query = db.query(AuditLogEntry)
@@ -81,8 +83,9 @@ async def get_audit_logs(
     if end_date:
         query = query.filter(AuditLogEntry.created_at <= datetime.fromisoformat(end_date))
 
-    entries = query.order_by(AuditLogEntry.created_at.desc()).limit(limit).all()
-    return [_row_to_audit_log(e) for e in entries]
+    query = query.order_by(AuditLogEntry.created_at.desc())
+    items, total = paginate_query(query, skip, limit)
+    return {"items": [_row_to_audit_log(e) for e in items], "total": total, "skip": skip, "limit": limit}
 
 
 @router.get("/summary")

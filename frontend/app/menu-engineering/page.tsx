@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 
-import { API_URL, getAuthHeaders } from '@/lib/api';
+import { API_URL } from '@/lib/api';
 
 interface MenuItem {
   id: number;
@@ -67,7 +67,6 @@ export default function MenuEngineeringPage() {
   const [pricingRecs, setPricingRecs] = useState<PricingRecommendation[]>([]);
   const [selectedView, setSelectedView] = useState<'quadrant' | 'abc' | 'pricing' | 'categories'>('quadrant');
   const [selectedDays, setSelectedDays] = useState(30);
-  const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [showItemModal, setShowItemModal] = useState(false);
   const [selectedItem, setSelectedItem] = useState<MenuItem | null>(null);
   const [loading, setLoading] = useState(true);
@@ -91,9 +90,9 @@ export default function MenuEngineeringPage() {
       const params = new URLSearchParams({ days: selectedDays.toString() });
 
       const [itemsRes, categoriesRes, pricingRes] = await Promise.all([
-        fetch(`${API_URL}/menu-engineering/items?${params}`, { headers }),
-        fetch(`${API_URL}/menu-engineering/categories?${params}`, { headers }),
-        fetch(`${API_URL}/menu-engineering/pricing-recommendations?${params}`, { headers }),
+        fetch(`${API_URL}/menu-engineering/items?${params}`, { credentials: 'include', headers }),
+        fetch(`${API_URL}/menu-engineering/categories?${params}`, { credentials: 'include', headers }),
+        fetch(`${API_URL}/menu-engineering/pricing-recommendations?${params}`, { credentials: 'include', headers }),
       ]);
 
       if (!itemsRes.ok) {

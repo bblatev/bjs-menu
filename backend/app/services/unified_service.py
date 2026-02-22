@@ -9,7 +9,7 @@ import json
 import logging
 from typing import List, Dict, Any, Optional
 from decimal import Decimal
-from datetime import datetime
+from datetime import datetime, timezone
 
 from .base import (
     FiscalPrinterDriver,
@@ -138,7 +138,7 @@ class DatecsFPGateDriver(FiscalPrinterDriver):
                 success=result.get("success", False),
                 receipt_number=result.get("receipt_number"),
                 fiscal_memory_number=result.get("fiscal_number"),
-                timestamp=datetime.now(),
+                timestamp=datetime.now(timezone.utc),
                 raw_response=json.dumps(result)
             )
         except Exception as e:
@@ -172,7 +172,7 @@ class DatecsFPGateDriver(FiscalPrinterDriver):
             return PrintResult(
                 success=result.get("success", False),
                 receipt_number=result.get("receipt_number"),
-                timestamp=datetime.now()
+                timestamp=datetime.now(timezone.utc)
             )
         except Exception as e:
             return PrintResult(success=False, error_message=str(e))
@@ -376,7 +376,7 @@ class DatecsErpNetDriver(FiscalPrinterDriver):
             return PrintResult(
                 success=result.get("ok", False),
                 receipt_number=result.get("receiptNumber"),
-                timestamp=datetime.now()
+                timestamp=datetime.now(timezone.utc)
             )
         except Exception as e:
             return PrintResult(success=False, error_message=str(e))
@@ -518,7 +518,7 @@ class TremolZFPLabDriver(FiscalPrinterDriver):
 
     def __init__(self, config: PrinterConfig):
         super().__init__(config)
-        self.base_url = config.api_url or "http://localhost:4444"
+        self.base_url = config.api_url or settings.fpgate_url
         self._client: Optional[httpx.AsyncClient] = None
 
     async def connect(self) -> bool:
@@ -679,7 +679,7 @@ class DaisyFiscalDriver(FiscalPrinterDriver):
 
     def __init__(self, config: PrinterConfig):
         super().__init__(config)
-        self.base_url = config.api_url or "http://localhost:9999"
+        self.base_url = config.api_url or f"http://{settings.pos_bridge_host}:{settings.pos_bridge_port}"
         self._client: Optional[httpx.AsyncClient] = None
 
     async def connect(self) -> bool:

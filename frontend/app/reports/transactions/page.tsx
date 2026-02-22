@@ -77,7 +77,7 @@ export default function TransactionsReportPage() {
   const [hourFrom, setHourFrom] = useState('00');
   const [hourTo, setHourTo] = useState('23');
   const [paymentFilter, setPaymentFilter] = useState('all');
-  const [waiterFilter, setWaiterFilter] = useState('all');
+  const [waiterFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState('paid');
 
   // View mode
@@ -98,7 +98,7 @@ export default function TransactionsReportPage() {
           status: statusFilter
         });
 
-        const res = await fetch(`${API_URL}/reports/transactions?${params}`, { headers: getAuthHeaders() });
+        const res = await fetch(`${API_URL}/reports/transactions?${params}`, { credentials: 'include', headers: getAuthHeaders() });
         if (res.ok) {
           setData(await res.json());
         }
@@ -111,114 +111,6 @@ export default function TransactionsReportPage() {
     loadReport();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dateFrom, dateTo, hourFrom, hourTo, paymentFilter, waiterFilter, statusFilter]);
-
-  const generateMockData = (): TransactionReport => {
-    const transactions: Transaction[] = [];
-    const startDate = new Date(dateFrom);
-    const endDate = new Date(dateTo);
-
-    let id = 1;
-    for (let d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + 1)) {
-      const ordersPerDay = Math.floor(Math.random() * 30) + 20;
-      for (let i = 0; i < ordersPerDay; i++) {
-        const hour = Math.floor(Math.random() * (parseInt(hourTo) - parseInt(hourFrom) + 1)) + parseInt(hourFrom);
-        const subtotal = Math.floor(Math.random() * 150) + 20;
-        const tax = subtotal * 0.1;
-        const discount = Math.random() > 0.8 ? subtotal * 0.1 : 0;
-        const tip = Math.random() > 0.5 ? subtotal * (Math.random() * 0.2) : 0;
-
-        transactions.push({
-          id: id++,
-          order_number: `W${d.toISOString().slice(5,10).replace('-','')}${String(i).padStart(3,'0')}`,
-          table_name: `Table ${Math.floor(Math.random() * 20) + 1}`,
-          waiter_name: ['Ivan', 'Maria', 'Georgi', 'Elena', 'Petar'][Math.floor(Math.random() * 5)],
-          items_count: Math.floor(Math.random() * 8) + 1,
-          subtotal,
-          tax,
-          discount,
-          tip,
-          total: subtotal + tax - discount,
-          payment_method: ['cash', 'card', 'card'][Math.floor(Math.random() * 3)],
-          status: 'paid',
-          created_at: new Date(d.getFullYear(), d.getMonth(), d.getDate(), hour, Math.floor(Math.random() * 60)).toISOString(),
-          paid_at: new Date(d.getFullYear(), d.getMonth(), d.getDate(), hour, Math.floor(Math.random() * 60) + 30).toISOString(),
-          guest_count: Math.floor(Math.random() * 6) + 1
-        });
-      }
-    }
-
-    // Calculate summary
-    const totalRevenue = transactions.reduce((s, t) => s + t.total, 0);
-    const totalTax = transactions.reduce((s, t) => s + t.tax, 0);
-    const totalDiscounts = transactions.reduce((s, t) => s + t.discount, 0);
-    const totalTips = transactions.reduce((s, t) => s + t.tip, 0);
-    const totalGuests = transactions.reduce((s, t) => s + t.guest_count, 0);
-
-    // Hourly breakdown
-    const hourlyMap: { [key: string]: { orders: number; revenue: number } } = {};
-    for (let h = 0; h < 24; h++) {
-      hourlyMap[`${String(h).padStart(2, '0')}:00`] = { orders: 0, revenue: 0 };
-    }
-    transactions.forEach(t => {
-      const hour = new Date(t.created_at).getHours();
-      const key = `${String(hour).padStart(2, '0')}:00`;
-      hourlyMap[key].orders++;
-      hourlyMap[key].revenue += t.total;
-    });
-    const hourly_breakdown = Object.entries(hourlyMap).map(([hour, data]) => ({
-      hour,
-      orders: data.orders,
-      revenue: data.revenue,
-      avg_ticket: data.orders > 0 ? data.revenue / data.orders : 0
-    }));
-
-    // Payment breakdown
-    const paymentMap: { [key: string]: { count: number; total: number } } = {};
-    transactions.forEach(t => {
-      if (!paymentMap[t.payment_method]) paymentMap[t.payment_method] = { count: 0, total: 0 };
-      paymentMap[t.payment_method].count++;
-      paymentMap[t.payment_method].total += t.total;
-    });
-    const payment_breakdown = Object.entries(paymentMap).map(([method, data]) => ({
-      method,
-      count: data.count,
-      total: data.total,
-      percentage: (data.total / totalRevenue) * 100
-    }));
-
-    // Waiter breakdown
-    const waiterMap: { [key: string]: { orders: number; revenue: number; tips: number } } = {};
-    transactions.forEach(t => {
-      if (!waiterMap[t.waiter_name]) waiterMap[t.waiter_name] = { orders: 0, revenue: 0, tips: 0 };
-      waiterMap[t.waiter_name].orders++;
-      waiterMap[t.waiter_name].revenue += t.total;
-      waiterMap[t.waiter_name].tips += t.tip;
-    });
-    const waiter_breakdown = Object.entries(waiterMap).map(([name, data], i) => ({
-      waiter_id: i + 1,
-      waiter_name: name,
-      orders: data.orders,
-      revenue: data.revenue,
-      tips: data.tips,
-      avg_ticket: data.revenue / data.orders
-    })).sort((a, b) => b.revenue - a.revenue);
-
-    return {
-      transactions: transactions.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()),
-      summary: {
-        total_orders: transactions.length,
-        total_revenue: totalRevenue,
-        total_tax: totalTax,
-        total_discounts: totalDiscounts,
-        total_tips: totalTips,
-        avg_ticket: totalRevenue / transactions.length,
-        avg_guests: totalGuests / transactions.length
-      },
-      hourly_breakdown,
-      payment_breakdown,
-      waiter_breakdown
-    };
-  };
 
   const exportCSV = () => {
     if (!data) return;

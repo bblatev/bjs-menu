@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 
-import { API_URL, getAuthHeaders } from '@/lib/api';
+import { API_URL } from '@/lib/api';
 
 import { toast } from '@/lib/toast';
 interface PayrollEntry {
@@ -105,7 +105,7 @@ export default function PayrollPage() {
         'Content-Type': 'application/json',
       };
 
-      const staffRes = await fetch(`${API_URL}/staff/`, { headers });
+      const staffRes = await fetch(`${API_URL}/staff/`, { credentials: 'include', headers });
       if (!staffRes.ok) {
         throw new Error('Failed to load staff');
       }
@@ -135,7 +135,7 @@ export default function PayrollPage() {
         period_end: period.end,
       });
 
-      const payrollRes = await fetch(`${API_URL}/payroll/entries?${params}`, { headers });
+      const payrollRes = await fetch(`${API_URL}/payroll/entries?${params}`, { credentials: 'include', headers });
       if (!payrollRes.ok) {
         throw new Error('Failed to load payroll data');
       }
@@ -166,6 +166,7 @@ export default function PayrollPage() {
     try {
       const token = localStorage.getItem('access_token');
       const response = await fetch(`${API_URL}/payroll/entries/${entryId}/approve`, {
+        credentials: 'include',
         method: 'PUT',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -187,6 +188,7 @@ export default function PayrollPage() {
     try {
       const token = localStorage.getItem('access_token');
       const response = await fetch(`${API_URL}/payroll/entries/${entryId}/mark-paid`, {
+        credentials: 'include',
         method: 'PUT',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -217,6 +219,7 @@ export default function PayrollPage() {
       });
 
       const response = await fetch(`${API_URL}/payroll/generate?${params}`, {
+        credentials: 'include',
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -243,6 +246,7 @@ export default function PayrollPage() {
           .map((e) => e.id);
 
         const response = await fetch(`${API_URL}/payroll/approve-all`, {
+          credentials: 'include',
           method: 'PUT',
           headers: {
             'Authorization': `Bearer ${token}`,
@@ -271,6 +275,7 @@ export default function PayrollPage() {
           .map((e) => e.id);
 
         const response = await fetch(`${API_URL}/payroll/pay-all`, {
+          credentials: 'include',
           method: 'PUT',
           headers: {
             'Authorization': `Bearer ${token}`,
@@ -314,6 +319,7 @@ export default function PayrollPage() {
 
       if (editingEntry) {
         const response = await fetch(`${API_URL}/payroll/entries/${editingEntry.id}`, {
+          credentials: 'include',
           method: 'PUT',
           headers,
           body: JSON.stringify(entryData),
@@ -323,6 +329,7 @@ export default function PayrollPage() {
         }
       } else {
         const response = await fetch(`${API_URL}/payroll/entries`, {
+          credentials: 'include',
           method: 'POST',
           headers,
           body: JSON.stringify(entryData),

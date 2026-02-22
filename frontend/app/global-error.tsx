@@ -1,5 +1,7 @@
 'use client';
 
+import { useEffect } from 'react';
+
 export default function GlobalError({
   error,
   reset,
@@ -7,6 +9,27 @@ export default function GlobalError({
   error: Error & { digest?: string };
   reset: () => void;
 }) {
+  useEffect(() => {
+    console.error('Application error:', error);
+    // Report error to backend
+    try {
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || '';
+      if (API_URL) {
+        fetch(`${API_URL}/error-reports`, {
+          credentials: 'include',
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            message: error.message,
+            stack: error.stack,
+            url: window.location.href,
+            timestamp: new Date().toISOString(),
+          }),
+        }).catch(() => {}); // fire-and-forget
+      }
+    } catch {}
+  }, [error]);
+
   return (
     <html>
       <body>

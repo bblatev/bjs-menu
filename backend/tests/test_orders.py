@@ -116,15 +116,15 @@ class TestGuestOrderPlacement:
         })
         assert res.status_code == 400
 
-    def test_unknown_table_token_creates_order(self, client, order_setup):
-        """System auto-creates tables for unknown tokens (QR code flexibility)."""
+    def test_unknown_table_token_rejected(self, client, order_setup):
+        """Unknown tokens are rejected to prevent abuse."""
         beer = order_setup["beer"]
         res = client.post("/api/v1/orders/guest", json={
             "table_token": "dynamic-token-999",
             "items": [{"menu_item_id": beer.id, "quantity": 1}],
         })
-        # System creates table on-the-fly if not found
-        assert res.status_code == 200
+        # Unknown tokens are rejected (DoS prevention)
+        assert res.status_code == 404
 
     def test_empty_items_rejected(self, client, order_setup):
         res = client.post("/api/v1/orders/guest", json={

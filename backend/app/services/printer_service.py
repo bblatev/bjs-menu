@@ -7,7 +7,7 @@ Connections: Network (TCP/IP), USB (via system print queue).
 import logging
 import socket
 import asyncio
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional, List, Dict, Any, Union
 from dataclasses import dataclass, field
 from enum import Enum
@@ -282,7 +282,7 @@ class PrinterService:
         data.write(self._build_divider("="))
 
         # Order info
-        timestamp = receipt.timestamp or datetime.now()
+        timestamp = receipt.timestamp or datetime.now(timezone.utc)
         data.write(self._build_line(ReceiptLine(
             text=timestamp.strftime("%Y-%m-%d %H:%M:%S"),
             align="center"
@@ -486,7 +486,7 @@ class PrinterService:
 
         # Timestamp
         data.write(self._build_line(ReceiptLine(
-            text=datetime.now().strftime("%H:%M:%S"),
+            text=datetime.now(timezone.utc).strftime("%H:%M:%S"),
             align="center"
         )))
 
@@ -649,7 +649,7 @@ class PrinterService:
             align="center"
         )))
         data.write(self._build_line(ReceiptLine(
-            text=datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            text=datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S"),
             align="center"
         )))
         data.write(self._build_divider("-"))

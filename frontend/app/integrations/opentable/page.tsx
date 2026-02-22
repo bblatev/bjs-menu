@@ -3,10 +3,7 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Link from 'next/link';
-import { PageLoading } from '@/components/ui/LoadingSpinner';
-import { ErrorAlert } from '@/components/ui/ErrorAlert';
-
-import { API_URL, getAuthHeaders } from '@/lib/api';
+import { API_URL } from '@/lib/api';
 
 interface Reservation {
   reservation_id: string;
@@ -67,11 +64,11 @@ export default function OpenTableIntegrationPage() {
     sync_enabled: false,
   });
   const [activeTab, setActiveTab] = useState<'reservations' | 'guests' | 'settings'>('reservations');
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [, setLoading] = useState(true);
+  const [, setError] = useState<string | null>(null);
   const [syncing, setSyncing] = useState(false);
   const [showConfigModal, setShowConfigModal] = useState(false);
-  const [stats, setStats] = useState<any>({});
+  const [, setStats] = useState<any>({});
 
   useEffect(() => {
     loadData();
@@ -82,10 +79,10 @@ export default function OpenTableIntegrationPage() {
     setError(null);
     try {
       const [reservationsRes, guestsRes, statsRes, configRes] = await Promise.all([
-        fetch(`${API_URL}/opentable/reservations`),
-        fetch(`${API_URL}/opentable/guests`),
-        fetch(`${API_URL}/opentable/stats`),
-        fetch(`${API_URL}/opentable/config`),
+        fetch(`${API_URL}/opentable/reservations`, { credentials: 'include' }),
+        fetch(`${API_URL}/opentable/guests`, { credentials: 'include' }),
+        fetch(`${API_URL}/opentable/stats`, { credentials: 'include' }),
+        fetch(`${API_URL}/opentable/config`, { credentials: 'include' }),
       ]);
 
       if (reservationsRes.ok) {
@@ -115,7 +112,7 @@ export default function OpenTableIntegrationPage() {
   const syncNow = async () => {
     setSyncing(true);
     try {
-      const res = await fetch(`${API_URL}/opentable/sync`, { method: 'POST' });
+      const res = await fetch(`${API_URL}/opentable/sync`, { credentials: 'include', method: 'POST' });
       if (res.ok) {
         loadData();
       }
@@ -129,6 +126,7 @@ export default function OpenTableIntegrationPage() {
   const updateReservationStatus = async (reservationId: string, status: string) => {
     try {
       const res = await fetch(`${API_URL}/opentable/reservations/${reservationId}/status`, {
+        credentials: 'include',
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status }),
@@ -144,6 +142,7 @@ export default function OpenTableIntegrationPage() {
   const saveConfig = async () => {
     try {
       const res = await fetch(`${API_URL}/opentable/config`, {
+        credentials: 'include',
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(config),

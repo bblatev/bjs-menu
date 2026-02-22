@@ -70,8 +70,6 @@ export default function InvoicesPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedInvoices, setSelectedInvoices] = useState<number[]>([]);
   const [showPayModal, setShowPayModal] = useState(false);
-  const [dateRange, setDateRange] = useState<'week' | 'month' | 'quarter' | 'all'>('month');
-
   // Loading and error states
   const [isLoadingInvoices, setIsLoadingInvoices] = useState(true);
   const [isLoadingStats, setIsLoadingStats] = useState(true);
@@ -85,6 +83,7 @@ export default function InvoicesPage() {
     setInvoicesError(null);
     try {
       const response = await fetch(`${API_URL}/invoices/`, {
+        credentials: 'include',
         headers: getAuthHeaders()
       });
       if (!response.ok) {
@@ -106,6 +105,7 @@ export default function InvoicesPage() {
     setStatsError(null);
     try {
       const response = await fetch(`${API_URL}/invoices/stats`, {
+        credentials: 'include',
         headers: getAuthHeaders()
       });
       if (!response.ok) {
@@ -127,6 +127,7 @@ export default function InvoicesPage() {
     setSuppliersError(null);
     try {
       const response = await fetch(`${API_URL}/suppliers/`, {
+        credentials: 'include',
         headers: getAuthHeaders()
       });
       if (!response.ok) {

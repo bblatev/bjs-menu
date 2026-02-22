@@ -58,6 +58,7 @@ export default function StockAgingPage() {
     setLoading(true);
     try {
       const response = await fetch(`${API_URL}/stock/aging`, {
+        credentials: 'include',
         headers: getAuthHeaders(),
       });
 

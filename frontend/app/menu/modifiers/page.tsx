@@ -98,6 +98,7 @@ export default function MenuModifiersPage() {
     try {
       const token = localStorage.getItem('access_token');
       const response = await fetch(`${API_URL}/menu-admin/modifier-groups`, {
+        credentials: 'include',
         headers: {
           'Authorization': `Bearer ${token}`,
         },
@@ -150,6 +151,7 @@ export default function MenuModifiersPage() {
         : `${API_URL}/menu-admin/modifier-groups`;
 
       const response = await fetch(url, {
+        credentials: 'include',
         method: editingGroup ? 'PUT' : 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -191,6 +193,7 @@ export default function MenuModifiersPage() {
         : `${API_URL}/menu-admin/modifier-groups/${selectedGroupId}/options`;
 
       const response = await fetch(url, {
+        credentials: 'include',
         method: editingOption ? 'PUT' : 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -219,6 +222,7 @@ export default function MenuModifiersPage() {
     try {
       const token = localStorage.getItem('access_token');
       const response = await fetch(`${API_URL}/menu-admin/modifier-groups/${groupId}`, {
+        credentials: 'include',
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -236,12 +240,13 @@ export default function MenuModifiersPage() {
     }
   };
 
-  const handleDeleteOption = async (groupId: number, optionId: number) => {
+  const handleDeleteOption = async (_groupId: number, optionId: number) => {
     if (!confirm('Delete this option?')) return;
 
     try {
       const token = localStorage.getItem('access_token');
       const response = await fetch(`${API_URL}/menu-admin/modifier-options/${optionId}`, {
+        credentials: 'include',
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -335,6 +340,7 @@ export default function MenuModifiersPage() {
     try {
       const token = localStorage.getItem('access_token');
       const response = await fetch(`${API_URL}/menu-admin/modifier-groups/${groupId}/toggle-active`, {
+        credentials: 'include',
         method: 'PATCH',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -351,10 +357,11 @@ export default function MenuModifiersPage() {
     }
   };
 
-  const toggleOptionAvailable = async (groupId: number, optionId: number) => {
+  const toggleOptionAvailable = async (_groupId: number, optionId: number) => {
     try {
       const token = localStorage.getItem('access_token');
       const response = await fetch(`${API_URL}/menu-admin/modifier-options/${optionId}/toggle-available`, {
+        credentials: 'include',
         method: 'PATCH',
         headers: {
           'Authorization': `Bearer ${token}`,

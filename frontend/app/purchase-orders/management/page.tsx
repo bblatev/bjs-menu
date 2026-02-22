@@ -195,10 +195,10 @@ export default function PurchaseOrdersManagementPage() {
   const [matches, setMatches] = useState<ThreeWayMatch[]>([]);
   const [selectedPO, setSelectedPO] = useState<PurchaseOrder | null>(null);
   const [selectedGRN, setSelectedGRN] = useState<GoodsReceivedNote | null>(null);
-  const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
-  const [selectedMatch, setSelectedMatch] = useState<ThreeWayMatch | null>(null);
+  const [, setSelectedInvoice] = useState<Invoice | null>(null);
+  const [, setSelectedMatch] = useState<ThreeWayMatch | null>(null);
   const [showCreatePO, setShowCreatePO] = useState(false);
-  const [showCreateGRN, setShowCreateGRN] = useState(false);
+  const [, setShowCreateGRN] = useState(false);
   const [poStatusFilter, setPOStatusFilter] = useState<string>("all");
   const [searchTerm, setSearchTerm] = useState("");
 
@@ -218,16 +218,14 @@ export default function PurchaseOrdersManagementPage() {
     matches: "",
   });
 
-  const getToken = () => localStorage.getItem('access_token');
-
   // Fetch Purchase Orders
   const fetchPurchaseOrders = async () => {
     try {
       setLoading(prev => ({ ...prev, purchaseOrders: true }));
       setError(prev => ({ ...prev, purchaseOrders: "" }));
-      const token = getToken();
       const res = await fetch(`${API_URL}/purchase-orders/`, {
-        headers: { Authorization: `Bearer ${token}` },
+        credentials: 'include',
+        headers: getAuthHeaders(),
       });
       if (!res.ok) throw new Error('Failed to fetch purchase orders');
       const data = await res.json();
@@ -245,9 +243,9 @@ export default function PurchaseOrdersManagementPage() {
     try {
       setLoading(prev => ({ ...prev, grns: true }));
       setError(prev => ({ ...prev, grns: "" }));
-      const token = getToken();
       const res = await fetch(`${API_URL}/purchase-orders/grns/`, {
-        headers: { Authorization: `Bearer ${token}` },
+        credentials: 'include',
+        headers: getAuthHeaders(),
       });
       if (!res.ok) throw new Error('Failed to fetch goods received notes');
       const data = await res.json();
@@ -265,9 +263,9 @@ export default function PurchaseOrdersManagementPage() {
     try {
       setLoading(prev => ({ ...prev, invoices: true }));
       setError(prev => ({ ...prev, invoices: "" }));
-      const token = getToken();
       const res = await fetch(`${API_URL}/purchase-orders/invoices/`, {
-        headers: { Authorization: `Bearer ${token}` },
+        credentials: 'include',
+        headers: getAuthHeaders(),
       });
       if (!res.ok) throw new Error('Failed to fetch invoices');
       const data = await res.json();
@@ -285,9 +283,9 @@ export default function PurchaseOrdersManagementPage() {
     try {
       setLoading(prev => ({ ...prev, approvals: true }));
       setError(prev => ({ ...prev, approvals: "" }));
-      const token = getToken();
       const res = await fetch(`${API_URL}/purchase-orders/approvals/`, {
-        headers: { Authorization: `Bearer ${token}` },
+        credentials: 'include',
+        headers: getAuthHeaders(),
       });
       if (!res.ok) throw new Error('Failed to fetch approvals');
       const data = await res.json();
@@ -305,9 +303,9 @@ export default function PurchaseOrdersManagementPage() {
     try {
       setLoading(prev => ({ ...prev, matches: true }));
       setError(prev => ({ ...prev, matches: "" }));
-      const token = getToken();
       const res = await fetch(`${API_URL}/purchase-orders/three-way-matches/`, {
-        headers: { Authorization: `Bearer ${token}` },
+        credentials: 'include',
+        headers: getAuthHeaders(),
       });
       if (!res.ok) throw new Error('Failed to fetch three-way matches');
       const data = await res.json();
@@ -376,13 +374,10 @@ export default function PurchaseOrdersManagementPage() {
 
   const handleApprovePO = async (poId: string) => {
     try {
-      const token = getToken();
       const res = await fetch(`${API_URL}/purchase-orders/${poId}/approve`, {
+        credentials: 'include',
         method: 'POST',
-        headers: {
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
+        headers: getAuthHeaders(),
       });
       if (!res.ok) throw new Error('Failed to approve purchase order');
       // Refresh data after successful approval
@@ -395,13 +390,10 @@ export default function PurchaseOrdersManagementPage() {
 
   const handleRejectPO = async (poId: string) => {
     try {
-      const token = getToken();
       const res = await fetch(`${API_URL}/purchase-orders/${poId}/reject`, {
+        credentials: 'include',
         method: 'POST',
-        headers: {
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
+        headers: getAuthHeaders(),
       });
       if (!res.ok) throw new Error('Failed to reject purchase order');
       // Refresh data after successful rejection
@@ -414,13 +406,10 @@ export default function PurchaseOrdersManagementPage() {
 
   const handleApproveVariance = async (approvalId: string) => {
     try {
-      const token = getToken();
       const res = await fetch(`${API_URL}/purchase-orders/approvals/${approvalId}/approve`, {
+        credentials: 'include',
         method: 'POST',
-        headers: {
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
+        headers: getAuthHeaders(),
       });
       if (!res.ok) throw new Error('Failed to approve variance');
       // Refresh approvals after successful approval

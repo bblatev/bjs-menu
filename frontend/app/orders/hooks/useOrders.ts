@@ -74,10 +74,10 @@ export function useOrders(autoRefresh: boolean = true, refreshIntervalMs: number
 
     try {
       const [ordersRes, tablesRes, staffRes, statsRes] = await Promise.allSettled([
-        fetch(`${API_URL}/orders`, { headers }),
-        fetch(`${API_URL}/admin/tables`, { headers }),
-        fetch(`${API_URL}/staff`, { headers }),
-        fetch(`${API_URL}/orders/stats`, { headers }),
+        fetch(`${API_URL}/orders`, { credentials: 'include', headers }),
+        fetch(`${API_URL}/admin/tables`, { credentials: 'include', headers }),
+        fetch(`${API_URL}/staff`, { credentials: 'include', headers }),
+        fetch(`${API_URL}/orders/stats`, { credentials: 'include', headers }),
       ]);
 
       // Process orders
@@ -158,6 +158,7 @@ export function useOrders(autoRefresh: boolean = true, refreshIntervalMs: number
     const headers = getAuthHeaders();
     try {
       await fetch(`${API_URL}/orders/${orderId}/status`, {
+        credentials: 'include',
         method: 'PUT',
         headers,
         body: JSON.stringify({ status: newStatus }),
@@ -177,6 +178,7 @@ export function useOrders(autoRefresh: boolean = true, refreshIntervalMs: number
     const headers = getAuthHeaders();
     try {
       await fetch(`${API_URL}/orders/${orderId}/items/${itemId}/status`, {
+        credentials: 'include',
         method: 'PATCH',
         headers,
         body: JSON.stringify({ status: newStatus }),
@@ -206,6 +208,7 @@ export function useOrders(autoRefresh: boolean = true, refreshIntervalMs: number
     const headers = getAuthHeaders();
     try {
       const response = await fetch(`${API_URL}/orders/${orderId}/void`, {
+        credentials: 'include',
         method: 'POST',
         headers,
         body: JSON.stringify({ reason }),
@@ -224,6 +227,7 @@ export function useOrders(autoRefresh: boolean = true, refreshIntervalMs: number
     const headers = getAuthHeaders();
     try {
       const response = await fetch(`${API_URL}/orders/${orderId}/refund`, {
+        credentials: 'include',
         method: 'POST',
         headers,
         body: JSON.stringify({ amount, reason, refund_method: 'cash' }),
@@ -248,7 +252,7 @@ export function useOrders(autoRefresh: boolean = true, refreshIntervalMs: number
 
     if (endpoint) {
       try {
-        await fetch(endpoint, { method: 'POST', headers });
+        await fetch(endpoint, { credentials: 'include', method: 'POST', headers });
       } catch (err) {
         console.error('Error setting priority:', err);
       }
@@ -260,6 +264,7 @@ export function useOrders(autoRefresh: boolean = true, refreshIntervalMs: number
     const headers = getAuthHeaders();
     try {
       await fetch(`${API_URL}/orders/${orderId}/reprint`, {
+        credentials: 'include',
         method: 'POST',
         headers,
         body: JSON.stringify({ station }),

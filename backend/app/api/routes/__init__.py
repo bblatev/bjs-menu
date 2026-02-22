@@ -13,7 +13,7 @@ from app.api.routes import (
     advanced_features, kitchen, kitchen_alerts,
     tables, waiter, menu_engineering,
     enterprise, inventory_hardware, guest_orders, staff, customers,
-    price_lists, menu_complete, purchase_orders,
+    price_lists, purchase_orders, menu_complete_features,
     bar, financial, loyalty, vip, tax, shifts, payroll,
     audit_logs, benchmarking, price_tracker, referrals, haccp, warehouses,
     gift_cards, feedback, notifications, settings, integrations,
@@ -22,7 +22,7 @@ from app.api.routes import (
     google_reserve, training, scheduled_reports, email_campaigns,
     opentable, birthday_rewards, kds_localization,
     mobile_wallet, custom_reports, card_terminals,
-    stock_management, stock, inventory_complete,
+    stock,
     inventory_intelligence, xero,
     risk_alerts, roles, voice,
     promotions, gamification,
@@ -49,6 +49,8 @@ api_router.include_router(recipes.router, prefix="/recipes", tags=["recipes"])
 api_router.include_router(ai.router, prefix="/ai", tags=["ai"])
 api_router.include_router(sync.router, prefix="/sync", tags=["sync"])
 api_router.include_router(reports.router, prefix="/reports", tags=["reports"])
+# Backward-compat: reports_enhanced was merged into reports.py
+api_router.include_router(reports.router, prefix="/reports-enhanced", tags=["reports", "enhanced"])
 api_router.include_router(reconciliation.router, prefix="/reconciliation", tags=["reconciliation"])
 
 # New competitor-matching routes
@@ -92,7 +94,10 @@ api_router.include_router(customers.router, tags=["customers", "crm"])
 api_router.include_router(price_lists.router, tags=["price-lists", "daily-menu", "alerts"])
 
 # Menu Complete (variants, tags, combos, upsells, LTOs, 86'd items, digital boards)
-api_router.include_router(menu_complete.router, tags=["menu-complete", "variants", "tags", "combos"])
+# menu_complete.py removed -- merged into menu_complete_features.py
+api_router.include_router(menu_complete_features.router, prefix="/menu-complete", tags=["menu-complete", "variants", "tags", "combos"])
+# Backward-compat: menu_complete_features was previously mounted at /menu-complete-features
+api_router.include_router(menu_complete_features.router, prefix="/menu-complete-features", tags=["menu", "complete"])
 
 # Purchase Orders Management (PO, GRN, invoices, approvals, three-way matching)
 api_router.include_router(purchase_orders.router, prefix="/purchase-orders", tags=["purchase-orders", "procurement", "grn", "three-way-match"])
@@ -102,6 +107,8 @@ api_router.include_router(bar.router, prefix="/bar", tags=["bar", "drinks", "spi
 
 # Financial & Budgets
 api_router.include_router(financial.router, prefix="/financial", tags=["financial", "budgets"])
+# Backward-compat: financial_endpoints was merged into financial.py
+api_router.include_router(financial.router, prefix="/financial-endpoints", tags=["financial", "accounting"])
 
 # Loyalty & Gift Cards
 api_router.include_router(loyalty.router, prefix="/loyalty", tags=["loyalty"])
@@ -169,6 +176,8 @@ api_router.include_router(printers.router, prefix="/printers", tags=["printers",
 
 # Google Reserve Integration
 api_router.include_router(google_reserve.router, prefix="/google-reserve", tags=["google-reserve", "maps-booking"])
+# Backward-compat: google_booking.py was merged into google_reserve.py
+api_router.include_router(google_reserve.router, prefix="/google-booking", tags=["google", "booking"])
 
 # Training/Sandbox Mode
 api_router.include_router(training.router, prefix="/training", tags=["training", "sandbox", "practice"])
@@ -197,14 +206,19 @@ api_router.include_router(custom_reports.router, prefix="/custom-reports", tags=
 # EMV Card Terminals
 api_router.include_router(card_terminals.router, prefix="/card-terminals", tags=["card-terminals", "emv", "stripe-terminal"])
 
-# Stock Management (transfers, adjustments, shrinkage, AI scanner, cost tracking)
-api_router.include_router(stock_management.router, prefix="/stock-management", tags=["stock-management", "transfers", "shrinkage", "ai-scanner", "cost-tracking"])
+# Stock Management -- merged into stock.py; mount stock.router at legacy prefix
+# so any remaining /stock-management/* calls still resolve.
+api_router.include_router(stock.router, prefix="/stock-management", tags=["stock-management", "transfers", "shrinkage", "ai-scanner", "cost-tracking"])
 
-# Stock routes (frontend-facing /stock/* endpoints)
+# Stock routes (frontend-facing /stock/* endpoints -- canonical prefix)
 api_router.include_router(stock.router, prefix="/stock", tags=["stock", "inventory"])
 
-# Inventory Complete (comprehensive inventory management for frontend)
-api_router.include_router(inventory_complete.router, prefix="/inventory-complete", tags=["inventory-complete", "stock"])
+# Inventory Complete - merged into stock.py; mount stock.router at legacy prefix
+# so frontend calls to /inventory-complete/* still resolve.
+api_router.include_router(stock.router, prefix="/inventory-complete", tags=["inventory-complete", "stock"])
+
+# Inventory Complete Features - merged into stock.py; backward-compat mount
+api_router.include_router(stock.router, prefix="/inventory-complete-features", tags=["inventory", "complete"])
 
 # Inventory Intelligence (ABC Analysis, Turnover, Dead Stock, COGS, Food Cost Variance, EOQ, Snapshots, Cycle Counts)
 api_router.include_router(inventory_intelligence.router, prefix="/inventory-intelligence", tags=["inventory-intelligence", "abc-analysis", "turnover", "cogs", "eoq"])
@@ -268,10 +282,10 @@ _ported_modules = [
     ("currency", "/currency", ["currency", "exchange"]),
     ("hardware_bnpl", "/hardware-bnpl", ["bnpl", "klarna", "affirm"]),
     ("auto_discounts", "/auto-discounts", ["auto-discounts", "pricing"]),
-    ("financial_endpoints", "/financial-endpoints", ["financial", "accounting"]),
+    # financial_endpoints removed — merged into financial.py
     ("menu_admin", "/menu-admin", ["menu", "admin"]),
     ("menu_advanced", "/menu-advanced", ["menu", "advanced"]),
-    ("menu_complete_features", "/menu-complete-features", ["menu", "complete"]),
+    # menu_complete_features removed — promoted to core import; mounted at /menu-complete
     ("combos", "/combos", ["combos", "menu"]),
     ("customer_self_ordering", "/self-order", ["self-order", "qr"]),
     ("drive_thru", "/drive-thru", ["drive-thru"]),
@@ -282,22 +296,24 @@ _ported_modules = [
     ("barcode_labels", "/barcode-labels", ["barcode", "labels", "printing"]),
     ("batches", "/batches", ["batches", "inventory"]),
     ("serial_batch", "/serial-batch", ["serial", "batch", "tracking"]),
-    ("enhanced_inventory_endpoints", "/enhanced-inventory", ["inventory", "enhanced"]),
-    ("inventory_complete_features", "/inventory-complete-features", ["inventory", "complete"]),
+    # enhanced_inventory_endpoints removed — ~29% duplicated stock/recipes/warehouses;
+    # unique endpoints merged into menu.py, recipes.py, suppliers.py,
+    # purchase_orders.py, and warehouses.py.  Backward-compat mounts below.
+    # inventory_complete_features removed — merged into stock.py
     ("inventory_reports", "/inventory-reports", ["inventory", "reports"]),
     ("mobile_scanner", "/mobile-scanner", ["mobile", "scanner", "barcode"]),
     ("production", "/production", ["production", "kitchen"]),
     ("production_features", "/production-features", ["production", "features"]),
     ("purchase_order_advanced", "/purchase-order-advanced", ["purchase-orders", "advanced"]),
-    ("enterprise_features", "/enterprise-features", ["enterprise"]),
+    # enterprise_features removed — merged into enterprise.py; backward-compat mount below
     ("external_integrations", "/external-integrations", ["integrations", "external"]),
-    ("google_booking", "/google-booking", ["google", "booking"]),
+    # google_booking removed — merged into google_reserve.py
     ("datecs", "/datecs", ["datecs", "fiscal"]),
     ("erpnet_fp", "/erpnet-fp", ["erpnet", "fiscal"]),
     ("multi_terminal", "/multi-terminal", ["multi-terminal", "pos"]),
     ("waiter_terminal", "/waiter-terminal", ["waiter", "terminal"]),
     ("delivery_platforms", "/delivery-platforms", ["delivery", "ubereats", "doordash"]),
-    ("reports_enhanced", "/reports-enhanced", ["reports", "enhanced"]),
+    # reports_enhanced removed -- merged into reports.py
     ("report_export", "/report-export", ["reports", "export"]),
     ("ratings", "/ratings", ["ratings", "reviews"]),
     ("messaging", "/messaging", ["messaging", "internal"]),
@@ -305,7 +321,7 @@ _ported_modules = [
     ("analytics_forecasting", "/analytics-forecasting", ["analytics", "forecasting"]),
     ("ai_assistant", "/ai-assistant", ["ai", "assistant"]),
     ("ai_recommendations", "/ai-recommendations", ["ai", "recommendations"]),
-    ("ai_training", "/ai-training", ["ai", "training"]),
+    # ai_training removed — merged into ai.py
     ("floor_plans", "/floor-plans", ["floor-plans", "tables"]),
     ("kiosk", "/kiosk", ["kiosk", "self-service"]),
     ("dynamic_pricing", "/dynamic-pricing", ["pricing", "dynamic"]),
@@ -314,7 +330,7 @@ _ported_modules = [
     ("staff_advanced", "/staff-advanced", ["staff", "advanced"]),
     ("staff_scheduling_endpoints", "/staff-scheduling", ["staff", "scheduling"]),
     ("allergens", "/allergens", ["allergens", "nutrition"]),
-    ("bar_management", "/bar-management", ["bar", "management"]),
+    # bar_management removed — was 87% duplicate of bar.py
     ("competitor_features", "/competitor-features", ["competitor"]),
     ("competitor_menu_features", "/competitor-menu-features", ["competitor", "menu"]),
     ("crm_complete", "/crm", ["crm", "customers"]),
@@ -327,7 +343,7 @@ _ported_modules = [
     ("v7_endpoints", "/v7", ["v7"]),
     ("v7_tier3_endpoints", "/v7-tier3", ["v7", "tier3"]),
     ("v9_endpoints", "/v9", ["v9", "advanced"]),
-    ("v9_endpoints_part2", "/v9-part2", ["v9", "advanced"]),
+    # v9_endpoints_part2 merged into v9_endpoints — backward-compat mount below
     ("admin", "/admin", ["admin", "tables"]),
     ("waiter_calls", "/waiter-calls", ["waiter", "calls"]),
 ]
@@ -345,3 +361,36 @@ for _module_name, _prefix, _tags in _ported_modules:
         logger.warning(f"Skipped ported module {_module_name}: {e}")
 
 logger.info(f"Ported modules: {_loaded} loaded, {_failed} skipped")
+
+# Backward-compat: v9_endpoints_part2 was merged into v9_endpoints.
+# Mount v9_endpoints.router at the old /v9-part2 prefix so existing
+# callers still resolve.
+try:
+    from app.api.routes import v9_endpoints as _v9_mod
+    api_router.include_router(_v9_mod.router, prefix="/v9-part2", tags=["v9", "advanced"])
+    logger.info("Backward-compat mount: /v9-part2 -> v9_endpoints.router")
+except Exception as _e:
+    logger.warning(f"Could not mount /v9-part2 backward-compat route: {_e}")
+
+# Backward-compat: ai_training.py was merged into ai.py.
+# Mount ai.router at the old /ai-training prefix so existing callers still resolve.
+api_router.include_router(ai.router, prefix="/ai-training", tags=["ai", "training"])
+logger.info("Backward-compat mount: /ai-training -> ai.router")
+
+# Backward-compat: enterprise_features.py was merged into enterprise.py.
+# Mount enterprise.router at the old /enterprise-features prefix so existing callers still resolve.
+api_router.include_router(enterprise.router, prefix="/enterprise-features", tags=["enterprise"])
+logger.info("Backward-compat mount: /enterprise-features -> enterprise.router")
+
+# Backward-compat: enhanced_inventory_endpoints.py was merged into
+# menu.py, recipes.py, suppliers.py, purchase_orders.py, warehouses.py, stock.py.
+# Mount those routers under /enhanced-inventory/* so existing callers still resolve.
+_ei_compat = APIRouter()
+_ei_compat.include_router(menu.router, prefix="/menu", tags=["inventory", "enhanced"])
+_ei_compat.include_router(recipes.router, prefix="/recipes", tags=["inventory", "enhanced"])
+_ei_compat.include_router(warehouses.router, prefix="/warehouses", tags=["inventory", "enhanced"])
+_ei_compat.include_router(stock.router, prefix="/stock", tags=["inventory", "enhanced"])
+_ei_compat.include_router(suppliers.router, prefix="/suppliers", tags=["inventory", "enhanced"])
+_ei_compat.include_router(purchase_orders.router, prefix="/purchase-orders", tags=["inventory", "enhanced"])
+api_router.include_router(_ei_compat, prefix="/enhanced-inventory", tags=["inventory", "enhanced"])
+logger.info("Backward-compat mount: /enhanced-inventory -> composite router")

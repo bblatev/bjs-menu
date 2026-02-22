@@ -76,21 +76,21 @@ export default function HotelPMSPage() {
       const headers = getAuthHeaders();
 
       // Load connection
-      const connRes = await fetch(`${API_URL}/enterprise/hotel-pms/connection`, { headers });
+      const connRes = await fetch(`${API_URL}/enterprise/hotel-pms/connection`, { credentials: 'include', headers });
       if (connRes.ok) {
         const data = await connRes.json();
         setConnection(data);
       }
 
       // Load guests
-      const guestsRes = await fetch(`${API_URL}/enterprise/hotel-pms/guests`, { headers });
+      const guestsRes = await fetch(`${API_URL}/enterprise/hotel-pms/guests`, { credentials: 'include', headers });
       if (guestsRes.ok) {
         const data = await guestsRes.json();
         setGuests(data);
       }
 
       // Load charges
-      const chargesRes = await fetch(`${API_URL}/enterprise/hotel-pms/charges`, { headers });
+      const chargesRes = await fetch(`${API_URL}/enterprise/hotel-pms/charges`, { credentials: 'include', headers });
       if (chargesRes.ok) {
         const data = await chargesRes.json();
         setCharges(data);
@@ -107,6 +107,7 @@ export default function HotelPMSPage() {
 
     try {
       const response = await fetch(`${API_URL}/enterprise/hotel-pms/connect`, {
+        credentials: 'include',
         method: 'POST',
         headers: getAuthHeaders(),
         body: JSON.stringify({
@@ -137,6 +138,7 @@ export default function HotelPMSPage() {
 
     try {
       await fetch(`${API_URL}/enterprise/hotel-pms/disconnect`, {
+        credentials: 'include',
         method: 'POST',
         headers: getAuthHeaders(),
       });
@@ -150,6 +152,7 @@ export default function HotelPMSPage() {
     setSyncing(true);
     try {
       await fetch(`${API_URL}/enterprise/hotel-pms/sync-guests`, {
+        credentials: 'include',
         method: 'POST',
         headers: getAuthHeaders(),
       });
@@ -166,6 +169,7 @@ export default function HotelPMSPage() {
 
     try {
       const response = await fetch(`${API_URL}/enterprise/hotel-pms/charges`, {
+        credentials: 'include',
         method: 'POST',
         headers: getAuthHeaders(),
         body: JSON.stringify({

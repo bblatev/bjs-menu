@@ -7,7 +7,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request, status, Query
 from sqlalchemy.orm import Session
 from typing import List, Optional
 from pydantic import BaseModel
-from datetime import datetime
+from datetime import datetime, timezone
 
 from app.db.session import get_db
 from app.core.rbac import get_current_user
@@ -378,9 +378,9 @@ async def get_haccp_report(
 ):
     """Generate HACCP compliance report for a date range"""
     if not start_date:
-        start_date = datetime.now()
+        start_date = datetime.now(timezone.utc)
     if not end_date:
-        end_date = datetime.now()
+        end_date = datetime.now(timezone.utc)
     service = AllergenNutritionService(db)
 
     # Use venue_id from current_user if available, otherwise use query param

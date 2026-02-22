@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import Link from 'next/link';
-import { API_URL, getAuthHeaders } from '@/lib/api';
+import { API_URL } from '@/lib/api';
 
 interface SalesReportItem {
   date: string;
@@ -100,6 +100,7 @@ export default function ReportsPage() {
         url = `${API_URL}/reports/sales?period=custom&date_from=${dateFrom}&date_to=${dateTo}&hour_from=${hourFrom}&hour_to=${hourTo}`;
       }
       const res = await fetch(url, {
+        credentials: 'include',
         headers: { Authorization: `Bearer ${token}` }
       });
       if (res.ok) {
@@ -118,6 +119,7 @@ export default function ReportsPage() {
     setLoading(true);
     try {
       const res = await fetch(`${API_URL}/reports/stock?low_stock_only=${lowStockOnly}`, {
+        credentials: 'include',
         headers: { Authorization: `Bearer ${token}` }
       });
       if (res.ok) {
@@ -136,6 +138,7 @@ export default function ReportsPage() {
     setLoading(true);
     try {
       const res = await fetch(`${API_URL}/reports/staff-performance?period=${period}`, {
+        credentials: 'include',
         headers: { Authorization: `Bearer ${token}` }
       });
       if (res.ok) {
@@ -154,6 +157,7 @@ export default function ReportsPage() {
     setLoading(true);
     try {
       const res = await fetch(`${API_URL}/reports/customer-insights?period=${period}`, {
+        credentials: 'include',
         headers: { Authorization: `Bearer ${token}` }
       });
       if (res.ok) {

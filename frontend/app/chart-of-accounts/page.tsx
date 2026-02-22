@@ -31,7 +31,6 @@ export default function ChartOfAccountsPage() {
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [editingAccount, setEditingAccount] = useState<Account | null>(null);
-  const [expandedAccounts, setExpandedAccounts] = useState<Set<number>>(new Set());
   const [filterType, setFilterType] = useState<string>('all');
   const [searchTerm, setSearchTerm] = useState('');
   const [formData, setFormData] = useState<AccountForm>({
@@ -50,6 +49,7 @@ export default function ChartOfAccountsPage() {
     try {
       const token = localStorage.getItem('access_token');
       const response = await fetch(`${API_URL}/financial/chart-of-accounts`, {
+        credentials: 'include',
         headers: { Authorization: `Bearer ${token}` },
       });
       if (response.ok) {
@@ -67,6 +67,7 @@ export default function ChartOfAccountsPage() {
     try {
       const token = localStorage.getItem('access_token');
       const response = await fetch(`${API_URL}/financial/chart-of-accounts`, {
+        credentials: 'include',
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -103,16 +104,6 @@ export default function ChartOfAccountsPage() {
     setEditingAccount(null);
   };
 
-  const toggleExpand = (id: number) => {
-    const newExpanded = new Set(expandedAccounts);
-    if (newExpanded.has(id)) {
-      newExpanded.delete(id);
-    } else {
-      newExpanded.add(id);
-    }
-    setExpandedAccounts(newExpanded);
-  };
-
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('bg-BG', {
       style: 'currency',
@@ -141,18 +132,6 @@ export default function ChartOfAccountsPage() {
     };
     return icons[type] || '📊';
   };
-
-  // Group accounts by type
-  const groupedAccounts = accounts.reduce((groups, account) => {
-    const type = account.account_type;
-    if (!groups[type]) {
-      groups[type] = [];
-    }
-    if (!account.parent_id) {
-      groups[type].push(account);
-    }
-    return groups;
-  }, {} as Record<string, Account[]>);
 
   // Filter accounts
   const filteredAccounts = accounts.filter(account => {

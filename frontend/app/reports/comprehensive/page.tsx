@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import Link from 'next/link';
-import { API_URL, getAuthHeaders } from '@/lib/api';
+import { API_URL } from '@/lib/api';
 
 // Types
 interface ReportTab {
@@ -105,6 +105,7 @@ export default function ComprehensiveReportsPage() {
         : `${API_URL}${currentTab.endpoint}?period=${period}`;
 
       const res = await fetch(url, {
+        credentials: 'include',
         headers: { Authorization: `Bearer ${token}` }
       });
 
@@ -130,6 +131,7 @@ export default function ComprehensiveReportsPage() {
 
     try {
       const res = await fetch(`${API_URL}/reports/export/${activeTab}`, {
+        credentials: 'include',
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,

@@ -18,6 +18,7 @@ class POStatus(str, Enum):
 
     DRAFT = "draft"
     SENT = "sent"
+    PARTIALLY_RECEIVED = "partially_received"
     RECEIVED = "received"
     CANCELLED = "cancelled"
 
@@ -71,6 +72,7 @@ class PurchaseOrderLine(Base):
     )
     qty: Mapped[Decimal] = mapped_column(Numeric(10, 2), nullable=False)
     unit_cost: Mapped[Optional[Decimal]] = mapped_column(Numeric(10, 2), nullable=True)
+    received_qty: Mapped[Decimal] = mapped_column(Numeric(10, 2), default=0, nullable=False, server_default="0")
 
     # Relationships
     purchase_order: Mapped["PurchaseOrder"] = relationship("PurchaseOrder", back_populates="lines")

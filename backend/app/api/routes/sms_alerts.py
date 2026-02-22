@@ -87,7 +87,7 @@ class SMSService:
                 "provider_id": f"mock_{datetime.now(timezone.utc).timestamp()}",
                 "status": "sent",
             }
-        return {"success": False, "error": "Unknown SMS provider"}
+        raise HTTPException(status_code=400, detail="Unknown SMS provider")
 
 
 sms_service = SMSService(provider="mock")
@@ -256,7 +256,7 @@ async def trigger_void_alert(
         f"VOID ALERT: Order #{order_id}\n"
         f"Amount: ${amount:.2f}\n"
         f"Reason: {reason}\n"
-        f"Time: {datetime.now().strftime('%H:%M')}"
+        f"Time: {datetime.now(timezone.utc).strftime('%H:%M')}"
     )
     background_tasks.add_task(send_alert_to_managers, "void", message, order_id, amount)
     return {"message": "Alert triggered"}
@@ -275,7 +275,7 @@ async def trigger_refund_alert(
         f"REFUND ALERT: Order #{order_id}\n"
         f"Amount: ${amount:.2f}\n"
         f"Reason: {reason}\n"
-        f"Time: {datetime.now().strftime('%H:%M')}"
+        f"Time: {datetime.now(timezone.utc).strftime('%H:%M')}"
     )
     background_tasks.add_task(send_alert_to_managers, "refund", message, order_id, amount)
     return {"message": "Alert triggered"}
@@ -293,7 +293,7 @@ async def trigger_discount_alert(
     message = (
         f"DISCOUNT ALERT: Order #{order_id}\n"
         f"Discount: {discount_percent}% (${discount_amount:.2f})\n"
-        f"Time: {datetime.now().strftime('%H:%M')}"
+        f"Time: {datetime.now(timezone.utc).strftime('%H:%M')}"
     )
     background_tasks.add_task(send_alert_to_managers, "discount", message, order_id, discount_amount)
     return {"message": "Alert triggered"}
@@ -311,7 +311,7 @@ async def trigger_cash_drawer_alert(
     message = (
         f"CASH DRAWER ALERT\n"
         f"Reason: {reason}\n"
-        f"Time: {datetime.now().strftime('%H:%M')}"
+        f"Time: {datetime.now(timezone.utc).strftime('%H:%M')}"
     )
     background_tasks.add_task(send_alert_to_managers, "cash_drawer", message, None, None)
     return {"message": "Alert triggered"}
@@ -330,7 +330,7 @@ async def trigger_complaint_alert(
         f"COMPLAINT ALERT\n"
         f"Table: {table_number}\n"
         f"Complaint: {complaint[:100]}...\n"
-        f"Time: {datetime.now().strftime('%H:%M')}"
+        f"Time: {datetime.now(timezone.utc).strftime('%H:%M')}"
     )
     background_tasks.add_task(send_alert_to_managers, "complaint", message, None, None)
     return {"message": "Alert triggered"}

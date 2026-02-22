@@ -4,7 +4,7 @@ from datetime import datetime, timezone
 from decimal import Decimal
 from typing import List, Optional
 from fastapi import APIRouter, HTTPException, Query, Body, Request
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel, Field, field_validator
 
 from app.core.sanitize import sanitize_text
 
@@ -63,17 +63,27 @@ class TableInfo(BaseModel):
     venue_name: str = ""
 
 
+class ModifierSelection(BaseModel):
+    modifier_id: Optional[int] = None
+    group_id: Optional[int] = None
+    option_id: Optional[int] = None
+    name: Optional[str] = None
+    price: Optional[float] = 0.0
+
+
 class GuestOrderItem(BaseModel):
     menu_item_id: int
     quantity: int
-    notes: Optional[str] = None
-    modifiers: Optional[List[dict]] = None
+    notes: Optional[str] = Field(None, max_length=500)
+    modifiers: Optional[List[ModifierSelection]] = None
 
     @field_validator("quantity", mode="before")
     @classmethod
     def _validate_quantity(cls, v):
         if v is not None and int(v) < 1:
             raise ValueError("quantity must be at least 1")
+        if v is not None and int(v) > 99:
+            raise ValueError("quantity cannot exceed 99")
         return v
 
     @field_validator("notes", mode="before")
@@ -183,8 +193,17 @@ class GuestOrderResponse(BaseModel):
 # ==================== HELPER FUNCTIONS ====================
 
 def _get_table_by_token(db: DbSession, token: str) -> dict:
-    """Get table info from database."""
-    # Try to find by token
+    """Get table info from database.
+
+    Only looks up by cryptographic token — never by table number.
+    This prevents guests from ordering on arbitrary tables by guessing numbers.
+    """
+    if not token or len(token) < 8:
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid table token. Please scan a valid table QR code.",
+        )
+
     db_table = db.query(Table).filter(Table.token == token).first()
     if db_table:
         return {
@@ -195,18 +214,6 @@ def _get_table_by_token(db: DbSession, token: str) -> dict:
             "area": db_table.area or "Main Floor",
         }
 
-    # Try to find by table number
-    db_table = db.query(Table).filter(Table.number == token).first()
-    if db_table:
-        return {
-            "id": db_table.id,
-            "number": db_table.number,
-            "capacity": db_table.capacity or 4,
-            "status": db_table.status or "available",
-            "area": db_table.area or "Main Floor",
-        }
-
-    # Unknown token - reject instead of auto-creating (prevents DoS)
     raise HTTPException(
         status_code=404,
         detail="Table not found. Please scan a valid table QR code.",
@@ -676,16 +683,19 @@ def place_guest_order(
         created_at=created_at,
     )
     db.add(db_order)
-    db.commit()
-    db.refresh(db_order)
 
     # Also create KitchenOrder(s) for KDS — group items by station
+    # Pre-fetch all menu items in one query to avoid N+1
+    menu_item_ids = [oi.menu_item_id for oi in order.items]
+    menu_items_map = {
+        mi.id: mi for mi in db.query(MenuItem).filter(MenuItem.id.in_(menu_item_ids)).all()
+    }
+
     station_items = {}
     for order_item in order.items:
-        mi = db.query(MenuItem).filter(MenuItem.id == order_item.menu_item_id).first()
+        mi = menu_items_map.get(order_item.menu_item_id)
         station_key = mi.station if mi and mi.station else "default"
         station_items.setdefault(station_key, [])
-        # Find the matching validated item
         for vi in validated_items:
             if vi["menu_item_id"] == order_item.menu_item_id:
                 station_items[station_key].append(vi)
@@ -707,7 +717,9 @@ def place_guest_order(
     if db_table:
         db_table.status = "occupied"
 
+    # Single commit for order + kitchen orders + table update
     db.commit()
+    db.refresh(db_order)
 
     # Deduct stock for ordered items
     order_id = db_order.id
@@ -1582,8 +1594,6 @@ def process_guest_payment(
             from app.services.stripe_service import get_stripe_service, PaymentStatus
             stripe = get_stripe_service()
             if stripe:
-                result = await_stripe_check = None
-                # Synchronous call - stripe_service handles async internally
                 import asyncio
                 loop = asyncio.new_event_loop()
                 try:
@@ -1606,8 +1616,11 @@ def process_guest_payment(
         except HTTPException:
             raise
         except Exception as e:
-            logger.warning(f"Stripe verification failed for order {order_id}: {e}")
-            # Fall through to manual recording if Stripe is not configured
+            logger.error(f"Stripe verification failed for order {order_id}: {e}")
+            raise HTTPException(
+                status_code=502,
+                detail="Payment verification service unavailable. Please try again.",
+            )
 
     # Record payment
     order.payment_status = "paid"

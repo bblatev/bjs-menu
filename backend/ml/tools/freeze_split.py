@@ -24,7 +24,7 @@ import random
 import shutil
 import sys
 from collections import defaultdict
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
@@ -173,7 +173,7 @@ def freeze_split(
         # Convert to serializable format
         split_spec = {
             "type": "stratified",
-            "created_at": datetime.now().isoformat(),
+            "created_at": datetime.now(timezone.utc).isoformat(),
             "seed": seed,
             "ratios": {"train": train_ratio, "val": val_ratio, "test": test_ratio},
             "source_dir": str(data_path.absolute()),
@@ -211,7 +211,7 @@ def freeze_split(
 
         split_spec = {
             "type": "random",
-            "created_at": datetime.now().isoformat(),
+            "created_at": datetime.now(timezone.utc).isoformat(),
             "seed": seed,
             "ratios": {"train": train_ratio, "val": val_ratio, "test": test_ratio},
             "source_dir": str(data_path.absolute()),

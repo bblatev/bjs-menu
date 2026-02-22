@@ -1,9 +1,11 @@
 """Invoice and AP Automation models - Toast xtraCHEF style."""
 
 from datetime import datetime, timezone
+from decimal import Decimal
 from enum import Enum
 from typing import Optional, List
-from sqlalchemy import Column, Integer, String, Float, DateTime, Text, Boolean, ForeignKey, Enum as SQLEnum, JSON
+from sqlalchemy import Column, Integer, String, Float, DateTime, Text, Boolean, ForeignKey, Enum as SQLEnum, JSON, Numeric
+from sqlalchemy.sql import func
 from sqlalchemy.orm import relationship
 from app.db.base import Base
 
@@ -39,9 +41,9 @@ class Invoice(Base):
     due_date = Column(DateTime, nullable=True)
 
     # Totals
-    subtotal = Column(Float, default=0.0)
-    tax_amount = Column(Float, default=0.0)
-    total_amount = Column(Float, default=0.0)
+    subtotal = Column(Numeric(10, 2), default=Decimal("0"))
+    tax_amount = Column(Numeric(10, 2), default=Decimal("0"))
+    total_amount = Column(Numeric(10, 2), default=Decimal("0"))
 
     # OCR processing
     capture_method = Column(SQLEnum(InvoiceCaptureMethod), default=InvoiceCaptureMethod.UPLOAD)
@@ -66,8 +68,8 @@ class Invoice(Base):
 
     # Metadata
     notes = Column(Text, nullable=True)
-    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
-    updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
 
     # Relationships
     supplier = relationship("Supplier", backref="invoices")
@@ -91,11 +93,11 @@ class InvoiceLine(Base):
     # Quantities and pricing
     quantity = Column(Float, default=1.0)
     unit_of_measure = Column(String(50), nullable=True)
-    unit_price = Column(Float, default=0.0)
-    line_total = Column(Float, default=0.0)
+    unit_price = Column(Numeric(10, 2), default=Decimal("0"))
+    line_total = Column(Numeric(10, 2), default=Decimal("0"))
 
     # Price tracking
-    previous_price = Column(Float, nullable=True)
+    previous_price = Column(Numeric(10, 2), nullable=True)
     price_change_percent = Column(Float, nullable=True)
     price_alert_triggered = Column(Boolean, default=False)
 
@@ -117,9 +119,9 @@ class PriceHistory(Base):
     product_id = Column(Integer, ForeignKey("products.id"), nullable=False)
     supplier_id = Column(Integer, ForeignKey("suppliers.id"), nullable=False)
 
-    price = Column(Float, nullable=False)
+    price = Column(Numeric(10, 2), nullable=False)
     unit_of_measure = Column(String(50), nullable=True)
-    recorded_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    recorded_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     source_invoice_id = Column(Integer, ForeignKey("invoices.id"), nullable=True)
 
     # Relationships
@@ -139,15 +141,15 @@ class PriceAlert(Base):
     # Alert configuration
     alert_type = Column(String(50), nullable=False)  # price_increase, price_decrease, threshold
     threshold_percent = Column(Float, nullable=True)  # % change to trigger
-    threshold_amount = Column(Float, nullable=True)   # absolute amount
-    max_price = Column(Float, nullable=True)          # alert if price exceeds
+    threshold_amount = Column(Numeric(10, 2), nullable=True)   # absolute amount
+    max_price = Column(Numeric(10, 2), nullable=True)          # alert if price exceeds
 
     # Status
     is_active = Column(Boolean, default=True)
     last_triggered_at = Column(DateTime, nullable=True)
     trigger_count = Column(Integer, default=0)
 
-    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
 
     # Relationships
     product = relationship("Product", backref="price_alerts")
@@ -169,7 +171,7 @@ class GLCode(Base):
     # Auto-assignment rules
     auto_assign_keywords = Column(JSON, nullable=True)  # ["vodka", "whiskey"] -> this GL code
 
-    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
 
 
 class APApprovalWorkflow(Base):
@@ -181,8 +183,8 @@ class APApprovalWorkflow(Base):
     name = Column(String(200), nullable=False)
 
     # Threshold rules
-    min_amount = Column(Float, default=0.0)
-    max_amount = Column(Float, nullable=True)
+    min_amount = Column(Numeric(10, 2), default=Decimal("0"))
+    max_amount = Column(Numeric(10, 2), nullable=True)
 
     # Approvers (user IDs)
     approver_ids = Column(JSON, nullable=True)  # [1, 2, 3]
@@ -190,7 +192,7 @@ class APApprovalWorkflow(Base):
 
     # Auto-approve rules
     auto_approve_known_vendors = Column(Boolean, default=False)
-    auto_approve_below_amount = Column(Float, nullable=True)
+    auto_approve_below_amount = Column(Numeric(10, 2), nullable=True)
 
     is_active = Column(Boolean, default=True)
-    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)

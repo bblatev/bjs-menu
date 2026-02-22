@@ -46,7 +46,7 @@ class TrainingOrder:
     total: float
     payment_method: Optional[str] = None
     status: str = "open"
-    created_at: datetime = field(default_factory=datetime.utcnow)
+    created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
 
 
 class TrainingModeService:

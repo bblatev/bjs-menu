@@ -5,7 +5,7 @@ Implements carbon footprint tracking, waste management, and sustainability metri
 
 from typing import List, Dict, Optional
 from sqlalchemy.orm import Session
-from datetime import datetime
+from datetime import datetime, timezone
 from decimal import Decimal
 import logging
 
@@ -199,7 +199,7 @@ class SustainabilityService:
             'reason': reason,
             'cost': float(cost) if cost else 0,
             'logged_by_staff_id': logged_by_staff_id,
-            'logged_at': datetime.now().isoformat()
+            'logged_at': datetime.now(timezone.utc).isoformat()
         }
         
         logger.info(f"Waste logged: {quantity} {unit} - {reason}")

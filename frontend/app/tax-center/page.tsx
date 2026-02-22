@@ -65,13 +65,13 @@ const STATUS_COLORS = {
 
 export default function TaxCenterPage() {
   const [year, setYear] = useState(2025);
-  const [quarter, setQuarter] = useState<'all' | 'Q1' | 'Q2' | 'Q3' | 'Q4'>('all');
+  const [quarter] = useState<'all' | 'Q1' | 'Q2' | 'Q3' | 'Q4'>('all');
   const [selectedTaxType, setSelectedTaxType] = useState<string>('all');
   const [filings, setFilings] = useState<TaxFiling[]>([]);
   const [categories, setCategories] = useState<TaxCategory[]>([]);
   const [deadlines, setDeadlines] = useState<UpcomingDeadline[]>([]);
   const [documents, setDocuments] = useState<TaxDocument[]>([]);
-  const [showFilingModal, setShowFilingModal] = useState(false);
+  const [, setShowFilingModal] = useState(false);
   const [activeTab, setActiveTab] = useState<'filings' | 'breakdown' | 'documents' | 'calendar'>('filings');
   const [isLoading, setIsLoading] = useState(true);
 
@@ -79,6 +79,7 @@ export default function TaxCenterPage() {
     setIsLoading(true);
     try {
       const response = await fetch(`${API_URL}/tax/filings?year=${year}`, {
+        credentials: 'include',
         headers: getAuthHeaders(),
       });
 

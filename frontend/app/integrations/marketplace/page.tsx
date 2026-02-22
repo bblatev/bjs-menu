@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import Link from 'next/link';
 import { API_URL, getAuthHeaders } from '@/lib/api';
 
 import { toast } from '@/lib/toast';
@@ -62,6 +61,7 @@ export default function IntegrationMarketplacePage() {
     try {
       // Load all integrations
       const integrationsRes = await fetch(`${API_URL}/enterprise/integrations/marketplace`, {
+        credentials: 'include',
         headers: getAuthHeaders()
       });
       if (integrationsRes.ok) {
@@ -74,6 +74,7 @@ export default function IntegrationMarketplacePage() {
 
       // Load connected integrations
       const connectedRes = await fetch(`${API_URL}/enterprise/integrations/connected`, {
+        credentials: 'include',
         headers: getAuthHeaders()
       });
       if (connectedRes.ok) {
@@ -107,6 +108,7 @@ export default function IntegrationMarketplacePage() {
     setConnecting(true);
     try {
       const response = await fetch(`${API_URL}/enterprise/integrations/${integration.id}/connect`, {
+        credentials: 'include',
         method: 'POST',
         headers: getAuthHeaders(),
         body: JSON.stringify({ config: {} })
@@ -139,6 +141,7 @@ export default function IntegrationMarketplacePage() {
 
     try {
       await fetch(`${API_URL}/enterprise/integrations/connections/${connectionId}`, {
+        credentials: 'include',
         method: 'DELETE',
         headers: getAuthHeaders()
       });
@@ -265,7 +268,6 @@ export default function IntegrationMarketplacePage() {
       <div className="grid grid-cols-3 gap-4">
         {filteredIntegrations.map((integration, index) => {
           const connected = isConnected(integration.id);
-          const connection = getConnection(integration.id);
 
           return (
             <motion.div

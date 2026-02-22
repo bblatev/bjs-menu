@@ -46,9 +46,9 @@ export default function XeroIntegrationPage() {
     const headers = getAuthHeaders();
     try {
       const [statusRes, logsRes, mappingsRes] = await Promise.all([
-        fetch(`${API_URL}/xero/status`, { headers }),
-        fetch(`${API_URL}/xero/sync-logs`, { headers }),
-        fetch(`${API_URL}/xero/mappings`, { headers }),
+        fetch(`${API_URL}/xero/status`, { credentials: 'include', headers }),
+        fetch(`${API_URL}/xero/sync-logs`, { credentials: 'include', headers }),
+        fetch(`${API_URL}/xero/mappings`, { credentials: 'include', headers }),
       ]);
 
       const status = await statusRes.json();
@@ -79,6 +79,7 @@ export default function XeroIntegrationPage() {
     const headers = getAuthHeaders();
     try {
       const res = await fetch(`${API_URL}/xero/connect`, {
+        credentials: 'include',
         method: 'POST',
         headers,
         body: JSON.stringify({ redirect_uri: `${window.location.origin}/integrations/xero/callback` }),
@@ -97,6 +98,7 @@ export default function XeroIntegrationPage() {
     const headers = getAuthHeaders();
     try {
       await fetch(`${API_URL}/xero/disconnect`, {
+        credentials: 'include',
         method: 'POST',
         headers,
         body: JSON.stringify({ confirm: true }),
@@ -114,6 +116,7 @@ export default function XeroIntegrationPage() {
     const headers = getAuthHeaders();
     try {
       const res = await fetch(`${API_URL}/xero/sync`, {
+        credentials: 'include',
         method: 'POST',
         headers,
         body: JSON.stringify({ sync_type: syncType.toLowerCase() }),
@@ -133,6 +136,7 @@ export default function XeroIntegrationPage() {
     const headers = getAuthHeaders();
     try {
       await fetch(`${API_URL}/xero/settings`, {
+        credentials: 'include',
         method: 'PUT',
         headers,
         body: JSON.stringify(settings),

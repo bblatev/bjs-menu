@@ -24,6 +24,50 @@ class OrderInventorySyncService:
     def __init__(self, db: Session):
         self.db = db
 
+    def _prefetch_order_data(self, order_items: List, venue_id: int) -> Dict[str, Any]:
+        """
+        Batch-load all MenuItem, Recipe, RecipeIngredient, and StockItem
+        records needed for order processing, avoiding N+1 queries.
+        """
+        menu_item_ids = [oi.menu_item_id for oi in order_items]
+
+        # Batch-load menu items
+        menu_items_list = self.db.query(MenuItem).filter(
+            MenuItem.id.in_(menu_item_ids)
+        ).all()
+        menu_items_map = {mi.id: mi for mi in menu_items_list}
+
+        # Batch-load active recipes for these menu items
+        recipes_list = self.db.query(Recipe).filter(
+            Recipe.menu_item_id.in_(menu_item_ids),
+            Recipe.is_active == True
+        ).all()
+        recipes_map = {r.menu_item_id: r for r in recipes_list}
+
+        # Batch-load recipe ingredients for all recipes
+        recipe_ids = [r.id for r in recipes_list]
+        ingredients_list = self.db.query(RecipeIngredient).filter(
+            RecipeIngredient.recipe_id.in_(recipe_ids)
+        ).all() if recipe_ids else []
+        ingredients_map: Dict[int, List] = {}
+        for ing in ingredients_list:
+            ingredients_map.setdefault(ing.recipe_id, []).append(ing)
+
+        # Batch-load stock items for this venue
+        stock_item_ids = [ing.stock_item_id for ing in ingredients_list]
+        stock_items_list = self.db.query(StockItem).filter(
+            StockItem.id.in_(stock_item_ids),
+            StockItem.venue_id == venue_id
+        ).all() if stock_item_ids else []
+        stock_items_map = {si.id: si for si in stock_items_list}
+
+        return {
+            "menu_items": menu_items_map,
+            "recipes": recipes_map,
+            "ingredients": ingredients_map,
+            "stock_items": stock_items_map,
+        }
+
     def deduct_order_stock(self, order_id: int) -> Dict[str, Any]:
         """
         Deduct stock for all items in an order based on recipes.
@@ -48,13 +92,17 @@ class OrderInventorySyncService:
 
         order_items = self.db.query(OrderItem).filter(OrderItem.order_id == order_id).all()
 
+        # Batch-load all related records to avoid N+1 queries
+        prefetched = self._prefetch_order_data(order_items, order.venue_id)
+
         for order_item in order_items:
             try:
                 deduction_result = self._deduct_item_stock(
                     order_item.menu_item_id,
                     order_item.quantity,
                     order.venue_id,
-                    order_id
+                    order_id,
+                    prefetched
                 )
                 results["items_processed"] += 1
                 results["stock_deductions"].extend(deduction_result.get("deductions", []))
@@ -75,23 +123,22 @@ class OrderInventorySyncService:
         menu_item_id: int,
         quantity: int,
         venue_id: int,
-        order_id: int
+        order_id: int,
+        prefetched: Dict[str, Any]
     ) -> Dict[str, Any]:
         """
         Deduct stock for a single menu item based on its recipe.
+        Uses prefetched data to avoid individual queries.
         """
         result = {"deductions": [], "warnings": []}
 
-        # Get menu item
-        menu_item = self.db.query(MenuItem).filter(MenuItem.id == menu_item_id).first()
+        # Look up menu item from prefetched data
+        menu_item = prefetched["menu_items"].get(menu_item_id)
         if not menu_item:
             return result
 
-        # Get recipe for this menu item
-        recipe = self.db.query(Recipe).filter(
-            Recipe.menu_item_id == menu_item_id,
-            Recipe.is_active == True
-        ).first()
+        # Look up recipe from prefetched data
+        recipe = prefetched["recipes"].get(menu_item_id)
 
         if not recipe:
             # No recipe - can't deduct stock
@@ -101,20 +148,15 @@ class OrderInventorySyncService:
             })
             return result
 
-        # Get recipe ingredients
-        ingredients = self.db.query(RecipeIngredient).filter(
-            RecipeIngredient.recipe_id == recipe.id
-        ).all()
+        # Look up recipe ingredients from prefetched data
+        ingredients = prefetched["ingredients"].get(recipe.id, [])
 
         for ingredient in ingredients:
             # Calculate total quantity needed
             qty_needed = float(ingredient.quantity) * quantity
 
-            # Get stock item
-            stock_item = self.db.query(StockItem).filter(
-                StockItem.id == ingredient.stock_item_id,
-                StockItem.venue_id == venue_id
-            ).first()
+            # Look up stock item from prefetched data
+            stock_item = prefetched["stock_items"].get(ingredient.stock_item_id)
 
             if not stock_item:
                 result["warnings"].append({
@@ -174,10 +216,15 @@ class OrderInventorySyncService:
             "reversals": []
         }
 
+        # Batch-load all stock items referenced by movements
+        stock_item_ids = [m.stock_item_id for m in movements]
+        stock_items_list = self.db.query(StockItem).filter(
+            StockItem.id.in_(stock_item_ids)
+        ).all() if stock_item_ids else []
+        stock_items_map = {si.id: si for si in stock_items_list}
+
         for movement in movements:
-            stock_item = self.db.query(StockItem).filter(
-                StockItem.id == movement.stock_item_id
-            ).first()
+            stock_item = stock_items_map.get(movement.stock_item_id)
 
             if stock_item:
                 # Add back the quantity (movement.quantity is negative)
@@ -236,13 +283,18 @@ class OrderInventorySyncService:
             RecipeIngredient.recipe_id == recipe.id
         ).all()
 
+        # Batch-load all stock items for this venue referenced by ingredients
+        stock_item_ids = [ing.stock_item_id for ing in ingredients]
+        stock_items_list = self.db.query(StockItem).filter(
+            StockItem.id.in_(stock_item_ids),
+            StockItem.venue_id == venue_id
+        ).all() if stock_item_ids else []
+        stock_items_map = {si.id: si for si in stock_items_list}
+
         for ingredient in ingredients:
             qty_needed = float(ingredient.quantity) * quantity
 
-            stock_item = self.db.query(StockItem).filter(
-                StockItem.id == ingredient.stock_item_id,
-                StockItem.venue_id == venue_id
-            ).first()
+            stock_item = stock_items_map.get(ingredient.stock_item_id)
 
             if not stock_item or float(stock_item.current_quantity or 0) < qty_needed:
                 result["available"] = False

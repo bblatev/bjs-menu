@@ -74,8 +74,8 @@ export default function RecipeCostsPage() {
 
       try {
         const [recipesRes, statsRes] = await Promise.all([
-          fetch(`${API_URL}/recipes/costs`, { headers }),
-          fetch(`${API_URL}/recipes/costs/stats`, { headers })
+          fetch(`${API_URL}/recipes/costs`, { credentials: 'include', headers }),
+          fetch(`${API_URL}/recipes/costs/stats`, { credentials: 'include', headers })
         ]);
 
         if (recipesRes.ok && statsRes.ok) {
@@ -342,7 +342,7 @@ export default function RecipeCostsPage() {
   const exportReport = async () => {
     try {
       const headers = getAuthHeaders();
-      const response = await fetch(`${API_URL}/recipes/export`, { headers });
+      const response = await fetch(`${API_URL}/recipes/export`, { credentials: 'include', headers });
 
       if (response.ok) {
         const csvText = await response.text();
@@ -386,6 +386,7 @@ export default function RecipeCostsPage() {
 
       const token = localStorage.getItem('access_token');
       const response = await fetch(`${API_URL}/recipes/import`, {
+        credentials: 'include',
         method: 'POST',
         headers: { Authorization: `Bearer ${token}` },
         body: formData,

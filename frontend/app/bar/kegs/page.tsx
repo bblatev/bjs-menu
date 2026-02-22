@@ -33,7 +33,6 @@ export default function KegsPage() {
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [showTapModal, setShowTapModal] = useState(false);
-  const [selectedKeg, setSelectedKeg] = useState<string | null>(null);
   const [filterStatus, setFilterStatus] = useState("all");
 
   const [form, setForm] = useState({
@@ -59,7 +58,7 @@ export default function KegsPage() {
       let url = `${API_URL}/inventory-hardware/kegs`;
       if (filterStatus !== "all") url += `?status=${filterStatus}`;
 
-      const res = await fetch(url, { headers: getAuthHeaders() });
+      const res = await fetch(url, { credentials: 'include', headers: getAuthHeaders() });
       const data = await res.json();
       setKegs(data.kegs || []);
       setSummary(data.summary || { full: 0, tapped: 0, low: 0, empty: 0 });
@@ -74,6 +73,7 @@ export default function KegsPage() {
     e.preventDefault();
     try {
       const res = await fetch(`${API_URL}/inventory-hardware/kegs`, {
+        credentials: 'include',
         method: "POST",
         headers: getAuthHeaders(),
         body: JSON.stringify(form),
@@ -93,6 +93,7 @@ export default function KegsPage() {
     e.preventDefault();
     try {
       const res = await fetch(`${API_URL}/inventory-hardware/kegs/tap`, {
+        credentials: 'include',
         method: "POST",
         headers: getAuthHeaders(),
         body: JSON.stringify(tapForm),

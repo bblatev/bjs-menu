@@ -131,6 +131,7 @@ export default function MenuCategoriesPage() {
     try {
       const token = localStorage.getItem('access_token');
       const response = await fetch(`${API_URL}/menu-admin/categories`, {
+        credentials: 'include',
         headers: {
           'Authorization': `Bearer ${token}`,
         },
@@ -178,6 +179,7 @@ export default function MenuCategoriesPage() {
         : `${API_URL}/menu-admin/categories`;
 
       const response = await fetch(url, {
+        credentials: 'include',
         method: editingCategory ? 'PUT' : 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -211,6 +213,7 @@ export default function MenuCategoriesPage() {
     try {
       const token = localStorage.getItem('access_token');
       const response = await fetch(`${API_URL}/menu-admin/categories/${id}`, {
+        credentials: 'include',
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -281,6 +284,7 @@ export default function MenuCategoriesPage() {
     try {
       const token = localStorage.getItem('access_token');
       const response = await fetch(`${API_URL}/menu-admin/categories/${id}/toggle-active`, {
+        credentials: 'include',
         method: 'PATCH',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -332,6 +336,7 @@ export default function MenuCategoriesPage() {
       }));
 
       await fetch(`${API_URL}/menu-admin/categories/reorder`, {
+        credentials: 'include',
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',

@@ -23,10 +23,7 @@ export class ErrorBoundary extends Component<Props, State> {
   }
 
   componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
-    // You can log error to an error reporting service here
-    if (process.env.NODE_ENV === 'development') {
-      // Only log in development
-    }
+    console.error('Uncaught error:', error, errorInfo);
   }
 
   render() {

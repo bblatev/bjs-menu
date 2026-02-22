@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
+import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 import { API_URL } from '@/lib/api';
 
@@ -110,6 +111,7 @@ export default function StockPage() {
       const response = await fetch(
         `${API_URL}/stock/categories`,
         {
+          credentials: 'include',
           headers: { Authorization: `Bearer ${token}` },
         }
       );
@@ -139,6 +141,7 @@ export default function StockPage() {
       if (params.toString()) url += `?${params.toString()}`;
 
       const response = await fetch(url, {
+        credentials: 'include',
         headers: { Authorization: `Bearer ${token}` },
       });
 
@@ -168,6 +171,7 @@ export default function StockPage() {
       const response = await fetch(
         `${API_URL}/stock/movements/`,
         {
+          credentials: 'include',
           headers: { Authorization: `Bearer ${token}` },
         }
       );
@@ -199,6 +203,7 @@ export default function StockPage() {
       const response = await fetch(
         `${API_URL}/suppliers/`,
         {
+          credentials: 'include',
           headers: { Authorization: `Bearer ${token}` },
         }
       );
@@ -228,6 +233,7 @@ export default function StockPage() {
       const response = await fetch(
         `${API_URL}/stock/alerts/`,
         {
+          credentials: 'include',
           headers: { Authorization: `Bearer ${token}` },
         }
       );
@@ -268,6 +274,7 @@ export default function StockPage() {
       const response = await fetch(
         `${API_URL}/stock/?${params.toString()}`,
         {
+          credentials: 'include',
           method: "POST",
           headers: {
             Authorization: `Bearer ${token}`,
@@ -308,6 +315,7 @@ export default function StockPage() {
       const response = await fetch(
         `${API_URL}/stock/movements/?${params.toString()}`,
         {
+          credentials: 'include',
           method: "POST",
           headers: {
             Authorization: `Bearer ${token}`,
@@ -342,27 +350,6 @@ export default function StockPage() {
     reader.readAsText(file);
   };
 
-  const parseCSV = (csv: string): any[] => {
-    const lines = csv.trim().split("\n");
-    if (lines.length < 2) return [];
-
-    const headers = lines[0].split(",").map(h => h.trim().toLowerCase());
-    const items = [];
-
-    for (let i = 1; i < lines.length; i++) {
-      const values = lines[i].split(",").map(v => v.trim());
-      const item: any = {};
-
-      headers.forEach((header, idx) => {
-        item[header] = values[idx];
-      });
-
-      items.push(item);
-    }
-
-    return items;
-  };
-
   const handleImport = async () => {
     const token = localStorage.getItem("access_token");
 
@@ -381,6 +368,7 @@ export default function StockPage() {
       const response = await fetch(
         `${API_URL}/stock/import`,
         {
+          credentials: 'include',
           method: "POST",
           headers: {
             Authorization: `Bearer ${token}`,
@@ -409,6 +397,7 @@ export default function StockPage() {
       const response = await fetch(
         `${API_URL}/stock/export`,
         {
+          credentials: 'include',
           headers: { Authorization: `Bearer ${token}` },
         }
       );
@@ -510,12 +499,12 @@ export default function StockPage() {
             <p className="text-gray-500 mt-1">Track inventory, movements, and suppliers</p>
           </div>
           <div className="flex gap-3">
-            <button
-              onClick={() => window.location.href = '/stock/features'}
+            <Link
+              href="/stock/features"
               className="px-4 py-2 bg-gradient-to-r from-purple-600 to-purple-700 text-white rounded-xl hover:from-purple-700 hover:to-purple-800 transition-colors flex items-center gap-2 shadow-sm"
             >
               <span>All Features</span>
-            </button>
+            </Link>
             <button
               onClick={() => setShowImportModal(true)}
               className="px-4 py-2 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors shadow-sm"
@@ -539,66 +528,66 @@ export default function StockPage() {
 
         {/* Advanced Features Quick Links */}
         <div className="grid grid-cols-4 md:grid-cols-8 gap-2 mb-4">
-          <button onClick={() => window.location.href = '/stock/features'} className="bg-purple-50 hover:bg-purple-100 border border-purple-200 rounded-xl p-2 text-center transition-colors">
+          <Link href="/stock/features" className="bg-purple-50 hover:bg-purple-100 border border-purple-200 rounded-xl p-2 text-center transition-colors">
             <span className="text-xl">📊</span>
             <p className="text-purple-700 text-xs mt-1">Barcodes</p>
-          </button>
-          <button onClick={() => window.location.href = '/stock/features'} className="bg-purple-50 hover:bg-purple-100 border border-purple-200 rounded-xl p-2 text-center transition-colors">
+          </Link>
+          <Link href="/stock/features" className="bg-purple-50 hover:bg-purple-100 border border-purple-200 rounded-xl p-2 text-center transition-colors">
             <span className="text-xl">🔄</span>
             <p className="text-purple-700 text-xs mt-1">Auto-Reorder</p>
-          </button>
-          <button onClick={() => window.location.href = '/stock/features'} className="bg-purple-50 hover:bg-purple-100 border border-purple-200 rounded-xl p-2 text-center transition-colors">
+          </Link>
+          <Link href="/stock/features" className="bg-purple-50 hover:bg-purple-100 border border-purple-200 rounded-xl p-2 text-center transition-colors">
             <span className="text-xl">📦</span>
             <p className="text-purple-700 text-xs mt-1">FIFO/FEFO</p>
-          </button>
-          <button onClick={() => window.location.href = '/stock/features'} className="bg-purple-50 hover:bg-purple-100 border border-purple-200 rounded-xl p-2 text-center transition-colors">
+          </Link>
+          <Link href="/stock/features" className="bg-purple-50 hover:bg-purple-100 border border-purple-200 rounded-xl p-2 text-center transition-colors">
             <span className="text-xl">📉</span>
             <p className="text-purple-700 text-xs mt-1">Shrinkage</p>
-          </button>
-          <button onClick={() => window.location.href = '/stock/counts'} className="bg-purple-50 hover:bg-purple-100 border border-purple-200 rounded-xl p-2 text-center transition-colors">
+          </Link>
+          <Link href="/stock/counts" className="bg-purple-50 hover:bg-purple-100 border border-purple-200 rounded-xl p-2 text-center transition-colors">
             <span className="text-xl">📋</span>
             <p className="text-purple-700 text-xs mt-1">Counts</p>
-          </button>
-          <button onClick={() => window.location.href = '/stock/features'} className="bg-purple-50 hover:bg-purple-100 border border-purple-200 rounded-xl p-2 text-center transition-colors">
+          </Link>
+          <Link href="/stock/features" className="bg-purple-50 hover:bg-purple-100 border border-purple-200 rounded-xl p-2 text-center transition-colors">
             <span className="text-xl">✅</span>
             <p className="text-purple-700 text-xs mt-1">Reconcile</p>
-          </button>
-          <button onClick={() => window.location.href = '/stock/transfers'} className="bg-purple-50 hover:bg-purple-100 border border-purple-200 rounded-xl p-2 text-center transition-colors">
+          </Link>
+          <Link href="/stock/transfers" className="bg-purple-50 hover:bg-purple-100 border border-purple-200 rounded-xl p-2 text-center transition-colors">
             <span className="text-xl">🚚</span>
             <p className="text-purple-700 text-xs mt-1">Transfers</p>
-          </button>
-          <button onClick={() => window.location.href = '/stock/waste'} className="bg-purple-50 hover:bg-purple-100 border border-purple-200 rounded-xl p-2 text-center transition-colors">
+          </Link>
+          <Link href="/stock/waste" className="bg-purple-50 hover:bg-purple-100 border border-purple-200 rounded-xl p-2 text-center transition-colors">
             <span className="text-xl">🗑️</span>
             <p className="text-purple-700 text-xs mt-1">Waste</p>
-          </button>
+          </Link>
         </div>
 
         {/* Advanced Analytics Quick Links */}
         <div className="grid grid-cols-3 md:grid-cols-6 gap-2 mb-6">
-          <button onClick={() => window.location.href = '/stock/par-levels'} className="bg-green-50 hover:bg-green-100 border border-green-200 rounded-xl p-3 text-center transition-colors">
+          <Link href="/stock/par-levels" className="bg-green-50 hover:bg-green-100 border border-green-200 rounded-xl p-3 text-center transition-colors">
             <span className="text-xl">📏</span>
             <p className="text-green-700 text-xs mt-1 font-medium">Par Levels</p>
-          </button>
-          <button onClick={() => window.location.href = '/stock/variance'} className="bg-red-50 hover:bg-red-100 border border-red-200 rounded-xl p-3 text-center transition-colors">
+          </Link>
+          <Link href="/stock/variance" className="bg-red-50 hover:bg-red-100 border border-red-200 rounded-xl p-3 text-center transition-colors">
             <span className="text-xl">🔍</span>
             <p className="text-red-700 text-xs mt-1 font-medium">Variance</p>
-          </button>
-          <button onClick={() => window.location.href = '/stock/aging'} className="bg-orange-50 hover:bg-orange-100 border border-orange-200 rounded-xl p-3 text-center transition-colors">
+          </Link>
+          <Link href="/stock/aging" className="bg-orange-50 hover:bg-orange-100 border border-orange-200 rounded-xl p-3 text-center transition-colors">
             <span className="text-xl">⏳</span>
             <p className="text-orange-700 text-xs mt-1 font-medium">Aging</p>
-          </button>
-          <button onClick={() => window.location.href = '/stock/forecasting'} className="bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded-xl p-3 text-center transition-colors">
+          </Link>
+          <Link href="/stock/forecasting" className="bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded-xl p-3 text-center transition-colors">
             <span className="text-xl">🔮</span>
             <p className="text-blue-700 text-xs mt-1 font-medium">Forecasting</p>
-          </button>
-          <button onClick={() => window.location.href = '/stock/supplier-performance'} className="bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 rounded-xl p-3 text-center transition-colors">
+          </Link>
+          <Link href="/stock/supplier-performance" className="bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 rounded-xl p-3 text-center transition-colors">
             <span className="text-xl">🏭</span>
             <p className="text-indigo-700 text-xs mt-1 font-medium">Suppliers</p>
-          </button>
-          <button onClick={() => window.location.href = '/stock/recipe-costs'} className="bg-yellow-50 hover:bg-yellow-100 border border-yellow-200 rounded-xl p-3 text-center transition-colors">
+          </Link>
+          <Link href="/stock/recipe-costs" className="bg-yellow-50 hover:bg-yellow-100 border border-yellow-200 rounded-xl p-3 text-center transition-colors">
             <span className="text-xl">🍳</span>
             <p className="text-yellow-700 text-xs mt-1 font-medium">Recipes</p>
-          </button>
+          </Link>
         </div>
 
         {/* Stats Cards */}

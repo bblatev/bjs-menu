@@ -51,7 +51,7 @@ class OccasionRewardRule:
     message_template: str = ""
     is_active: bool = True
     venue_id: Optional[int] = None
-    created_at: datetime = field(default_factory=datetime.utcnow)
+    created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
 
 
 @dataclass
@@ -78,7 +78,7 @@ class IssuedReward:
     status: RewardStatus = RewardStatus.PENDING
     valid_from: date = field(default_factory=date.today)
     valid_until: date = field(default_factory=date.today)
-    issued_at: datetime = field(default_factory=datetime.utcnow)
+    issued_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
     claimed_at: Optional[datetime] = None
     order_id: Optional[str] = None
 

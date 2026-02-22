@@ -15,61 +15,62 @@ from decimal import Decimal
 from app.core.rbac import get_current_user
 
 # Import V9 Services
-from app.services.v9_features.advanced_operations_service import (
-    PermissionOverrideService,
-    TerminalHealthService,
-    SafeModeService,
-    CashVarianceService,
-    SessionTimeoutService
+from app.services.advanced_operations_service import (
+    AdvancedOperationsService as PermissionOverrideService,
 )
-from app.services.v9_features.advanced_kitchen_service import (
-    ProductionForecastService,
-    StationLoadBalancingService,
-    CourseFireService,
-    KitchenPerformanceService
+# Alias the unified class for all granular usages
+TerminalHealthService = PermissionOverrideService
+SafeModeService = PermissionOverrideService
+CashVarianceService = PermissionOverrideService
+SessionTimeoutService = PermissionOverrideService
+from app.services.advanced_kitchen_service import (
+    AdvancedKitchenService as ProductionForecastService,
 )
-from app.services.v9_features.advanced_supply_chain_service import (
-    AutoPurchaseOrderService,
-    SupplierLeadTimeService,
-    InventoryCostingService,
-    CrossStoreBalancingService
+StationLoadBalancingService = ProductionForecastService
+CourseFireService = ProductionForecastService
+KitchenPerformanceService = ProductionForecastService
+from app.services.advanced_supply_chain_service import (
+    AdvancedSupplyChainService as AutoPurchaseOrderService,
 )
-from app.services.v9_features.financial_controls_service import (
-    PrimeCostService,
-    AbuseDetectionService
+SupplierLeadTimeService = AutoPurchaseOrderService
+InventoryCostingService = AutoPurchaseOrderService
+CrossStoreBalancingService = AutoPurchaseOrderService
+from app.services.financial_controls_service import (
+    FinancialControlsService as PrimeCostService,
 )
-from app.services.v9_features.advanced_crm_service import (
-    GuestPreferencesService,
-    CustomerLifetimeValueService,
-    CustomerSegmentationService,
-    VIPManagementService,
-    PersonalizationService
+AbuseDetectionService = PrimeCostService
+from app.services.advanced_crm_service import (
+    AdvancedCRMService as GuestPreferencesService,
 )
-from app.services.v9_features.iot_service import (
-    IoTDeviceService,
-    TemperatureMonitoringService,
-    PourMeterService,
-    ScaleService
+CustomerLifetimeValueService = GuestPreferencesService
+CustomerSegmentationService = GuestPreferencesService
+VIPManagementService = GuestPreferencesService
+PersonalizationService = GuestPreferencesService
+from app.services.iot_service import (
+    IoTService as IoTDeviceService,
 )
-from app.services.v9_features.compliance_service import (
-    ImmutableAuditService,
-    FiscalArchiveService,
-    NRAExportService,
-    AgeVerificationService
+TemperatureMonitoringService = IoTDeviceService
+PourMeterService = IoTDeviceService
+ScaleService = IoTDeviceService
+from app.services.compliance_service import (
+    ComplianceService as ImmutableAuditService,
 )
-from app.services.v9_features.ai_automation_service import (
-    AIModelService,
-    PredictionService,
-    AutomationRuleService,
-    MenuOptimizationService,
-    StaffingRecommendationService
+FiscalArchiveService = ImmutableAuditService
+NRAExportService = ImmutableAuditService
+AgeVerificationService = ImmutableAuditService
+from app.services.ai_automation_service import (
+    AIAutomationService as AIModelService,
 )
-from app.services.v9_features.legal_training_crisis_service import (
+PredictionService = AIModelService
+AutomationRuleService = AIModelService
+MenuOptimizationService = AIModelService
+StaffingRecommendationService = AIModelService
+from app.services.legal_training_crisis_service import (
     LegalRiskService,
     TrainingService,
     CrisisManagementService
 )
-from app.services.v9_features.platform_qr_service import (
+from app.services.platform_qr_service import (
     PlatformService,
     QRSelfServiceService
 )
@@ -566,7 +567,7 @@ async def check_course_fire(
 @limiter.limit("60/minute")
 async def get_kitchen_performance(
     request: Request,
-    start_date: datetime = Query(default_factory=lambda: datetime.now() - timedelta(days=7)),
+    start_date: datetime = Query(default_factory=lambda: datetime.now(timezone.utc) - timedelta(days=7)),
     end_date: datetime = Query(default_factory=datetime.now),
     db: Session = Depends(get_db),
     current_user: dict = Depends(get_current_user)
@@ -1532,7 +1533,7 @@ async def process_data_deletion_request(
     if not venue_id:
         raise HTTPException(status_code=400, detail="User has no venue assigned")
     requested_by = current_user.id
-    from app.services.v9_features.compliance_service import ComplianceService
+    from app.services.compliance_service import ComplianceService
     return ComplianceService.process_data_deletion_request(db, venue_id, customer_id, requested_by, reason)
 
 
@@ -1548,7 +1549,7 @@ async def generate_gdpr_data_export(
     venue_id = current_user.venue_id
     if not venue_id:
         raise HTTPException(status_code=400, detail="User has no venue assigned")
-    from app.services.v9_features.compliance_service import ComplianceService
+    from app.services.compliance_service import ComplianceService
     return ComplianceService.generate_data_export(db, venue_id, customer_id)
 
 
@@ -2314,3 +2315,244 @@ async def submit_kiosk_order(
     if not venue_id:
         raise HTTPException(status_code=400, detail="User has no venue assigned")
     return QRSelfServiceService.submit_kiosk_order(db, venue_id, items, payment_method, guest_name, special_instructions)
+
+
+# ============================================================================
+# MERGED FROM v9_endpoints_part2.py (unique endpoints and helpers only)
+# ============================================================================
+
+
+# ==================== CRM - SEGMENT CUSTOMERS ====================
+
+@router.get("/crm/segments/{segment}/customers", response_model=List[Dict[str, Any]], tags=["V9 - CRM"])
+@limiter.limit("60/minute")
+async def get_segment_customers(
+    request: Request,
+    segment: str,
+    venue_id: int = Query(1, description="Venue/location ID"),
+    limit: int = 100,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user)
+):
+    """Get customers in a specific segment"""
+    from app.models.advanced_features_v9 import CustomerLifetimeValue
+
+    customers = db.query(CustomerLifetimeValue).filter(
+        CustomerLifetimeValue.venue_id == venue_id,
+        CustomerLifetimeValue.segment == segment
+    ).limit(limit).all()
+
+    return [{
+        "guest_id": c.guest_id,
+        "segment": c.segment,
+        "lifetime_value": float(c.lifetime_value) if c.lifetime_value else 0,
+        "visit_count": c.visit_count,
+        "average_order_value": float(c.average_order_value) if c.average_order_value else 0,
+        "churn_risk_score": float(c.churn_risk_score) if c.churn_risk_score else 0,
+        "last_visit_date": c.last_visit_date.isoformat() if c.last_visit_date else None
+    } for c in customers]
+
+
+# ==================== BACKGROUND TASK HELPERS (from part2) ====================
+
+async def send_temperature_alert(result: dict):
+    """Send temperature alert notification for HACCP compliance"""
+    import logging
+    logger = logging.getLogger(__name__)
+
+    device_id = result.get("device_id", "unknown")
+    temperature = result.get("temperature")
+    status = result.get("status", "unknown")
+    zone = result.get("zone", "unknown")
+
+    # Log the temperature alert
+    if status == "critical":
+        logger.critical(
+            f"HACCP CRITICAL: Temperature violation in {zone}! "
+            f"Device {device_id}: {temperature}°C - Immediate action required"
+        )
+    elif status == "warning":
+        logger.warning(
+            f"HACCP WARNING: Temperature approaching limits in {zone}. "
+            f"Device {device_id}: {temperature}°C"
+        )
+    else:
+        logger.info(
+            f"Temperature reading: Device {device_id} in {zone}: {temperature}°C - {status}"
+        )
+
+    # In production, this would:
+    # 1. Store alert in TemperatureLog for audit trail
+    # 2. Send push notification to kitchen manager
+    # 3. Create incident report if critical
+    # 4. Log to HACCP compliance system
+
+
+async def generate_nra_file(export_id: int):
+    """Generate NRA export file in background for Bulgarian tax compliance"""
+    import logging
+    import xml.etree.ElementTree as ET
+    from datetime import datetime
+    import os
+    import hashlib
+
+    logger = logging.getLogger(__name__)
+
+    logger.info(f"Starting NRA export file generation for export_id: {export_id}")
+
+    try:
+        from app.db.session import SessionLocal, get_db
+        from app.models import Order, OrderItem, Venue
+        from app.models.advanced_features_v9 import NRAExportLog
+
+        db = SessionLocal()
+
+        try:
+            # Get export record
+            export_record = db.query(NRAExportLog).filter(NRAExportLog.id == export_id).first()
+            if not export_record:
+                raise ValueError(f"Export record {export_id} not found")
+
+            venue = db.query(Venue).filter(Venue.id == export_record.venue_id).first()
+            if not venue:
+                raise ValueError(f"Venue {export_record.venue_id} not found")
+
+            venue_name = venue.name
+            venue_vat = None
+            if hasattr(venue, 'tax_id') and venue.tax_id:
+                venue_vat = venue.tax_id
+            elif hasattr(venue, 'vat_number') and venue.vat_number:
+                venue_vat = venue.vat_number
+            elif hasattr(venue, 'eik') and venue.eik:
+                venue_vat = venue.eik
+
+            if not venue_vat:
+                raise ValueError(
+                    f"Venue {venue.name} does not have a tax ID (EIK/BULSTAT) configured. "
+                    "Please configure the venue's tax_id before generating NRA exports."
+                )
+
+            # Query fiscal transactions for the period
+            orders = db.query(Order).filter(
+                Order.created_at >= export_record.period_start,
+                Order.created_at <= export_record.period_end,
+                Order.payment_status == 'paid'
+            ).all()
+
+            # Create NRA XML structure (Bulgarian NRA AUDIT.XML format)
+            root = ET.Element("AUDIT")
+            root.set("xmlns", "http://www.nra.bg/schemas/audit")
+            root.set("version", "2.0")
+
+            # Header section
+            header = ET.SubElement(root, "HEADER")
+            ET.SubElement(header, "EIKPOD").text = venue_vat
+            ET.SubElement(header, "COMPANY_NAME").text = venue_name
+            ET.SubElement(header, "PERIOD_START").text = export_record.period_start.strftime("%Y-%m-%d")
+            ET.SubElement(header, "PERIOD_END").text = export_record.period_end.strftime("%Y-%m-%d")
+            ET.SubElement(header, "EXPORT_DATE").text = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+            ET.SubElement(header, "EXPORT_TIME").text = datetime.now(timezone.utc).strftime("%H:%M:%S")
+
+            # Transactions section
+            transactions = ET.SubElement(root, "TRANSACTIONS")
+
+            # VAT totals
+            vat_totals = {"20": 0.0, "9": 0.0, "0": 0.0}
+            total_amount = 0.0
+            total_vat = 0.0
+
+            for order in orders:
+                transaction = ET.SubElement(transactions, "TRANSACTION")
+
+                # UNP - Unique sale number
+                unp = f"{venue_vat[:9]}-{order.id:010d}-{order.created_at.strftime('%Y%m%d%H%M%S')}"
+                ET.SubElement(transaction, "UNP").text = unp
+
+                # Transaction details
+                ET.SubElement(transaction, "DATE").text = order.created_at.strftime("%Y-%m-%d")
+                ET.SubElement(transaction, "TIME").text = order.created_at.strftime("%H:%M:%S")
+                ET.SubElement(transaction, "ORDER_NUMBER").text = order.order_number or str(order.id)
+                ET.SubElement(transaction, "OPERATOR_CODE").text = str(order.waiter_id or 1)
+
+                # Payment method
+                payment_type = "1" if order.payment_method == "cash" else "2"  # 1=cash, 2=card
+                ET.SubElement(transaction, "PAYMENT_TYPE").text = payment_type
+
+                # Items
+                items_elem = ET.SubElement(transaction, "ITEMS")
+                order_total = 0.0
+
+                order_items = db.query(OrderItem).filter(OrderItem.order_id == order.id).all()
+                for oi in order_items:
+                    item = ET.SubElement(items_elem, "ITEM")
+                    ET.SubElement(item, "NAME").text = str(oi.menu_item_id)
+                    ET.SubElement(item, "QUANTITY").text = str(oi.quantity)
+                    ET.SubElement(item, "UNIT_PRICE").text = f"{oi.unit_price:.2f}"
+                    ET.SubElement(item, "SUBTOTAL").text = f"{oi.subtotal:.2f}"
+
+                    # Standard VAT rate 20% for Bulgaria
+                    vat_rate = "20"
+                    vat_amount = oi.subtotal * 0.20 / 1.20
+                    ET.SubElement(item, "VAT_RATE").text = vat_rate
+                    ET.SubElement(item, "VAT_AMOUNT").text = f"{vat_amount:.2f}"
+
+                    vat_totals[vat_rate] += vat_amount
+                    order_total += oi.subtotal
+
+                # Transaction totals
+                ET.SubElement(transaction, "TOTAL").text = f"{order.total:.2f}"
+                ET.SubElement(transaction, "TIP").text = f"{order.tip_amount:.2f}"
+                total_amount += order.total
+
+            # Summary section
+            summary = ET.SubElement(root, "SUMMARY")
+            ET.SubElement(summary, "TOTAL_TRANSACTIONS").text = str(len(orders))
+            ET.SubElement(summary, "TOTAL_AMOUNT").text = f"{total_amount:.2f}"
+
+            # VAT breakdown
+            vat_summary = ET.SubElement(summary, "VAT_SUMMARY")
+            for rate, amount in vat_totals.items():
+                vat_line = ET.SubElement(vat_summary, "VAT_LINE")
+                ET.SubElement(vat_line, "RATE").text = rate
+                ET.SubElement(vat_line, "AMOUNT").text = f"{amount:.2f}"
+                total_vat += amount
+
+            ET.SubElement(summary, "TOTAL_VAT").text = f"{total_vat:.2f}"
+
+            # Generate XML string
+            xml_string = ET.tostring(root, encoding='unicode', method='xml')
+            xml_content = '<?xml version="1.0" encoding="UTF-8"?>\n' + xml_string
+
+            # Calculate checksum
+            checksum = hashlib.sha256(xml_content.encode('utf-8')).hexdigest()
+
+            # Save file
+            timestamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
+            filename = f"NRA_EXPORT_{export_id}_{timestamp}.xml"
+
+            # Save to exports directory
+            export_dir = os.path.join(os.getcwd(), "exports", "nra")
+            os.makedirs(export_dir, exist_ok=True)
+            file_path = os.path.join(export_dir, filename)
+
+            with open(file_path, 'w', encoding='utf-8') as f:
+                f.write(xml_content)
+
+            # Update export record
+            export_record.file_name = filename
+            export_record.file_path = file_path
+            export_record.file_size_bytes = len(xml_content.encode('utf-8'))
+            export_record.file_checksum = checksum
+            export_record.status = "generated"
+            export_record.generated_at = datetime.now(timezone.utc)
+
+            db.commit()
+
+            logger.info(f"NRA export file generated: {filename} ({len(orders)} transactions, {total_amount:.2f} BGN)")
+
+        finally:
+            db.close()
+
+    except Exception as e:
+        logger.error(f"Failed to generate NRA export {export_id}: {str(e)}")
+        raise

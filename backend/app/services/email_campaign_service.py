@@ -66,8 +66,8 @@ class EmailTemplate:
     preview_text: str = ""
     blocks: List[TemplateBlock] = field(default_factory=list)
     global_styles: Dict[str, str] = field(default_factory=dict)
-    created_at: datetime = field(default_factory=datetime.utcnow)
-    updated_at: datetime = field(default_factory=datetime.utcnow)
+    created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    updated_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
 
 
 @dataclass
@@ -87,7 +87,7 @@ class CustomerSegment:
     rules: List[SegmentRule] = field(default_factory=list)
     rule_logic: str = "AND"  # AND or OR
     customer_count: int = 0
-    created_at: datetime = field(default_factory=datetime.utcnow)
+    created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
 
 
 @dataclass
@@ -113,8 +113,8 @@ class Campaign:
     bounced_count: int = 0
     unsubscribed_count: int = 0
 
-    created_at: datetime = field(default_factory=datetime.utcnow)
-    updated_at: datetime = field(default_factory=datetime.utcnow)
+    created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    updated_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
 
 
 @dataclass

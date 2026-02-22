@@ -300,7 +300,7 @@ class LaborComplianceService:
         alerts = []
 
         # Get current week's date range
-        today = dt.utcnow().date()
+        today = dt.now(timezone.utc).date()
         week_start = today - timedelta(days=today.weekday())
         week_end = week_start + timedelta(days=6)
         start_dt = dt.combine(week_start, dt.min.time())
@@ -486,7 +486,7 @@ class LaborComplianceService:
         from app.models import StaffUser
         from datetime import datetime as dt
 
-        year = year or dt.utcnow().year
+        year = year or dt.now(timezone.utc).year
 
         # Get staff user for their employment/accrual settings
         staff = self.db.query(StaffUser).filter(StaffUser.id == staff_id).first()
@@ -500,7 +500,7 @@ class LaborComplianceService:
         # Calculate vacation accrual based on employment duration
         employment_start = staff.created_at
         if employment_start:
-            months_employed = (dt.utcnow() - employment_start).days // 30
+            months_employed = (dt.now(timezone.utc) - employment_start).days // 30
             # Pro-rate first year
             if months_employed < 12:
                 vacation_accrued = round(20 * (months_employed / 12), 1)

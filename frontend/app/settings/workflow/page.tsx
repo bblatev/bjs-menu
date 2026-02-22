@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { Button, Card, CardBody } from '@/components/ui';
 
-import { API_URL, getAuthHeaders } from '@/lib/api';
+import { API_URL } from '@/lib/api';
 
 import { toast } from '@/lib/toast';
 export default function WorkflowSettingsPage() {
@@ -42,6 +42,7 @@ export default function WorkflowSettingsPage() {
     try {
       const token = localStorage.getItem('access_token');
       const response = await fetch(`${API_URL}/kitchen/workflow/settings`, {
+        credentials: 'include',
         headers: { Authorization: `Bearer ${token}` },
       });
 
@@ -66,6 +67,7 @@ export default function WorkflowSettingsPage() {
     try {
       const token = localStorage.getItem('access_token');
       const response = await fetch(`${API_URL}/kitchen/workflow/settings?default_mode=${settings.defaultWorkflowMode}&confirmation_timeout=${settings.confirmationTimeoutMinutes}`, {
+        credentials: 'include',
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',

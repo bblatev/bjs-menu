@@ -419,10 +419,10 @@ class EDISupplierIntegration(SupplierIntegration):
         """Generate EDI 850 Purchase Order"""
         # Simplified EDI 850 structure
         return f"""
-ISA*00*          *00*          *ZZ*SENDER         *ZZ*{self.supplier_id}*{datetime.now():%y%m%d}*{datetime.now():%H%M}*U*00401*000000001*0*P*>~
-GS*PO*SENDER*{self.supplier_id}*{datetime.now():%Y%m%d}*{datetime.now():%H%M}*1*X*004010~
+ISA*00*          *00*          *ZZ*SENDER         *ZZ*{self.supplier_id}*{datetime.now(timezone.utc):%y%m%d}*{datetime.now(timezone.utc):%H%M}*U*00401*000000001*0*P*>~
+GS*PO*SENDER*{self.supplier_id}*{datetime.now(timezone.utc):%Y%m%d}*{datetime.now(timezone.utc):%H%M}*1*X*004010~
 ST*850*0001~
-BEG*00*SA*{order_data.get('order_id', '1')}**{datetime.now():%Y%m%d}~
+BEG*00*SA*{order_data.get('order_id', '1')}**{datetime.now(timezone.utc):%Y%m%d}~
 N1*BY*BJ'S BAR*92*BJBAR~
 PO1*001*{order_data.get('quantity', 1)}*EA*{order_data.get('price', 0)}**SK*{order_data.get('sku', '')}~
 CTT*1~

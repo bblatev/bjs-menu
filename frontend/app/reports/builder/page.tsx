@@ -3,9 +3,6 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Link from 'next/link';
-import { PageLoading } from '@/components/ui/LoadingSpinner';
-import { ErrorAlert } from '@/components/ui/ErrorAlert';
-
 import { API_URL, getAuthHeaders } from '@/lib/api';
 
 interface DataSource {
@@ -89,13 +86,13 @@ export default function ReportBuilderPage() {
   });
   const [reportResults, setReportResults] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
-  const [initialLoading, setInitialLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [, setInitialLoading] = useState(true);
+  const [, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [savedReports, setSavedReports] = useState<any[]>([]);
   const [showReportList, setShowReportList] = useState(false);
   const [activeTab, setActiveTab] = useState<'columns' | 'filters' | 'grouping' | 'visualization'>('columns');
-  const [draggedColumn, setDraggedColumn] = useState<string | null>(null);
+  const [, setDraggedColumn] = useState<string | null>(null);
 
   useEffect(() => {
     const loadDataSources = async () => {
@@ -103,6 +100,7 @@ export default function ReportBuilderPage() {
       setError(null);
       try {
         const res = await fetch(`${API_URL}/custom-reports/data-sources`, {
+          credentials: 'include',
           headers: getAuthHeaders(),
         });
         if (res.ok) {
@@ -127,6 +125,7 @@ export default function ReportBuilderPage() {
   const loadSavedReports = async () => {
     try {
       const res = await fetch(`${API_URL}/custom-reports/reports`, {
+        credentials: 'include',
         headers: getAuthHeaders(),
       });
       if (res.ok) {
@@ -215,6 +214,7 @@ export default function ReportBuilderPage() {
     setLoading(true);
     try {
       const res = await fetch(`${API_URL}/custom-reports/reports/execute`, {
+        credentials: 'include',
         method: 'POST',
         headers: getAuthHeaders(),
         body: JSON.stringify({
@@ -247,6 +247,7 @@ export default function ReportBuilderPage() {
         : `${API_URL}/custom-reports/reports`;
 
       const res = await fetch(url, {
+        credentials: 'include',
         method,
         headers: getAuthHeaders(),
         body: JSON.stringify(report),

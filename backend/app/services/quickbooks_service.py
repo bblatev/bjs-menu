@@ -41,6 +41,23 @@ class SyncResult:
             self.errors = []
 
 
+def _qb_escape(value: str) -> str:
+    """Escape a string for QuickBooks query language.
+
+    QBO queries use single-quoted strings with '' as the escape for literal quotes.
+    Also strips control characters that could alter query semantics.
+    """
+    import re
+    if not isinstance(value, str):
+        value = str(value)
+    # Truncate to prevent oversized query payloads
+    value = value[:200]
+    # Remove control characters, null bytes, backslashes, and semicolons
+    cleaned = re.sub(r'[\x00-\x1f\x7f\\;]', '', value)
+    # Escape single quotes (QBO standard)
+    return cleaned.replace("'", "''")
+
+
 class QuickBooksService:
     """Service for QuickBooks Online integration."""
 
@@ -272,8 +289,8 @@ class QuickBooksService:
         internal_id: Optional[str] = None,
     ) -> Dict[str, Any]:
         """Create or update a customer in QuickBooks."""
-        # First check if customer exists (use doubled single-quotes per QBO query syntax)
-        safe_name = display_name.replace("'", "''")
+        # First check if customer exists
+        safe_name = _qb_escape(display_name)
         query = f"SELECT * FROM Customer WHERE DisplayName = '{safe_name}'"
         existing = await self._api_request("GET", "/query", params={"query": query})
 
@@ -308,6 +325,8 @@ class QuickBooksService:
 
     async def get_customers(self, limit: int = 100) -> List[Dict[str, Any]]:
         """Get all customers from QuickBooks."""
+        # Validate and clamp limit
+        limit = max(1, min(int(limit), 1000))
         query = f"SELECT * FROM Customer MAXRESULTS {limit}"
         result = await self._api_request("GET", "/query", params={"query": query})
 
@@ -472,8 +491,8 @@ class QuickBooksService:
         company_name: Optional[str] = None,
     ) -> Dict[str, Any]:
         """Create or update a vendor in QuickBooks."""
-        # Check if vendor exists (use doubled single-quotes per QBO query syntax)
-        safe_name = display_name.replace("'", "''")
+        # Check if vendor exists
+        safe_name = _qb_escape(display_name)
         query = f"SELECT * FROM Vendor WHERE DisplayName = '{safe_name}'"
         existing = await self._api_request("GET", "/query", params={"query": query})
 
@@ -568,7 +587,7 @@ class QuickBooksService:
         """Get chart of accounts."""
         query = "SELECT * FROM Account"
         if account_type:
-            safe_type = account_type.replace("'", "\\'")
+            safe_type = _qb_escape(account_type)
             query += f" WHERE AccountType = '{safe_type}'"
         query += " MAXRESULTS 1000"
 
@@ -606,8 +625,8 @@ class QuickBooksService:
         sku: Optional[str] = None,
     ) -> Dict[str, Any]:
         """Create or update an item in QuickBooks."""
-        # Check if item exists (use doubled single-quotes per QBO query syntax)
-        safe_name = name.replace("'", "''")
+        # Check if item exists
+        safe_name = _qb_escape(name)
         query = f"SELECT * FROM Item WHERE Name = '{safe_name}'"
         existing = await self._api_request("GET", "/query", params={"query": query})
 
@@ -647,6 +666,8 @@ class QuickBooksService:
 
     async def get_items(self, limit: int = 1000) -> List[Dict[str, Any]]:
         """Get all items from QuickBooks."""
+        # Validate and clamp limit
+        limit = max(1, min(int(limit), 1000))
         query = f"SELECT * FROM Item MAXRESULTS {limit}"
         result = await self._api_request("GET", "/query", params={"query": query})
 
@@ -762,13 +783,12 @@ def get_quickbooks_service() -> Optional[QuickBooksService]:
     """Get or create the QuickBooks service singleton."""
     global _qbo_service
     if _qbo_service is None:
-        import os
         client_id = settings.qbo_client_id
         client_secret = settings.qbo_client_secret
         redirect_uri = settings.qbo_redirect_uri
 
         if client_id and client_secret:
-            env = QBOEnvironment.PRODUCTION if os.getenv("QBO_PRODUCTION", "false").lower() == "true" else QBOEnvironment.SANDBOX
+            env = QBOEnvironment.PRODUCTION if settings.qbo_production else QBOEnvironment.SANDBOX
             _qbo_service = QuickBooksService(
                 client_id=client_id,
                 client_secret=client_secret,

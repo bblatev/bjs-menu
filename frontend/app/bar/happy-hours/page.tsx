@@ -71,8 +71,8 @@ export default function HappyHoursPage() {
     try {
       // Fetch all data in parallel
       const [happyHoursRes, statsRes] = await Promise.allSettled([
-        fetch(`${API_URL}/bar/happy-hours`, { headers }),
-        fetch(`${API_URL}/bar/happy-hours/stats`, { headers })
+        fetch(`${API_URL}/bar/happy-hours`, { credentials: 'include', headers }),
+        fetch(`${API_URL}/bar/happy-hours/stats`, { credentials: 'include', headers })
       ]);
 
       // Process happy hours

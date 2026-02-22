@@ -287,17 +287,22 @@ class AllergenNutritionService:
             return {"success": False, "error": "Order not found"}
         
         order_items = self.db.query(OrderItem).filter(OrderItem.order_id == order_id).all()
-        
+
+        # Batch-load all menu items for this order to avoid N+1 queries
+        menu_item_ids = [oi.menu_item_id for oi in order_items]
+        menu_items_list = self.db.query(MenuItem).filter(
+            MenuItem.id.in_(menu_item_ids)
+        ).all() if menu_item_ids else []
+        menu_items_map = {mi.id: mi for mi in menu_items_list}
+
         warnings = []
         dangerous_items = []
         caution_items = []
         safe_items = []
-        
+
         for order_item in order_items:
-            menu_item = self.db.query(MenuItem).filter(
-                MenuItem.id == order_item.menu_item_id
-            ).first()
-            
+            menu_item = menu_items_map.get(order_item.menu_item_id)
+
             if not menu_item:
                 continue
             
@@ -503,7 +508,14 @@ class AllergenNutritionService:
             return {"success": False, "error": "Order not found"}
         
         order_items = self.db.query(OrderItem).filter(OrderItem.order_id == order_id).all()
-        
+
+        # Batch-load all menu items for this order to avoid N+1 queries
+        menu_item_ids = [oi.menu_item_id for oi in order_items]
+        menu_items_list = self.db.query(MenuItem).filter(
+            MenuItem.id.in_(menu_item_ids)
+        ).all() if menu_item_ids else []
+        menu_items_map = {mi.id: mi for mi in menu_items_list}
+
         total_nutrition = {
             "calories": 0,
             "protein_g": 0,
@@ -513,14 +525,12 @@ class AllergenNutritionService:
             "sugar_g": 0,
             "sodium_mg": 0
         }
-        
+
         items_nutrition = []
-        
+
         for order_item in order_items:
-            menu_item = self.db.query(MenuItem).filter(
-                MenuItem.id == order_item.menu_item_id
-            ).first()
-            
+            menu_item = menu_items_map.get(order_item.menu_item_id)
+
             if not menu_item:
                 continue
             
@@ -638,8 +648,10 @@ class AllergenNutritionService:
         Returns:
             List of suitable menu items
         """
-        # Get all menu items for venue (simplified query)
-        menu_items = self.db.query(MenuItem).all()
+        # Get menu items filtered by venue
+        menu_items = self.db.query(MenuItem).filter(
+            MenuItem.venue_id == venue_id
+        ).all()
         
         suitable_items = []
         partially_suitable = []

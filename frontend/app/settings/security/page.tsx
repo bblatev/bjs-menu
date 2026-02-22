@@ -2,9 +2,9 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { Button, Input, Card, CardBody, Badge } from '@/components/ui';
+import { Button, Card, CardBody } from '@/components/ui';
 
-import { API_URL, getAuthHeaders } from '@/lib/api';
+import { API_URL } from '@/lib/api';
 
 import { toast } from '@/lib/toast';
 interface UserRole {
@@ -23,7 +23,7 @@ interface AuditLogEntry {
 export default function SettingsSecurityPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [userRoles, setUserRoles] = useState<UserRole[]>([]);
+  const [, setUserRoles] = useState<UserRole[]>([]);
   const [settings, setSettings] = useState({
     authentication: {
       requireStrongPasswords: true,
@@ -113,6 +113,7 @@ export default function SettingsSecurityPage() {
       if (!token) return;
 
       const response = await fetch(`${API_URL}/settings/`, {
+        credentials: 'include',
         headers: { Authorization: `Bearer ${token}` },
       });
 
@@ -135,6 +136,7 @@ export default function SettingsSecurityPage() {
       if (!token) return;
 
       const response = await fetch(`${API_URL}/roles/`, {
+        credentials: 'include',
         headers: { Authorization: `Bearer ${token}` },
       });
 
@@ -154,6 +156,7 @@ export default function SettingsSecurityPage() {
       if (!token) return;
 
       const response = await fetch(`${API_URL}/audit-logs/?limit=10`, {
+        credentials: 'include',
         headers: { Authorization: `Bearer ${token}` },
       });
 
@@ -173,6 +176,7 @@ export default function SettingsSecurityPage() {
     try {
       const token = localStorage.getItem('access_token');
       const response = await fetch(`${API_URL}/settings/`, {
+        credentials: 'include',
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',

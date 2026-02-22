@@ -50,8 +50,8 @@ class OpenTableReservation:
     occasion: Optional[str] = None
     high_chair: int = 0
     table_id: Optional[str] = None
-    created_at: datetime = field(default_factory=datetime.utcnow)
-    updated_at: datetime = field(default_factory=datetime.utcnow)
+    created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    updated_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
     synced_at: Optional[datetime] = None
 
 
@@ -68,7 +68,7 @@ class OpenTableGuest:
     visit_count: int = 0
     no_show_count: int = 0
     vip_status: bool = False
-    created_at: datetime = field(default_factory=datetime.utcnow)
+    created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
 
 
 @dataclass

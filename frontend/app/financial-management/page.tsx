@@ -134,7 +134,7 @@ export default function FinancialManagementPage() {
   // Modal states
   const [showTransactionModal, setShowTransactionModal] = useState(false);
   const [showInvoiceModal, setShowInvoiceModal] = useState(false);
-  const [showVendorModal, setShowVendorModal] = useState(false);
+  const [, setShowVendorModal] = useState(false);
   const [selectedTransaction, setSelectedTransaction] = useState<Transaction | null>(null);
   const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
   const [selectedVendor, setSelectedVendor] = useState<Vendor | null>(null);
@@ -145,7 +145,7 @@ export default function FinancialManagementPage() {
   const [searchTerm, setSearchTerm] = useState('');
 
   const [error, setError] = useState<string | null>(null);
-  const [authError, setAuthError] = useState(false);
+  const [, setAuthError] = useState(false);
   const [isDemoMode, setIsDemoMode] = useState(false);
 
   // Demo data for development/unauthenticated state
@@ -220,32 +220,32 @@ export default function FinancialManagementPage() {
   };
 
   const fetchAccounts = useCallback(async () => {
-    const response = await fetch(`${API_URL}/financial/accounts/`, { headers: getAuthHeaders() });
+    const response = await fetch(`${API_URL}/financial/accounts/`, { credentials: 'include', headers: getAuthHeaders() });
     const data = await handleApiResponse(response, 'Failed to fetch accounts');
     setAccounts(Array.isArray(data) ? data : data.accounts || []);
   }, []);
 
   const fetchTransactions = useCallback(async () => {
-    const response = await fetch(`${API_URL}/financial/transactions/`, { headers: getAuthHeaders() });
+    const response = await fetch(`${API_URL}/financial/transactions/`, { credentials: 'include', headers: getAuthHeaders() });
     const data = await handleApiResponse(response, 'Failed to fetch transactions');
     setTransactions(Array.isArray(data) ? data : data.transactions || []);
   }, []);
 
   const fetchInvoices = useCallback(async () => {
-    const response = await fetch(`${API_URL}/invoices/`, { headers: getAuthHeaders() });
+    const response = await fetch(`${API_URL}/invoices/`, { credentials: 'include', headers: getAuthHeaders() });
     const data = await handleApiResponse(response, 'Failed to fetch invoices');
     setInvoices(Array.isArray(data) ? data : data.items || data.invoices || []);
   }, []);
 
   const fetchVendors = useCallback(async () => {
-    const response = await fetch(`${API_URL}/suppliers/`, { headers: getAuthHeaders() });
+    const response = await fetch(`${API_URL}/suppliers/`, { credentials: 'include', headers: getAuthHeaders() });
     const data = await handleApiResponse(response, 'Failed to fetch vendors');
     setVendors(Array.isArray(data) ? data : data.suppliers || []);
   }, []);
 
   const fetchBudgets = useCallback(async () => {
     try {
-      const response = await fetch(`${API_URL}/financial/budgets/`, { headers: getAuthHeaders() });
+      const response = await fetch(`${API_URL}/financial/budgets/`, { credentials: 'include', headers: getAuthHeaders() });
       if (response.ok) {
         const data = await response.json();
         setBudgets(Array.isArray(data) ? data : data.budgets || []);
@@ -257,7 +257,7 @@ export default function FinancialManagementPage() {
 
   const fetchFinancialAlerts = useCallback(async () => {
     try {
-      const response = await fetch(`${API_URL}/financial/financial-alerts/`, { headers: getAuthHeaders() });
+      const response = await fetch(`${API_URL}/financial/financial-alerts/`, { credentials: 'include', headers: getAuthHeaders() });
       if (response.ok) {
         const data = await response.json();
         setAlerts(Array.isArray(data) ? data : data.alerts || []);
@@ -269,7 +269,7 @@ export default function FinancialManagementPage() {
 
   const fetchTaxConfigs = useCallback(async () => {
     try {
-      const response = await fetch(`${API_URL}/settings/tax/`, { headers: getAuthHeaders() });
+      const response = await fetch(`${API_URL}/settings/tax/`, { credentials: 'include', headers: getAuthHeaders() });
       if (response.ok) {
         const data = await response.json();
         setTaxConfigs(Array.isArray(data) ? data : data.configs || []);

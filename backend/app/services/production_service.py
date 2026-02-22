@@ -6,7 +6,7 @@ Critical for kitchen/bar operations
 
 from typing import List, Dict, Optional
 from decimal import Decimal
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from sqlalchemy.orm import Session
 import logging
 
@@ -277,7 +277,7 @@ class ProductionService:
             if hasattr(recipe, key):
                 setattr(recipe, key, value)
         
-        recipe.updated_at = datetime.now()
+        recipe.updated_at = datetime.now(timezone.utc)
         
         # If ingredients updated, create new version
         if 'ingredients' in updates:
@@ -335,7 +335,7 @@ class ProductionService:
             recipe_id=recipe_id,
             quantity=quantity,
             status='pending',
-            scheduled_for=scheduled_for or datetime.now(),
+            scheduled_for=scheduled_for or datetime.now(timezone.utc),
             actual_cost=expected_cost,
             notes=notes
         )
@@ -378,7 +378,7 @@ class ProductionService:
         
         # Start production
         order.status = 'in_progress'
-        order.started_at = datetime.now()
+        order.started_at = datetime.now(timezone.utc)
         order.produced_by = staff_id
         
         # Deduct ingredients from stock
@@ -414,7 +414,7 @@ class ProductionService:
         
         # Complete order
         order.status = 'completed'
-        order.completed_at = datetime.now()
+        order.completed_at = datetime.now(timezone.utc)
         
         if actual_cost:
             order.actual_cost = actual_cost
@@ -427,7 +427,7 @@ class ProductionService:
             batch_code=batch_code,
             menu_item_id=order.recipe.menu_item_id,
             quantity_produced=actual_quantity_produced,
-            production_date=datetime.now().date(),
+            production_date=datetime.now(timezone.utc).date(),
             expiry_date=self._calculate_expiry_date(order.recipe),
             status='active'
         )
@@ -455,7 +455,7 @@ class ProductionService:
     
     def _generate_batch_code(self, order: ProductionOrder) -> str:
         """Generate unique batch code"""
-        date_part = datetime.now().strftime('%Y%m%d')
+        date_part = datetime.now(timezone.utc).strftime('%Y%m%d')
         recipe_id = str(order.recipe_id).zfill(4)
         order_id = str(order.id).zfill(4)
         return f"BATCH-{date_part}-{recipe_id}-{order_id}"
@@ -464,7 +464,7 @@ class ProductionService:
         """Calculate expiry date based on recipe type"""
         # This would be more sophisticated in production
         # For now, default to 7 days for prepared food
-        return (datetime.now() + timedelta(days=7)).date()
+        return (datetime.now(timezone.utc) + timedelta(days=7)).date()
     
     # ==================== BATCH MANAGEMENT ====================
     
@@ -484,7 +484,7 @@ class ProductionService:
             query = query.filter(ProductionBatch.status == status)
         
         if expiring_days:
-            expiry_threshold = datetime.now() + timedelta(days=expiring_days)
+            expiry_threshold = datetime.now(timezone.utc) + timedelta(days=expiring_days)
             query = query.filter(
                 ProductionBatch.use_by_date <= expiry_threshold,
                 ProductionBatch.status == 'completed'
@@ -514,7 +514,7 @@ class ProductionService:
     
     def expire_old_batches(self):
         """Automatically expire batches past expiry date"""
-        today = datetime.now().date()
+        today = datetime.now(timezone.utc).date()
         
         expired = self.db.query(ProductionBatch).filter(
             ProductionBatch.expiry_date < today,

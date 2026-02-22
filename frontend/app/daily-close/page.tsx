@@ -21,14 +21,6 @@ interface DailyReconciliation {
   closed_by?: string;
 }
 
-interface CashDrawer {
-  id: number;
-  name: string;
-  opening_balance: number;
-  current_balance: number;
-  status: 'open' | 'closed';
-}
-
 interface DenominationCount {
   denomination: string;
   count: number;
@@ -37,7 +29,6 @@ interface DenominationCount {
 
 export default function DailyClosePage() {
   const [reconciliation, setReconciliation] = useState<DailyReconciliation | null>(null);
-  const [drawers, setDrawers] = useState<CashDrawer[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
   const [showCashCountModal, setShowCashCountModal] = useState(false);
@@ -67,6 +58,7 @@ export default function DailyClosePage() {
     try {
       const token = localStorage.getItem('access_token');
       const response = await fetch(`${API_URL}/financial/daily-reconciliation/${selectedDate}`, {
+        credentials: 'include',
         headers: { Authorization: `Bearer ${token}` },
       });
       if (response.ok) {
@@ -88,6 +80,7 @@ export default function DailyClosePage() {
     try {
       const token = localStorage.getItem('access_token');
       const response = await fetch(`${API_URL}/financial/daily-close?business_date=${selectedDate}`, {
+        credentials: 'include',
         method: 'POST',
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -111,6 +104,7 @@ export default function DailyClosePage() {
       });
 
       const response = await fetch(`${API_URL}/financial/daily-reconciliation/${reconciliation.id}/cash-count`, {
+        credentials: 'include',
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -134,6 +128,7 @@ export default function DailyClosePage() {
     try {
       const token = localStorage.getItem('access_token');
       const response = await fetch(`${API_URL}/financial/daily-reconciliation/${reconciliation.id}/complete`, {
+        credentials: 'include',
         method: 'POST',
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -436,7 +431,7 @@ export default function DailyClosePage() {
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <h4 className="font-medium text-surface-900 mb-3">Bills</h4>
-                    {denominations.filter(d => parseFloat(d.denomination) >= 5).map((denom, index) => {
+                    {denominations.filter(d => parseFloat(d.denomination) >= 5).map((denom, _index) => {
                       const actualIndex = denominations.findIndex(d2 => d2.denomination === denom.denomination);
                       return (
                         <div key={denom.denomination} className="flex items-center gap-3 mb-2">
@@ -455,7 +450,7 @@ export default function DailyClosePage() {
                   </div>
                   <div>
                     <h4 className="font-medium text-surface-900 mb-3">Coins</h4>
-                    {denominations.filter(d => parseFloat(d.denomination) < 5).map((denom, index) => {
+                    {denominations.filter(d => parseFloat(d.denomination) < 5).map((denom, _index) => {
                       const actualIndex = denominations.findIndex(d2 => d2.denomination === denom.denomination);
                       return (
                         <div key={denom.denomination} className="flex items-center gap-3 mb-2">

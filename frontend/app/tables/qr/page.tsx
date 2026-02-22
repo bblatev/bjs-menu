@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
 
-import { API_URL, getAuthHeaders } from '@/lib/api';
+import { API_URL } from '@/lib/api';
 
 interface TableQR {
   id: number;
@@ -45,7 +45,7 @@ export default function TablesQrPage() {
         'Content-Type': 'application/json',
       };
 
-      const response = await fetch(`${API_URL}/tables/`, { headers });
+      const response = await fetch(`${API_URL}/tables/`, { credentials: 'include', headers });
 
       if (!response.ok) {
         throw new Error('Failed to load table QR data');

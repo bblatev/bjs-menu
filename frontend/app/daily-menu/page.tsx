@@ -3,7 +3,8 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
-import { API_URL } from "@/lib/api";
+import { API_URL, getAuthHeaders } from "@/lib/api";
+import { useConfirm } from "@/hooks/useConfirm";
 
 import { toast } from '@/lib/toast';
 interface DailyMenuItem {
@@ -35,6 +36,7 @@ interface Product {
 }
 
 export default function DailyMenuPage() {
+  const confirm = useConfirm();
   const [menus, setMenus] = useState<DailyMenu[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
@@ -71,12 +73,9 @@ export default function DailyMenuPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const getToken = () => localStorage.getItem("access_token");
-
   const loadData = async () => {
     try {
-      const token = getToken();
-      const headers = { Authorization: `Bearer ${token}` };
+      const headers = getAuthHeaders();
 
       // Load daily menus for the past week and future 2 weeks
       const startDate = new Date();
@@ -87,9 +86,9 @@ export default function DailyMenuPage() {
       const [menusRes, productsRes] = await Promise.all([
         fetch(
           `${API_URL}/daily-menu?start_date=${startDate.toISOString().split("T")[0]}&end_date=${endDate.toISOString().split("T")[0]}`,
-          { headers }
+          { credentials: 'include', headers }
         ),
-        fetch(`${API_URL}/menu-admin/items`, { headers }),
+        fetch(`${API_URL}/menu-admin/items`, { credentials: 'include', headers }),
       ]);
 
       if (menusRes.ok) {
@@ -110,7 +109,6 @@ export default function DailyMenuPage() {
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
-    const token = getToken();
 
     try {
       const payload = {
@@ -127,11 +125,9 @@ export default function DailyMenuPage() {
       const response = await fetch(
         `${API_URL}/daily-menu`,
         {
+          credentials: 'include',
           method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
+          headers: getAuthHeaders(),
           body: JSON.stringify(payload),
         }
       );
@@ -152,7 +148,6 @@ export default function DailyMenuPage() {
   const handleUpdate = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingMenu) return;
-    const token = getToken();
 
     try {
       const payload = {
@@ -169,11 +164,9 @@ export default function DailyMenuPage() {
       const response = await fetch(
         `${API_URL}/daily-menu/${editingMenu.id}`,
         {
+          credentials: 'include',
           method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
+          headers: getAuthHeaders(),
           body: JSON.stringify(payload),
         }
       );
@@ -193,15 +186,15 @@ export default function DailyMenuPage() {
   };
 
   const handleDelete = async (menuId: number) => {
-    if (!confirm("Are you sure you want to delete this daily menu?")) return;
-    const token = getToken();
+    if (!(await confirm({ message: "Are you sure you want to delete this daily menu?", variant: 'danger' }))) return;
 
     try {
       const response = await fetch(
         `${API_URL}/daily-menu/${menuId}`,
         {
+          credentials: 'include',
           method: "DELETE",
-          headers: { Authorization: `Bearer ${token}` },
+          headers: getAuthHeaders(),
         }
       );
 
@@ -216,17 +209,13 @@ export default function DailyMenuPage() {
   };
 
   const toggleActive = async (menu: DailyMenu) => {
-    const token = getToken();
-
     try {
       const response = await fetch(
         `${API_URL}/daily-menu/${menu.id}`,
         {
+          credentials: 'include',
           method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
+          headers: getAuthHeaders(),
           body: JSON.stringify({ is_active: !menu.is_active }),
         }
       );

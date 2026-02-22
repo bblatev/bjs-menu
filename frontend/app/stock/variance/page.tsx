@@ -69,6 +69,7 @@ export default function VarianceAnalysisPage() {
     setLoading(true);
     try {
       const response = await fetch(`${API_URL}/stock/variance/analysis?period=${period}`, {
+        credentials: 'include',
         headers: getAuthHeaders(),
       });
 

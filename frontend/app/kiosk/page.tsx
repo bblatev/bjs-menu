@@ -3,8 +3,6 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 
-import { API_URL, getAuthHeaders } from '@/lib/api';
-
 interface Kiosk {
   id: number;
   name: string;
@@ -74,8 +72,8 @@ export default function KioskManagementPage() {
   const [layouts, setLayouts] = useState<MenuLayout[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedPeriod, setSelectedPeriod] = useState('today');
-  const [showKioskModal, setShowKioskModal] = useState(false);
-  const [showUpsellModal, setShowUpsellModal] = useState(false);
+  const [, setShowKioskModal] = useState(false);
+  const [, setShowUpsellModal] = useState(false);
 
   // Settings state
   const [settings, setSettings] = useState({

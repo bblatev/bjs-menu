@@ -12,14 +12,14 @@ from pydantic import BaseModel
 import uuid
 
 from app.db.session import get_db
-from app.services.v6_features.advanced_payments_service import AdvancedPaymentsService
-from app.services.v6_features.queue_waitlist_service import QueueWaitlistService
-from app.services.v6_features.haccp_food_safety_service import HACCPFoodSafetyService
-from app.services.v6_features.cloud_kitchen_service import CloudKitchenService
-from app.services.v6_features.franchise_management_service import FranchiseManagementService
-from app.services.v6_features.drive_thru_service import DriveThruService
-from app.services.v6_features.financial_management_service import FinancialManagementService
-from app.services.v6_features.nra_tax_compliance_service import NRATaxComplianceService
+from app.services.advanced_payments_service import AdvancedPaymentsService
+from app.services.queue_waitlist_service import QueueWaitlistService
+from app.services.haccp_food_safety_service import HACCPFoodSafetyService
+from app.services.cloud_kitchen_service import CloudKitchenService
+from app.services.franchise_management_service import FranchiseManagementService
+from app.services.drive_thru_service import DriveThruService
+from app.services.financial_management_service import FinancialManagementService
+from app.services.nra_tax_compliance_service import NRATaxComplianceService
 
 # Import database models
 from app.models import (
@@ -914,7 +914,7 @@ async def register_franchisee(request: Request, franchisee: FranchiseeRegister, 
 async def get_all_franchisees(request: Request, status: Optional[str] = None, db: Session = Depends(get_db)):
     """Get all franchisees"""
     service = FranchiseManagementService(db)
-    from app.services.v6_features.franchise_management_service import FranchiseStatus
+    from app.services.franchise_management_service import FranchiseStatus
     status_enum = FranchiseStatus(status) if status else None
     franchisees = service.get_franchisees(status=status_enum)
     return {"franchisees": [f.model_dump() for f in franchisees], "count": len(franchisees)}
@@ -1056,7 +1056,7 @@ async def get_drive_thru_stats(request: Request, venue_id: int, db: Session = De
 async def create_expense(request: Request, venue_id: int, expense: ExpenseCreate, created_by: int = 1, db: Session = Depends(get_db)):
     """Create expense record"""
     service = FinancialManagementService(db)
-    from app.services.v6_features.financial_management_service import ExpenseCategory
+    from app.services.financial_management_service import ExpenseCategory
     result = service.create_expense(
         venue_id=venue_id,
         category=ExpenseCategory(expense.category),
@@ -1078,7 +1078,7 @@ async def get_expenses(request: Request, venue_id: int, start: Optional[date] = 
     if end is None:
         end = date.today()
     service = FinancialManagementService(db)
-    from app.services.v6_features.financial_management_service import ExpenseCategory
+    from app.services.financial_management_service import ExpenseCategory
     category_enum = ExpenseCategory(category) if category else None
     expenses = service.get_expenses(venue_id, start, end, category_enum)
     total = sum(e.amount for e in expenses)
@@ -1139,7 +1139,7 @@ async def get_profit_margins(request: Request, venue_id: int, start: Optional[da
 async def set_budget(request: Request, venue_id: int, category: str, monthly_budget: float = Body(...), db: Session = Depends(get_db)):
     """Set monthly budget for category"""
     service = FinancialManagementService(db)
-    from app.services.v6_features.financial_management_service import ExpenseCategory
+    from app.services.financial_management_service import ExpenseCategory
     result = service.set_budget(venue_id, ExpenseCategory(category), monthly_budget)
     return {"success": True, "category": category, "budget": result.get("budget"), "budget_data": result}
 

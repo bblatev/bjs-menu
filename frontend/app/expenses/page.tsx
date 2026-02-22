@@ -53,7 +53,6 @@ export default function ExpensesPage() {
 
   const loadExpenses = async () => {
     try {
-      const token = localStorage.getItem('access_token');
       // Mock data for now - would connect to real API
       setExpenses([
         {

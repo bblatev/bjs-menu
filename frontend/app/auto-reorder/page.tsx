@@ -43,7 +43,7 @@ export default function AutoReorderPage() {
   const [logs, setLogs] = useState<ReorderLog[]>([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
-  const [editingRule, setEditingRule] = useState<AutoReorderRule | null>(null);
+  const [, setEditingRule] = useState<AutoReorderRule | null>(null);
   const [showExecuteConfirm, setShowExecuteConfirm] = useState(false);
   const [formData, setFormData] = useState({
     stock_item_id: '',
@@ -70,6 +70,7 @@ export default function AutoReorderPage() {
 
       // Load rules
       const rulesResponse = await fetch(`${API_URL}/inventory-complete/auto-reorder/rules`, {
+        credentials: 'include',
         headers: { Authorization: `Bearer ${token}` },
       });
       if (rulesResponse.ok) {
@@ -78,6 +79,7 @@ export default function AutoReorderPage() {
 
       // Load history
       const logsResponse = await fetch(`${API_URL}/inventory-complete/auto-reorder/history`, {
+        credentials: 'include',
         headers: { Authorization: `Bearer ${token}` },
       });
       if (logsResponse.ok) {
@@ -94,6 +96,7 @@ export default function AutoReorderPage() {
     try {
       const token = localStorage.getItem('access_token');
       const response = await fetch(`${API_URL}/inventory-complete/auto-reorder/rules`, {
+        credentials: 'include',
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -129,6 +132,7 @@ export default function AutoReorderPage() {
     try {
       const token = localStorage.getItem('access_token');
       const response = await fetch(`${API_URL}/inventory-complete/auto-reorder/rules/${ruleId}`, {
+        credentials: 'include',
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
@@ -149,6 +153,7 @@ export default function AutoReorderPage() {
     try {
       const token = localStorage.getItem('access_token');
       const response = await fetch(`${API_URL}/inventory-complete/auto-reorder/rules/${ruleId}`, {
+        credentials: 'include',
         method: 'DELETE',
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -164,6 +169,7 @@ export default function AutoReorderPage() {
     try {
       const token = localStorage.getItem('access_token');
       const response = await fetch(`${API_URL}/inventory-complete/auto-reorder/execute`, {
+        credentials: 'include',
         method: 'POST',
         headers: { Authorization: `Bearer ${token}` },
       });

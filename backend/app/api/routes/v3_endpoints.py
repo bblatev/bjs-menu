@@ -7,7 +7,7 @@ from fastapi import APIRouter, Depends, Query, Request
 from sqlalchemy.orm import Session
 from typing import List, Optional
 from pydantic import BaseModel
-from datetime import datetime, date, time, timedelta
+from datetime import datetime, date, time, timedelta, timezone
 
 from app.db.session import get_db
 from app.core.rate_limit import limiter
@@ -554,9 +554,9 @@ class ScheduleReportRequest(BaseModel):
 async def sales_report(request: Request, start_date: datetime = Query(default=None), end_date: datetime = Query(default=None), group_by: str = "day", db: Session = Depends(get_db)):
     """Generate sales report"""
     if start_date is None:
-        start_date = datetime.now() - timedelta(days=30)
+        start_date = datetime.now(timezone.utc) - timedelta(days=30)
     if end_date is None:
-        end_date = datetime.now()
+        end_date = datetime.now(timezone.utc)
     from app.services.custom_reports_service import ReportService
     service = ReportService(db)
     return service.generate_sales_report(venue_id=1, start_date=start_date, end_date=end_date, group_by=group_by)
@@ -566,9 +566,9 @@ async def sales_report(request: Request, start_date: datetime = Query(default=No
 async def product_mix_report(request: Request, start_date: datetime = Query(default=None), end_date: datetime = Query(default=None), db: Session = Depends(get_db)):
     """Generate product mix report"""
     if start_date is None:
-        start_date = datetime.now() - timedelta(days=30)
+        start_date = datetime.now(timezone.utc) - timedelta(days=30)
     if end_date is None:
-        end_date = datetime.now()
+        end_date = datetime.now(timezone.utc)
     from app.services.custom_reports_service import ReportService
     service = ReportService(db)
     return service.generate_product_mix_report(venue_id=1, start_date=start_date, end_date=end_date)
@@ -578,9 +578,9 @@ async def product_mix_report(request: Request, start_date: datetime = Query(defa
 async def staff_report(request: Request, start_date: datetime = Query(default=None), end_date: datetime = Query(default=None), db: Session = Depends(get_db)):
     """Generate staff performance report"""
     if start_date is None:
-        start_date = datetime.now() - timedelta(days=30)
+        start_date = datetime.now(timezone.utc) - timedelta(days=30)
     if end_date is None:
-        end_date = datetime.now()
+        end_date = datetime.now(timezone.utc)
     from app.services.custom_reports_service import ReportService
     service = ReportService(db)
     return service.generate_staff_performance_report(venue_id=1, start_date=start_date, end_date=end_date)
@@ -598,9 +598,9 @@ async def inventory_report(request: Request, include_low_stock: bool = True, db:
 async def customer_report(request: Request, start_date: datetime = Query(default=None), end_date: datetime = Query(default=None), db: Session = Depends(get_db)):
     """Generate customer report"""
     if start_date is None:
-        start_date = datetime.now() - timedelta(days=30)
+        start_date = datetime.now(timezone.utc) - timedelta(days=30)
     if end_date is None:
-        end_date = datetime.now()
+        end_date = datetime.now(timezone.utc)
     from app.services.custom_reports_service import ReportService
     service = ReportService(db)
     return service.generate_customer_report(venue_id=1, start_date=start_date, end_date=end_date)

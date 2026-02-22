@@ -192,6 +192,22 @@ from app.models.missing_features_models import (
 # Feature models
 from app.models.feature_models import ProductionBatch
 
+# Enhanced inventory models (needed for table metadata)
+try:
+    from app.models.enhanced_inventory import (
+        GoodsReceivedNote, GoodsReceivedNoteItem,
+    )
+except ImportError:
+    pass
+
+# Purchase order advanced models (needed for table metadata)
+try:
+    from app.models.purchase_order_advanced import (
+        SupplierReturn,
+    )
+except ImportError:
+    pass
+
 # Core business models (SMS, etc.)
 from app.models.core_business_models import SMSMessage
 

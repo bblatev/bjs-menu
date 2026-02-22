@@ -1,9 +1,8 @@
 """Restaurant operations models - tables, checks, orders, kitchen."""
 
-from datetime import datetime, timezone
 from decimal import Decimal
 from typing import Optional, List
-from sqlalchemy import Column, Integer, String, DateTime, Numeric, Boolean, ForeignKey, Text, JSON
+from sqlalchemy import Column, Integer, String, DateTime, Numeric, Boolean, ForeignKey, Text, JSON, CheckConstraint, func
 from sqlalchemy.orm import relationship, validates
 
 from app.db.base import Base, VersionMixin, SoftDeleteMixin
@@ -13,18 +12,24 @@ from app.models.validators import non_negative, positive, validate_list, validat
 class Table(Base):
     """Restaurant table for seating."""
     __tablename__ = "tables"
-    __table_args__ = {'extend_existing': True}
+    __table_args__ = (
+        CheckConstraint(
+            "status IN ('available', 'occupied', 'reserved', 'cleaning')",
+            name='ck_table_status'
+        ),
+        {'extend_existing': True},
+    )
 
     id = Column(Integer, primary_key=True, index=True)
     number = Column(String(50), nullable=False)
     capacity = Column(Integer, default=4)
     status = Column(String(20), default="available")  # available, occupied, reserved, cleaning
     area = Column(String(50), nullable=True)  # Main Floor, Bar, Patio, VIP
-    location_id = Column(Integer, ForeignKey("locations.id"), nullable=True)
+    location_id = Column(Integer, ForeignKey("locations.id", ondelete="SET NULL"), nullable=True)
     token = Column(String(100), nullable=True, unique=True)  # QR code token
     pos_table_id = Column(String(50), nullable=True)  # External POS ID
-    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
-    updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
 
     # Relationships
     checks = relationship("Check", back_populates="table")
@@ -35,7 +40,13 @@ class Table(Base):
 class Check(Base, VersionMixin, SoftDeleteMixin):
     """Restaurant check/bill."""
     __tablename__ = "checks"
-    __table_args__ = {'extend_existing': True}
+    __table_args__ = (
+        CheckConstraint(
+            "status IN ('open', 'closed', 'voided', 'paid')",
+            name='ck_check_status'
+        ),
+        {'extend_existing': True},
+    )
 
     id = Column(Integer, primary_key=True, index=True)
     table_id = Column(Integer, ForeignKey("tables.id"), nullable=True)
@@ -52,7 +63,7 @@ class Check(Base, VersionMixin, SoftDeleteMixin):
     balance_due = Column(Numeric(10, 2), default=Decimal("0"))
 
     notes = Column(Text, nullable=True)
-    opened_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    opened_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     closed_at = Column(DateTime, nullable=True)
 
     # Relationships
@@ -76,7 +87,7 @@ class CheckItem(Base, VersionMixin, SoftDeleteMixin):
 
     id = Column(Integer, primary_key=True, index=True)
     check_id = Column(Integer, ForeignKey("checks.id"), nullable=False)
-    menu_item_id = Column(Integer, nullable=True)
+    menu_item_id = Column(Integer, ForeignKey("menu_items.id", ondelete="SET NULL"), nullable=True)
 
     name = Column(String(200), nullable=False)
     quantity = Column(Integer, default=1)
@@ -90,7 +101,7 @@ class CheckItem(Base, VersionMixin, SoftDeleteMixin):
     notes = Column(Text, nullable=True)
     modifiers = Column(JSON, nullable=True)
 
-    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     fired_at = Column(DateTime, nullable=True)
     served_at = Column(DateTime, nullable=True)
     voided_at = Column(DateTime, nullable=True)
@@ -112,7 +123,7 @@ class CheckItem(Base, VersionMixin, SoftDeleteMixin):
         return validate_list_of_dicts(key, value)
 
 
-class CheckPayment(Base):
+class CheckPayment(Base, SoftDeleteMixin):
     """Payment on a check."""
     __tablename__ = "check_payments"
     __table_args__ = {'extend_existing': True}
@@ -127,7 +138,7 @@ class CheckPayment(Base):
     card_last_four = Column(String(4), nullable=True)
     authorization_code = Column(String(50), nullable=True)
 
-    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
 
     # Relationships
     check = relationship("Check", back_populates="payments")
@@ -156,7 +167,7 @@ class MenuCategory(Base):
     image_url = Column(String(500), nullable=True)
     sort_order = Column(Integer, default=0)
     active = Column(Boolean, default=True)
-    parent_id = Column(Integer, ForeignKey("menu_categories.id"), nullable=True)
+    parent_id = Column(Integer, ForeignKey("menu_categories.id", ondelete="SET NULL"), nullable=True)
     visibility = Column(String(20), default="all")
     tax_rate = Column(Numeric(5, 2), nullable=True)
     printer_id = Column(Integer, nullable=True)
@@ -164,8 +175,8 @@ class MenuCategory(Base):
     display_on_app = Column(Boolean, default=True)
     display_on_web = Column(Boolean, default=True)
     schedule = Column(JSON, nullable=True)
-    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
-    updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
 
     # Relationships
     children = relationship("MenuCategory", backref="parent", remote_side="MenuCategory.id", lazy="select")
@@ -179,9 +190,9 @@ class MenuItem(Base, SoftDeleteMixin):
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String(200), nullable=False)
     description = Column(Text, nullable=True)
-    price = Column(Numeric(10, 2), nullable=False)
+    price = Column(Numeric(10, 2), nullable=False, index=True)
     base_price = Column(Numeric(10, 2), nullable=True)  # Cost/base price for turnover reporting
-    category = Column(String(100), nullable=False)
+    category = Column(String(100), nullable=False, index=True)
 
     image_url = Column(String(500), nullable=True)
     available = Column(Boolean, default=True, index=True)
@@ -198,8 +209,8 @@ class MenuItem(Base, SoftDeleteMixin):
     category_id = Column(Integer, ForeignKey("menu_categories.id"), nullable=True)  # FK to category
     recipe_id = Column(Integer, ForeignKey("recipes.id"), nullable=True)  # Link to recipe for stock deduction
 
-    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
-    updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
 
     # Relationships
     recipe = relationship("Recipe", foreign_keys=[recipe_id])
@@ -229,8 +240,8 @@ class ModifierGroup(Base):
     max_selections = Column(Integer, default=1)
     active = Column(Boolean, default=True)
     sort_order = Column(Integer, default=0)
-    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
-    updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
 
     options = relationship("ModifierOption", back_populates="group", cascade="all, delete-orphan")
     menu_item_links = relationship("MenuItemModifierGroup", back_populates="modifier_group", cascade="all, delete-orphan")
@@ -247,7 +258,7 @@ class ModifierOption(Base):
     price_adjustment = Column(Numeric(10, 2), default=Decimal("0"))
     available = Column(Boolean, default=True)
     sort_order = Column(Integer, default=0)
-    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
 
     group = relationship("ModifierGroup", back_populates="options")
 
@@ -279,8 +290,8 @@ class ComboMeal(Base):
     available = Column(Boolean, default=True)
     featured = Column(Boolean, default=False)
     category = Column(String(100), nullable=True)
-    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
-    updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
 
     items = relationship("ComboItem", back_populates="combo", cascade="all, delete-orphan")
 
@@ -304,7 +315,13 @@ class ComboItem(Base):
 class KitchenOrder(Base, VersionMixin):
     """Kitchen order/ticket."""
     __tablename__ = "kitchen_orders"
-    __table_args__ = {'extend_existing': True}
+    __table_args__ = (
+        CheckConstraint(
+            "status IN ('pending', 'preparing', 'ready', 'served', 'cancelled')",
+            name='ck_kitchen_order_status'
+        ),
+        {'extend_existing': True},
+    )
 
     id = Column(Integer, primary_key=True, index=True)
     check_id = Column(Integer, ForeignKey("checks.id"), nullable=True)
@@ -319,11 +336,11 @@ class KitchenOrder(Base, VersionMixin):
     # Workflow mode support (Gap 11)
     workflow_mode = Column(String(20), default="order", index=True)  # "order" (direct) or "request" (needs confirmation)
     is_confirmed = Column(Boolean, default=True)  # For request mode: needs manager/kitchen confirmation
-    confirmed_by = Column(Integer, nullable=True)  # Staff ID who confirmed
+    confirmed_by = Column(Integer, ForeignKey("staff_users.id", ondelete="SET NULL"), nullable=True)  # Staff ID who confirmed
     confirmed_at = Column(DateTime, nullable=True)
     rejection_reason = Column(String(200), nullable=True)
 
-    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     started_at = Column(DateTime, nullable=True)
     completed_at = Column(DateTime, nullable=True)
 
@@ -344,7 +361,13 @@ class KitchenOrder(Base, VersionMixin):
 class GuestOrder(Base):
     """Guest order from QR code ordering."""
     __tablename__ = "guest_orders"
-    __table_args__ = {'extend_existing': True}
+    __table_args__ = (
+        CheckConstraint(
+            "status IN ('received', 'pending', 'confirmed', 'preparing', 'ready', 'served', 'cancelled')",
+            name='ck_guest_order_status'
+        ),
+        {'extend_existing': True},
+    )
 
     id = Column(Integer, primary_key=True, index=True)
     table_id = Column(Integer, ForeignKey("tables.id"), nullable=True)
@@ -372,7 +395,7 @@ class GuestOrder(Base):
     tip_amount = Column(Numeric(10, 2), default=Decimal("0"))
     paid_at = Column(DateTime, nullable=True)
 
-    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     confirmed_at = Column(DateTime, nullable=True)
     ready_at = Column(DateTime, nullable=True)
     completed_at = Column(DateTime, nullable=True)

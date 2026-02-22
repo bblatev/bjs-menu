@@ -4,7 +4,7 @@ import csv
 import io
 import json
 import os
-from datetime import datetime
+from datetime import datetime, timezone
 from decimal import Decimal
 from typing import Dict, List, Optional
 import logging
@@ -153,7 +153,7 @@ class ExportService:
 
         # Generate filename
         supplier_name = supplier.name.replace(" ", "_") if supplier else "Unknown"
-        filename = f"order_{draft.id}_{supplier_name}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv"
+        filename = f"order_{draft.id}_{supplier_name}_{datetime.now(timezone.utc).strftime('%Y%m%d_%H%M%S')}.csv"
         filepath = os.path.join(self.export_dir, filename)
 
         # Write CSV
@@ -221,7 +221,7 @@ class ExportService:
 
         # Generate filename
         supplier_name = supplier.name.replace(" ", "_") if supplier else "Unknown"
-        filename = f"order_{draft.id}_{supplier_name}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf"
+        filename = f"order_{draft.id}_{supplier_name}_{datetime.now(timezone.utc).strftime('%Y%m%d_%H%M%S')}.pdf"
         filepath = os.path.join(self.export_dir, filename)
 
         # Create PDF
@@ -249,7 +249,7 @@ class ExportService:
                 elements.append(Paragraph(f"<b>Email:</b> {supplier.contact_email}", styles["Normal"]))
 
         elements.append(Spacer(1, 0.5 * cm))
-        elements.append(Paragraph(f"<b>Date:</b> {datetime.now().strftime('%Y-%m-%d %H:%M')}", styles["Normal"]))
+        elements.append(Paragraph(f"<b>Date:</b> {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M')}", styles["Normal"]))
 
         if draft.requested_delivery_date:
             elements.append(Paragraph(
@@ -337,7 +337,7 @@ class ExportService:
 
         # Build email subject
         supplier_name = supplier.name if supplier else "Supplier"
-        subject = f"Purchase Order - {business_name} - {datetime.now().strftime('%Y-%m-%d')}"
+        subject = f"Purchase Order - {business_name} - {datetime.now(timezone.utc).strftime('%Y-%m-%d')}"
 
         # Build email body
         lines = []
@@ -413,7 +413,7 @@ class ExportService:
 
         lines = []
         lines.append(f"*PURCHASE ORDER #{draft.id}*")
-        lines.append(f"Date: {datetime.now().strftime('%Y-%m-%d %H:%M')}")
+        lines.append(f"Date: {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M')}")
         if supplier:
             lines.append(f"Supplier: {supplier.name}")
         lines.append("")
@@ -471,7 +471,7 @@ class ExportService:
             raise ValueError(f"Draft {draft_id} not found")
 
         draft.status = OrderDraftStatus.SENT
-        draft.email_sent_at = datetime.now()
+        draft.email_sent_at = datetime.now(timezone.utc)
         self.db.flush()
 
         return draft

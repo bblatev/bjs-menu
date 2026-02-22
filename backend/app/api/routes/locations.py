@@ -54,14 +54,14 @@ def list_locations(request: Request, db: DbSession, current_user: OptionalCurren
     query = db.query(Location)
     if active_only:
         query = query.filter(Location.active == True)
-    return query.order_by(Location.name).all()
+    return query.order_by(Location.name).limit(500).all()
 
 
 @router.get("/dashboard")
 @limiter.limit("60/minute")
 def get_locations_dashboard(request: Request, db: DbSession, current_user: OptionalCurrentUser = None):
     """Get dashboard stats for all locations."""
-    locations = db.query(Location).filter(Location.active == True).all()
+    locations = db.query(Location).filter(Location.active == True).limit(500).all()
 
     stats = []
     for loc in locations:
@@ -81,7 +81,7 @@ def get_consolidated_reports(
     date_range: Optional[str] = "today"
 ):
     """Get consolidated reports across all locations."""
-    locations = db.query(Location).filter(Location.active == True).all()
+    locations = db.query(Location).filter(Location.active == True).limit(500).all()
 
     return ConsolidatedStats(
         locations_active=len(locations),

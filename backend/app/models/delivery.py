@@ -1,9 +1,9 @@
 """Delivery Aggregator Integration models - DoorDash/Uber Eats/Deliverect style."""
 
-from datetime import datetime, timezone
+from decimal import Decimal
 from enum import Enum
 from typing import Optional, List
-from sqlalchemy import Column, Integer, String, Float, DateTime, Text, Boolean, ForeignKey, Enum as SQLEnum, JSON
+from sqlalchemy import Column, Integer, String, Float, DateTime, Text, Boolean, ForeignKey, Enum as SQLEnum, JSON, Numeric, UniqueConstraint, func
 from sqlalchemy.orm import relationship
 from app.db.base import Base
 
@@ -33,7 +33,10 @@ class DeliveryOrderStatus(str, Enum):
 class DeliveryIntegration(Base):
     """Third-party delivery platform integration configuration."""
     __tablename__ = "delivery_integrations"
-    __table_args__ = {'extend_existing': True}
+    __table_args__ = (
+        UniqueConstraint('location_id', 'platform', name='uq_delivery_integration_location_platform'),
+        {'extend_existing': True},
+    )
 
     id = Column(Integer, primary_key=True, index=True)
     location_id = Column(Integer, ForeignKey("locations.id"), nullable=True)
@@ -64,14 +67,17 @@ class DeliveryIntegration(Base):
     # Commission tracking
     commission_percent = Column(Float, nullable=True)
 
-    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
-    updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
 
 
 class DeliveryOrder(Base):
     """Orders received from delivery platforms."""
     __tablename__ = "delivery_orders"
-    __table_args__ = {'extend_existing': True}
+    __table_args__ = (
+        UniqueConstraint('integration_id', 'platform_order_id', name='uq_delivery_order_platform'),
+        {'extend_existing': True},
+    )
 
     id = Column(Integer, primary_key=True, index=True)
     integration_id = Column(Integer, ForeignKey("delivery_integrations.id"), nullable=False)
@@ -79,15 +85,15 @@ class DeliveryOrder(Base):
 
     # Platform identifiers
     platform = Column(SQLEnum(DeliveryPlatform), nullable=False)
-    platform_order_id = Column(String(200), nullable=False)  # Their order ID
+    platform_order_id = Column(String(200), nullable=False, index=True)  # Their order ID
     platform_display_id = Column(String(50), nullable=True)   # Short display ID
 
     # Status
-    status = Column(SQLEnum(DeliveryOrderStatus), default=DeliveryOrderStatus.RECEIVED)
+    status = Column(SQLEnum(DeliveryOrderStatus), default=DeliveryOrderStatus.RECEIVED, index=True)
     status_updated_at = Column(DateTime, nullable=True)
 
     # Timing
-    received_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    received_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     confirmed_at = Column(DateTime, nullable=True)
     ready_at = Column(DateTime, nullable=True)
     picked_up_at = Column(DateTime, nullable=True)
@@ -102,13 +108,13 @@ class DeliveryOrder(Base):
     delivery_instructions = Column(Text, nullable=True)
 
     # Order details
-    subtotal = Column(Float, default=0.0)
-    tax = Column(Float, default=0.0)
-    delivery_fee = Column(Float, default=0.0)
-    tip = Column(Float, default=0.0)
-    total = Column(Float, default=0.0)
-    platform_fee = Column(Float, default=0.0)  # Commission taken
-    net_payout = Column(Float, default=0.0)    # What we receive
+    subtotal = Column(Numeric(10, 2), default=Decimal("0"))
+    tax = Column(Numeric(10, 2), default=Decimal("0"))
+    delivery_fee = Column(Numeric(10, 2), default=Decimal("0"))
+    tip = Column(Numeric(10, 2), default=Decimal("0"))
+    total = Column(Numeric(10, 2), default=Decimal("0"))
+    platform_fee = Column(Numeric(10, 2), default=Decimal("0"))  # Commission taken
+    net_payout = Column(Numeric(10, 2), default=Decimal("0"))    # What we receive
 
     # Special instructions
     special_instructions = Column(Text, nullable=True)
@@ -127,8 +133,8 @@ class DeliveryOrder(Base):
     # Raw payload (for debugging)
     raw_payload = Column(JSON, nullable=True)
 
-    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
-    updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
 
     # Relationships
     integration = relationship("DeliveryIntegration", backref="orders")
@@ -147,8 +153,8 @@ class DeliveryOrderItem(Base):
     platform_item_id = Column(String(200), nullable=True)
     item_name = Column(String(300), nullable=False)
     quantity = Column(Integer, default=1)
-    unit_price = Column(Float, default=0.0)
-    total_price = Column(Float, default=0.0)
+    unit_price = Column(Numeric(10, 2), default=Decimal("0"))
+    total_price = Column(Numeric(10, 2), default=Decimal("0"))
 
     # Modifiers
     modifiers = Column(JSON, nullable=True)
@@ -174,7 +180,7 @@ class MenuSync(Base):
 
     # Sync details
     sync_type = Column(String(50), nullable=False)  # full, incremental, availability
-    started_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    started_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     completed_at = Column(DateTime, nullable=True)
 
     # Results
@@ -187,7 +193,7 @@ class MenuSync(Base):
     error_message = Column(Text, nullable=True)
     error_details = Column(JSON, nullable=True)
 
-    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
 
 
 class ItemAvailability(Base):
@@ -209,7 +215,7 @@ class ItemAvailability(Base):
     # {"doordash": true, "uber_eats": true, "grubhub": false}
     last_sync_at = Column(DateTime, nullable=True)
 
-    updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
 
 
 class DeliveryPlatformMapping(Base):
@@ -226,7 +232,7 @@ class DeliveryPlatformMapping(Base):
     platform_item_name = Column(String(300), nullable=True)
 
     # Price override for this platform
-    platform_price = Column(Float, nullable=True)  # If different from base price
+    platform_price = Column(Numeric(10, 2), nullable=True)  # If different from base price
 
     is_active = Column(Boolean, default=True)
-    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)

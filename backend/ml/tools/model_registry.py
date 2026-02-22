@@ -28,7 +28,7 @@ import json
 import logging
 import shutil
 import sys
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Dict, List, Optional
 
@@ -127,7 +127,7 @@ class ModelRegistry:
             "original_path": str(model_path),
             "hash": model_hash,
             "size_mb": round(model_path.stat().st_size / (1024 * 1024), 2),
-            "registered_at": datetime.now().isoformat(),
+            "registered_at": datetime.now(timezone.utc).isoformat(),
             "metrics": metrics or {},
             "dataset_hash": dataset_hash,
             "config_path": str(dest_dir / "config.yaml") if config_path else None,
@@ -197,7 +197,7 @@ class ModelRegistry:
             "version": version,
             "previous_version": previous,
             "deployed_path": str(deploy_link),
-            "deployed_at": datetime.now().isoformat(),
+            "deployed_at": datetime.now(timezone.utc).isoformat(),
         }
 
         logger.info(f"Deployed {name} {version}")

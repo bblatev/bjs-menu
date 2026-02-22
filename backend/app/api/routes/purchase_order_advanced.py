@@ -77,6 +77,9 @@ from app.services.purchase_order_advanced_service import (
 )
 from app.core.rate_limit import limiter
 
+import logging
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -247,7 +250,8 @@ def apply_credit_note(
     try:
         return SupplierCreditNoteService.apply_credit(db, data, current_user.id)
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        logger.error(f"Operation failed: {e}")
+        raise HTTPException(status_code=400, detail="Operation failed")
 
 
 # =============================================================================
@@ -266,7 +270,8 @@ def create_amendment(
     try:
         return PurchaseOrderAmendmentService.create_amendment(db, data, current_user.id)
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        logger.error(f"Operation failed: {e}")
+        raise HTTPException(status_code=400, detail="Operation failed")
 
 
 @router.post("/amendments/{amendment_id}/approve")
@@ -297,7 +302,8 @@ def apply_amendment(
         result = PurchaseOrderAmendmentService.apply_amendment(db, amendment_id, current_user.id)
         return {"status": "applied", "amendment_id": amendment_id, "new_total": result.new_total}
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        logger.error(f"Operation failed: {e}")
+        raise HTTPException(status_code=400, detail="Operation failed")
 
 
 @router.get("/purchase-orders/{po_id}/history", response_model=List[POVersionHistoryResponse])
@@ -401,7 +407,8 @@ def create_blanket_release(
     try:
         return BlanketPurchaseOrderService.create_release(db, data, current_user.id)
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        logger.error(f"Operation failed: {e}")
+        raise HTTPException(status_code=400, detail="Operation failed")
 
 
 @router.post("/blanket-orders/releases/{release_id}/convert-to-po")
@@ -417,7 +424,8 @@ def convert_release_to_po(
         po = BlanketPurchaseOrderService.convert_release_to_po(db, release_id, current_user.id)
         return {"status": "converted", "purchase_order_id": po.id, "order_number": po.order_number}
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        logger.error(f"Operation failed: {e}")
+        raise HTTPException(status_code=400, detail="Operation failed")
 
 
 # =============================================================================
@@ -527,7 +535,8 @@ def convert_requisition_to_po(
         po = PurchaseRequisitionService.convert_to_po(db, data, current_user.id)
         return {"status": "converted", "purchase_order_id": po.id, "order_number": po.order_number}
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        logger.error(f"Operation failed: {e}")
+        raise HTTPException(status_code=400, detail="Operation failed")
 
 
 # =============================================================================
@@ -575,7 +584,8 @@ def calculate_landed_cost(
         result = LandedCostService.calculate_allocations(db, landed_cost_id, current_user.id)
         return {"status": "calculated", "landed_cost_id": landed_cost_id, "average_increase": result.average_cost_increase_pct}
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        logger.error(f"Operation failed: {e}")
+        raise HTTPException(status_code=400, detail="Operation failed")
 
 
 @router.post("/landed-costs/{landed_cost_id}/apply")
@@ -591,7 +601,8 @@ def apply_landed_cost(
         result = LandedCostService.apply_to_inventory(db, landed_cost_id, current_user.id)
         return {"status": "applied", "landed_cost_id": landed_cost_id}
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        logger.error(f"Operation failed: {e}")
+        raise HTTPException(status_code=400, detail="Operation failed")
 
 
 # =============================================================================
@@ -788,7 +799,8 @@ def update_qc_inspection(
     try:
         return QualityControlService.complete_inspection(db, inspection_id, data, current_user.id)
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        logger.error(f"Operation failed: {e}")
+        raise HTTPException(status_code=400, detail="Operation failed")
 
 
 @router.post("/qc/issues", response_model=QualityIssueResponse)
@@ -1045,7 +1057,8 @@ def update_backorder(
     try:
         return PartialDeliveryService.update_backorder(db, backorder_id, data)
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        logger.error(f"Operation failed: {e}")
+        raise HTTPException(status_code=400, detail="Operation failed")
 
 
 # =============================================================================
@@ -1144,7 +1157,8 @@ def distribute_consolidated_order(
             "purchase_orders_created": [{"id": po.id, "order_number": po.order_number} for po in pos]
         }
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        logger.error(f"Operation failed: {e}")
+        raise HTTPException(status_code=400, detail="Operation failed")
 
 
 # =============================================================================

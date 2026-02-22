@@ -1,45 +1,50 @@
-"""Stock routes - Frontend-facing stock management endpoints.
+"""Stock routes - Comprehensive stock management endpoints.
 
-Maps frontend /stock/* calls to the underlying stock management system.
-Frontend expects these endpoints:
-- GET /stock/ - List stock items
-- GET /stock/categories - Stock categories
-- GET /stock/movements/ - Movement history
-- GET /stock/alerts/ - Stock alerts
-- POST /stock/ - Add stock item
-- POST /stock/movements/ - Record movement
-- POST /stock/import - Import from CSV
-- GET /stock/export - Export to CSV
-- GET /stock/batches - Stock batches
-- GET /stock/adjustments - Adjustments
-- PUT /stock/adjustments/{id}/approve
-- GET /stock/expiring - Expiring items
-- GET /stock/valuation - Valuation data
-- GET /stock/waste/* - Waste tracking
-- POST /stock/waste/records - Record waste
-- GET /stock/counts - Stock counts
-- POST /stock/counts - Create count
-- GET /stock/par-levels - Par levels
-- GET /stock/variance/analysis - Variance
+Consolidated from stock.py + stock_management.py. Provides all stock
+management functionality: items, movements, alerts, transfers, adjustments,
+waste, counts, par levels, variance, cost analysis, shrinkage detection,
+AI shelf scanning, availability checks, reservations, and multi-location
+aggregation.
+
+Business Logic Flows (merged from stock_management):
+- Transfer: TRANSFER_OUT from source + TRANSFER_IN to destination (paired movements)
+- Adjustment: ADJUSTMENT movement with reason tracking
+- Shrinkage: Theoretical (recipe x sales) vs Actual (inventory counts) analysis
+- Cost: FIFO, weighted average, and last cost tracking per product
+- AI Scanner: Camera-based shelf scanning -> inventory count sessions
+- Reservation: Reserve stock for in-progress orders
+- Multi-location: Aggregate view and transfer suggestions
 """
 
 import logging
+import random
+import uuid
 from datetime import datetime, date, timedelta, timezone
 from decimal import Decimal
 from typing import Optional, List
 
-from fastapi import APIRouter, HTTPException, Query, Request, UploadFile
+from fastapi import APIRouter, BackgroundTasks, HTTPException, Query, Request, UploadFile
 
 from app.core.rate_limit import limiter
-from pydantic import BaseModel
-from sqlalchemy import func
+from pydantic import BaseModel, ConfigDict
+from sqlalchemy import func, and_, or_
 
 from app.db.session import DbSession
 from app.models.stock import StockOnHand, StockMovement, MovementReason
 from app.models.product import Product
 from app.models.location import Location
+from app.models.order import PurchaseOrder, PurchaseOrderLine
 from app.models.inventory import InventorySession, InventoryLine, SessionStatus
 from app.services.stock_deduction_service import StockDeductionService
+from app.services.stock_alert_service import StockAlertService
+from app.services.stock_count_service import StockCountService
+from app.models.menu_inventory_complete import (
+    StockItemBarcode, StockBatchFIFO, ShrinkageRecord,
+    CycleCountSchedule, CycleCountTask, CycleCountItem, UnitConversion,
+    ReconciliationSession, ReconciliationItem, SupplierPerformanceRecord,
+    ReorderPriority, CountType, ShrinkageReason, ReconciliationStatus
+)
+from app.models.feature_models import AutoReorderRule
 
 logger = logging.getLogger(__name__)
 
@@ -462,87 +467,7 @@ def get_stock_alerts(
     location_id: int = Query(1),
 ):
     """Get stock alerts (low stock, out of stock, expiring)."""
-    alerts = []
-
-    stock_items = db.query(StockOnHand).filter(
-        StockOnHand.location_id == location_id
-    ).all()
-
-    for s in stock_items:
-        product = db.query(Product).filter(Product.id == s.product_id).first()
-        if not product:
-            continue
-
-        if s.qty <= 0:
-            alerts.append({
-                "type": "out_of_stock",
-                "severity": "critical",
-                "product_id": product.id,
-                "product_name": product.name,
-                "current_qty": float(s.qty),
-                "par_level": float(product.par_level) if product.par_level else None,
-                "unit": product.unit,
-                "message": f"{product.name} is out of stock",
-            })
-        elif product.par_level and s.qty < product.par_level:
-            alerts.append({
-                "type": "low_stock",
-                "severity": "warning",
-                "product_id": product.id,
-                "product_name": product.name,
-                "current_qty": float(s.qty),
-                "par_level": float(product.par_level),
-                "unit": product.unit,
-                "message": f"{product.name} is below par level ({s.qty}/{product.par_level} {product.unit})",
-            })
-        elif product.min_stock and s.qty < product.min_stock:
-            alerts.append({
-                "type": "below_minimum",
-                "severity": "warning",
-                "product_id": product.id,
-                "product_name": product.name,
-                "current_qty": float(s.qty),
-                "min_stock": float(product.min_stock),
-                "unit": product.unit,
-                "message": f"{product.name} is below minimum stock",
-            })
-
-    # Expiring soon alerts
-    try:
-        from app.models.advanced_features import InventoryBatch
-        expiring = db.query(InventoryBatch).filter(
-            InventoryBatch.location_id == location_id,
-            InventoryBatch.is_expired == False,
-            InventoryBatch.current_quantity > 0,
-            InventoryBatch.expiration_date <= date.today() + timedelta(days=7),
-        ).all()
-
-        for batch in expiring:
-            product = db.query(Product).filter(Product.id == batch.product_id).first()
-            days_left = (batch.expiration_date - date.today()).days if batch.expiration_date else None
-            alerts.append({
-                "type": "expiring_soon" if days_left and days_left > 0 else "expired",
-                "severity": "critical" if days_left and days_left <= 0 else "warning",
-                "product_id": batch.product_id,
-                "product_name": product.name if product else f"Product {batch.product_id}",
-                "batch_number": batch.batch_number,
-                "expiration_date": batch.expiration_date.isoformat() if batch.expiration_date else None,
-                "days_remaining": days_left,
-                "quantity": float(batch.current_quantity),
-                "message": f"Batch {batch.batch_number} expires in {days_left} days" if days_left and days_left > 0 else f"Batch {batch.batch_number} has expired",
-            })
-    except Exception as e:
-        logger.debug(f"Optional: query expiring batch alerts: {e}")
-
-    severity_order = {"critical": 0, "warning": 1, "info": 2}
-    alerts.sort(key=lambda x: severity_order.get(x["severity"], 99))
-
-    return {
-        "alerts": alerts,
-        "total": len(alerts),
-        "critical": len([a for a in alerts if a["severity"] == "critical"]),
-        "warnings": len([a for a in alerts if a["severity"] == "warning"]),
-    }
+    return StockAlertService.get_alerts(db, location_id=location_id)
 
 
 # ==================== BATCHES ====================
@@ -1075,68 +1000,24 @@ def complete_stock_count(request: Request, db: DbSession, count_id: int):
 @limiter.limit("30/minute")
 def approve_stock_count(request: Request, db: DbSession, count_id: int):
     """Approve and commit a stock count (adjusts stock levels)."""
-    from app.api.routes.inventory import commit_session
-    # Reuse the existing commit logic
-    from app.core.rbac import CurrentUser
-
-    session = db.query(InventorySession).filter(InventorySession.id == count_id).first()
-    if not session:
-        raise HTTPException(status_code=404, detail="Count session not found")
-
-    if session.status != SessionStatus.DRAFT:
-        raise HTTPException(status_code=400, detail="Session already committed")
-
-    # Commit the session
-    movements_created = 0
-    adjustments = []
-
-    for line in session.lines:
-        stock = db.query(StockOnHand).filter(
-            StockOnHand.product_id == line.product_id,
-            StockOnHand.location_id == session.location_id,
-        ).first()
-
-        current_qty = stock.qty if stock else Decimal("0")
-        delta = line.counted_qty - current_qty
-
-        if delta != 0:
-            movement = StockMovement(
-                product_id=line.product_id,
-                location_id=session.location_id,
-                qty_delta=delta,
-                reason=MovementReason.INVENTORY_COUNT.value,
-                ref_type="inventory_session",
-                ref_id=session.id,
-            )
-            db.add(movement)
-            movements_created += 1
-
-            if stock:
-                stock.qty = line.counted_qty
-            else:
-                stock = StockOnHand(
-                    product_id=line.product_id,
-                    location_id=session.location_id,
-                    qty=line.counted_qty,
-                )
-                db.add(stock)
-
-            adjustments.append({
-                "product_id": line.product_id,
-                "previous_qty": float(current_qty),
-                "counted_qty": float(line.counted_qty),
-                "delta": float(delta),
-            })
-
-    session.status = SessionStatus.COMMITTED
-    session.committed_at = datetime.now(timezone.utc)
-    db.commit()
+    try:
+        result = StockCountService.commit_session(
+            db=db,
+            session_id=count_id,
+            ref_type="inventory_session",
+            require_lines=False,
+        )
+    except ValueError as exc:
+        detail = str(exc)
+        if "not found" in detail.lower():
+            raise HTTPException(status_code=404, detail="Count session not found")
+        raise HTTPException(status_code=400, detail=detail)
 
     return {
         "status": "approved",
         "count_id": count_id,
-        "movements_created": movements_created,
-        "adjustments": adjustments,
+        "movements_created": result["movements_created"],
+        "adjustments": result["adjustments"],
     }
 
 
@@ -1226,12 +1107,24 @@ async def import_stock(request: Request, db: DbSession = None, file: UploadFile 
     if file is None:
         return {"status": "ok", "message": "CSV import endpoint ready. Send multipart/form-data with a 'file' field containing a CSV."}
 
-    # Validate file type and size
+    # Validate content type
+    allowed_types = {"text/csv", "application/vnd.ms-excel"}
+    if file.content_type and file.content_type not in allowed_types:
+        raise HTTPException(status_code=400, detail="Invalid file type. Allowed: CSV (text/csv)")
+
+    # Validate file extension
     if file.filename and not file.filename.lower().endswith(".csv"):
         raise HTTPException(status_code=400, detail="File must be a CSV")
+
+    # Validate file size (10MB max)
     content = await file.read()
-    if len(content) > 10 * 1024 * 1024:  # 10MB limit
+    if len(content) > 10 * 1024 * 1024:
         raise HTTPException(status_code=413, detail="File too large. Maximum size is 10MB")
+
+    # Validate file is not empty
+    if len(content) == 0:
+        raise HTTPException(status_code=400, detail="File is empty")
+
     text = content.decode("utf-8-sig")
     reader = csv.DictReader(io.StringIO(text))
 
@@ -1499,4 +1392,2273 @@ def get_stock_tanks(request: Request, db: DbSession, status: Optional[str] = Que
         "tanks": tank_list,
         "total": len(tank_list),
         "alerts": alerts,
+    }
+
+
+# ===========================================================================
+# MERGED FROM inventory_complete.py -- unique features not already in stock.py
+# ===========================================================================
+
+
+# ==================== DASHBOARD KPIs ====================
+
+@router.get("/dashboard")
+@limiter.limit("60/minute")
+def get_stock_dashboard(
+    request: Request,
+    db: DbSession,
+    location_id: int = Query(1),
+):
+    """
+    Comprehensive inventory dashboard with KPIs and summaries.
+    Returns: total items, total value, low/out of stock counts,
+    recent movements, expiring items, and top movers.
+    """
+    stock_items = db.query(StockOnHand).filter(
+        StockOnHand.location_id == location_id
+    ).all()
+
+    total_items = 0
+    total_value = Decimal("0")
+    low_stock_count = 0
+    out_of_stock_count = 0
+    negative_count = 0
+    items_with_par = 0
+
+    for s in stock_items:
+        product = db.query(Product).filter(Product.id == s.product_id).first()
+        if not product or not product.active:
+            continue
+
+        total_items += 1
+        item_value = s.qty * (product.cost_price or Decimal("0"))
+        total_value += item_value
+
+        if s.qty <= 0:
+            out_of_stock_count += 1
+        if s.qty < 0:
+            negative_count += 1
+        if product.par_level and s.qty < product.par_level and s.qty > 0:
+            low_stock_count += 1
+        if product.par_level:
+            items_with_par += 1
+
+    # Recent movements (last 7 days)
+    week_ago = datetime.now(timezone.utc) - timedelta(days=7)
+    movement_summary = db.query(
+        StockMovement.reason,
+        func.count(StockMovement.id).label("count"),
+        func.sum(func.abs(StockMovement.qty_delta)).label("total_qty"),
+    ).filter(
+        StockMovement.location_id == location_id,
+        StockMovement.ts >= week_ago,
+    ).group_by(StockMovement.reason).all()
+
+    movements_by_type = {
+        row.reason: {"count": row.count, "total_qty": float(row.total_qty or 0)}
+        for row in movement_summary
+    }
+
+    # Expiring soon (next 7 days)
+    expiring_count = 0
+    try:
+        from app.models.advanced_features import InventoryBatch
+        expiring_count = db.query(func.count(InventoryBatch.id)).filter(
+            InventoryBatch.location_id == location_id,
+            InventoryBatch.is_expired == False,
+            InventoryBatch.current_quantity > 0,
+            InventoryBatch.expiration_date <= date.today() + timedelta(days=7),
+        ).scalar() or 0
+    except Exception as e:
+        logger.debug(f"Optional: query expiring batch count: {e}")
+
+    # Active inventory sessions
+    active_sessions = db.query(func.count(InventorySession.id)).filter(
+        InventorySession.location_id == location_id,
+        InventorySession.status == SessionStatus.DRAFT,
+    ).scalar() or 0
+
+    # Last count date
+    last_count = db.query(InventorySession.committed_at).filter(
+        InventorySession.location_id == location_id,
+        InventorySession.status == SessionStatus.COMMITTED,
+    ).order_by(InventorySession.committed_at.desc()).first()
+
+    return {
+        "location_id": location_id,
+        "kpis": {
+            "total_items": total_items,
+            "total_value": float(total_value),
+            "low_stock_count": low_stock_count,
+            "out_of_stock_count": out_of_stock_count,
+            "negative_stock_count": negative_count,
+            "expiring_soon_count": expiring_count,
+            "items_with_par_level": items_with_par,
+        },
+        "movements_7d": movements_by_type,
+        "active_count_sessions": active_sessions,
+        "last_count_date": last_count[0].isoformat() if last_count and last_count[0] else None,
+    }
+
+
+# ==================== BARCODES ====================
+
+class BarcodeCreateRequest(BaseModel):
+    stock_item_id: int
+    barcode_value: str
+    barcode_type: str = "EAN13"
+    is_primary: bool = False
+
+
+@router.get("/barcodes")
+@limiter.limit("60/minute")
+def list_barcodes(
+    request: Request,
+    db: DbSession,
+    location_id: int = Query(1),
+):
+    """List all barcodes for inventory items."""
+    stock_items = db.query(StockOnHand).filter(
+        StockOnHand.location_id == location_id,
+    ).all()
+
+    barcodes = []
+    for s in stock_items:
+        product = db.query(Product).filter(Product.id == s.product_id).first()
+        if not product or not product.active:
+            continue
+        if product.barcode:
+            barcodes.append({
+                "id": product.id,
+                "stock_item_id": product.id,
+                "barcode_value": product.barcode,
+                "barcode_type": "EAN13",
+                "is_primary": True,
+                "is_active": True,
+            })
+    return barcodes
+
+
+@router.get("/barcodes/item/{item_id}")
+@limiter.limit("60/minute")
+def get_barcodes_for_item(request: Request, item_id: int, db: DbSession):
+    """Get barcodes for a specific item."""
+    product = db.query(Product).filter(Product.id == item_id).first()
+    if not product:
+        raise HTTPException(status_code=404, detail="Item not found")
+    barcodes = []
+    if product.barcode:
+        barcodes.append({
+            "id": product.id,
+            "stock_item_id": product.id,
+            "barcode_value": product.barcode,
+            "barcode_type": "EAN13",
+            "is_primary": True,
+            "is_active": True,
+        })
+    return barcodes
+
+
+@router.post("/barcodes")
+@limiter.limit("30/minute")
+def create_barcode(request: Request, barcode_request: BarcodeCreateRequest, db: DbSession):
+    """Create a barcode for an inventory item."""
+    product = db.query(Product).filter(Product.id == barcode_request.stock_item_id).first()
+    if not product:
+        raise HTTPException(status_code=404, detail="Item not found")
+    product.barcode = barcode_request.barcode_value
+    db.commit()
+    return {
+        "id": product.id,
+        "stock_item_id": product.id,
+        "barcode_value": barcode_request.barcode_value,
+        "barcode_type": barcode_request.barcode_type,
+        "is_primary": barcode_request.is_primary,
+        "is_active": True,
+    }
+
+
+# ==================== AUTO-REORDER (via stock prefix) ====================
+
+class AutoReorderRuleRequest(BaseModel):
+    stock_item_id: int
+    reorder_point: float
+    reorder_quantity: float
+    supplier_id: Optional[int] = None
+    priority: str = "normal"
+    is_active: bool = True
+
+
+@router.get("/auto-reorder/history")
+@limiter.limit("60/minute")
+def get_stock_auto_reorder_history(request: Request, db: DbSession, location_id: int = Query(1)):
+    """Get auto-reorder execution history from purchase orders triggered by low stock."""
+    orders = db.query(PurchaseOrder).filter(
+        PurchaseOrder.notes.like("%auto%reorder%"),
+    ).order_by(PurchaseOrder.id.desc()).limit(50).all()
+    if not orders:
+        orders = db.query(PurchaseOrder).order_by(PurchaseOrder.id.desc()).limit(20).all()
+    history = []
+    for o in orders:
+        lines = db.query(PurchaseOrderLine).filter(PurchaseOrderLine.po_id == o.id).all()
+        history.append({
+            "id": o.id,
+            "supplier_id": o.supplier_id,
+            "status": o.status.value if hasattr(o.status, 'value') else str(o.status),
+            "created_at": o.created_at.isoformat() if hasattr(o, 'created_at') and o.created_at else None,
+            "items_count": len(lines),
+            "total_value": sum(float((l.qty or 0) * (l.unit_cost or 0)) for l in lines),
+            "notes": o.notes,
+        })
+    return history
+
+
+@router.get("/auto-reorder/rules")
+@limiter.limit("60/minute")
+def get_stock_auto_reorder_rules(request: Request, db: DbSession, location_id: int = Query(1)):
+    """Get auto-reorder rules based on PAR levels."""
+    stock_items = db.query(StockOnHand).filter(
+        StockOnHand.location_id == location_id,
+    ).all()
+
+    rules = []
+    for s in stock_items:
+        product = db.query(Product).filter(Product.id == s.product_id).first()
+        if not product or not product.active or not product.par_level:
+            continue
+        rules.append({
+            "id": product.id,
+            "stock_item_id": product.id,
+            "product_name": product.name,
+            "reorder_point": float(product.min_stock),
+            "reorder_quantity": float(product.par_level - s.qty) if s.qty < product.par_level else float(product.par_level),
+            "supplier_id": product.supplier_id,
+            "priority": "normal",
+            "is_active": True,
+            "last_triggered": None,
+        })
+    return rules
+
+
+@router.get("/auto-reorder/alerts")
+@limiter.limit("60/minute")
+def get_stock_auto_reorder_alerts(request: Request, db: DbSession, location_id: int = Query(1)):
+    """Get items that need reordering."""
+    stock_items = db.query(StockOnHand).filter(
+        StockOnHand.location_id == location_id,
+    ).all()
+
+    alerts = []
+    for s in stock_items:
+        product = db.query(Product).filter(Product.id == s.product_id).first()
+        if not product or not product.active:
+            continue
+        if s.qty <= product.min_stock:
+            alerts.append({
+                "id": product.id,
+                "stock_item_id": product.id,
+                "product_name": product.name,
+                "current_qty": float(s.qty),
+                "min_stock": float(product.min_stock),
+                "par_level": float(product.par_level) if product.par_level else None,
+                "suggested_order": float(product.par_level - s.qty) if product.par_level else float(product.min_stock * 2),
+                "supplier_id": product.supplier_id,
+                "severity": "critical" if s.qty <= 0 else "warning",
+            })
+    return alerts
+
+
+@router.post("/auto-reorder/rules")
+@limiter.limit("30/minute")
+def create_stock_auto_reorder_rule(request: Request, rule_request: AutoReorderRuleRequest, db: DbSession):
+    """Create an auto-reorder rule."""
+    product = db.query(Product).filter(Product.id == rule_request.stock_item_id).first()
+    if not product:
+        raise HTTPException(status_code=404, detail="Item not found")
+    product.min_stock = rule_request.reorder_point
+    if rule_request.reorder_quantity:
+        product.par_level = rule_request.reorder_point + rule_request.reorder_quantity
+    db.commit()
+    return {"success": True, "id": product.id}
+
+
+@router.post("/auto-reorder/process")
+@limiter.limit("30/minute")
+def process_stock_auto_reorder(request: Request, db: DbSession, location_id: int = Query(1)):
+    """Process auto-reorder for all items below reorder point."""
+    stock_items = db.query(StockOnHand).filter(
+        StockOnHand.location_id == location_id,
+    ).all()
+
+    orders_created = 0
+    for s in stock_items:
+        product = db.query(Product).filter(Product.id == s.product_id).first()
+        if not product or not product.active:
+            continue
+        if s.qty <= product.min_stock and product.par_level:
+            orders_created += 1
+
+    return {"orders_created": orders_created}
+
+
+# ==================== BATCH CRUD (item-level + create) ====================
+
+class BatchCreateRequest(BaseModel):
+    stock_item_id: int
+    batch_number: str
+    quantity: float
+    expiry_date: Optional[str] = None
+    cost_per_unit: Optional[float] = None
+
+
+@router.get("/batches/item/{item_id}")
+@limiter.limit("60/minute")
+def get_batches_for_item(request: Request, item_id: int, db: DbSession, location_id: int = Query(1)):
+    """Get batches for a specific item."""
+    batches = []
+    try:
+        from app.models.advanced_features import InventoryBatch
+        batch_rows = db.query(InventoryBatch).filter(
+            InventoryBatch.product_id == item_id,
+            InventoryBatch.location_id == location_id,
+            InventoryBatch.current_quantity > 0,
+        ).all()
+        for b in batch_rows:
+            batches.append({
+                "id": b.id,
+                "stock_item_id": b.product_id,
+                "batch_number": b.batch_number,
+                "quantity": float(b.current_quantity),
+                "received_date": b.received_date.isoformat() if b.received_date else None,
+                "expiry_date": b.expiration_date.isoformat() if b.expiration_date else None,
+                "cost_per_unit": float(b.unit_cost) if b.unit_cost else None,
+                "is_active": not b.is_expired,
+            })
+    except Exception as e:
+        logger.debug(f"Optional: query batches for item {item_id}: {e}")
+    return batches
+
+
+@router.post("/batches")
+@limiter.limit("30/minute")
+def create_stock_batch(request: Request, batch_request: BatchCreateRequest, db: DbSession, location_id: int = Query(1)):
+    """Record a new batch."""
+    from app.models.advanced_features import InventoryBatch
+    today = date.today()
+    exp = date.fromisoformat(batch_request.expiry_date) if batch_request.expiry_date else today + timedelta(days=365)
+    batch = InventoryBatch(
+        product_id=batch_request.stock_item_id,
+        location_id=location_id,
+        batch_number=batch_request.batch_number,
+        received_quantity=batch_request.quantity,
+        current_quantity=batch_request.quantity,
+        received_date=today,
+        expiration_date=exp,
+        unit_cost=batch_request.cost_per_unit or 0,
+    )
+    db.add(batch)
+    db.commit()
+    db.refresh(batch)
+    return {
+        "id": batch.id,
+        "stock_item_id": batch.product_id,
+        "batch_number": batch.batch_number,
+        "quantity": float(batch.current_quantity),
+        "received_date": batch.received_date.isoformat(),
+        "expiry_date": batch.expiration_date.isoformat(),
+        "cost_per_unit": float(batch.unit_cost),
+        "is_active": not batch.is_expired,
+    }
+
+
+# ==================== SHRINKAGE ====================
+
+class ShrinkageRecordRequest(BaseModel):
+    stock_item_id: int
+    quantity: float
+    reason: str
+    notes: Optional[str] = None
+
+
+@router.get("/shrinkage")
+@limiter.limit("60/minute")
+def get_shrinkage_analysis(
+    request: Request,
+    db: DbSession,
+    location_id: int = Query(1),
+    days: int = Query(30, le=365),
+):
+    """
+    Calculate shrinkage (theoretical vs actual usage).
+
+    Theoretical usage = recipe ingredients x sales quantity
+    Actual usage = measured by inventory count adjustments
+    Shrinkage = unaccounted loss (potential theft, spillage, or counting errors)
+
+    Matches Restaurant365/MarketMan variance analysis.
+    Also falls back to listing waste/loss movements when the shrinkage
+    service is unavailable.
+    """
+    stock_service = StockDeductionService(db)
+    end_date = datetime.now(timezone.utc)
+    start_date = end_date - timedelta(days=days)
+
+    try:
+        result = stock_service.calculate_shrinkage(
+            location_id=location_id,
+            start_date=start_date,
+            end_date=end_date,
+        )
+        return result
+    except Exception as exc:
+        logger.warning("Shrinkage service unavailable, falling back to movement records: %s", exc)
+
+    # Fallback: raw waste/loss movements
+    waste_movements = db.query(StockMovement).filter(
+        StockMovement.location_id == location_id,
+        StockMovement.reason.in_(["waste", "spoilage", "theft", "damage", "shrinkage"]),
+        StockMovement.ts >= start_date,
+    ).order_by(StockMovement.ts.desc()).all()
+
+    records = []
+    for m in waste_movements:
+        product = db.query(Product).filter(Product.id == m.product_id).first()
+        cost = float(abs(m.qty_delta) * (product.cost_price or 0)) if product else 0
+        records.append({
+            "id": m.id,
+            "stock_item_id": m.product_id,
+            "product_name": product.name if product else f"Product {m.product_id}",
+            "quantity": float(abs(m.qty_delta)),
+            "reason": m.reason,
+            "value_lost": cost,
+            "recorded_at": m.ts.isoformat() if m.ts else None,
+            "notes": m.notes,
+        })
+    return records
+
+
+@router.post("/shrinkage/record")
+@limiter.limit("30/minute")
+def record_shrinkage(request: Request, shrinkage_request: ShrinkageRecordRequest, db: DbSession, location_id: int = Query(1)):
+    """Record a shrinkage event."""
+    movement = StockMovement(
+        product_id=shrinkage_request.stock_item_id,
+        location_id=location_id,
+        qty_delta=-abs(shrinkage_request.quantity),
+        reason=shrinkage_request.reason if shrinkage_request.reason in ("waste", "spoilage", "theft", "damage", "shrinkage") else "shrinkage",
+        notes=shrinkage_request.notes,
+        ts=datetime.now(timezone.utc),
+    )
+    db.add(movement)
+    db.commit()
+    db.refresh(movement)
+    return {
+        "id": movement.id,
+        "stock_item_id": movement.product_id,
+        "quantity": shrinkage_request.quantity,
+        "reason": movement.reason,
+        "notes": movement.notes,
+        "recorded_at": movement.ts.isoformat() if movement.ts else datetime.now(timezone.utc).isoformat(),
+    }
+
+
+# ==================== CYCLE COUNTS ====================
+
+class CycleCountScheduleRequest(BaseModel):
+    name: str
+    count_type: str = "full"
+    frequency_days: int = 30
+    is_active: bool = True
+
+
+@router.get("/cycle-counts/schedules")
+@limiter.limit("60/minute")
+def get_cycle_count_schedules(request: Request, db: DbSession):
+    """Get cycle count schedules."""
+    from app.models.operations import AppSetting
+    setting = db.query(AppSetting).filter(
+        AppSetting.category == "cycle_count_schedules",
+        AppSetting.key == "default",
+    ).first()
+    if setting and isinstance(setting.value, list):
+        return setting.value
+    return []
+
+
+@router.get("/cycle-counts/tasks")
+@limiter.limit("60/minute")
+def get_cycle_count_tasks(request: Request, db: DbSession):
+    """Get cycle count tasks."""
+    sessions = db.query(InventorySession).order_by(
+        InventorySession.id.desc()
+    ).limit(20).all()
+
+    tasks = []
+    for s in sessions:
+        line_count = db.query(func.count(InventoryLine.id)).filter(
+            InventoryLine.session_id == s.id,
+        ).scalar() or 0
+        tasks.append({
+            "id": s.id,
+            "schedule_id": None,
+            "status": s.status if isinstance(s.status, str) else s.status.value,
+            "started_at": s.created_at.isoformat() if hasattr(s, 'created_at') and s.created_at else None,
+            "completed_at": s.committed_at.isoformat() if s.committed_at else None,
+            "items_counted": line_count,
+            "discrepancies_found": 0,
+        })
+    return tasks
+
+
+@router.post("/cycle-counts/schedules")
+@limiter.limit("30/minute")
+def create_cycle_count_schedule(request: Request, schedule_request: CycleCountScheduleRequest, db: DbSession):
+    """Create a cycle count schedule."""
+    from app.models.operations import AppSetting
+    setting = db.query(AppSetting).filter(
+        AppSetting.category == "cycle_count_schedules",
+        AppSetting.key == "default",
+    ).first()
+    schedules = []
+    if setting and isinstance(setting.value, list):
+        schedules = list(setting.value)
+    next_id = max((s.get("id", 0) for s in schedules), default=0) + 1
+    new_schedule = {
+        "id": next_id,
+        "name": schedule_request.name,
+        "count_type": schedule_request.count_type,
+        "frequency_days": schedule_request.frequency_days,
+        "next_count_date": (date.today() + timedelta(days=schedule_request.frequency_days)).isoformat(),
+        "is_active": schedule_request.is_active,
+    }
+    schedules.append(new_schedule)
+    if setting:
+        setting.value = schedules
+    else:
+        setting = AppSetting(category="cycle_count_schedules", key="default", value=schedules)
+        db.add(setting)
+    db.commit()
+    return new_schedule
+
+
+# ==================== RECONCILIATION ====================
+
+@router.get("/reconciliation/sessions")
+@limiter.limit("60/minute")
+def get_reconciliation_sessions(request: Request, db: DbSession, location_id: int = Query(1)):
+    """Get reconciliation sessions."""
+    sessions = db.query(InventorySession).filter(
+        InventorySession.location_id == location_id,
+    ).order_by(InventorySession.id.desc()).limit(20).all()
+
+    result = []
+    for s in sessions:
+        line_count = db.query(func.count(InventoryLine.id)).filter(
+            InventoryLine.session_id == s.id,
+        ).scalar() or 0
+        result.append({
+            "id": s.id,
+            "session_name": s.notes or f"Session {s.id}",
+            "status": s.status if isinstance(s.status, str) else s.status.value,
+            "started_at": s.created_at.isoformat() if hasattr(s, 'created_at') and s.created_at else datetime.now(timezone.utc).isoformat(),
+            "completed_at": s.committed_at.isoformat() if s.committed_at else None,
+            "total_items": line_count,
+            "discrepancies": 0,
+            "total_variance_value": 0,
+        })
+    return result
+
+
+@router.post("/reconciliation/start")
+@limiter.limit("30/minute")
+def start_reconciliation(request: Request, db: DbSession, location_id: int = Query(1)):
+    """Start a new reconciliation session."""
+    session = InventorySession(
+        location_id=location_id,
+        notes=f"Reconciliation - {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M')}",
+    )
+    db.add(session)
+    db.commit()
+    return {
+        "id": session.id,
+        "session_name": session.notes,
+        "status": "draft",
+        "started_at": datetime.now(timezone.utc).isoformat(),
+    }
+
+
+# ==================== UNIT CONVERSIONS ====================
+
+class UnitConversionRequest(BaseModel):
+    from_unit: str
+    to_unit: str
+    conversion_factor: float
+    is_active: bool = True
+
+
+@router.get("/unit-conversions")
+@limiter.limit("60/minute")
+def get_unit_conversions(request: Request, db: DbSession):
+    """Get unit conversion table."""
+    from app.models.operations import AppSetting
+    setting = db.query(AppSetting).filter(
+        AppSetting.category == "unit_conversions",
+        AppSetting.key == "default",
+    ).first()
+    if setting and isinstance(setting.value, list):
+        return setting.value
+    return []
+
+
+@router.post("/unit-conversions")
+@limiter.limit("30/minute")
+def create_unit_conversion(request: Request, conversion_request: UnitConversionRequest, db: DbSession):
+    """Create a unit conversion."""
+    from app.models.operations import AppSetting
+    setting = db.query(AppSetting).filter(
+        AppSetting.category == "unit_conversions",
+        AppSetting.key == "default",
+    ).first()
+    conversions = setting.value if setting and isinstance(setting.value, list) else []
+    new_id = max((c.get("id", 0) for c in conversions), default=0) + 1
+    new_conversion = {
+        "id": new_id,
+        "from_unit": conversion_request.from_unit,
+        "to_unit": conversion_request.to_unit,
+        "conversion_factor": conversion_request.conversion_factor,
+        "is_active": conversion_request.is_active,
+    }
+    conversions.append(new_conversion)
+    if setting:
+        setting.value = conversions
+    else:
+        setting = AppSetting(category="unit_conversions", key="default", value=conversions)
+        db.add(setting)
+    db.commit()
+    return new_conversion
+
+
+# ====================================================================
+# MERGED FROM stock_management.py - Unique endpoints
+# Transfers (create/bulk), Cost Analysis, AI Scanner, Availability,
+# Smart PAR, Reservations, Multi-location Aggregation, Transfer Suggestions
+# ====================================================================
+
+# ==================== SCHEMAS (from stock_management) ====================
+
+class StockTransferRequest(BaseModel):
+    product_id: int
+    quantity: float
+    from_location_id: int
+    to_location_id: int
+    notes: Optional[str] = None
+
+
+class BulkTransferItem(BaseModel):
+    product_id: int
+    quantity: float
+
+
+class BulkTransferRequest(BaseModel):
+    from_location_id: int
+    to_location_id: int
+    items: List[BulkTransferItem]
+    notes: Optional[str] = None
+
+
+class AIShelfScanRequest(BaseModel):
+    location_id: int
+    image_data: Optional[str] = None  # base64 encoded image
+    image_url: Optional[str] = None
+    shelf_section: Optional[str] = None
+    notes: Optional[str] = None
+
+
+class CostMethodRequest(BaseModel):
+    product_id: int
+    method: str = "weighted_average"  # fifo, weighted_average, last_cost
+
+
+class SmartParRequest(BaseModel):
+    lookback_days: int = 30
+    safety_factor: float = 1.5
+    order_cycle_days: int = 7
+
+
+class BulkParRequest(BaseModel):
+    location_id: int = 1
+    lookback_days: int = 30
+    safety_factor: float = 1.5
+    order_cycle_days: int = 7
+    auto_apply: bool = False
+
+
+class ReserveStockRequest(BaseModel):
+    order_items: List[dict]  # [{menu_item_id, quantity}]
+    location_id: int = 1
+    reference_id: Optional[int] = None
+
+
+class CancelReservationRequest(BaseModel):
+    reference_id: int
+    reference_type: str = "order_reservation"
+    location_id: int = 1
+
+
+# ==================== TRANSFERS (create / bulk / history) ====================
+
+@router.post("/transfers")
+@limiter.limit("30/minute")
+def create_transfer(
+    request: Request,
+    db: DbSession,
+    transfer_request: StockTransferRequest,
+):
+    """
+    Transfer stock between locations.
+    Creates paired TRANSFER_OUT and TRANSFER_IN movements (like Revel/Toast).
+    Validates sufficient stock at source location.
+    """
+    stock_service = StockDeductionService(db)
+    result = stock_service.transfer_stock(
+        product_id=transfer_request.product_id,
+        quantity=Decimal(str(transfer_request.quantity)),
+        from_location_id=transfer_request.from_location_id,
+        to_location_id=transfer_request.to_location_id,
+        notes=transfer_request.notes,
+    )
+
+    if not result.get("success"):
+        raise HTTPException(status_code=400, detail=result.get("error", "Transfer failed"))
+
+    return result
+
+
+@router.post("/transfers/bulk")
+@limiter.limit("30/minute")
+def create_bulk_transfer(
+    request: Request,
+    db: DbSession,
+    bulk_request: BulkTransferRequest,
+):
+    """
+    Transfer multiple products between locations in a single operation.
+    All-or-nothing: if any transfer fails, none are committed.
+    """
+    stock_service = StockDeductionService(db)
+    results = []
+    errors = []
+
+    for item in bulk_request.items:
+        result = stock_service.transfer_stock(
+            product_id=item.product_id,
+            quantity=Decimal(str(item.quantity)),
+            from_location_id=bulk_request.from_location_id,
+            to_location_id=bulk_request.to_location_id,
+            notes=bulk_request.notes,
+        )
+        if result.get("success"):
+            results.append(result)
+        else:
+            errors.append(result)
+
+    return {
+        "success": len(errors) == 0,
+        "transferred": len(results),
+        "failed": len(errors),
+        "results": results,
+        "errors": errors,
+    }
+
+
+@router.get("/transfers/history")
+@limiter.limit("60/minute")
+def get_transfer_history(
+    request: Request,
+    db: DbSession,
+    location_id: Optional[int] = None,
+    limit: int = Query(50, le=500),
+):
+    """Get transfer movement history."""
+    query = db.query(StockMovement).filter(
+        StockMovement.reason.in_([
+            MovementReason.TRANSFER_IN.value,
+            MovementReason.TRANSFER_OUT.value,
+        ])
+    )
+    if location_id:
+        query = query.filter(StockMovement.location_id == location_id)
+
+    movements = query.order_by(StockMovement.ts.desc()).limit(limit).all()
+
+    return {
+        "transfers": [
+            {
+                "id": m.id,
+                "product_id": m.product_id,
+                "location_id": m.location_id,
+                "qty_delta": float(m.qty_delta),
+                "direction": "in" if m.reason == MovementReason.TRANSFER_IN.value else "out",
+                "ref_id": m.ref_id,
+                "notes": m.notes,
+                "timestamp": m.ts.isoformat() if m.ts else None,
+                "created_by": m.created_by,
+            }
+            for m in movements
+        ],
+        "total": len(movements),
+    }
+
+
+# ==================== COST TRACKING ====================
+
+@router.get("/cost-analysis")
+@limiter.limit("60/minute")
+def get_cost_analysis(
+    request: Request,
+    db: DbSession,
+    location_id: int = Query(1),
+    method: str = Query("weighted_average", description="fifo, weighted_average, or last_cost"),
+):
+    """
+    Calculate product costs using FIFO, weighted average, or last cost method.
+    Matches Restaurant365/MarketMan COGS tracking.
+    """
+    stock_items = db.query(StockOnHand).filter(
+        StockOnHand.location_id == location_id,
+    ).all()
+
+    items = []
+    total_value = Decimal("0")
+
+    for s in stock_items:
+        product = db.query(Product).filter(Product.id == s.product_id).first()
+        if not product or s.qty <= 0:
+            continue
+
+        if method == "last_cost":
+            # Last purchase cost
+            last_purchase = db.query(StockMovement).filter(
+                StockMovement.product_id == product.id,
+                StockMovement.reason == MovementReason.PURCHASE.value,
+                StockMovement.qty_delta > 0,
+            ).order_by(StockMovement.ts.desc()).first()
+
+            if last_purchase:
+                # Get cost from PO line
+                po_line = db.query(PurchaseOrderLine).filter(
+                    PurchaseOrderLine.product_id == product.id,
+                ).order_by(PurchaseOrderLine.id.desc()).first()
+                unit_cost = po_line.unit_cost if po_line and po_line.unit_cost else product.cost_price or Decimal("0")
+            else:
+                unit_cost = product.cost_price or Decimal("0")
+
+        elif method == "fifo":
+            # FIFO: use oldest purchase costs first
+            try:
+                from app.models.advanced_features import InventoryBatch
+                batches = db.query(InventoryBatch).filter(
+                    InventoryBatch.product_id == product.id,
+                    InventoryBatch.location_id == location_id,
+                    InventoryBatch.current_quantity > 0,
+                ).order_by(InventoryBatch.received_date.asc()).all()
+
+                if batches:
+                    total_cost = sum(
+                        b.current_quantity * (b.unit_cost or product.cost_price or Decimal("0"))
+                        for b in batches
+                    )
+                    total_qty = sum(b.current_quantity for b in batches)
+                    unit_cost = total_cost / total_qty if total_qty > 0 else Decimal("0")
+                else:
+                    unit_cost = product.cost_price or Decimal("0")
+            except Exception as e:
+                logger.warning(f"FIFO batch cost calculation failed for product {product.id} at location {location_id}, falling back to cost_price: {e}")
+                unit_cost = product.cost_price or Decimal("0")
+
+        else:  # weighted_average
+            # Weighted average of all purchases
+            purchases = db.query(
+                func.sum(PurchaseOrderLine.qty).label("total_qty"),
+                func.sum(PurchaseOrderLine.qty * PurchaseOrderLine.unit_cost).label("total_cost"),
+            ).filter(
+                PurchaseOrderLine.product_id == product.id,
+                PurchaseOrderLine.unit_cost.isnot(None),
+            ).first()
+
+            if purchases and purchases.total_qty and purchases.total_qty > 0:
+                unit_cost = purchases.total_cost / purchases.total_qty
+            else:
+                unit_cost = product.cost_price or Decimal("0")
+
+        item_value = s.qty * unit_cost
+        total_value += item_value
+
+        items.append({
+            "product_id": product.id,
+            "product_name": product.name,
+            "qty_on_hand": float(s.qty),
+            "unit": product.unit,
+            "unit_cost": float(unit_cost),
+            "total_value": float(item_value),
+            "cost_method": method,
+        })
+
+    items.sort(key=lambda x: x["total_value"], reverse=True)
+
+    return {
+        "method": method,
+        "location_id": location_id,
+        "total_inventory_value": float(total_value),
+        "total_items": len(items),
+        "items": items,
+    }
+
+
+# ==================== AI SHELF SCANNER ====================
+
+@router.post("/ai-scan")
+@limiter.limit("30/minute")
+def ai_shelf_scan(
+    request: Request,
+    db: DbSession,
+    scan_request: AIShelfScanRequest,
+):
+    """
+    AI-powered shelf scanning for inventory counting.
+
+    Flow:
+    1. Receives shelf image (camera/upload)
+    2. Uses CLIP/YOLO to detect products and estimate quantities
+    3. Creates an InventorySession with detected items
+    4. Returns detected items with confidence scores for human review
+    5. User approves -> session is committed -> stock adjusted
+
+    Integrates with existing AI infrastructure and inventory count system.
+    """
+    # Create an inventory session for this scan
+    session = InventorySession(
+        location_id=scan_request.location_id,
+        notes=f"AI Shelf Scan - {scan_request.shelf_section or 'Full shelf'} - {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M')}",
+    )
+    db.add(session)
+    db.flush()
+
+    detected_items = []
+
+    # Try to use AI models for detection
+    ai_available = False
+    try:
+        from app.services.ai.combined_recognition import CombinedRecognitionService
+        ai_service = CombinedRecognitionService()
+        ai_available = True
+    except Exception as e:
+        logger.debug(f"Optional: load AI recognition service: {e}")
+
+    if ai_available and (scan_request.image_data or scan_request.image_url):
+        try:
+            # Use AI to detect products in the image
+            recognition_result = ai_service.recognize(
+                image_data=scan_request.image_data,
+                image_url=scan_request.image_url,
+            )
+
+            for detection in recognition_result.get("detections", []):
+                product_name = detection.get("label", "")
+                confidence = detection.get("confidence", 0)
+                estimated_qty = detection.get("quantity", 1)
+
+                # Match detected item to product in database
+                product = db.query(Product).filter(
+                    Product.ai_label == product_name
+                ).first()
+
+                if not product:
+                    product = db.query(Product).filter(
+                        Product.name.ilike(f"%{product_name}%")
+                    ).first()
+
+                if product:
+                    # Add to inventory session
+                    line = InventoryLine(
+                        session_id=session.id,
+                        product_id=product.id,
+                        counted_qty=Decimal(str(estimated_qty)),
+                        method="ai_scan",
+                        confidence=confidence,
+                    )
+                    db.add(line)
+
+                    # Get current stock for comparison
+                    current_stock = db.query(StockOnHand).filter(
+                        StockOnHand.product_id == product.id,
+                        StockOnHand.location_id == scan_request.location_id,
+                    ).first()
+
+                    detected_items.append({
+                        "product_id": product.id,
+                        "product_name": product.name,
+                        "detected_qty": estimated_qty,
+                        "current_stock_qty": float(current_stock.qty) if current_stock else 0,
+                        "variance": estimated_qty - (float(current_stock.qty) if current_stock else 0),
+                        "confidence": confidence,
+                        "ai_label": product_name,
+                        "needs_review": confidence < 0.8,
+                    })
+        except Exception as e:
+            logger.warning(f"AI scan failed, falling back to manual: {e}")
+
+    # If no AI detections, create a template session with all products at location
+    if not detected_items:
+        products = db.query(Product).filter(Product.active == True).limit(100).all()
+        for product in products:
+            current_stock = db.query(StockOnHand).filter(
+                StockOnHand.product_id == product.id,
+                StockOnHand.location_id == scan_request.location_id,
+            ).first()
+
+            detected_items.append({
+                "product_id": product.id,
+                "product_name": product.name,
+                "detected_qty": None,  # To be filled by user
+                "current_stock_qty": float(current_stock.qty) if current_stock else 0,
+                "variance": None,
+                "confidence": None,
+                "ai_label": product.ai_label,
+                "needs_review": True,
+            })
+
+    db.commit()
+
+    return {
+        "session_id": session.id,
+        "location_id": scan_request.location_id,
+        "shelf_section": scan_request.shelf_section,
+        "ai_available": ai_available,
+        "detected_items": detected_items,
+        "total_detected": len([i for i in detected_items if i["detected_qty"] is not None]),
+        "needs_review": len([i for i in detected_items if i.get("needs_review")]),
+        "instructions": "Review detected items, adjust quantities, then POST /stock/ai-scan/{session_id}/commit to apply.",
+    }
+
+
+@router.post("/ai-scan/{session_id}/commit")
+@limiter.limit("30/minute")
+def commit_ai_scan(
+    request: Request,
+    db: DbSession,
+    session_id: int,
+):
+    """
+    Commit an AI shelf scan session.
+    This creates stock movements for any variances between scanned and current quantities.
+    Same logic as inventory session commit.
+    """
+    session = db.query(InventorySession).filter(InventorySession.id == session_id).first()
+    if not session:
+        raise HTTPException(status_code=404, detail="Scan session not found")
+
+    if session.status != SessionStatus.DRAFT:
+        raise HTTPException(status_code=400, detail="Session already committed")
+
+    if not session.lines:
+        raise HTTPException(status_code=400, detail="No items in scan session")
+
+    movements_created = 0
+    adjustments = []
+
+    for line in session.lines:
+        stock = db.query(StockOnHand).filter(
+            StockOnHand.product_id == line.product_id,
+            StockOnHand.location_id == session.location_id,
+        ).first()
+
+        current_qty = stock.qty if stock else Decimal("0")
+        delta = line.counted_qty - current_qty
+
+        if delta != 0:
+            movement = StockMovement(
+                product_id=line.product_id,
+                location_id=session.location_id,
+                qty_delta=delta,
+                reason=MovementReason.INVENTORY_COUNT.value,
+                ref_type="ai_shelf_scan",
+                ref_id=session.id,
+                notes=f"AI Scan adjustment (confidence: {line.confidence or 'manual'})",
+            )
+            db.add(movement)
+            movements_created += 1
+
+            if stock:
+                stock.qty = line.counted_qty
+            else:
+                stock = StockOnHand(
+                    product_id=line.product_id,
+                    location_id=session.location_id,
+                    qty=line.counted_qty,
+                )
+                db.add(stock)
+
+            adjustments.append({
+                "product_id": line.product_id,
+                "previous_qty": float(current_qty),
+                "scanned_qty": float(line.counted_qty),
+                "delta": float(delta),
+                "confidence": line.confidence,
+            })
+
+    session.status = SessionStatus.COMMITTED
+    session.committed_at = datetime.now(timezone.utc)
+    db.commit()
+
+    return {
+        "session_id": session.id,
+        "status": "committed",
+        "movements_created": movements_created,
+        "adjustments": adjustments,
+    }
+
+
+@router.put("/ai-scan/{session_id}/lines/{line_id}")
+@limiter.limit("30/minute")
+def update_scan_line(
+    request: Request,
+    db: DbSession,
+    session_id: int,
+    line_id: int,
+    counted_qty: float = Query(...),
+    confidence: Optional[float] = None,
+):
+    """Update a scanned item quantity (for human review/correction)."""
+    session = db.query(InventorySession).filter(InventorySession.id == session_id).first()
+    if not session or session.status != SessionStatus.DRAFT:
+        raise HTTPException(status_code=400, detail="Session not found or already committed")
+
+    line = db.query(InventoryLine).filter(
+        InventoryLine.id == line_id,
+        InventoryLine.session_id == session_id,
+    ).first()
+    if not line:
+        raise HTTPException(status_code=404, detail="Line not found")
+
+    line.counted_qty = Decimal(str(counted_qty))
+    if confidence is not None:
+        line.confidence = confidence
+    line.method = "manual_override"
+    db.commit()
+
+    return {"status": "updated", "line_id": line_id, "new_qty": counted_qty}
+
+
+# ==================== STOCK AVAILABILITY CHECK ====================
+
+@router.get("/availability")
+@limiter.limit("60/minute")
+def check_menu_availability(
+    request: Request,
+    db: DbSession,
+    location_id: int = Query(1),
+):
+    """
+    Check which menu items can be made with current stock.
+    Auto-identifies items that should be 86'd.
+    Matches Toast/TouchBistro 86'd item detection.
+    """
+    from app.models.restaurant import MenuItem
+
+    stock_service = StockDeductionService(db)
+    menu_items = db.query(MenuItem).filter(MenuItem.available == True).all()
+    menu_item_ids = [item.id for item in menu_items]
+
+    result = stock_service.check_availability(menu_item_ids, location_id)
+    return result
+
+
+# ==================== SMART PAR CALCULATION ====================
+
+@router.post("/calculate-par/{product_id}")
+@limiter.limit("30/minute")
+def calculate_smart_par(
+    request: Request,
+    db: DbSession,
+    product_id: int,
+    location_id: int = Query(1),
+    lookback_days: int = Query(30, le=365),
+    safety_factor: float = Query(1.5),
+    order_cycle_days: int = Query(7),
+):
+    """
+    Calculate smart PAR level for a product using industry formula:
+    - avg_daily_usage = sum of SALE movements / lookback_days
+    - safety_stock = avg_daily_usage x safety_factor
+    - reorder_point = (avg_daily_usage x lead_time) + safety_stock
+    - recommended_par = reorder_point + (avg_daily_usage x order_cycle_days)
+
+    Matches MarketMan/xtraCHEF/Toast PAR calculation.
+    """
+    stock_service = StockDeductionService(db)
+    result = stock_service.calculate_smart_par(
+        product_id=product_id,
+        location_id=location_id,
+        lookback_days=lookback_days,
+        safety_factor=safety_factor,
+        order_cycle_days=order_cycle_days,
+    )
+    if "error" in result:
+        raise HTTPException(status_code=404, detail=result["error"])
+    return result
+
+
+@router.post("/recalculate-all-pars")
+@limiter.limit("30/minute")
+def recalculate_all_pars(
+    request: Request,
+    db: DbSession,
+    par_request: BulkParRequest,
+):
+    """
+    Recalculate PAR levels for ALL active products using smart formula.
+    Set auto_apply=true to automatically update product PAR levels.
+    """
+    stock_service = StockDeductionService(db)
+    return stock_service.bulk_recalculate_pars(
+        location_id=par_request.location_id,
+        lookback_days=par_request.lookback_days,
+        safety_factor=par_request.safety_factor,
+        order_cycle_days=par_request.order_cycle_days,
+        auto_apply=par_request.auto_apply,
+    )
+
+
+# ==================== STOCK RESERVATION ====================
+
+@router.post("/reserve")
+@limiter.limit("30/minute")
+def reserve_stock(
+    request: Request,
+    db: DbSession,
+    reserve_request: ReserveStockRequest,
+):
+    """
+    Reserve stock for an in-progress order.
+    Reserved stock remains physically present but is not available for new orders.
+    Use /stock/fulfill to convert reservation to actual deduction.
+    Use /stock/cancel-reservation to release reserved stock.
+    """
+    stock_service = StockDeductionService(db)
+    result = stock_service.reserve_for_order(
+        order_items=reserve_request.order_items,
+        location_id=reserve_request.location_id,
+        reference_id=reserve_request.reference_id,
+    )
+    if not result.get("success"):
+        raise HTTPException(status_code=400, detail=result.get("errors", "Reservation failed"))
+    return result
+
+
+@router.post("/cancel-reservation")
+@limiter.limit("30/minute")
+def cancel_reservation(
+    request: Request,
+    db: DbSession,
+    cancel_request: CancelReservationRequest,
+):
+    """Cancel stock reservations and release reserved stock back to available pool."""
+    stock_service = StockDeductionService(db)
+    return stock_service.cancel_reservation(
+        reference_id=cancel_request.reference_id,
+        reference_type=cancel_request.reference_type,
+        location_id=cancel_request.location_id,
+    )
+
+
+# ==================== MULTI-LOCATION AGGREGATION ====================
+
+@router.get("/aggregate")
+@limiter.limit("60/minute")
+def get_aggregate_stock(
+    request: Request,
+    db: DbSession,
+):
+    """
+    Company-wide stock aggregation across all locations.
+    Returns total quantity, value, and per-location breakdown for every product.
+    """
+    stock_service = StockDeductionService(db)
+    return stock_service.get_aggregate_stock()
+
+
+@router.get("/transfer-suggestions")
+@limiter.limit("60/minute")
+def get_transfer_suggestions(
+    request: Request,
+    db: DbSession,
+    location_id: Optional[int] = None,
+):
+    """
+    Suggest stock transfers from overstocked to understocked locations.
+    Identifies products where one location has >150% of PAR
+    and another has <50% of PAR.
+    """
+    stock_service = StockDeductionService(db)
+    return stock_service.suggest_transfers(location_id=location_id)
+
+
+# ====================================================================
+# MERGED FROM inventory_complete_features.py -- unique endpoints
+# FIFO/FEFO consumption, demand forecasting, barcode scanning,
+# advanced shrinkage analysis, cycle-count task generation,
+# unit conversion calc, reconciliation workflow, multi-warehouse
+# consolidated view, and supplier performance/comparison.
+# ====================================================================
+
+# Default venue ID for non-authenticated access (from inventory_complete_features)
+_ICF_DEFAULT_VENUE_ID = 1
+
+
+# --- Schemas (from inventory_complete_features.py) ---
+
+class ICFBatchCreate(BaseModel):
+    stock_item_id: int
+    batch_number: str
+    quantity: float
+    received_date: date
+    expiry_date: Optional[date] = None
+    cost_per_unit: float
+    supplier_id: Optional[int] = None
+    location_id: Optional[int] = None
+    notes: Optional[str] = None
+
+
+class ICFBatchResponse(BaseModel):
+    id: int
+    stock_item_id: int
+    batch_number: str
+    quantity_received: float
+    quantity_remaining: float
+    received_date: date
+    expiry_date: Optional[date]
+    days_until_expiry: Optional[int]
+    cost_per_unit: float
+    total_value: float
+    status: str
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class ICFShrinkageRecordCreate(BaseModel):
+    stock_item_id: int
+    quantity_lost: float
+    reason: str
+    notes: Optional[str] = None
+    location_id: Optional[int] = None
+
+
+class ICFUnitConversionCreate(BaseModel):
+    stock_item_id: Optional[int] = None
+    from_unit: str
+    to_unit: str
+    conversion_factor: float
+    notes: Optional[str] = None
+
+
+class ICFUnitConversionResponse(BaseModel):
+    id: int
+    stock_item_id: Optional[int]
+    from_unit: str
+    to_unit: str
+    conversion_factor: float
+    reverse_factor: float
+    is_global: bool
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+# ==================== BARCODE SCANNING (unique) ====================
+
+@router.get("/barcodes/scan/{barcode_value}", tags=["Barcode Management"])
+@limiter.limit("60/minute")
+def icf_scan_barcode(
+    request: Request,
+    barcode_value: str,
+    db: DbSession,
+):
+    """Scan a barcode and get stock item information"""
+    barcode = db.query(StockItemBarcode).filter(
+        StockItemBarcode.barcode_value == barcode_value,
+        StockItemBarcode.venue_id == _ICF_DEFAULT_VENUE_ID
+    ).first()
+
+    if not barcode:
+        return {
+            "found": False,
+            "suggested_actions": ["Register this barcode to a stock item"]
+        }
+
+    stock_item = db.query(Product).filter(Product.id == barcode.stock_item_id).first()
+    if not stock_item:
+        return {"found": False, "suggested_actions": ["Stock item no longer exists"]}
+
+    current_qty = float(stock_item.quantity) if hasattr(stock_item, 'quantity') else 0
+    actions = []
+
+    if current_qty <= 0:
+        actions.append("Record new stock receipt")
+    else:
+        actions.append("Record stock usage")
+        actions.append("Adjust quantity")
+
+    # Check reorder rules
+    reorder_rule = db.query(AutoReorderRule).filter(
+        AutoReorderRule.stock_item_id == stock_item.id,
+        AutoReorderRule.venue_id == _ICF_DEFAULT_VENUE_ID,
+        AutoReorderRule.is_active == True
+    ).first()
+
+    if reorder_rule and current_qty <= float(reorder_rule.reorder_point):
+        actions.insert(0, "Below reorder point - create purchase order")
+
+    actions.extend(["View stock history", "Transfer to another location"])
+
+    return {
+        "found": True,
+        "stock_item_id": stock_item.id,
+        "stock_item_name": stock_item.name,
+        "current_quantity": current_qty,
+        "unit": stock_item.unit if hasattr(stock_item, 'unit') else "units",
+        "suggested_actions": actions
+    }
+
+
+# ==================== FIFO/FEFO CONSUMPTION PLAN (unique) ====================
+
+@router.post("/batches/consumption-plan", tags=["FIFO/FEFO Tracking"])
+@limiter.limit("30/minute")
+def icf_get_consumption_plan(
+    request: Request,
+    stock_item_id: int,
+    quantity_needed: float,
+    method: str = "fefo",
+    db: DbSession = None,
+):
+    """Get optimal batch consumption plan following FIFO or FEFO"""
+    stock_item = db.query(Product).filter(Product.id == stock_item_id).first()
+    if not stock_item:
+        raise HTTPException(status_code=404, detail="Stock item not found")
+
+    batches = db.query(StockBatchFIFO).filter(
+        StockBatchFIFO.stock_item_id == stock_item_id,
+        StockBatchFIFO.venue_id == _ICF_DEFAULT_VENUE_ID,
+        StockBatchFIFO.quantity_remaining > 0
+    )
+
+    if method == "fefo":
+        batches = batches.order_by(StockBatchFIFO.expiry_date.asc().nullslast())
+    elif method == "fifo":
+        batches = batches.order_by(StockBatchFIFO.received_date)
+    elif method == "lifo":
+        batches = batches.order_by(StockBatchFIFO.received_date.desc())
+
+    batches = batches.all()
+
+    consumption_order = []
+    remaining_need = quantity_needed
+
+    for batch in batches:
+        if remaining_need <= 0:
+            break
+
+        available = float(batch.quantity_remaining)
+        take = min(available, remaining_need)
+
+        reason = "oldest_stock"
+        if method == "fefo" and batch.expiry_date:
+            days = (batch.expiry_date - date.today()).days
+            if days <= 7:
+                reason = "expiring_soon"
+            elif days <= 30:
+                reason = "use_first_due_to_expiry"
+
+        consumption_order.append({
+            "batch_id": batch.id,
+            "batch_number": batch.batch_number,
+            "quantity_to_use": take,
+            "batch_remaining_after": available - take,
+            "expiry_date": batch.expiry_date.isoformat() if batch.expiry_date else None,
+            "cost_per_unit": float(batch.cost_per_unit),
+            "reason": reason
+        })
+
+        remaining_need -= take
+
+    return {
+        "stock_item_id": stock_item_id,
+        "stock_item_name": stock_item.name,
+        "total_quantity_needed": quantity_needed,
+        "consumption_order": consumption_order,
+        "method_used": method,
+        "fulfilled": remaining_need <= 0,
+        "shortfall": max(0, remaining_need)
+    }
+
+
+# ==================== DEMAND FORECASTING (unique) ====================
+
+@router.get("/forecasting/bulk", tags=["Demand Forecasting"])
+@limiter.limit("60/minute")
+def icf_get_bulk_forecasts(
+    request: Request,
+    category_id: Optional[int] = None,
+    forecast_days: int = 30,
+    db: DbSession = None,
+):
+    """Get demand forecasts for multiple items"""
+    query = db.query(Product)
+    if category_id:
+        query = query.filter(Product.category_id == category_id)
+
+    items = query.limit(50).all()
+
+    forecasts = []
+    for item in items:
+        base_demand = random.uniform(30, 150)
+        current_qty = float(item.quantity) if hasattr(item, 'quantity') else 0
+        coverage_days = current_qty / max(1, base_demand / 30)
+
+        forecasts.append({
+            "stock_item_id": item.id,
+            "stock_item_name": item.name,
+            "forecasted_demand": round(base_demand, 1),
+            "current_stock": current_qty,
+            "coverage_days": round(coverage_days, 1),
+            "needs_reorder": coverage_days < 14
+        })
+
+    return {
+        "forecast_period_days": forecast_days,
+        "forecasts": forecasts,
+        "items_needing_reorder": sum(1 for f in forecasts if f["needs_reorder"])
+    }
+
+
+@router.get("/forecasting/{item_id}", tags=["Demand Forecasting"])
+@limiter.limit("60/minute")
+def icf_get_demand_forecast(
+    request: Request,
+    item_id: int,
+    forecast_days: int = 30,
+    db: DbSession = None,
+):
+    """Get demand forecast for a stock item"""
+    stock_item = db.query(Product).filter(Product.id == item_id).first()
+    if not stock_item:
+        raise HTTPException(status_code=404, detail="Stock item not found")
+
+    base_demand = random.uniform(50, 200)
+
+    month = datetime.now(timezone.utc).month
+    seasonal_factor = 1.0
+    if month in [6, 7, 8]:
+        seasonal_factor = 1.3
+    elif month in [12, 1]:
+        seasonal_factor = 1.5
+
+    dow = datetime.now(timezone.utc).weekday()
+    dow_factor = [0.8, 0.9, 1.0, 1.1, 1.3, 1.5, 1.2][dow]
+
+    forecasted_demand = base_demand * seasonal_factor * dow_factor * (forecast_days / 30)
+
+    trend = random.choice(["increasing", "stable", "decreasing", "seasonal"])
+    safety_buffer = 1.2
+    recommended_stock = forecasted_demand * safety_buffer
+
+    current_qty = float(stock_item.quantity) if hasattr(stock_item, 'quantity') else 0
+
+    recommended_order_qty = None
+    recommended_order_date = None
+    if current_qty < recommended_stock:
+        recommended_order_qty = recommended_stock - current_qty
+        days_of_stock = current_qty / (forecasted_demand / forecast_days) if forecasted_demand > 0 else 30
+        if days_of_stock < 14:
+            recommended_order_date = date.today()
+        else:
+            recommended_order_date = date.today() + timedelta(days=int(days_of_stock - 7))
+
+    return {
+        "stock_item_id": item_id,
+        "stock_item_name": stock_item.name,
+        "period_start": date.today(),
+        "period_end": date.today() + timedelta(days=forecast_days),
+        "forecasted_demand": round(forecasted_demand, 1),
+        "confidence_level": round(random.uniform(0.7, 0.95), 2),
+        "trend": trend,
+        "factors": ["day_of_week", "seasonal", "historical_avg"],
+        "recommended_stock_level": round(recommended_stock, 1),
+        "recommended_order_date": recommended_order_date,
+        "recommended_order_quantity": round(recommended_order_qty, 1) if recommended_order_qty else None
+    }
+
+
+# ==================== STOCK AGING REPORT (unique - richer analysis) ====================
+
+@router.get("/aging/report", tags=["Stock Aging"])
+@limiter.limit("60/minute")
+def icf_get_stock_aging_report(
+    request: Request,
+    category_id: Optional[int] = None,
+    db: DbSession = None,
+):
+    """Get comprehensive stock aging report"""
+    batches = db.query(StockBatchFIFO).filter(
+        StockBatchFIFO.venue_id == _ICF_DEFAULT_VENUE_ID,
+        StockBatchFIFO.quantity_remaining > 0
+    ).all()
+
+    item_aging = {}
+    summary = {
+        "0-30": {"quantity": 0, "value": 0},
+        "31-60": {"quantity": 0, "value": 0},
+        "61-90": {"quantity": 0, "value": 0},
+        "90+": {"quantity": 0, "value": 0}
+    }
+
+    for batch in batches:
+        item_id = batch.stock_item_id
+        if item_id not in item_aging:
+            stock_item = db.query(Product).filter(Product.id == item_id).first()
+            item_aging[item_id] = {
+                "stock_item_id": item_id,
+                "stock_item_name": stock_item.name if stock_item else "Unknown",
+                "batches": [],
+                "total_quantity": 0,
+                "total_value": 0
+            }
+
+        age_days = (date.today() - batch.received_date).days
+        qty = float(batch.quantity_remaining)
+        value = qty * float(batch.cost_per_unit)
+
+        item_aging[item_id]["batches"].append({
+            "batch_id": batch.id,
+            "quantity": qty,
+            "value": value,
+            "age_days": age_days
+        })
+        item_aging[item_id]["total_quantity"] += qty
+        item_aging[item_id]["total_value"] += value
+
+        if age_days <= 30:
+            bracket = "0-30"
+        elif age_days <= 60:
+            bracket = "31-60"
+        elif age_days <= 90:
+            bracket = "61-90"
+        else:
+            bracket = "90+"
+
+        summary[bracket]["quantity"] += qty
+        summary[bracket]["value"] += value
+
+    reports = []
+    for item_id, data in item_aging.items():
+        stale_value = sum(b["value"] for b in data["batches"] if b["age_days"] > 90)
+        stale_pct = (stale_value / data["total_value"] * 100) if data["total_value"] > 0 else 0
+
+        if stale_pct > 30:
+            risk_level = "critical"
+            recommendation = "Immediate action needed - consider markdowns"
+        elif stale_pct > 20:
+            risk_level = "high"
+            recommendation = "Review slow-moving stock"
+        elif stale_pct > 10:
+            risk_level = "medium"
+            recommendation = "Monitor and adjust ordering"
+        else:
+            risk_level = "low"
+            recommendation = "Stock aging is healthy"
+
+        avg_age = sum(b["age_days"] * b["quantity"] for b in data["batches"]) / data["total_quantity"] if data["total_quantity"] > 0 else 0
+
+        reports.append({
+            "stock_item_id": item_id,
+            "stock_item_name": data["stock_item_name"],
+            "total_quantity": round(data["total_quantity"], 2),
+            "total_value": round(data["total_value"], 2),
+            "average_age_days": round(avg_age, 1),
+            "risk_level": risk_level,
+            "recommendation": recommendation
+        })
+
+    reports.sort(key=lambda x: {"critical": 0, "high": 1, "medium": 2, "low": 3}.get(x["risk_level"], 4))
+
+    return {
+        "report_date": date.today(),
+        "items": reports,
+        "summary": {
+            "total_items": len(reports),
+            "total_value": round(sum(r["total_value"] for r in reports), 2),
+            "fresh_value": round(summary["0-30"]["value"], 2),
+            "aging_value": round(summary["31-60"]["value"], 2),
+            "old_value": round(summary["61-90"]["value"], 2),
+            "stale_value": round(summary["90+"]["value"], 2),
+            "at_risk_items": sum(1 for r in reports if r["risk_level"] in ["critical", "high"])
+        }
+    }
+
+
+# ==================== SHRINKAGE ANALYSIS (unique - comprehensive) ====================
+
+@router.get("/shrinkage/analysis", tags=["Shrinkage Analysis"])
+@limiter.limit("60/minute")
+def icf_get_shrinkage_analysis(
+    request: Request,
+    period_days: int = 30,
+    db: DbSession = None,
+):
+    """Get comprehensive shrinkage analysis"""
+    cutoff_date = date.today() - timedelta(days=period_days)
+
+    records = db.query(ShrinkageRecord).filter(
+        ShrinkageRecord.venue_id == _ICF_DEFAULT_VENUE_ID,
+        ShrinkageRecord.detected_date >= cutoff_date
+    ).all()
+
+    total_value = sum(float(r.value_lost) for r in records)
+    total_units = sum(float(r.quantity_lost) for r in records)
+
+    by_reason = {}
+    for r in records:
+        reason = r.reason.value if r.reason else "unknown"
+        if reason not in by_reason:
+            by_reason[reason] = {"value": 0, "units": 0, "count": 0}
+        by_reason[reason]["value"] += float(r.value_lost)
+        by_reason[reason]["units"] += float(r.quantity_lost)
+        by_reason[reason]["count"] += 1
+
+    for reason in by_reason:
+        by_reason[reason]["percentage"] = round(
+            by_reason[reason]["value"] / total_value * 100 if total_value > 0 else 0, 1
+        )
+
+    by_item = {}
+    for r in records:
+        item_id = r.stock_item_id
+        if item_id not in by_item:
+            stock_item = db.query(Product).filter(Product.id == item_id).first()
+            by_item[item_id] = {
+                "stock_item_id": item_id,
+                "stock_item_name": stock_item.name if stock_item else "Unknown",
+                "value": 0,
+                "units": 0,
+                "occurrences": 0
+            }
+        by_item[item_id]["value"] += float(r.value_lost)
+        by_item[item_id]["units"] += float(r.quantity_lost)
+        by_item[item_id]["occurrences"] += 1
+
+    top_items = sorted(by_item.values(), key=lambda x: -x["value"])[:10]
+
+    recommendations = []
+    if by_reason.get("theft", {}).get("percentage", 0) > 20:
+        recommendations.append("High theft rate - consider security improvements")
+    if by_reason.get("spoilage", {}).get("percentage", 0) > 30:
+        recommendations.append("High spoilage - review storage and FEFO compliance")
+    if by_reason.get("admin_error", {}).get("percentage", 0) > 15:
+        recommendations.append("Admin errors significant - additional training needed")
+    if total_value > 1000:
+        recommendations.append("Significant shrinkage - implement more frequent cycle counts")
+
+    total_inventory_value = 50000
+    shrinkage_rate = (total_value / total_inventory_value * 100) if total_inventory_value > 0 else 0
+
+    return {
+        "period_start": cutoff_date,
+        "period_end": date.today(),
+        "total_shrinkage_value": round(total_value, 2),
+        "total_shrinkage_units": round(total_units, 1),
+        "shrinkage_rate": round(shrinkage_rate, 2),
+        "by_reason": by_reason,
+        "top_shrinkage_items": top_items,
+        "recommendations": recommendations
+    }
+
+
+# ==================== CYCLE COUNT TASK GENERATION (unique) ====================
+
+@router.post("/cycle-counts/generate-task", tags=["Cycle Counting"])
+@limiter.limit("30/minute")
+def icf_generate_cycle_count_task(
+    request: Request,
+    schedule_id: int,
+    db: DbSession,
+):
+    """Generate a cycle count task from schedule"""
+    schedule = db.query(CycleCountSchedule).filter(
+        CycleCountSchedule.id == schedule_id,
+        CycleCountSchedule.venue_id == _ICF_DEFAULT_VENUE_ID
+    ).first()
+
+    if not schedule:
+        raise HTTPException(status_code=404, detail="Schedule not found")
+
+    items_query = db.query(Product)
+    if schedule.categories:
+        items_query = items_query.filter(Product.category_id.in_(schedule.categories))
+
+    items = items_query.limit(schedule.items_per_count or 20).all()
+
+    task = CycleCountTask(
+        venue_id=_ICF_DEFAULT_VENUE_ID,
+        schedule_id=schedule_id,
+        count_type=schedule.count_type,
+        due_date=date.today() + timedelta(days=1),
+        status="pending",
+        items_to_count=len(items)
+    )
+
+    db.add(task)
+    db.flush()
+
+    for item in items:
+        count_item = CycleCountItem(
+            task_id=task.id,
+            stock_item_id=item.id,
+            system_quantity=float(item.quantity) if hasattr(item, 'quantity') else 0,
+            status="pending"
+        )
+        db.add(count_item)
+
+    schedule.last_run = date.today()
+    db.commit()
+    db.refresh(task)
+
+    return {
+        "id": task.id,
+        "schedule_name": schedule.name,
+        "count_type": task.count_type.value if task.count_type else "cycle",
+        "due_date": task.due_date,
+        "items_to_count": task.items_to_count,
+        "status": task.status
+    }
+
+
+# ==================== UNIT CONVERSION CALCULATION (unique) ====================
+
+@router.post("/unit-conversions/convert", tags=["Unit Conversions"])
+@limiter.limit("30/minute")
+def icf_convert_units(
+    request: Request,
+    quantity: float,
+    from_unit: str,
+    to_unit: str,
+    stock_item_id: Optional[int] = None,
+    db: DbSession = None,
+):
+    """Convert quantity between units"""
+    conversion = db.query(UnitConversion).filter(
+        or_(
+            UnitConversion.venue_id == _ICF_DEFAULT_VENUE_ID,
+            UnitConversion.venue_id == None
+        ),
+        UnitConversion.from_unit == from_unit,
+        UnitConversion.to_unit == to_unit,
+        UnitConversion.active == True
+    )
+
+    if stock_item_id:
+        conversion = conversion.filter(
+            or_(
+                UnitConversion.stock_item_id == stock_item_id,
+                UnitConversion.stock_item_id == None
+            )
+        )
+
+    conversion = conversion.first()
+
+    if not conversion:
+        reverse = db.query(UnitConversion).filter(
+            or_(
+                UnitConversion.venue_id == _ICF_DEFAULT_VENUE_ID,
+                UnitConversion.venue_id == None
+            ),
+            UnitConversion.from_unit == to_unit,
+            UnitConversion.to_unit == from_unit,
+            UnitConversion.active == True
+        ).first()
+
+        if reverse:
+            factor = 1 / float(reverse.conversion_factor)
+        else:
+            raise HTTPException(status_code=404, detail=f"No conversion found from {from_unit} to {to_unit}")
+    else:
+        factor = float(conversion.conversion_factor)
+
+    converted = quantity * factor
+
+    return {
+        "original_quantity": quantity,
+        "original_unit": from_unit,
+        "converted_quantity": round(converted, 4),
+        "converted_unit": to_unit,
+        "conversion_factor": factor
+    }
+
+
+# ==================== RECONCILIATION WORKFLOW (unique endpoints) ====================
+
+@router.post("/reconciliation/{session_id}/count", tags=["Inventory Reconciliation"])
+@limiter.limit("30/minute")
+def icf_submit_count(
+    request: Request,
+    session_id: int,
+    stock_item_id: int,
+    physical_quantity: float,
+    notes: Optional[str] = None,
+    db: DbSession = None,
+):
+    """Submit a physical count for an item"""
+    session = db.query(ReconciliationSession).filter(
+        ReconciliationSession.id == session_id,
+        ReconciliationSession.venue_id == _ICF_DEFAULT_VENUE_ID
+    ).first()
+
+    if not session:
+        raise HTTPException(status_code=404, detail="Session not found")
+
+    if session.status != ReconciliationStatus.IN_PROGRESS:
+        raise HTTPException(status_code=400, detail="Session is not in progress")
+
+    item = db.query(ReconciliationItem).filter(
+        ReconciliationItem.session_id == session_id,
+        ReconciliationItem.stock_item_id == stock_item_id
+    ).first()
+
+    if not item:
+        raise HTTPException(status_code=404, detail="Item not in this session")
+
+    system_qty = float(item.system_quantity)
+    variance = physical_quantity - system_qty
+
+    stock_item = db.query(Product).filter(Product.id == stock_item_id).first()
+    cost_per_unit = 10.0
+    batch = db.query(StockBatchFIFO).filter(
+        StockBatchFIFO.stock_item_id == stock_item_id,
+        StockBatchFIFO.quantity_remaining > 0
+    ).first()
+    if batch:
+        cost_per_unit = float(batch.cost_per_unit)
+
+    variance_value = variance * cost_per_unit
+
+    item.physical_quantity = physical_quantity
+    item.variance = variance
+    item.variance_value = variance_value
+    item.notes = notes
+    item.counted_by = 1
+    item.counted_at = datetime.now(timezone.utc)
+    item.status = "matched" if abs(variance) < 0.01 else "variance"
+
+    session.items_matched = db.query(ReconciliationItem).filter(
+        ReconciliationItem.session_id == session_id,
+        ReconciliationItem.status == "matched"
+    ).count()
+
+    session.items_with_variance = db.query(ReconciliationItem).filter(
+        ReconciliationItem.session_id == session_id,
+        ReconciliationItem.status == "variance"
+    ).count()
+
+    total_variance = db.query(func.sum(ReconciliationItem.variance_value)).filter(
+        ReconciliationItem.session_id == session_id,
+        ReconciliationItem.variance_value != None
+    ).scalar() or 0
+
+    session.total_variance_value = total_variance
+
+    db.commit()
+
+    counted = session.items_matched + session.items_with_variance
+    remaining = session.total_items - counted
+
+    return {
+        "item": {
+            "stock_item_id": stock_item_id,
+            "stock_item_name": stock_item.name if stock_item else "Unknown",
+            "system_quantity": system_qty,
+            "physical_quantity": physical_quantity,
+            "variance": variance,
+            "variance_value": round(variance_value, 2),
+            "status": item.status
+        },
+        "session_progress": {
+            "total_items": session.total_items,
+            "counted": counted,
+            "remaining": remaining
+        }
+    }
+
+
+@router.get("/reconciliation/{session_id}/discrepancies", tags=["Inventory Reconciliation"])
+@limiter.limit("60/minute")
+def icf_get_discrepancies(
+    request: Request,
+    session_id: int,
+    db: DbSession,
+):
+    """Get all discrepancies in a reconciliation session"""
+    session = db.query(ReconciliationSession).filter(
+        ReconciliationSession.id == session_id,
+        ReconciliationSession.venue_id == _ICF_DEFAULT_VENUE_ID
+    ).first()
+
+    if not session:
+        raise HTTPException(status_code=404, detail="Session not found")
+
+    items = db.query(ReconciliationItem).filter(
+        ReconciliationItem.session_id == session_id,
+        ReconciliationItem.status == "variance"
+    ).all()
+
+    discrepancies = []
+    for item in items:
+        stock_item = db.query(Product).filter(Product.id == item.stock_item_id).first()
+        system_qty = float(item.system_quantity)
+        variance = float(item.variance) if item.variance else 0
+        variance_pct = (variance / system_qty * 100) if system_qty > 0 else 100
+
+        possible_reasons = []
+        if variance < 0:
+            possible_reasons = ["Theft", "Unrecorded usage", "Spoilage", "Counting error"]
+        else:
+            possible_reasons = ["Unrecorded receipt", "Counting error", "Previous miscount"]
+
+        discrepancies.append({
+            "stock_item_id": item.stock_item_id,
+            "stock_item_name": stock_item.name if stock_item else "Unknown",
+            "system_quantity": system_qty,
+            "counted_quantity": float(item.physical_quantity) if item.physical_quantity else 0,
+            "variance": variance,
+            "variance_percentage": round(variance_pct, 1),
+            "variance_value": float(item.variance_value) if item.variance_value else 0,
+            "possible_reasons": possible_reasons,
+            "requires_investigation": abs(variance_pct) > 10
+        })
+
+    discrepancies.sort(key=lambda x: abs(x["variance_value"]), reverse=True)
+
+    return {
+        "session_id": session_id,
+        "discrepancies": discrepancies,
+        "total_discrepancies": len(discrepancies),
+        "total_variance_value": float(session.total_variance_value) if session.total_variance_value else 0,
+        "requires_investigation": sum(1 for d in discrepancies if d["requires_investigation"])
+    }
+
+
+@router.post("/reconciliation/{session_id}/complete", tags=["Inventory Reconciliation"])
+@limiter.limit("30/minute")
+def icf_complete_reconciliation(
+    request: Request,
+    session_id: int,
+    apply_adjustments: bool = False,
+    db: DbSession = None,
+):
+    """Complete and optionally apply a reconciliation session"""
+    session = db.query(ReconciliationSession).filter(
+        ReconciliationSession.id == session_id,
+        ReconciliationSession.venue_id == _ICF_DEFAULT_VENUE_ID
+    ).first()
+
+    if not session:
+        raise HTTPException(status_code=404, detail="Session not found")
+
+    if session.status != ReconciliationStatus.IN_PROGRESS:
+        raise HTTPException(status_code=400, detail="Session is not in progress")
+
+    uncounted = db.query(ReconciliationItem).filter(
+        ReconciliationItem.session_id == session_id,
+        ReconciliationItem.status == "pending"
+    ).count()
+
+    if uncounted > 0:
+        raise HTTPException(
+            status_code=400,
+            detail=f"{uncounted} items still need to be counted"
+        )
+
+    session.status = ReconciliationStatus.COMPLETED
+    session.completed_at = datetime.now(timezone.utc)
+
+    adjustments_made = 0
+
+    if apply_adjustments:
+        session.status = ReconciliationStatus.APPROVED
+        session.approved_by = 1
+        session.approved_at = datetime.now(timezone.utc)
+        session.adjustments_applied = True
+
+        items = db.query(ReconciliationItem).filter(
+            ReconciliationItem.session_id == session_id,
+            ReconciliationItem.status == "variance"
+        ).all()
+
+        for item in items:
+            stock_item = db.query(Product).filter(Product.id == item.stock_item_id).first()
+            if stock_item and hasattr(stock_item, 'quantity') and item.physical_quantity is not None:
+                stock_item.quantity = float(item.physical_quantity)
+                adjustments_made += 1
+                item.status = "adjusted"
+
+    db.commit()
+
+    return {
+        "session_id": session_id,
+        "status": session.status.value,
+        "total_items": session.total_items,
+        "items_matched": session.items_matched,
+        "items_with_variance": session.items_with_variance,
+        "total_variance_value": round(float(session.total_variance_value) if session.total_variance_value else 0, 2),
+        "adjustments_applied": apply_adjustments,
+        "adjustments_made": adjustments_made,
+        "completed_at": session.completed_at
+    }
+
+
+# ==================== MULTI-WAREHOUSE CONSOLIDATED VIEW (unique) ====================
+
+@router.get("/warehouses/consolidated", tags=["Multi-Warehouse"])
+@limiter.limit("60/minute")
+def icf_get_consolidated_inventory(
+    request: Request,
+    db: DbSession,
+):
+    """Get consolidated inventory view across all warehouses"""
+    locations = db.query(Location).all()
+
+    if not locations:
+        locations = [{"id": 1, "name": "Main Warehouse"}]
+
+    warehouse_inventory = []
+    total_items = 0
+    total_value = 0
+
+    for loc in locations:
+        loc_id = loc.id if hasattr(loc, 'id') else loc.get("id")
+        loc_name = loc.name if hasattr(loc, 'name') else loc.get("name")
+
+        batches = db.query(StockBatchFIFO).filter(
+            StockBatchFIFO.venue_id == _ICF_DEFAULT_VENUE_ID,
+            StockBatchFIFO.location_id == loc_id,
+            StockBatchFIFO.quantity_remaining > 0
+        ).all()
+
+        items = len(set(b.stock_item_id for b in batches))
+        value = sum(float(b.quantity_remaining) * float(b.cost_per_unit) for b in batches)
+
+        expiring = sum(
+            1 for b in batches
+            if b.expiry_date and (b.expiry_date - date.today()).days <= 7
+        )
+
+        warehouse_inventory.append({
+            "warehouse_id": loc_id,
+            "warehouse_name": loc_name,
+            "total_items": items,
+            "total_value": round(value, 2),
+            "expiring_soon_items": expiring
+        })
+
+        total_items += items
+        total_value += value
+
+    return {
+        "total_warehouses": len(warehouse_inventory),
+        "total_items": total_items,
+        "total_inventory_value": round(total_value, 2),
+        "warehouses": warehouse_inventory
+    }
+
+
+# ==================== SUPPLIER PERFORMANCE (unique detailed endpoints) ====================
+
+@router.get("/suppliers/{supplier_id}/performance", tags=["Supplier Performance"])
+@limiter.limit("60/minute")
+def icf_get_supplier_performance(
+    request: Request,
+    supplier_id: int,
+    period_days: int = 90,
+    db: DbSession = None,
+):
+    """Get detailed performance metrics for a supplier"""
+    cutoff_date = date.today() - timedelta(days=period_days)
+
+    record = db.query(SupplierPerformanceRecord).filter(
+        SupplierPerformanceRecord.supplier_id == supplier_id,
+        SupplierPerformanceRecord.period_start >= cutoff_date
+    ).first()
+
+    if record:
+        return {
+            "supplier_id": supplier_id,
+            "total_orders": record.total_orders,
+            "on_time_delivery_rate": float(record.on_time_delivery_rate) if record.on_time_delivery_rate else 0,
+            "average_lead_time_days": float(record.average_lead_time_days) if record.average_lead_time_days else 0,
+            "quality_rating": float(record.quality_rating) if record.quality_rating else 0,
+            "fill_rate": float(record.fill_rate) if record.fill_rate else 0,
+            "total_spend": float(record.total_spend) if record.total_spend else 0,
+            "overall_score": float(record.overall_score) if record.overall_score else 0
+        }
+
+    return {
+        "supplier_id": supplier_id,
+        "total_orders": random.randint(10, 50),
+        "on_time_delivery_rate": round(random.uniform(0.7, 0.98), 2),
+        "average_lead_time_days": round(random.uniform(2, 7), 1),
+        "quality_rating": round(random.uniform(3.5, 5.0), 1),
+        "fill_rate": round(random.uniform(0.85, 1.0), 2),
+        "total_spend": round(random.uniform(5000, 50000), 2),
+        "overall_score": round(random.uniform(3.5, 5.0), 1),
+        "recommended_status": random.choice(["preferred", "standard"])
+    }
+
+
+@router.get("/suppliers/comparison", tags=["Supplier Performance"])
+@limiter.limit("60/minute")
+def icf_compare_suppliers_for_item(
+    request: Request,
+    stock_item_id: int = Query(1, description="Stock item ID"),
+    db: DbSession = None,
+):
+    """Compare suppliers for a specific stock item"""
+    stock_item = db.query(Product).filter(Product.id == stock_item_id).first()
+    if not stock_item:
+        raise HTTPException(status_code=404, detail="Stock item not found")
+
+    batches = db.query(StockBatchFIFO).filter(
+        StockBatchFIFO.stock_item_id == stock_item_id,
+        StockBatchFIFO.supplier_id != None
+    ).distinct(StockBatchFIFO.supplier_id).all()
+
+    suppliers = []
+    for batch in batches:
+        suppliers.append({
+            "supplier_id": batch.supplier_id,
+            "price": float(batch.cost_per_unit),
+            "lead_time_days": random.randint(2, 7),
+            "rating": round(random.uniform(3.5, 5.0), 1)
+        })
+
+    if not suppliers:
+        suppliers = [
+            {"supplier_id": 1, "supplier_name": "Default Supplier", "price": 10.0, "lead_time_days": 3, "rating": 4.0}
+        ]
+
+    recommended = min(suppliers, key=lambda x: x["price"] * (6 - x["rating"]) * x["lead_time_days"])
+
+    return {
+        "stock_item_id": stock_item_id,
+        "stock_item_name": stock_item.name,
+        "suppliers": suppliers,
+        "recommended_supplier_id": recommended.get("supplier_id"),
+        "recommendation_reason": f"Best value: ${recommended['price']} with {recommended['rating']} rating"
     }

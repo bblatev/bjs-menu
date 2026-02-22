@@ -4,26 +4,31 @@ For production, use Redis via the CACHE_URL environment variable.
 """
 from functools import wraps
 from typing import Optional, Callable, Any
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import hashlib
 import json
 import logging
+import threading
 
 logger = logging.getLogger(__name__)
 
 
 class SimpleCache:
-    """In-memory cache with TTL support and size limit."""
+    """In-memory cache with TTL support, size limit, and thread safety."""
 
     MAX_ENTRIES = 10000  # Prevent unbounded memory growth
 
     def __init__(self):
         self._cache: dict = {}
         self._expiry: dict = {}
+        self._lock = threading.Lock()
 
     def _evict_expired(self):
-        """Remove expired entries to reclaim memory."""
-        now = datetime.now()
+        """Remove expired entries to reclaim memory.
+
+        Must be called while holding ``self._lock``.
+        """
+        now = datetime.now(timezone.utc)
         expired = [k for k, exp in self._expiry.items() if exp <= now]
         for k in expired:
             self._cache.pop(k, None)
@@ -31,54 +36,61 @@ class SimpleCache:
 
     def get(self, key: str) -> Optional[Any]:
         """Get value from cache if not expired."""
-        if key in self._cache:
-            if datetime.now() < self._expiry.get(key, datetime.min):
-                return self._cache[key]
-            else:
-                # Expired
-                del self._cache[key]
-                del self._expiry[key]
-        return None
+        with self._lock:
+            if key in self._cache:
+                if datetime.now(timezone.utc) < self._expiry.get(key, datetime.min):
+                    return self._cache[key]
+                else:
+                    # Expired
+                    del self._cache[key]
+                    del self._expiry[key]
+            return None
 
     def set(self, key: str, value: Any, ttl_seconds: int = 300):
         """Set value in cache with TTL."""
-        # Evict expired entries if approaching limit
-        if len(self._cache) >= self.MAX_ENTRIES:
-            self._evict_expired()
-        # If still at limit after eviction, remove oldest entries
-        if len(self._cache) >= self.MAX_ENTRIES:
-            oldest_keys = sorted(self._expiry, key=self._expiry.get)[:100]
-            for k in oldest_keys:
-                self._cache.pop(k, None)
-                self._expiry.pop(k, None)
-        self._cache[key] = value
-        self._expiry[key] = datetime.now() + timedelta(seconds=ttl_seconds)
+        with self._lock:
+            # Evict expired entries if approaching limit
+            if len(self._cache) >= self.MAX_ENTRIES:
+                self._evict_expired()
+            # If still at limit after eviction, remove oldest entries
+            if len(self._cache) >= self.MAX_ENTRIES:
+                oldest_keys = sorted(self._expiry, key=self._expiry.get)[:100]
+                for k in oldest_keys:
+                    self._cache.pop(k, None)
+                    self._expiry.pop(k, None)
+            self._cache[key] = value
+            self._expiry[key] = datetime.now(timezone.utc) + timedelta(seconds=ttl_seconds)
 
     def delete(self, key: str):
         """Delete key from cache."""
-        self._cache.pop(key, None)
-        self._expiry.pop(key, None)
+        with self._lock:
+            self._cache.pop(key, None)
+            self._expiry.pop(key, None)
 
     def clear_prefix(self, prefix: str):
         """Clear all keys with given prefix."""
-        keys_to_delete = [k for k in self._cache.keys() if k.startswith(prefix)]
-        for key in keys_to_delete:
-            self.delete(key)
+        with self._lock:
+            keys_to_delete = [k for k in self._cache.keys() if k.startswith(prefix)]
+            for key in keys_to_delete:
+                self._cache.pop(key, None)
+                self._expiry.pop(key, None)
 
     def clear(self):
         """Clear entire cache."""
-        self._cache.clear()
-        self._expiry.clear()
+        with self._lock:
+            self._cache.clear()
+            self._expiry.clear()
 
     def stats(self) -> dict:
         """Get cache statistics."""
-        now = datetime.now()
-        valid = sum(1 for k, exp in self._expiry.items() if exp > now)
-        return {
-            "total_keys": len(self._cache),
-            "valid_keys": valid,
-            "expired_keys": len(self._cache) - valid
-        }
+        with self._lock:
+            now = datetime.now(timezone.utc)
+            valid = sum(1 for k, exp in self._expiry.items() if exp > now)
+            return {
+                "total_keys": len(self._cache),
+                "valid_keys": valid,
+                "expired_keys": len(self._cache) - valid
+            }
 
 
 # Global cache instance (in-memory)
@@ -110,8 +122,8 @@ class RedisCacheClient:
             if self._redis:
                 val = self._redis.get(key)
                 return json.loads(val) if val else None
-        except Exception:
-            pass
+        except Exception as e:
+            logger.debug(f"Redis get failed, using fallback: {e}")
         return self._fallback.get(key)
 
     def set(self, key: str, value: Any, ttl_seconds: int = 300):
@@ -120,8 +132,8 @@ class RedisCacheClient:
             if self._redis:
                 self._redis.setex(key, ttl_seconds, serialized)
                 return
-        except Exception:
-            pass
+        except Exception as e:
+            logger.debug(f"Redis set failed, using fallback: {e}")
         self._fallback.set(key, value, ttl_seconds)
 
     def delete(self, key: str):
@@ -129,8 +141,8 @@ class RedisCacheClient:
             if self._redis:
                 self._redis.delete(key)
                 return
-        except Exception:
-            pass
+        except Exception as e:
+            logger.debug(f"Redis delete failed, using fallback: {e}")
         self._fallback.delete(key)
 
     def invalidate_pattern(self, pattern: str):
@@ -144,8 +156,8 @@ class RedisCacheClient:
                     if cursor == 0:
                         break
                 return
-        except Exception:
-            pass
+        except Exception as e:
+            logger.debug(f"Redis invalidate failed, using fallback: {e}")
         prefix = pattern.replace("*", "")
         self._fallback.clear_prefix(prefix)
 

@@ -137,7 +137,7 @@ export default function WarehousesPage() {
   const [stockLevels, setStockLevels] = useState<StockLevel[]>([]);
   const [transfers, setTransfers] = useState<Transfer[]>([]);
   const [activities, setActivities] = useState<Activity[]>([]);
-  const [selectedWarehouse, setSelectedWarehouse] = useState<Warehouse | null>(null);
+  const [, setSelectedWarehouse] = useState<Warehouse | null>(null);
   const [showCreateWarehouse, setShowCreateWarehouse] = useState(false);
   const [showCreateTransfer, setShowCreateTransfer] = useState(false);
   const [filterWarehouse, setFilterWarehouse] = useState<string>("all");
@@ -162,6 +162,7 @@ export default function WarehousesPage() {
     setError((prev) => ({ ...prev, warehouses: null }));
     try {
       const response = await fetch(`${API_URL}/warehouses/`, {
+        credentials: 'include',
         headers: getAuthHeaders(),
       });
       if (!response.ok) {
@@ -190,6 +191,7 @@ export default function WarehousesPage() {
       }
       const url = `${API_URL}/warehouses/stock-levels/${params.toString() ? `?${params.toString()}` : ""}`;
       const response = await fetch(url, {
+        credentials: 'include',
         headers: getAuthHeaders(),
       });
       if (!response.ok) {
@@ -213,6 +215,7 @@ export default function WarehousesPage() {
     setError((prev) => ({ ...prev, transfers: null }));
     try {
       const response = await fetch(`${API_URL}/warehouses/transfers/`, {
+        credentials: 'include',
         headers: getAuthHeaders(),
       });
       if (!response.ok) {
@@ -236,6 +239,7 @@ export default function WarehousesPage() {
     setError((prev) => ({ ...prev, activities: null }));
     try {
       const response = await fetch(`${API_URL}/warehouses/activities/`, {
+        credentials: 'include',
         headers: getAuthHeaders(),
       });
       if (!response.ok) {
@@ -262,7 +266,7 @@ export default function WarehousesPage() {
       } catch (err) {
         console.error('Failed to load warehouse data:', err);
       } finally {
-        setLoading((prev) => ({
+        setLoading((_prev) => ({
           warehouses: false,
           stockLevels: false,
           transfers: false,
@@ -297,8 +301,6 @@ export default function WarehousesPage() {
   const filteredStock = filterWarehouse === "all"
     ? stockLevels
     : stockLevels.filter(s => s.warehouse_id === filterWarehouse);
-
-  const isInitialLoading = loading.warehouses && warehouses.length === 0;
 
   // Loading skeleton component
   const LoadingSkeleton = ({ rows = 3 }: { rows?: number }) => (

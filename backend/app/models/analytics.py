@@ -1,10 +1,12 @@
 """Advanced Analytics models - Lightspeed/SpotOn style."""
 
 from datetime import datetime, timezone
+from decimal import Decimal
 from enum import Enum
 from typing import Optional, List
-from sqlalchemy import Column, Integer, String, Float, DateTime, Text, Boolean, ForeignKey, Enum as SQLEnum, JSON
+from sqlalchemy import Column, Integer, String, Float, DateTime, Text, Boolean, ForeignKey, Enum as SQLEnum, JSON, Numeric, UniqueConstraint
 from sqlalchemy.orm import relationship
+from sqlalchemy.sql import func
 from app.db.base import Base
 
 
@@ -19,7 +21,10 @@ class MenuQuadrant(str, Enum):
 class MenuAnalysis(Base):
     """Menu engineering analysis results."""
     __tablename__ = "menu_analysis"
-    __table_args__ = {'extend_existing': True}
+    __table_args__ = (
+        UniqueConstraint('product_id', 'location_id', 'analysis_period_start', name='uq_menu_analysis_product_location_period'),
+        {'extend_existing': True},
+    )
 
     id = Column(Integer, primary_key=True, index=True)
     product_id = Column(Integer, ForeignKey("products.id"), nullable=False)
@@ -29,9 +34,9 @@ class MenuAnalysis(Base):
 
     # Sales metrics
     quantity_sold = Column(Integer, default=0)
-    total_revenue = Column(Float, default=0.0)
-    total_cost = Column(Float, default=0.0)
-    total_profit = Column(Float, default=0.0)
+    total_revenue = Column(Numeric(10, 2), default=Decimal("0"))
+    total_cost = Column(Numeric(10, 2), default=Decimal("0"))
+    total_profit = Column(Numeric(10, 2), default=Decimal("0"))
 
     # Calculated metrics
     food_cost_percent = Column(Float, nullable=True)
@@ -53,7 +58,7 @@ class MenuAnalysis(Base):
     sales_trend = Column(String(20), nullable=True)  # up, down, stable
     sales_trend_percent = Column(Float, nullable=True)
 
-    calculated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    calculated_at = Column(DateTime(timezone=True), server_default=func.now())
 
 
 class ServerPerformance(Base):
@@ -70,11 +75,11 @@ class ServerPerformance(Base):
     # Order metrics
     total_orders = Column(Integer, default=0)
     total_covers = Column(Integer, default=0)  # Guests served
-    total_revenue = Column(Float, default=0.0)
-    total_tips = Column(Float, default=0.0)
+    total_revenue = Column(Numeric(10, 2), default=Decimal("0"))
+    total_tips = Column(Numeric(10, 2), default=Decimal("0"))
 
     # Averages
-    avg_ticket_size = Column(Float, nullable=True)
+    avg_ticket_size = Column(Numeric(10, 2), nullable=True)
     avg_tip_percent = Column(Float, nullable=True)
     avg_covers_per_order = Column(Float, nullable=True)
 
@@ -102,7 +107,7 @@ class ServerPerformance(Base):
     coaching_notes = Column(JSON, nullable=True)
     # ["Improve dessert suggestions", "Strong appetizer sales"]
 
-    calculated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    calculated_at = Column(DateTime(timezone=True), server_default=func.now())
 
 
 class SalesForecast(Base):
@@ -117,7 +122,7 @@ class SalesForecast(Base):
 
     # Forecast values
     forecasted_quantity = Column(Integer, nullable=True)
-    forecasted_revenue = Column(Float, nullable=True)
+    forecasted_revenue = Column(Numeric(10, 2), nullable=True)
     forecasted_covers = Column(Integer, nullable=True)
 
     # Confidence
@@ -131,26 +136,29 @@ class SalesForecast(Base):
 
     # Actual values (filled in later)
     actual_quantity = Column(Integer, nullable=True)
-    actual_revenue = Column(Float, nullable=True)
+    actual_revenue = Column(Numeric(10, 2), nullable=True)
     forecast_accuracy = Column(Float, nullable=True)  # % accuracy
 
-    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
 
 
 class DailyMetrics(Base):
     """Daily business metrics snapshot."""
     __tablename__ = "daily_metrics"
-    __table_args__ = {'extend_existing': True}
+    __table_args__ = (
+        UniqueConstraint('location_id', 'date', name='uq_daily_metrics_location_date'),
+        {'extend_existing': True},
+    )
 
     id = Column(Integer, primary_key=True, index=True)
     location_id = Column(Integer, ForeignKey("locations.id"), nullable=True)
     date = Column(DateTime, nullable=False)
 
     # Revenue
-    total_revenue = Column(Float, default=0.0)
-    food_revenue = Column(Float, default=0.0)
-    beverage_revenue = Column(Float, default=0.0)
-    alcohol_revenue = Column(Float, default=0.0)
+    total_revenue = Column(Numeric(10, 2), default=Decimal("0"))
+    food_revenue = Column(Numeric(10, 2), default=Decimal("0"))
+    beverage_revenue = Column(Numeric(10, 2), default=Decimal("0"))
+    alcohol_revenue = Column(Numeric(10, 2), default=Decimal("0"))
 
     # Orders
     total_orders = Column(Integer, default=0)
@@ -163,35 +171,35 @@ class DailyMetrics(Base):
     avg_party_size = Column(Float, nullable=True)
 
     # Averages
-    avg_ticket = Column(Float, nullable=True)
+    avg_ticket = Column(Numeric(10, 2), nullable=True)
     avg_tip_percent = Column(Float, nullable=True)
 
     # Tips
-    total_tips = Column(Float, default=0.0)
-    cash_tips = Column(Float, default=0.0)
-    card_tips = Column(Float, default=0.0)
+    total_tips = Column(Numeric(10, 2), default=Decimal("0"))
+    cash_tips = Column(Numeric(10, 2), default=Decimal("0"))
+    card_tips = Column(Numeric(10, 2), default=Decimal("0"))
 
     # Labor
-    labor_cost = Column(Float, nullable=True)
+    labor_cost = Column(Numeric(10, 2), nullable=True)
     labor_hours = Column(Float, nullable=True)
     labor_percent = Column(Float, nullable=True)
 
     # Costs
-    food_cost = Column(Float, nullable=True)
+    food_cost = Column(Numeric(10, 2), nullable=True)
     food_cost_percent = Column(Float, nullable=True)
-    beverage_cost = Column(Float, nullable=True)
+    beverage_cost = Column(Numeric(10, 2), nullable=True)
     beverage_cost_percent = Column(Float, nullable=True)
 
     # Profit
-    gross_profit = Column(Float, nullable=True)
-    net_profit = Column(Float, nullable=True)
+    gross_profit = Column(Numeric(10, 2), nullable=True)
+    net_profit = Column(Numeric(10, 2), nullable=True)
 
     # Comparisons
     vs_last_week = Column(Float, nullable=True)  # % change
     vs_last_month = Column(Float, nullable=True)
     vs_last_year = Column(Float, nullable=True)
 
-    calculated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    calculated_at = Column(DateTime(timezone=True), server_default=func.now())
 
 
 class ConversationalQuery(Base):
@@ -222,7 +230,7 @@ class ConversationalQuery(Base):
     processing_time_ms = Column(Integer, nullable=True)
     was_helpful = Column(Boolean, nullable=True)  # User feedback
 
-    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
 
 
 class Benchmark(Base):
@@ -241,17 +249,17 @@ class Benchmark(Base):
     city = Column(String(100), nullable=True)
 
     # Your metrics
-    your_avg_ticket = Column(Float, nullable=True)
+    your_avg_ticket = Column(Numeric(10, 2), nullable=True)
     your_covers_per_day = Column(Float, nullable=True)
-    your_revenue_per_sqft = Column(Float, nullable=True)
+    your_revenue_per_sqft = Column(Numeric(10, 2), nullable=True)
     your_labor_percent = Column(Float, nullable=True)
     your_food_cost_percent = Column(Float, nullable=True)
     your_tip_percent = Column(Float, nullable=True)
 
     # Industry benchmarks
-    benchmark_avg_ticket = Column(Float, nullable=True)
+    benchmark_avg_ticket = Column(Numeric(10, 2), nullable=True)
     benchmark_covers_per_day = Column(Float, nullable=True)
-    benchmark_revenue_per_sqft = Column(Float, nullable=True)
+    benchmark_revenue_per_sqft = Column(Numeric(10, 2), nullable=True)
     benchmark_labor_percent = Column(Float, nullable=True)
     benchmark_food_cost_percent = Column(Float, nullable=True)
     benchmark_tip_percent = Column(Float, nullable=True)
@@ -265,7 +273,7 @@ class Benchmark(Base):
     improvement_areas = Column(JSON, nullable=True)
     # ["labor_efficiency", "avg_ticket"]
 
-    calculated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    calculated_at = Column(DateTime(timezone=True), server_default=func.now())
 
 
 class BottleWeight(Base):
@@ -298,8 +306,8 @@ class BottleWeight(Base):
     # Source
     source = Column(String(100), nullable=True)  # manual, crowdsourced, imported
 
-    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
-    updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 
 
 class ScaleReading(Base):
@@ -324,4 +332,4 @@ class ScaleReading(Base):
     scale_device_id = Column(String(100), nullable=True)
     scale_device_name = Column(String(200), nullable=True)
 
-    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    created_at = Column(DateTime(timezone=True), server_default=func.now())

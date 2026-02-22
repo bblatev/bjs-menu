@@ -3,8 +3,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 
-import { API_URL, getAuthHeaders } from '@/lib/api';
-
 interface ConversationSession {
   session_id: string;
   customer_name: string;

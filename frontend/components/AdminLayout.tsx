@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, ReactNode, useEffect } from 'react';
+import { useState, ReactNode, useEffect, useRef, useCallback } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import dynamic from 'next/dynamic';
@@ -41,7 +41,6 @@ const navigationGroups = [
       { name: 'KDS Localization', href: '/kitchen/localization', icon: '🌐' },
       { name: '86\'d Items', href: '/kitchen/86-items', icon: '🚫' },
       { name: 'Bar Management', href: '/bar', icon: '🍺' },
-      { name: 'Bar Inventory', href: '/bar/inventory', icon: '🥃' },
       { name: 'Cocktail Recipes', href: '/bar/recipes', icon: '🍹' },
       { name: 'Keg Tracking', href: '/bar/kegs', icon: '🛢️' },
       { name: 'Happy Hours', href: '/bar/happy-hours', icon: '🎉' },
@@ -61,7 +60,6 @@ const navigationGroups = [
       { name: 'Allergens', href: '/menu/allergens', icon: '⚠️' },
       { name: 'Menu Scheduling', href: '/menu/scheduling', icon: '🕐' },
       { name: 'Menu Features', href: '/menu/features', icon: '✨' },
-      { name: 'Menu Inventory', href: '/menu/inventory', icon: '📦' },
       { name: 'Menu Engineering', href: '/menu-engineering', icon: '📈' },
       { name: 'Recipes', href: '/recipes/management', icon: '📝' },
     ]
@@ -73,7 +71,6 @@ const navigationGroups = [
       { name: 'Inventory Levels', href: '/stock/inventory', icon: '📊' },
       { name: 'Stock Counts', href: '/stock/counts', icon: '🔢' },
       { name: 'Stock Transfers', href: '/stock/transfers', icon: '🔄' },
-      { name: 'Waste Tracking', href: '/stock/waste', icon: '🗑️' },
       { name: 'RFID Inventory', href: '/stock/rfid', icon: '📡' },
       { name: 'Bulk Tanks', href: '/stock/tanks', icon: '🛢️' },
       { name: 'Stock Features', href: '/stock/features', icon: '⚙️' },
@@ -211,7 +208,6 @@ const navigationGroups = [
     name: 'Settings',
     items: [
       { name: 'General', href: '/settings/general', icon: '⚙️' },
-      { name: 'Venue', href: '/settings/venue', icon: '🏪' },
       { name: 'Payment', href: '/settings/payment', icon: '💳' },
       { name: 'Card Terminals', href: '/settings/card-terminals', icon: '💳' },
       { name: 'Mobile Wallet', href: '/settings/mobile-wallet', icon: '📱' },
@@ -244,8 +240,20 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [expandedGroups, setExpandedGroups] = useState<string[]>(['Main']);
   const [searchTerm, setSearchTerm] = useState('');
+  const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
+  const searchDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [searchResults, setSearchResults] = useState<{name: string, href: string, icon: string, group: string}[]>([]);
   const [showSearch, setShowSearch] = useState(false);
+
+  const handleSearchChange = useCallback((value: string) => {
+    setSearchTerm(value);
+    if (searchDebounceRef.current) {
+      clearTimeout(searchDebounceRef.current);
+    }
+    searchDebounceRef.current = setTimeout(() => {
+      setDebouncedSearchTerm(value);
+    }, 300);
+  }, []);
 
   // Get user info from JWT token
   const [userInfo, setUserInfo] = useState<{ email: string; role: string }>({ email: '', role: '' });
@@ -273,13 +281,13 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
     });
   }, [pathname]);
 
-  // Search functionality
+  // Search functionality (debounced)
   useEffect(() => {
-    if (searchTerm.length > 0) {
+    if (debouncedSearchTerm.length > 0) {
       const results: {name: string, href: string, icon: string, group: string}[] = [];
       navigationGroups.forEach(group => {
         group.items.forEach(item => {
-          if (item.name.toLowerCase().includes(searchTerm.toLowerCase())) {
+          if (item.name.toLowerCase().includes(debouncedSearchTerm.toLowerCase())) {
             results.push({ ...item, group: group.name });
           }
         });
@@ -290,7 +298,16 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
       setSearchResults([]);
       setShowSearch(false);
     }
-  }, [searchTerm]);
+  }, [debouncedSearchTerm]);
+
+  // Cleanup debounce timer on unmount
+  useEffect(() => {
+    return () => {
+      if (searchDebounceRef.current) {
+        clearTimeout(searchDebounceRef.current);
+      }
+    };
+  }, []);
 
   const toggleGroup = (groupName: string) => {
     setExpandedGroups(prev =>
@@ -350,7 +367,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
                 type="text"
                 placeholder="Search pages..."
                 value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
+                onChange={(e) => handleSearchChange(e.target.value)}
                 className="w-full pl-9 pr-3 py-2 bg-surface-50 border border-surface-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500"
               />
               <span className="absolute left-3 top-1/2 -translate-y-1/2 text-surface-400">🔍</span>

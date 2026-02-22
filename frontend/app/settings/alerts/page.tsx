@@ -71,6 +71,7 @@ export default function ManagerAlertsPage() {
   const loadAlerts = async () => {
     try {
       const response = await fetch(`${API_URL}/manager-alerts?active_only=false`, {
+        credentials: 'include',
         headers: getAuthHeaders(),
       });
 
@@ -109,6 +110,7 @@ export default function ManagerAlertsPage() {
       };
 
       const response = await fetch(`${API_URL}/manager-alerts`, {
+        credentials: 'include',
         method: "POST",
         headers: getAuthHeaders(),
         body: JSON.stringify(payload),
@@ -152,6 +154,7 @@ export default function ManagerAlertsPage() {
       };
 
       const response = await fetch(`${API_URL}/manager-alerts/${editingAlert.id}`, {
+        credentials: 'include',
         method: "PUT",
         headers: getAuthHeaders(),
         body: JSON.stringify(payload),
@@ -176,6 +179,7 @@ export default function ManagerAlertsPage() {
 
     try {
       const response = await fetch(`${API_URL}/manager-alerts/${alertId}`, {
+        credentials: 'include',
         method: "DELETE",
         headers: getAuthHeaders(),
       });
@@ -194,6 +198,7 @@ export default function ManagerAlertsPage() {
 
     try {
       const response = await fetch(`${API_URL}/manager-alerts/${alert.id}`, {
+        credentials: 'include',
         method: "PUT",
         headers: getAuthHeaders(),
         body: JSON.stringify({ is_active: !alert.is_active }),
@@ -212,6 +217,7 @@ export default function ManagerAlertsPage() {
 
     try {
       const response = await fetch(`${API_URL}/manager-alerts/trigger`, {
+        credentials: 'include',
         method: "POST",
         headers: getAuthHeaders(),
         body: JSON.stringify({

@@ -282,7 +282,7 @@ class GamificationService:
                 'old_balance': old_balance,
                 'new_balance': profile.total_points,
                 'current_level': profile.current_level,
-                'timestamp': datetime.now().isoformat()
+                'timestamp': datetime.now(timezone.utc).isoformat()
             }
         except Exception as e:
             logger.error(f"Error awarding points: {e}")
@@ -594,7 +594,7 @@ class GamificationService:
         """Get leaderboard for specified period"""
 
         # Determine date range
-        now = datetime.now()
+        now = datetime.now(timezone.utc)
         if period == 'daily':
             start_date = now.replace(hour=0, minute=0, second=0, microsecond=0)
         elif period == 'weekly':
@@ -733,7 +733,7 @@ class GamificationService:
     ) -> Dict:
         """Get customer's progress on a challenge"""
         # Simplified - in production would track from start of challenge
-        now = datetime.now()
+        now = datetime.now(timezone.utc)
         
         if challenge_id == 'weekend_warrior':
             # Count orders this weekend

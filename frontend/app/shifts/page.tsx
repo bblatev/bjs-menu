@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 
-import { API_URL, getAuthHeaders } from '@/lib/api';
+import { API_URL } from '@/lib/api';
 
 import { toast } from '@/lib/toast';
 interface Shift {
@@ -25,15 +25,6 @@ interface StaffMember {
   role: string;
 }
 
-interface ShiftTemplate {
-  id: number;
-  name: string;
-  shift_type: string;
-  start_time: string;
-  end_time: string;
-  break_minutes: number;
-}
-
 const SHIFT_TYPES = [
   { value: "morning", label: "Morning", color: "bg-yellow-500", time: "06:00 - 14:00" },
   { value: "afternoon", label: "Afternoon", color: "bg-orange-500", time: "14:00 - 22:00" },
@@ -53,7 +44,6 @@ export default function ShiftSchedulingPage() {
   const [editingShift, setEditingShift] = useState<Shift | null>(null);
   const [viewMode, setViewMode] = useState<"week" | "day" | "list">("week");
   const [selectedDate, setSelectedDate] = useState(new Date());
-  const [filterStaff, setFilterStaff] = useState<number | null>(null);
   const [filterRole, setFilterRole] = useState<string>("all");
 
   // Form state
@@ -95,8 +85,8 @@ export default function ShiftSchedulingPage() {
       });
 
       const [staffRes, shiftsRes] = await Promise.all([
-        fetch(`${API_URL}/v5/staff`, { headers }),
-        fetch(`${API_URL}/v5/shifts?${params}`, { headers }),
+        fetch(`${API_URL}/v5/staff`, { credentials: 'include', headers }),
+        fetch(`${API_URL}/v5/shifts?${params}`, { credentials: 'include', headers }),
       ]);
 
       if (!staffRes.ok) {
@@ -133,11 +123,6 @@ export default function ShiftSchedulingPage() {
     return dates;
   };
 
-  const getShiftsForDate = (date: Date) => {
-    const dateStr = date.toISOString().split("T")[0];
-    return shifts.filter((s) => s.date === dateStr);
-  };
-
   const getShiftsForStaffOnDate = (staffId: number, date: Date) => {
     const dateStr = date.toISOString().split("T")[0];
     return shifts.filter((s) => s.staff_id === staffId && s.date === dateStr);
@@ -168,6 +153,7 @@ export default function ShiftSchedulingPage() {
 
       if (editingShift) {
         const response = await fetch(`${API_URL}/v5/shifts/${editingShift.id}`, {
+          credentials: 'include',
           method: 'PUT',
           headers,
           body: JSON.stringify(shiftData),
@@ -177,6 +163,7 @@ export default function ShiftSchedulingPage() {
         }
       } else {
         const response = await fetch(`${API_URL}/v5/shifts`, {
+          credentials: 'include',
           method: 'POST',
           headers,
           body: JSON.stringify(shiftData),
@@ -199,6 +186,7 @@ export default function ShiftSchedulingPage() {
       try {
         const token = localStorage.getItem('access_token');
         const response = await fetch(`${API_URL}/v5/shifts/${shiftId}`, {
+          credentials: 'include',
           method: 'DELETE',
           headers: {
             'Authorization': `Bearer ${token}`,

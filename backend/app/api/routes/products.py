@@ -153,7 +153,34 @@ def import_products(
             status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
             detail="File too large. Maximum size is 10MB",
         )
-    reader = csv.DictReader(io.StringIO(content.decode("utf-8")))
+    try:
+        decoded_content = content.decode("utf-8")
+    except UnicodeDecodeError:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="File encoding error. Please ensure the CSV file is UTF-8 encoded.",
+        )
+    try:
+        reader = csv.DictReader(io.StringIO(decoded_content))
+        # Validate that required columns exist
+        if reader.fieldnames is None:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="CSV file appears to be empty or has no header row.",
+            )
+        required_columns = {"name"}
+        missing_columns = required_columns - set(reader.fieldnames)
+        if missing_columns:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"CSV is missing required columns: {', '.join(sorted(missing_columns))}. "
+                       f"Found columns: {', '.join(reader.fieldnames)}",
+            )
+    except csv.Error as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Invalid CSV format: {str(e)}",
+        )
 
     created = 0
     updated = 0

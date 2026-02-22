@@ -2,8 +2,6 @@
 
 import { useState, useCallback } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
-
 interface ExtractedData {
   invoice_number: string;
   supplier_name: string;
@@ -33,7 +31,6 @@ interface ExtractedItem {
 type UploadStep = 'upload' | 'processing' | 'review' | 'mapping' | 'complete';
 
 export default function InvoiceUploadPage() {
-  const router = useRouter();
   const [step, setStep] = useState<UploadStep>('upload');
   const [files, setFiles] = useState<File[]>([]);
   const [extractedData, setExtractedData] = useState<ExtractedData | null>(null);

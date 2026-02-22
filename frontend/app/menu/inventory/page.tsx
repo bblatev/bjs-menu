@@ -147,6 +147,7 @@ export default function MenuInventoryPage() {
     try {
       const token = localStorage.getItem("access_token");
       const res = await fetch(`${API_URL}/menu-admin/items`, {
+        credentials: 'include',
         headers: { Authorization: `Bearer ${token}` }
       });
       if (res.ok) {
@@ -171,22 +172,22 @@ export default function MenuInventoryPage() {
     try {
       switch (activeTab) {
         case "versions":
-          const versionsRes = await fetch(`${API_URL}/menu-admin/versions/${itemId}`, { headers });
+          const versionsRes = await fetch(`${API_URL}/menu-admin/versions/${itemId}`, { credentials: 'include', headers });
           if (versionsRes.ok) setVersions(await versionsRes.json());
           break;
 
         case "scheduling":
-          const schedulesRes = await fetch(`${API_URL}/menu-admin/schedules?menu_item_id=${itemId}`, { headers });
+          const schedulesRes = await fetch(`${API_URL}/menu-admin/schedules?menu_item_id=${itemId}`, { credentials: 'include', headers });
           if (schedulesRes.ok) setSchedules(await schedulesRes.json());
           break;
 
         case "nutrition":
-          const nutritionRes = await fetch(`${API_URL}/menu-admin/nutrition/${itemId}`, { headers });
+          const nutritionRes = await fetch(`${API_URL}/menu-admin/nutrition/${itemId}`, { credentials: 'include', headers });
           if (nutritionRes.ok) setNutrition(await nutritionRes.json());
           break;
 
         case "allergens":
-          const allergensRes = await fetch(`${API_URL}/menu-admin/allergens/${itemId}`, { headers });
+          const allergensRes = await fetch(`${API_URL}/menu-admin/allergens/${itemId}`, { credentials: 'include', headers });
           if (allergensRes.ok) {
             const data = await allergensRes.json();
             setAllergens(data.allergens || []);
@@ -204,6 +205,7 @@ export default function MenuInventoryPage() {
     try {
       const token = localStorage.getItem("access_token");
       const res = await fetch(`${API_URL}/menu-admin/versions/${versionId}/restore`, {
+        credentials: 'include',
         method: "POST",
         headers: { Authorization: `Bearer ${token}` }
       });
@@ -224,6 +226,7 @@ export default function MenuInventoryPage() {
     try {
       const token = localStorage.getItem("access_token");
       const res = await fetch(`${API_URL}/menu-admin/schedules?venue_id=1`, {
+        credentials: 'include',
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -251,6 +254,7 @@ export default function MenuInventoryPage() {
     try {
       const token = localStorage.getItem("access_token");
       await fetch(`${API_URL}/menu-admin/schedules/${scheduleId}`, {
+        credentials: 'include',
         method: "DELETE",
         headers: { Authorization: `Bearer ${token}` }
       });
@@ -267,6 +271,7 @@ export default function MenuInventoryPage() {
     try {
       const token = localStorage.getItem("access_token");
       const res = await fetch(`${API_URL}/menu-admin/nutrition`, {
+        credentials: 'include',
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -295,6 +300,7 @@ export default function MenuInventoryPage() {
     try {
       const token = localStorage.getItem("access_token");
       const res = await fetch(`${API_URL}/menu-admin/allergens`, {
+        credentials: 'include',
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -320,6 +326,7 @@ export default function MenuInventoryPage() {
     try {
       const token = localStorage.getItem("access_token");
       await fetch(`${API_URL}/menu-admin/allergens/${allergenId}`, {
+        credentials: 'include',
         method: "DELETE",
         headers: { Authorization: `Bearer ${token}` }
       });
@@ -339,6 +346,7 @@ export default function MenuInventoryPage() {
     try {
       const token = localStorage.getItem("access_token");
       const res = await fetch(`${API_URL}/menu-admin/bulk-price-update?venue_id=1`, {
+        credentials: 'include',
         method: "POST",
         headers: {
           "Content-Type": "application/json",

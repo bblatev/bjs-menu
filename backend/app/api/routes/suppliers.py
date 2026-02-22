@@ -1,5 +1,10 @@
-"""Supplier routes - consolidated from suppliers.py + suppliers_v11.py."""
+"""Supplier routes - consolidated from suppliers.py + suppliers_v11.py.
 
+Includes advanced supplier features (contact update, price list items)
+merged from enhanced_inventory_endpoints.py.
+"""
+
+import logging
 from datetime import datetime, timedelta, timezone
 from typing import Optional
 
@@ -12,6 +17,8 @@ from app.models.supplier import Supplier, SupplierDocument
 from app.schemas.supplier import SupplierCreate, SupplierUpdate, SupplierResponse
 from app.core.rate_limit import limiter
 
+_supplier_logger = logging.getLogger(__name__)
+
 router = APIRouter()
 
 
@@ -21,14 +28,14 @@ router = APIRouter()
 @limiter.limit("60/minute")
 def list_suppliers(request: Request, db: DbSession, current_user: OptionalCurrentUser = None):
     """List all suppliers."""
-    return db.query(Supplier).order_by(Supplier.name).all()
+    return db.query(Supplier).order_by(Supplier.name).limit(500).all()
 
 
 @router.get("/performance")
 @limiter.limit("60/minute")
 def get_supplier_performance(request: Request, db: DbSession, current_user: OptionalCurrentUser = None):
     """Get supplier performance metrics list."""
-    suppliers = db.query(Supplier).order_by(Supplier.name).all()
+    suppliers = db.query(Supplier).order_by(Supplier.name).limit(500).all()
     return [
         {
             "id": s.id,
@@ -69,7 +76,7 @@ def get_expiring_documents(request: Request, db: DbSession):
     docs = db.query(SupplierDocument).filter(
         SupplierDocument.expiration_date.isnot(None),
         SupplierDocument.expiration_date <= cutoff,
-    ).order_by(SupplierDocument.expiration_date.asc()).all()
+    ).order_by(SupplierDocument.expiration_date.asc()).limit(500).all()
     return [
         {
             "id": d.id,
@@ -87,7 +94,7 @@ def get_expiring_documents(request: Request, db: DbSession):
 @limiter.limit("60/minute")
 def get_all_documents(request: Request, db: DbSession):
     """Get all supplier documents."""
-    docs = db.query(SupplierDocument).order_by(SupplierDocument.id.desc()).all()
+    docs = db.query(SupplierDocument).order_by(SupplierDocument.id.desc()).limit(500).all()
     return [
         {
             "id": d.id,
@@ -109,10 +116,14 @@ def create_document(request: Request, db: DbSession, data: dict = Body(...)):
     """Upload/register a document for a supplier."""
     supplier_id = data.get("supplier_id")
     if not supplier_id:
-        return {"error": "supplier_id required"}
-    supplier = db.query(Supplier).filter(Supplier.id == int(supplier_id)).first()
+        raise HTTPException(status_code=400, detail="supplier_id required")
+    try:
+        supplier_id = int(supplier_id)
+    except (ValueError, TypeError):
+        raise HTTPException(status_code=400, detail="supplier_id must be a number")
+    supplier = db.query(Supplier).filter(Supplier.id == supplier_id).first()
     if not supplier:
-        return {"error": "Supplier not found"}
+        raise HTTPException(status_code=404, detail="Supplier not found")
     exp_date = None
     if data.get("expiration_date"):
         try:
@@ -120,7 +131,7 @@ def create_document(request: Request, db: DbSession, data: dict = Body(...)):
         except (ValueError, TypeError):
             pass
     doc = SupplierDocument(
-        supplier_id=int(supplier_id),
+        supplier_id=supplier_id,
         name=data.get("name", "Untitled"),
         document_type=data.get("document_type", "other"),
         file_path=data.get("file_path"),
@@ -139,7 +150,7 @@ def create_document(request: Request, db: DbSession, data: dict = Body(...)):
 @limiter.limit("60/minute")
 def get_all_contacts(request: Request, db: DbSession):
     """Get all supplier contacts."""
-    suppliers = db.query(Supplier).order_by(Supplier.name).all()
+    suppliers = db.query(Supplier).order_by(Supplier.name).limit(500).all()
     return [
         {
             "supplier_id": s.id,
@@ -159,10 +170,14 @@ def create_contact(request: Request, db: DbSession, data: dict = Body(...)):
     """Add a contact to a supplier. Updates the supplier's contact info."""
     supplier_id = data.get("supplier_id")
     if not supplier_id:
-        return {"error": "supplier_id required"}
-    supplier = db.query(Supplier).filter(Supplier.id == int(supplier_id)).first()
+        raise HTTPException(status_code=400, detail="supplier_id required")
+    try:
+        supplier_id = int(supplier_id)
+    except (ValueError, TypeError):
+        raise HTTPException(status_code=400, detail="supplier_id must be a number")
+    supplier = db.query(Supplier).filter(Supplier.id == supplier_id).first()
     if not supplier:
-        return {"error": "Supplier not found"}
+        raise HTTPException(status_code=404, detail="Supplier not found")
     if data.get("phone"):
         supplier.contact_phone = data["phone"]
     if data.get("email"):
@@ -177,7 +192,7 @@ def create_contact(request: Request, db: DbSession, data: dict = Body(...)):
 @limiter.limit("60/minute")
 def get_all_ratings(request: Request, db: DbSession):
     """Get supplier ratings summary."""
-    suppliers = db.query(Supplier).order_by(Supplier.name).all()
+    suppliers = db.query(Supplier).order_by(Supplier.name).limit(500).all()
     return [
         {"supplier_id": s.id, "name": s.name, "overall_rating": 0, "order_count": len(s.purchase_orders) if s.purchase_orders else 0}
         for s in suppliers
@@ -190,10 +205,14 @@ def create_rating(request: Request, db: DbSession, data: dict = Body(...)):
     """Add a rating for a supplier."""
     supplier_id = data.get("supplier_id")
     if not supplier_id:
-        return {"error": "supplier_id required"}
-    supplier = db.query(Supplier).filter(Supplier.id == int(supplier_id)).first()
+        raise HTTPException(status_code=400, detail="supplier_id required")
+    try:
+        supplier_id = int(supplier_id)
+    except (ValueError, TypeError):
+        raise HTTPException(status_code=400, detail="supplier_id must be a number")
+    supplier = db.query(Supplier).filter(Supplier.id == supplier_id).first()
     if not supplier:
-        return {"error": "Supplier not found"}
+        raise HTTPException(status_code=404, detail="Supplier not found")
     supplier.notes = (supplier.notes or "") + f"\nRating: Q={data.get('quality_score',0)} D={data.get('delivery_score',0)} P={data.get('price_score',0)} - {data.get('notes','')}"
     db.commit()
     return {"success": True, "supplier_id": supplier.id}
@@ -206,7 +225,7 @@ def create_rating(request: Request, db: DbSession, data: dict = Body(...)):
 def get_all_price_lists(request: Request, db: DbSession):
     """Get all supplier price lists."""
     from app.models.price_lists import PriceList
-    lists = db.query(PriceList).order_by(PriceList.id).all()
+    lists = db.query(PriceList).order_by(PriceList.id).limit(500).all()
     return [
         {"id": pl.id, "name": pl.name, "active": pl.is_active if hasattr(pl, 'is_active') else True}
         for pl in lists
@@ -241,12 +260,12 @@ def create_price_list(request: Request, db: DbSession, data: dict = Body(...)):
 
 @router.get("/best-price/{item_id}")
 @limiter.limit("60/minute")
-def get_best_price(request: Request, item_id: str, db: DbSession):
+def get_best_price(request: Request, item_id: int, db: DbSession):
     """Get best price across suppliers for an item."""
     from app.models.invoice import PriceHistory
     histories = db.query(PriceHistory).filter(
-        PriceHistory.product_id == int(item_id)
-    ).order_by(PriceHistory.price).all()
+        PriceHistory.product_id == item_id
+    ).order_by(PriceHistory.price).limit(100).all()
     prices = [
         {"supplier_id": h.supplier_id, "price": float(h.price or 0), "date": h.recorded_at.isoformat() if h.recorded_at else None}
         for h in histories
@@ -311,7 +330,7 @@ def get_supplier_documents(request: Request, supplier_id: int, db: DbSession):
     """Get documents for a specific supplier."""
     docs = db.query(SupplierDocument).filter(
         SupplierDocument.supplier_id == supplier_id
-    ).order_by(SupplierDocument.id.desc()).all()
+    ).order_by(SupplierDocument.id.desc()).limit(500).all()
     return [
         {
             "id": d.id,
@@ -325,6 +344,60 @@ def get_supplier_documents(request: Request, supplier_id: int, db: DbSession):
         }
         for d in docs
     ]
+
+
+# ==================== ADVANCED SUPPLIER FEATURES ====================
+# (merged from enhanced_inventory_endpoints.py)
+
+
+@router.put("/contacts/{contact_id}")
+@limiter.limit("30/minute")
+def update_supplier_contact(
+    request: Request,
+    contact_id: int,
+    data: dict = Body(...),
+    db: DbSession = None,
+):
+    """Update a supplier contact."""
+    try:
+        from app.models.enhanced_inventory import SupplierContact
+
+        contact = db.query(SupplierContact).filter(SupplierContact.id == contact_id).first()
+        if not contact:
+            raise HTTPException(status_code=404, detail="Contact not found")
+
+        for key, value in data.items():
+            if key != "supplier_id" and hasattr(contact, key):
+                setattr(contact, key, value)
+
+        db.commit()
+        db.refresh(contact)
+        return contact
+    except HTTPException:
+        raise
+    except Exception as e:
+        db.rollback()
+        _supplier_logger.error(f"Error updating supplier contact: {e}")
+        raise HTTPException(status_code=500, detail="Failed to update supplier contact")
+
+
+@router.get("/price-lists/{price_list_id}/items")
+@limiter.limit("60/minute")
+def get_price_list_items(
+    request: Request,
+    price_list_id: int,
+    db: DbSession = None,
+):
+    """Get items in a price list."""
+    try:
+        from app.models.enhanced_inventory import SupplierPriceListItem
+
+        return db.query(SupplierPriceListItem).filter(
+            SupplierPriceListItem.price_list_id == price_list_id
+        ).all()
+    except Exception as e:
+        _supplier_logger.error(f"Error fetching price list items: {e}")
+        raise HTTPException(status_code=500, detail="Failed to fetch price list items")
 
 
 # ==================== SINGLE SUPPLIER (must be last - catches {supplier_id}) ====================

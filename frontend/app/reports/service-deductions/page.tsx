@@ -3,9 +3,9 @@
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
-import { Button, Card, CardBody, Badge } from '@/components/ui';
+import { Button, Card, CardBody } from '@/components/ui';
 
-import { API_URL, getAuthHeaders } from '@/lib/api';
+import { API_URL } from '@/lib/api';
 
 interface StaffReport {
   staff_id: number;
@@ -49,7 +49,7 @@ export default function ServiceDeductionsPage() {
     return d.toISOString().split('T')[0];
   });
   const [endDate, setEndDate] = useState(() => new Date().toISOString().split('T')[0]);
-  const [selectedStaff, setSelectedStaff] = useState<number | null>(null);
+  const [selectedStaff] = useState<number | null>(null);
 
   const loadReport = useCallback(async () => {
     setLoading(true);
@@ -61,6 +61,7 @@ export default function ServiceDeductionsPage() {
       }
 
       const response = await fetch(url, {
+        credentials: 'include',
         headers: { Authorization: `Bearer ${token}` },
       });
 

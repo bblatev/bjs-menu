@@ -97,15 +97,11 @@ export default function PriceTrackerPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showRuleModal, setShowRuleModal] = useState(false);
-  const [showCompareModal, setShowCompareModal] = useState(false);
   const [selectedItem, setSelectedItem] = useState<PriceHistory | null>(null);
-  const [selectedComparison, setSelectedComparison] = useState<SupplierComparison | null>(null);
   const [filterCategory, setFilterCategory] = useState('all');
   const [filterSeverity, setFilterSeverity] = useState('all');
   const [dateRange, setDateRange] = useState('30d');
   const [searchTerm, setSearchTerm] = useState('');
-
-  const getToken = () => localStorage.getItem('access_token');
 
   const [ruleForm, setRuleForm] = useState({
     name: '',
@@ -118,8 +114,8 @@ export default function PriceTrackerPage() {
   });
 
   useEffect(() => {
-    const token = getToken();
-    if (!token) {
+    const headers = getAuthHeaders();
+    if (!headers['Authorization']) {
       router.push('/login');
       return;
     }
@@ -130,7 +126,6 @@ export default function PriceTrackerPage() {
   const loadData = async () => {
     setLoading(true);
     setError(null);
-    const token = getToken();
 
     try {
       // Fetch all data in parallel for better performance
@@ -143,22 +138,28 @@ export default function PriceTrackerPage() {
         budgetRes
       ] = await Promise.all([
         fetch(`${API_URL}/price-tracker/alerts?date_range=${dateRange}`, {
-          headers: { Authorization: `Bearer ${token}` },
+          credentials: 'include',
+          headers: getAuthHeaders(),
         }),
         fetch(`${API_URL}/price-tracker/history?date_range=${dateRange}`, {
-          headers: { Authorization: `Bearer ${token}` },
+          credentials: 'include',
+          headers: getAuthHeaders(),
         }),
         fetch(`${API_URL}/price-tracker/supplier-comparisons`, {
-          headers: { Authorization: `Bearer ${token}` },
+          credentials: 'include',
+          headers: getAuthHeaders(),
         }),
         fetch(`${API_URL}/price-tracker/alert-rules`, {
-          headers: { Authorization: `Bearer ${token}` },
+          credentials: 'include',
+          headers: getAuthHeaders(),
         }),
         fetch(`${API_URL}/price-tracker/category-trends?date_range=${dateRange}`, {
-          headers: { Authorization: `Bearer ${token}` },
+          credentials: 'include',
+          headers: getAuthHeaders(),
         }),
         fetch(`${API_URL}/price-tracker/budget-impacts?date_range=${dateRange}`, {
-          headers: { Authorization: `Bearer ${token}` },
+          credentials: 'include',
+          headers: getAuthHeaders(),
         }),
       ]);
 
@@ -221,11 +222,11 @@ export default function PriceTrackerPage() {
   };
 
   const acknowledgeAlert = async (id: number) => {
-    const token = getToken();
     try {
       const res = await fetch(`${API_URL}/price-tracker/alerts/${id}/acknowledge`, {
+        credentials: 'include',
         method: 'POST',
-        headers: { Authorization: `Bearer ${token}` },
+        headers: getAuthHeaders(),
       });
       if (res.ok) {
         const updatedAlert = await res.json();
@@ -241,11 +242,11 @@ export default function PriceTrackerPage() {
   };
 
   const acknowledgeAll = async () => {
-    const token = getToken();
     try {
       const res = await fetch(`${API_URL}/price-tracker/alerts/acknowledge-all`, {
+        credentials: 'include',
         method: 'POST',
-        headers: { Authorization: `Bearer ${token}` },
+        headers: getAuthHeaders(),
       });
       if (res.ok) {
         await loadData();
@@ -260,14 +261,11 @@ export default function PriceTrackerPage() {
   };
 
   const handleCreateRule = async () => {
-    const token = getToken();
     try {
       const res = await fetch(`${API_URL}/price-tracker/alert-rules`, {
+        credentials: 'include',
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
+        headers: getAuthHeaders(),
         body: JSON.stringify({
           ...ruleForm,
           isActive: true,
@@ -297,17 +295,14 @@ export default function PriceTrackerPage() {
   };
 
   const toggleRuleActive = async (id: number) => {
-    const token = getToken();
     const rule = alertRules.find(r => r.id === id);
     if (!rule) return;
 
     try {
       const res = await fetch(`${API_URL}/price-tracker/alert-rules/${id}`, {
+        credentials: 'include',
         method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
+        headers: getAuthHeaders(),
         body: JSON.stringify({ isActive: !rule.isActive }),
       });
       if (res.ok) {

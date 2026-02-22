@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { Button, Input, Card, CardBody, Badge } from '@/components/ui';
 
-import { API_URL, getAuthHeaders } from '@/lib/api';
+import { API_URL } from '@/lib/api';
 
 import { toast } from '@/lib/toast';
 export default function SettingsPaymentPage() {
@@ -60,6 +60,7 @@ export default function SettingsPaymentPage() {
       if (!token) return;
 
       const response = await fetch(`${API_URL}/settings/`, {
+        credentials: 'include',
         headers: { Authorization: `Bearer ${token}` },
       });
 
@@ -81,6 +82,7 @@ export default function SettingsPaymentPage() {
     try {
       const token = localStorage.getItem('access_token');
       const response = await fetch(`${API_URL}/settings/`, {
+        credentials: 'include',
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',

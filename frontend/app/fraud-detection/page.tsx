@@ -113,7 +113,7 @@ export default function FraudDetectionPage() {
   const [error, setError] = useState<string | null>(null);
 
   const fetchAlerts = useCallback(async () => {
-    const response = await fetch(`${API_URL}/risk-alerts/alerts`, { headers: getAuthHeaders() });
+    const response = await fetch(`${API_URL}/risk-alerts/alerts`, { credentials: 'include', headers: getAuthHeaders() });
     if (response.status === 401 || response.status === 403) throw new Error('AUTH_ERROR');
     if (!response.ok) throw new Error('Failed to fetch alerts');
     const data = await response.json();
@@ -121,7 +121,7 @@ export default function FraudDetectionPage() {
   }, []);
 
   const fetchRiskScores = useCallback(async () => {
-    const response = await fetch(`${API_URL}/risk-alerts/scores`, { headers: getAuthHeaders() });
+    const response = await fetch(`${API_URL}/risk-alerts/scores`, { credentials: 'include', headers: getAuthHeaders() });
     if (response.status === 401 || response.status === 403) throw new Error('AUTH_ERROR');
     if (!response.ok) throw new Error('Failed to fetch risk scores');
     const data = await response.json();
@@ -142,7 +142,7 @@ export default function FraudDetectionPage() {
 
   const fetchPatterns = useCallback(async () => {
     try {
-      const response = await fetch(`${API_URL}/risk-alerts/patterns`, { headers: getAuthHeaders() });
+      const response = await fetch(`${API_URL}/risk-alerts/patterns`, { credentials: 'include', headers: getAuthHeaders() });
       if (response.ok) {
         const data = await response.json();
         setPatterns(Array.isArray(data) ? data : data.patterns || []);
@@ -154,7 +154,7 @@ export default function FraudDetectionPage() {
 
   const fetchDashboard = useCallback(async () => {
     try {
-      const response = await fetch(`${API_URL}/risk-alerts/dashboard`, { headers: getAuthHeaders() });
+      const response = await fetch(`${API_URL}/risk-alerts/dashboard`, { credentials: 'include', headers: getAuthHeaders() });
       if (response.ok) {
         const data = await response.json();
         if (data.cases) setCases(data.cases);
@@ -251,6 +251,7 @@ export default function FraudDetectionPage() {
   const acknowledgeAlert = async (alertId: string) => {
     try {
       const response = await fetch(`${API_URL}/risk-alerts/alerts/${alertId}/acknowledge`, {
+        credentials: 'include',
         method: 'POST',
         headers: getAuthHeaders(),
       });
@@ -325,7 +326,6 @@ export default function FraudDetectionPage() {
   };
 
   // Dashboard stats
-  const totalAlerts = alerts.length;
   const criticalAlerts = alerts.filter(a => a.severity === 'critical').length;
   const unacknowledgedAlerts = alerts.filter(a => !a.acknowledged).length;
   const openCases = cases.filter(c => c.status !== 'resolved' && c.status !== 'dismissed').length;

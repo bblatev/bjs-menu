@@ -1,7 +1,7 @@
 """Reconciliation, reorder, and export routes."""
 
 
-from datetime import datetime
+from datetime import datetime, timezone
 from decimal import Decimal
 from typing import List, Optional
 
@@ -147,7 +147,7 @@ def run_reconciliation(
                 severity=r["severity"],
                 reason=r["reason"],
                 confidence=Decimal(str(r["confidence"])) if r["confidence"] else None,
-                created_at=datetime.now(),  # Will be overwritten by actual value
+                created_at=datetime.now(timezone.utc),  # Will be overwritten by actual value
             )
             for r in summary.get("results", [])
         ],
@@ -204,7 +204,7 @@ def get_session_reconciliation_results(
                 severity=r["severity"],
                 reason=r["reason"],
                 confidence=Decimal(str(r["confidence"])) if r["confidence"] else None,
-                created_at=datetime.now(),
+                created_at=datetime.now(timezone.utc),
             )
             for r in summary.get("results", [])
         ],

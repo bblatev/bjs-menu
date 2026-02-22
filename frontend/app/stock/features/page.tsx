@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { API_URL } from '@/lib/api';
+import { API_URL, getAuthHeaders } from '@/lib/api';
 
 import { toast } from '@/lib/toast';
 // Types
@@ -161,8 +161,6 @@ export default function StockFeaturesPage() {
     from_unit: "", to_unit: "", conversion_factor: 1
   });
 
-  const getToken = () => localStorage.getItem("access_token");
-
   useEffect(() => {
     loadStockItems();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -175,9 +173,9 @@ export default function StockFeaturesPage() {
 
   const loadStockItems = async () => {
     try {
-      const token = getToken();
       const res = await fetch(`${API_URL}/stock`, {
-        headers: { Authorization: `Bearer ${token}` }
+        credentials: 'include',
+        headers: getAuthHeaders()
       });
       if (res.ok) {
         const data = await res.json();
@@ -192,14 +190,13 @@ export default function StockFeaturesPage() {
   };
 
   const loadTabData = async () => {
-    const token = getToken();
-    const headers = { Authorization: `Bearer ${token}` };
+    const headers = getAuthHeaders();
 
     try {
       switch (activeTab) {
         case "barcodes":
           if (selectedItem) {
-            const res = await fetch(`${API_URL}/inventory-complete/barcodes/item/${selectedItem.id}`, { headers });
+            const res = await fetch(`${API_URL}/inventory-complete/barcodes/item/${selectedItem.id}`, { credentials: 'include', headers });
             if (res.ok) {
               const data = await res.json();
               setBarcodes(Array.isArray(data) ? data : (data.barcodes || []));
@@ -207,12 +204,12 @@ export default function StockFeaturesPage() {
           }
           break;
         case "reorder":
-          const rulesRes = await fetch(`${API_URL}/inventory-complete/auto-reorder/rules`, { headers });
+          const rulesRes = await fetch(`${API_URL}/inventory-complete/auto-reorder/rules`, { credentials: 'include', headers });
           if (rulesRes.ok) {
             const rulesData = await rulesRes.json();
             setReorderRules(Array.isArray(rulesData) ? rulesData : (rulesData.rules || []));
           }
-          const alertsRes = await fetch(`${API_URL}/inventory-complete/auto-reorder/alerts`, { headers });
+          const alertsRes = await fetch(`${API_URL}/inventory-complete/auto-reorder/alerts`, { credentials: 'include', headers });
           if (alertsRes.ok) {
             const alertsData = await alertsRes.json();
             setReorderAlerts(Array.isArray(alertsData) ? alertsData : (alertsData.alerts || []));
@@ -220,7 +217,7 @@ export default function StockFeaturesPage() {
           break;
         case "batches":
           if (selectedItem) {
-            const res = await fetch(`${API_URL}/inventory-complete/batches/item/${selectedItem.id}`, { headers });
+            const res = await fetch(`${API_URL}/inventory-complete/batches/item/${selectedItem.id}`, { credentials: 'include', headers });
             if (res.ok) {
               const data = await res.json();
               setBatches(Array.isArray(data) ? data : (data.batches || []));
@@ -228,37 +225,37 @@ export default function StockFeaturesPage() {
           }
           break;
         case "shrinkage":
-          const shrinkRes = await fetch(`${API_URL}/inventory-complete/shrinkage`, { headers });
+          const shrinkRes = await fetch(`${API_URL}/inventory-complete/shrinkage`, { credentials: 'include', headers });
           if (shrinkRes.ok) setShrinkage(await shrinkRes.json());
           break;
         case "counts":
-          const schedRes = await fetch(`${API_URL}/inventory-complete/cycle-counts/schedules`, { headers });
+          const schedRes = await fetch(`${API_URL}/inventory-complete/cycle-counts/schedules`, { credentials: 'include', headers });
           if (schedRes.ok) {
             const schedData = await schedRes.json();
             setCountSchedules(Array.isArray(schedData) ? schedData : (schedData.schedules || []));
           }
-          const tasksRes = await fetch(`${API_URL}/inventory-complete/cycle-counts/tasks`, { headers });
+          const tasksRes = await fetch(`${API_URL}/inventory-complete/cycle-counts/tasks`, { credentials: 'include', headers });
           if (tasksRes.ok) {
             const tasksData = await tasksRes.json();
             setCountTasks(Array.isArray(tasksData) ? tasksData : (tasksData.tasks || []));
           }
           break;
         case "reconciliation":
-          const reconRes = await fetch(`${API_URL}/inventory-complete/reconciliation/sessions`, { headers });
+          const reconRes = await fetch(`${API_URL}/inventory-complete/reconciliation/sessions`, { credentials: 'include', headers });
           if (reconRes.ok) {
             const reconData = await reconRes.json();
             setReconciliations(Array.isArray(reconData) ? reconData : (reconData.sessions || []));
           }
           break;
         case "units":
-          const convRes = await fetch(`${API_URL}/inventory-complete/unit-conversions`, { headers });
+          const convRes = await fetch(`${API_URL}/inventory-complete/unit-conversions`, { credentials: 'include', headers });
           if (convRes.ok) {
             const convData = await convRes.json();
             setConversions(Array.isArray(convData) ? convData : (convData.conversions || []));
           }
           break;
         case "suppliers":
-          const perfRes = await fetch(`${API_URL}/inventory-complete/supplier-performance`, { headers });
+          const perfRes = await fetch(`${API_URL}/inventory-complete/supplier-performance`, { credentials: 'include', headers });
           if (perfRes.ok) setSupplierPerf(await perfRes.json());
           break;
       }
@@ -269,11 +266,11 @@ export default function StockFeaturesPage() {
 
   // CRUD Handlers
   const handleCreateBarcode = async () => {
-    const token = getToken();
     try {
       const res = await fetch(`${API_URL}/inventory-complete/barcodes`, {
+        credentials: 'include',
         method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        headers: getAuthHeaders(),
         body: JSON.stringify(barcodeForm)
       });
       if (res.ok) {
@@ -287,11 +284,11 @@ export default function StockFeaturesPage() {
   };
 
   const handleCreateReorderRule = async () => {
-    const token = getToken();
     try {
       const res = await fetch(`${API_URL}/inventory-complete/auto-reorder/rules`, {
+        credentials: 'include',
         method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        headers: getAuthHeaders(),
         body: JSON.stringify(reorderForm)
       });
       if (res.ok) {
@@ -305,11 +302,11 @@ export default function StockFeaturesPage() {
   };
 
   const handleCreateBatch = async () => {
-    const token = getToken();
     try {
       const res = await fetch(`${API_URL}/inventory-complete/batches`, {
+        credentials: 'include',
         method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        headers: getAuthHeaders(),
         body: JSON.stringify(batchForm)
       });
       if (res.ok) {
@@ -323,11 +320,11 @@ export default function StockFeaturesPage() {
   };
 
   const handleRecordShrinkage = async () => {
-    const token = getToken();
     try {
       const res = await fetch(`${API_URL}/inventory-complete/shrinkage/record`, {
+        credentials: 'include',
         method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        headers: getAuthHeaders(),
         body: JSON.stringify({
           stock_item_id: shrinkageForm.stock_item_id,
           quantity_lost: shrinkageForm.quantity,
@@ -346,11 +343,11 @@ export default function StockFeaturesPage() {
   };
 
   const handleCreateCountSchedule = async () => {
-    const token = getToken();
     try {
       const res = await fetch(`${API_URL}/inventory-complete/cycle-counts/schedules`, {
+        credentials: 'include',
         method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        headers: getAuthHeaders(),
         body: JSON.stringify(countForm)
       });
       if (res.ok) {
@@ -364,11 +361,11 @@ export default function StockFeaturesPage() {
   };
 
   const handleStartReconciliation = async () => {
-    const token = getToken();
     try {
       const res = await fetch(`${API_URL}/inventory-complete/reconciliation/start`, {
+        credentials: 'include',
         method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        headers: getAuthHeaders(),
         body: JSON.stringify(reconcileForm)
       });
       if (res.ok) {
@@ -382,11 +379,11 @@ export default function StockFeaturesPage() {
   };
 
   const handleCreateConversion = async () => {
-    const token = getToken();
     try {
       const res = await fetch(`${API_URL}/inventory-complete/unit-conversions`, {
+        credentials: 'include',
         method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        headers: getAuthHeaders(),
         body: JSON.stringify(conversionForm)
       });
       if (res.ok) {
@@ -400,11 +397,11 @@ export default function StockFeaturesPage() {
   };
 
   const handleProcessReorders = async () => {
-    const token = getToken();
     try {
       const res = await fetch(`${API_URL}/inventory-complete/auto-reorder/process`, {
+        credentials: 'include',
         method: "POST",
-        headers: { Authorization: `Bearer ${token}` }
+        headers: getAuthHeaders()
       });
       if (res.ok) {
         const result = await res.json();

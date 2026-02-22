@@ -63,10 +63,10 @@ export default function BarManagementPage() {
 
       try {
         const [statsRes, drinksRes, alertsRes, activityRes] = await Promise.allSettled([
-          fetch(`${API_URL}/bar/stats?period=${selectedPeriod}`, { headers }),
-          fetch(`${API_URL}/bar/top-drinks?period=${selectedPeriod}`, { headers }),
-          fetch(`${API_URL}/bar/inventory-alerts`, { headers }),
-          fetch(`${API_URL}/bar/recent-activity`, { headers })
+          fetch(`${API_URL}/bar/stats?period=${selectedPeriod}`, { credentials: 'include', headers }),
+          fetch(`${API_URL}/bar/top-drinks?period=${selectedPeriod}`, { credentials: 'include', headers }),
+          fetch(`${API_URL}/bar/inventory-alerts`, { credentials: 'include', headers }),
+          fetch(`${API_URL}/bar/recent-activity`, { credentials: 'include', headers })
         ]);
 
         // Process stats
@@ -175,6 +175,7 @@ export default function BarManagementPage() {
   const handleQuickPour = async () => {
     try {
       const response = await fetch(`${API_URL}/bar/spillage/records`, {
+        credentials: 'include',
         method: 'POST',
         headers: getAuthHeaders(),
         body: JSON.stringify({

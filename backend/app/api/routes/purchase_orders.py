@@ -1,18 +1,27 @@
-"""Purchase Orders API routes - database-backed."""
+"""Purchase Orders API routes - database-backed.
 
-from datetime import datetime, timezone
+Includes advanced PO features (templates, approval workflows, supplier invoices,
+three-way matching, GRN, analytics) merged from enhanced_inventory_endpoints.py.
+"""
+
+import logging
+from datetime import datetime, date, timezone, timedelta
 from decimal import Decimal
-from typing import List, Optional
-from fastapi import APIRouter, HTTPException, Query, Request
+from typing import List, Optional, Dict, Any
+from fastapi import APIRouter, Body, Depends, HTTPException, Query, Request
 from app.core.rate_limit import limiter
 from pydantic import BaseModel, model_validator
+from sqlalchemy.orm import Session
 
-from app.db.session import DbSession
+from app.db.session import DbSession, get_db
+from app.core.rbac import get_current_user
 from app.models.order import PurchaseOrder as PurchaseOrderModel, PurchaseOrderLine, POStatus
 from app.models.stock import StockOnHand, StockMovement, MovementReason
 from app.models.product import Product
 from app.models.supplier import Supplier
 from app.models.location import Location
+
+_po_logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -515,3 +524,393 @@ def get_purchase_order(request: Request, db: DbSession, po_id: int):
     if not po:
         raise HTTPException(status_code=404, detail="Purchase order not found")
     return _po_to_response(po, db)
+
+
+# ==================== ADVANCED PO FEATURES ====================
+# (merged from enhanced_inventory_endpoints.py)
+
+# --- Schemas ---
+
+
+class POTemplateCreate(BaseModel):
+    name: str
+    description: Optional[str] = None
+    supplier_id: Optional[int] = None
+    warehouse_id: Optional[int] = None
+    schedule_type: Optional[str] = None
+    schedule_config: Optional[Dict[str, Any]] = None
+    items: List[Dict[str, Any]]
+
+
+class POApprovalCreate(BaseModel):
+    purchase_order_id: int
+    action: str  # "approve" or "reject"
+    notes: Optional[str] = None
+
+
+class SupplierInvoiceCreate(BaseModel):
+    supplier_id: int
+    invoice_number: str
+    invoice_date: date
+    due_date: Optional[date] = None
+    subtotal: Decimal
+    tax_amount: Decimal = Decimal("0")
+    total_amount: Decimal
+    currency: str = "BGN"
+    payment_terms: Optional[str] = None
+    notes: Optional[str] = None
+    file_url: Optional[str] = None
+    purchase_order_id: Optional[int] = None
+    items: List[Dict[str, Any]]
+
+
+class GRNCreate(BaseModel):
+    purchase_order_id: Optional[int] = None
+    supplier_id: int
+    warehouse_id: Optional[int] = None
+    received_date: Optional[date] = None
+    notes: Optional[str] = None
+    items: List[Dict[str, Any]]
+
+
+# --- Endpoints ---
+
+
+@router.get("/templates/list")
+@limiter.limit("60/minute")
+def get_po_templates(
+    request: Request,
+    venue_id: int = Query(1, description="Venue ID"),
+    supplier_id: Optional[int] = None,
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user),
+):
+    """Get purchase order templates."""
+    try:
+        from app.models.enhanced_inventory import PurchaseOrderTemplate
+
+        query = db.query(PurchaseOrderTemplate).filter(
+            PurchaseOrderTemplate.venue_id == venue_id,
+            PurchaseOrderTemplate.is_active == True,
+        )
+        if supplier_id:
+            query = query.filter(PurchaseOrderTemplate.supplier_id == supplier_id)
+        return query.all()
+    except Exception as e:
+        _po_logger.error(f"Error fetching PO templates: {e}")
+        raise HTTPException(status_code=500, detail="Failed to fetch PO templates")
+
+
+@router.post("/templates/create")
+@limiter.limit("30/minute")
+def create_po_template(
+    request: Request,
+    venue_id: int,
+    data: POTemplateCreate,
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user),
+):
+    """Create a purchase order template."""
+    try:
+        from app.models.enhanced_inventory import PurchaseOrderTemplate
+
+        template_data = data.model_dump(exclude={"items"})
+        template = PurchaseOrderTemplate(
+            venue_id=venue_id,
+            supplier_id=template_data.get("supplier_id"),
+            template_name=template_data.get("name", ""),
+            description=template_data.get("description"),
+            items=data.items,
+            is_active=True,
+        )
+        db.add(template)
+        db.commit()
+        db.refresh(template)
+        return template
+    except Exception as e:
+        db.rollback()
+        _po_logger.error(f"Error creating PO template: {e}")
+        raise HTTPException(status_code=500, detail="Failed to create PO template")
+
+
+@router.post("/from-template/{template_id}")
+@limiter.limit("30/minute")
+def create_po_from_template(
+    request: Request,
+    template_id: int,
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user),
+):
+    """Create a purchase order from a template."""
+    try:
+        from app.services.inventory_management_service import AdvancedPurchaseOrderService
+
+        service = AdvancedPurchaseOrderService(db)
+        po = service.create_from_template(
+            template_id=template_id,
+            created_by=current_user.id,
+        )
+        if not po:
+            raise HTTPException(status_code=404, detail="Template not found")
+        return po
+    except HTTPException:
+        raise
+    except Exception as e:
+        db.rollback()
+        _po_logger.error(f"Error creating PO from template: {e}")
+        raise HTTPException(status_code=500, detail="Failed to create PO from template")
+
+
+@router.get("/{po_id}/approval-history")
+@limiter.limit("60/minute")
+def get_po_approval_history(
+    request: Request,
+    po_id: int,
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user),
+):
+    """Get approval history for a purchase order."""
+    try:
+        from app.models.enhanced_inventory import PurchaseOrderApproval
+
+        return db.query(PurchaseOrderApproval).filter(
+            PurchaseOrderApproval.purchase_order_id == po_id
+        ).order_by(PurchaseOrderApproval.approval_level).all()
+    except Exception as e:
+        _po_logger.error(f"Error fetching PO approvals: {e}")
+        raise HTTPException(status_code=500, detail="Failed to fetch PO approvals")
+
+
+@router.post("/approval-action")
+@limiter.limit("30/minute")
+def submit_po_approval(
+    request: Request,
+    data: POApprovalCreate,
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user),
+):
+    """Submit approval/rejection for a purchase order."""
+    try:
+        from app.models.enhanced_inventory import PurchaseOrderApproval
+        from app.services.inventory_management_service import AdvancedPurchaseOrderService
+
+        approval = db.query(PurchaseOrderApproval).filter(
+            PurchaseOrderApproval.purchase_order_id == data.purchase_order_id,
+            PurchaseOrderApproval.status == "pending",
+        ).first()
+
+        if not approval:
+            raise HTTPException(status_code=400, detail="No pending approval found")
+
+        service = AdvancedPurchaseOrderService(db)
+        result, all_approved = service.process_approval(
+            approval_id=approval.id,
+            approved_by=current_user.id,
+            approved=data.action == "approve",
+            comments=data.notes,
+        )
+
+        if not result:
+            raise HTTPException(status_code=400, detail="Approval action failed")
+        return result
+    except HTTPException:
+        raise
+    except Exception as e:
+        db.rollback()
+        _po_logger.error(f"Error processing PO approval: {e}")
+        raise HTTPException(status_code=500, detail="Failed to process PO approval")
+
+
+@router.get("/pending-approvals")
+@limiter.limit("60/minute")
+def get_pending_approval_pos(
+    request: Request,
+    venue_id: int = Query(1, description="Venue ID"),
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user),
+):
+    """Get purchase orders pending approval."""
+    try:
+        from app.models.enhanced_inventory import PurchaseOrderApproval
+
+        pending_approvals = db.query(PurchaseOrderApproval).filter(
+            PurchaseOrderApproval.status == "pending"
+        ).all()
+        po_ids = [a.purchase_order_id for a in pending_approvals]
+        if not po_ids:
+            return []
+        return db.query(PurchaseOrderModel).filter(
+            PurchaseOrderModel.location_id == venue_id,
+            PurchaseOrderModel.id.in_(po_ids),
+        ).all()
+    except Exception as e:
+        _po_logger.error(f"Error fetching pending approval POs: {e}")
+        raise HTTPException(status_code=500, detail="Failed to fetch pending approval POs")
+
+
+@router.get("/supplier-invoices")
+@limiter.limit("60/minute")
+def get_supplier_invoices(
+    request: Request,
+    venue_id: int = Query(1, description="Venue ID"),
+    supplier_id: Optional[int] = None,
+    inv_status: Optional[str] = None,
+    limit: int = Query(50, le=200),
+    offset: int = 0,
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user),
+):
+    """Get supplier invoices (enhanced model)."""
+    try:
+        from app.models.enhanced_inventory import SupplierInvoice
+
+        query = db.query(SupplierInvoice).filter(SupplierInvoice.venue_id == venue_id)
+        if supplier_id:
+            query = query.filter(SupplierInvoice.supplier_id == supplier_id)
+        if inv_status:
+            query = query.filter(SupplierInvoice.status == inv_status)
+
+        return query.order_by(SupplierInvoice.invoice_date.desc()).limit(limit).offset(offset).all()
+    except Exception as e:
+        _po_logger.error(f"Error fetching supplier invoices: {e}")
+        raise HTTPException(status_code=500, detail="Failed to fetch supplier invoices")
+
+
+@router.post("/supplier-invoices")
+@limiter.limit("30/minute")
+def create_supplier_invoice(
+    request: Request,
+    venue_id: int,
+    data: SupplierInvoiceCreate,
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user),
+):
+    """Create a supplier invoice."""
+    try:
+        from app.services.inventory_management_service import AdvancedPurchaseOrderService
+
+        service = AdvancedPurchaseOrderService(db)
+        invoice_data = data.model_dump(exclude={"items"})
+        invoice = service.create_invoice(
+            venue_id=venue_id,
+            supplier_id=invoice_data.get("supplier_id"),
+            invoice_number=invoice_data.get("invoice_number", ""),
+            invoice_date=invoice_data.get("invoice_date"),
+            items=data.items,
+            created_by=current_user.id,
+            purchase_order_id=invoice_data.get("purchase_order_id"),
+        )
+        return invoice
+    except Exception as e:
+        db.rollback()
+        _po_logger.error(f"Error creating supplier invoice: {e}")
+        raise HTTPException(status_code=500, detail="Failed to create supplier invoice")
+
+
+@router.post("/supplier-invoices/{invoice_id}/match")
+@limiter.limit("30/minute")
+def perform_three_way_match(
+    request: Request,
+    invoice_id: int,
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user),
+):
+    """Perform three-way matching (PO, GRN, Invoice)."""
+    try:
+        from app.services.inventory_management_service import AdvancedPurchaseOrderService
+
+        service = AdvancedPurchaseOrderService(db)
+        result = service.three_way_match(invoice_id)
+        if not result:
+            raise HTTPException(status_code=404, detail="Invoice not found")
+        return result
+    except HTTPException:
+        raise
+    except Exception as e:
+        _po_logger.error(f"Error performing three-way match: {e}")
+        raise HTTPException(status_code=500, detail="Failed to perform three-way match")
+
+
+@router.get("/goods-received-notes")
+@limiter.limit("60/minute")
+def get_goods_received_notes(
+    request: Request,
+    venue_id: int = Query(1, description="Venue ID"),
+    purchase_order_id: Optional[int] = None,
+    limit: int = Query(50, le=200),
+    offset: int = 0,
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user),
+):
+    """Get goods received notes (enhanced model)."""
+    try:
+        from app.models.enhanced_inventory import GoodsReceivedNote
+
+        query = db.query(GoodsReceivedNote).filter(GoodsReceivedNote.venue_id == venue_id)
+        if purchase_order_id:
+            query = query.filter(GoodsReceivedNote.purchase_order_id == purchase_order_id)
+
+        return query.order_by(GoodsReceivedNote.delivery_date.desc()).limit(limit).offset(offset).all()
+    except Exception as e:
+        _po_logger.error(f"Error fetching GRN: {e}")
+        raise HTTPException(status_code=500, detail="Failed to fetch goods received notes")
+
+
+@router.post("/goods-received-notes")
+@limiter.limit("30/minute")
+def create_goods_received_note(
+    request: Request,
+    venue_id: int,
+    data: GRNCreate,
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user),
+):
+    """Create a goods received note (receive items from PO)."""
+    try:
+        from app.services.inventory_management_service import AdvancedPurchaseOrderService
+
+        service = AdvancedPurchaseOrderService(db)
+        grn = service.create_grn(
+            venue_id=venue_id,
+            supplier_id=data.supplier_id,
+            items=data.items,
+            received_by=current_user.id,
+            purchase_order_id=data.purchase_order_id,
+            warehouse_id=data.warehouse_id,
+        )
+        return grn
+    except Exception as e:
+        db.rollback()
+        _po_logger.error(f"Error creating GRN: {e}")
+        raise HTTPException(status_code=500, detail="Failed to create goods received note")
+
+
+@router.get("/analytics/summary")
+@limiter.limit("60/minute")
+def get_po_analytics(
+    request: Request,
+    venue_id: int = Query(1, description="Venue ID"),
+    start_date: Optional[date] = None,
+    end_date: Optional[date] = None,
+    supplier_id: Optional[int] = None,
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user),
+):
+    """Get purchase order analytics."""
+    try:
+        from app.services.inventory_management_service import AdvancedPurchaseOrderService
+
+        service = AdvancedPurchaseOrderService(db)
+        if not start_date:
+            start_date = date.today() - timedelta(days=30)
+        if not end_date:
+            end_date = date.today()
+        analytics = service.get_analytics(
+            venue_id=venue_id,
+            period_start=start_date,
+            period_end=end_date,
+        )
+        return analytics
+    except Exception as e:
+        _po_logger.error(f"Error fetching PO analytics: {e}")
+        raise HTTPException(status_code=500, detail="Failed to fetch PO analytics")

@@ -85,7 +85,7 @@ export default function TableOrderPage() {
 
   const loadTableOrders = useCallback(async () => {
     try {
-      const response = await fetch(`${API_URL}/orders/table/${token}`);
+      const response = await fetch(`${API_URL}/orders/table/${token}`, { credentials: 'include' });
       if (response.ok) {
         const data = await response.json();
         setTableOrders(data.orders || []);
@@ -105,7 +105,7 @@ export default function TableOrderPage() {
 
   const loadData = async () => {
     try {
-      const menuRes = await fetch(`${API_URL}/menu/table/${token}`);
+      const menuRes = await fetch(`${API_URL}/menu/table/${token}`, { credentials: 'include' });
       if (menuRes.ok) {
         const menuData = await menuRes.json();
         if (menuData.table) {
@@ -207,6 +207,7 @@ export default function TableOrderPage() {
         order_type: 'dine-in',
       };
       const response = await fetch(`${API_URL}/orders/guest`, {
+        credentials: 'include',
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(orderData),
@@ -231,7 +232,7 @@ export default function TableOrderPage() {
 
   const loadPaymentSummary = async () => {
     try {
-      const response = await fetch(`${API_URL}/orders/table/${token}/payment-summary`);
+      const response = await fetch(`${API_URL}/orders/table/${token}/payment-summary`, { credentials: 'include' });
       if (response.ok) {
         const data = await response.json();
         setPaymentSummary(data);
@@ -251,6 +252,7 @@ export default function TableOrderPage() {
     try {
       const tipAmount = customTip ? parseFloat(customTip) : (balanceDue * selectedTip / 100);
       const response = await fetch(`${API_URL}/orders/table/${token}/pay-all?payment_method=${paymentMethod}&tip_percent=${customTip ? 0 : selectedTip}&tip_amount=${customTip ? tipAmount : 0}`, {
+        credentials: 'include',
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
       });
@@ -281,6 +283,7 @@ export default function TableOrderPage() {
   const requestWaiterForBill = async () => {
     try {
       const response = await fetch(`${API_URL}/waiter/calls`, {
+        credentials: 'include',
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

@@ -7,7 +7,7 @@ import hashlib
 import base64
 import logging
 from typing import Optional, Dict
-from datetime import datetime
+from datetime import datetime, timezone
 from dataclasses import dataclass
 from enum import Enum
 from urllib.parse import urlencode
@@ -114,7 +114,7 @@ class BoricaService:
             transaction_code = "10"  # Authorization
             amount_str = f"{int(amount * 100):012d}"  # Amount in stotinki
             currency_code = "975"  # BGN ISO code
-            timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
+            timestamp = datetime.now(timezone.utc).strftime("%Y%m%d%H%M%S")
 
             # Build message
             message = self._build_payment_message(
@@ -231,7 +231,7 @@ class BoricaService:
 
         try:
             transaction_code = "24"  # Reversal
-            timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
+            timestamp = datetime.now(timezone.utc).strftime("%Y%m%d%H%M%S")
 
             # Build refund message
             params = {
@@ -564,9 +564,9 @@ class EPayService:
         expiration_days: int
     ) -> str:
         """Encode payment data for ePay"""
-        from datetime import timedelta
+        from datetime import timedelta, timezone
 
-        exp_date = (datetime.now() + timedelta(days=expiration_days)).strftime("%d.%m.%Y")
+        exp_date = (datetime.now(timezone.utc) + timedelta(days=expiration_days)).strftime("%d.%m.%Y")
 
         data_lines = [
             f"MIN={self.client_id}",
@@ -615,7 +615,7 @@ class EPayService:
         """Mock notification for development"""
         return PaymentResult(
             success=True,
-            transaction_id=f"MOCK-{datetime.now().timestamp()}",
+            transaction_id=f"MOCK-{datetime.now(timezone.utc).timestamp()}",
             status=PaymentStatus.SUCCESS,
             amount=100.0
         )

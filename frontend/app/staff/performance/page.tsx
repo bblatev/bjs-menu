@@ -34,15 +34,6 @@ interface PerformanceMetrics {
   voids_processed: number;
 }
 
-interface PerformanceGoal {
-  id: number;
-  metric: string;
-  target: number;
-  current: number;
-  unit: string;
-  period: string;
-}
-
 interface LeaderboardEntry {
   rank: number;
   staff: StaffMember;
@@ -53,13 +44,13 @@ interface LeaderboardEntry {
 export default function StaffPerformancePage() {
   const [staff, setStaff] = useState<StaffMember[]>([]);
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
-  const [selectedStaff, setSelectedStaff] = useState<number | null>(null);
-  const [selectedMetrics, setSelectedMetrics] = useState<PerformanceMetrics | null>(null);
+  const [, setSelectedStaff] = useState<number | null>(null);
+  const [, setSelectedMetrics] = useState<PerformanceMetrics | null>(null);
   const [period, setPeriod] = useState<'today' | 'week' | 'month' | 'quarter'>('month');
   const [sortBy, setSortBy] = useState<'sales' | 'rating' | 'efficiency' | 'tips'>('sales');
   const [showGoalsModal, setShowGoalsModal] = useState(false);
 
-  const [loading, setLoading] = useState(true);
+  const [, setLoading] = useState(true);
   const [goals, setGoals] = useState<{
     metric: string;
     value: number;
@@ -93,6 +84,7 @@ export default function StaffPerformancePage() {
       const response = await fetch(
         `${API_URL}/staff`,
         {
+          credentials: 'include',
           headers: { Authorization: `Bearer ${token}` },
         }
       );
@@ -120,6 +112,7 @@ export default function StaffPerformancePage() {
       const response = await fetch(
         `${API_URL}/staff/performance/leaderboard?period=${period}&sort_by=${sortBy}`,
         {
+          credentials: 'include',
           headers: { Authorization: `Bearer ${token}` },
         }
       );
@@ -139,6 +132,7 @@ export default function StaffPerformancePage() {
       const response = await fetch(
         `${API_URL}/staff/performance/goals`,
         {
+          credentials: 'include',
           headers: { Authorization: `Bearer ${token}` },
         }
       );
@@ -160,6 +154,7 @@ export default function StaffPerformancePage() {
       const response = await fetch(
         `${API_URL}/staff/performance/goals`,
         {
+          credentials: 'include',
           method: 'PUT',
           headers: {
             'Content-Type': 'application/json',

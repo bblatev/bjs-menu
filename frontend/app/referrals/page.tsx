@@ -88,7 +88,6 @@ export default function ReferralsPage() {
   const [showReferrerModal, setShowReferrerModal] = useState(false);
   const [showBulkSendModal, setShowBulkSendModal] = useState(false);
   const [selectedReferrer, setSelectedReferrer] = useState<Referrer | null>(null);
-  const [selectedCampaign, setSelectedCampaign] = useState<Campaign | null>(null);
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [searchTerm, setSearchTerm] = useState('');
   const [dateRange, setDateRange] = useState({ start: '', end: '' });
@@ -132,8 +131,6 @@ export default function ReferralsPage() {
     { id: 4, name: 'Platinum', minReferrals: 30, bonusMultiplier: 2.0, perks: ['Double rewards', 'VIP access', 'Personal account manager', 'Free delivery'], color: 'purple-500' }
   ];
 
-  const getToken = () => localStorage.getItem('access_token');
-
   useEffect(() => {
     loadData();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -142,32 +139,31 @@ export default function ReferralsPage() {
   const loadData = async () => {
     setLoading(true);
     try {
-      const token = getToken();
-      const headers = { Authorization: `Bearer ${token}` };
+      const headers = getAuthHeaders();
 
       // Fetch referrals
-      const referralsRes = await fetch(`${API_URL}/referrals/`, { headers });
+      const referralsRes = await fetch(`${API_URL}/referrals/`, { credentials: 'include', headers });
       if (referralsRes.ok) {
         const data = await referralsRes.json();
         setReferrals(data.referrals || data || []);
       }
 
       // Fetch campaigns
-      const campaignsRes = await fetch(`${API_URL}/referrals/campaigns`, { headers });
+      const campaignsRes = await fetch(`${API_URL}/referrals/campaigns`, { credentials: 'include', headers });
       if (campaignsRes.ok) {
         const data = await campaignsRes.json();
         setCampaigns(data.campaigns || data || []);
       }
 
       // Fetch referrers (top performers)
-      const referrersRes = await fetch(`${API_URL}/referrals/referrers`, { headers });
+      const referrersRes = await fetch(`${API_URL}/referrals/referrers`, { credentials: 'include', headers });
       if (referrersRes.ok) {
         const data = await referrersRes.json();
         setReferrers(data.referrers || data || []);
       }
 
       // Fetch settings
-      const settingsRes = await fetch(`${API_URL}/referrals/settings`, { headers });
+      const settingsRes = await fetch(`${API_URL}/referrals/settings`, { credentials: 'include', headers });
       if (settingsRes.ok) {
         const data = await settingsRes.json();
         if (data) {
@@ -230,13 +226,10 @@ export default function ReferralsPage() {
 
   const handleCreateCampaign = async () => {
     try {
-      const token = getToken();
       const res = await fetch(`${API_URL}/referrals/campaigns`, {
+        credentials: 'include',
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
+        headers: getAuthHeaders(),
         body: JSON.stringify(campaignForm),
       });
 
@@ -265,13 +258,10 @@ export default function ReferralsPage() {
 
   const handleBulkSend = async () => {
     try {
-      const token = getToken();
       const res = await fetch(`${API_URL}/referrals/bulk-send`, {
+        credentials: 'include',
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
+        headers: getAuthHeaders(),
         body: JSON.stringify(bulkSendForm),
       });
 
@@ -1017,13 +1007,10 @@ export default function ReferralsPage() {
               <button
                 onClick={async () => {
                   try {
-                    const token = getToken();
                     const res = await fetch(`${API_URL}/referrals/settings`, {
+                      credentials: 'include',
                       method: 'PUT',
-                      headers: {
-                        'Content-Type': 'application/json',
-                        Authorization: `Bearer ${token}`,
-                      },
+                      headers: getAuthHeaders(),
                       body: JSON.stringify(settings),
                     });
                     if (res.ok) {

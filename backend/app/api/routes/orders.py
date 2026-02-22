@@ -209,10 +209,14 @@ def create_order(request: Request, order_data: PurchaseOrderCreate, db: DbSessio
     db.add(order)
     db.flush()
 
+    # Batch fetch all products referenced in lines
+    product_ids = [line.product_id for line in order_data.lines]
+    products = db.query(Product).filter(Product.id.in_(product_ids)).all()
+    product_map = {p.id: p for p in products}
+
     # Add lines
     for line_data in order_data.lines:
-        # Verify product exists
-        product = db.query(Product).filter(Product.id == line_data.product_id).first()
+        product = product_map.get(line_data.product_id)
         if not product:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
@@ -477,15 +481,23 @@ def receive_order(
             except Exception as e:
                 logger.debug(f"Optional: batch creation for product {line.product_id}: {e}")
 
-    # Update PO status - check if all lines have been fully received
-    total_ordered = sum(float(line.qty) for line in order.lines)
-    total_received = sum(line.received_qty for line in receiving_data.lines)
-    if total_received >= total_ordered:
+    # Update received quantities on each PO line
+    for recv_line in receiving_data.lines:
+        for po_line in order.lines:
+            if po_line.product_id == recv_line.product_id:
+                po_line.received_qty = (po_line.received_qty or Decimal("0")) + Decimal(str(recv_line.received_qty))
+                break
+
+    # Check if ALL lines are fully received (cumulative across partial receives)
+    all_received = all(
+        (line.received_qty or Decimal("0")) >= line.qty
+        for line in order.lines
+    )
+    if all_received:
         order.status = POStatus.RECEIVED
         order.received_at = datetime.now(timezone.utc)
-    elif order.status == POStatus.DRAFT or order.status == POStatus.SENT:
-        # Mark as SENT (in-progress) if only partially received
-        order.status = POStatus.SENT
+    else:
+        order.status = POStatus.PARTIALLY_RECEIVED
 
     if receiving_data.notes:
         order.notes = (order.notes or "") + f"\nReceived: {receiving_data.notes}"

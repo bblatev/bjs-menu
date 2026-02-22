@@ -18,7 +18,7 @@ import logging
 import sys
 import time
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Dict, List, Optional
 
@@ -48,7 +48,7 @@ class TestResult:
 @dataclass
 class TestReport:
     """Complete test report."""
-    timestamp: str = field(default_factory=lambda: datetime.now().isoformat())
+    timestamp: str = field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
     total_tests: int = 0
     passed: int = 0
     failed: int = 0

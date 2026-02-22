@@ -3,9 +3,6 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Link from 'next/link';
-import { PageLoading } from '@/components/ui/LoadingSpinner';
-import { ErrorAlert } from '@/components/ui/ErrorAlert';
-
 import { API_URL, getAuthHeaders } from '@/lib/api';
 
 interface TrainingSession {
@@ -53,8 +50,8 @@ export default function TrainingModePage() {
   const [activeSessions, setActiveSessions] = useState<TrainingSession[]>([]);
   const [stats, setStats] = useState<any>({});
   const [saving, setSaving] = useState(false);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [, setLoading] = useState(true);
+  const [, setError] = useState<string | null>(null);
   const [showStartModal, setShowStartModal] = useState(false);
   const [newSessionStaffId, setNewSessionStaffId] = useState('');
   const [activeTab, setActiveTab] = useState<'overview' | 'sessions' | 'settings'>('overview');
@@ -70,10 +67,10 @@ export default function TrainingModePage() {
     setError(null);
     try {
       const [configRes, sessionsRes, activeRes, statsRes] = await Promise.all([
-        fetch(`${API_URL}/training/config`, { headers: getAuthHeaders() }),
-        fetch(`${API_URL}/training/sessions?limit=20`, { headers: getAuthHeaders() }),
-        fetch(`${API_URL}/training/sessions/active`, { headers: getAuthHeaders() }),
-        fetch(`${API_URL}/training/stats`, { headers: getAuthHeaders() }),
+        fetch(`${API_URL}/training/config`, { credentials: 'include', headers: getAuthHeaders() }),
+        fetch(`${API_URL}/training/sessions?limit=20`, { credentials: 'include', headers: getAuthHeaders() }),
+        fetch(`${API_URL}/training/sessions/active`, { credentials: 'include', headers: getAuthHeaders() }),
+        fetch(`${API_URL}/training/stats`, { credentials: 'include', headers: getAuthHeaders() }),
       ]);
 
       if (configRes.ok) {
@@ -104,6 +101,7 @@ export default function TrainingModePage() {
     setSaving(true);
     try {
       const res = await fetch(`${API_URL}/training/config`, {
+        credentials: 'include',
         method: 'PUT',
         headers: getAuthHeaders(),
         body: JSON.stringify(config),
@@ -121,6 +119,7 @@ export default function TrainingModePage() {
   const startSession = async () => {
     try {
       const res = await fetch(`${API_URL}/training/sessions`, {
+        credentials: 'include',
         method: 'POST',
         headers: getAuthHeaders(),
         body: JSON.stringify({ staff_id: parseInt(newSessionStaffId) }),
@@ -138,6 +137,7 @@ export default function TrainingModePage() {
   const endSession = async (sessionId: string) => {
     try {
       const res = await fetch(`${API_URL}/training/sessions/${sessionId}/end`, {
+        credentials: 'include',
         method: 'POST',
         headers: getAuthHeaders(),
       });

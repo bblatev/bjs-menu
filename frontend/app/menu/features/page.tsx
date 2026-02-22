@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { API_URL } from "@/lib/api";
+import { API_URL, getAuthHeaders } from "@/lib/api";
 
 import { toast } from '@/lib/toast';
 // Types
@@ -158,8 +158,6 @@ export default function MenuFeaturesPage() {
     menu_item_id: 0, reason: "out_of_stock", expected_return: "", notes: ""
   });
 
-  const getToken = () => localStorage.getItem("access_token");
-
   useEffect(() => {
     loadMenuItems();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -172,9 +170,9 @@ export default function MenuFeaturesPage() {
 
   const loadMenuItems = async () => {
     try {
-      const token = getToken();
       const res = await fetch(`${API_URL}/menu-admin/items`, {
-        headers: { Authorization: `Bearer ${token}` }
+        credentials: 'include',
+        headers: getAuthHeaders()
       });
       if (res.ok) {
         const data = await res.json();
@@ -198,14 +196,13 @@ export default function MenuFeaturesPage() {
   };
 
   const loadTabData = async () => {
-    const token = getToken();
-    const headers = { Authorization: `Bearer ${token}` };
+    const headers = getAuthHeaders();
 
     try {
       switch (activeTab) {
         case "variants":
           if (selectedItem) {
-            const res = await fetch(`${API_URL}/menu-complete/items/${selectedItem.id}/variants`, { headers });
+            const res = await fetch(`${API_URL}/menu-complete/items/${selectedItem.id}/variants`, { credentials: 'include', headers });
             if (res.ok) {
               const data = await res.json();
               setVariants(Array.isArray(data) ? data : []);
@@ -213,27 +210,27 @@ export default function MenuFeaturesPage() {
           }
           break;
         case "tags":
-          const tagsRes = await fetch(`${API_URL}/menu-complete/tags`, { headers });
+          const tagsRes = await fetch(`${API_URL}/menu-complete/tags`, { credentials: 'include', headers });
           if (tagsRes.ok) { const d = await tagsRes.json(); setTags(Array.isArray(d) ? d : []); }
           break;
         case "combos":
-          const combosRes = await fetch(`${API_URL}/menu-complete/combos`, { headers });
+          const combosRes = await fetch(`${API_URL}/menu-complete/combos`, { credentials: 'include', headers });
           if (combosRes.ok) { const d = await combosRes.json(); setCombos(Array.isArray(d) ? d : []); }
           break;
         case "upsells":
-          const upsellsRes = await fetch(`${API_URL}/menu-complete/upsell-rules`, { headers });
+          const upsellsRes = await fetch(`${API_URL}/menu-complete/upsell-rules`, { credentials: 'include', headers });
           if (upsellsRes.ok) { const d = await upsellsRes.json(); setUpsells(Array.isArray(d) ? d : []); }
           break;
         case "offers":
-          const offersRes = await fetch(`${API_URL}/menu-complete/limited-offers`, { headers });
+          const offersRes = await fetch(`${API_URL}/menu-complete/limited-offers`, { credentials: 'include', headers });
           if (offersRes.ok) { const d = await offersRes.json(); setOffers(Array.isArray(d) ? d : []); }
           break;
         case "86items":
-          const items86Res = await fetch(`${API_URL}/menu-complete/86`, { headers });
+          const items86Res = await fetch(`${API_URL}/menu-complete/86`, { credentials: 'include', headers });
           if (items86Res.ok) { const d = await items86Res.json(); setItems86(Array.isArray(d) ? d : []); }
           break;
         case "boards":
-          const boardsRes = await fetch(`${API_URL}/menu-complete/digital-boards`, { headers });
+          const boardsRes = await fetch(`${API_URL}/menu-complete/digital-boards`, { credentials: 'include', headers });
           if (boardsRes.ok) { const d = await boardsRes.json(); setBoards(Array.isArray(d) ? d : []); }
           break;
       }
@@ -245,12 +242,12 @@ export default function MenuFeaturesPage() {
   // CRUD Handlers
   const handleCreateVariant = async () => {
     if (!selectedItem) return;
-    const token = getToken();
 
     try {
       const res = await fetch(`${API_URL}/menu-complete/items/${selectedItem.id}/variants`, {
+        credentials: 'include',
         method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        headers: getAuthHeaders(),
         body: JSON.stringify({
           name: { bg: variantForm.name_bg, en: variantForm.name_en },
           variant_type: variantForm.variant_type,
@@ -270,12 +267,11 @@ export default function MenuFeaturesPage() {
   };
 
   const handleCreateTag = async () => {
-    const token = getToken();
-
     try {
       const res = await fetch(`${API_URL}/menu-complete/tags`, {
+        credentials: 'include',
         method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        headers: getAuthHeaders(),
         body: JSON.stringify({
           name: { bg: tagForm.name_bg, en: tagForm.name_en },
           color: tagForm.color,
@@ -293,12 +289,11 @@ export default function MenuFeaturesPage() {
   };
 
   const handleCreateCombo = async () => {
-    const token = getToken();
-
     try {
       const res = await fetch(`${API_URL}/menu-complete/combos`, {
+        credentials: 'include',
         method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        headers: getAuthHeaders(),
         body: JSON.stringify({
           name: { bg: comboForm.name_bg, en: comboForm.name_en },
           description: { bg: comboForm.description_bg, en: comboForm.description_en },
@@ -319,12 +314,11 @@ export default function MenuFeaturesPage() {
   };
 
   const handleCreateUpsell = async () => {
-    const token = getToken();
-
     try {
       const res = await fetch(`${API_URL}/menu-complete/upsell-rules`, {
+        credentials: 'include',
         method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        headers: getAuthHeaders(),
         body: JSON.stringify({
           trigger_item_id: upsellForm.trigger_item_id,
           upsell_item_id: upsellForm.upsell_item_id,
@@ -345,12 +339,11 @@ export default function MenuFeaturesPage() {
   };
 
   const handleCreateOffer = async () => {
-    const token = getToken();
-
     try {
       const res = await fetch(`${API_URL}/menu-complete/limited-offers`, {
+        credentials: 'include',
         method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        headers: getAuthHeaders(),
         body: JSON.stringify({
           name: { bg: offerForm.name_bg, en: offerForm.name_en },
           description: { bg: offerForm.description_bg, en: offerForm.description_en },
@@ -373,12 +366,11 @@ export default function MenuFeaturesPage() {
   };
 
   const handleCreate86Item = async () => {
-    const token = getToken();
-
     try {
       const res = await fetch(`${API_URL}/menu-complete/86`, {
+        credentials: 'include',
         method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        headers: getAuthHeaders(),
         body: JSON.stringify({
           menu_item_id: item86Form.menu_item_id,
           reason: item86Form.reason,
@@ -398,12 +390,12 @@ export default function MenuFeaturesPage() {
 
   const handleRemove86 = async (id: number) => {
     if (!confirm("Remove this item from 86'd list?")) return;
-    const token = getToken();
 
     try {
       await fetch(`${API_URL}/menu-complete/86/${id}`, {
+        credentials: 'include',
         method: "DELETE",
-        headers: { Authorization: `Bearer ${token}` }
+        headers: getAuthHeaders()
       });
       loadTabData();
     } catch (error) {
@@ -412,12 +404,11 @@ export default function MenuFeaturesPage() {
   };
 
   const handleAddBoard = async () => {
-    const token = getToken();
-
     try {
       const res = await fetch(`${API_URL}/menu-complete/digital-boards`, {
+        credentials: 'include',
         method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        headers: getAuthHeaders(),
         body: JSON.stringify({
           name: newBoard.name,
           display_type: newBoard.display_type,

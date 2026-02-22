@@ -11,7 +11,7 @@ Implements intelligent pricing strategies:
 from typing import List, Dict, Optional
 from sqlalchemy.orm import Session
 from sqlalchemy import func
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import logging
 from enum import Enum
 
@@ -50,7 +50,7 @@ class DynamicPricingService:
         Returns price breakdown showing all applied rules
         """
         if not current_time:
-            current_time = datetime.now()
+            current_time = datetime.now(timezone.utc)
         
         # Get base item
         item = self.db.query(MenuItem).filter(
@@ -220,7 +220,7 @@ class DynamicPricingService:
     
     def _is_item_popular(self, item_id: int, venue_id: int, days: int = 7) -> bool:
         """Check if item is in top 20% most ordered items"""
-        since_date = datetime.now() - timedelta(days=days)
+        since_date = datetime.now(timezone.utc) - timedelta(days=days)
         
         # Get order count for this item
         item_orders = self.db.query(func.count(OrderItem.id)).join(Order).filter(
@@ -415,7 +415,7 @@ class DynamicPricingService:
     ) -> List[Dict]:
         """Get all currently active pricing rules"""
         if not current_time:
-            current_time = datetime.now()
+            current_time = datetime.now(timezone.utc)
         
         active_rules = []
         

@@ -82,9 +82,9 @@ export default function SpillagePage() {
     try {
       // Fetch all data in parallel
       const [recordsRes, variancesRes, statsRes] = await Promise.allSettled([
-        fetch(`${API_URL}/bar/spillage/records?period=${period}&reason_filter=${reasonFilter}`, { headers }),
-        fetch(`${API_URL}/bar/spillage/variance`, { headers }),
-        fetch(`${API_URL}/bar/spillage/stats?period=${period}`, { headers })
+        fetch(`${API_URL}/bar/spillage/records?period=${period}&reason_filter=${reasonFilter}`, { credentials: 'include', headers }),
+        fetch(`${API_URL}/bar/spillage/variance`, { credentials: 'include', headers }),
+        fetch(`${API_URL}/bar/spillage/stats?period=${period}`, { credentials: 'include', headers })
       ]);
 
       // Process records

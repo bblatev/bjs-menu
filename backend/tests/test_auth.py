@@ -190,9 +190,10 @@ class TestPinLogin:
         res = client.post("/api/v1/auth/login/pin", json={"pin": "9999"})
         assert res.status_code == 401
 
-    def test_invalid_pin_format_400(self, client):
+    def test_invalid_pin_format_422(self, client):
+        # PIN must be 4-8 characters; "ab" is too short → Pydantic returns 422
         res = client.post("/api/v1/auth/login/pin", json={"pin": "ab"})
-        assert res.status_code == 400
+        assert res.status_code == 422
 
 
 # ============== Register endpoint ==============

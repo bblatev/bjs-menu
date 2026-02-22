@@ -3,9 +3,6 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import Link from 'next/link';
-import { PageLoading } from '@/components/ui/LoadingSpinner';
-import { ErrorAlert } from '@/components/ui/ErrorAlert';
-
 import { API_URL, getAuthHeaders } from '@/lib/api';
 
 interface Language {
@@ -54,10 +51,8 @@ export default function KDSLocalizationPage() {
   const [translations, setTranslations] = useState<Translation[]>([]);
   const [activeTab, setActiveTab] = useState<'stations' | 'translations' | 'preview'>('stations');
   const [selectedLanguage, setSelectedLanguage] = useState('es');
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [saving, setSaving] = useState(false);
-
+  const [, setLoading] = useState(true);
+  const [, setError] = useState<string | null>(null);
   useEffect(() => {
     loadData();
   }, []);
@@ -67,8 +62,8 @@ export default function KDSLocalizationPage() {
     try {
       const headers = getAuthHeaders();
       const [stationsRes, translationsRes] = await Promise.all([
-        fetch(`${API_URL}/kds-localization/stations`, { headers }),
-        fetch(`${API_URL}/kds-localization/translations`, { headers }),
+        fetch(`${API_URL}/kds-localization/stations`, { credentials: 'include', headers }),
+        fetch(`${API_URL}/kds-localization/translations`, { credentials: 'include', headers }),
       ]);
 
       if (stationsRes.ok) {
@@ -90,6 +85,7 @@ export default function KDSLocalizationPage() {
   const updateStation = async (stationId: string, updates: Partial<StationSetting>) => {
     try {
       const res = await fetch(`${API_URL}/kds-localization/stations/${stationId}`, {
+        credentials: 'include',
         method: 'PUT',
         headers: { ...getAuthHeaders() },
         body: JSON.stringify(updates),
@@ -105,6 +101,7 @@ export default function KDSLocalizationPage() {
   const updateTranslation = async (key: string, langCode: string, value: string) => {
     try {
       const res = await fetch(`${API_URL}/kds-localization/translations/${key}`, {
+        credentials: 'include',
         method: 'PUT',
         headers: { ...getAuthHeaders() },
         body: JSON.stringify({ language_code: langCode, value }),

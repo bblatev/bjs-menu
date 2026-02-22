@@ -74,6 +74,8 @@ services:
       context: ./backend
       dockerfile: Dockerfile
     restart: always
+    security_opt:
+      - no-new-privileges:true
     environment:
       - DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
       - REDIS_URL=redis://:${REDIS_PASSWORD}@redis:6379
@@ -117,6 +119,8 @@ services:
       context: ./frontend
       dockerfile: Dockerfile
     restart: always
+    security_opt:
+      - no-new-privileges:true
     environment:
       - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL:-https://menu.bjs.bar/api/v1}
       - NEXT_PUBLIC_WS_URL=${NEXT_PUBLIC_WS_URL:-wss://menu.bjs.bar}

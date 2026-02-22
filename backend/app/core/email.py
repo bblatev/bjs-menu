@@ -13,9 +13,10 @@ logger = logging.getLogger(__name__)
 class EmailService:
     """Email service for sending notifications"""
     
-    def __init__(self, smtp_host: str = None, smtp_port: int = 587):
-        self.smtp_host = smtp_host or "localhost"
-        self.smtp_port = smtp_port
+    def __init__(self, smtp_host: str = None, smtp_port: int = None):
+        from app.core.config import settings
+        self.smtp_host = smtp_host or settings.smtp_host
+        self.smtp_port = smtp_port if smtp_port is not None else settings.smtp_port
         self.configured = False
         
     def configure(

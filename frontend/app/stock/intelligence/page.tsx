@@ -134,32 +134,32 @@ export default function InventoryIntelligencePage() {
       const headers = getAuthHeaders();
       switch (tab) {
         case 'abc': {
-          const res = await fetch(`${API_URL}/inventory-intelligence/abc-analysis`, { headers });
+          const res = await fetch(`${API_URL}/inventory-intelligence/abc-analysis`, { credentials: 'include', headers });
           const data = await res.json();
           setAbcData(data);
           break;
         }
         case 'turnover': {
-          const res = await fetch(`${API_URL}/inventory-intelligence/turnover`, { headers });
+          const res = await fetch(`${API_URL}/inventory-intelligence/turnover`, { credentials: 'include', headers });
           const data = await res.json();
           setTurnoverData(data);
           break;
         }
         case 'dead-stock': {
-          const res = await fetch(`${API_URL}/inventory-intelligence/dead-stock`, { headers });
+          const res = await fetch(`${API_URL}/inventory-intelligence/dead-stock`, { credentials: 'include', headers });
           const data = await res.json();
           setDeadStock(data.items || []);
           setDeadStockValue(data.total_dead_value || 0);
           break;
         }
         case 'cogs': {
-          const res = await fetch(`${API_URL}/inventory-intelligence/cogs`, { headers });
+          const res = await fetch(`${API_URL}/inventory-intelligence/cogs`, { credentials: 'include', headers });
           const data = await res.json();
           setCogsData(data);
           break;
         }
         case 'variance': {
-          const res = await fetch(`${API_URL}/inventory-intelligence/food-cost-variance`, { headers });
+          const res = await fetch(`${API_URL}/inventory-intelligence/food-cost-variance`, { credentials: 'include', headers });
           const data = await res.json();
           setVarianceItems(data.items || []);
           setVarianceTotals({ theoretical: data.total_theoretical_cost, actual: data.total_actual_cost, variance: data.total_variance, pct: data.total_variance_pct });
@@ -167,20 +167,20 @@ export default function InventoryIntelligencePage() {
         }
         case 'eoq': {
           if (eoqProductId) {
-            const res = await fetch(`${API_URL}/inventory-intelligence/eoq/${eoqProductId}`, { headers });
+            const res = await fetch(`${API_URL}/inventory-intelligence/eoq/${eoqProductId}`, { credentials: 'include', headers });
             const data = await res.json();
             setEoqData(data);
           }
           break;
         }
         case 'snapshots': {
-          const res = await fetch(`${API_URL}/inventory-intelligence/snapshots`, { headers });
+          const res = await fetch(`${API_URL}/inventory-intelligence/snapshots`, { credentials: 'include', headers });
           const data = await res.json();
           setSnapshots(data);
           break;
         }
         case 'cycle-count': {
-          const res = await fetch(`${API_URL}/inventory-intelligence/cycle-count-schedule`, { headers });
+          const res = await fetch(`${API_URL}/inventory-intelligence/cycle-count-schedule`, { credentials: 'include', headers });
           const data = await res.json();
           setCycleCount(data);
           break;
@@ -225,6 +225,7 @@ export default function InventoryIntelligencePage() {
     try {
       const headers = getAuthHeaders();
       await fetch(`${API_URL}/inventory-intelligence/snapshots`, {
+        credentials: 'include',
         method: 'POST',
         headers,
         body: JSON.stringify({ location_id: 1, name: `Snapshot ${new Date().toLocaleString()}` }),

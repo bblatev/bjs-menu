@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
 import { API_URL, getAuthHeaders } from '@/lib/api';
 
 import { toast } from '@/lib/toast';
@@ -65,6 +64,7 @@ export default function MobileAppBuilderPage() {
     const loadApp = async () => {
       try {
         const response = await fetch(`${API_URL}/enterprise/mobile-app`, {
+          credentials: 'include',
           headers: getAuthHeaders()
         });
 
@@ -127,6 +127,7 @@ export default function MobileAppBuilderPage() {
 
     try {
       await fetch(`${API_URL}/enterprise/mobile-app`, {
+        credentials: 'include',
         method: 'PUT',
         headers: getAuthHeaders(),
         body: JSON.stringify(app)
@@ -145,6 +146,7 @@ export default function MobileAppBuilderPage() {
 
     try {
       const response = await fetch(`${API_URL}/enterprise/mobile-app/build`, {
+        credentials: 'include',
         method: 'POST',
         headers: getAuthHeaders(),
         body: JSON.stringify({ platform })

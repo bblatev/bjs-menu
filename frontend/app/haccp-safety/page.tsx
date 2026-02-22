@@ -66,6 +66,7 @@ export default function HACCPFoodSafetyPage() {
     setIsLoading(true);
     try {
       const response = await fetch(`${API_URL}/haccp/dashboard`, {
+        credentials: 'include',
         headers: getAuthHeaders(),
       });
 

@@ -46,15 +46,6 @@ const DISTRIBUTION_METHODS = [
   { value: 'custom', label: 'Custom', description: 'Manually set distribution percentages' },
 ];
 
-const ROLE_POINTS: Record<string, number> = {
-  'Server': 10,
-  'Bartender': 10,
-  'Host': 6,
-  'Busser': 5,
-  'Food Runner': 5,
-  'Manager': 8,
-};
-
 export default function TipsManagerPage() {
   const [pools, setPools] = useState<TipPool[]>([]);
   const [stats, setStats] = useState<TipStats | null>(null);
@@ -72,7 +63,7 @@ export default function TipsManagerPage() {
     distribution_method: 'hours' as TipPool['distribution_method'],
   });
 
-  const [loading, setLoading] = useState(true);
+  const [, setLoading] = useState(true);
   const [individualEarnings, setIndividualEarnings] = useState<{
     id: number;
     name: string;
@@ -96,6 +87,7 @@ export default function TipsManagerPage() {
       const response = await fetch(
         `${API_URL}/tips/pools?range=${dateRange}`,
         {
+          credentials: 'include',
           headers: { Authorization: `Bearer ${token}` },
         }
       );
@@ -117,6 +109,7 @@ export default function TipsManagerPage() {
       const response = await fetch(
         `${API_URL}/tips/stats?range=${dateRange}`,
         {
+          credentials: 'include',
           headers: { Authorization: `Bearer ${token}` },
         }
       );
@@ -136,6 +129,7 @@ export default function TipsManagerPage() {
       const response = await fetch(
         `${API_URL}/tips/earnings?range=${dateRange}`,
         {
+          credentials: 'include',
           headers: { Authorization: `Bearer ${token}` },
         }
       );
@@ -172,6 +166,7 @@ export default function TipsManagerPage() {
       const response = await fetch(
         `${API_URL}/tips/pools`,
         {
+          credentials: 'include',
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -578,7 +573,7 @@ export default function TipsManagerPage() {
             </div>
             <div className="p-6">
               <div className="space-y-3">
-                {selectedPool.distributions.map((dist, index) => (
+                {selectedPool.distributions.map((dist, _index) => (
                   <div key={dist.staff_id} className="flex items-center justify-between p-3 bg-surface-50 rounded-lg">
                     <div className="flex items-center gap-3">
                       <div className="w-10 h-10 bg-primary-100 rounded-full flex items-center justify-center text-sm font-semibold text-primary-700">

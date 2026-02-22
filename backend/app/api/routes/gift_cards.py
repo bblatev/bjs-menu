@@ -108,7 +108,7 @@ class ReloadRequest(BaseModel):
 
 def generate_card_number() -> str:
     """Generate a unique gift card number."""
-    year = datetime.now().year
+    year = datetime.now(timezone.utc).year
     random_part = ''.join(secrets.choice(string.digits) for _ in range(6))
     return f"GC-{year}-{random_part}"
 

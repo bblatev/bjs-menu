@@ -79,13 +79,14 @@ export function useWebSocket(options: UseWebSocketOptions): UseWebSocketReturn {
     onError,
     autoReconnect = true,
     reconnectInterval = 3000,
-    maxReconnectAttempts = 5,
+    maxReconnectAttempts = 10,
   } = options;
 
   const wsRef = useRef<WebSocket | null>(null);
   const reconnectAttemptsRef = useRef(0);
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const pingIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const connectRef = useRef<() => void>(() => {});
 
   const [isConnected, setIsConnected] = useState(false);
   const [lastMessage, setLastMessage] = useState<WebSocketMessage | null>(null);
@@ -93,9 +94,8 @@ export function useWebSocket(options: UseWebSocketOptions): UseWebSocketReturn {
 
   const getWebSocketUrl = useCallback(() => {
     const channelParam = channels.join(',');
-    const token = typeof window !== 'undefined' ? localStorage.getItem('access_token') : null;
-    const tokenParam = token ? `&token=${token}` : '';
-    return `${WS_URL}/api/v1/ws/venue/${venueId}?channels=${channelParam}${tokenParam}`;
+    // Token is sent via first-message auth (not in URL) to avoid leaking in logs/referrer
+    return `${WS_URL}/api/v1/ws/venue/${venueId}?channels=${channelParam}`;
   }, [venueId, channels]);
 
   const startPingInterval = useCallback(() => {
@@ -125,15 +125,35 @@ export function useWebSocket(options: UseWebSocketOptions): UseWebSocketReturn {
     wsRef.current = new WebSocket(url);
 
     wsRef.current.onopen = () => {
-      setIsConnected(true);
-      reconnectAttemptsRef.current = 0;
-      startPingInterval();
-      onConnect?.();
+      // If we have a localStorage token (legacy), send it as first-message auth.
+      // With HttpOnly cookies, the cookie is sent during the WS handshake automatically,
+      // and the server authenticates from that — no first-message needed.
+      const token = typeof window !== 'undefined' ? localStorage.getItem('access_token') : null;
+      if (token && wsRef.current?.readyState === WebSocket.OPEN) {
+        wsRef.current.send(JSON.stringify({ event: 'auth', token }));
+      } else {
+        // Cookie-based auth: server validates during handshake.
+        // Mark as connected immediately (server sends auth_success if needed).
+        setIsConnected(true);
+        reconnectAttemptsRef.current = 0;
+        startPingInterval();
+        onConnect?.();
+      }
     };
 
     wsRef.current.onmessage = (event) => {
       try {
         const message: WebSocketMessage = JSON.parse(event.data);
+
+        // Handle auth_success: mark as connected and start keepalive
+        if (message.event === 'auth_success') {
+          setIsConnected(true);
+          reconnectAttemptsRef.current = 0;
+          startPingInterval();
+          onConnect?.();
+          return;
+        }
+
         setLastMessage(message);
         setMessages((prev) => [...prev.slice(-99), message]); // Keep last 100 messages
         onMessage?.(message);
@@ -147,12 +167,13 @@ export function useWebSocket(options: UseWebSocketOptions): UseWebSocketReturn {
       stopPingInterval();
       onDisconnect?.();
 
-      // Auto reconnect
+      // Auto reconnect with exponential backoff
       if (autoReconnect && reconnectAttemptsRef.current < maxReconnectAttempts) {
         reconnectAttemptsRef.current += 1;
+        const backoffDelay = Math.min(reconnectInterval * Math.pow(2, reconnectAttemptsRef.current), 30000);
         reconnectTimeoutRef.current = setTimeout(() => {
-          connect();
-        }, reconnectInterval * reconnectAttemptsRef.current);
+          connectRef.current();
+        }, backoffDelay);
       }
     };
 
@@ -171,6 +192,8 @@ export function useWebSocket(options: UseWebSocketOptions): UseWebSocketReturn {
     startPingInterval,
     stopPingInterval,
   ]);
+
+  connectRef.current = connect;
 
   const disconnect = useCallback(() => {
     if (reconnectTimeoutRef.current) {

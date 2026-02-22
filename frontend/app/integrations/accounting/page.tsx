@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import AdminLayout from '@/components/AdminLayout';
-import { API_URL, getAuthHeaders } from '@/lib/api';
+import { API_URL } from '@/lib/api';
 
 import { toast } from '@/lib/toast';
 interface Integration {
@@ -35,8 +35,9 @@ export default function AccountingIntegrationsPage() {
     const token = localStorage.getItem('access_token');
     try {
       const [availRes, connRes] = await Promise.all([
-        fetch(`${API_URL}/integrations/accounting/available`),
+        fetch(`${API_URL}/integrations/accounting/available`, { credentials: 'include' }),
         fetch(`${API_URL}/integrations/accounting/status`, {
+          credentials: 'include',
           headers: { 'Authorization': `Bearer ${token}` }
         })
       ]);
@@ -62,6 +63,7 @@ export default function AccountingIntegrationsPage() {
     
     try {
       const res = await fetch(`${API_URL}/integrations/accounting/connect`, {
+        credentials: 'include',
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -92,6 +94,7 @@ export default function AccountingIntegrationsPage() {
     const token = localStorage.getItem('access_token');
     try {
       await fetch(`${API_URL}/integrations/accounting/${type}`, {
+        credentials: 'include',
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${token}` }
       });

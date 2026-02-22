@@ -3,6 +3,15 @@
 Provides functions to write audit log entries for state-changing operations.
 Used by the AuditLoggingMiddleware and can be called directly from route handlers
 for more detailed logging (e.g., old/new values on updates).
+
+NOTE: When called from AuditLoggingMiddleware without an explicit ``db`` session,
+``log_action`` creates its own short-lived session so the middleware does not need
+to participate in the request's dependency-injected session.  This means each
+audited request opens a second DB connection.
+
+TODO: Replace the synchronous own-session approach with an async background task
+(e.g. ``asyncio.create_task`` or a lightweight queue) so audit writes never block
+the response and do not require a second connection from the pool.
 """
 
 import logging
@@ -55,7 +64,14 @@ def log_action(
             created_at=datetime.now(timezone.utc),
         )
         db.add(entry)
-        db.commit()
+        if own_session:
+            # Commit immediately so the short-lived session is flushed and can
+            # be returned to the pool as quickly as possible.
+            db.commit()
+        else:
+            # Let the caller's session handle the commit; just flush so the
+            # entry is visible within the same transaction.
+            db.flush()
     except Exception:
         logger.exception("Failed to write audit log entry")
         if own_session:

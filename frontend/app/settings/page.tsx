@@ -28,7 +28,7 @@ export default function SettingsPage() {
 
       const response = await fetch(
         `${API_URL}/settings/`,
-        { headers: getAuthHeaders() }
+        { credentials: 'include', headers: getAuthHeaders() }
       );
       if (response.ok) {
         const data = await response.json();
@@ -56,6 +56,7 @@ export default function SettingsPage() {
       const response = await fetch(
         `${API_URL}/settings/`,
         {
+          credentials: 'include',
           method: "PUT",
           headers: getAuthHeaders(),
           body: JSON.stringify({ settings }),

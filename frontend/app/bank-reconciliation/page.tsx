@@ -43,11 +43,11 @@ interface Reconciliation {
 export default function BankReconciliationPage() {
   const [bankAccounts, setBankAccounts] = useState<BankAccount[]>([]);
   const [selectedAccount, setSelectedAccount] = useState<BankAccount | null>(null);
-  const [transactions, setTransactions] = useState<BankTransaction[]>([]);
+  const [transactions] = useState<BankTransaction[]>([]);
   const [reconciliation, setReconciliation] = useState<Reconciliation | null>(null);
   const [loading, setLoading] = useState(true);
   const [showNewReconciliation, setShowNewReconciliation] = useState(false);
-  const [showImportModal, setShowImportModal] = useState(false);
+  const [, setShowImportModal] = useState(false);
   const [formData, setFormData] = useState({
     statement_date: new Date().toISOString().split('T')[0],
     statement_balance: '',
@@ -61,6 +61,7 @@ export default function BankReconciliationPage() {
     try {
       const token = localStorage.getItem('access_token');
       const response = await fetch(`${API_URL}/financial/bank-accounts`, {
+        credentials: 'include',
         headers: { Authorization: `Bearer ${token}` },
       });
       if (response.ok) {
@@ -82,6 +83,7 @@ export default function BankReconciliationPage() {
     try {
       const token = localStorage.getItem('access_token');
       const response = await fetch(`${API_URL}/financial/bank-reconciliation`, {
+        credentials: 'include',
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -103,35 +105,12 @@ export default function BankReconciliationPage() {
     }
   };
 
-  const matchTransaction = async (bankTransactionId: number, systemRecordType: string, systemRecordId: number) => {
-    if (!reconciliation) return;
-    try {
-      const token = localStorage.getItem('access_token');
-      const response = await fetch(`${API_URL}/financial/bank-reconciliation/${reconciliation.id}/match`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          bank_transaction_id: bankTransactionId,
-          system_record_type: systemRecordType,
-          system_record_id: systemRecordId,
-        }),
-      });
-      if (response.ok) {
-        loadReconciliation(reconciliation.id);
-      }
-    } catch (error) {
-      console.error('Error matching transaction:', error);
-    }
-  };
-
   const completeReconciliation = async () => {
     if (!reconciliation) return;
     try {
       const token = localStorage.getItem('access_token');
       const response = await fetch(`${API_URL}/financial/bank-reconciliation/${reconciliation.id}/complete`, {
+        credentials: 'include',
         method: 'POST',
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -144,21 +123,6 @@ export default function BankReconciliationPage() {
       }
     } catch (error) {
       console.error('Error completing reconciliation:', error);
-    }
-  };
-
-  const loadReconciliation = async (id: number) => {
-    try {
-      const token = localStorage.getItem('access_token');
-      const response = await fetch(`${API_URL}/financial/bank-reconciliation/${id}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (response.ok) {
-        const data = await response.json();
-        setReconciliation(data);
-      }
-    } catch (error) {
-      console.error('Error loading reconciliation:', error);
     }
   };
 

@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { Button, Input, Card, CardBody } from '@/components/ui';
 
-import { API_URL, getAuthHeaders } from '@/lib/api';
+import { API_URL } from '@/lib/api';
 
 import { toast } from '@/lib/toast';
 const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
@@ -51,6 +51,7 @@ export default function SettingsVenuePage() {
       if (!token) return;
 
       const response = await fetch(`${API_URL}/settings/`, {
+        credentials: 'include',
         headers: { Authorization: `Bearer ${token}` },
       });
 
@@ -72,6 +73,7 @@ export default function SettingsVenuePage() {
     try {
       const token = localStorage.getItem('access_token');
       const response = await fetch(`${API_URL}/settings/`, {
+        credentials: 'include',
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',

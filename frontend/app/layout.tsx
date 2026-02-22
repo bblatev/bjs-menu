@@ -5,7 +5,6 @@ import { DM_Sans, Playfair_Display, JetBrains_Mono } from 'next/font/google'
 import AdminLayout from '@/components/AdminLayout'
 import { Providers } from '@/components/Providers'
 import OfflineIndicator from '@/components/OfflineIndicator'
-import { SkipLink } from '@/components/ui/SkipLink'
 
 const dmSans = DM_Sans({
   subsets: ['latin'],
@@ -41,18 +40,6 @@ export default function RootLayout({
   return (
     <html lang="en" className={`${dmSans.variable} ${playfair.variable} ${jetbrainsMono.variable}`} suppressHydrationWarning>
       <body className="bg-white dark:bg-surface-900 text-gray-900 dark:text-surface-100 antialiased font-sans">
-        <script dangerouslySetInnerHTML={{ __html: `
-          (function(){try{
-            var b=document.querySelector('script[src*="/_next/static/chunks/webpack"]');
-            if(!b)return;
-            var m=b.src.match(/webpack-([a-f0-9]+)\\.js/);
-            if(!m)return;
-            var id=m[1],prev=localStorage.getItem('__wp');
-            if(prev&&prev!==id){localStorage.setItem('__wp',id);location.reload();}
-            else{localStorage.setItem('__wp',id);}
-          }catch(e){}})();
-        `}} />
-        <SkipLink />
         <OfflineIndicator />
         <Providers>
           <AdminLayout>

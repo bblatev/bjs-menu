@@ -90,7 +90,7 @@ function DashboardContent() {
       // Fetch all data in parallel with timeout
       const fetchWithTimeout = (url: string, opts: RequestInit, timeout = 5000) => {
         return Promise.race([
-          fetch(url, opts),
+          fetch(url, { ...opts, credentials: 'include' }),
           new Promise<Response>((_, reject) =>
             setTimeout(() => reject(new Error('Timeout')), timeout)
           )
@@ -224,7 +224,8 @@ function DashboardContent() {
     {
       label: "Приходи днес",
       value: `${todayRevenue.toLocaleString('bg-BG')} лв`,
-      subvalue: `€${((todayRevenue / 1.96) || 0).toFixed(0)}`,
+      // BGN to EUR fixed peg rate (Bulgarian currency board)
+      subvalue: `€${((todayRevenue / 1.95583) || 0).toFixed(0)}`,
       icon: '💰',
       color: 'success'
     },
@@ -590,19 +591,5 @@ function DashboardContent() {
 }
 
 export default function DashboardPage() {
-  const [mounted, setMounted] = useState(false);
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
-
-  if (!mounted) {
-    return (
-      <div className="flex items-center justify-center h-96">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-500"></div>
-      </div>
-    );
-  }
-
   return <DashboardContent />;
 }

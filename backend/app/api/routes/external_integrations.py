@@ -12,6 +12,7 @@ from pydantic import BaseModel, Field
 from app.db.session import get_db
 from app.core.rbac import get_current_user
 from app.core.rate_limit import limiter
+from app.core.security import validate_redirect_uri
 from app.models import StaffUser
 from app.services.external_integrations import (
     integration_manager,
@@ -507,6 +508,9 @@ async def get_oauth_url(
     """
     Get OAuth authorization URL for a provider.
     """
+    if redirect_uri and not validate_redirect_uri(redirect_uri):
+        raise HTTPException(status_code=400, detail="Invalid redirect URI")
+
     oauth_configs = {
         "quickbooks": {
             "auth_url": "https://appcenter.intuit.com/connect/oauth2",

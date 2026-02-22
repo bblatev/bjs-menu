@@ -111,7 +111,7 @@ def list_tables(
     if status:
         query = query.filter(TableModel.status == status)
 
-    tables = query.order_by(TableModel.number).all()
+    tables = query.order_by(TableModel.number).limit(500).all()
     return [Table.from_db(t) for t in tables]
 
 
@@ -126,7 +126,7 @@ def get_table_sections(
     _init_default_tables(db)
 
     # Get distinct areas
-    tables = db.query(TableModel).all()
+    tables = db.query(TableModel).limit(500).all()
     sections = {}
     for table in tables:
         area = table.area or "Main Floor"
@@ -151,7 +151,7 @@ def get_table_stats(
     if location_id:
         query = query.filter(TableModel.location_id == location_id)
 
-    tables = query.all()
+    tables = query.limit(500).all()
     total = len(tables)
     occupied = sum(1 for t in tables if t.status == "occupied")
     reserved = sum(1 for t in tables if t.status == "reserved")
@@ -182,7 +182,7 @@ def get_table_areas(
     if location_id:
         query = query.filter(TableModel.location_id == location_id)
 
-    tables = query.all()
+    tables = query.limit(500).all()
     areas = list(set(t.area for t in tables if t.area))
     areas.sort()
     return areas
@@ -200,7 +200,7 @@ def get_table_assignments(
     query = db.query(TableModel)
     if location_id:
         query = query.filter(TableModel.location_id == location_id)
-    tables = query.all()
+    tables = query.limit(500).all()
     assignments = []
     for t in tables:
         assignments.append({

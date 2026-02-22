@@ -108,7 +108,7 @@ class FiscalReceipt:
     usn: Optional[str] = None
     receipt_number: Optional[int] = None
     fiscal_memory_number: Optional[str] = None
-    timestamp: datetime = field(default_factory=datetime.utcnow)
+    timestamp: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
 
     @property
     def subtotal(self) -> float:

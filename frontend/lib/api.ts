@@ -19,28 +19,49 @@ export const API_VERSION = '/api/v1';
 export const APP_VERSION = process.env.NEXT_PUBLIC_APP_VERSION || '9.0.0';
 
 // Common API headers
-export const getAuthHeaders = (): Record<string, string> => {
-  const token = typeof window !== 'undefined' ? localStorage.getItem(TOKEN_KEY) : null;
-  return {
+export const getAuthHeaders = (method?: string): Record<string, string> => {
+  const headers: Record<string, string> = {
     'Content-Type': 'application/json',
-    ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
   };
+  // Include Bearer token from localStorage (bridge during cookie migration)
+  const token = typeof window !== 'undefined' ? localStorage.getItem(TOKEN_KEY) : null;
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+  // For unsafe methods, include CSRF token for cookie-based auth
+  const unsafeMethods = ['POST', 'PUT', 'PATCH', 'DELETE'];
+  if (method && unsafeMethods.includes(method.toUpperCase())) {
+    const csrf = getCsrfToken();
+    if (csrf) {
+      headers['X-CSRF-Token'] = csrf;
+    }
+  }
+  return headers;
 };
 
-// Check if user is authenticated
+// Check if user is authenticated (cookie or legacy localStorage)
 export const isAuthenticated = (): boolean => {
   if (typeof window === 'undefined') return false;
-  return !!localStorage.getItem(TOKEN_KEY);
+  return document.cookie.includes('csrf_token=') || !!localStorage.getItem(TOKEN_KEY);
 };
 
 // Clear authentication
 export const clearAuth = (): void => {
   if (typeof window === 'undefined') return;
+  // Clear legacy localStorage tokens
   localStorage.removeItem(TOKEN_KEY);
   localStorage.removeItem('auth_token');
 };
 
-// Set authentication token
+// Get CSRF token from cookie (set by server, readable by JS)
+export const getCsrfToken = (): string => {
+  if (typeof document === 'undefined') return '';
+  const match = document.cookie.match(/(?:^|;\s*)csrf_token=([^;]*)/);
+  return match ? decodeURIComponent(match[1]) : '';
+};
+
+// Legacy: tokens are now set as HttpOnly cookies by the server.
+// Kept for backward compatibility during migration.
 export const setAuthToken = (token: string): void => {
   if (typeof window === 'undefined') return;
   localStorage.setItem(TOKEN_KEY, token);
@@ -61,9 +82,9 @@ export const wsEndpoint = (path: string): string => {
 // API error class
 export class ApiError extends Error {
   status: number;
-  data: any;
+  data: unknown;
 
-  constructor(message: string, status: number, data?: any) {
+  constructor(message: string, status: number, data?: unknown) {
     super(message);
     this.name = 'ApiError';
     this.status = status;
@@ -76,14 +97,16 @@ export class ApiError extends Error {
  * Throws ApiError on non-ok responses — callers should catch and handle.
  * No fallback data — pages should show error/empty states on failure.
  */
-export async function apiFetch<T = any>(
+export async function apiFetch<T = unknown>(
   path: string,
   options: RequestInit = {}
 ): Promise<T> {
   const url = path.startsWith('http') ? path : `${API_URL}${path.startsWith('/') ? path : `/${path}`}`;
 
+  const method = options.method || 'GET';
+
   const headers = {
-    ...getAuthHeaders(),
+    ...getAuthHeaders(method),
     ...(options.headers as Record<string, string> || {}),
   };
 
@@ -98,10 +121,10 @@ export async function apiFetch<T = any>(
 
   let res: Response;
   try {
-    res = await fetch(url, { ...options, headers, signal: controller.signal });
-  } catch (err: any) {
+    res = await fetch(url, { ...options, headers, credentials: 'include', signal: controller.signal });
+  } catch (err: unknown) {
     clearTimeout(timeoutId);
-    if (err.name === 'AbortError') {
+    if (err instanceof Error && err.name === 'AbortError') {
       throw new ApiError('Request timed out', 408);
     }
     throw err;
@@ -109,7 +132,7 @@ export async function apiFetch<T = any>(
   clearTimeout(timeoutId);
 
   if (!res.ok) {
-    let data: any;
+    let data: Record<string, unknown> | null;
     try { data = await res.json(); } catch { data = null; }
 
     // Auto-redirect to login on 401 Unauthorized
@@ -124,8 +147,9 @@ export async function apiFetch<T = any>(
       }
     }
 
+    const detail = data?.detail ?? data?.message ?? `Request failed: ${res.status}`;
     throw new ApiError(
-      data?.detail || data?.message || `Request failed: ${res.status}`,
+      typeof detail === 'string' ? detail : `Request failed: ${res.status}`,
       res.status,
       data
     );
@@ -139,18 +163,18 @@ export async function apiFetch<T = any>(
 
 // Convenience methods
 export const api = {
-  get: <T = any>(path: string, opts?: RequestInit) =>
+  get: <T = unknown>(path: string, opts?: RequestInit) =>
     apiFetch<T>(path, { ...opts, method: 'GET' }),
 
-  post: <T = any>(path: string, body?: any, opts?: RequestInit) =>
+  post: <T = unknown>(path: string, body?: unknown, opts?: RequestInit) =>
     apiFetch<T>(path, { ...opts, method: 'POST', body: body instanceof FormData ? body : JSON.stringify(body) }),
 
-  put: <T = any>(path: string, body?: any, opts?: RequestInit) =>
+  put: <T = unknown>(path: string, body?: unknown, opts?: RequestInit) =>
     apiFetch<T>(path, { ...opts, method: 'PUT', body: body instanceof FormData ? body : JSON.stringify(body) }),
 
-  patch: <T = any>(path: string, body?: any, opts?: RequestInit) =>
+  patch: <T = unknown>(path: string, body?: unknown, opts?: RequestInit) =>
     apiFetch<T>(path, { ...opts, method: 'PATCH', body: body instanceof FormData ? body : JSON.stringify(body) }),
 
-  del: <T = any>(path: string, opts?: RequestInit) =>
+  del: <T = unknown>(path: string, opts?: RequestInit) =>
     apiFetch<T>(path, { ...opts, method: 'DELETE' }),
 };

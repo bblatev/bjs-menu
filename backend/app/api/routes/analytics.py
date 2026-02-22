@@ -9,6 +9,7 @@ from sqlalchemy.orm import joinedload
 
 from app.core.rate_limit import limiter
 from app.db.session import DbSession
+from app.schemas.pagination import paginate_query
 from app.models.pos import PosSalesLine
 from app.models.restaurant import GuestOrder
 from app.models.analytics import (
@@ -82,7 +83,7 @@ def _compute_food_cost_kpi(db, today_start, yesterday_start, location_id):
     orders = db.query(GuestOrder).filter(GuestOrder.created_at >= today_start)
     if location_id:
         orders = orders.filter(GuestOrder.location_id == location_id)
-    orders = orders.all()
+    orders = orders.limit(10000).all()
 
     total_revenue = 0
     total_cost = 0
@@ -110,7 +111,7 @@ def get_labor_analytics(request: Request, db: DbSession):
     """Get labor analytics."""
     from app.models.operations import PayrollEntry, ShiftSchedule
     # Compute from actual payroll and shift data
-    payroll = db.query(PayrollEntry).all()
+    payroll = db.query(PayrollEntry).limit(10000).all()
     total_cost = sum(float(p.gross_pay or 0) for p in payroll)
     overtime = sum(float(p.overtime_hours or 0) for p in payroll)
     # Group by role/department from shifts
@@ -183,7 +184,7 @@ def get_theft_analytics(request: Request, db: DbSession):
 def get_rfm_dashboard(request: Request, db: DbSession):
     """Get RFM analysis dashboard from customer data."""
     from app.models.customer import Customer
-    customers = db.query(Customer).all()
+    customers = db.query(Customer).limit(10000).all()
     total = len(customers)
     # Simple segmentation based on available customer data
     segments = []
@@ -336,7 +337,7 @@ def get_dashboard_kpis(
     today_query = db.query(GuestOrder).filter(GuestOrder.created_at >= today_start)
     if location_id:
         today_query = today_query.filter(GuestOrder.location_id == location_id)
-    today_orders = today_query.all()
+    today_orders = today_query.limit(10000).all()
 
     # Get yesterday's orders for comparison
     yesterday_query = db.query(GuestOrder).filter(
@@ -345,7 +346,7 @@ def get_dashboard_kpis(
     )
     if location_id:
         yesterday_query = yesterday_query.filter(GuestOrder.location_id == location_id)
-    yesterday_orders = yesterday_query.all()
+    yesterday_orders = yesterday_query.limit(10000).all()
 
     # Calculate today's metrics
     today_revenue = sum(float(o.total) if o.total else 0 for o in today_orders)
@@ -404,7 +405,7 @@ def get_sales_analytics(
     query = db.query(GuestOrder).filter(GuestOrder.created_at >= start_date)
     if location_id:
         query = query.filter(GuestOrder.location_id == location_id)
-    orders = query.all()
+    orders = query.limit(10000).all()
 
     # Calculate totals
     total_sales = sum(float(o.total) if o.total else 0 for o in orders)
@@ -585,26 +586,30 @@ def get_server_performance_report(
     )
 
 
-@router.get("/server-performance/{user_id}", response_model=List[ServerPerformanceResponse])
+@router.get("/server-performance/{user_id}")
 @limiter.limit("60/minute")
 def get_server_metrics(
     request: Request,
     db: DbSession,
     user_id: int,
     days: int = 30,
+    skip: int = Query(0, ge=0),
+    limit: int = Query(50, ge=1, le=500),
 ):
     """Get performance metrics for a specific server."""
     start_date = date.today() - timedelta(days=days)
 
-    return db.query(ServerPerformance).filter(
+    query = db.query(ServerPerformance).filter(
         ServerPerformance.user_id == user_id,
         ServerPerformance.period_start >= start_date
-    ).order_by(ServerPerformance.period_start.desc()).all()
+    ).order_by(ServerPerformance.period_start.desc())
+    items, total = paginate_query(query, skip, limit)
+    return {"items": items, "total": total, "skip": skip, "limit": limit, "has_more": (skip + len(items)) < total}
 
 
 # Daily Metrics
 
-@router.get("/daily-metrics/", response_model=List[DailyMetricsResponse])
+@router.get("/daily-metrics/")
 @limiter.limit("60/minute")
 def get_daily_metrics(
     request: Request,
@@ -612,6 +617,8 @@ def get_daily_metrics(
     location_id: Optional[int] = None,
     start_date: Optional[date] = None,
     end_date: Optional[date] = None,
+    skip: int = Query(0, ge=0),
+    limit: int = Query(50, ge=1, le=500),
 ):
     """Get daily business metrics."""
     try:
@@ -624,11 +631,13 @@ def get_daily_metrics(
         if end_date:
             query = query.filter(DailyMetrics.date <= end_date)
 
-        return query.order_by(DailyMetrics.date.desc()).limit(90).all()
+        query = query.order_by(DailyMetrics.date.desc())
+        items, total = paginate_query(query, skip, limit)
+        return {"items": items, "total": total, "skip": skip, "limit": limit, "has_more": (skip + len(items)) < total}
     except Exception as e:
         logger.warning(f"Failed to query daily metrics (location_id={location_id}): {e}")
         db.rollback()
-        return []
+        return {"items": [], "total": 0, "skip": skip, "limit": limit, "has_more": False}
 
 
 @router.post("/daily-metrics/calculate")
@@ -675,7 +684,7 @@ def get_metric_trend(
     if location_id:
         query = query.filter(DailyMetrics.location_id == location_id)
 
-    metrics = query.order_by(DailyMetrics.date).all()
+    metrics = query.order_by(DailyMetrics.date).limit(10000).all()
 
     # Build data points
     data_points = []
@@ -759,20 +768,21 @@ def submit_query_feedback(request: Request, db: DbSession, feedback: QueryFeedba
 
 # Benchmarks
 
-@router.get("/benchmarks/", response_model=List[BenchmarkResponse])
+@router.get("/benchmarks/")
 @limiter.limit("60/minute")
 def list_benchmarks(
     request: Request,
     db: DbSession,
     category: Optional[str] = None,
     skip: int = Query(0, ge=0, description="Number of records to skip"),
-    limit: int = Query(50, ge=1, le=200, description="Maximum records to return"),
+    limit: int = Query(50, ge=1, le=500, description="Maximum records to return"),
 ):
     """List industry benchmarks with pagination."""
     query = db.query(Benchmark)
     if category:
         query = query.filter(Benchmark.category == category)
-    return query.offset(skip).limit(limit).all()
+    items, total = paginate_query(query, skip, limit)
+    return {"items": items, "total": total, "skip": skip, "limit": limit, "has_more": (skip + len(items)) < total}
 
 
 @router.get("/benchmarks/compare", response_model=PerformanceReport)
@@ -799,7 +809,7 @@ def compare_to_benchmarks(
         )
 
     # Get benchmarks
-    benchmarks = db.query(Benchmark).all()
+    benchmarks = db.query(Benchmark).limit(10000).all()
     benchmark_dict = {b.metric_name: b for b in benchmarks}
 
     comparisons = []
@@ -904,13 +914,29 @@ def create_bottle_weight(
     return result
 
 
-@router.get("/bottle-weights/missing/", response_model=List[dict])
+@router.get("/bottle-weights/missing/")
 @limiter.limit("60/minute")
-def get_products_without_weights(request: Request, db: DbSession):
+def get_products_without_weights(
+    request: Request,
+    db: DbSession,
+    skip: int = Query(0, ge=0),
+    limit: int = Query(50, ge=1, le=500),
+):
     """Get products that don't have bottle weight data."""
-    service = BottleWeightDatabaseService(db)
-    products = service.get_products_without_weights()
-    return [{"id": p.id, "name": p.name} for p in products]
+    from app.models.inventory import Product
+    subquery = db.query(BottleWeight.product_id)
+    query = db.query(Product).filter(
+        Product.id.notin_(subquery),
+        Product.active == True
+    )
+    items, total = paginate_query(query, skip, limit)
+    return {
+        "items": [{"id": p.id, "name": p.name} for p in items],
+        "total": total,
+        "skip": skip,
+        "limit": limit,
+        "has_more": (skip + len(items)) < total,
+    }
 
 
 @router.post("/bottle-weights/import")
@@ -1028,7 +1054,7 @@ def get_scale_integration_status(request: Request, db: DbSession):
 def get_menu_analysis(request: Request, db: DbSession):
     """Get menu analysis and engineering insights."""
     from app.models.restaurant import MenuItem
-    items = db.query(MenuItem).all()
+    items = db.query(MenuItem).limit(10000).all()
 
     categories = {}
     for item in items:

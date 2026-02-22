@@ -2,10 +2,11 @@
 
 from __future__ import annotations
 from datetime import datetime, date, time
+from decimal import Decimal
 from typing import Optional
 from enum import Enum
 
-from sqlalchemy import Boolean, String, Integer, Float, Date, Time, DateTime, Text, ForeignKey, JSON
+from sqlalchemy import Boolean, String, Integer, Float, Date, Time, DateTime, Text, ForeignKey, JSON, Numeric, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship, validates
 
 from app.db.base import Base, TimestampMixin, SoftDeleteMixin
@@ -87,14 +88,14 @@ class StaffUser(Base, TimestampMixin, SoftDeleteMixin):
     role: Mapped[str] = mapped_column(String(50), default="waiter", nullable=False)
     pin_hash: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
-    hourly_rate: Mapped[float] = mapped_column(Float, default=15.0, nullable=False)
+    hourly_rate: Mapped[Decimal] = mapped_column(Numeric(10, 2), default=Decimal("15.00"), nullable=False)
     max_hours_week: Mapped[int] = mapped_column(Integer, default=40, nullable=False)
     color: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)
-    location_id: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    location_id: Mapped[Optional[int]] = mapped_column(Integer, ForeignKey("locations.id", ondelete="SET NULL"), nullable=True)
     last_login: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
     # Service deduction / commission tracking
-    commission_percentage: Mapped[float] = mapped_column(Float, default=0.0, nullable=False)
-    service_fee_percentage: Mapped[float] = mapped_column(Float, default=0.0, nullable=False)
+    commission_percentage: Mapped[Decimal] = mapped_column(Numeric(10, 4), default=Decimal("0"), nullable=False)
+    service_fee_percentage: Mapped[Decimal] = mapped_column(Numeric(10, 4), default=Decimal("0"), nullable=False)
     auto_logout_after_close: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
 
     # Relationships
@@ -123,7 +124,7 @@ class Shift(Base, TimestampMixin):
     __table_args__ = {'extend_existing': True}
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    staff_id: Mapped[int] = mapped_column(ForeignKey("staff_users.id"), nullable=False)
+    staff_id: Mapped[int] = mapped_column(ForeignKey("staff_users.id", ondelete="CASCADE"), nullable=False)
     date: Mapped[date] = mapped_column(Date, nullable=False)
     shift_type: Mapped[str] = mapped_column(String(50), default="morning", nullable=False)
     start_time: Mapped[time] = mapped_column(Time, nullable=False)
@@ -137,7 +138,7 @@ class Shift(Base, TimestampMixin):
     def _validate_break_minutes(self, key, value):
         return non_negative(key, value)
     is_published: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
-    location_id: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    location_id: Mapped[Optional[int]] = mapped_column(Integer, ForeignKey("locations.id", ondelete="SET NULL"), nullable=True)
 
     # Relationships
     staff = relationship("StaffUser", back_populates="shifts")
@@ -150,7 +151,7 @@ class TimeOffRequest(Base, TimestampMixin):
     __table_args__ = {'extend_existing': True}
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    staff_id: Mapped[int] = mapped_column(ForeignKey("staff_users.id"), nullable=False)
+    staff_id: Mapped[int] = mapped_column(ForeignKey("staff_users.id", ondelete="CASCADE"), nullable=False)
     start_date: Mapped[date] = mapped_column(Date, nullable=False)
     end_date: Mapped[date] = mapped_column(Date, nullable=False)
     type: Mapped[str] = mapped_column(String(50), default="vacation", nullable=False)
@@ -158,7 +159,7 @@ class TimeOffRequest(Base, TimestampMixin):
     notes: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     reviewed_by: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
     reviewed_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
-    location_id: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    location_id: Mapped[Optional[int]] = mapped_column(Integer, ForeignKey("locations.id", ondelete="SET NULL"), nullable=True)
 
     # Relationships
     staff = relationship("app.models.staff.StaffUser", back_populates="time_off_requests")
@@ -171,7 +172,7 @@ class TimeClockEntry(Base, TimestampMixin):
     __table_args__ = {'extend_existing': True}
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    staff_id: Mapped[int] = mapped_column(ForeignKey("staff_users.id"), nullable=False)
+    staff_id: Mapped[int] = mapped_column(ForeignKey("staff_users.id", ondelete="CASCADE"), nullable=False)
     clock_in: Mapped[datetime] = mapped_column(DateTime, nullable=False)
     clock_out: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
     break_start: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
@@ -180,7 +181,7 @@ class TimeClockEntry(Base, TimestampMixin):
     break_hours: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
     status: Mapped[str] = mapped_column(String(50), default="clocked_in", nullable=False)
     clock_in_method: Mapped[str] = mapped_column(String(50), default="web", nullable=False)
-    location_id: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    location_id: Mapped[Optional[int]] = mapped_column(Integer, ForeignKey("locations.id", ondelete="SET NULL"), nullable=True)
     notes: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
 
     # Relationships
@@ -194,11 +195,11 @@ class TableAssignment(Base, TimestampMixin):
     __table_args__ = {'extend_existing': True}
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    staff_id: Mapped[int] = mapped_column(ForeignKey("staff_users.id"), nullable=False)
+    staff_id: Mapped[int] = mapped_column(ForeignKey("staff_users.id", ondelete="CASCADE"), nullable=False)
     table_id: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
     area: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
-    location_id: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    location_id: Mapped[Optional[int]] = mapped_column(Integer, ForeignKey("locations.id", ondelete="SET NULL"), nullable=True)
 
     # Relationships
     staff = relationship("StaffUser", back_populates="table_assignments")
@@ -208,10 +209,13 @@ class PerformanceMetric(Base, TimestampMixin):
     """Staff performance metrics model."""
 
     __tablename__ = "staff_performance_metrics"
-    __table_args__ = {'extend_existing': True}
+    __table_args__ = (
+        UniqueConstraint('staff_id', 'period', 'period_date', name='uq_perf_metric_staff_period'),
+        {'extend_existing': True},
+    )
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    staff_id: Mapped[int] = mapped_column(ForeignKey("staff_users.id"), nullable=False)
+    staff_id: Mapped[int] = mapped_column(ForeignKey("staff_users.id", ondelete="CASCADE"), nullable=False)
     period: Mapped[str] = mapped_column(String(50), nullable=False)  # day, week, month
     period_date: Mapped[date] = mapped_column(Date, nullable=False)
     sales_amount: Mapped[float] = mapped_column(Float, default=0, nullable=False)
@@ -227,7 +231,7 @@ class PerformanceMetric(Base, TimestampMixin):
     absences: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     upsell_rate: Mapped[float] = mapped_column(Float, default=0, nullable=False)
     table_turnover: Mapped[float] = mapped_column(Float, default=0, nullable=False)
-    location_id: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    location_id: Mapped[Optional[int]] = mapped_column(Integer, ForeignKey("locations.id", ondelete="SET NULL"), nullable=True)
 
 
 class PerformanceGoal(Base, TimestampMixin):
@@ -242,7 +246,7 @@ class PerformanceGoal(Base, TimestampMixin):
     current_value: Mapped[float] = mapped_column(Float, default=0, nullable=False)
     unit: Mapped[str] = mapped_column(String(50), nullable=False)
     period: Mapped[str] = mapped_column(String(50), nullable=False)
-    location_id: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    location_id: Mapped[Optional[int]] = mapped_column(Integer, ForeignKey("locations.id", ondelete="SET NULL"), nullable=True)
 
 
 class TipPool(Base, TimestampMixin):
@@ -254,14 +258,14 @@ class TipPool(Base, TimestampMixin):
     id: Mapped[int] = mapped_column(primary_key=True)
     date: Mapped[date] = mapped_column(Date, nullable=False)
     shift: Mapped[str] = mapped_column(String(50), default="evening", nullable=False)
-    total_tips_cash: Mapped[float] = mapped_column(Float, default=0, nullable=False)
-    total_tips_card: Mapped[float] = mapped_column(Float, default=0, nullable=False)
-    total_tips: Mapped[float] = mapped_column(Float, default=0, nullable=False)
+    total_tips_cash: Mapped[Decimal] = mapped_column(Numeric(10, 2), default=Decimal("0"), nullable=False)
+    total_tips_card: Mapped[Decimal] = mapped_column(Numeric(10, 2), default=Decimal("0"), nullable=False)
+    total_tips: Mapped[Decimal] = mapped_column(Numeric(10, 2), default=Decimal("0"), nullable=False)
     participants_count: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     distribution_method: Mapped[str] = mapped_column(String(50), default="equal", nullable=False)
     status: Mapped[str] = mapped_column(String(50), default="pending", nullable=False)
     distributed_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
-    location_id: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    location_id: Mapped[Optional[int]] = mapped_column(Integer, ForeignKey("locations.id", ondelete="SET NULL"), nullable=True)
 
     # Relationships
     distributions = relationship("TipDistribution", back_populates="pool")
@@ -274,12 +278,12 @@ class TipDistribution(Base, TimestampMixin):
     __table_args__ = {'extend_existing': True}
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    pool_id: Mapped[int] = mapped_column(ForeignKey("tip_pools.id"), nullable=False)
-    staff_id: Mapped[int] = mapped_column(ForeignKey("staff_users.id"), nullable=False)
+    pool_id: Mapped[int] = mapped_column(ForeignKey("tip_pools.id", ondelete="CASCADE"), nullable=False)
+    staff_id: Mapped[int] = mapped_column(ForeignKey("staff_users.id", ondelete="CASCADE"), nullable=False)
     hours_worked: Mapped[float] = mapped_column(Float, default=0, nullable=False)
     points: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
-    share_percentage: Mapped[float] = mapped_column(Float, default=0, nullable=False)
-    amount: Mapped[float] = mapped_column(Float, default=0, nullable=False)
+    share_percentage: Mapped[Decimal] = mapped_column(Numeric(10, 4), default=Decimal("0"), nullable=False)
+    amount: Mapped[Decimal] = mapped_column(Numeric(10, 2), default=Decimal("0"), nullable=False)
     is_paid: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
 
     # Relationships

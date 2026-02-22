@@ -36,6 +36,7 @@ export default function PinLoginPage() {
 
     try {
       const response = await fetch(`${API_URL}/auth/login/pin`, {
+        credentials: 'include',
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

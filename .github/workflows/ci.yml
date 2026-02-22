@@ -33,7 +33,7 @@ jobs:
           python-version: '3.12'
           cache: 'pip'
       - run: pip install -r backend/requirements.txt mypy
-      - run: mypy backend/app --ignore-missing-imports --no-strict-optional --no-error-summary || true
+      - run: mypy backend/app --ignore-missing-imports --no-error-summary
 
   # Backend Tests
   backend-test:
@@ -76,13 +76,19 @@ jobs:
           DATABASE_URL: postgresql://${{ secrets.TEST_DB_USER || 'test' }}:${{ secrets.TEST_DB_PASSWORD || 'test' }}@localhost:5432/${{ secrets.TEST_DB_NAME || 'test' }}
           SECRET_KEY: ${{ secrets.TEST_SECRET_KEY || 'ci-test-key-not-for-production-use-minimum-32chars' }}
         run: |
-          pytest tests/ -v --cov=app --cov-report=xml
+          pytest tests/ -v --cov=app --cov-report=xml --cov-fail-under=50
 
       - name: Upload coverage
         uses: codecov/codecov-action@v4
         with:
           file: backend/coverage.xml
           flags: backend
+
+      - name: Python dependency audit
+        run: pip install pip-audit && pip-audit -r backend/requirements.txt --desc
+
+      - name: Frontend dependency audit
+        run: cd frontend && npm audit --audit-level=high
 
   # Frontend Tests & Build
   frontend-build:
@@ -230,3 +236,19 @@ jobs:
           labels: ${{ steps.meta-frontend.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+      - name: Run Trivy vulnerability scanner on backend image
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-backend:latest
+          format: 'table'
+          exit-code: '1'
+          severity: 'CRITICAL,HIGH'
+
+      - name: Run Trivy vulnerability scanner on frontend image
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-frontend:latest
+          format: 'table'
+          exit-code: '1'
+          severity: 'CRITICAL,HIGH'

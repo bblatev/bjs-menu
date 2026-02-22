@@ -4,7 +4,7 @@ Integration Marketplace, AI Invoice OCR, Mobile App Builder, Hotel PMS
 """
 from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, Boolean, Text, JSON, Enum as SQLEnum, Float, Date
 from sqlalchemy.orm import relationship
-from datetime import datetime
+from datetime import datetime, timezone
 import enum
 
 from app.db.base import Base
@@ -93,8 +93,8 @@ class IntegrationMarketplace(Base):
     is_active = Column(Boolean, default=True)
     is_beta = Column(Boolean, default=False)
 
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
 
 
 class VenueIntegration(Base):
@@ -138,8 +138,8 @@ class VenueIntegration(Base):
     connected_by = Column(Integer, ForeignKey("staff_users.id"))
     disconnected_at = Column(DateTime)
 
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
 
     # Relationships
     venue = relationship("Venue", backref="venue_integrations")
@@ -168,8 +168,8 @@ class IntegrationReview(Base):
     is_verified = Column(Boolean, default=False)
     is_approved = Column(Boolean, default=True)
 
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
 
 
 # ==================== AI INVOICE OCR ====================
@@ -248,8 +248,8 @@ class InvoiceOCRJob(Base):
 
     # Audit
     uploaded_by = Column(Integer, ForeignKey("staff_users.id"))
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
 
     # Relationships
     venue = relationship("Venue", backref="invoice_ocr_jobs")
@@ -281,7 +281,7 @@ class InvoiceOCRLineItem(Base):
     # Confidence scores per field
     confidence_scores = Column(JSON)
 
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
     # Relationships
     ocr_job = relationship("InvoiceOCRJob", backref="extracted_line_items")
@@ -311,8 +311,8 @@ class InvoiceOCRTemplate(Base):
 
     is_active = Column(Boolean, default=True)
 
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
 
 
 # ==================== BRANDED MOBILE APP BUILDER ====================
@@ -390,8 +390,8 @@ class BrandedMobileApp(Base):
     # Timestamps
     published_at = Column(DateTime)
     last_build_at = Column(DateTime)
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
     created_by = Column(Integer, ForeignKey("staff_users.id"))
 
     # Relationships
@@ -422,7 +422,7 @@ class MobileAppFeature(Base):
     is_premium = Column(Boolean, default=False)
     is_active = Column(Boolean, default=True)
 
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
 
 class MobileAppBuild(Base):
@@ -460,7 +460,7 @@ class MobileAppBuild(Base):
     is_released = Column(Boolean, default=False)
     released_at = Column(DateTime)
 
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
     created_by = Column(Integer, ForeignKey("staff_users.id"))
 
     # Relationships
@@ -492,8 +492,8 @@ class MobileAppScreen(Base):
     is_active = Column(Boolean, default=True)
     requires_login = Column(Boolean, default=False)
 
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
 
     # Relationships
     app = relationship("BrandedMobileApp", backref="screens")
@@ -541,7 +541,7 @@ class MobileAppPushCampaign(Base):
     sent_at = Column(DateTime)
     completed_at = Column(DateTime)
 
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
     created_by = Column(Integer, ForeignKey("staff_users.id"))
 
     # Relationships
@@ -613,8 +613,8 @@ class EnterpriseHotelPMSConnection(Base):
     last_error = Column(Text)
     last_error_at = Column(DateTime)
 
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
 
     # Relationships
     venue = relationship("Venue", backref="enterprise_pms_connections")
@@ -669,8 +669,8 @@ class EnterpriseHotelGuest(Base):
     # Sync
     last_synced_at = Column(DateTime)
 
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
 
     # Relationships
     venue = relationship("Venue", backref="ent_hotel_guests")
@@ -724,8 +724,8 @@ class EnterpriseRoomCharge(Base):
     # Audit
     posted_by = Column(Integer, ForeignKey("staff_users.id"))
 
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
 
     # Relationships
     venue = relationship("Venue", backref="ent_room_charges")
@@ -763,8 +763,8 @@ class EnterpriseHotelReservationSync(Base):
     sync_status = Column(String(50))
     last_synced_at = Column(DateTime)
 
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
 
 
 class EnterpriseHotelPackage(Base):
@@ -792,8 +792,8 @@ class EnterpriseHotelPackage(Base):
 
     is_active = Column(Boolean, default=True)
 
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
 
 
 class EnterpriseGuestFBCredit(Base):
@@ -824,8 +824,8 @@ class EnterpriseGuestFBCredit(Base):
     times_used = Column(Integer, default=0)
     total_used = Column(Float, default=0)
 
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
 
     # Relationships
     hotel_guest = relationship("EnterpriseHotelGuest", backref="ent_fb_credits")

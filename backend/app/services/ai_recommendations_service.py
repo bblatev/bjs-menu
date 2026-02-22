@@ -11,15 +11,15 @@ Provides intelligent menu item recommendations using:
 from typing import List, Dict, Optional
 from sqlalchemy.orm import Session
 from sqlalchemy import func, and_, or_, desc, case
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import logging
 from redis import Redis
 import json
 from enum import Enum
 import requests
 
-from app.models import (
 from app.core.config import settings
+from app.models import (
     MenuItem, Order, OrderItem, MenuCategory, ItemImage,
     AnalyticsEvent, ItemRating, VenueStation, ItemTag,
     ItemTagLink
@@ -63,11 +63,15 @@ class AIRecommendationsService:
             Dictionary with condition (WeatherCondition), temperature (float), and description (str)
         """
         if not OPENWEATHER_API_KEY:
-            # Return default winter weather for ski resort
+            logger.warning(
+                "OPENWEATHER_API_KEY is not configured. Weather-aware recommendations "
+                "will not reflect actual conditions. Set the openweather_api_key setting "
+                "to enable real weather data."
+            )
             return {
                 "condition": WeatherCondition.COLD,
                 "temperature": -5.0,
-                "description": "Mock weather - set OPENWEATHER_API_KEY for real data"
+                "description": "Weather API not configured - using default winter conditions"
             }
 
         try:
@@ -559,7 +563,7 @@ class AIRecommendationsService:
         Returns popular items for the current time period based on historical orders
         """
         if not current_time:
-            current_time = datetime.now()
+            current_time = datetime.now(timezone.utc)
 
         hour = current_time.hour
         day_of_week = current_time.weekday()  # 0=Monday, 6=Sunday
@@ -588,7 +592,7 @@ class AIRecommendationsService:
 
         # Get items popular during this time period from order history
         # Look at orders from the last 30 days during this hour range
-        since_date = datetime.now() - timedelta(days=30)
+        since_date = datetime.now(timezone.utc) - timedelta(days=30)
 
         recommendations = self.db.query(
             MenuItem.id,
@@ -734,7 +738,7 @@ class AIRecommendationsService:
         Get most popular items in the last N days
         Calculates popularity score based on order count, quantity, and ratings
         """
-        since_date = datetime.now() - timedelta(days=days)
+        since_date = datetime.now(timezone.utc) - timedelta(days=days)
 
         popular = self.db.query(
             MenuItem.id,
@@ -804,7 +808,7 @@ class AIRecommendationsService:
         Returns:
             List of popular items for that hour
         """
-        since_date = datetime.now() - timedelta(days=days)
+        since_date = datetime.now(timezone.utc) - timedelta(days=days)
 
         popular = self.db.query(
             MenuItem.id,
@@ -868,7 +872,7 @@ class AIRecommendationsService:
         Returns:
             List of popular items for that day
         """
-        since_date = datetime.now() - timedelta(days=days)
+        since_date = datetime.now(timezone.utc) - timedelta(days=days)
 
         popular = self.db.query(
             MenuItem.id,
@@ -1006,7 +1010,7 @@ class AIRecommendationsService:
                     'recommendation_type': recommendation_type,
                     'action': action,
                     'session_id': session_id,
-                    'timestamp': datetime.now().isoformat()
+                    'timestamp': datetime.now(timezone.utc).isoformat()
                 }
             )
             self.db.add(event)
@@ -1042,7 +1046,7 @@ class AIRecommendationsService:
         Returns:
             Items with highest growth rate
         """
-        now = datetime.now()
+        now = datetime.now(timezone.utc)
         recent_start = now - timedelta(days=trend_window_days)
         historical_start = now - timedelta(days=comparison_window_days)
 
@@ -1249,7 +1253,7 @@ class AIRecommendationsService:
         Seasonal recommendations based on historical patterns
         Analyzes which items were popular in the same month/season historically
         """
-        now = datetime.now()
+        now = datetime.now(timezone.utc)
         current_month = now.month
 
         # Determine season
@@ -1519,7 +1523,7 @@ class AIRecommendationsService:
         Recommend newly added menu items
         Helps promote new additions to the menu
         """
-        cutoff_date = datetime.now() - timedelta(days=days_since_added)
+        cutoff_date = datetime.now(timezone.utc) - timedelta(days=days_since_added)
 
         new_items = self.db.query(
             MenuItem.id,
@@ -1546,7 +1550,7 @@ class AIRecommendationsService:
         results = []
         for item in new_items:
             image_url = self._get_primary_image_url(item.id)
-            days_ago = (datetime.now() - item.created_at).days if item.created_at else 0
+            days_ago = (datetime.now(timezone.utc) - item.created_at).days if item.created_at else 0
             results.append({
                 'item_id': item.id,
                 'name': item.name,

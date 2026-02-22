@@ -211,7 +211,7 @@ class StockDeductionService:
 
             if results["success"]:
                 savepoint.commit()
-                self.db.commit()
+                self.db.flush()
                 # Check auto-reorder triggers after successful deduction
                 self._check_reorder_triggers(results["deductions"], location_id)
             else:
@@ -682,7 +682,7 @@ class StockDeductionService:
             results.append(par_result)
 
         if auto_apply:
-            self.db.commit()
+            self.db.flush()
 
         return {
             "total_products": len(results),
@@ -780,10 +780,11 @@ class StockDeductionService:
                     stock.reserved_qty = (stock.reserved_qty or Decimal("0")) + reserve_qty
 
                 # Create RESERVATION movement
+                # Store reserved qty in qty_delta for reliable retrieval during cancellation
                 movement = StockMovement(
                     product_id=line.product_id,
                     location_id=location_id,
-                    qty_delta=Decimal("0"),  # No actual stock change yet
+                    qty_delta=reserve_qty,
                     reason=MovementReason.RESERVATION.value,
                     ref_type=reference_type,
                     ref_id=reference_id,
@@ -802,9 +803,7 @@ class StockDeductionService:
                 results["total_reserved"] += 1
 
         if results["success"]:
-            self.db.commit()
-        else:
-            self.db.rollback()
+            self.db.flush()
 
         return results
 
@@ -830,18 +829,14 @@ class StockDeductionService:
 
         released = 0
         for reservation in reservations:
-            # Parse reserved quantity from notes
             stock = self.db.query(StockOnHand).filter(
                 StockOnHand.product_id == reservation.product_id,
                 StockOnHand.location_id == reservation.location_id,
             ).first()
 
             if stock and hasattr(stock, 'reserved_qty') and stock.reserved_qty:
-                # We need to figure out how much was reserved - parse from notes or use a heuristic
-                # For robustness, we'll look at the notes pattern "Reserved: ... (X unit)"
-                import re
-                match = re.search(r'\((\d+\.?\d*)\s+\w+\)', reservation.notes or "")
-                release_qty = Decimal(match.group(1)) if match else Decimal("0")
+                # Use qty_delta which stores the reserved quantity directly
+                release_qty = reservation.qty_delta if reservation.qty_delta else Decimal("0")
 
                 stock.reserved_qty = max(Decimal("0"), (stock.reserved_qty or Decimal("0")) - release_qty)
 
@@ -849,7 +844,7 @@ class StockDeductionService:
                 release_movement = StockMovement(
                     product_id=reservation.product_id,
                     location_id=reservation.location_id,
-                    qty_delta=Decimal("0"),
+                    qty_delta=-release_qty,
                     reason=MovementReason.RESERVATION_RELEASE.value,
                     ref_type=reference_type,
                     ref_id=reference_id,
@@ -858,7 +853,7 @@ class StockDeductionService:
                 self.db.add(release_movement)
                 released += 1
 
-        self.db.commit()
+        self.db.flush()
         return {"success": True, "released": released}
 
     def fulfill_reservation(
@@ -969,7 +964,7 @@ class StockDeductionService:
                     "unit": product.unit,
                 })
 
-        self.db.commit()
+        self.db.flush()
         return results
 
     # ===== RECIPE STOCK CHECK =====
@@ -1201,7 +1196,7 @@ class StockDeductionService:
                 "line_cost": float(line_cost),
             })
 
-        self.db.commit()
+        self.db.flush()
         results["total_cost"] = float(results["total_cost"])
         return results
 
@@ -1235,7 +1230,10 @@ class StockDeductionService:
         if stock:
             old_qty = stock.qty
             stock.qty -= deduct_qty
+            if stock.qty < 0:
+                logger.warning(f"Stock for product {product_id} went negative: {stock.qty}")
         else:
+            logger.warning(f"No stock record found for product {product_id} location {location_id}, creating with negative qty")
             stock = StockOnHand(
                 product_id=product_id,
                 location_id=location_id,
@@ -1254,7 +1252,7 @@ class StockDeductionService:
             created_by=created_by,
         )
         self.db.add(movement)
-        self.db.commit()
+        self.db.flush()
 
         return {
             "success": True,
@@ -1342,7 +1340,7 @@ class StockDeductionService:
         )
         self.db.add(movement_in)
 
-        self.db.commit()
+        self.db.flush()
 
         return {
             "success": True,
@@ -1402,7 +1400,7 @@ class StockDeductionService:
             created_by=created_by,
         )
         self.db.add(movement)
-        self.db.commit()
+        self.db.flush()
 
         return {
             "success": True,

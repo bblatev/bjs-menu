@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { API_URL } from '@/lib/api';
+import { useConfirm } from "@/hooks/useConfirm";
 
 import { toast } from '@/lib/toast';
 interface StaffUser {
@@ -36,6 +37,7 @@ interface TableAssignment {
 }
 
 export default function StaffManagementPage() {
+  const confirm = useConfirm();
   const [staff, setStaff] = useState<StaffUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
@@ -52,7 +54,7 @@ export default function StaffManagementPage() {
   // Table assignment state
   const [tables, setTables] = useState<Table[]>([]);
   const [areas, setAreas] = useState<string[]>([]);
-  const [staffAssignments, setStaffAssignments] = useState<TableAssignment[]>([]);
+  const [, setStaffAssignments] = useState<TableAssignment[]>([]);
   const [selectedTables, setSelectedTables] = useState<number[]>([]);
   const [selectedAreas, setSelectedAreas] = useState<string[]>([]);
 
@@ -82,6 +84,7 @@ export default function StaffManagementPage() {
       if (params.toString()) url += `?${params.toString()}`;
 
       const response = await fetch(url, {
+        credentials: 'include',
         headers: { Authorization: `Bearer ${token}` },
       });
 
@@ -103,6 +106,7 @@ export default function StaffManagementPage() {
       const response = await fetch(
         `${API_URL}/tables/`,
         {
+          credentials: 'include',
           headers: { Authorization: `Bearer ${token}` },
         }
       );
@@ -123,6 +127,7 @@ export default function StaffManagementPage() {
       const response = await fetch(
         `${API_URL}/tables/areas`,
         {
+          credentials: 'include',
           headers: { Authorization: `Bearer ${token}` },
         }
       );
@@ -135,6 +140,7 @@ export default function StaffManagementPage() {
         const tablesResponse = await fetch(
           `${API_URL}/tables/`,
           {
+            credentials: 'include',
             headers: { Authorization: `Bearer ${token}` },
           }
         );
@@ -155,6 +161,7 @@ export default function StaffManagementPage() {
       const response = await fetch(
         `${API_URL}/tables/assignments/?staff_user_id=${staffId}`,
         {
+          credentials: 'include',
           headers: { Authorization: `Bearer ${token}` },
         }
       );
@@ -188,6 +195,7 @@ export default function StaffManagementPage() {
       const response = await fetch(
         `${API_URL}/tables/assignments/bulk`,
         {
+          credentials: 'include',
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -232,12 +240,6 @@ export default function StaffManagementPage() {
     }
   };
 
-  const getStaffAssignmentSummary = (staffId: number): string => {
-    // We'll show a summary based on loaded data if available
-    // For now, we show a placeholder since we don't load assignments for all staff
-    return "";
-  };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const token = localStorage.getItem("access_token");
@@ -254,6 +256,7 @@ export default function StaffManagementPage() {
         const response = await fetch(
           `${API_URL}/staff/${editingStaff.id}`,
           {
+            credentials: 'include',
             method: "PUT",
             headers: {
               "Content-Type": "application/json",
@@ -283,6 +286,7 @@ export default function StaffManagementPage() {
         const response = await fetch(
           `${API_URL}/staff`,
           {
+            credentials: 'include',
             method: "POST",
             headers: {
               "Content-Type": "application/json",
@@ -328,6 +332,7 @@ export default function StaffManagementPage() {
       const response = await fetch(
         `${API_URL}/staff/${id}/${endpoint}`,
         {
+          credentials: 'include',
           method: "PATCH",
           headers: { Authorization: `Bearer ${token}` },
         }
@@ -342,7 +347,7 @@ export default function StaffManagementPage() {
   };
 
   const handleDelete = async (id: number) => {
-    if (!confirm("Are you sure you want to delete this staff member?")) return;
+    if (!(await confirm({ message: "Are you sure you want to delete this staff member?", variant: 'danger' }))) return;
 
     const token = localStorage.getItem("access_token");
 
@@ -350,6 +355,7 @@ export default function StaffManagementPage() {
       const response = await fetch(
         `${API_URL}/staff/${id}`,
         {
+          credentials: 'include',
           method: "DELETE",
           headers: { Authorization: `Bearer ${token}` },
         }
@@ -393,6 +399,7 @@ export default function StaffManagementPage() {
       const response = await fetch(
         `${API_URL}/staff/${pinStaff.id}/pin`,
         {
+          credentials: 'include',
           method: "PATCH",
           headers: {
             "Content-Type": "application/json",
@@ -418,7 +425,7 @@ export default function StaffManagementPage() {
   };
 
   const handleRemovePin = async (staffUser: StaffUser) => {
-    if (!confirm(`Remove PIN for ${staffUser.full_name}?`)) return;
+    if (!(await confirm({ message: `Remove PIN for ${staffUser.full_name}?`, variant: 'warning' }))) return;
 
     const token = localStorage.getItem("access_token");
 
@@ -426,6 +433,7 @@ export default function StaffManagementPage() {
       const response = await fetch(
         `${API_URL}/staff/${staffUser.id}/pin`,
         {
+          credentials: 'include',
           method: "DELETE",
           headers: { Authorization: `Bearer ${token}` },
         }

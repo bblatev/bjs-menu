@@ -3,9 +3,10 @@ Core Business Models
 Invoice and Tab management for POS system
 """
 
-from sqlalchemy import Column, Integer, String, Float, DateTime, ForeignKey, Text, Boolean, Enum, JSON
+from decimal import Decimal
+from sqlalchemy import Column, Integer, String, Float, DateTime, ForeignKey, Text, Boolean, Enum, JSON, Numeric
 from sqlalchemy.orm import relationship
-from datetime import datetime
+from datetime import datetime, timezone
 import enum
 
 from app.db.base import Base
@@ -42,13 +43,13 @@ class Tab(Base):
     server_id = Column(Integer, ForeignKey("staff_users.id"), nullable=True)
 
     # Financial
-    subtotal = Column(Float, nullable=False, default=0)
-    tax_amount = Column(Float, nullable=False, default=0)
-    discount_amount = Column(Float, nullable=False, default=0)
-    tip_amount = Column(Float, nullable=False, default=0)
-    total = Column(Float, nullable=False, default=0)
-    amount_paid = Column(Float, nullable=False, default=0)
-    balance_due = Column(Float, nullable=False, default=0)
+    subtotal = Column(Numeric(10, 2), nullable=False, default=Decimal("0"))
+    tax_amount = Column(Numeric(10, 2), nullable=False, default=Decimal("0"))
+    discount_amount = Column(Numeric(10, 2), nullable=False, default=Decimal("0"))
+    tip_amount = Column(Numeric(10, 2), nullable=False, default=Decimal("0"))
+    total = Column(Numeric(10, 2), nullable=False, default=Decimal("0"))
+    amount_paid = Column(Numeric(10, 2), nullable=False, default=Decimal("0"))
+    balance_due = Column(Numeric(10, 2), nullable=False, default=Decimal("0"))
 
     # Credit limit for house accounts
     credit_limit = Column(Float, nullable=True)
@@ -57,14 +58,14 @@ class Tab(Base):
     status = Column(Enum(TabStatus), nullable=False, default=TabStatus.OPEN)
 
     # Dates
-    opened_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+    opened_at = Column(DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))
     closed_at = Column(DateTime, nullable=True)
-    last_activity_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+    last_activity_at = Column(DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))
 
     # Metadata
     notes = Column(Text, nullable=True)
-    created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
-    updated_at = Column(DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))
+    updated_at = Column(DateTime, nullable=False, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
 
     # Relationships
     items = relationship("TabItem", back_populates="tab", cascade="all, delete-orphan")
@@ -94,7 +95,7 @@ class TabItem(Base):
     voided_by = Column(Integer, ForeignKey("staff_users.id"), nullable=True)
 
     # Metadata
-    added_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+    added_at = Column(DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))
     added_by = Column(Integer, ForeignKey("staff_users.id"), nullable=True)
 
     # Relationships
@@ -114,7 +115,7 @@ class TabPayment(Base):
     reference = Column(String(100), nullable=True)
 
     # Metadata
-    paid_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+    paid_at = Column(DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))
     processed_by = Column(Integer, ForeignKey("staff_users.id"), nullable=True)
 
     # Relationships
@@ -147,7 +148,7 @@ class SMSMessage(Base):
     error_message = Column(Text, nullable=True)
 
     # Timestamps
-    created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+    created_at = Column(DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))
     sent_at = Column(DateTime, nullable=True)
     delivered_at = Column(DateTime, nullable=True)
 
@@ -193,7 +194,7 @@ class EmailMessage(Base):
     clicked_at = Column(DateTime, nullable=True)
 
     # Timestamps
-    created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+    created_at = Column(DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))
     sent_at = Column(DateTime, nullable=True)
 
 
@@ -228,7 +229,7 @@ class CryptoPayment(Base):
     status = Column(String(20), nullable=False, default="pending")  # pending, confirming, confirmed, expired, failed
 
     # Timestamps
-    created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+    created_at = Column(DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))
     expires_at = Column(DateTime, nullable=True)
     confirmed_at = Column(DateTime, nullable=True)
 
@@ -261,7 +262,7 @@ class BiometricRecord(Base):
     is_active = Column(Boolean, nullable=False, default=True)
 
     # Metadata
-    created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+    created_at = Column(DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))
     last_used_at = Column(DateTime, nullable=True)
     use_count = Column(Integer, nullable=False, default=0)
 
@@ -287,4 +288,4 @@ class BiometricAuthLog(Base):
     failure_reason = Column(String(200), nullable=True)
 
     # Timestamp
-    attempted_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+    attempted_at = Column(DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))

@@ -8,7 +8,7 @@ from sqlalchemy import (
     Numeric, Date, JSON, Float
 )
 from sqlalchemy.orm import relationship
-from datetime import datetime
+from datetime import datetime, timezone
 
 from app.db.base import Base
 
@@ -35,8 +35,8 @@ class Item86Config(Base):
     notify_floor = Column(Boolean, default=True)
     notify_manager = Column(Boolean, default=True)
 
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
 
     # Relationships
     venue = relationship("Venue", backref="item_86_config")
@@ -57,14 +57,14 @@ class Item86Log(Base):
     reason = Column(Text)
 
     # Timing
-    started_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+    started_at = Column(DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))
     ended_at = Column(DateTime)
     duration_minutes = Column(Integer)
 
     # Stock snapshot at time of event
     stock_level_at_event = Column(Numeric(10, 2))
 
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
     # Relationships
     venue = relationship("Venue", backref="item_86_logs")
@@ -96,7 +96,7 @@ class IngredientForecast(Base):
     days_of_stock = Column(Numeric(6, 1))
     suggested_order_quantity = Column(Numeric(10, 2), default=0)
 
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
     # Relationships
     venue = relationship("Venue", backref="ingredient_forecasts")
@@ -131,8 +131,8 @@ class AutoPurchaseOrderRule(Base):
     # Status
     is_active = Column(Boolean, default=True)
 
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
 
     # Relationships
     venue = relationship("Venue", backref="auto_purchase_order_rules")
@@ -156,14 +156,14 @@ class SuggestedPurchaseOrder(Base):
 
     # Generation context
     trigger_reason = Column(String(200))  # below_reorder_point, forecast_based, par_level
-    generated_at = Column(DateTime, default=datetime.utcnow)
+    generated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
     # Approval
     approved_by = Column(Integer, ForeignKey("staff_users.id"))
     approved_at = Column(DateTime)
     converted_po_id = Column(Integer, ForeignKey("purchase_orders.id"))
 
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
     # Relationships
     venue = relationship("Venue", backref="suggested_purchase_orders")
@@ -212,8 +212,8 @@ class FoodCostSnapshot(Base):
     total_food_cost = Column(Numeric(12, 2))
     overall_food_cost_percent = Column(Numeric(6, 2))
 
-    calculated_at = Column(DateTime, default=datetime.utcnow)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    calculated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
     # Relationships
     venue = relationship("Venue", backref="food_cost_snapshots")
@@ -257,8 +257,8 @@ class SupplierPerformance(Base):
     # Overall composite score
     overall_score = Column(Numeric(5, 2), default=0)  # 0-100
 
-    calculated_at = Column(DateTime, default=datetime.utcnow)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    calculated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
     # Relationships
     venue = relationship("Venue", backref="supplier_performances")
@@ -291,9 +291,9 @@ class SupplierIssue(Base):
 
     # Reporter
     reported_by = Column(Integer, ForeignKey("staff_users.id"), nullable=False)
-    reported_at = Column(DateTime, default=datetime.utcnow)
+    reported_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
     # Relationships
     venue = relationship("Venue", backref="supplier_issues")
@@ -328,8 +328,8 @@ class ParLevelConfig(Base):
     safety_days = Column(Integer, default=2)
     target_days = Column(Integer, default=7)
 
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
 
     # Relationships
     venue = relationship("Venue", backref="par_level_configs")
@@ -370,9 +370,9 @@ class WasteLog(Base):
 
     # Staff
     recorded_by = Column(Integer, ForeignKey("staff_users.id"))
-    recorded_at = Column(DateTime, default=datetime.utcnow)
+    recorded_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
     # Relationships
     venue = relationship("Venue", backref="waste_logs")
@@ -403,7 +403,7 @@ class RecipeScaleLog(Base):
     purpose = Column(String(200))
     created_by = Column(Integer, ForeignKey("staff_users.id"))
 
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
     # Relationships
     venue = relationship("Venue", backref="recipe_scale_logs")
@@ -452,7 +452,7 @@ class StockTake(Base):
     created_by = Column(Integer, ForeignKey("staff_users.id"))
     approved_by = Column(Integer, ForeignKey("staff_users.id"))
 
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
     # Relationships
     venue = relationship("Venue", backref="stock_takes")
@@ -494,7 +494,7 @@ class StockTakeItem(Base):
     # Adjustment
     adjustment_applied = Column(Boolean, default=False)
 
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
     # Relationships
     stock_take = relationship("StockTake", back_populates="items")
@@ -547,9 +547,9 @@ class ScannedInvoice(Base):
 
     # Staff
     uploaded_by = Column(Integer, ForeignKey("staff_users.id"))
-    uploaded_at = Column(DateTime, default=datetime.utcnow)
+    uploaded_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
     # Relationships
     venue = relationship("Venue", backref="scanned_invoices")
@@ -580,7 +580,7 @@ class InvoiceMatchingRule(Base):
     priority = Column(Integer, default=0)
     is_active = Column(Boolean, default=True)
 
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
     # Relationships
     venue = relationship("Venue", backref="invoice_matching_rules")

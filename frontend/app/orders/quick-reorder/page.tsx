@@ -82,11 +82,11 @@ export default function QuickReorderPage() {
 
       const [ordersRes, productsRes, tablesRes, recentItemsRes, mostUsedRes] =
         await Promise.all([
-          fetch(`${API_URL}/orders/?limit=50&status=paid`, { headers }),
-          fetch(`${API_URL}/menu-admin/items`, { headers }),
-          fetch(`${API_URL}/tables/`, { headers }),
-          fetch(`${API_URL}/staff/${staffId}/recent-items?limit=20`, { headers }),
-          fetch(`${API_URL}/recent-items/most-used?limit=10`, { headers }),
+          fetch(`${API_URL}/orders/?limit=50&status=paid`, { credentials: 'include', headers }),
+          fetch(`${API_URL}/menu-admin/items`, { credentials: 'include', headers }),
+          fetch(`${API_URL}/tables/`, { credentials: 'include', headers }),
+          fetch(`${API_URL}/staff/${staffId}/recent-items?limit=20`, { credentials: 'include', headers }),
+          fetch(`${API_URL}/recent-items/most-used?limit=10`, { credentials: 'include', headers }),
         ]);
 
       if (ordersRes.ok) {
@@ -175,6 +175,7 @@ export default function QuickReorderPage() {
       };
 
       const response = await fetch(`${API_URL}/orders/`, {
+        credentials: 'include',
         method: "POST",
         headers: getAuthHeaders(),
         body: JSON.stringify(payload),

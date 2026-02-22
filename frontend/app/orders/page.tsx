@@ -113,7 +113,7 @@ export default function OrdersPage() {
 
   // Modal states
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
-  const [showNewOrderModal, setShowNewOrderModal] = useState(false);
+  const [, setShowNewOrderModal] = useState(false);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [showSplitBillModal, setShowSplitBillModal] = useState(false);
   const [splitWays, setSplitWays] = useState(2);
@@ -151,10 +151,10 @@ export default function OrdersPage() {
     try {
       // Fetch all data in parallel
       const [ordersRes, tablesRes, staffRes, statsRes] = await Promise.allSettled([
-        fetch(`${API_URL}/orders`, { headers }),
-        fetch(`${API_URL}/admin/tables`, { headers }),
-        fetch(`${API_URL}/staff`, { headers }),
-        fetch(`${API_URL}/orders/stats`, { headers }),
+        fetch(`${API_URL}/orders`, { credentials: 'include', headers }),
+        fetch(`${API_URL}/admin/tables`, { credentials: 'include', headers }),
+        fetch(`${API_URL}/staff`, { credentials: 'include', headers }),
+        fetch(`${API_URL}/orders/stats`, { credentials: 'include', headers }),
       ]);
 
       // Process orders
@@ -287,6 +287,7 @@ export default function OrdersPage() {
       const bodyData: Record<string, string> = { status: newStatus };
       if (paymentMethod) bodyData.payment_method = paymentMethod;
       const response = await fetch(`${API_URL}/orders/${orderId}/status`, {
+        credentials: 'include',
         method: 'PUT',
         headers,
         body: JSON.stringify(bodyData),
@@ -300,19 +301,11 @@ export default function OrdersPage() {
         }
       } else {
         console.error('Failed to update order status');
-        // Fallback: still update locally for UX
-        setOrders(orders.map(o => o.id === orderId ? { ...o, status: newStatus, updated_at: new Date().toISOString() } : o));
-        if (selectedOrder?.id === orderId) {
-          setSelectedOrder({ ...selectedOrder, status: newStatus });
-        }
+        toast.error('Failed to update order status. Please try again.');
       }
     } catch (error) {
       console.error('Error updating order status:', error);
-      // Fallback: update locally for UX
-      setOrders(orders.map(o => o.id === orderId ? { ...o, status: newStatus, updated_at: new Date().toISOString() } : o));
-      if (selectedOrder?.id === orderId) {
-        setSelectedOrder({ ...selectedOrder, status: newStatus });
-      }
+      toast.error('Error updating order status. Please try again.');
     }
   };
 
@@ -320,32 +313,39 @@ export default function OrdersPage() {
     const headers = getAuthHeaders();
 
     try {
-      await fetch(`${API_URL}/orders/${orderId}/items/${itemId}/status`, {
+      const response = await fetch(`${API_URL}/orders/${orderId}/items/${itemId}/status`, {
+        credentials: 'include',
         method: 'PATCH',
         headers,
         body: JSON.stringify({ status: newStatus }),
       });
+
+      if (response.ok) {
+        // Update local state only on success
+        setOrders(orders.map(o => {
+          if (o.id === orderId) {
+            const updatedItems = o.items.map(item =>
+              item.id === itemId ? { ...item, status: newStatus, prepared_at: newStatus === 'ready' ? new Date().toLocaleTimeString('bg-BG', { hour: '2-digit', minute: '2-digit' }) : item.prepared_at } : item
+            );
+            // Check if all items are ready
+            const allReady = updatedItems.filter(i => i.sent_to_kitchen).every(i => i.status === 'ready' || i.status === 'served');
+            const allServed = updatedItems.every(i => i.status === 'served');
+            return {
+              ...o,
+              items: updatedItems,
+              status: allServed ? 'served' : allReady && o.status === 'preparing' ? 'ready' : o.status
+            };
+          }
+          return o;
+        }));
+      } else {
+        console.error('Failed to update item status');
+        toast.error('Failed to update item status. Please try again.');
+      }
     } catch (error) {
       console.error('Error updating item status:', error);
+      toast.error('Error updating item status. Please try again.');
     }
-
-    // Update local state regardless of API success for UX
-    setOrders(orders.map(o => {
-      if (o.id === orderId) {
-        const updatedItems = o.items.map(item =>
-          item.id === itemId ? { ...item, status: newStatus, prepared_at: newStatus === 'ready' ? new Date().toLocaleTimeString('bg-BG', { hour: '2-digit', minute: '2-digit' }) : item.prepared_at } : item
-        );
-        // Check if all items are ready
-        const allReady = updatedItems.filter(i => i.sent_to_kitchen).every(i => i.status === 'ready' || i.status === 'served');
-        const allServed = updatedItems.every(i => i.status === 'served');
-        return {
-          ...o,
-          items: updatedItems,
-          status: allServed ? 'served' : allReady && o.status === 'preparing' ? 'ready' : o.status
-        };
-      }
-      return o;
-    }));
   };
 
   const handleVoidOrder = async () => {
@@ -354,6 +354,7 @@ export default function OrdersPage() {
 
     try {
       const response = await fetch(`${API_URL}/orders/${selectedOrder.id}/void`, {
+        credentials: 'include',
         method: 'POST',
         headers,
         body: JSON.stringify({ reason: voidReason }),
@@ -369,13 +370,6 @@ export default function OrdersPage() {
     }
   };
 
-  const handleVoidItem = async (itemId: string) => {
-    if (!selectedOrder) return;
-    setVoidItemId(itemId);
-    setVoidItemReason('');
-    setShowVoidItemModal(true);
-  };
-
   const handleConfirmVoidItem = async () => {
     if (!selectedOrder || !voidItemId || !voidItemReason) return;
     const headers = getAuthHeaders();
@@ -383,6 +377,7 @@ export default function OrdersPage() {
 
     try {
       const response = await fetch(`${API_URL}/orders/${selectedOrder.id}/items/${itemId}/void`, {
+        credentials: 'include',
         method: 'POST',
         headers,
         body: JSON.stringify({ reason: voidItemReason }),
@@ -415,6 +410,7 @@ export default function OrdersPage() {
 
     try {
       const response = await fetch(`${API_URL}/orders/${selectedOrder.id}/refund`, {
+        credentials: 'include',
         method: 'POST',
         headers,
         body: JSON.stringify({
@@ -440,6 +436,7 @@ export default function OrdersPage() {
 
     try {
       await fetch(`${API_URL}/orders/${selectedOrder.id}/reprint`, {
+        credentials: 'include',
         method: 'POST',
         headers,
         body: JSON.stringify({ station }),
@@ -462,7 +459,7 @@ export default function OrdersPage() {
 
     if (endpoint) {
       try {
-        await fetch(endpoint, { method: 'POST', headers });
+        await fetch(endpoint, { credentials: 'include', method: 'POST', headers });
         setOrders(orders.map(o => o.id === selectedOrder.id ? { ...o, priority } : o));
         if (selectedOrder) setSelectedOrder({ ...selectedOrder, priority });
       } catch (error) {
@@ -774,7 +771,6 @@ export default function OrdersPage() {
                       <div className="p-4">
                         <div className="space-y-2 max-h-32 overflow-y-auto">
                           {order.items.slice(0, 4).map((item) => {
-                            const itemStatus = getStatusConfig(item.status);
                             return (
                               <div key={item.id} className="flex items-center justify-between text-sm">
                                 <div className="flex items-center gap-2">
@@ -1031,7 +1027,7 @@ export default function OrdersPage() {
             <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
               <h3 className="text-lg font-bold text-gray-900 mb-4">Топ сервитьори</h3>
               <div className="space-y-3">
-                {staff.sort((a, b) => b.total_sales - a.total_sales).map((s, idx) => (
+                {[...staff].sort((a, b) => b.total_sales - a.total_sales).map((s, idx) => (
                   <div key={s.id} className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
                     <span className={`w-8 h-8 rounded-full flex items-center justify-center text-gray-900 font-bold ${idx === 0 ? 'bg-yellow-500' : idx === 1 ? 'bg-gray-400' : idx === 2 ? 'bg-orange-400' : 'bg-gray-300'}`}>
                       {idx + 1}

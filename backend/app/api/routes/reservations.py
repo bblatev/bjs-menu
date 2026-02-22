@@ -7,6 +7,7 @@ from pydantic import BaseModel, Field, field_validator
 
 from app.core.sanitize import sanitize_text
 from app.core.rate_limit import limiter
+from app.schemas.pagination import paginate_query, PaginatedResponse
 
 from app.db.session import DbSession
 from app.models.reservations import (
@@ -23,6 +24,20 @@ from app.schemas.reservations import (
 )
 
 router = APIRouter()
+
+
+def _serialize_orm(obj):
+    """Convert ORM model to dict for JSON serialization."""
+    d = {}
+    for col in obj.__table__.columns:
+        val = getattr(obj, col.name, None)
+        if isinstance(val, datetime):
+            d[col.name] = val.isoformat()
+        elif hasattr(val, 'value'):  # Enum
+            d[col.name] = val.value
+        else:
+            d[col.name] = val
+    return d
 
 
 # Flexible reservation creation schema for frontend compatibility
@@ -52,13 +67,15 @@ class FlexibleReservationCreate(BaseModel):
 
 # ==================== WAITLIST ROUTES (must be before /{reservation_id}) ====================
 
-@router.get("/waitlist", response_model=List[WaitlistResponse])
+@router.get("/waitlist")
 @limiter.limit("60/minute")
 def list_waitlist_no_slash(
     request: Request,
     db: DbSession,
     location_id: int = Query(1),
     status: Optional[str] = None,
+    skip: int = Query(0, ge=0),
+    limit: int = Query(50, ge=1, le=500),
 ):
     """List current waitlist (no trailing slash)."""
     query = db.query(Waitlist).filter(
@@ -70,16 +87,20 @@ def list_waitlist_no_slash(
     else:
         query = query.filter(Waitlist.status == WaitlistStatus.WAITING)
 
-    return query.order_by(Waitlist.added_at).all()
+    query = query.order_by(Waitlist.added_at)
+    items, total = paginate_query(query, skip, limit)
+    return PaginatedResponse.create(items=[_serialize_orm(i) for i in items], total=total, skip=skip, limit=limit)
 
 
-@router.get("/waitlist/", response_model=List[WaitlistResponse])
+@router.get("/waitlist/")
 @limiter.limit("60/minute")
 def list_waitlist(
     request: Request,
     db: DbSession,
     location_id: int = Query(1),
     status: Optional[str] = None,
+    skip: int = Query(0, ge=0),
+    limit: int = Query(50, ge=1, le=500),
 ):
     """List current waitlist."""
     query = db.query(Waitlist).filter(
@@ -91,7 +112,9 @@ def list_waitlist(
     else:
         query = query.filter(Waitlist.status == WaitlistStatus.WAITING)
 
-    return query.order_by(Waitlist.added_at).all()
+    query = query.order_by(Waitlist.added_at)
+    items, total = paginate_query(query, skip, limit)
+    return PaginatedResponse.create(items=[_serialize_orm(i) for i in items], total=total, skip=skip, limit=limit)
 
 
 @router.post("/waitlist", response_model=WaitlistResponse)
@@ -354,7 +377,7 @@ def get_reservation_calendar(
         Reservation.location_id == location_id,
         Reservation.reservation_date == target_date,
         Reservation.status.notin_([ReservationStatus.CANCELLED, ReservationStatus.NO_SHOW])
-    ).order_by(Reservation.reservation_date).all()
+    ).order_by(Reservation.reservation_date).limit(500).all()
 
     total_covers = sum(r.party_size for r in reservations)
 
@@ -390,7 +413,7 @@ def check_availability_get(
     service = ReservationService(db)
 
     if not date:
-        date = (dt.now().date() + timedelta(days=1)).strftime("%Y-%m-%d")
+        date = (dt.now(timezone.utc).date() + timedelta(days=1)).strftime("%Y-%m-%d")
     if not time:
         time = "19:00"
 
@@ -433,7 +456,7 @@ def check_availability_get(
 
 # ==================== RESERVATION CRUD ====================
 
-@router.get("/", response_model=List[ReservationResponse])
+@router.get("/")
 @limiter.limit("60/minute")
 def list_reservations(
     request: Request,
@@ -443,6 +466,8 @@ def list_reservations(
     date_to: Optional[date] = None,
     status: Optional[str] = None,
     date: Optional[date] = None,  # Alias for date_from for frontend compatibility
+    skip: int = Query(0, ge=0),
+    limit: int = Query(50, ge=1, le=500),
 ):
     """List reservations."""
     query = db.query(Reservation)
@@ -461,7 +486,9 @@ def list_reservations(
     if status:
         query = query.filter(Reservation.status == status)
 
-    return query.order_by(Reservation.reservation_date).all()
+    query = query.order_by(Reservation.reservation_date)
+    items, total = paginate_query(query, skip, limit)
+    return PaginatedResponse.create(items=[_serialize_orm(i) for i in items], total=total, skip=skip, limit=limit)
 
 
 @router.post("/", response_model=ReservationResponse)
@@ -911,17 +938,17 @@ def auto_assign_tables(
         Reservation.reservation_date >= dt.combine(target_date, time.min),
         Reservation.reservation_date <= dt.combine(target_date, time.max),
         Reservation.status.notin_([ReservationStatus.CANCELLED, ReservationStatus.NO_SHOW]),
-    ).all()
+    ).limit(500).all()
 
     # Get available tables for the venue, sorted by capacity ascending (best-fit)
     from app.models.restaurant import Table as RestaurantTable
     tables = db.query(RestaurantTable).filter(
         RestaurantTable.location_id == venue_id,
-    ).order_by(RestaurantTable.capacity.asc()).all()
+    ).order_by(RestaurantTable.capacity.asc()).limit(500).all()
 
     if not tables:
         # Fallback: try all tables if no location filter matches
-        tables = db.query(RestaurantTable).order_by(RestaurantTable.capacity.asc()).all()
+        tables = db.query(RestaurantTable).order_by(RestaurantTable.capacity.asc()).limit(500).all()
 
     # Build a set of table IDs already assigned for this date's reservations
     used_table_ids = set()

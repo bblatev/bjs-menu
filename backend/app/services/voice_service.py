@@ -343,7 +343,7 @@ class VoiceService:
         staff_user_id: int
     ) -> Dict[str, Any]:
         """Execute the intent action"""
-        from datetime import datetime
+        from datetime import datetime, timezone
         from app.models import StockItem
 
         if intent == "ready_orders":
@@ -380,7 +380,7 @@ class VoiceService:
             }
 
         elif intent == "today_summary":
-            today = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
+            today = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
             orders_today = self.db.query(Order).filter(
                 Order.created_at >= today
             ).all()

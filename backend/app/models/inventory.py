@@ -7,7 +7,7 @@ from decimal import Decimal
 from enum import Enum
 from typing import Optional, List
 
-from sqlalchemy import DateTime, Enum as SQLEnum, ForeignKey, Numeric, String, func
+from sqlalchemy import DateTime, Enum as SQLEnum, ForeignKey, Numeric, String, UniqueConstraint, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
@@ -73,7 +73,10 @@ class InventoryLine(Base):
     """A single product count in an inventory session."""
 
     __tablename__ = "inventory_lines"
-    __table_args__ = {'extend_existing': True}
+    __table_args__ = (
+        UniqueConstraint('session_id', 'product_id', name='uq_inventory_line_session_product'),
+        {'extend_existing': True},
+    )
 
     id: Mapped[int] = mapped_column(primary_key=True)
     session_id: Mapped[int] = mapped_column(

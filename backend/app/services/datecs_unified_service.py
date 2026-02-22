@@ -82,15 +82,15 @@ class PrinterConfig:
     connection: ConnectionMethod = ConnectionMethod.AUTO
 
     # FPGate settings
-    fpgate_url: str = "http://localhost:4444"
+    fpgate_url: str = None  # Resolved from settings at runtime
     fpgate_printer_id: str = "FP1"
 
     # ErpNet.FP settings
-    erpnet_host: str = "localhost"
-    erpnet_port: int = 8001
+    erpnet_host: str = None  # Resolved from settings at runtime
+    erpnet_port: int = None  # Resolved from settings at runtime
 
     # POS Fiscal Bridge settings
-    pos_bridge_host: str = "localhost"
+    pos_bridge_host: str = None  # Resolved from settings at runtime
     pos_bridge_port: int = 443
     pos_bridge_ssl: bool = True
 
@@ -109,6 +109,18 @@ class PrinterConfig:
     # Timeout
     timeout: float = 30.0
 
+    def __post_init__(self):
+        """Resolve None defaults from centralized settings."""
+        from app.core.config import settings
+        if self.fpgate_url is None:
+            self.fpgate_url = settings.fpgate_url
+        if self.erpnet_host is None:
+            self.erpnet_host = settings.erpnet_fp_host
+        if self.erpnet_port is None:
+            self.erpnet_port = settings.erpnet_fp_port
+        if self.pos_bridge_host is None:
+            self.pos_bridge_host = settings.pos_bridge_host
+
 
 class DatecsPrinterDriver(ABC):
     """Abstract base class for Datecs printer drivers"""
@@ -116,7 +128,7 @@ class DatecsPrinterDriver(ABC):
     @abstractmethod
     async def check_status(self) -> Dict[str, Any]:
         """Check printer status"""
-        pass
+        raise NotImplementedError("Subclasses must implement check_status")
 
     @abstractmethod
     async def print_fiscal_receipt(
@@ -126,27 +138,27 @@ class DatecsPrinterDriver(ABC):
         operator: str = "1"
     ) -> Dict[str, Any]:
         """Print fiscal receipt"""
-        pass
+        raise NotImplementedError("Subclasses must implement print_fiscal_receipt")
 
     @abstractmethod
     async def print_x_report(self) -> Dict[str, Any]:
         """Print X report"""
-        pass
+        raise NotImplementedError("Subclasses must implement print_x_report")
 
     @abstractmethod
     async def print_z_report(self) -> Dict[str, Any]:
         """Print Z report"""
-        pass
+        raise NotImplementedError("Subclasses must implement print_z_report")
 
     @abstractmethod
     async def void_receipt(self) -> Dict[str, Any]:
         """Void current receipt"""
-        pass
+        raise NotImplementedError("Subclasses must implement void_receipt")
 
     @abstractmethod
     async def print_non_fiscal(self, lines: List[str], title: str = "") -> Dict[str, Any]:
         """Print non-fiscal text"""
-        pass
+        raise NotImplementedError("Subclasses must implement print_non_fiscal")
 
 
 class FPGateDriver(DatecsPrinterDriver):
@@ -596,8 +608,8 @@ class DatecsUnifiedService:
             lines.append(f"Note: {notes[:30]}")
 
         lines.append("-" * 32)
-        from datetime import datetime
-        lines.append(datetime.now().strftime("%H:%M:%S"))
+        from datetime import datetime, timezone
+        lines.append(datetime.now(timezone.utc).strftime("%H:%M:%S"))
 
         return await self.print_non_fiscal(lines, "KITCHEN ORDER")
 
@@ -695,10 +707,10 @@ def get_datecs_service(config: PrinterConfig = None) -> DatecsUnifiedService:
         if config is None:
             from app.core.config import settings
             config = PrinterConfig(
-                fpgate_url=getattr(settings, "FPGATE_URL", "http://localhost:4444"),
+                fpgate_url=settings.fpgate_url,
                 fpgate_printer_id=getattr(settings, "FPGATE_PRINTER_ID", "FP1"),
-                erpnet_host=getattr(settings, "ERPNET_FP_HOST", "localhost"),
-                erpnet_port=getattr(settings, "ERPNET_FP_PORT", 8001),
+                erpnet_host=settings.erpnet_fp_host,
+                erpnet_port=settings.erpnet_fp_port,
                 operator=getattr(settings, "FPGATE_OPERATOR", "1"),
                 operator_password=getattr(settings, "FPGATE_OPERATOR_PASSWORD", "0000")
             )

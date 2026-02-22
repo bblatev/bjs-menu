@@ -82,7 +82,7 @@ export default function BarTabsPage() {
         endpoint += `?status=${statusMap[filter] || ''}`;
       }
 
-      const response = await fetch(endpoint, { headers });
+      const response = await fetch(endpoint, { credentials: 'include', headers });
       if (!response.ok) {
         throw new Error(`Failed to fetch tabs: ${response.status}`);
       }
@@ -114,7 +114,7 @@ export default function BarTabsPage() {
     try {
       const headers = getAuthHeaders();
 
-      const response = await fetch(`${API_URL}/bar/stats`, { headers });
+      const response = await fetch(`${API_URL}/bar/stats`, { credentials: 'include', headers });
       if (response.ok) {
         const data = await response.json();
         setStats(data);
@@ -132,6 +132,7 @@ export default function BarTabsPage() {
   const createTab = async () => {
     try {
       const response = await fetch(`${API_URL}/bar/tabs`, {
+        credentials: 'include',
         method: 'POST',
         headers: getAuthHeaders(),
         body: JSON.stringify({
@@ -168,6 +169,7 @@ export default function BarTabsPage() {
 
     try {
       const response = await fetch(`${API_URL}/bar/tabs/${selectedTab.id}/close`, {
+        credentials: 'include',
         method: 'POST',
         headers: getAuthHeaders(),
         body: JSON.stringify({

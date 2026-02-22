@@ -148,13 +148,40 @@ async def create_warehouse(request: Request, data: dict, db: DbSession):
 @limiter.limit("60/minute")
 async def get_warehouses(request: Request, db: DbSession):
     """Get all warehouses."""
-    warehouses = db.query(WarehouseModel).all()
+    warehouses = db.query(WarehouseModel).limit(500).all()
     return [_warehouse_to_schema(w) for w in warehouses]
+
+
+@router.get("/{warehouse_id}/detail")
+@limiter.limit("60/minute")
+async def get_warehouse_detail(request: Request, warehouse_id: int, db: DbSession):
+    """Get warehouse details (enhanced)."""
+    wh = db.query(WarehouseModel).filter(WarehouseModel.id == warehouse_id).first()
+    if not wh:
+        raise HTTPException(status_code=404, detail="Warehouse not found")
+    return _warehouse_to_schema(wh)
+
+
+@router.put("/{warehouse_id}")
+@limiter.limit("30/minute")
+async def update_warehouse(request: Request, warehouse_id: int, data: dict, db: DbSession):
+    """Update warehouse details."""
+    wh = db.query(WarehouseModel).filter(WarehouseModel.id == warehouse_id).first()
+    if not wh:
+        raise HTTPException(status_code=404, detail="Warehouse not found")
+
+    for key, value in data.items():
+        if hasattr(wh, key):
+            setattr(wh, key, value)
+
+    db.commit()
+    db.refresh(wh)
+    return _warehouse_to_schema(wh)
 
 
 @router.get("/stock-levels/")
 @limiter.limit("60/minute")
-async def get_all_stock_levels(request: Request, db: DbSession, warehouse_id: Optional[str] = None):
+async def get_all_stock_levels(request: Request, db: DbSession, warehouse_id: Optional[int] = None):
     """Get stock levels for all warehouses or a specific one.
 
     Stock levels are derived from completed transfers into/out of warehouses.
@@ -163,14 +190,14 @@ async def get_all_stock_levels(request: Request, db: DbSession, warehouse_id: Op
         WarehouseTransfer.status == "completed"
     )
     if warehouse_id:
-        wh_id = int(warehouse_id)
+        wh_id = warehouse_id
         query = query.filter(
             or_(
                 WarehouseTransfer.to_warehouse_id == wh_id,
                 WarehouseTransfer.from_warehouse_id == wh_id,
             )
         )
-    transfers = query.all()
+    transfers = query.limit(500).all()
 
     product_map: dict = {}
     for t in transfers:
@@ -188,7 +215,7 @@ async def get_all_stock_levels(request: Request, db: DbSession, warehouse_id: Op
             }
         qty = float(t.quantity or 0)
         if warehouse_id:
-            wh_id = int(warehouse_id)
+            wh_id = warehouse_id
             if t.to_warehouse_id == wh_id:
                 product_map[pid]["quantity"] += qty
             if t.from_warehouse_id == wh_id:
@@ -227,9 +254,9 @@ async def get_all_stock_levels(request: Request, db: DbSession, warehouse_id: Op
 
 @router.get("/stock-levels/{warehouse_id}")
 @limiter.limit("60/minute")
-async def get_stock_levels(request: Request, warehouse_id: str, db: DbSession):
+async def get_stock_levels(request: Request, warehouse_id: int, db: DbSession):
     """Get stock levels for a warehouse."""
-    wh = db.query(WarehouseModel).filter(WarehouseModel.id == int(warehouse_id)).first()
+    wh = db.query(WarehouseModel).filter(WarehouseModel.id == warehouse_id).first()
     if not wh:
         raise HTTPException(status_code=404, detail="Warehouse not found")
     return await get_all_stock_levels(request=request, db=db, warehouse_id=warehouse_id)
@@ -239,7 +266,7 @@ async def get_stock_levels(request: Request, warehouse_id: str, db: DbSession):
 @limiter.limit("60/minute")
 async def get_transfers(request: Request, db: DbSession):
     """Get all transfers."""
-    transfers = db.query(WarehouseTransfer).order_by(WarehouseTransfer.created_at.desc()).all()
+    transfers = db.query(WarehouseTransfer).order_by(WarehouseTransfer.created_at.desc()).limit(500).all()
 
     # Build warehouse name lookup
     wh_ids = set()

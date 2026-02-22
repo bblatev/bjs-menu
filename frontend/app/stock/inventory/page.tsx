@@ -76,13 +76,11 @@ export default function StockInventoryPage() {
   const [valuation, setValuation] = useState<any>(null);
 
   // Selected states
-  const [selectedWarehouse, setSelectedWarehouse] = useState<Warehouse | null>(null);
+  const [, setSelectedWarehouse] = useState<Warehouse | null>(null);
 
   // Modal states
   const [showWarehouseModal, setShowWarehouseModal] = useState(false);
   const [showTransferModal, setShowTransferModal] = useState(false);
-  const [showAdjustmentModal, setShowAdjustmentModal] = useState(false);
-  const [showBatchModal, setShowBatchModal] = useState(false);
 
   // Form states
   const [warehouseForm, setWarehouseForm] = useState({
@@ -97,13 +95,6 @@ export default function StockInventoryPage() {
     to_warehouse_id: 0,
     items: [] as { stock_item_id: number; quantity: number }[],
     notes: ""
-  });
-
-  const [adjustmentForm, setAdjustmentForm] = useState({
-    warehouse_id: 0,
-    adjustment_type: "count_variance",
-    reason: "",
-    items: [] as { stock_item_id: number; counted_quantity: number }[]
   });
 
   useEffect(() => {
@@ -124,7 +115,7 @@ export default function StockInventoryPage() {
 
     try {
       // Fetch warehouses
-      const warehousesRes = await fetch(`${API_URL}/warehouses`, { headers });
+      const warehousesRes = await fetch(`${API_URL}/warehouses`, { credentials: 'include', headers });
       if (warehousesRes.ok) {
         const data = await warehousesRes.json();
         setWarehouses(data);
@@ -132,19 +123,19 @@ export default function StockInventoryPage() {
       }
 
       // Fetch stock items
-      const stockRes = await fetch(`${API_URL}/stock`, { headers });
+      const stockRes = await fetch(`${API_URL}/stock`, { credentials: 'include', headers });
       if (stockRes.ok) setStockItems(await stockRes.json());
 
       // Fetch batches
-      const batchesRes = await fetch(`${API_URL}/stock/batches`, { headers });
+      const batchesRes = await fetch(`${API_URL}/stock/batches`, { credentials: 'include', headers });
       if (batchesRes.ok) setBatches(await batchesRes.json());
 
       // Fetch transfers
-      const transfersRes = await fetch(`${API_URL}/warehouses/transfers`, { headers });
+      const transfersRes = await fetch(`${API_URL}/warehouses/transfers`, { credentials: 'include', headers });
       if (transfersRes.ok) setTransfers(await transfersRes.json());
 
       // Fetch adjustments
-      const adjustmentsRes = await fetch(`${API_URL}/stock/adjustments`, { headers });
+      const adjustmentsRes = await fetch(`${API_URL}/stock/adjustments`, { credentials: 'include', headers });
       if (adjustmentsRes.ok) setAdjustments(await adjustmentsRes.json());
 
     } catch (error) {
@@ -158,6 +149,7 @@ export default function StockInventoryPage() {
     try {
       const token = localStorage.getItem("access_token");
       const res = await fetch(`${API_URL}/stock/expiring?days=30`, {
+        credentials: 'include',
         headers: { Authorization: `Bearer ${token}` }
       });
       if (res.ok) setExpiringItems(await res.json());
@@ -170,6 +162,7 @@ export default function StockInventoryPage() {
     try {
       const token = localStorage.getItem("access_token");
       const res = await fetch(`${API_URL}/stock/valuation`, {
+        credentials: 'include',
         headers: { Authorization: `Bearer ${token}` }
       });
       if (res.ok) setValuation(await res.json());
@@ -183,6 +176,7 @@ export default function StockInventoryPage() {
     try {
       const token = localStorage.getItem("access_token");
       const res = await fetch(`${API_URL}/warehouses`, {
+        credentials: 'include',
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -211,6 +205,7 @@ export default function StockInventoryPage() {
     try {
       const token = localStorage.getItem("access_token");
       const res = await fetch(`${API_URL}/warehouses/transfers`, {
+        credentials: 'include',
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -234,6 +229,7 @@ export default function StockInventoryPage() {
     try {
       const token = localStorage.getItem("access_token");
       await fetch(`${API_URL}/warehouses/transfers/${transferId}/complete`, {
+        credentials: 'include',
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
@@ -250,6 +246,7 @@ export default function StockInventoryPage() {
     try {
       const token = localStorage.getItem("access_token");
       await fetch(`${API_URL}/stock/adjustments/${adjustmentId}/approve`, {
+        credentials: 'include',
         method: "PUT",
         headers: { Authorization: `Bearer ${token}` }
       });

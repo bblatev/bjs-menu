@@ -143,11 +143,14 @@ class GoogleReserveService:
 
         Returns availability status for a specific slot.
         """
-        # This would query your reservation system
-        # For now, return a mock response
-
-        # Check if slot is available (mock logic)
-        is_available = True  # Replace with actual availability check
+        # TODO: Integrate with the actual reservation system to check real availability.
+        # This currently returns a placeholder response. Wire up to your reservations
+        # database or service before enabling Google Reserve in production.
+        logger.warning(
+            "handle_check_availability is not integrated with a real reservation system. "
+            "Returning unavailable status. Implement actual availability checks before "
+            "enabling Google Reserve."
+        )
 
         return {
             "slot": {
@@ -157,7 +160,7 @@ class GoogleReserveService:
                 "duration_sec": duration_minutes * 60,
                 "availability_tag": "table-for-" + str(party_size),
             },
-            "count_available": 5 if is_available else 0,
+            "count_available": 0,
             "last_online_cancellable_sec": int((slot_time - timedelta(hours=2)).timestamp()),
             "duration_requirement": "DURATION_REQUIREMENT_UNSPECIFIED",
             "availability_update": None,
@@ -179,7 +182,7 @@ class GoogleReserveService:
         # Extract booking details
         slot_time = datetime.fromtimestamp(slot.get("start_sec", 0))
 
-        booking_id = f"GR-{datetime.now().strftime('%Y%m%d%H%M%S')}-{party_size}"
+        booking_id = f"GR-{datetime.now(timezone.utc).strftime('%Y%m%d%H%M%S')}-{party_size}"
 
         # Create reservation in your system
         # This would call your reservations service
@@ -240,13 +243,18 @@ class GoogleReserveService:
 
         Returns current status of a booking.
         """
-        # Query your reservation system for the booking
-        # For now, return a mock response
+        # TODO: Query the actual reservation system for the booking status.
+        # This currently returns an error. Implement database lookup before
+        # enabling Google Reserve in production.
+        logger.warning(
+            f"handle_get_booking_status for booking {booking_id} is not integrated "
+            "with a real reservation system."
+        )
 
-        return {
-            "booking_id": booking_id,
-            "booking_status": "CONFIRMED",
-        }
+        raise NotImplementedError(
+            "GetBookingStatus is not yet integrated with the reservation system. "
+            "Implement database lookup for booking status before enabling Google Reserve."
+        )
 
     async def handle_list_bookings(
         self,
@@ -257,12 +265,18 @@ class GoogleReserveService:
 
         Returns all bookings for a user.
         """
-        # Query your reservation system for user's bookings
-        # For now, return empty list
+        # TODO: Query the actual reservation system for user's bookings.
+        # This currently raises an error. Implement database lookup before
+        # enabling Google Reserve in production.
+        logger.warning(
+            f"handle_list_bookings for user {user_id} is not integrated "
+            "with a real reservation system."
+        )
 
-        return {
-            "bookings": [],
-        }
+        raise NotImplementedError(
+            "ListBookings is not yet integrated with the reservation system. "
+            "Implement database lookup for user bookings before enabling Google Reserve."
+        )
 
     # =========================================================================
     # Real-time Updates (Push to Google)
@@ -423,10 +437,9 @@ def get_google_reserve_service() -> Optional[GoogleReserveService]:
     """Get or create Google Reserve service."""
     global _google_reserve_service
     if _google_reserve_service is None:
-        import os
         partner_id = settings.google_reserve_partner_id
         api_key = settings.google_reserve_api_key
-        webhook_secret = os.getenv("GOOGLE_RESERVE_WEBHOOK_SECRET")
+        webhook_secret = settings.google_reserve_webhook_secret
         merchant_id = settings.google_reserve_merchant_id
 
         if partner_id and api_key and merchant_id:

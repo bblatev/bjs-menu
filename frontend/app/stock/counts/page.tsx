@@ -63,6 +63,7 @@ export default function StockCountsPage() {
     try {
       // Load categories
       const catRes = await fetch(`${API_URL}/stock/categories`, {
+        credentials: 'include',
         headers: { Authorization: `Bearer ${token}` }
       });
       if (catRes.ok) {
@@ -75,6 +76,7 @@ export default function StockCountsPage() {
 
       // Load locations/warehouses
       const locRes = await fetch(`${API_URL}/warehouses`, {
+        credentials: 'include',
         headers: { Authorization: `Bearer ${token}` }
       });
       if (locRes.ok) {
@@ -95,6 +97,7 @@ export default function StockCountsPage() {
     const token = localStorage.getItem('access_token');
     try {
       const res = await fetch(`${API_URL}/stock/counts`, {
+        credentials: 'include',
         headers: { Authorization: `Bearer ${token}` }
       });
       if (res.ok) {
@@ -110,6 +113,7 @@ export default function StockCountsPage() {
     const token = localStorage.getItem('access_token');
     try {
       const res = await fetch(`${API_URL}/stock/counts/${countId}`, {
+        credentials: 'include',
         headers: { Authorization: `Bearer ${token}` }
       });
       if (res.ok) {
@@ -143,6 +147,7 @@ export default function StockCountsPage() {
       if (newCount.location) params.append('location', newCount.location);
 
       const res = await fetch(`${API_URL}/stock/counts?${params.toString()}`, {
+        credentials: 'include',
         method: 'POST',
         headers: { Authorization: `Bearer ${token}` }
       });
@@ -185,6 +190,7 @@ export default function StockCountsPage() {
     const token = localStorage.getItem('access_token');
     try {
       const res = await fetch(`${API_URL}/stock/counts/${activeCount.id}/items/${itemId}?counted_quantity=${countedQty}`, {
+        credentials: 'include',
         method: 'PUT',
         headers: { Authorization: `Bearer ${token}` }
       });
@@ -215,6 +221,7 @@ export default function StockCountsPage() {
     const token = localStorage.getItem('access_token');
     try {
       const res = await fetch(`${API_URL}/stock/counts/${activeCount.id}/complete`, {
+        credentials: 'include',
         method: 'PUT',
         headers: { Authorization: `Bearer ${token}` }
       });
@@ -237,6 +244,7 @@ export default function StockCountsPage() {
     const token = localStorage.getItem('access_token');
     try {
       const res = await fetch(`${API_URL}/stock/counts/${countId}/approve?apply_adjustments=true`, {
+        credentials: 'include',
         method: 'PUT',
         headers: { Authorization: `Bearer ${token}` }
       });

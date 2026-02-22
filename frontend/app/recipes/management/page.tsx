@@ -72,7 +72,7 @@ export default function RecipeManagementPage() {
 
   // Modals
   const [showRecipeModal, setShowRecipeModal] = useState(false);
-  const [showIngredientModal, setShowIngredientModal] = useState(false);
+  const [, setShowIngredientModal] = useState(false);
 
   // Recipe form
   const [recipeForm, setRecipeForm] = useState({
@@ -101,6 +101,7 @@ export default function RecipeManagementPage() {
     try {
       const token = localStorage.getItem("access_token");
       const res = await fetch(`${API_URL}/recipes?venue_id=1`, {
+        credentials: 'include',
         headers: { Authorization: `Bearer ${token}` }
       });
       if (res.ok) {
@@ -122,22 +123,22 @@ export default function RecipeManagementPage() {
 
     try {
       // Fetch full recipe with ingredients
-      const recipeRes = await fetch(`${API_URL}/recipes/${recipeId}`, { headers });
+      const recipeRes = await fetch(`${API_URL}/recipes/${recipeId}`, { credentials: 'include', headers });
       if (recipeRes.ok) {
         const data = await recipeRes.json();
         if (data.ingredients) setIngredients(data.ingredients);
       }
 
       // Fetch versions
-      const versionsRes = await fetch(`${API_URL}/recipes/${recipeId}/versions`, { headers });
+      const versionsRes = await fetch(`${API_URL}/recipes/${recipeId}/versions`, { credentials: 'include', headers });
       if (versionsRes.ok) setVersions(await versionsRes.json());
 
       // Fetch current cost
-      const costRes = await fetch(`${API_URL}/recipes/${recipeId}/cost`, { headers });
+      const costRes = await fetch(`${API_URL}/recipes/${recipeId}/cost`, { credentials: 'include', headers });
       if (costRes.ok) setCurrentCost(await costRes.json());
 
       // Fetch cost history
-      const historyRes = await fetch(`${API_URL}/recipes/${recipeId}/cost-history`, { headers });
+      const historyRes = await fetch(`${API_URL}/recipes/${recipeId}/cost-history`, { credentials: 'include', headers });
       if (historyRes.ok) setCostHistory(await historyRes.json());
 
     } catch (error) {
@@ -152,6 +153,7 @@ export default function RecipeManagementPage() {
     try {
       const token = localStorage.getItem("access_token");
       const res = await fetch(`${API_URL}/recipes/scale`, {
+        credentials: 'include',
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -179,6 +181,7 @@ export default function RecipeManagementPage() {
     try {
       const token = localStorage.getItem("access_token");
       const res = await fetch(`${API_URL}/recipes?venue_id=1`, {
+        credentials: 'include',
         method: "POST",
         headers: {
           "Content-Type": "application/json",

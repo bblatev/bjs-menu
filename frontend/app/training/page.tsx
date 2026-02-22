@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { API_URL } from '@/lib/api';
 
 interface TrainingSession {
@@ -80,6 +80,7 @@ export default function TrainingModePage() {
       // Load active training sessions from API
       const token = localStorage.getItem('access_token');
       const res = await fetch(`${API_URL}/training/sessions/active`, {
+        credentials: 'include',
         headers: { Authorization: `Bearer ${token}` },
       });
       if (res.ok) {
@@ -98,6 +99,7 @@ export default function TrainingModePage() {
     try {
       const token = localStorage.getItem('access_token');
       const res = await fetch(`${API_URL}/training/sessions/start`, {
+        credentials: 'include',
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({ user_id: selectedUser }),
@@ -143,6 +145,7 @@ export default function TrainingModePage() {
     try {
       const token = localStorage.getItem('access_token');
       await fetch(`${API_URL}/training/sessions/end`, {
+        credentials: 'include',
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({ session_id: currentSession.sessionId }),
@@ -213,7 +216,7 @@ export default function TrainingModePage() {
     setPracticeMode('checkout');
   };
 
-  const processPracticePayment = async (method: 'cash' | 'card') => {
+  const processPracticePayment = async (_method: 'cash' | 'card') => {
     if (!currentSession) return;
 
     await new Promise(resolve => setTimeout(resolve, 300));

@@ -18,7 +18,7 @@ class Supplier(Base, TimestampMixin):
     __table_args__ = {'extend_existing': True}
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    name: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
+    name: Mapped[str] = mapped_column(String(255), nullable=False, unique=True, index=True)
     contact_phone: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
     contact_email: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
     address: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)

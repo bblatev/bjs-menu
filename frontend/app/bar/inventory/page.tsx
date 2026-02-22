@@ -26,17 +26,6 @@ interface LiquorItem {
   supplier: string;
 }
 
-interface BottleCount {
-  id: number;
-  item_id: number;
-  item_name: string;
-  location: string;
-  full_bottles: number;
-  partial_percentage: number;
-  counted_by: string;
-  counted_at: string;
-}
-
 const CATEGORIES = [
   { value: 'vodka', label: 'Vodka', icon: '🍸' },
   { value: 'gin', label: 'Gin', icon: '🫒' },
@@ -54,7 +43,7 @@ const LOCATIONS = ['Main Bar', 'Back Bar', 'Service Bar', 'Storage Room', 'Wine 
 export default function BarInventoryPage() {
   const [items, setItems] = useState<LiquorItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [, setError] = useState<string | null>(null);
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [selectedLocation, setSelectedLocation] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState('');
@@ -76,6 +65,7 @@ export default function BarInventoryPage() {
     try {
       const headers = getAuthHeaders();
       const response = await fetch(`${API_URL}/bar/inventory`, {
+        credentials: 'include',
         headers,
       });
 
@@ -189,6 +179,7 @@ export default function BarInventoryPage() {
   const handleAddItem = async () => {
     try {
       const response = await fetch(`${API_URL}/stock/`, {
+        credentials: 'include',
         method: 'POST',
         headers: getAuthHeaders(),
         body: JSON.stringify({

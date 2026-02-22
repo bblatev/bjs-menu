@@ -101,13 +101,11 @@ export default function CustomersPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [search, filter, segmentFilter]);
 
-  const getToken = () => localStorage.getItem('access_token');
-
   const loadCustomers = async () => {
     try {
       setError(null);
-      const token = getToken();
-      if (!token) {
+      const headers = getAuthHeaders();
+      if (!headers['Authorization']) {
         router.push('/login');
         return;
       }
@@ -118,7 +116,8 @@ export default function CustomersPage() {
       if (segmentFilter !== 'all') url += `segment=${segmentFilter}`;
 
       const response = await fetch(url, {
-        headers: { Authorization: `Bearer ${token}` },
+        credentials: 'include',
+        headers: getAuthHeaders(),
       });
 
       if (response.ok) {
@@ -146,11 +145,12 @@ export default function CustomersPage() {
 
   const loadUpcomingEvents = async () => {
     try {
-      const token = getToken();
-      if (!token) return;
+      const headers = getAuthHeaders();
+      if (!headers['Authorization']) return;
 
       const response = await fetch(`${API_URL}/crm/customers/upcoming-events?days=30`, {
-        headers: { Authorization: `Bearer ${token}` },
+        credentials: 'include',
+        headers: getAuthHeaders(),
       });
 
       if (response.ok) {
@@ -181,11 +181,12 @@ export default function CustomersPage() {
 
   const loadSpendTrends = async () => {
     try {
-      const token = getToken();
-      if (!token) return;
+      const headers = getAuthHeaders();
+      if (!headers['Authorization']) return;
 
       const response = await fetch(`${API_URL}/reports/trends?period=year`, {
-        headers: { Authorization: `Bearer ${token}` },
+        credentials: 'include',
+        headers: getAuthHeaders(),
       });
 
       if (response.ok) {
@@ -222,9 +223,9 @@ export default function CustomersPage() {
 
   const loadOrderHistory = async (customerId: number) => {
     try {
-      const token = getToken();
       const response = await fetch(`${API_URL}/customers/${customerId}/orders`, {
-        headers: { Authorization: `Bearer ${token}` },
+        credentials: 'include',
+        headers: getAuthHeaders(),
       });
 
       if (response.ok) {
@@ -239,17 +240,14 @@ export default function CustomersPage() {
 
   const saveCustomer = async () => {
     try {
-      const token = getToken();
       const url = editingCustomer
         ? `${API_URL}/customers/${editingCustomer.id}`
         : `${API_URL}/customers/`;
 
       const response = await fetch(url, {
+        credentials: 'include',
         method: editingCustomer ? 'PUT' : 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
+        headers: getAuthHeaders(),
         body: JSON.stringify({
           ...formData,
           allergies: formData.allergies.split(',').map(a => a.trim()).filter(Boolean),
@@ -271,10 +269,10 @@ export default function CustomersPage() {
     if (!confirm('Are you sure you want to delete this customer? This cannot be undone.')) return;
 
     try {
-      const token = getToken();
       await fetch(`${API_URL}/customers/${id}`, {
+        credentials: 'include',
         method: 'DELETE',
-        headers: { Authorization: `Bearer ${token}` },
+        headers: getAuthHeaders(),
       });
       loadCustomers();
       setSelectedCustomer(null);
@@ -564,7 +562,7 @@ export default function CustomersPage() {
           <div className="bg-secondary rounded-lg p-6">
             <h3 className="text-gray-900 font-semibold mb-4">Revenue Trend (Last 6 Months)</h3>
             <div className="flex items-end gap-2 h-40">
-              {spendTrends.map((trend, idx) => (
+              {spendTrends.map((trend, _idx) => (
                 <div key={trend.month} className="flex-1 flex flex-col items-center">
                   <div
                     className="w-full bg-primary rounded-t transition-all hover:bg-primary/80"

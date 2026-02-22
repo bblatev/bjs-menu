@@ -1,19 +1,19 @@
 """Authentication schemas."""
 
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr, Field
 
 
 class LoginRequest(BaseModel):
     """Login request body."""
 
     email: EmailStr
-    password: str
+    password: str = Field(..., min_length=1, max_length=128)
 
 
 class PinLoginRequest(BaseModel):
     """PIN login request body."""
 
-    pin: str
+    pin: str = Field(..., min_length=4, max_length=8)
 
 
 class Token(BaseModel):

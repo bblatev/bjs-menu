@@ -18,7 +18,7 @@ from sqlalchemy import (
     ForeignKey, Date, Numeric, Index
 )
 from sqlalchemy.orm import relationship
-from datetime import datetime
+from datetime import datetime, timezone
 from enum import Enum as PyEnum
 from app.db.base import Base
 
@@ -75,8 +75,8 @@ class SSOConfiguration(Base):
     auto_provision_users = Column(Boolean, default=True)
     default_role = Column(String(50), default="staff")
     is_active = Column(Boolean, default=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
 
 
 class SSOSession(Base):
@@ -94,8 +94,8 @@ class SSOSession(Base):
     token_expires_at = Column(DateTime, nullable=True)
     user_info = Column(JSON, default=dict)
     is_active = Column(Boolean, default=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
-    last_activity_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    last_activity_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
     ended_at = Column(DateTime, nullable=True)
 
 
@@ -117,7 +117,7 @@ class ChatChannel(Base):
     members = Column(JSON, default=list)
     is_active = Column(Boolean, default=True)
     last_message_at = Column(DateTime, nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
 
 class ChatMessage(Base):
@@ -137,7 +137,7 @@ class ChatMessage(Base):
     edited_at = Column(DateTime, nullable=True)
     is_deleted = Column(Boolean, default=False)
     deleted_at = Column(DateTime, nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
 
 class MessageAcknowledgment(Base):
@@ -148,7 +148,7 @@ class MessageAcknowledgment(Base):
     id = Column(String(36), primary_key=True)
     message_id = Column(String(36), nullable=False, index=True)
     user_id = Column(String(36), nullable=False, index=True)
-    read_at = Column(DateTime, default=datetime.utcnow)
+    read_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
 
 class TeamAnnouncement(Base):
@@ -168,7 +168,7 @@ class TeamAnnouncement(Base):
     require_acknowledgment = Column(Boolean, default=False)
     acknowledgments = Column(JSON, default=list)
     is_active = Column(Boolean, default=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
 
 # =====================================================
@@ -188,7 +188,7 @@ class LaborComplianceRule(Base):
     conditions = Column(JSON, default=dict)
     action = Column(String(20), default="warn")  # warn, block, notify
     is_active = Column(Boolean, default=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
 
 class LaborComplianceViolation(Base):
@@ -204,7 +204,7 @@ class LaborComplianceViolation(Base):
     violation_type = Column(String(50), nullable=False)
     details = Column(JSON, default=dict)
     status = Column(String(20), default="open")  # open, resolved, dismissed
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
 
 # =====================================================
@@ -231,7 +231,7 @@ class ABExperiment(Base):
     ended_at = Column(DateTime, nullable=True)
     winner_variant = Column(String(100), nullable=True)
     created_by = Column(String(36), nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
 
 class ExperimentAssignment(Base):
@@ -244,7 +244,7 @@ class ExperimentAssignment(Base):
     user_id = Column(String(255), nullable=False, index=True)
     user_type = Column(String(20), default="customer")  # customer, session, order
     variant_id = Column(String(100), nullable=True)
-    assigned_at = Column(DateTime, default=datetime.utcnow)
+    assigned_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
     converted = Column(Boolean, default=False)
     converted_at = Column(DateTime, nullable=True)
     conversion_value = Column(Float, nullable=True)
@@ -266,8 +266,8 @@ class ReviewLink(Base):
     link_url = Column(String(500), nullable=False)
     click_count = Column(Integer, default=0)
     last_clicked_at = Column(DateTime, nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
 
 
 class ReviewRequest(Base):
@@ -284,7 +284,7 @@ class ReviewRequest(Base):
     scheduled_at = Column(DateTime, nullable=True)
     sent_at = Column(DateTime, nullable=True)
     error_message = Column(Text, nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
 
 # =====================================================
@@ -303,8 +303,8 @@ class IntegrationCredential(Base):
     meta_data = Column(JSON, default=dict)
     is_active = Column(Boolean, default=True)
     last_sync_at = Column(DateTime, nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
 
 
 class ZapierWebhook(Base):
@@ -322,7 +322,7 @@ class ZapierWebhook(Base):
     trigger_count = Column(Integer, default=0)
     last_triggered_at = Column(DateTime, nullable=True)
     last_error = Column(Text, nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
 
 # =====================================================
@@ -343,7 +343,7 @@ class PushToken(Base):
     device_info = Column(JSON, default=dict)
     is_active = Column(Boolean, default=True)
     last_used_at = Column(DateTime, nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
 
 class PushNotification(Base):
@@ -364,7 +364,7 @@ class PushNotification(Base):
     sent_at = Column(DateTime, nullable=True)
     read_at = Column(DateTime, nullable=True)
     error_message = Column(Text, nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
 
 class EmployeeAppSession(Base):
@@ -383,7 +383,7 @@ class EmployeeAppSession(Base):
     sync_version = Column(Integer, default=0)
     is_active = Column(Boolean, default=True)
     ended_at = Column(DateTime, nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
 
 class CustomerAppSession(Base):
@@ -401,7 +401,7 @@ class CustomerAppSession(Base):
     last_sync_at = Column(DateTime, nullable=True)
     is_active = Column(Boolean, default=True)
     ended_at = Column(DateTime, nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
 
 # =====================================================
@@ -425,7 +425,7 @@ class Developer(Base):
     tier = Column(String(20), default="free")  # free, starter, professional, enterprise
     rate_limit_per_minute = Column(Integer, default=60)
     rate_limit_per_day = Column(Integer, default=10000)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
 
 class APIKey(Base):
@@ -446,7 +446,7 @@ class APIKey(Base):
     last_used_at = Column(DateTime, nullable=True)
     expires_at = Column(DateTime, nullable=True)
     revoked_at = Column(DateTime, nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
 
 class APILog(Base):
@@ -464,7 +464,7 @@ class APILog(Base):
     response_body_size = Column(Integer, default=0)
     error_message = Column(Text, nullable=True)
     ip_address = Column(String(50), nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
 
 class MarketplaceApp(Base):
@@ -495,8 +495,8 @@ class MarketplaceApp(Base):
     submitted_at = Column(DateTime, nullable=True)
     published_at = Column(DateTime, nullable=True)
     rejection_reason = Column(Text, nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
 
 
 class AppInstallation(Base):
@@ -511,7 +511,7 @@ class AppInstallation(Base):
     granted_scopes = Column(JSON, default=list)
     is_active = Column(Boolean, default=True)
     billing_cycle = Column(String(20), default="monthly")
-    installed_at = Column(DateTime, default=datetime.utcnow)
+    installed_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
     uninstalled_at = Column(DateTime, nullable=True)
 
 
@@ -528,8 +528,8 @@ class AppReview(Base):
     title = Column(String(200), nullable=True)
     body = Column(Text, nullable=True)
     is_verified = Column(Boolean, default=False)
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
 
 
 # =====================================================
@@ -554,7 +554,7 @@ class AIDemandForecast(Base):
     model_version = Column(String(20), nullable=True)
     actual_covers = Column(Integer, nullable=True)
     actual_revenue = Column(Numeric(12, 2), nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
 
 class AIItemDemandForecast(Base):
@@ -569,7 +569,7 @@ class AIItemDemandForecast(Base):
     confidence_low = Column(Float, default=0)
     confidence_high = Column(Float, default=0)
     actual_quantity = Column(Integer, nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
 
 class ScheduleProposal(Base):
@@ -586,7 +586,7 @@ class ScheduleProposal(Base):
     coverage_score = Column(Numeric(5, 2), default=0)
     shifts_data = Column(JSON, default=list)
     status = Column(String(20), default="proposed")  # proposed, approved, rejected
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
 
 class PurchasePlanProposal(Base):
@@ -600,7 +600,7 @@ class PurchasePlanProposal(Base):
     total_cost = Column(Numeric(12, 2), default=0)
     purchase_orders = Column(JSON, default=list)
     status = Column(String(20), default="proposed")  # proposed, approved, rejected
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
 
 # =====================================================
@@ -634,7 +634,7 @@ class PLSnapshot(Base):
     avg_ticket = Column(Numeric(10, 2), default=0)
     guest_count = Column(Integer, default=0)
     meta_data = Column(JSON, default=dict)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
 
 class SavingOpportunity(Base):
@@ -653,8 +653,8 @@ class SavingOpportunity(Base):
     description = Column(Text, nullable=True)
     status = Column(String(20), default="open")  # open, in_progress, resolved, dismissed
     actual_savings = Column(Float, nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
 
 
 # =====================================================
@@ -675,7 +675,7 @@ class WebhookDelivery(Base):
     response_status = Column(Integer, nullable=True)
     error_message = Column(Text, nullable=True)
     retry_count = Column(Integer, default=0)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
 
 # =====================================================
@@ -705,7 +705,7 @@ class SDKHardwareDevice(Base):
     is_active = Column(Boolean, default=True)
     last_seen_at = Column(DateTime, nullable=True)
     last_heartbeat = Column(DateTime, nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
 
 class SDKTerminalSession(Base):
@@ -717,7 +717,7 @@ class SDKTerminalSession(Base):
     device_id = Column(String(36), nullable=False, index=True)
     session_type = Column(String(20), default="payment")
     status = Column(String(20), default="active")  # active, completed, expired
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
     ended_at = Column(DateTime, nullable=True)
 
 
@@ -733,7 +733,7 @@ class SDKTerminalCommand(Base):
     status = Column(String(20), default="pending")  # pending, processing, completed, failed
     result = Column(JSON, nullable=True)
     error = Column(Text, nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
     completed_at = Column(DateTime, nullable=True)
 
 
@@ -747,7 +747,7 @@ class SDKDeviceLog(Base):
     event_type = Column(String(50), nullable=False)
     message = Column(Text, nullable=True)
     data = Column(JSON, default=dict)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
 
 # =====================================================
@@ -765,8 +765,8 @@ class BNPLConfiguration(Base):
     credentials_encrypted = Column(Text, nullable=True)
     settings = Column(JSON, default=dict)
     is_active = Column(Boolean, default=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
 
 
 class BNPLTransaction(Base):
@@ -789,5 +789,5 @@ class BNPLTransaction(Base):
     captured_at = Column(DateTime, nullable=True)
     refunded_amount = Column(Numeric(10, 2), nullable=True)
     refunded_at = Column(DateTime, nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))

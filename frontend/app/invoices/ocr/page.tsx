@@ -54,6 +54,7 @@ export default function InvoiceOCRPage() {
   const loadJobs = async () => {
     try {
       const response = await fetch(`${API_URL}/enterprise/invoice-ocr/jobs`, {
+        credentials: 'include',
         headers: getAuthHeaders()
       });
 
@@ -161,6 +162,7 @@ export default function InvoiceOCRPage() {
         formData.append('file', file);
 
         const response = await fetch(`${API_URL}/enterprise/invoice-ocr/upload`, {
+          credentials: 'include',
           method: 'POST',
           headers: { 'Authorization': getAuthHeaders()['Authorization'] },
           body: formData
@@ -195,6 +197,7 @@ export default function InvoiceOCRPage() {
   const handleApprove = async (job: OCRJob) => {
     try {
       const response = await fetch(`${API_URL}/enterprise/invoice-ocr/jobs/${job.id}/approve`, {
+        credentials: 'include',
         method: 'POST',
         headers: getAuthHeaders()
       });
@@ -218,6 +221,7 @@ export default function InvoiceOCRPage() {
   const handleReject = async (job: OCRJob) => {
     try {
       await fetch(`${API_URL}/enterprise/invoice-ocr/jobs/${job.id}/reject`, {
+        credentials: 'include',
         method: 'POST',
         headers: getAuthHeaders()
       });

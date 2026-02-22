@@ -77,7 +77,7 @@ async def get_demand_forecast(
     """
     # Get historical sales data (last 90 days)
     # In production, query from database
-    end_date = datetime.now()
+    end_date = datetime.now(timezone.utc)
     start_date = end_date - timedelta(days=90)
 
     # Mock historical data for demonstration
@@ -133,7 +133,7 @@ async def create_custom_forecast(
     Create a custom demand forecast with specific parameters.
     """
     # Get historical data for specified items
-    end_date = datetime.now()
+    end_date = datetime.now(timezone.utc)
     start_date = end_date - timedelta(days=90)
 
     historical_data = _get_mock_historical_data(
@@ -285,8 +285,8 @@ async def predict_stock_requirements(
     # Get demand forecast
     historical_data = _get_mock_historical_data(
         current_user.venue_id,
-        datetime.now() - timedelta(days=90),
-        datetime.now()
+        datetime.now(timezone.utc) - timedelta(days=90),
+        datetime.now(timezone.utc)
     )
 
     demand_forecast = analytics_service.forecast_demand(
@@ -334,8 +334,8 @@ async def get_reorder_suggestions(
 
     historical_data = _get_mock_historical_data(
         current_user.venue_id,
-        datetime.now() - timedelta(days=90),
-        datetime.now(),
+        datetime.now(timezone.utc) - timedelta(days=90),
+        datetime.now(timezone.utc),
         item_ids=stock_request.item_ids
     )
 
@@ -361,10 +361,10 @@ async def get_reorder_suggestions(
                 "suggested_quantity": req["suggested_order_quantity"],
                 "urgency": req["urgency"],
                 "order_by_date": (
-                    datetime.now() + timedelta(days=max(0, req["days_until_reorder"] - stock_request.lead_time_days))
+                    datetime.now(timezone.utc) + timedelta(days=max(0, req["days_until_reorder"] - stock_request.lead_time_days))
                 ).strftime("%Y-%m-%d"),
                 "expected_stockout_date": (
-                    datetime.now() + timedelta(days=req["days_until_reorder"])
+                    datetime.now(timezone.utc) + timedelta(days=req["days_until_reorder"])
                 ).strftime("%Y-%m-%d")
             })
 
@@ -392,7 +392,7 @@ async def get_analytics_dashboard(
     """
     Get analytics dashboard summary with key metrics and forecasts.
     """
-    today = datetime.now()
+    today = datetime.now(timezone.utc)
     week_ago = today - timedelta(days=7)
     month_ago = today - timedelta(days=30)
 

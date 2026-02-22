@@ -77,6 +77,7 @@ export default function ReportsCustomersPage() {
     try {
       const token = localStorage.getItem('access_token');
       const response = await fetch(`${API_URL}/reports/customers?range=${dateRange}`, {
+        credentials: 'include',
         headers: { Authorization: `Bearer ${token}` },
       });
 

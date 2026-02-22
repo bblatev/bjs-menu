@@ -85,6 +85,7 @@ export default function MarketingPromotionsPage() {
     try {
       const token = localStorage.getItem('access_token');
       const response = await fetch(`${API_URL}/marketing/promotions`, {
+        credentials: 'include',
         headers: {
           'Authorization': `Bearer ${token}`,
         },
@@ -105,6 +106,7 @@ export default function MarketingPromotionsPage() {
     try {
       const token = localStorage.getItem('access_token');
       const response = await fetch(`${API_URL}/menu-admin/categories`, {
+        credentials: 'include',
         headers: {
           'Authorization': `Bearer ${token}`,
         },
@@ -128,6 +130,7 @@ export default function MarketingPromotionsPage() {
     try {
       const token = localStorage.getItem('access_token');
       const response = await fetch(`${API_URL}/marketing/promotions`, {
+        credentials: 'include',
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -157,6 +160,7 @@ export default function MarketingPromotionsPage() {
     try {
       const token = localStorage.getItem('access_token');
       const response = await fetch(`${API_URL}/marketing/promotions/${editingPromo.id}`, {
+        credentials: 'include',
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -183,6 +187,7 @@ export default function MarketingPromotionsPage() {
       try {
         const token = localStorage.getItem('access_token');
         const response = await fetch(`${API_URL}/marketing/promotions/${id}`, {
+          credentials: 'include',
           method: 'DELETE',
           headers: {
             'Authorization': `Bearer ${token}`,
@@ -205,6 +210,7 @@ export default function MarketingPromotionsPage() {
     try {
       const token = localStorage.getItem('access_token');
       const response = await fetch(`${API_URL}/marketing/promotions/${id}/toggle-active`, {
+        credentials: 'include',
         method: 'PATCH',
         headers: {
           'Authorization': `Bearer ${token}`,

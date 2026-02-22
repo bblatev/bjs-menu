@@ -24,6 +24,7 @@ from app.schemas.inventory import (
     InventorySessionCreate,
     InventorySessionResponse,
 )
+from app.services.stock_count_service import StockCountService
 
 router = APIRouter()
 
@@ -36,14 +37,21 @@ def get_stock_levels(
     db: DbSession,
     current_user: CurrentUser,
     location_id: Optional[int] = Query(None),
+    skip: int = Query(0, ge=0),
+    limit: int = Query(100, ge=1, le=500),
 ):
-    """Get current stock levels."""
+    """Get current stock levels (paginated)."""
     query = db.query(StockOnHand)
     if location_id:
         query = query.filter(StockOnHand.location_id == location_id)
+
+    total = query.count()
+
     rows = (
         query.join(Product, Product.id == StockOnHand.product_id, isouter=True)
         .with_entities(StockOnHand, Product.unit)
+        .offset(skip)
+        .limit(limit)
         .all()
     )
     results = []
@@ -58,7 +66,9 @@ def get_stock_levels(
         })
     return {
         "stock": results,
-        "total": len(results),
+        "total": total,
+        "skip": skip,
+        "limit": limit,
     }
 
 
@@ -269,86 +279,23 @@ def commit_session(request: Request, session_id: int, db: DbSession, current_use
     3. Update stock on hand
     4. Mark the session as committed
     """
-    session = db.query(InventorySession).filter(InventorySession.id == session_id).first()
-    if not session:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Session not found")
-    if session.status != SessionStatus.DRAFT:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Session is not in draft status",
+    try:
+        result = StockCountService.commit_session(
+            db=db,
+            session_id=session_id,
+            committed_by=current_user.user_id,
+            ref_type="inventory_session",
         )
-    if not session.lines:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Session has no lines to commit",
-        )
-
-    movements_created = 0
-    adjustments = []
-
-    for line in session.lines:
-        # Get current stock on hand
-        stock = (
-            db.query(StockOnHand)
-            .filter(
-                StockOnHand.product_id == line.product_id,
-                StockOnHand.location_id == session.location_id,
-            )
-            .first()
-        )
-
-        current_qty = stock.qty if stock else Decimal("0")
-        delta = line.counted_qty - current_qty
-
-        if delta != 0:
-            # Create stock movement
-            movement = StockMovement(
-                product_id=line.product_id,
-                location_id=session.location_id,
-                qty_delta=delta,
-                reason=MovementReason.INVENTORY_COUNT.value,
-                ref_type="inventory_session",
-                ref_id=session.id,
-                created_by=current_user.user_id,
-            )
-            db.add(movement)
-            movements_created += 1
-
-            # Update or create stock on hand
-            if stock:
-                stock.qty = line.counted_qty
-            else:
-                stock = StockOnHand(
-                    product_id=line.product_id,
-                    location_id=session.location_id,
-                    qty=line.counted_qty,
-                )
-                db.add(stock)
-
-            adjustments.append({
-                "product_id": line.product_id,
-                "previous_qty": float(current_qty),
-                "counted_qty": float(line.counted_qty),
-                "delta": float(delta),
-            })
-
-    # Mark session as committed
-    session.status = SessionStatus.COMMITTED
-    session.committed_at = datetime.now(timezone.utc)
-
-    db.commit()
-
-    logger.info(
-        f"Inventory session committed: ID={session.id}, location={session.location_id}, "
-        f"movements={movements_created}, user={current_user.user_id}"
-    )
-    if adjustments:
-        logger.info(f"Stock adjustments for session {session.id}: {adjustments}")
+    except ValueError as exc:
+        detail = str(exc)
+        if "not found" in detail.lower():
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=detail)
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=detail)
 
     return InventorySessionCommitResponse(
-        session_id=session.id,
-        status=session.status,
-        committed_at=session.committed_at,
-        movements_created=movements_created,
-        stock_adjustments=adjustments,
+        session_id=result["session_id"],
+        status=result["status"],
+        committed_at=result["committed_at"],
+        movements_created=result["movements_created"],
+        stock_adjustments=result["adjustments"],
     )

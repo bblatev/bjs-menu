@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import Link from 'next/link';
 import { API_URL } from '@/lib/api';
 
@@ -41,8 +41,8 @@ export default function TimeClockPage() {
   const [entries, setEntries] = useState<TimeClockEntry[]>([]);
   const [myStatus, setMyStatus] = useState<ClockStatus | null>(null);
   const [loading, setLoading] = useState(true);
-  const [selectedStaff, setSelectedStaff] = useState<StaffMember | null>(null);
-  const [showHistoryModal, setShowHistoryModal] = useState(false);
+  const [, setSelectedStaff] = useState<StaffMember | null>(null);
+  const [, setShowHistoryModal] = useState(false);
   const [dateRange, setDateRange] = useState({
     start: new Date(new Date().setDate(new Date().getDate() - 7)).toISOString().split('T')[0],
     end: new Date().toISOString().split('T')[0],
@@ -59,6 +59,7 @@ export default function TimeClockPage() {
 
       // Load current status
       const statusResponse = await fetch(`${API_URL}/staff/time-clock/status`, {
+        credentials: 'include',
         headers: { Authorization: `Bearer ${token}` },
       });
       if (statusResponse.ok) {
@@ -68,7 +69,7 @@ export default function TimeClockPage() {
       // Load time entries
       const entriesResponse = await fetch(
         `${API_URL}/staff/time-clock/entries?start_date=${dateRange.start}&end_date=${dateRange.end}`,
-        { headers: { Authorization: `Bearer ${token}` } }
+        { credentials: 'include', headers: { Authorization: `Bearer ${token}` } }
       );
       if (entriesResponse.ok) {
         setEntries(await entriesResponse.json());
@@ -76,6 +77,7 @@ export default function TimeClockPage() {
 
       // Load staff from API
       const staffResponse = await fetch(`${API_URL}/staff`, {
+        credentials: 'include',
         headers: { Authorization: `Bearer ${token}` },
       });
       if (staffResponse.ok) {
@@ -101,6 +103,7 @@ export default function TimeClockPage() {
     try {
       const token = localStorage.getItem('access_token');
       const response = await fetch(`${API_URL}/staff/time-clock/punch-in`, {
+        credentials: 'include',
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -120,6 +123,7 @@ export default function TimeClockPage() {
     try {
       const token = localStorage.getItem('access_token');
       const response = await fetch(`${API_URL}/staff/time-clock/punch-out`, {
+        credentials: 'include',
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -139,6 +143,7 @@ export default function TimeClockPage() {
     try {
       const token = localStorage.getItem('access_token');
       const response = await fetch(`${API_URL}/staff/time-clock/break/start`, {
+        credentials: 'include',
         method: 'POST',
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -154,6 +159,7 @@ export default function TimeClockPage() {
     try {
       const token = localStorage.getItem('access_token');
       const response = await fetch(`${API_URL}/staff/time-clock/break/end`, {
+        credentials: 'include',
         method: 'POST',
         headers: { Authorization: `Bearer ${token}` },
       });

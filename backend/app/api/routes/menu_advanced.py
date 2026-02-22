@@ -115,6 +115,17 @@ def get_menu_advanced_root(request: Request, db: DbSession):
 @limiter.limit("30/minute")
 async def upload_item_photo(request: Request, item_id: int, file: UploadFile = File(...), db: DbSession = None, current_user: CurrentUser = None):
     """Upload a photo for a menu item."""
+    # Validate file type
+    allowed_types = {"image/jpeg", "image/png", "image/webp", "image/gif"}
+    if file.content_type not in allowed_types:
+        raise HTTPException(status_code=400, detail="Invalid file type. Allowed: JPEG, PNG, WebP, GIF")
+
+    # Validate file size (5MB max)
+    contents = await file.read()
+    if len(contents) > 5 * 1024 * 1024:
+        raise HTTPException(status_code=400, detail="File too large. Maximum size: 5MB")
+    await file.seek(0)  # Reset for downstream use
+
     item = db.query(MenuItem).filter(MenuItem.id == item_id, MenuItem.not_deleted()).first()
     if not item:
         raise HTTPException(status_code=404, detail="Menu item not found")
@@ -423,6 +434,15 @@ def get_global_modifier_groups(request: Request, db: DbSession = None, current_u
     """Get all modifier groups."""
     groups = db.query(ModifierGroup).order_by(ModifierGroup.sort_order, ModifierGroup.name).all()
 
+    # Batch fetch all options for all groups
+    group_ids = [g.id for g in groups]
+    all_options = db.query(ModifierOption).filter(
+        ModifierOption.group_id.in_(group_ids)
+    ).order_by(ModifierOption.sort_order).all()
+    options_by_group = {}
+    for opt in all_options:
+        options_by_group.setdefault(opt.group_id, []).append(opt)
+
     return [
         {
             "id": group.id,
@@ -439,7 +459,7 @@ def get_global_modifier_groups(request: Request, db: DbSession = None, current_u
                     "available": opt.available,
                     "sort_order": opt.sort_order,
                 }
-                for opt in db.query(ModifierOption).filter(ModifierOption.group_id == group.id).order_by(ModifierOption.sort_order).all()
+                for opt in options_by_group.get(group.id, [])
             ],
         }
         for group in groups

@@ -1,15 +1,14 @@
 /** @type {import('tailwindcss').Config} */
 module.exports = {
   content: [
-    './pages/**/*.{js,ts,jsx,tsx,mdx}',
     './components/**/*.{js,ts,jsx,tsx,mdx}',
     './app/**/*.{js,ts,jsx,tsx,mdx}',
   ],
   darkMode: ['class', '[data-theme="dark"]'],
   safelist: [
-    // Dynamic color classes used in dashboard and other pages
+    // Dynamic color classes constructed via template literals in JSX
     {
-      pattern: /^(text|bg|border|from|to|via)-(primary|accent|success|warning|error|surface)-(50|100|200|300|400|500|600|700|800|900)$/,
+      pattern: /^(text|bg|border)-(primary|accent|success|warning|error|surface)-(50|100|200|300|400|500|600|700|800|900)$/,
     },
   ],
   theme: {
@@ -189,5 +188,4 @@ module.exports = {
       },
     },
   },
-  plugins: [],
 }

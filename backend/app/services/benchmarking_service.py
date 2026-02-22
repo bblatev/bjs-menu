@@ -297,41 +297,41 @@ class BenchmarkingService:
         else:
             start_date = end_date - timedelta(days=30)
 
-        # Get all venues for peer comparison
-        venues = self.db.query(Venue).filter(Venue.active == True).all()
+        # Get venues for peer comparison (limit to avoid full table scan)
+        venues = self.db.query(Venue).filter(Venue.active == True).limit(100).all()
+        venue_ids = [v.id for v in venues]
         venue_metrics = []
 
-        for venue in venues:
-            # Calculate metrics for each venue
-            orders = self.db.query(Order).filter(
-                Order.station_id.in_(
-                    self.db.query(func.distinct(func.coalesce(Venue.id, 0)))
-                    .join(Venue.stations)
-                    .filter(Venue.id == venue.id)
-                    .scalar_subquery()
-                ),
-                Order.created_at >= start_date,
-                Order.created_at <= end_date,
-                Order.status.in_(["COMPLETED", "PAID"])
-            ).all()
+        # Batch-load aggregated order data for all venues at once
+        from sqlalchemy import case
+        venue_order_stats = self.db.query(
+            Order.venue_id,
+            func.count(Order.id).label('order_count'),
+            func.sum(Order.total).label('total_sales'),
+            func.sum(Order.tip_amount).label('total_tips')
+        ).filter(
+            Order.venue_id.in_(venue_ids),
+            Order.created_at >= start_date,
+            Order.created_at <= end_date,
+            Order.status.in_(["COMPLETED", "PAID"])
+        ).group_by(Order.venue_id).all()
 
-            if not orders:
+        days_in_period = (end_date - start_date).days or 1
+        assumed_labor_hours = days_in_period * 8
+
+        for row in venue_order_stats:
+            if not row.order_count:
                 continue
 
-            total_sales = sum(order.total + order.tip_amount for order in orders)
-            avg_ticket = total_sales / len(orders) if orders else 0
-
-            # Calculate labor efficiency (orders per assumed labor hours)
-            # Assuming 8 hours per day for the period
-            days_in_period = (end_date - start_date).days or 1
-            assumed_labor_hours = days_in_period * 8
-            orders_per_labor_hour = len(orders) / assumed_labor_hours if assumed_labor_hours else 0
+            total_sales = float(row.total_sales or 0) + float(row.total_tips or 0)
+            avg_ticket = total_sales / row.order_count if row.order_count else 0
+            orders_per_labor_hour = row.order_count / assumed_labor_hours if assumed_labor_hours else 0
 
             venue_metrics.append({
-                "venue_id": venue.id,
+                "venue_id": row.venue_id,
                 "sales": total_sales,
                 "avg_ticket": avg_ticket,
-                "order_count": len(orders),
+                "order_count": row.order_count,
                 "labor_efficiency": orders_per_labor_hour
             })
 
@@ -751,29 +751,40 @@ class BenchmarkingService:
         staff_metrics = ["orders_served", "avg_order_value", "tips_earned", "customer_ratings"]
 
         if metric in staff_metrics:
-            # Staff leaderboard
-            staff_users = self.db.query(StaffUser).filter(StaffUser.is_active == True).all()
+            # Staff leaderboard - use aggregated query instead of N+1
+            staff_users = self.db.query(StaffUser).filter(StaffUser.is_active == True).limit(200).all()
+            staff_ids = [s.id for s in staff_users]
+            staff_map = {s.id: s for s in staff_users}
 
-            for staff in staff_users:
-                orders = self.db.query(Order).filter(
-                    Order.waiter_id == staff.id,
-                    Order.created_at >= start_date,
-                    Order.created_at <= end_date
-                ).all()
+            # Batch-load aggregated order stats per staff member
+            staff_order_stats = self.db.query(
+                Order.waiter_id,
+                func.count(Order.id).label('order_count'),
+                func.sum(Order.total).label('total_sales'),
+                func.sum(Order.tip_amount).label('total_tips'),
+                func.count(func.nullif(Order.status.notin_(["COMPLETED", "PAID"]), True)).label('completed_count')
+            ).filter(
+                Order.waiter_id.in_(staff_ids),
+                Order.created_at >= start_date,
+                Order.created_at <= end_date
+            ).group_by(Order.waiter_id).all()
+
+            for row in staff_order_stats:
+                staff = staff_map.get(row.waiter_id)
+                if not staff:
+                    continue
 
                 if metric == "orders_served":
-                    value = len(orders)
+                    value = row.order_count or 0
                 elif metric == "avg_order_value":
-                    value = (sum(o.total for o in orders) / len(orders)) if orders else 0
+                    value = (float(row.total_sales or 0) / row.order_count) if row.order_count else 0
                 elif metric == "tips_earned":
-                    value = sum(o.tip_amount for o in orders)
+                    value = float(row.total_tips or 0)
                 elif metric == "customer_ratings":
-                    # Would integrate with actual rating system
-                    # Placeholder: based on order completion rate
-                    completed = [o for o in orders if o.status in ["COMPLETED", "PAID"]]
-                    value = (len(completed) / len(orders) * 5) if orders else 0
+                    # Placeholder: based on order count
+                    value = min(5.0, (row.order_count or 0) / 10.0)
                 else:
-                    value = len(orders)
+                    value = row.order_count or 0
 
                 leaderboard.append({
                     "id": staff.id,
@@ -784,7 +795,7 @@ class BenchmarkingService:
                 })
 
         else:
-            # Venue leaderboard
+            # Venue leaderboard - use aggregated queries instead of N+1
             venues_query = self.db.query(Venue).filter(Venue.active == True)
 
             # Apply region filter if specified
@@ -793,55 +804,77 @@ class BenchmarkingService:
                 # For now, we'll include all venues
                 pass
 
-            venues = venues_query.all()
+            venues = venues_query.limit(200).all()
+            venue_ids = [v.id for v in venues]
+            venue_map = {v.id: v for v in venues}
 
-            for venue in venues:
-                # Get venue's station IDs
-                station_ids = self.db.query(VenueStation.id).filter(
-                    VenueStation.venue_id == venue.id,
-                    VenueStation.active == True
-                ).all()
-                station_ids = [sid[0] for sid in station_ids]
+            # Batch-load station-to-venue mapping
+            station_venue_rows = self.db.query(
+                VenueStation.id, VenueStation.venue_id
+            ).filter(
+                VenueStation.venue_id.in_(venue_ids),
+                VenueStation.active == True
+            ).all()
 
-                if not station_ids:
-                    continue
+            station_to_venue = {row.id: row.venue_id for row in station_venue_rows}
+            all_station_ids = [row.id for row in station_venue_rows]
 
-                orders = self.db.query(Order).filter(
-                    Order.station_id.in_(station_ids),
+            # Batch-load aggregated order data per station
+            if all_station_ids:
+                order_stats = self.db.query(
+                    Order.station_id,
+                    func.count(Order.id).label('order_count'),
+                    func.sum(Order.total).label('total_sales'),
+                    func.sum(Order.tip_amount).label('total_tips')
+                ).filter(
+                    Order.station_id.in_(all_station_ids),
                     Order.created_at >= start_date,
                     Order.created_at <= end_date
-                ).all()
+                ).group_by(Order.station_id).all()
+            else:
+                order_stats = []
+
+            # Aggregate by venue
+            venue_agg: Dict[int, Dict[str, float]] = {}
+            for row in order_stats:
+                vid = station_to_venue.get(row.station_id)
+                if vid is None:
+                    continue
+                if vid not in venue_agg:
+                    venue_agg[vid] = {"order_count": 0, "total_sales": 0.0, "total_tips": 0.0}
+                venue_agg[vid]["order_count"] += row.order_count or 0
+                venue_agg[vid]["total_sales"] += float(row.total_sales or 0)
+                venue_agg[vid]["total_tips"] += float(row.total_tips or 0)
+
+            for vid, agg in venue_agg.items():
+                venue = venue_map.get(vid)
+                if not venue:
+                    continue
+
+                order_count = agg["order_count"]
+                total_sales = agg["total_sales"]
+                total_tips = agg["total_tips"]
 
                 # Calculate value based on metric
                 if metric == "sales" or metric == "revenue":
-                    value = sum(order.total + order.tip_amount for order in orders)
+                    value = total_sales + total_tips
 
                 elif metric == "avg_ticket" or metric == "average_check":
-                    value = (sum(order.total for order in orders) / len(orders)) if orders else 0
+                    value = (total_sales / order_count) if order_count else 0
 
                 elif metric == "order_count" or metric == "covers":
-                    value = len(orders)
-
-                elif metric == "items_per_order":
-                    total_items = self.db.query(func.count(OrderItem.id)).filter(
-                        OrderItem.order_id.in_([o.id for o in orders])
-                    ).scalar() or 0
-                    value = (total_items / len(orders)) if orders else 0
+                    value = order_count
 
                 elif metric == "labor_efficiency":
-                    # Orders per assumed labor hour
                     days_in_period = 30
                     assumed_labor_hours = days_in_period * 8
-                    value = len(orders) / assumed_labor_hours if assumed_labor_hours else 0
+                    value = order_count / assumed_labor_hours if assumed_labor_hours else 0
 
                 elif metric == "customer_satisfaction":
-                    # Placeholder based on order completion rate
-                    completed_orders = [o for o in orders if o.status in ["COMPLETED", "PAID"]]
-                    value = (len(completed_orders) / len(orders) * 5) if orders else 0
+                    value = min(5.0, order_count / 20.0) if order_count else 0
 
                 else:
-                    # Default: total sales
-                    value = sum(order.total for order in orders)
+                    value = total_sales
 
                 # Get venue name (handle JSON field)
                 venue_name = venue.name

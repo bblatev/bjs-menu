@@ -38,12 +38,13 @@ export default function WaiterLoginPage() {
       const res = await fetch(`${getApiUrl()}/auth/login/pin`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify({ pin: pinCode }),
       });
 
       if (res.ok) {
-        const data = await res.json();
-        localStorage.setItem('access_token', data.access_token);
+        // Store token in localStorage as bridge for pages not yet migrated to cookie auth
+        try { const d = await res.json(); if (d.access_token) localStorage.setItem('access_token', d.access_token); } catch {}
         window.location.href = '/waiter';
       } else {
         setError('Invalid PIN');

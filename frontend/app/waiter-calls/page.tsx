@@ -3,7 +3,7 @@
 import { useEffect, useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
-import { API_URL, WS_URL } from '@/lib/api';
+import { API_URL, WS_URL, getAuthHeaders } from '@/lib/api';
 
 interface WaiterCall {
   id: number;
@@ -67,7 +67,7 @@ export default function WaiterCallsPage() {
   const [tables, setTables] = useState<TableInfo[]>([]);
   const [stats, setStats] = useState<CallStats | null>(null);
   const [loading, setLoading] = useState(true);
-  const [ws, setWs] = useState<WebSocket | null>(null);
+  const [, setWs] = useState<WebSocket | null>(null);
   const [filter, setFilter] = useState<'all' | 'pending' | 'acknowledged'>('all');
   const [selectedCall, setSelectedCall] = useState<WaiterCall | null>(null);
   const [showCallModal, setShowCallModal] = useState(false);
@@ -98,12 +98,9 @@ export default function WaiterCallsPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const getToken = () => localStorage.getItem('access_token');
-
   const loadData = async () => {
     setLoading(true);
-    const token = getToken();
-    if (!token) {
+    if (!localStorage.getItem('access_token')) {
       router.push('/login');
       return;
     }
@@ -111,7 +108,8 @@ export default function WaiterCallsPage() {
     try {
       // Load active waiter calls - use /waiter/calls endpoint
       const callsResponse = await fetch(`${API_URL}/waiter/calls?status=pending`, {
-        headers: { Authorization: `Bearer ${token}` },
+        credentials: 'include',
+        headers: getAuthHeaders(),
       });
 
       if (callsResponse.ok) {
@@ -150,7 +148,8 @@ export default function WaiterCallsPage() {
 
       // Load staff
       const staffResponse = await fetch(`${API_URL}/staff/`, {
-        headers: { Authorization: `Bearer ${token}` },
+        credentials: 'include',
+        headers: getAuthHeaders(),
       });
 
       if (staffResponse.ok) {
@@ -179,7 +178,8 @@ export default function WaiterCallsPage() {
 
       // Load tables
       const tablesResponse = await fetch(`${API_URL}/tables/`, {
-        headers: { Authorization: `Bearer ${token}` },
+        credentials: 'include',
+        headers: getAuthHeaders(),
       });
 
       if (tablesResponse.ok) {
@@ -288,8 +288,7 @@ export default function WaiterCallsPage() {
   };
 
   const updateCallStatus = async (callId: number, newStatus: string, staffName?: string) => {
-    const token = getToken();
-    if (!token) return;
+    if (!localStorage.getItem('access_token')) return;
 
     try {
       // Map status to correct endpoint
@@ -310,11 +309,9 @@ export default function WaiterCallsPage() {
       }
 
       const response = await fetch(endpoint, {
+        credentials: 'include',
         method,
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
+        headers: getAuthHeaders(),
       });
 
       if (response.ok) {

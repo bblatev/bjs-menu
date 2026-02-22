@@ -43,6 +43,7 @@ export default function AnalyticsTheftPage() {
     try {
       const token = localStorage.getItem('access_token');
       const response = await fetch(`${API_URL}/analytics/theft`, {
+        credentials: 'include',
         headers: { Authorization: `Bearer ${token}` },
       });
 

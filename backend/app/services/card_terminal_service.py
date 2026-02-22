@@ -60,7 +60,7 @@ class CardTerminal:
     ip_address: Optional[str] = None
     firmware_version: Optional[str] = None
     last_seen: Optional[datetime] = None
-    registered_at: datetime = field(default_factory=datetime.utcnow)
+    registered_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
 
 
 @dataclass
@@ -80,7 +80,7 @@ class TerminalPayment:
     auth_code: Optional[str] = None
     receipt_url: Optional[str] = None
     error_message: Optional[str] = None
-    created_at: datetime = field(default_factory=datetime.utcnow)
+    created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
     completed_at: Optional[datetime] = None
 
 
@@ -88,7 +88,7 @@ class TerminalPayment:
 class ConnectionToken:
     """A connection token for terminal SDK."""
     secret: str
-    created_at: datetime = field(default_factory=datetime.utcnow)
+    created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
     expires_at: Optional[datetime] = None
 
 

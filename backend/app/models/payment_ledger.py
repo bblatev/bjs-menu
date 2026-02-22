@@ -67,9 +67,9 @@ class PaymentLedgerEntry(Base):
 
     # Related entities
     order_id = Column(Integer, ForeignKey("orders.id"), nullable=True)
-    payment_intent_id = Column(Integer, nullable=True)  # Reference to PaymentIntent
+    payment_intent_id = Column(Integer, nullable=True, index=True)  # Reference to PaymentIntent
     staff_user_id = Column(Integer, ForeignKey("staff_users.id"), nullable=True)
-    shift_id = Column(Integer, nullable=True)  # Reference to shift if applicable
+    shift_id = Column(Integer, ForeignKey("shifts.id", ondelete="SET NULL"), nullable=True)  # Reference to shift if applicable
 
     # Money amounts (all in smallest currency unit to avoid float issues)
     amount_cents = Column(Integer, nullable=False)  # Amount in cents/stotinki
@@ -114,10 +114,17 @@ class PaymentLedgerEntry(Base):
         self.entry_hash = self._compute_hash()
 
     def _compute_hash(self) -> str:
-        """Compute SHA-256 hash of entry data for integrity verification."""
+        """Compute SHA-256 hash of entry data for integrity verification.
+
+        Note: created_at is excluded because it uses server_default=func.now()
+        and is None at __init__ time. The remaining fields (venue_id, entry_type,
+        amount_cents, currency, order_id, payment_method, idempotency_key,
+        previous_entry_id) are all available at init and provide sufficient
+        uniqueness for integrity checking.
+        """
         data = f"{self.venue_id}|{self.entry_type}|{self.amount_cents}|" \
                f"{self.currency}|{self.order_id}|{self.payment_method}|" \
-               f"{self.created_at}|{self.previous_entry_id}"
+               f"{self.idempotency_key}|{self.previous_entry_id}"
         return hashlib.sha256(data.encode()).hexdigest()
 
     def verify_integrity(self) -> bool:
@@ -199,7 +206,7 @@ class CashVarianceAlert(Base):
     cash_sales_total_cents = Column(Integer, default=0)
 
     # Resolution
-    is_resolved = Column(Boolean, default=False)
+    is_resolved = Column(Boolean, default=False, index=True)
     resolved_by = Column(Integer, ForeignKey("staff_users.id"), nullable=True)
     resolved_at = Column(DateTime(timezone=True), nullable=True)
     resolution_notes = Column(Text, nullable=True)

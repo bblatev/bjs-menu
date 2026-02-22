@@ -129,7 +129,7 @@ export default function BarRecipesPage() {
       try {
         const response = await fetch(
           `${API_URL}/bar/recipes?category=${selectedCategory !== 'all' ? selectedCategory : ''}&search=${searchQuery}&sort_by=${sortBy}`,
-          { headers }
+          { credentials: 'include', headers }
         );
 
         if (response.ok) {
@@ -166,6 +166,7 @@ export default function BarRecipesPage() {
 
     try {
       const response = await fetch(`${API_URL}/bar/recipes`, {
+        credentials: 'include',
         method: 'POST',
         headers: getAuthHeaders(),
         body: JSON.stringify({
@@ -199,7 +200,7 @@ export default function BarRecipesPage() {
         // Refresh recipes
         const refreshResponse = await fetch(
           `${API_URL}/bar/recipes?category=${selectedCategory !== 'all' ? selectedCategory : ''}&search=${searchQuery}&sort_by=${sortBy}`,
-          { headers: getAuthHeaders() }
+          { credentials: 'include', headers: getAuthHeaders() }
         );
         if (refreshResponse.ok) {
           const data = await refreshResponse.json();

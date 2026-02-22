@@ -8,7 +8,7 @@ from sqlalchemy import (
     ForeignKey, Enum, Date, Time, Numeric, Index, UniqueConstraint
 )
 from sqlalchemy.orm import relationship
-from datetime import datetime, date, time
+from datetime import datetime, date, time, timezone
 from enum import Enum as PyEnum
 from app.db.base import Base
 
@@ -52,7 +52,7 @@ class DepositPolicy(Base):
     partial_refund_percentage = Column(Float, default=50)
     no_show_forfeit = Column(Boolean, default=True)
 
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
     # Relationships
     venue = relationship("Venue", backref="deposit_policies")
@@ -100,7 +100,7 @@ class SMSCampaign(Base):
     revenue_generated = Column(Numeric(10, 2), default=0)
 
     created_by = Column(Integer, ForeignKey("staff_users.id"))
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
     # Relationships
     venue = relationship("Venue", backref="sms_campaigns")
@@ -120,7 +120,7 @@ class SMSOptOut(Base):
     phone_number = Column(String(20), nullable=False, index=True)
     customer_id = Column(Integer, ForeignKey("customers.id"), index=True)
 
-    opted_out_at = Column(DateTime, default=datetime.utcnow)
+    opted_out_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
     reason = Column(String(100))
 
     # Relationships
@@ -185,7 +185,7 @@ class RestaurantBenchmark(Base):
     efficiency_percentile = Column(Integer)
     satisfaction_percentile = Column(Integer)
 
-    calculated_at = Column(DateTime, default=datetime.utcnow)
+    calculated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
     # Relationships
     venue = relationship("Venue", backref="restaurant_benchmarks")
@@ -217,7 +217,7 @@ class IndustryBenchmark(Base):
 
     sample_size = Column(Integer)
 
-    updated_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
     __table_args__ = (
         Index('ix_industry_benchmarks_type_region', 'restaurant_type', 'region'),
@@ -267,7 +267,7 @@ class CateringEvent(Base):
     
     # Status & timeline
     status = Column(String(20), default=CateringEventStatus.INQUIRY.value)
-    inquiry_date = Column(DateTime, default=datetime.utcnow)
+    inquiry_date = Column(DateTime, default=lambda: datetime.now(timezone.utc))
     quote_sent_date = Column(DateTime)
     confirmed_date = Column(DateTime)
     
@@ -290,8 +290,8 @@ class CateringEvent(Base):
     notes = Column(Text)
     internal_notes = Column(Text)
 
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
 
     # Relationships
     venue = relationship("Venue", backref="catering_events")
@@ -325,7 +325,7 @@ class CateringMenu(Base):
     # Menu items (JSON for flexibility)
     menu_sections = Column(JSON)  # {"appetizers": [...], "mains": [...]}
 
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
     # Relationships
     venue = relationship("Venue", backref="catering_menus")
@@ -382,7 +382,7 @@ class CateringInvoice(Base):
     notes = Column(Text)
     terms = Column(Text)
 
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
     # Relationships
     venue = relationship("Venue", backref="catering_invoices")
@@ -424,7 +424,7 @@ class CustomerDisplay(Base):
     is_active = Column(Boolean, default=True)
     last_seen_at = Column(DateTime)
 
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
     # Relationships
     venue = relationship("Venue", backref="customer_displays")
@@ -455,7 +455,7 @@ class CustomerDisplayContent(Base):
 
     is_active = Column(Boolean, default=True)
 
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
     # Relationships
     venue = relationship("Venue", backref="customer_display_content")
@@ -500,7 +500,7 @@ class MenuItemReview(Base):
     # Stats
     helpful_count = Column(Integer, default=0)
 
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
     # Relationships
     venue = relationship("Venue", backref="menu_item_reviews")
@@ -533,7 +533,7 @@ class MenuItemRatingAggregate(Base):
     avg_portion = Column(Float)
     avg_value = Column(Float)
 
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
 
     # Relationships
     menu_item = relationship("MenuItem", backref="rating_aggregate")
@@ -564,7 +564,7 @@ class PrepTimeModel(Base):
     trained_at = Column(DateTime)
     is_active = Column(Boolean, default=False, index=True)
 
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
     # Relationships
     venue = relationship("Venue", backref="prep_time_models")
@@ -596,7 +596,7 @@ class PrepTimePrediction(Base):
     item_count = Column(Integer)
     complexity_score = Column(Float)
 
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
     # Relationships
     venue = relationship("Venue", backref="prep_time_predictions")
@@ -642,7 +642,7 @@ class SingleUsePromoCode(Base):
     used_order_id = Column(Integer, ForeignKey("orders.id"), index=True)
     discount_amount = Column(Numeric(10, 2))
 
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
     # Relationships
     venue = relationship("Venue", backref="single_use_promo_codes")
@@ -679,7 +679,7 @@ class PromoCodeCampaign(Base):
 
     is_active = Column(Boolean, default=True, index=True)
 
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
     # Relationships
     venue = relationship("Venue", backref="promo_campaigns")
@@ -713,7 +713,7 @@ class PromoCodeCampaign(Base):
 
 #     is_active = Column(Boolean, default=True, index=True)
 
-#     created_at = Column(DateTime, default=datetime.utcnow)
+#     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
 #     # Relationships
 #     venue = relationship("Venue", backref="mf_referral_programs")
@@ -748,7 +748,7 @@ class CustomerReferral(Base):
 
     qualifying_order_id = Column(Integer, ForeignKey("orders.id"), index=True)
 
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
     # Relationships
     venue = relationship("Venue", backref="customer_referrals")
@@ -789,7 +789,7 @@ class CustomerRFMScore(Base):
     calculation_date = Column(Date, nullable=False, index=True)
     period_days = Column(Integer, default=365)
 
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
     # Relationships
     venue = relationship("Venue", backref="customer_rfm_scores")
@@ -849,7 +849,7 @@ class IngredientPriceHistory(Base):
 
     purchase_order_id = Column(Integer, ForeignKey("purchase_orders.id"), index=True)
 
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
     # Relationships
     venue = relationship("Venue", backref="ingredient_price_history")
@@ -873,7 +873,7 @@ class PriceAlertNotification(Base):
     read_at = Column(DateTime)
     read_by = Column(Integer, ForeignKey("staff_users.id"))
 
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
     # Relationships
     alert = relationship("PriceAlert", backref="notifications")
@@ -904,7 +904,7 @@ class BreakPolicy(Base):
 
     is_active = Column(Boolean, default=True)
 
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
     # Relationships
     venue = relationship("Venue", backref="break_policies")
@@ -935,7 +935,7 @@ class EmployeeBreak(Base):
 
     notes = Column(Text)
 
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
     # Relationships
     venue = relationship("Venue", backref="employee_breaks")
@@ -985,7 +985,7 @@ class ShiftTradeRequest(Base):
 
     reason = Column(Text)
 
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
     # Relationships
     venue = relationship("Venue", backref="shift_trade_requests")
@@ -1033,7 +1033,7 @@ class VIPTier(Base):
     priority = Column(Integer, default=0)  # Higher = better tier
     is_active = Column(Boolean, default=True, index=True)
 
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
     # Relationships
     venue = relationship("Venue", backref="vip_tiers")
@@ -1067,7 +1067,7 @@ class CustomerVIPStatus(Base):
 
     is_active = Column(Boolean, default=True)
 
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
     # Relationships
     venue = relationship("Venue", backref="customer_vip_statuses")
@@ -1115,7 +1115,7 @@ class GuestbookEntry(Base):
     is_public = Column(Boolean, default=True)
     show_name = Column(Boolean, default=True)
 
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
     # Relationships
     venue = relationship("Venue", backref="guestbook_entries")
@@ -1159,7 +1159,7 @@ class FundraisingCampaign(Base):
 
     is_active = Column(Boolean, default=True, index=True)
 
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
     # Relationships
     venue = relationship("Venue", backref="fundraising_campaigns")
@@ -1183,7 +1183,7 @@ class FundraisingDonation(Base):
     is_tax_deductible = Column(Boolean, default=False)
     receipt_sent = Column(Boolean, default=False)
 
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
     # Relationships
     campaign = relationship("FundraisingCampaign", back_populates="donations")
@@ -1240,8 +1240,8 @@ class Chargeback(Base):
     # Assignment
     assigned_to = Column(Integer, ForeignKey("staff_users.id"), index=True)
 
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
 
     # Relationships
     venue = relationship("Venue", backref="chargebacks")
@@ -1284,7 +1284,7 @@ class TaxReport(Base):
     # Document
     report_url = Column(String(500))
 
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
     # Relationships
     venue = relationship("Venue", backref="tax_reports")
@@ -1311,7 +1311,7 @@ class TaxReminder(Base):
     is_completed = Column(Boolean, default=False)
     completed_at = Column(DateTime)
 
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
     # Relationships
     venue = relationship("Venue", backref="tax_reminders")
@@ -1332,7 +1332,7 @@ class OnboardingChecklist(Base):
 
     is_active = Column(Boolean, default=True)
 
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
     # Relationships
     venue = relationship("Venue", backref="onboarding_checklists")
@@ -1367,7 +1367,7 @@ class OnboardingTask(Base):
 
     order = Column(Integer, default=0)
 
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
     # Relationships
     checklist = relationship("OnboardingChecklist", back_populates="tasks")
@@ -1395,7 +1395,7 @@ class EmployeeOnboarding(Base):
 
     notes = Column(Text)
 
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
     # Relationships
     venue = relationship("Venue", backref="employee_onboardings")
@@ -1431,7 +1431,7 @@ class OnboardingTaskCompletion(Base):
 
     notes = Column(Text)
 
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
     # Relationships
     onboarding = relationship("EmployeeOnboarding", back_populates="task_completions")
@@ -1469,7 +1469,7 @@ class MenuPairing(Base):
 
     is_active = Column(Boolean, default=True)
 
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
     # Relationships
     venue = relationship("Venue", backref="menu_pairings")
@@ -1507,7 +1507,7 @@ class KitchenSheet(Base):
 
     notes = Column(Text)
 
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
     # Relationships
     venue = relationship("Venue", backref="kitchen_sheets")
@@ -1539,7 +1539,7 @@ class LabelTemplate(Base):
     is_default = Column(Boolean, default=False)
     is_active = Column(Boolean, default=True)
 
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
     # Relationships
     venue = relationship("Venue", backref="label_templates")
@@ -1567,7 +1567,7 @@ class PrintedLabel(Base):
     copies = Column(Integer, default=1)
     printer_id = Column(String(100))
 
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
     # Relationships
     venue = relationship("Venue", backref="printed_labels")
@@ -1594,7 +1594,7 @@ class ThirdPartyGiftCardProvider(Base):
 
     is_active = Column(Boolean, default=True)
 
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
     # Relationships
     venue = relationship("Venue", backref="third_party_gift_card_providers")
@@ -1620,7 +1620,7 @@ class ThirdPartyGiftCardRedemption(Base):
     authorization_code = Column(String(100))
     provider_response = Column(JSON)
 
-    redeemed_at = Column(DateTime, default=datetime.utcnow)
+    redeemed_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
     redeemed_by = Column(Integer, ForeignKey("staff_users.id"))
 
     # Relationships
@@ -1657,7 +1657,7 @@ class TableBlock(Base):
     event_id = Column(Integer, ForeignKey("catering_events.id"), index=True)
 
     created_by = Column(Integer, ForeignKey("staff_users.id"))
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
     # Relationships
     venue = relationship("Venue", backref="table_blocks")
@@ -1705,8 +1705,8 @@ class CustomerWallet(Base):
     status = Column(String(20), default=CustomerWalletStatus.ACTIVE.value)
 
     # Timestamps
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
     last_used_at = Column(DateTime)
 
     # Relationships
@@ -1743,7 +1743,7 @@ class CustomerWalletTransaction(Base):
     description = Column(String(255))
     reference_id = Column(String(100))  # External reference
 
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
     created_by = Column(Integer, ForeignKey("staff_users.id"))
 
     # Relationships
@@ -1799,9 +1799,9 @@ class CryptoPaymentStatus(str, PyEnum):
 #     expires_at = Column(DateTime)
 
 #     # Timestamps
-#     created_at = Column(DateTime, default=datetime.utcnow)
+#     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 #     confirmed_at = Column(DateTime)
-#     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+#     updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
 
 #     # Relationships
 #     venue = relationship("Venue", backref="crypto_payments")
@@ -1856,8 +1856,8 @@ class BNPLPlan(Base):
     days_overdue = Column(Integer, default=0)
 
     # Timestamps
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
     completed_at = Column(DateTime)
 
     # Relationships
@@ -1894,7 +1894,7 @@ class BNPLInstallment(Base):
     # Late fees
     late_fee = Column(Numeric(10, 2), default=0)
 
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
     # Relationships
     plan = relationship("BNPLPlan", back_populates="installments")
@@ -1924,13 +1924,13 @@ class CurrencyExchangeRate(Base):
     source = Column(String(50))  # coingecko, coinbase, exchangerate-api, manual
 
     # Validity
-    valid_from = Column(DateTime, nullable=False, default=datetime.utcnow)
+    valid_from = Column(DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))
     valid_until = Column(DateTime)  # Optional expiry
 
     is_active = Column(Boolean, default=True)
 
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
 
     __table_args__ = (
         Index('ix_exchange_rate_lookup', 'from_currency', 'to_currency', 'is_active'),
@@ -1999,8 +1999,8 @@ class KDSStation(Base):
     display_order = Column(Integer, default=1)
     printer_id = Column(String(100), nullable=True)
 
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
 
     # Relationships
     venue = relationship("Venue", backref="kds_stations")
@@ -2046,7 +2046,7 @@ class KDSTicket(Base):
     recall_reason = Column(Text)
 
     # Timestamps
-    created_at = Column(DateTime, default=datetime.utcnow, index=True)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), index=True)
     started_at = Column(DateTime)  # When prep started
     fired_at = Column(DateTime)  # When course was fired
     bumped_at = Column(DateTime)  # When completed
@@ -2089,7 +2089,7 @@ class KDSBumpHistory(Base):
     was_rush = Column(Boolean, default=False)
     was_recalled = Column(Boolean, default=False)
 
-    bumped_at = Column(DateTime, default=datetime.utcnow, index=True)
+    bumped_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), index=True)
     bumped_by = Column(Integer, ForeignKey("staff_users.id"))
 
     # Relationships
@@ -2135,7 +2135,7 @@ class PromotionRedemption(Base):
     authorized_by = Column(Integer, ForeignKey("staff_users.id"), nullable=True)
     requires_authorization = Column(Boolean, default=False)
 
-    redeemed_at = Column(DateTime, default=datetime.utcnow, index=True)
+    redeemed_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), index=True)
 
     # Relationships
     venue = relationship("Venue", backref="promotion_redemptions")
@@ -2178,8 +2178,8 @@ class SMSTemplate(Base):
     character_count = Column(Integer, default=0)
     segment_count = Column(Integer, default=1)  # SMS segments needed
 
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, onupdate=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    updated_at = Column(DateTime, onupdate=lambda: datetime.now(timezone.utc))
     created_by = Column(Integer, ForeignKey("staff_users.id"), nullable=True)
 
     # Relationships
@@ -2219,8 +2219,8 @@ class CateringPackage(Base):
     # Media
     image_url = Column(String(500), nullable=True)
 
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, onupdate=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    updated_at = Column(DateTime, onupdate=lambda: datetime.now(timezone.utc))
 
     # Relationships
     venue = relationship("Venue", backref="catering_packages")
@@ -2263,8 +2263,8 @@ class ShiftTradingConfig(Base):
     # Blackout dates (no trading allowed)
     blackout_dates = Column(JSON, nullable=True)  # ["2024-12-25", "2024-12-31"]
 
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, onupdate=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    updated_at = Column(DateTime, onupdate=lambda: datetime.now(timezone.utc))
 
     # Relationships
     venue = relationship("Venue", backref="shift_trading_config", uselist=False)
@@ -2313,8 +2313,8 @@ class TimeOffRequestStatus(str, PyEnum):
 #     # Attachments (e.g., doctor's note)
 #     attachments = Column(JSON, nullable=True)
 
-#     created_at = Column(DateTime, default=datetime.utcnow)
-#     updated_at = Column(DateTime, onupdate=datetime.utcnow)
+#     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+#     updated_at = Column(DateTime, onupdate=lambda: datetime.now(timezone.utc))
 
 #     # Relationships
 #     venue = relationship("Venue", backref="mf_time_off_requests")
@@ -2357,7 +2357,7 @@ class WaitlistEntry(Base):
     # Wait time tracking
     quoted_wait_minutes = Column(Integer, nullable=False)
     actual_wait_minutes = Column(Integer, nullable=True)
-    check_in_time = Column(DateTime, default=datetime.utcnow)
+    check_in_time = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
     # Status
     status = Column(String(20), default=WaitlistStatus.WAITING.value)
@@ -2379,8 +2379,8 @@ class WaitlistEntry(Base):
     pager_number = Column(Integer, nullable=True)
 
     # Audit
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
 
     # Relationships
     venue = relationship("Venue")
@@ -2427,8 +2427,8 @@ class ReservationPlatformConnection(Base):
 
     # Timestamps
     connected_at = Column(DateTime, nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, onupdate=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    updated_at = Column(DateTime, onupdate=lambda: datetime.now(timezone.utc))
 
     # Relationships
     venue = relationship("Venue", backref="reservation_platform_connections")
@@ -2489,8 +2489,8 @@ class ExternalReservation(Base):
     synced_at = Column(DateTime, nullable=True)
     sync_error = Column(Text, nullable=True)
 
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, onupdate=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    updated_at = Column(DateTime, onupdate=lambda: datetime.now(timezone.utc))
 
     # Relationships
     venue = relationship("Venue", backref="external_reservations")
@@ -2522,7 +2522,7 @@ class PlatformWebhookLog(Base):
     processed_at = Column(DateTime, nullable=True)
     processing_error = Column(Text, nullable=True)
 
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
     # Relationships
     venue = relationship("Venue", backref="webhook_logs")
@@ -2550,8 +2550,8 @@ class ExternalAvailabilityBlock(Base):
     synced_at = Column(DateTime, nullable=True)
 
     created_by = Column(Integer, ForeignKey("staff_users.id"), nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, onupdate=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    updated_at = Column(DateTime, onupdate=lambda: datetime.now(timezone.utc))
 
     # Relationships
     venue = relationship("Venue", backref="availability_blocks")
@@ -2571,12 +2571,12 @@ class GuestbookVisit(Base):
     guest_id = Column(Integer, ForeignKey("guestbook_entries.id"), nullable=False)
     venue_id = Column(Integer, ForeignKey("venues.id"), nullable=False, index=True)
 
-    visit_date = Column(DateTime, default=datetime.utcnow)
+    visit_date = Column(DateTime, default=lambda: datetime.now(timezone.utc))
     party_size = Column(Integer, default=1)
     total_spent = Column(Numeric(10, 2), default=0)
     notes = Column(Text, nullable=True)
 
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
     guest = relationship("GuestbookEntry", backref="visits")
     venue = relationship("Venue", backref="guestbook_visits")
@@ -2602,8 +2602,8 @@ class ChargebackCase(Base):
     processor = Column(String(50), nullable=True)
     processor_case_id = Column(String(100), nullable=True)
 
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, onupdate=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    updated_at = Column(DateTime, onupdate=lambda: datetime.now(timezone.utc))
 
     venue = relationship("Venue", backref="chargeback_cases")
     order = relationship("Order", backref="chargeback_cases")
@@ -2622,7 +2622,7 @@ class ChargebackEvidence(Base):
     description = Column(Text, nullable=True)
 
     uploaded_by = Column(Integer, ForeignKey("staff_users.id"), nullable=True)
-    uploaded_at = Column(DateTime, default=datetime.utcnow)
+    uploaded_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
     case = relationship("ChargebackCase", backref="evidence")
 
@@ -2643,7 +2643,7 @@ class TaxConfiguration(Base):
     applies_to = Column(JSON, nullable=True)
     excluded_items = Column(JSON, nullable=True)
 
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
     venue = relationship("Venue", backref="tax_configurations")
 
@@ -2664,7 +2664,7 @@ class TaxSummary(Base):
     total_tax = Column(Numeric(12, 2), default=0)
     tax_breakdown = Column(JSON, nullable=True)
 
-    generated_at = Column(DateTime, default=datetime.utcnow)
+    generated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
     venue = relationship("Venue", backref="tax_summaries")
 
@@ -2689,7 +2689,7 @@ class MenuPairingRule(Base):
     conditions = Column(JSON, nullable=True)
     is_active = Column(Boolean, default=True)
 
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
     pairing = relationship("MenuPairing", backref="rules")
 
@@ -2709,8 +2709,8 @@ class ThirdPartyGiftCardConfig(Base):
     is_active = Column(Boolean, default=True)
     settings = Column(JSON, nullable=True)
 
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, onupdate=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    updated_at = Column(DateTime, onupdate=lambda: datetime.now(timezone.utc))
 
     venue = relationship("Venue", backref="gift_card_configs")
 
@@ -2732,7 +2732,7 @@ class ThirdPartyGiftCardTransaction(Base):
     external_transaction_id = Column(String(100), nullable=True)
     status = Column(String(20), default="pending")
 
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
     config = relationship("ThirdPartyGiftCardConfig", backref="transactions")
     order = relationship("Order", backref="third_party_gift_card_transactions")

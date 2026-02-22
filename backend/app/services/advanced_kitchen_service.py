@@ -810,10 +810,13 @@ class AdvancedKitchenService:
             "status": "created"
         }
 
-    def get_all_station_loads(self) -> List[Dict[str, Any]]:
+    def get_all_station_loads(self, venue_id: int = None) -> List[Dict[str, Any]]:
         """Get current load for all kitchen stations (endpoint-compatible wrapper)"""
 
-        loads = self.db.query(StationLoad).all()
+        query = self.db.query(StationLoad)
+        if venue_id is not None:
+            query = query.filter(StationLoad.venue_id == venue_id)
+        loads = query.all()
 
         results = []
         for load in loads:

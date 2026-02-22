@@ -10,7 +10,7 @@ from sqlalchemy import (
     ForeignKey, Enum, Date, Time, Numeric, Index, UniqueConstraint
 )
 from sqlalchemy.orm import relationship
-from datetime import datetime, date, time as dtime
+from datetime import datetime, date, time as dtime, timezone
 from enum import Enum as PyEnum
 from app.db.base import Base
 
@@ -51,8 +51,8 @@ class DriveThruLane(Base):
     total_vehicles_today = Column(Integer, default=0)
     revenue_today = Column(Numeric(10, 2), default=0)
 
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
 
     venue = relationship("Venue", backref="drive_thru_lanes")
     vehicles = relationship("DriveThruVehicle", back_populates="lane")
@@ -79,7 +79,7 @@ class DriveThruVehicle(Base):
     is_preorder = Column(Boolean, default=False)
 
     # Timing
-    entered_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+    entered_at = Column(DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))
     order_started_at = Column(DateTime, nullable=True)
     order_completed_at = Column(DateTime, nullable=True)
     payment_at = Column(DateTime, nullable=True)
@@ -87,7 +87,7 @@ class DriveThruVehicle(Base):
     exited_at = Column(DateTime, nullable=True)
     total_time_seconds = Column(Integer, nullable=True)
 
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
     venue = relationship("Venue", backref="drive_thru_vehicles")
     lane = relationship("DriveThruLane", back_populates="vehicles")
@@ -116,7 +116,7 @@ class DriveThruOrderDisplay(Base):
     status = Column(String(20), default="pending")
 
     ready_at = Column(DateTime, nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
     venue = relationship("Venue", backref="drive_thru_displays")
     vehicle = relationship("DriveThruVehicle", backref="display")
@@ -162,7 +162,7 @@ class CloudKitchenStation(Base):
     staff_assigned = Column(JSON, default=[])  # Staff IDs
     equipment = Column(JSON, default=[])
 
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
     venue = relationship("Venue", backref="cloud_kitchen_stations")
 
@@ -190,7 +190,7 @@ class VirtualBrandOrder(Base):
     status = Column(String(20), default="received")
     estimated_ready = Column(DateTime, nullable=True)
 
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
     completed_at = Column(DateTime, nullable=True)
 
     venue = relationship("Venue", backref="virtual_brand_orders")
@@ -244,8 +244,8 @@ class FinancialExpense(Base):
     receipt_url = Column(String(500), nullable=True)
 
     created_by = Column(Integer, ForeignKey("staff_users.id"), nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
 
     venue = relationship("Venue", backref="financial_expenses")
     created_by_user = relationship("StaffUser", foreign_keys=[created_by])
@@ -275,7 +275,7 @@ class FinancialExpense(Base):
 #     matched_expense_id = Column(Integer, ForeignKey("financial_expenses.id"), nullable=True)
 #     matched_order_id = Column(Integer, ForeignKey("orders.id"), nullable=True)
 
-#     imported_at = Column(DateTime, default=datetime.utcnow)
+#     imported_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
 #     venue = relationship("Venue", backref="bank_transactions")
 #     matched_expense = relationship("FinancialExpense", foreign_keys=[matched_expense_id])
@@ -300,8 +300,8 @@ class FinancialBudget(Base):
     year = Column(Integer, nullable=False)
     month = Column(Integer, nullable=False)
 
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
 
     venue = relationship("Venue", backref="financial_budgets")
 
@@ -338,8 +338,8 @@ class DeliveryPlatformCredentials(Base):
     connected = Column(Boolean, default=False)
     last_sync = Column(DateTime, nullable=True)
 
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
 
     venue = relationship("Venue", backref="delivery_credentials")
 
@@ -370,8 +370,8 @@ class OwnDeliveryDriver(Base):
     rating = Column(Numeric(3, 2), default=5.0)
     active = Column(Boolean, default=True)
 
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
 
     venue = relationship("Venue", backref="own_drivers")
     current_order = relationship("app.models.AggregatorOrder", foreign_keys=[current_order_id])
@@ -400,7 +400,7 @@ class DeliveryZoneConfig(Base):
     estimated_minutes = Column(Integer, default=30)
 
     active = Column(Boolean, default=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
     venue = relationship("Venue", backref="delivery_zone_configs")
 
@@ -451,8 +451,8 @@ class Franchisee(Base):
     agreement_end = Column(Date, nullable=True)
     compliance_status = Column(String(20), default=ComplianceStatus.COMPLIANT.value)
 
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
 
     royalty_payments = relationship("RoyaltyPayment", back_populates="franchisee")
     compliance_audits = relationship("FranchiseComplianceAudit", back_populates="franchisee")
@@ -485,7 +485,7 @@ class RoyaltyPayment(Base):
     due_date = Column(Date, nullable=False)
     paid_at = Column(DateTime, nullable=True)
 
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
     franchisee = relationship("Franchisee", back_populates="royalty_payments")
 
@@ -515,7 +515,7 @@ class FranchiseComplianceAudit(Base):
     corrective_actions = Column(JSON, default=[])
     next_audit_date = Column(Date, nullable=True)
 
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
     franchisee = relationship("Franchisee", back_populates="compliance_audits")
     venue = relationship("Venue", backref="franchise_audits")
@@ -541,7 +541,7 @@ class FranchiseTerritory(Base):
     franchisee_id = Column(Integer, ForeignKey("franchisees.id"), nullable=True)
     status = Column(String(20), default="available")  # available, reserved, assigned
 
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
     franchisee = relationship("Franchisee", backref="territories")
 
@@ -609,7 +609,7 @@ class FiscalDocument(Base):
     nra_status = Column(String(20), default=NRAReportStatus.PENDING.value)
     nra_response = Column(Text, nullable=True)
 
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
     venue = relationship("Venue", backref="fiscal_documents")
     order = relationship("Order", backref="fiscal_document")
@@ -718,8 +718,8 @@ class CriticalControlPoint(Base):
     auto_monitoring = Column(Boolean, default=False)
     active = Column(Boolean, default=True)
 
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
 
     venue = relationship("Venue", backref="control_points")
     readings = relationship("TemperatureReading", back_populates="ccp")
@@ -777,7 +777,7 @@ class HACCPFoodBatch(Base):
     allergens = Column(JSON, default=[])
     status = Column(String(20), default="active")
 
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
     venue = relationship("Venue", backref="food_batches")
     supplier = relationship("Supplier", backref="food_batches")
@@ -806,7 +806,7 @@ class HACCPSupplierCertification(Base):
     document_url = Column(String(500), nullable=True)
     verified = Column(Boolean, default=False)
 
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
     venue = relationship("Venue", backref="supplier_certifications")
     supplier = relationship("Supplier", backref="certifications")
@@ -834,7 +834,7 @@ class HACCPInspectionChecklist(Base):
     notes = Column(Text, nullable=True)
 
     completed_at = Column(DateTime, nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
     venue = relationship("Venue", backref="inspection_checklists")
 
@@ -866,7 +866,7 @@ class HACCPCorrectiveAction(Base):
     completed_at = Column(DateTime, nullable=True)
     verified_by = Column(String(200), nullable=True)
 
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
     venue = relationship("Venue", backref="corrective_actions")
     ccp = relationship("CriticalControlPoint", backref="corrective_actions")

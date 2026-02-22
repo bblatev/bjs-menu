@@ -20,17 +20,6 @@ interface DaypartSchedule {
   color: string;
 }
 
-interface ScheduledMenu {
-  id: number;
-  name: string;
-  description?: string;
-  type: 'daypart' | 'seasonal' | 'event' | 'promotional';
-  start_date?: string;
-  end_date?: string;
-  dayparts: DaypartSchedule[];
-  active: boolean;
-}
-
 const DAYS = [
   { id: 'mon', label: 'Mon', full: 'Monday' },
   { id: 'tue', label: 'Tue', full: 'Tuesday' },
@@ -55,10 +44,8 @@ const DAYPART_PRESETS = [
 
 export default function MenuSchedulingPage() {
   const [dayparts, setDayparts] = useState<DaypartSchedule[]>([]);
-  const [menus, setMenus] = useState<ScheduledMenu[]>([]);
   const [loading, setLoading] = useState(true);
   const [showDaypartModal, setShowDaypartModal] = useState(false);
-  const [showMenuModal, setShowMenuModal] = useState(false);
   const [editingDaypart, setEditingDaypart] = useState<DaypartSchedule | null>(null);
   const [activeView, setActiveView] = useState<'timeline' | 'list' | 'calendar'>('timeline');
 
@@ -84,6 +71,7 @@ export default function MenuSchedulingPage() {
     try {
       const token = localStorage.getItem('access_token');
       const response = await fetch(`${API_URL}/menu-admin/dayparts`, {
+        credentials: 'include',
         headers: {
           'Authorization': `Bearer ${token}`,
         },
@@ -123,6 +111,7 @@ export default function MenuSchedulingPage() {
         : `${API_URL}/menu-admin/dayparts`;
 
       const response = await fetch(url, {
+        credentials: 'include',
         method: editingDaypart ? 'PUT' : 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -151,6 +140,7 @@ export default function MenuSchedulingPage() {
     try {
       const token = localStorage.getItem('access_token');
       const response = await fetch(`${API_URL}/menu-admin/dayparts/${id}`, {
+        credentials: 'include',
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -218,6 +208,7 @@ export default function MenuSchedulingPage() {
     try {
       const token = localStorage.getItem('access_token');
       const response = await fetch(`${API_URL}/menu-admin/dayparts/${id}/toggle-active`, {
+        credentials: 'include',
         method: 'PATCH',
         headers: {
           'Authorization': `Bearer ${token}`,

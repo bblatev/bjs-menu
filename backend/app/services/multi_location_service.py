@@ -186,11 +186,11 @@ class MultiLocationService:
         include_metrics: bool = False
     ) -> Dict[str, Any]:
         """List all locations"""
-        query = self.db.query(Location)
-        
+        query = self.db.query(Location).filter(Location.active == True)
+
         if status:
             query = query.filter(Location.status == status)
-        
+
         locations = query.all()
         
         result = []
@@ -551,7 +551,7 @@ class MultiLocationService:
     
     def get_enterprise_dashboard(self) -> Dict[str, Any]:
         """Get enterprise dashboard with real data"""
-        locations = self.db.query(Location).all()
+        locations = self.db.query(Location).filter(Location.active == True).all()
         active_locations = [l for l in locations if l.status == "active"]
         
         # Count staff assignments

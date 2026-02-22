@@ -1,9 +1,9 @@
 """Marketing Automation models - SpotOn style."""
 
-from datetime import datetime, timezone
+from decimal import Decimal
 from enum import Enum
 from typing import Optional, List
-from sqlalchemy import Column, Integer, String, Float, DateTime, Text, Boolean, ForeignKey, Enum as SQLEnum, JSON
+from sqlalchemy import Column, Integer, String, Float, DateTime, Text, Boolean, ForeignKey, Enum as SQLEnum, JSON, Numeric, func
 from sqlalchemy.orm import relationship
 from app.db.base import Base
 
@@ -70,7 +70,7 @@ class MarketingCampaign(Base):
 
     # Offer details
     offer_type = Column(String(50), nullable=True)  # discount_percent, discount_amount, free_item
-    offer_value = Column(Float, nullable=True)
+    offer_value = Column(Numeric(10, 2), nullable=True)
     offer_code = Column(String(50), nullable=True)
     offer_expires_at = Column(DateTime, nullable=True)
 
@@ -80,16 +80,16 @@ class MarketingCampaign(Base):
     total_opened = Column(Integer, default=0)
     total_clicked = Column(Integer, default=0)
     total_converted = Column(Integer, default=0)
-    total_revenue = Column(Float, default=0.0)
+    total_revenue = Column(Numeric(10, 2), default=Decimal("0"))
     total_unsubscribed = Column(Integer, default=0)
 
     # Cost tracking
-    campaign_cost = Column(Float, default=0.0)
-    roi = Column(Float, nullable=True)
+    campaign_cost = Column(Numeric(10, 2), default=Decimal("0"))
+    roi = Column(Numeric(10, 2), nullable=True)
 
     created_by = Column(Integer, ForeignKey("users.id"), nullable=True)
-    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
-    updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
 
     # Relationships
     recipients = relationship("CampaignRecipient", back_populates="campaign", cascade="all, delete-orphan")
@@ -102,7 +102,7 @@ class CampaignRecipient(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     campaign_id = Column(Integer, ForeignKey("marketing_campaigns.id"), nullable=False)
-    customer_id = Column(Integer, nullable=True)  # Reference to customer
+    customer_id = Column(Integer, ForeignKey("customers.id", ondelete="SET NULL"), nullable=True, index=True)  # Reference to customer
 
     # Contact info
     email = Column(String(255), nullable=True)
@@ -149,7 +149,7 @@ class CustomerSegment(Base):
     is_dynamic = Column(Boolean, default=True)  # Auto-update membership
     is_active = Column(Boolean, default=True)
 
-    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
 
 
 class AutomatedTrigger(Base):
@@ -179,7 +179,7 @@ class AutomatedTrigger(Base):
     total_triggered = Column(Integer, default=0)
     total_converted = Column(Integer, default=0)
 
-    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
 
 
 class MenuRecommendation(Base):
@@ -205,7 +205,7 @@ class MenuRecommendation(Base):
     items_ordered = Column(JSON, nullable=True)  # Product IDs actually ordered
     conversion_rate = Column(Float, nullable=True)
 
-    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
 
 
 class LoyaltyProgram(Base):
@@ -230,7 +230,7 @@ class LoyaltyProgram(Base):
     # [{"name": "Bronze", "min_points": 0}, {"name": "Silver", "min_points": 500}]
 
     is_active = Column(Boolean, default=True)
-    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
 
 
 class CustomerLoyalty(Base):
@@ -239,7 +239,7 @@ class CustomerLoyalty(Base):
     __table_args__ = {'extend_existing': True}
 
     id = Column(Integer, primary_key=True, index=True)
-    customer_id = Column(Integer, nullable=False, unique=True)
+    customer_id = Column(Integer, ForeignKey("customers.id", ondelete="CASCADE"), nullable=False, unique=True)
     program_id = Column(Integer, ForeignKey("loyalty_programs.id"), nullable=True)
 
     # Points
@@ -265,5 +265,5 @@ class CustomerLoyalty(Base):
     dietary_preferences = Column(JSON, nullable=True)
     communication_preferences = Column(JSON, nullable=True)  # email, sms, push
 
-    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
-    updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)

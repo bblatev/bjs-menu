@@ -60,7 +60,7 @@ export default function CustomerCreditsPage() {
       const headers = getAuthHeaders();
 
       // Load customers
-      const customersRes = await fetch(`${API_URL}/customers/`, { headers });
+      const customersRes = await fetch(`${API_URL}/customers/`, { credentials: 'include', headers });
       if (customersRes.ok) {
         const data = await customersRes.json();
         const customerList = Array.isArray(data) ? data : data.customers || [];
@@ -71,7 +71,7 @@ export default function CustomerCreditsPage() {
           try {
             const creditRes = await fetch(
               `${API_URL}/customers/${customer.id}/credit`,
-              { headers }
+              { credentials: 'include', headers }
             );
             if (creditRes.ok) {
               const creditData = await creditRes.json();
@@ -100,6 +100,7 @@ export default function CustomerCreditsPage() {
 
     try {
       const response = await fetch(`${API_URL}/customers/${customerId}/credit`, {
+        credentials: 'include',
         method: "POST",
         headers: getAuthHeaders(),
         body: JSON.stringify({ credit_limit: limit }),
@@ -125,6 +126,7 @@ export default function CustomerCreditsPage() {
       const response = await fetch(
         `${API_URL}/customers/${customerId}/credit/payment`,
         {
+          credentials: 'include',
           method: "POST",
           headers: getAuthHeaders(),
           body: JSON.stringify({ amount }),
@@ -151,6 +153,7 @@ export default function CustomerCreditsPage() {
       const response = await fetch(
         `${API_URL}/customers/${customerId}/credit/charge`,
         {
+          credentials: 'include',
           method: "POST",
           headers: getAuthHeaders(),
           body: JSON.stringify({ amount }),
@@ -177,6 +180,7 @@ export default function CustomerCreditsPage() {
       const response = await fetch(
         `${API_URL}/customers/${credit.customer_id}/credit`,
         {
+          credentials: 'include',
           method: "POST",
           headers: getAuthHeaders(),
           body: JSON.stringify({

@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { Button, Card, CardBody } from '@/components/ui';
 
-import { API_URL, getAuthHeaders } from '@/lib/api';
+import { API_URL } from '@/lib/api';
 
 import { toast } from '@/lib/toast';
 interface PreviewEntry {
@@ -33,7 +33,7 @@ interface PreviewData {
 }
 
 export default function AccountingExportPage() {
-  const [loading, setLoading] = useState(false);
+  const [, setLoading] = useState(false);
   const [exportType, setExportType] = useState<'sales' | 'purchases' | 'vat'>('sales');
   const [format, setFormat] = useState('csv');
   const [startDate, setStartDate] = useState(() => {
@@ -56,6 +56,7 @@ export default function AccountingExportPage() {
         const response = await fetch(
           `${API_URL}/accounting-export/sales-journal/preview?start_date=${startDate}&end_date=${endDate}&limit=5`,
           {
+            credentials: 'include',
             headers: { Authorization: `Bearer ${token}` },
           }
         );
@@ -87,6 +88,7 @@ export default function AccountingExportPage() {
 
     try {
       const response = await fetch(url, {
+        credentials: 'include',
         headers: { Authorization: `Bearer ${token}` },
       });
 

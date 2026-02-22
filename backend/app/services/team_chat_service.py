@@ -183,28 +183,32 @@ class TeamChatService:
         mentions: Optional[List[UUID]] = None
     ) -> ChatMessage:
         """Send a message to a channel."""
-        message = ChatMessage(
-            id=uuid4(),
-            channel_id=channel_id,
-            sender_id=sender_id,
-            content=content,
-            message_type=message_type,
-            attachments=attachments or [],
-            reply_to_id=reply_to_id,
-            mentions=mentions or [],
-            is_edited=False,
-            created_at=datetime.now(timezone.utc)
-        )
-        self.db.add(message)
+        try:
+            message = ChatMessage(
+                id=uuid4(),
+                channel_id=channel_id,
+                sender_id=sender_id,
+                content=content,
+                message_type=message_type,
+                attachments=attachments or [],
+                reply_to_id=reply_to_id,
+                mentions=mentions or [],
+                is_edited=False,
+                created_at=datetime.now(timezone.utc)
+            )
+            self.db.add(message)
 
-        # Update channel's last message timestamp
-        channel = await self.get_channel(channel_id)
-        if channel:
-            channel.last_message_at = datetime.now(timezone.utc)
+            # Update channel's last message timestamp
+            channel = await self.get_channel(channel_id)
+            if channel:
+                channel.last_message_at = datetime.now(timezone.utc)
 
-        self.db.commit()
-        self.db.refresh(message)
-        return message
+            self.db.commit()
+            self.db.refresh(message)
+            return message
+        except Exception:
+            self.db.rollback()
+            raise
 
     async def edit_message(
         self,
@@ -349,30 +353,34 @@ class TeamChatService:
         user_id: UUID
     ) -> int:
         """Mark all messages in a channel as read."""
-        # Get unread message IDs
-        result = self.db.execute(
-            select(ChatMessage.id).where(
-                ChatMessage.channel_id == channel_id
-            ).except_(
-                select(MessageAcknowledgment.message_id).where(
-                    MessageAcknowledgment.user_id == user_id
+        try:
+            # Get unread message IDs
+            result = self.db.execute(
+                select(ChatMessage.id).where(
+                    ChatMessage.channel_id == channel_id
+                ).except_(
+                    select(MessageAcknowledgment.message_id).where(
+                        MessageAcknowledgment.user_id == user_id
+                    )
                 )
             )
-        )
-        unread_ids = [r[0] for r in result.all()]
+            unread_ids = [r[0] for r in result.all()]
 
-        now = datetime.now(timezone.utc)
-        for message_id in unread_ids:
-            ack = MessageAcknowledgment(
-                id=uuid4(),
-                message_id=message_id,
-                user_id=user_id,
-                read_at=now
-            )
-            self.db.add(ack)
+            now = datetime.now(timezone.utc)
+            for message_id in unread_ids:
+                ack = MessageAcknowledgment(
+                    id=uuid4(),
+                    message_id=message_id,
+                    user_id=user_id,
+                    read_at=now
+                )
+                self.db.add(ack)
 
-        self.db.commit()
-        return len(unread_ids)
+            self.db.commit()
+            return len(unread_ids)
+        except Exception:
+            self.db.rollback()
+            raise
 
     async def get_unread_count(
         self,
@@ -409,25 +417,29 @@ class TeamChatService:
         require_acknowledgment: bool = False
     ) -> TeamAnnouncement:
         """Create a team announcement."""
-        announcement = TeamAnnouncement(
-            id=uuid4(),
-            venue_id=venue_id,
-            title=title,
-            content=content,
-            created_by=created_by,
-            priority=priority,
-            target_roles=target_roles or [],
-            target_staff_ids=target_staff_ids or [],
-            expires_at=expires_at,
-            require_acknowledgment=require_acknowledgment,
-            acknowledgments=[],
-            is_active=True,
-            created_at=datetime.now(timezone.utc)
-        )
-        self.db.add(announcement)
-        self.db.commit()
-        self.db.refresh(announcement)
-        return announcement
+        try:
+            announcement = TeamAnnouncement(
+                id=uuid4(),
+                venue_id=venue_id,
+                title=title,
+                content=content,
+                created_by=created_by,
+                priority=priority,
+                target_roles=target_roles or [],
+                target_staff_ids=target_staff_ids or [],
+                expires_at=expires_at,
+                require_acknowledgment=require_acknowledgment,
+                acknowledgments=[],
+                is_active=True,
+                created_at=datetime.now(timezone.utc)
+            )
+            self.db.add(announcement)
+            self.db.commit()
+            self.db.refresh(announcement)
+            return announcement
+        except Exception:
+            self.db.rollback()
+            raise
 
     async def acknowledge_announcement(
         self,

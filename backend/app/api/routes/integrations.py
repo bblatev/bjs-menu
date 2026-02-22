@@ -52,59 +52,7 @@ def _integration_to_dict(i: IntegrationModel) -> dict:
 async def get_integrations(request: Request, db: DbSession):
     """Get all integrations."""
     results = db.execute(select(IntegrationModel).order_by(IntegrationModel.id)).scalars().all()
-    return [_integration_to_dict(i) for i in results]
-
-
-@router.post("/{integration_id}/connect")
-@limiter.limit("30/minute")
-async def connect_integration(request: Request, integration_id: str, config: dict, db: DbSession):
-    """Connect an integration."""
-    from datetime import datetime, timezone
-    try:
-        iid = int(integration_id)
-    except (ValueError, TypeError):
-        raise HTTPException(status_code=404, detail="Integration not found")
-    integration = db.query(IntegrationModel).filter(IntegrationModel.id == iid).first()
-    if not integration:
-        raise HTTPException(status_code=404, detail="Integration not found")
-    integration.status = "connected"
-    integration.config = config
-    integration.connected_at = datetime.now(timezone.utc)
-    db.commit()
-    return {"success": True}
-
-
-@router.post("/{integration_id}/disconnect")
-@limiter.limit("30/minute")
-async def disconnect_integration(request: Request, integration_id: str, db: DbSession):
-    """Disconnect an integration."""
-    try:
-        iid = int(integration_id)
-    except (ValueError, TypeError):
-        raise HTTPException(status_code=404, detail="Integration not found")
-    integration = db.query(IntegrationModel).filter(IntegrationModel.id == iid).first()
-    if not integration:
-        raise HTTPException(status_code=404, detail="Integration not found")
-    integration.status = "disconnected"
-    db.commit()
-    return {"success": True}
-
-
-@router.post("/{integration_id}/sync")
-@limiter.limit("30/minute")
-async def sync_integration(request: Request, integration_id: str, db: DbSession):
-    """Trigger a sync for an integration."""
-    from datetime import datetime, timezone
-    try:
-        iid = int(integration_id)
-    except (ValueError, TypeError):
-        raise HTTPException(status_code=404, detail="Integration not found")
-    integration = db.query(IntegrationModel).filter(IntegrationModel.id == iid).first()
-    if not integration:
-        raise HTTPException(status_code=404, detail="Integration not found")
-    integration.connected_at = datetime.now(timezone.utc)
-    db.commit()
-    return {"success": True, "synced_records": 0}
+    return {"integrations": [_integration_to_dict(i) for i in results]}
 
 
 @router.get("/webhooks")
@@ -113,11 +61,40 @@ async def get_webhooks(request: Request, db: DbSession):
     """Get all webhooks."""
     setting = db.query(AppSetting).filter(
         AppSetting.category == "webhooks",
-        AppSetting.key == "list",
+        AppSetting.key == "config",
     ).first()
     if setting and setting.value:
         return setting.value
-    return []
+    return {
+        "enabled": False,
+        "endpoints": [],
+        "retry_attempts": 3,
+        "timeout_seconds": 30,
+    }
+
+
+@router.put("/webhooks")
+@limiter.limit("30/minute")
+async def save_webhooks_config(request: Request, db: DbSession):
+    """Save webhook configuration (bulk save from frontend)."""
+    body = await request.json()
+    setting = db.query(AppSetting).filter(
+        AppSetting.category == "webhooks",
+        AppSetting.key == "config",
+    ).first()
+    config = {
+        "enabled": body.get("enabled", False),
+        "endpoints": body.get("endpoints", []),
+        "retry_attempts": body.get("retry_attempts", 3),
+        "timeout_seconds": body.get("timeout_seconds", 30),
+    }
+    if setting:
+        setting.value = config
+    else:
+        setting = AppSetting(category="webhooks", key="config", value=config)
+        db.add(setting)
+    db.commit()
+    return {"success": True}
 
 
 @router.post("/webhooks")
@@ -200,7 +177,7 @@ async def test_webhook(request: Request, webhook_id: str, db: DbSession):
 async def list_all_integrations(request: Request, db: DbSession):
     """List all available integrations (alias for frontend compatibility)."""
     results = db.execute(select(IntegrationModel).order_by(IntegrationModel.id)).scalars().all()
-    return [_integration_to_dict(i) for i in results]
+    return {"integrations": [_integration_to_dict(i) for i in results]}
 
 
 @router.get("/integrations/categories")
@@ -212,7 +189,11 @@ async def get_integration_categories(request: Request, db: DbSession):
         AppSetting.key == "categories",
     ).first()
     if setting and setting.value:
-        return setting.value
+        cats = setting.value
+        # Ensure wrapped in object
+        if isinstance(cats, list):
+            return {"categories": cats}
+        return cats
     # Compute from actual integrations
     results = db.execute(select(IntegrationModel)).scalars().all()
     categories = {}
@@ -221,7 +202,7 @@ async def get_integration_categories(request: Request, db: DbSession):
         if cat not in categories:
             categories[cat] = {"id": cat, "name": cat.title(), "count": 0, "icon": "settings"}
         categories[cat]["count"] += 1
-    return list(categories.values())
+    return {"categories": list(categories.values())}
 
 
 @router.get("/integrations/connect")
@@ -234,6 +215,46 @@ async def get_connectable_integrations(request: Request, db: DbSession):
     return [_integration_to_dict(i) for i in results]
 
 
+@router.post("/integrations/{integration_id}/disconnect")
+@limiter.limit("30/minute")
+async def disconnect_integration_via_integrations(request: Request, integration_id: str, db: DbSession):
+    """Disconnect integration (frontend compat path /integrations/{id}/disconnect)."""
+    try:
+        iid = int(integration_id)
+    except (ValueError, TypeError):
+        raise HTTPException(status_code=404, detail="Integration not found")
+    integration = db.query(IntegrationModel).filter(IntegrationModel.id == iid).first()
+    if not integration:
+        raise HTTPException(status_code=404, detail="Integration not found")
+    integration.status = "disconnected"
+    db.commit()
+    return {"success": True}
+
+
+@router.post("/integrations/connect")
+@limiter.limit("30/minute")
+async def connect_integration_by_body(request: Request, db: DbSession):
+    """Connect an integration (frontend sends integration_id in body)."""
+    body = await request.json()
+    integration_id = body.get("integration_id")
+    if not integration_id:
+        raise HTTPException(status_code=400, detail="integration_id required")
+    try:
+        iid = int(integration_id)
+    except (ValueError, TypeError):
+        raise HTTPException(status_code=404, detail="Integration not found")
+    integration = db.query(IntegrationModel).filter(IntegrationModel.id == iid).first()
+    if not integration:
+        raise HTTPException(status_code=404, detail="Integration not found")
+    config = body.get("credentials", {})
+    config.update(body.get("settings", {}))
+    integration.status = "connected"
+    integration.config = config
+    integration.connected_at = datetime.now(timezone.utc)
+    db.commit()
+    return {"success": True}
+
+
 @router.get("/hardware/devices")
 @limiter.limit("60/minute")
 async def get_hardware_devices(request: Request, db: DbSession):
@@ -242,9 +263,10 @@ async def get_hardware_devices(request: Request, db: DbSession):
         AppSetting.category == "hardware",
         AppSetting.key == "devices",
     ).first()
-    if setting and setting.value:
-        return setting.value
-    return []
+    devices = setting.value if setting and setting.value else []
+    if isinstance(devices, list):
+        return {"devices": devices}
+    return devices
 
 
 @router.get("/api-keys")
@@ -255,9 +277,12 @@ async def get_api_keys(request: Request, db: DbSession):
         AppSetting.category == "api_keys",
         AppSetting.key == "list",
     ).first()
-    if setting and setting.value:
-        return setting.value
-    return []
+    keys = setting.value if setting and setting.value else []
+    # Mask full keys, show only preview
+    for k in keys:
+        if "key" in k and len(k["key"]) > 12:
+            k["key_preview"] = k["key"][:8] + "..." + k["key"][-4:]
+    return {"keys": keys}
 
 
 @router.post("/api-keys")
@@ -275,7 +300,7 @@ async def create_api_key(request: Request, data: dict, db: DbSession):
         "name": data.get("name", "API Key"),
         "key": f"bjs_{secrets.token_hex(16)}",
         "permissions": data.get("permissions", ["read"]),
-        "created_at": datetime.now(timezone.utc).isoformat() if 'datetime' in dir() else None,
+        "created_at": datetime.now(timezone.utc).isoformat(),
         "active": True,
     }
     keys.append(new_key)
@@ -286,6 +311,24 @@ async def create_api_key(request: Request, data: dict, db: DbSession):
         db.add(setting)
     db.commit()
     return {"id": new_key["id"], "name": new_key["name"], "key": new_key["key"]}
+
+
+@router.delete("/api-keys/{key_id}")
+@limiter.limit("30/minute")
+async def delete_api_key(request: Request, key_id: str, db: DbSession):
+    """Revoke an API key."""
+    setting = db.query(AppSetting).filter(
+        AppSetting.category == "api_keys",
+        AppSetting.key == "list",
+    ).first()
+    if not setting or not setting.value:
+        raise HTTPException(status_code=404, detail="API key not found")
+    keys = [k for k in setting.value if k.get("id") != key_id]
+    if len(keys) == len(setting.value):
+        raise HTTPException(status_code=404, detail="API key not found")
+    setting.value = keys
+    db.commit()
+    return {"success": True}
 
 
 @router.get("/accounting/available")
@@ -348,6 +391,79 @@ async def get_multi_location_sync_settings(request: Request, db: DbSession):
         "sync_staff": False,
         "last_sync": None,
     }
+
+
+@router.put("/multi-location/sync-settings")
+@limiter.limit("30/minute")
+async def save_multi_location_sync_settings(request: Request, db: DbSession):
+    """Save multi-location sync settings."""
+    body = await request.json()
+    setting = db.query(AppSetting).filter(
+        AppSetting.category == "multi_location",
+        AppSetting.key == "sync_settings",
+    ).first()
+    if setting:
+        setting.value = body
+    else:
+        setting = AppSetting(category="multi_location", key="sync_settings", value=body)
+        db.add(setting)
+    db.commit()
+    return {"success": True}
+
+
+# =============================================================================
+# CATCH-ALL ROUTES (must be last to avoid matching specific paths)
+# =============================================================================
+
+
+@router.post("/{integration_id}/connect")
+@limiter.limit("30/minute")
+async def connect_integration(request: Request, integration_id: str, config: dict, db: DbSession):
+    """Connect an integration by path param."""
+    try:
+        iid = int(integration_id)
+    except (ValueError, TypeError):
+        raise HTTPException(status_code=404, detail="Integration not found")
+    integration = db.query(IntegrationModel).filter(IntegrationModel.id == iid).first()
+    if not integration:
+        raise HTTPException(status_code=404, detail="Integration not found")
+    integration.status = "connected"
+    integration.config = config
+    integration.connected_at = datetime.now(timezone.utc)
+    db.commit()
+    return {"success": True}
+
+
+@router.post("/{integration_id}/disconnect")
+@limiter.limit("30/minute")
+async def disconnect_integration(request: Request, integration_id: str, db: DbSession):
+    """Disconnect an integration."""
+    try:
+        iid = int(integration_id)
+    except (ValueError, TypeError):
+        raise HTTPException(status_code=404, detail="Integration not found")
+    integration = db.query(IntegrationModel).filter(IntegrationModel.id == iid).first()
+    if not integration:
+        raise HTTPException(status_code=404, detail="Integration not found")
+    integration.status = "disconnected"
+    db.commit()
+    return {"success": True}
+
+
+@router.post("/{integration_id}/sync")
+@limiter.limit("30/minute")
+async def sync_integration(request: Request, integration_id: str, db: DbSession):
+    """Trigger a sync for an integration."""
+    try:
+        iid = int(integration_id)
+    except (ValueError, TypeError):
+        raise HTTPException(status_code=404, detail="Integration not found")
+    integration = db.query(IntegrationModel).filter(IntegrationModel.id == iid).first()
+    if not integration:
+        raise HTTPException(status_code=404, detail="Integration not found")
+    integration.connected_at = datetime.now(timezone.utc)
+    db.commit()
+    return {"success": True, "synced_records": 0}
 
 
 @router.get("/{integration_id}")

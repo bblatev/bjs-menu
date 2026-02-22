@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
-import { API_URL, getAuthHeaders } from '@/lib/api';
+import { API_URL } from '@/lib/api';
 
 interface AuditLog {
   id: number;
@@ -68,6 +68,7 @@ export default function AuditLogsPage() {
       params.append('limit', '100');
 
       const res = await fetch(`${API_URL}/audit-logs/?${params}`, {
+        credentials: 'include',
         headers: { Authorization: `Bearer ${token}` }
       });
       if (res.ok) {
@@ -85,6 +86,7 @@ export default function AuditLogsPage() {
     if (!token) return;
     try {
       const res = await fetch(`${API_URL}/audit-logs/summary?period=${period}`, {
+        credentials: 'include',
         headers: { Authorization: `Bearer ${token}` }
       });
       if (res.ok) {
@@ -101,9 +103,11 @@ export default function AuditLogsPage() {
     try {
       const [actionsRes, typesRes] = await Promise.all([
         fetch(`${API_URL}/audit-logs/actions`, {
+          credentials: 'include',
           headers: { Authorization: `Bearer ${token}` }
         }),
         fetch(`${API_URL}/audit-logs/entity-types`, {
+          credentials: 'include',
           headers: { Authorization: `Bearer ${token}` }
         })
       ]);

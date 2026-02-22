@@ -450,7 +450,7 @@ def get_fiscal_printer() -> FiscalPrinterService:
     if _fiscal_printer is None:
         from app.core.config import settings
         _fiscal_printer = FiscalPrinterService(
-            fpgate_url=getattr(settings, "FPGATE_URL", "http://localhost:4444"),
+            fpgate_url=getattr(settings, "FPGATE_URL", settings.fpgate_url),
             printer_id=getattr(settings, "FPGATE_PRINTER_ID", "FP1"),
             operator=getattr(settings, "FPGATE_OPERATOR", "1"),
             operator_password=getattr(settings, "FPGATE_OPERATOR_PASSWORD", "0000")

@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 
-import { API_URL, getAuthHeaders } from '@/lib/api';
+import { API_URL } from '@/lib/api';
 
 import { toast } from '@/lib/toast';
 interface Location {
@@ -61,7 +61,7 @@ export default function MultiLocationPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showAddModal, setShowAddModal] = useState(false);
-  const [showSyncModal, setShowSyncModal] = useState(false);
+  const [, setShowSyncModal] = useState(false);
   const [dateRange, setDateRange] = useState('today');
   const [selectedLocation, setSelectedLocation] = useState<Location | null>(null);
 
@@ -103,12 +103,10 @@ export default function MultiLocationPage() {
         'Content-Type': 'application/json',
       };
 
-      const params = new URLSearchParams({ date_range: dateRange });
-
       const [locationsRes, statsRes, consolidatedRes] = await Promise.all([
-        fetch(`${API_URL}/v3.1/locations/`, { headers }),
-        fetch(`${API_URL}/v3.1/locations/dashboard`, { headers }),
-        fetch(`${API_URL}/v3.1/locations/reports/consolidated`, { headers }),
+        fetch(`${API_URL}/v3.1/locations/`, { credentials: 'include', headers }),
+        fetch(`${API_URL}/v3.1/locations/dashboard`, { credentials: 'include', headers }),
+        fetch(`${API_URL}/v3.1/locations/reports/consolidated`, { credentials: 'include', headers }),
       ]);
 
       if (!locationsRes.ok) {
@@ -167,6 +165,7 @@ export default function MultiLocationPage() {
     try {
       const token = localStorage.getItem('access_token');
       const response = await fetch(`${API_URL}/v3.1/locations/sync-menu`, {
+        credentials: 'include',
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -193,6 +192,7 @@ export default function MultiLocationPage() {
     try {
       const token = localStorage.getItem('access_token');
       const response = await fetch(`${API_URL}/v3.1/locations/`, {
+        credentials: 'include',
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,

@@ -9,7 +9,7 @@ Provides export endpoints for AtomS3 and other Bulgarian accounting software:
 """
 
 from typing import Optional, List
-from datetime import datetime, date
+from datetime import datetime, date, timezone
 from decimal import Decimal
 from fastapi import APIRouter, HTTPException, Query, Request, Response
 from fastapi.responses import StreamingResponse
@@ -120,11 +120,11 @@ def export_sales_journal(
 
     Exports all closed checks within the date range in AtomS3-compatible format.
     """
-    from datetime import timedelta
+    from datetime import timedelta, timezone
     if not start_date:
-        start_date = (datetime.now().date() - timedelta(days=30)).strftime("%Y-%m-%d")
+        start_date = (datetime.now(timezone.utc).date() - timedelta(days=30)).strftime("%Y-%m-%d")
     if not end_date:
-        end_date = datetime.now().date().strftime("%Y-%m-%d")
+        end_date = datetime.now(timezone.utc).date().strftime("%Y-%m-%d")
     try:
         start = datetime.strptime(start_date, "%Y-%m-%d").date()
         end = datetime.strptime(end_date, "%Y-%m-%d").date()
@@ -145,7 +145,7 @@ def export_sales_journal(
     if location_id:
         query = query.filter(Check.location_id == location_id)
 
-    checks = query.all()
+    checks = query.limit(50000).all()
 
     # Convert to SalesEntry format
     entries = []
@@ -229,11 +229,11 @@ def preview_sales_journal(
     limit: int = Query(10),
 ):
     """Preview sales journal data before export."""
-    from datetime import timedelta
+    from datetime import timedelta, timezone
     if not start_date:
-        start_date = (datetime.now().date() - timedelta(days=30)).strftime("%Y-%m-%d")
+        start_date = (datetime.now(timezone.utc).date() - timedelta(days=30)).strftime("%Y-%m-%d")
     if not end_date:
-        end_date = datetime.now().date().strftime("%Y-%m-%d")
+        end_date = datetime.now(timezone.utc).date().strftime("%Y-%m-%d")
     try:
         start = datetime.strptime(start_date, "%Y-%m-%d").date()
         end = datetime.strptime(end_date, "%Y-%m-%d").date()
@@ -252,7 +252,7 @@ def preview_sales_journal(
     checks = query.limit(limit).all()
 
     # Calculate totals
-    all_checks = query.all()
+    all_checks = query.limit(50000).all()
     total_gross = sum(float(c.total or 0) for c in all_checks)
     total_net = total_gross / 1.20
     total_vat = total_gross - total_net
@@ -303,11 +303,11 @@ def export_purchase_journal(
 
     Exports all invoices within the date range.
     """
-    from datetime import timedelta
+    from datetime import timedelta, timezone
     if not start_date:
-        start_date = (datetime.now().date() - timedelta(days=30)).strftime("%Y-%m-%d")
+        start_date = (datetime.now(timezone.utc).date() - timedelta(days=30)).strftime("%Y-%m-%d")
     if not end_date:
-        end_date = datetime.now().date().strftime("%Y-%m-%d")
+        end_date = datetime.now(timezone.utc).date().strftime("%Y-%m-%d")
     try:
         start = datetime.strptime(start_date, "%Y-%m-%d").date()
         end = datetime.strptime(end_date, "%Y-%m-%d").date()
@@ -327,7 +327,7 @@ def export_purchase_journal(
     if location_id:
         query = query.filter(Invoice.location_id == location_id)
 
-    invoices = query.all()
+    invoices = query.limit(50000).all()
 
     # Convert to PurchaseEntry format
     entries = []
@@ -392,9 +392,9 @@ def get_vat_declaration_data(
     """
     # Calculate date range for the month
     if not month:
-        month = datetime.now().month
+        month = datetime.now(timezone.utc).month
     if not year:
-        year = datetime.now().year
+        year = datetime.now(timezone.utc).year
     start = date(year, month, 1)
     if month == 12:
         end = date(year + 1, 1, 1)
@@ -410,7 +410,7 @@ def get_vat_declaration_data(
     if location_id:
         sales_query = sales_query.filter(Check.location_id == location_id)
 
-    checks = sales_query.all()
+    checks = sales_query.limit(50000).all()
 
     sales_entries = []
     for check in checks:
@@ -443,7 +443,7 @@ def get_vat_declaration_data(
     if location_id:
         purchase_query = purchase_query.filter(Invoice.location_id == location_id)
 
-    invoices = purchase_query.all()
+    invoices = purchase_query.limit(50000).all()
 
     purchase_entries = []
     for inv in invoices:

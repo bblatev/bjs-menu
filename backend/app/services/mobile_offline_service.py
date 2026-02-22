@@ -305,54 +305,58 @@ class MobileOfflineService:
             "errors": []
         }
 
-        for txn in transactions:
-            try:
-                txn_id = txn.get("local_id")
-                txn_type = txn.get("type")
-                txn_timestamp = txn.get("timestamp")
-                txn_data = txn.get("data", {})
+        try:
+            for txn in transactions:
+                try:
+                    txn_id = txn.get("local_id")
+                    txn_type = txn.get("type")
+                    txn_timestamp = txn.get("timestamp")
+                    txn_data = txn.get("data", {})
 
-                # Check for conflicts (same entity modified by another device)
-                conflict = await self._check_conflict(
-                    venue_id,
-                    txn_type,
-                    txn_data.get("entity_id"),
-                    txn_timestamp
-                )
+                    # Check for conflicts (same entity modified by another device)
+                    conflict = await self._check_conflict(
+                        venue_id,
+                        txn_type,
+                        txn_data.get("entity_id"),
+                        txn_timestamp
+                    )
 
-                if conflict:
-                    results["conflicts"].append({
+                    if conflict:
+                        results["conflicts"].append({
+                            "local_id": txn_id,
+                            "type": txn_type,
+                            "conflict_type": conflict["type"],
+                            "server_version": conflict["server_version"],
+                            "resolution": "server_wins" if conflict["server_newer"] else "client_wins"
+                        })
+
+                        if conflict["server_newer"]:
+                            continue  # Skip, server version is newer
+
+                    # Process the transaction
+                    server_id = await self._process_transaction(
+                        venue_id,
+                        device_id,
+                        txn_type,
+                        txn_data
+                    )
+
+                    results["processed"].append({
                         "local_id": txn_id,
-                        "type": txn_type,
-                        "conflict_type": conflict["type"],
-                        "server_version": conflict["server_version"],
-                        "resolution": "server_wins" if conflict["server_newer"] else "client_wins"
+                        "server_id": server_id,
+                        "type": txn_type
                     })
 
-                    if conflict["server_newer"]:
-                        continue  # Skip, server version is newer
+                except Exception as e:
+                    results["errors"].append({
+                        "local_id": txn.get("local_id"),
+                        "error": str(e)
+                    })
 
-                # Process the transaction
-                server_id = await self._process_transaction(
-                    venue_id,
-                    device_id,
-                    txn_type,
-                    txn_data
-                )
-
-                results["processed"].append({
-                    "local_id": txn_id,
-                    "server_id": server_id,
-                    "type": txn_type
-                })
-
-            except Exception as e:
-                results["errors"].append({
-                    "local_id": txn.get("local_id"),
-                    "error": str(e)
-                })
-
-        self.db.commit()
+            self.db.commit()
+        except Exception:
+            self.db.rollback()
+            raise
         return results
 
     async def _check_conflict(
@@ -469,21 +473,25 @@ class MobileOfflineService:
         app_version: str
     ) -> EmployeeAppSession:
         """Create a new employee mobile app session."""
-        session = EmployeeAppSession(
-            id=uuid4(),
-            staff_id=staff_id,
-            venue_id=venue_id,
-            device_id=device_id,
-            device_type=device_info.get("type", "unknown"),
-            device_os=device_info.get("os", "unknown"),
-            app_version=app_version,
-            last_sync_at=datetime.now(timezone.utc),
-            is_active=True
-        )
-        self.db.add(session)
-        self.db.commit()
-        self.db.refresh(session)
-        return session
+        try:
+            session = EmployeeAppSession(
+                id=uuid4(),
+                staff_id=staff_id,
+                venue_id=venue_id,
+                device_id=device_id,
+                device_type=device_info.get("type", "unknown"),
+                device_os=device_info.get("os", "unknown"),
+                app_version=app_version,
+                last_sync_at=datetime.now(timezone.utc),
+                is_active=True
+            )
+            self.db.add(session)
+            self.db.commit()
+            self.db.refresh(session)
+            return session
+        except Exception:
+            self.db.rollback()
+            raise
 
     async def update_session_sync(
         self,

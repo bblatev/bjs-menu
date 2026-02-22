@@ -17,7 +17,7 @@ import logging
 import os
 import shutil
 import sys
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Dict, Optional
 
@@ -116,7 +116,7 @@ class DetectorTrainer:
         data_yaml = self._prepare_data_yaml()
 
         # Create run directory
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        timestamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
         self.run_dir = Path(f"runs/detector/{timestamp}")
         self.run_dir.mkdir(parents=True, exist_ok=True)
 

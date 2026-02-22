@@ -5,7 +5,7 @@ Time-based automatic discounts that apply based on day/time
 from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.orm import Session
 from typing import List
-from datetime import datetime
+from datetime import datetime, timezone
 
 from app.db.session import get_db
 from app.core.rbac import get_current_user
@@ -22,7 +22,7 @@ def is_discount_currently_active(discount: AutoDiscount) -> bool:
     if not discount.active:
         return False
 
-    now = datetime.now()
+    now = datetime.now(timezone.utc)
     current_day = now.strftime("%A").lower()
     current_time = now.strftime("%H:%M")
 

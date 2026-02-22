@@ -1,12 +1,20 @@
 """
 WebSocket Endpoints for Real-time Updates
-Handles connections for hardware monitoring, kitchen display, and notifications
+Handles connections for hardware monitoring, kitchen display, and notifications.
+
+Auth: Supports two authentication modes:
+  1. First-message auth (preferred): Client sends {"event":"auth","token":"..."} as
+     the first message after connecting. Token is never exposed in URLs/logs.
+  2. Query-string auth (legacy): Token passed as ?token=... query parameter.
+     Kept for backward compatibility but discouraged.
 """
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Depends, Query, HTTPException, Request
 from typing import Optional
+import asyncio
 import json
 import logging
-from jose import jwt, JWTError
+import jwt
+from jwt.exceptions import PyJWTError
 
 from app.services.websocket_service import manager, EventType, WebSocketMessage
 from app.core.config import settings
@@ -18,20 +26,96 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
+# Timeout (seconds) for the client to send the first-message auth event.
+_AUTH_TIMEOUT = 5.0
 
-async def validate_ws_token(token: Optional[str]) -> Optional[int]:
-    """Validate WebSocket JWT token and return user_id."""
+
+async def validate_ws_token(token: Optional[str]) -> Optional[dict]:
+    """Validate WebSocket JWT token and return user info."""
     if not token:
         return None
     try:
         payload = jwt.decode(
             token,
-            settings.JWT_SECRET_KEY,
-            algorithms=[settings.JWT_ALGORITHM]
+            settings.secret_key,
+            algorithms=[settings.algorithm]
         )
         user_id = payload.get("sub")
-        return int(user_id) if user_id else None
-    except (JWTError, ValueError):
+        if not user_id:
+            return None
+        return {"user_id": int(user_id), "venue_id": payload.get("venue_id", 1)}
+    except (PyJWTError, ValueError, AttributeError):
+        return None
+
+
+async def authenticate_ws(
+    websocket: WebSocket,
+    query_token: Optional[str] = None,
+) -> Optional[dict]:
+    """Accept WebSocket and authenticate via cookie, first-message, or query-string token.
+
+    Returns user info dict ``{"user_id": int, "venue_id": int}`` on success.
+    Returns ``None`` if authentication fails (connection is already closed).
+
+    Protocol (checked in order):
+      1. Cookie auth: ``access_token`` HttpOnly cookie sent during WS handshake.
+      2. Query-string auth (legacy): Token passed as ``?token=...``.
+      3. First-message auth: Client sends ``{"event":"auth","token":"..."}``
+         as the first message after connecting.
+    """
+    await websocket.accept()
+
+    # --- Cookie auth (HttpOnly cookie sent during WS handshake) ---------------
+    cookie_token = websocket.cookies.get("access_token")
+    if cookie_token:
+        auth = await validate_ws_token(cookie_token)
+        if auth:
+            await websocket.send_json({"event": "auth_success", "data": {"user_id": auth["user_id"]}})
+            return auth
+        # Cookie present but invalid — fall through to other methods
+
+    # --- Legacy: token in query string ----------------------------------------
+    if query_token:
+        auth = await validate_ws_token(query_token)
+        if auth:
+            await websocket.send_json({"event": "auth_success", "data": {"user_id": auth["user_id"]}})
+            return auth
+        await websocket.close(code=4001, reason="Invalid token")
+        return None
+
+    # If cookie was present but invalid, don't wait for first-message
+    if cookie_token:
+        await websocket.close(code=4001, reason="Invalid cookie token")
+        return None
+
+    # --- First-message auth ---------------------------------------------------
+    try:
+        raw = await asyncio.wait_for(websocket.receive_text(), timeout=_AUTH_TIMEOUT)
+        message = json.loads(raw)
+
+        if message.get("event") != "auth" or not message.get("token"):
+            await websocket.close(code=4001, reason="First message must be {\"event\":\"auth\",\"token\":\"...\"}")
+            return None
+
+        auth = await validate_ws_token(message["token"])
+        if not auth:
+            await websocket.close(code=4001, reason="Invalid token")
+            return None
+
+        await websocket.send_json({"event": "auth_success", "data": {"user_id": auth["user_id"]}})
+        return auth
+
+    except asyncio.TimeoutError:
+        try:
+            await websocket.close(code=4001, reason="Authentication timeout")
+        except Exception as e:
+            logger.debug(f"WebSocket close failed: {e}")
+        return None
+    except (json.JSONDecodeError, WebSocketDisconnect):
+        try:
+            await websocket.close(code=4001, reason="Invalid auth message")
+        except Exception as e:
+            logger.debug(f"WebSocket close failed: {e}")
         return None
 
 
@@ -47,10 +131,13 @@ async def venue_websocket(
     websocket: WebSocket,
     venue_id: int,
     channels: Optional[str] = Query(None, description="Comma-separated channels"),
-    token: Optional[str] = Query(None, description="Auth token")
+    token: Optional[str] = Query(None, description="Auth token (legacy, prefer first-message auth)")
 ):
     """
     Main WebSocket endpoint for venue-wide real-time updates.
+
+    Auth: Send ``{"event":"auth","token":"<jwt>"}`` as first message, or pass
+    ``?token=<jwt>`` query param (legacy).
 
     Channels:
     - general: All venue notifications
@@ -62,14 +149,21 @@ async def venue_websocket(
     # Parse channels
     channel_list = channels.split(",") if channels else ["general"]
 
-    # Validate token and get user_id
-    user_id = await validate_ws_token(token)
+    # Authenticate (first-message or legacy query-string)
+    auth = await authenticate_ws(websocket, query_token=token)
+    if not auth:
+        return
+
+    # Verify user belongs to this venue
+    if auth["venue_id"] != venue_id:
+        await websocket.close(code=4003, reason="Not authorized for this venue")
+        return
 
     await manager.connect(
         websocket=websocket,
         venue_id=venue_id,
         channels=channel_list,
-        user_id=user_id
+        user_id=auth["user_id"]
     )
 
     try:
@@ -130,12 +224,17 @@ async def venue_websocket(
 async def kitchen_websocket(
     websocket: WebSocket,
     venue_id: int,
-    station: Optional[str] = Query(None, description="Kitchen station")
+    station: Optional[str] = Query(None, description="Kitchen station"),
+    token: Optional[str] = Query(None, description="Auth token (legacy, prefer first-message auth)")
 ):
     """
     WebSocket for kitchen display system.
     Receives new orders and order updates.
     """
+    auth = await authenticate_ws(websocket, query_token=token)
+    if not auth:
+        return
+
     channels = ["kitchen"]
     if station:
         channels.append(f"station:{station}")
@@ -178,12 +277,17 @@ async def kitchen_websocket(
 async def hardware_websocket(
     websocket: WebSocket,
     venue_id: int,
-    device_types: Optional[str] = Query(None, description="rfid,scale,flow_meter,temperature")
+    device_types: Optional[str] = Query(None, description="rfid,scale,flow_meter,temperature"),
+    token: Optional[str] = Query(None, description="Auth token (legacy, prefer first-message auth)")
 ):
     """
     WebSocket for hardware monitoring dashboard.
     Receives sensor readings and device status updates.
     """
+    auth = await authenticate_ws(websocket, query_token=token)
+    if not auth:
+        return
+
     channels = ["hardware", "inventory"]
     if device_types:
         for dt in device_types.split(","):
@@ -258,15 +362,14 @@ async def chat_websocket(
     websocket: WebSocket,
     venue_id: int,
     channel_id: Optional[str] = Query(None, description="Chat channel ID"),
-    token: Optional[str] = Query(None, description="Auth token")
+    token: Optional[str] = Query(None, description="Auth token (legacy, prefer first-message auth)")
 ):
     """
     WebSocket for team chat.
     Handles real-time messaging, typing indicators, and read receipts.
     """
-    user_id = await validate_ws_token(token)
-    if not user_id:
-        await websocket.close(code=4001, reason="Authentication required")
+    auth = await authenticate_ws(websocket, query_token=token)
+    if not auth:
         return
 
     channels = ["general"]
@@ -277,7 +380,7 @@ async def chat_websocket(
         websocket=websocket,
         venue_id=venue_id,
         channels=channels,
-        user_id=user_id
+        user_id=auth["user_id"]
     )
 
     try:
@@ -299,7 +402,7 @@ async def chat_websocket(
                 await emit_chat_typing(
                     venue_id=venue_id,
                     channel_id=message.get("channel_id", channel_id),
-                    user_id=str(user_id),
+                    user_id=str(auth["user_id"]),
                     user_name=message.get("user_name", "Unknown"),
                     is_typing=message.get("is_typing", True)
                 )
@@ -314,7 +417,7 @@ async def chat_websocket(
                         event="chat_read_receipt",
                         data={
                             "channel_id": message.get("channel_id", channel_id),
-                            "user_id": str(user_id),
+                            "user_id": str(auth["user_id"]),
                             "last_read_id": message.get("last_read_id")
                         }
                     )
@@ -351,22 +454,21 @@ async def chat_websocket(
 async def integrations_websocket(
     websocket: WebSocket,
     venue_id: int,
-    token: Optional[str] = Query(None, description="Auth token")
+    token: Optional[str] = Query(None, description="Auth token (legacy, prefer first-message auth)")
 ):
     """
     WebSocket for integration sync status updates.
     Receives real-time updates on sync progress.
     """
-    user_id = await validate_ws_token(token)
-    if not user_id:
-        await websocket.close(code=4001, reason="Authentication required")
+    auth = await authenticate_ws(websocket, query_token=token)
+    if not auth:
         return
 
     await manager.connect(
         websocket=websocket,
         venue_id=venue_id,
         channels=["integrations"],
-        user_id=user_id
+        user_id=auth["user_id"]
     )
 
     try:
@@ -389,22 +491,21 @@ async def integrations_websocket(
 async def experiments_websocket(
     websocket: WebSocket,
     venue_id: int,
-    token: Optional[str] = Query(None, description="Auth token")
+    token: Optional[str] = Query(None, description="Auth token (legacy, prefer first-message auth)")
 ):
     """
     WebSocket for A/B experiment updates.
     Receives real-time updates on experiment status and significance.
     """
-    user_id = await validate_ws_token(token)
-    if not user_id:
-        await websocket.close(code=4001, reason="Authentication required")
+    auth = await authenticate_ws(websocket, query_token=token)
+    if not auth:
         return
 
     await manager.connect(
         websocket=websocket,
         venue_id=venue_id,
         channels=["experiments"],
-        user_id=user_id
+        user_id=auth["user_id"]
     )
 
     try:
@@ -427,22 +528,21 @@ async def experiments_websocket(
 async def compliance_websocket(
     websocket: WebSocket,
     venue_id: int,
-    token: Optional[str] = Query(None, description="Auth token")
+    token: Optional[str] = Query(None, description="Auth token (legacy, prefer first-message auth)")
 ):
     """
     WebSocket for labor compliance alerts.
     Receives real-time alerts for violations, break reminders, overtime warnings.
     """
-    user_id = await validate_ws_token(token)
-    if not user_id:
-        await websocket.close(code=4001, reason="Authentication required")
+    auth = await authenticate_ws(websocket, query_token=token)
+    if not auth:
         return
 
     await manager.connect(
         websocket=websocket,
         venue_id=venue_id,
         channels=["compliance"],
-        user_id=user_id
+        user_id=auth["user_id"]
     )
 
     try:
@@ -466,22 +566,21 @@ async def terminal_websocket(
     websocket: WebSocket,
     venue_id: int,
     session_id: str,
-    token: Optional[str] = Query(None, description="Auth token")
+    token: Optional[str] = Query(None, description="Auth token (legacy, prefer first-message auth)")
 ):
     """
     WebSocket for POS terminal session.
     Handles payment terminal commands and status updates.
     """
-    user_id = await validate_ws_token(token)
-    if not user_id:
-        await websocket.close(code=4001, reason="Authentication required")
+    auth = await authenticate_ws(websocket, query_token=token)
+    if not auth:
         return
 
     await manager.connect(
         websocket=websocket,
         venue_id=venue_id,
         channels=["terminal", f"session:{session_id}"],
-        user_id=user_id
+        user_id=auth["user_id"]
     )
 
     try:
@@ -521,22 +620,21 @@ async def terminal_websocket(
 async def payments_websocket(
     websocket: WebSocket,
     venue_id: int,
-    token: Optional[str] = Query(None, description="Auth token")
+    token: Optional[str] = Query(None, description="Auth token (legacy, prefer first-message auth)")
 ):
     """
     WebSocket for payment status updates.
     Handles BNPL transaction status, refunds, etc.
     """
-    user_id = await validate_ws_token(token)
-    if not user_id:
-        await websocket.close(code=4001, reason="Authentication required")
+    auth = await authenticate_ws(websocket, query_token=token)
+    if not auth:
         return
 
     await manager.connect(
         websocket=websocket,
         venue_id=venue_id,
         channels=["payments"],
-        user_id=user_id
+        user_id=auth["user_id"]
     )
 
     try:
@@ -560,22 +658,21 @@ async def mobile_websocket(
     websocket: WebSocket,
     venue_id: int,
     device_id: str,
-    token: Optional[str] = Query(None, description="Auth token")
+    token: Optional[str] = Query(None, description="Auth token (legacy, prefer first-message auth)")
 ):
     """
     WebSocket for mobile device sync.
     Handles offline sync status and push notification delivery.
     """
-    user_id = await validate_ws_token(token)
-    if not user_id:
-        await websocket.close(code=4001, reason="Authentication required")
+    auth = await authenticate_ws(websocket, query_token=token)
+    if not auth:
         return
 
     await manager.connect(
         websocket=websocket,
         venue_id=venue_id,
-        channels=["mobile", f"device:{device_id}", f"user:{user_id}"],
-        user_id=user_id
+        channels=["mobile", f"device:{device_id}", f"user:{auth['user_id']}"],
+        user_id=auth["user_id"]
     )
 
     try:
@@ -617,22 +714,21 @@ async def mobile_websocket(
 async def developer_websocket(
     websocket: WebSocket,
     venue_id: int,
-    token: Optional[str] = Query(None, description="Auth token")
+    token: Optional[str] = Query(None, description="Auth token (legacy, prefer first-message auth)")
 ):
     """
     WebSocket for developer portal.
     Receives webhook delivery status and API usage alerts.
     """
-    user_id = await validate_ws_token(token)
-    if not user_id:
-        await websocket.close(code=4001, reason="Authentication required")
+    auth = await authenticate_ws(websocket, query_token=token)
+    if not auth:
         return
 
     await manager.connect(
         websocket=websocket,
         venue_id=venue_id,
         channels=["developer"],
-        user_id=user_id
+        user_id=auth["user_id"]
     )
 
     try:
@@ -655,22 +751,21 @@ async def developer_websocket(
 async def reviews_websocket(
     websocket: WebSocket,
     venue_id: int,
-    token: Optional[str] = Query(None, description="Auth token")
+    token: Optional[str] = Query(None, description="Auth token (legacy, prefer first-message auth)")
 ):
     """
     WebSocket for review/reputation management.
     Receives new review notifications and response alerts.
     """
-    user_id = await validate_ws_token(token)
-    if not user_id:
-        await websocket.close(code=4001, reason="Authentication required")
+    auth = await authenticate_ws(websocket, query_token=token)
+    if not auth:
         return
 
     await manager.connect(
         websocket=websocket,
         venue_id=venue_id,
         channels=["reviews"],
-        user_id=user_id
+        user_id=auth["user_id"]
     )
 
     try:

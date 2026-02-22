@@ -27,6 +27,7 @@ from app.models import (
 )
 from app.core.security import verify_pin
 from app.services.stock_deduction_service import StockDeductionService
+from app.schemas.pagination import paginate_query, PaginatedResponse
 
 import logging
 logger = logging.getLogger(__name__)
@@ -516,7 +517,7 @@ async def add_items_to_order(
 
     # Recalculate order totals
     db.flush()
-    items = db.query(OrderItem).filter(OrderItem.order_id == order.id).all()
+    items = db.query(OrderItem).filter(OrderItem.order_id == order.id).limit(500).all()
     subtotal = sum(float(item.total_price) for item in items)
     tax = subtotal * 0.10
     order.subtotal = subtotal
@@ -576,7 +577,7 @@ async def fire_course(
     items = db.query(OrderItem).filter(
         OrderItem.order_id == order_id,
         OrderItem.course == body.course.value
-    ).all()
+    ).limit(500).all()
 
     if not items:
         raise HTTPException(status_code=400, detail=f"No items in {body.course.value} course")
@@ -609,7 +610,7 @@ async def hold_course(
         OrderItem.order_id == order_id,
         OrderItem.course == body.course.value,
         OrderItem.fired == False
-    ).all()
+    ).limit(500).all()
 
     for item in items:
         item.status = "held"
@@ -635,7 +636,7 @@ async def fire_all_items(
     items = db.query(OrderItem).filter(
         OrderItem.order_id == order_id,
         OrderItem.fired == False
-    ).all()
+    ).limit(500).all()
 
     for item in items:
         item.fired = True
@@ -665,7 +666,7 @@ async def get_order_by_seat(
     """Get order items grouped by seat number"""
     items = db.query(OrderItem).filter(
         OrderItem.order_id == order_id
-    ).all()
+    ).limit(500).all()
 
     by_seat = {}
     for item in items:
@@ -733,11 +734,13 @@ async def open_tab(
     )
 
 
-@router.get("/tabs", response_model=List[TabResponse])
+@router.get("/tabs")
 @limiter.limit("60/minute")
 async def list_open_tabs(
     request: Request,
     search: Optional[str] = None,
+    skip: int = Query(0, ge=0),
+    limit: int = Query(50, ge=1, le=500),
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(get_current_user)
 ):
@@ -752,17 +755,18 @@ async def list_open_tabs(
             TableSession.guest_name.ilike(f"%{search}%")
         )
 
-    tabs = query.order_by(TableSession.started_at.desc()).all()
+    query = query.order_by(TableSession.started_at.desc())
+    tabs, total = paginate_query(query, skip, limit)
 
     result = []
     for tab in tabs:
         # Get orders for this tab
-        orders = db.query(Order).filter(Order.session_id == tab.id).all()
+        orders = db.query(Order).filter(Order.session_id == tab.id).limit(500).all()
         items = []
-        total = 0.0
+        tab_total = 0.0
 
         for order in orders:
-            order_items = db.query(OrderItem).filter(OrderItem.order_id == order.id).all()
+            order_items = db.query(OrderItem).filter(OrderItem.order_id == order.id).limit(500).all()
             for item in order_items:
                 menu_item = db.query(MenuItem).filter(MenuItem.id == item.menu_item_id).first()
                 items.append({
@@ -770,7 +774,7 @@ async def list_open_tabs(
                     "quantity": item.quantity,
                     "price": float(item.total_price)
                 })
-                total += float(item.total_price)
+                tab_total += float(item.total_price)
 
         waiter = db.query(StaffUser).filter(StaffUser.id == tab.waiter_id).first()
 
@@ -779,14 +783,14 @@ async def list_open_tabs(
             customer_name=tab.guest_name or "Unknown",
             card_last_four=None,
             pre_auth_amount=0.0,
-            current_total=total,
+            current_total=tab_total,
             items=items,
             status="open",
             opened_at=tab.started_at,
             opened_by=waiter.full_name if waiter else "Unknown"
         ))
 
-    return result
+    return PaginatedResponse.create(items=result, total=total, skip=skip, limit=limit)
 
 
 @router.post("/tabs/{tab_id}/items", response_model=QuickActionResponse)
@@ -899,7 +903,7 @@ async def transfer_tab(
     tab.is_bar_tab = False
 
     # Update all orders to reference the table
-    orders = db.query(Order).filter(Order.session_id == tab_id).all()
+    orders = db.query(Order).filter(Order.session_id == tab_id).limit(500).all()
     for order in orders:
         order.table_id = body.table_id
 
@@ -931,7 +935,7 @@ async def close_tab(
         raise HTTPException(status_code=404, detail="Tab not found")
 
     # Calculate total
-    orders = db.query(Order).filter(Order.session_id == tab_id).all()
+    orders = db.query(Order).filter(Order.session_id == tab_id).limit(500).all()
     subtotal = sum(float(o.total or 0) for o in orders)
     total = subtotal + body.tip_amount
 
@@ -986,7 +990,7 @@ async def get_check(
     if not order:
         raise HTTPException(status_code=404, detail="Order not found")
 
-    items = db.query(OrderItem).filter(OrderItem.order_id == order_id).all()
+    items = db.query(OrderItem).filter(OrderItem.order_id == order_id).limit(500).all()
 
     item_list = []
     seats = set()
@@ -1004,7 +1008,7 @@ async def get_check(
             seats.add(item.seat_number)
 
     # Get payments
-    payments = db.query(Payment).filter(Payment.order_id == order_id).all()
+    payments = db.query(Payment).filter(Payment.order_id == order_id).limit(500).all()
     payment_list = [{
         "id": p.id,
         "amount": float(p.amount),
@@ -1049,7 +1053,7 @@ async def split_by_seat(
     if not order:
         raise HTTPException(status_code=404, detail="Order not found")
 
-    items = db.query(OrderItem).filter(OrderItem.order_id == order_id).all()
+    items = db.query(OrderItem).filter(OrderItem.order_id == order_id).limit(500).all()
 
     # Group items by seat
     by_seat = {}
@@ -1175,7 +1179,7 @@ async def split_by_items(
     items_to_move = db.query(OrderItem).filter(
         OrderItem.id.in_(body.item_ids),
         OrderItem.order_id == order_id
-    ).all()
+    ).limit(500).all()
 
     if not items_to_move:
         raise HTTPException(status_code=400, detail="No valid items to move")
@@ -1205,13 +1209,13 @@ async def split_by_items(
         moved_total += float(item.total_price)
 
     # Recalculate original order
-    remaining_items = db.query(OrderItem).filter(OrderItem.order_id == order_id).all()
+    remaining_items = db.query(OrderItem).filter(OrderItem.order_id == order_id).limit(500).all()
     order.subtotal = sum(float(i.total_price) for i in remaining_items)
     order.tax = order.subtotal * 0.10
     order.total = order.subtotal + order.tax
 
     # Calculate target order
-    target_items = db.query(OrderItem).filter(OrderItem.order_id == target_order.id).all()
+    target_items = db.query(OrderItem).filter(OrderItem.order_id == target_order.id).limit(500).all()
     target_order.subtotal = sum(float(i.total_price) for i in target_items)
     target_order.tax = target_order.subtotal * 0.10
     target_order.total = target_order.subtotal + target_order.tax
@@ -1237,7 +1241,7 @@ async def merge_checks(
     orders = db.query(Order).filter(
         Order.id.in_(body.check_ids),
         Order.venue_id == current_user.venue_id
-    ).all()
+    ).limit(500).all()
 
     if len(orders) < 2:
         raise HTTPException(status_code=400, detail="Need at least 2 checks to merge")
@@ -1247,13 +1251,13 @@ async def merge_checks(
 
     # Move all items from other orders to target
     for order in orders[1:]:
-        items = db.query(OrderItem).filter(OrderItem.order_id == order.id).all()
+        items = db.query(OrderItem).filter(OrderItem.order_id == order.id).limit(500).all()
         for item in items:
             item.order_id = target.id
         order.status = "merged"
 
     # Recalculate target
-    all_items = db.query(OrderItem).filter(OrderItem.order_id == target.id).all()
+    all_items = db.query(OrderItem).filter(OrderItem.order_id == target.id).limit(500).all()
     target.subtotal = sum(float(i.total_price) for i in all_items)
     target.tax = target.subtotal * 0.10
     target.total = target.subtotal + target.tax
@@ -1290,7 +1294,7 @@ async def process_payment(
         raise HTTPException(status_code=404, detail="Check not found")
 
     # Calculate existing payments
-    existing_payments = db.query(Payment).filter(Payment.order_id == order.id).all()
+    existing_payments = db.query(Payment).filter(Payment.order_id == order.id).limit(500).all()
     paid = sum(float(p.amount) for p in existing_payments)
     balance = float(order.total or 0) - paid
 
@@ -1370,7 +1374,7 @@ async def split_tender_payment(
         db.add(payment)
 
     # Check if fully paid
-    all_payments = db.query(Payment).filter(Payment.order_id == order.id).all()
+    all_payments = db.query(Payment).filter(Payment.order_id == order.id).limit(500).all()
     total_paid = sum(float(p.amount) for p in all_payments) + total_paying
 
     if total_paid >= float(order.total or 0):
@@ -1413,7 +1417,7 @@ async def apply_discount(
                 or_(StaffUser.location_id == current_user.venue_id, StaffUser.location_id.is_(None)),
                 StaffUser.role.in_([StaffRole.ADMIN, StaffRole.MANAGER]),
                 StaffUser.pin_code.isnot(None)
-            ).all()
+            ).limit(500).all()
             valid = False
             for mgr in managers:
                 if verify_pin(body.manager_pin, mgr.pin_code):
@@ -1498,7 +1502,7 @@ async def void_item(
             StaffUser.location_id == current_user.venue_id,
             StaffUser.role.in_([StaffRole.ADMIN, StaffRole.MANAGER]),
             StaffUser.pin_code.isnot(None)
-        ).all()
+        ).limit(500).all()
         valid = False
         for mgr in managers:
             if verify_pin(body.manager_pin, mgr.pin_code):
@@ -1537,7 +1541,7 @@ async def void_item(
         active_items = db.query(OrderItem).filter(
             OrderItem.order_id == order.id,
             OrderItem.status != "voided"
-        ).all()
+        ).limit(500).all()
         order.subtotal = sum(float(i.total_price) for i in active_items)
         order.tax = order.subtotal * 0.10
         order.total = order.subtotal + order.tax - float(order.discount or 0)
@@ -1574,7 +1578,7 @@ async def comp_item(
             StaffUser.location_id == current_user.venue_id,
             StaffUser.role.in_([StaffRole.ADMIN, StaffRole.MANAGER]),
             StaffUser.pin_code.isnot(None)
-        ).all()
+        ).limit(500).all()
         valid = False
         for mgr in managers:
             if verify_pin(body.manager_pin, mgr.pin_code):
@@ -1596,7 +1600,7 @@ async def comp_item(
         active_items = db.query(OrderItem).filter(
             OrderItem.order_id == order.id,
             OrderItem.status != "voided"
-        ).all()
+        ).limit(500).all()
         order.subtotal = sum(float(i.total_price) for i in active_items)
         order.tax = order.subtotal * 0.10
         order.total = order.subtotal + order.tax - float(order.discount or 0)
@@ -1614,11 +1618,13 @@ async def comp_item(
 # TABLE MANAGEMENT / FLOOR PLAN
 # ============================================================================
 
-@router.get("/floor-plan", response_model=List[TableStatusResponse])
+@router.get("/floor-plan")
 @limiter.limit("60/minute")
 async def get_floor_plan(
     request: Request,
     section: Optional[str] = None,
+    skip: int = Query(0, ge=0),
+    limit: int = Query(50, ge=1, le=500),
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(get_current_user)
 ):
@@ -1628,7 +1634,7 @@ async def get_floor_plan(
     if section:
         query = query.filter(Table.section == section)
 
-    tables = query.all()
+    tables, total = paginate_query(query, skip, limit)
 
     result = []
     for table in tables:
@@ -1667,7 +1673,7 @@ async def get_floor_plan(
             current_total=float(current_order.total or 0) if current_order else None
         ))
 
-    return result
+    return PaginatedResponse.create(items=result, total=total, skip=skip, limit=limit)
 
 
 @router.post("/tables/{table_id}/seat", response_model=QuickActionResponse)
@@ -1787,19 +1793,22 @@ async def clear_table(
     )
 
 
-@router.get("/my-tables", response_model=List[TableStatusResponse])
+@router.get("/my-tables")
 @limiter.limit("60/minute")
 async def get_my_tables(
     request: Request,
+    skip: int = Query(0, ge=0),
+    limit: int = Query(50, ge=1, le=500),
     db: Session = Depends(get_db),
     current_user: StaffUser = Depends(get_current_user)
 ):
     """Get tables assigned to current waiter"""
-    sessions = db.query(TableSession).filter(
+    query = db.query(TableSession).filter(
         TableSession.waiter_id == current_user.id,
         TableSession.venue_id == current_user.venue_id,
         TableSession.status == "active"
-    ).all()
+    )
+    sessions, total = paginate_query(query, skip, limit)
 
     result = []
     for session in sessions:
@@ -1827,7 +1836,7 @@ async def get_my_tables(
             current_total=float(order.total or 0) if order else None
         ))
 
-    return result
+    return PaginatedResponse.create(items=result, total=total, skip=skip, limit=limit)
 
 
 # ============================================================================

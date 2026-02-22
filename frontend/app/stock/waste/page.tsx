@@ -79,6 +79,7 @@ export default function WasteManagementPage() {
     try {
       // Load waste records
       const recordsRes = await fetch(`${API_URL}/stock/waste/records`, {
+        credentials: 'include',
         headers: { Authorization: `Bearer ${token}` }
       });
       if (recordsRes.ok) {
@@ -88,6 +89,7 @@ export default function WasteManagementPage() {
 
       // Load waste stats
       const statsRes = await fetch(`${API_URL}/stock/waste/stats`, {
+        credentials: 'include',
         headers: { Authorization: `Bearer ${token}` }
       });
       if (statsRes.ok) {
@@ -104,6 +106,7 @@ export default function WasteManagementPage() {
 
       // Load stock items for the dropdown
       const stockRes = await fetch(`${API_URL}/stock`, {
+        credentials: 'include',
         headers: { Authorization: `Bearer ${token}` }
       });
       if (stockRes.ok) {
@@ -119,6 +122,7 @@ export default function WasteManagementPage() {
 
       // Load waste insights
       const insightsRes = await fetch(`${API_URL}/stock/waste/insights`, {
+        credentials: 'include',
         headers: { Authorization: `Bearer ${token}` }
       });
       if (insightsRes.ok) {
@@ -156,6 +160,7 @@ export default function WasteManagementPage() {
       if (newRecord.batch_number) params.append('batch_number', newRecord.batch_number);
 
       const res = await fetch(`${API_URL}/stock/waste/records?${params.toString()}`, {
+        credentials: 'include',
         method: 'POST',
         headers: { Authorization: `Bearer ${token}` }
       });

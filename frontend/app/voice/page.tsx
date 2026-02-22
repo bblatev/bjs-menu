@@ -195,6 +195,7 @@ export default function VoiceAssistantPage() {
       const response = await fetch(
         `${API_URL}/voice/command`,
         {
+          credentials: 'include',
           method: "POST",
           headers: {
             "Content-Type": "application/json",

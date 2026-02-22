@@ -216,11 +216,11 @@ class QueueWaitlistService:
         size_factor = 1.0 + (party_size - 2) * 0.1 if party_size > 2 else 1.0
 
         # Adjust for time of day (peak hours = longer wait)
-        hour = datetime.now().hour
+        hour = datetime.now(timezone.utc).hour
         peak_factor = 1.3 if 12 <= hour <= 14 or 18 <= hour <= 21 else 1.0
 
         # Adjust for day of week (weekends = longer wait)
-        day = datetime.now().weekday()
+        day = datetime.now(timezone.utc).weekday()
         weekend_factor = 1.2 if day >= 5 else 1.0
 
         estimated = int(base_wait * size_factor * peak_factor * weekend_factor)

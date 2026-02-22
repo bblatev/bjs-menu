@@ -3,10 +3,7 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Link from 'next/link';
-import { PageLoading } from '@/components/ui/LoadingSpinner';
-import { ErrorAlert } from '@/components/ui/ErrorAlert';
-
-import { API_URL, getAuthHeaders } from '@/lib/api';
+import { API_URL } from '@/lib/api';
 
 interface GoogleReserveConfig {
   merchant_id: string;
@@ -61,8 +58,8 @@ export default function GoogleReservePage() {
   const [syncing, setSyncing] = useState(false);
   const [activeTab, setActiveTab] = useState<'bookings' | 'settings'>('bookings');
   const [showConfigModal, setShowConfigModal] = useState(false);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [, setLoading] = useState(true);
+  const [, setError] = useState<string | null>(null);
 
   useEffect(() => {
     loadData();
@@ -73,9 +70,9 @@ export default function GoogleReservePage() {
     setError(null);
     try {
       const [configRes, bookingsRes, statsRes] = await Promise.all([
-        fetch(`${API_URL}/google-reserve/config`),
-        fetch(`${API_URL}/google-reserve/bookings?limit=20`),
-        fetch(`${API_URL}/google-reserve/stats`),
+        fetch(`${API_URL}/google-reserve/config`, { credentials: 'include' }),
+        fetch(`${API_URL}/google-reserve/bookings?limit=20`, { credentials: 'include' }),
+        fetch(`${API_URL}/google-reserve/stats`, { credentials: 'include' }),
       ]);
 
       if (configRes.ok) {
@@ -102,6 +99,7 @@ export default function GoogleReservePage() {
     setSaving(true);
     try {
       const res = await fetch(`${API_URL}/google-reserve/config`, {
+        credentials: 'include',
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(config),
@@ -120,7 +118,7 @@ export default function GoogleReservePage() {
   const syncAvailability = async () => {
     setSyncing(true);
     try {
-      const res = await fetch(`${API_URL}/google-reserve/sync`, { method: 'POST' });
+      const res = await fetch(`${API_URL}/google-reserve/sync`, { credentials: 'include', method: 'POST' });
       if (res.ok) {
         loadData();
       }
@@ -134,6 +132,7 @@ export default function GoogleReservePage() {
   const updateBookingStatus = async (bookingId: string, status: string) => {
     try {
       const res = await fetch(`${API_URL}/google-reserve/bookings/${bookingId}/status`, {
+        credentials: 'include',
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status }),

@@ -56,16 +56,6 @@ interface Occasion {
   notes?: string;
 }
 
-interface CommunicationLog {
-  id: number;
-  customerId: number;
-  type: 'email' | 'sms' | 'call' | 'in_person';
-  subject: string;
-  date: string;
-  staff: string;
-  outcome: string;
-}
-
 interface TierChange {
   id: number;
   customerId: number;
@@ -87,22 +77,11 @@ export default function VIPManagementPage() {
   const [selectedTier, setSelectedTier] = useState('all');
   const [selectedCustomer, setSelectedCustomer] = useState<VIPCustomer | null>(null);
   const [showCustomerModal, setShowCustomerModal] = useState(false);
-  const [showTierModal, setShowTierModal] = useState(false);
-  const [showOccasionModal, setShowOccasionModal] = useState(false);
+  const [, setShowTierModal] = useState(false);
   const [showSurpriseModal, setShowSurpriseModal] = useState(false);
   const [selectedOccasion, setSelectedOccasion] = useState<Occasion | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
-
-  const [tierForm, setTierForm] = useState({
-    name: '',
-    minSpend: 0,
-    minVisits: 0,
-    color: 'yellow-500',
-    pointsMultiplier: 1,
-    discountPercent: 0,
-    benefits: ''
-  });
 
   const [surpriseForm, setSurpriseForm] = useState({
     type: 'complimentary_dessert',
@@ -127,8 +106,6 @@ export default function VIPManagementPage() {
     weeklyVipReport: false
   });
 
-  const getToken = () => localStorage.getItem('access_token');
-
   useEffect(() => {
     loadData();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -137,39 +114,38 @@ export default function VIPManagementPage() {
   const loadData = async () => {
     setLoading(true);
     try {
-      const token = getToken();
-      const headers = { Authorization: `Bearer ${token}` };
+      const headers = getAuthHeaders();
 
       // Fetch VIP customers
-      const customersRes = await fetch(`${API_URL}/vip/customers`, { headers });
+      const customersRes = await fetch(`${API_URL}/vip/customers`, { credentials: 'include', headers });
       if (customersRes.ok) {
         const data = await customersRes.json();
         setCustomers(data.customers || data || []);
       }
 
       // Fetch tiers configuration
-      const tiersRes = await fetch(`${API_URL}/vip/tiers`, { headers });
+      const tiersRes = await fetch(`${API_URL}/vip/tiers`, { credentials: 'include', headers });
       if (tiersRes.ok) {
         const data = await tiersRes.json();
         setTiers(data.tiers || data || []);
       }
 
       // Fetch upcoming occasions
-      const occasionsRes = await fetch(`${API_URL}/vip/occasions`, { headers });
+      const occasionsRes = await fetch(`${API_URL}/vip/occasions`, { credentials: 'include', headers });
       if (occasionsRes.ok) {
         const data = await occasionsRes.json();
         setOccasions(data.occasions || data || []);
       }
 
       // Fetch tier changes history
-      const changesRes = await fetch(`${API_URL}/vip/tier-changes`, { headers });
+      const changesRes = await fetch(`${API_URL}/vip/tier-changes`, { credentials: 'include', headers });
       if (changesRes.ok) {
         const data = await changesRes.json();
         setTierChanges(data.changes || data || []);
       }
 
       // Fetch VIP settings
-      const settingsRes = await fetch(`${API_URL}/vip/settings`, { headers });
+      const settingsRes = await fetch(`${API_URL}/vip/settings`, { credentials: 'include', headers });
       if (settingsRes.ok) {
         const data = await settingsRes.json();
         if (data) {
@@ -185,13 +161,10 @@ export default function VIPManagementPage() {
 
   const saveVipSettings = async () => {
     try {
-      const token = getToken();
       const res = await fetch(`${API_URL}/vip/settings`, {
+        credentials: 'include',
         method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
+        headers: getAuthHeaders(),
         body: JSON.stringify(vipSettings),
       });
       if (res.ok) {
@@ -259,7 +232,6 @@ export default function VIPManagementPage() {
   const handleSaveSurprise = async () => {
     if (selectedOccasion) {
       try {
-        const token = getToken();
         const surpriseData = {
           plannedSurprise: surpriseForm.description || getSurpriseDescription(surpriseForm.type),
           budget: surpriseForm.budget,
@@ -268,11 +240,9 @@ export default function VIPManagementPage() {
         };
 
         const res = await fetch(`${API_URL}/vip/occasions/${selectedOccasion.id}/surprise`, {
+          credentials: 'include',
           method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${token}`,
-          },
+          headers: getAuthHeaders(),
           body: JSON.stringify(surpriseData),
         });
 

@@ -141,7 +141,7 @@ export default function BenchmarkingPage() {
   const [period, setPeriod] = useState("month");
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [metrics, setMetrics] = useState<BenchmarkMetric[]>(defaultMetrics);
-  const [competitors, setCompetitors] = useState<CompetitorData[]>(defaultCompetitors);
+  const [competitors] = useState<CompetitorData[]>(defaultCompetitors);
   const [recommendations, setRecommendations] = useState<Recommendation[]>(defaultRecommendations);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -154,10 +154,10 @@ export default function BenchmarkingPage() {
 
       try {
         // Fetch all data in parallel
-        const [summaryRes, peersRes, recommendationsRes] = await Promise.allSettled([
-          fetch(`${API_URL}/benchmarking/summary?period=${period}`, { headers }),
-          fetch(`${API_URL}/benchmarking/peers`, { headers }),
-          fetch(`${API_URL}/benchmarking/recommendations`, { headers })
+        const [summaryRes, _peersRes, recommendationsRes] = await Promise.allSettled([
+          fetch(`${API_URL}/benchmarking/summary?period=${period}`, { credentials: 'include', headers }),
+          fetch(`${API_URL}/benchmarking/peers`, { credentials: 'include', headers }),
+          fetch(`${API_URL}/benchmarking/recommendations`, { credentials: 'include', headers })
         ]);
 
         // Process summary/metrics

@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import AdminLayout from '@/components/AdminLayout';
-import { API_URL, getAuthHeaders } from '@/lib/api';
+import { API_URL } from '@/lib/api';
 
 interface ForecastItem {
   item_id: number;
@@ -52,6 +52,7 @@ export default function ForecastingPage() {
       try {
         // Use existing analytics dashboard endpoint
         const dashRes = await fetch(`${API_URL}/analytics/dashboard`, {
+          credentials: 'include',
           headers: { 'Authorization': `Bearer ${token}` }
         });
         if (dashRes.ok) setDashboardData(await dashRes.json());
@@ -59,7 +60,7 @@ export default function ForecastingPage() {
         // Use daily metrics for forecast data
         const forecastRes = await fetch(
           `${API_URL}/analytics/daily-metrics/?days=${forecastDays}`,
-          { headers: { 'Authorization': `Bearer ${token}` } }
+          { credentials: 'include', headers: { 'Authorization': `Bearer ${token}` } }
         );
         if (forecastRes.ok) {
           const data = await forecastRes.json();

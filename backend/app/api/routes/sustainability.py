@@ -6,7 +6,7 @@ Carbon footprint tracking, waste management, and sustainability reporting
 from fastapi import APIRouter, Depends, Query, Body, Request, HTTPException
 from sqlalchemy.orm import Session
 from typing import List, Optional
-from datetime import datetime, date, timedelta
+from datetime import datetime, date, timedelta, timezone
 from decimal import Decimal
 from pydantic import BaseModel
 
@@ -371,7 +371,7 @@ def get_sustainability_dashboard(
     service = SustainabilityService(db)
     
     # Get last 30 days report
-    end_date = datetime.now()
+    end_date = datetime.now(timezone.utc)
     start_date = end_date - timedelta(days=30)
     
     report = service.get_sustainability_report(
@@ -492,7 +492,7 @@ def get_sustainability_certificates(
     service = SustainabilityService(db)
     
     # Get current report
-    end_date = datetime.now()
+    end_date = datetime.now(timezone.utc)
     start_date = end_date - timedelta(days=30)
     
     report = service.get_sustainability_report(
@@ -510,7 +510,7 @@ def get_sustainability_certificates(
             'name': '🌟 Green Restaurant Excellence',
             'description': 'Outstanding sustainability performance',
             'earned': True,
-            'date_earned': datetime.now().date().isoformat()
+            'date_earned': datetime.now(timezone.utc).date().isoformat()
         })
     
     if score >= 60:
@@ -518,7 +518,7 @@ def get_sustainability_certificates(
             'name': '🌱 Eco-Friendly Certified',
             'description': 'Commitment to sustainable practices',
             'earned': True,
-            'date_earned': datetime.now().date().isoformat()
+            'date_earned': datetime.now(timezone.utc).date().isoformat()
         })
     
     if report['waste']['totals']['weight_kg'] < 100:
@@ -526,7 +526,7 @@ def get_sustainability_certificates(
             'name': '♻️ Waste Warrior',
             'description': 'Exceptional waste reduction',
             'earned': True,
-            'date_earned': datetime.now().date().isoformat()
+            'date_earned': datetime.now(timezone.utc).date().isoformat()
         })
     
     certificates.append({

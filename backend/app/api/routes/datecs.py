@@ -189,12 +189,13 @@ async def configure_printer(
     Requires manager or admin role.
     """
     from app.services.datecs_unified_service import PrinterConfig, get_datecs_service
+    from app.core.config import settings
 
     printer_config = PrinterConfig(
-        fpgate_url=config.fpgate_url or "http://localhost:4444",
+        fpgate_url=config.fpgate_url or settings.fpgate_url,
         fpgate_printer_id=config.fpgate_printer_id or "FP1",
-        erpnet_host=config.erpnet_host or "localhost",
-        erpnet_port=config.erpnet_port or 8001,
+        erpnet_host=config.erpnet_host or settings.erpnet_fp_host,
+        erpnet_port=config.erpnet_port or settings.erpnet_fp_port,
         operator=config.operator or "1",
         operator_password=config.operator_password or "0000"
     )

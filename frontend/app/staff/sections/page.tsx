@@ -47,9 +47,8 @@ export default function ServerSectionsPage() {
   const [editMode, setEditMode] = useState(false);
   const [showAssignModal, setShowAssignModal] = useState(false);
   const [selectedSection, setSelectedSection] = useState<TableSection | null>(null);
-  const [draggedTable, setDraggedTable] = useState<number | null>(null);
 
-  const [loading, setLoading] = useState(true);
+  const [, setLoading] = useState(true);
 
   useEffect(() => {
     loadData();
@@ -73,6 +72,7 @@ export default function ServerSectionsPage() {
       const response = await fetch(
         `${API_URL}/staff/sections/servers`,
         {
+          credentials: 'include',
           headers: { Authorization: `Bearer ${token}` },
         }
       );
@@ -92,6 +92,7 @@ export default function ServerSectionsPage() {
       const response = await fetch(
         `${API_URL}/tables/sections`,
         {
+          credentials: 'include',
           headers: { Authorization: `Bearer ${token}` },
         }
       );
@@ -111,6 +112,7 @@ export default function ServerSectionsPage() {
       const response = await fetch(
         `${API_URL}/tables/`,
         {
+          credentials: 'include',
           headers: { Authorization: `Bearer ${token}` },
         }
       );
@@ -125,7 +127,6 @@ export default function ServerSectionsPage() {
   };
 
   const getServerById = (id?: number) => servers.find(s => s.id === id);
-  const getSectionById = (id: number) => sections.find(s => s.id === id);
   const getTablesForSection = (sectionId: number) => tables.filter(t => t.section_id === sectionId);
 
   const assignServerToSection = async (sectionId: number, serverId: number | undefined) => {
@@ -134,6 +135,7 @@ export default function ServerSectionsPage() {
       const response = await fetch(
         `${API_URL}/tables/sections/${sectionId}/assign`,
         {
+          credentials: 'include',
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',

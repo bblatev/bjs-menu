@@ -4,11 +4,12 @@ import logging
 from datetime import timedelta
 from typing import Optional
 from datetime import datetime, timezone
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, HTTPException, Query, Request
 from pydantic import BaseModel
 from sqlalchemy import func
 
 from app.core.rate_limit import limiter
+from app.schemas.pagination import paginate_query, PaginatedResponse
 from app.db.session import DbSession
 from app.models.restaurant import KitchenOrder, GuestOrder, MenuItem, Table, Check
 
@@ -66,7 +67,7 @@ def _compute_avg_cook_time(db: DbSession, location_id: Optional[int] = None) -> 
     )
     if location_id:
         query = query.filter(KitchenOrder.location_id == location_id)
-    completed = query.all()
+    completed = query.limit(10000).all()
     if not completed:
         return 0
     total_minutes = sum(
@@ -165,7 +166,7 @@ def get_active_orders(
     if location_id:
         query = query.filter(KitchenOrder.location_id == location_id)
 
-    orders = query.order_by(KitchenOrder.created_at.asc()).all()
+    orders = query.order_by(KitchenOrder.created_at.asc()).limit(200).all()
 
     return {
         "orders": [
@@ -200,7 +201,7 @@ def get_kitchen_queue(
     if location_id:
         query = query.filter(KitchenOrder.location_id == location_id)
 
-    orders = query.order_by(KitchenOrder.created_at.asc()).all()
+    orders = query.order_by(KitchenOrder.created_at.asc()).limit(200).all()
 
     queue_orders = []
     for o in orders:
@@ -237,6 +238,8 @@ def get_kitchen_tickets(
     location_id: Optional[int] = None,
     status: Optional[str] = None,
     station: Optional[str] = None,
+    skip: int = Query(0, ge=0),
+    limit: int = Query(50, ge=1, le=500),
 ):
     """Get kitchen tickets from active orders."""
     tickets = []
@@ -250,7 +253,8 @@ def get_kitchen_tickets(
         db_status = status_map.get(status, status)
         db_query = db_query.filter(KitchenOrder.status == db_status)
 
-    db_orders = db_query.order_by(KitchenOrder.created_at.desc()).all()
+    db_query = db_query.order_by(KitchenOrder.created_at.desc())
+    db_orders, total = paginate_query(db_query, skip, limit)
 
     for ko in db_orders:
         wait_time = 0
@@ -305,7 +309,13 @@ def get_kitchen_tickets(
 
     # Sort by priority and creation time
     tickets.sort(key=lambda t: (-t.get("priority", 0), t.get("created_at", "") or ""))
-    return tickets
+    return {
+        "items": tickets,
+        "total": total,
+        "skip": skip,
+        "limit": limit,
+        "has_more": (skip + len(tickets)) < total,
+    }
 
 
 @router.post("/tickets/{ticket_id}/bump")
@@ -509,7 +519,7 @@ def get_expo_tickets(
         query = query.filter(KitchenOrder.location_id == location_id)
 
     expo_tickets = []
-    for ko in query.all():
+    for ko in query.limit(200).all():
         expo_tickets.append({
             "ticket_id": f"db-{ko.id}",
             "order_id": ko.id,
@@ -529,21 +539,30 @@ def get_86_items(
     request: Request,
     db: DbSession,
     location_id: Optional[int] = None,
+    skip: int = Query(0, ge=0),
+    limit: int = Query(50, ge=1, le=500),
 ):
     """Get list of 86'd items (unavailable menu items)."""
     query = db.query(MenuItem).filter(MenuItem.available == False)
     if location_id:
         query = query.filter(MenuItem.location_id == location_id)
 
+    paginated_items, total = paginate_query(query, skip, limit)
     items = []
-    for item in query.all():
+    for item in paginated_items:
         items.append({
             "id": item.id,
             "name": item.name,
             "marked_at": item.updated_at.isoformat() if item.updated_at else None,
             "estimated_return": None,
         })
-    return items
+    return {
+        "items": items,
+        "total": total,
+        "skip": skip,
+        "limit": limit,
+        "has_more": (skip + len(items)) < total,
+    }
 
 
 @router.post("/86/{item_id}")
@@ -625,7 +644,7 @@ def get_all_alerts(
         query = query.filter(KitchenOrder.location_id == location_id)
 
     target_time = 15  # 15 minute target
-    for ko in query.all():
+    for ko in query.limit(200).all():
         if ko.created_at:
             wait_time = int((datetime.now(timezone.utc) - _utc_aware(ko.created_at)).total_seconds() / 60)
             if wait_time > target_time:
@@ -657,7 +676,7 @@ def get_all_alerts(
                 })
 
     # Get 86'd items as alerts
-    items_86 = db.query(MenuItem).filter(MenuItem.available == False).all()
+    items_86 = db.query(MenuItem).filter(MenuItem.available == False).limit(200).all()
     for item in items_86:
         alerts.append({
             "id": item.id + 30000,
@@ -704,7 +723,7 @@ def get_cook_time_alerts(
     alerts = []
     target_time = 15  # 15 minute target
 
-    for ko in query.all():
+    for ko in query.limit(200).all():
         if ko.created_at:
             wait_time = int((datetime.now(timezone.utc) - _utc_aware(ko.created_at)).total_seconds() / 60)
             if wait_time > target_time * 0.8:  # Alert at 80% of target
@@ -752,7 +771,7 @@ def get_kitchen_stations(
     if location_id:
         query = query.filter(KitchenOrder.location_id == location_id)
 
-    for ko in query.all():
+    for ko in query.limit(200).all():
         station_id = ko.station or "KITCHEN-1"
         station_loads[station_id] = station_loads.get(station_id, 0) + 1
 
@@ -760,7 +779,7 @@ def get_kitchen_stations(
     station_query = db.query(KitchenStation)
     if location_id:
         station_query = station_query.filter(KitchenStation.location_id == location_id)
-    stations = station_query.order_by(KitchenStation.id).all()
+    stations = station_query.order_by(KitchenStation.id).limit(200).all()
 
     return [
         _station_to_dict(s, station_loads.get(f"{s.station_type.upper()}-{s.id}", 0))
@@ -987,7 +1006,7 @@ def get_pending_requests(
     if location_id:
         query = query.filter(KitchenOrder.location_id == location_id)
 
-    requests = query.order_by(KitchenOrder.created_at.asc()).all()
+    requests = query.order_by(KitchenOrder.created_at.asc()).limit(200).all()
 
     return {
         "requests": [
@@ -1249,7 +1268,7 @@ def set_vip_priority(request: Request, order_id: int, db: DbSession):
 async def get_display_stations(request: Request, db: DbSession):
     """Get KDS display stations."""
     from app.models.advanced_features import KitchenStation
-    stations = db.query(KitchenStation).filter(KitchenStation.is_active == True).order_by(KitchenStation.id).all()
+    stations = db.query(KitchenStation).filter(KitchenStation.is_active == True).order_by(KitchenStation.id).limit(200).all()
 
     # Count pending tickets per station
     pending_counts = dict(
@@ -1280,7 +1299,7 @@ async def get_display_tickets(request: Request, db: DbSession, station: str = No
     )
     if station:
         query = query.filter(KitchenOrder.station == station)
-    orders = query.order_by(KitchenOrder.priority.desc(), KitchenOrder.created_at).all()
+    orders = query.order_by(KitchenOrder.priority.desc(), KitchenOrder.created_at).limit(200).all()
     return [
         {
             "id": o.id,
@@ -1310,7 +1329,7 @@ async def get_kitchen_alerts_summary(request: Request, db: DbSession):
     overdue = db.query(KitchenOrder).filter(
         KitchenOrder.status.in_(["pending", "cooking"]),
         KitchenOrder.created_at < cutoff,
-    ).all()
+    ).limit(200).all()
     for o in overdue:
         alerts.append({
             "id": f"order-{o.id}",

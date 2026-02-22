@@ -3,7 +3,7 @@ Advanced Analytics and Forecasting Service
 Demand forecasting, trend analysis, and predictive analytics
 """
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Dict, Any, List, Tuple
 from enum import Enum
 from dataclasses import dataclass
@@ -356,7 +356,7 @@ class AnalyticsForecastingService:
                 forecasts = self._ensemble_forecast(quantities, forecast_days)
 
             # Generate forecast dates
-            last_date = datetime.strptime(records[-1]["date"], "%Y-%m-%d") if records else datetime.now()
+            last_date = datetime.strptime(records[-1]["date"], "%Y-%m-%d") if records else datetime.now(timezone.utc)
             forecast_dates = [
                 (last_date + timedelta(days=i + 1)).strftime("%Y-%m-%d")
                 for i in range(forecast_days)

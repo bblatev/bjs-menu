@@ -34,7 +34,7 @@ interface Staff {
 export default function SubtablesPage() {
   const [tables, setTables] = useState<Table[]>([]);
   const [subtablesByTable, setSubtablesByTable] = useState<Record<number, SubTable[]>>({});
-  const [staff, setStaff] = useState<Staff[]>([]);
+  const [, setStaff] = useState<Staff[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedTable, setSelectedTable] = useState<Table | null>(null);
 
@@ -59,8 +59,8 @@ export default function SubtablesPage() {
       const headers = getAuthHeaders();
 
       const [tablesRes, staffRes] = await Promise.all([
-        fetch(`${API_URL}/tables/`, { headers }),
-        fetch(`${API_URL}/staff/`, { headers }),
+        fetch(`${API_URL}/tables/`, { credentials: 'include', headers }),
+        fetch(`${API_URL}/staff/`, { credentials: 'include', headers }),
       ]);
 
       if (tablesRes.ok) {
@@ -73,7 +73,7 @@ export default function SubtablesPage() {
         await Promise.all(
           tableList.map(async (table: Table) => {
             try {
-              const res = await fetch(`${API_URL}/tables/${table.id}/subtables`, { headers });
+              const res = await fetch(`${API_URL}/tables/${table.id}/subtables`, { credentials: 'include', headers });
               if (res.ok) {
                 subtablesMap[table.id] = await res.json();
               }
@@ -101,6 +101,7 @@ export default function SubtablesPage() {
 
     try {
       const response = await fetch(`${API_URL}/tables/${selectedTable.id}/subtables`, {
+        credentials: 'include',
         method: "POST",
         headers: getAuthHeaders(),
         body: JSON.stringify({
@@ -128,6 +129,7 @@ export default function SubtablesPage() {
 
     try {
       const response = await fetch(`${API_URL}/tables/${selectedTable.id}/subtables/auto-create`, {
+        credentials: 'include',
         method: "POST",
         headers: getAuthHeaders(),
         body: JSON.stringify({
@@ -153,6 +155,7 @@ export default function SubtablesPage() {
 
     try {
       await fetch(`${API_URL}/subtables/${subtableId}/occupy`, {
+        credentials: 'include',
         method: "POST",
         headers: getAuthHeaders(),
         body: JSON.stringify({ guests }),
@@ -167,6 +170,7 @@ export default function SubtablesPage() {
 
     try {
       await fetch(`${API_URL}/subtables/${subtableId}/clear`, {
+        credentials: 'include',
         method: "POST",
         headers: getAuthHeaders(),
       });
@@ -181,6 +185,7 @@ export default function SubtablesPage() {
 
     try {
       await fetch(`${API_URL}/subtables/${subtableId}`, {
+        credentials: 'include',
         method: "DELETE",
         headers: getAuthHeaders(),
       });
@@ -195,6 +200,7 @@ export default function SubtablesPage() {
 
     try {
       const response = await fetch(`${API_URL}/tables/${tableId}/subtables/merge`, {
+        credentials: 'include',
         method: "POST",
         headers: getAuthHeaders(),
       });

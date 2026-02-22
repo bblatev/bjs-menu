@@ -26,7 +26,6 @@ class AccountType(str, enum.Enum):
 class ChartOfAccounts(Base):
     """Chart of Accounts - General Ledger accounts"""
     __tablename__ = "chart_of_accounts"
-    __table_args__ = {'extend_existing': True}
 
     id = Column(Integer, primary_key=True, index=True)
     venue_id = Column(Integer, ForeignKey("venues.id"), nullable=False, index=True)
@@ -58,6 +57,7 @@ class ChartOfAccounts(Base):
     __table_args__ = (
         UniqueConstraint('venue_id', 'account_code', name='uq_venue_account_code'),
         Index('idx_account_type', 'venue_id', 'account_type'),
+        {'extend_existing': True},
     )
 
 
@@ -177,7 +177,6 @@ class BankTransactionType(str, enum.Enum):
 class BankTransaction(Base):
     """Bank transactions for reconciliation"""
     __tablename__ = "bank_transactions"
-    __table_args__ = {'extend_existing': True}
 
     id = Column(Integer, primary_key=True, index=True)
     bank_account_id = Column(Integer, ForeignKey("bank_accounts.id"), nullable=False)
@@ -209,6 +208,7 @@ class BankTransaction(Base):
 
     __table_args__ = (
         Index('idx_bank_tx_date', 'bank_account_id', 'transaction_date'),
+        {'extend_existing': True},
     )
 
 
@@ -266,7 +266,6 @@ class BankReconciliation(Base):
 class PaymentMethod(Base):
     """Payment method configuration"""
     __tablename__ = "payment_methods"
-    __table_args__ = {'extend_existing': True}
 
     id = Column(Integer, primary_key=True, index=True)
     venue_id = Column(Integer, ForeignKey("venues.id"), nullable=False, index=True)
@@ -301,6 +300,7 @@ class PaymentMethod(Base):
 
     __table_args__ = (
         UniqueConstraint('venue_id', 'code', name='uq_venue_payment_code'),
+        {'extend_existing': True},
     )
 
 
@@ -311,7 +311,6 @@ class PaymentMethod(Base):
 class TaxRate(Base):
     """Tax rate definitions"""
     __tablename__ = "tax_rates"
-    __table_args__ = {'extend_existing': True}
 
     id = Column(Integer, primary_key=True, index=True)
     venue_id = Column(Integer, ForeignKey("venues.id"), nullable=False, index=True)
@@ -336,6 +335,7 @@ class TaxRate(Base):
 
     __table_args__ = (
         UniqueConstraint('venue_id', 'code', name='uq_venue_tax_code'),
+        {'extend_existing': True},
     )
 
 

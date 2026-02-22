@@ -13,6 +13,7 @@ from app.core.rate_limit import limiter
 from app.models.restaurant import Table, MenuItem, Check, CheckItem, CheckPayment, KitchenOrder
 from app.models.hardware import WaiterCall as WaiterCallModel
 from app.services.stock_deduction_service import StockDeductionService
+from app.schemas.pagination import paginate_query, PaginatedResponse
 
 logger = logging.getLogger(__name__)
 
@@ -198,7 +199,7 @@ def recalculate_check(check: Check, db: DbSession):
 @limiter.limit("60/minute")
 def get_sections(request: Request, db: DbSession):
     """Get all floor sections/zones."""
-    tables = db.query(Table).all()
+    tables = db.query(Table).limit(500).all()
     sections = {}
     for t in tables:
         section = t.area or "Main Floor"
@@ -215,18 +216,31 @@ def get_sections(request: Request, db: DbSession):
 
 @router.get("/floor-plan")
 @limiter.limit("60/minute")
-def get_floor_plan(request: Request, db: DbSession):
+def get_floor_plan(
+    request: Request,
+    db: DbSession,
+    skip: int = Query(0, ge=0),
+    limit: int = Query(50, ge=1, le=500),
+):
     """Get all tables with status."""
-    tables = db.query(Table).order_by(Table.number).all()
-    return [table_to_response(t, db) for t in tables]
+    query = db.query(Table).order_by(Table.number)
+    tables, total = paginate_query(query, skip, limit)
+    items = [table_to_response(t, db) for t in tables]
+    return PaginatedResponse.create(items=items, total=total, skip=skip, limit=limit)
 
 
 @router.get("/menu/quick")
 @limiter.limit("60/minute")
-def get_quick_menu(request: Request, db: DbSession):
+def get_quick_menu(
+    request: Request,
+    db: DbSession,
+    skip: int = Query(0, ge=0),
+    limit: int = Query(50, ge=1, le=500),
+):
     """Get menu items for quick ordering."""
-    items = db.query(MenuItem).filter(MenuItem.available == True).all()
-    return [
+    query = db.query(MenuItem).filter(MenuItem.available == True)
+    menu_items, total = paginate_query(query, skip, limit)
+    items = [
         {
             "id": item.id,
             "name": item.name,
@@ -234,24 +248,37 @@ def get_quick_menu(request: Request, db: DbSession):
             "category": item.category,
             "image": item.image_url,
         }
-        for item in items
+        for item in menu_items
     ]
+    return PaginatedResponse.create(items=items, total=total, skip=skip, limit=limit)
 
 
 @router.get("/tables")
 @limiter.limit("60/minute")
-def get_tables(request: Request, db: DbSession):
+def get_tables(
+    request: Request,
+    db: DbSession,
+    skip: int = Query(0, ge=0),
+    limit: int = Query(50, ge=1, le=500),
+):
     """Get all tables (alias for floor-plan)."""
-    tables = db.query(Table).order_by(Table.number).all()
+    query = db.query(Table).order_by(Table.number)
+    tables, total = paginate_query(query, skip, limit)
     table_list = [table_to_response(t, db) for t in tables]
-    return {"tables": table_list, "total": len(table_list)}
+    return {"tables": table_list, "total": total, "skip": skip, "limit": limit, "has_more": (skip + len(table_list)) < total}
 
 
 @router.get("/menu")
 @limiter.limit("60/minute")
-def get_menu(request: Request, db: DbSession):
+def get_menu(
+    request: Request,
+    db: DbSession,
+    skip: int = Query(0, ge=0),
+    limit: int = Query(50, ge=1, le=500),
+):
     """Get menu items (alias for menu/quick)."""
-    items = db.query(MenuItem).filter(MenuItem.available == True).all()
+    query = db.query(MenuItem).filter(MenuItem.available == True)
+    menu_items, total = paginate_query(query, skip, limit)
     item_list = [
         {
             "id": item.id,
@@ -260,17 +287,23 @@ def get_menu(request: Request, db: DbSession):
             "category": item.category,
             "image": item.image_url,
         }
-        for item in items
+        for item in menu_items
     ]
-    return {"items": item_list, "total": len(item_list)}
+    return {"items": item_list, "total": total, "skip": skip, "limit": limit, "has_more": (skip + len(item_list)) < total}
 
 
 @router.get("/checks")
 @limiter.limit("60/minute")
-def get_all_checks(request: Request, db: DbSession):
+def get_all_checks(
+    request: Request,
+    db: DbSession,
+    skip: int = Query(0, ge=0),
+    limit: int = Query(50, ge=1, le=500),
+):
     """Get all active checks."""
-    checks = db.query(Check).filter(Check.status == "open").all()
-    return {"checks": [check_to_response(c) for c in checks], "total": len(checks)}
+    query = db.query(Check).filter(Check.status == "open")
+    checks, total = paginate_query(query, skip, limit)
+    return {"checks": [check_to_response(c) for c in checks], "total": total, "skip": skip, "limit": limit, "has_more": (skip + len(checks)) < total}
 
 
 @router.get("/orders/stats")
@@ -349,7 +382,7 @@ def clear_table(request: Request, db: DbSession, table_id: int):
     open_checks = db.query(Check).filter(
         Check.table_id == table_id,
         Check.status == "open"
-    ).all()
+    ).limit(500).all()
     for check in open_checks:
         check.status = "closed"
         check.closed_at = datetime.now(timezone.utc)
@@ -358,6 +391,34 @@ def clear_table(request: Request, db: DbSession, table_id: int):
     db.commit()
 
     return {"status": "ok"}
+
+
+@router.post("/checks")
+@limiter.limit("30/minute")
+def create_check(request: Request, db: DbSession, body: dict = Body(...)):
+    """Create a new check for a table."""
+    table_id = body.get("table_id")
+    guest_count = body.get("guest_count", 1)
+
+    table = db.query(Table).filter(Table.id == table_id).first()
+    if not table:
+        raise HTTPException(status_code=404, detail="Table not found")
+
+    check = Check(
+        table_id=table.id,
+        guest_count=guest_count,
+        status="open",
+        subtotal=Decimal("0"),
+        tax=Decimal("0"),
+        discount=Decimal("0"),
+        total=Decimal("0"),
+        balance_due=Decimal("0"),
+    )
+    db.add(check)
+    db.commit()
+    db.refresh(check)
+
+    return check_to_response(check)
 
 
 @router.get("/checks/{check_id}")
@@ -373,17 +434,27 @@ def get_check(request: Request, db: DbSession, check_id: int):
 
 @router.get("/orders")
 @limiter.limit("60/minute")
-def list_orders(request: Request, db: DbSession, status: Optional[str] = None, limit: int = 50):
+def list_orders(
+    request: Request,
+    db: DbSession,
+    status: Optional[str] = None,
+    skip: int = Query(0, ge=0),
+    limit: int = Query(50, ge=1, le=500),
+):
     """List all orders/checks."""
     query = db.query(Check)
     if status:
         query = query.filter(Check.status == status)
 
-    checks = query.order_by(Check.opened_at.desc()).limit(limit).all()
+    query = query.order_by(Check.opened_at.desc())
+    checks, total = paginate_query(query, skip, limit)
 
     return {
         "orders": [check_to_response(c) for c in checks],
-        "total": len(checks)
+        "total": total,
+        "skip": skip,
+        "limit": limit,
+        "has_more": (skip + len(checks)) < total,
     }
 
 
@@ -555,6 +626,78 @@ def void_item(request: Request, db: DbSession, item_id: int, body: VoidRequest):
     }
 
 
+@router.post("/checks/{check_id}/split")
+@limiter.limit("30/minute")
+def split_check_generic(request: Request, db: DbSession, check_id: int, data: dict = Body(None)):
+    """Split check (generic). Routes to split-even or split-by-seat based on method."""
+    method = (data or {}).get("method", "even")
+    check = db.query(Check).filter(Check.id == check_id).first()
+    if not check:
+        raise HTTPException(status_code=404, detail="Check not found")
+
+    if method == "by_item" or method == "by_seat":
+        # Return per-seat split info
+        seats = {}
+        for item in check.items:
+            if item.status == "voided":
+                continue
+            seat = item.seat_number or 1
+            if seat not in seats:
+                seats[seat] = []
+            seats[seat].append({
+                "id": item.id,
+                "name": item.name,
+                "quantity": item.quantity,
+                "price": float(item.price),
+                "total": float(item.total),
+            })
+        splits = []
+        for seat, items in seats.items():
+            subtotal = sum(i["total"] for i in items)
+            splits.append({"seat": seat, "items": items, "subtotal": subtotal, "total": subtotal})
+        return {"status": "ok", "method": method, "splits": splits}
+
+    # Default: even split
+    ways = int((data or {}).get("split_count", 2))
+    if ways < 2:
+        ways = 2
+    total = float(check.total or 0)
+    amount_per_person = round(total / ways, 2)
+    return {"status": "ok", "num_ways": ways, "amount_per_person": amount_per_person, "total": total}
+
+
+@router.post("/checks/{check_id}/pay")
+@limiter.limit("30/minute")
+def pay_check(request: Request, db: DbSession, check_id: int, body: dict = Body(...)):
+    """Process payment on a check."""
+    check = db.query(Check).filter(Check.id == check_id).first()
+    if not check:
+        raise HTTPException(status_code=404, detail="Check not found")
+
+    payment_method = body.get("payment_method", "cash")
+    amount = Decimal(str(body.get("amount", check.total or 0)))
+    tip = Decimal(str(body.get("tip", 0)))
+
+    check_payment = CheckPayment(
+        check_id=check.id,
+        payment_type=payment_method,
+        amount=amount,
+        tip=tip,
+    )
+    db.add(check_payment)
+    db.commit()
+    db.refresh(check)
+    recalculate_check(check, db)
+
+    total_paid = sum(float(p.amount) for p in check.payments)
+    return {
+        "status": "ok",
+        "fully_paid": float(check.balance_due) <= 0,
+        "balance_remaining": float(check.balance_due),
+        "total_paid": total_paid,
+    }
+
+
 @router.post("/checks/{check_id}/split-even")
 @limiter.limit("30/minute")
 def split_check_even(request: Request, db: DbSession, check_id: int, data: dict = Body(None), num_ways: int = Query(None)):
@@ -675,13 +818,20 @@ class WaiterCallCreate(BaseModel):
 
 @router.get("/calls")
 @limiter.limit("60/minute")
-def list_waiter_calls(request: Request, db: DbSession, status: Optional[str] = None):
+def list_waiter_calls(
+    request: Request,
+    db: DbSession,
+    status: Optional[str] = None,
+    skip: int = Query(0, ge=0),
+    limit: int = Query(50, ge=1, le=500),
+):
     """List all waiter calls."""
     query = db.query(WaiterCallModel)
     if status:
         query = query.filter(WaiterCallModel.status == status)
 
-    calls = query.order_by(WaiterCallModel.created_at.desc()).all()
+    query = query.order_by(WaiterCallModel.created_at.desc())
+    calls, total = paginate_query(query, skip, limit)
 
     call_list = [{
         "id": call.id,
@@ -695,7 +845,7 @@ def list_waiter_calls(request: Request, db: DbSession, status: Optional[str] = N
         "completed_at": call.completed_at.isoformat() if call.completed_at else None,
     } for call in calls]
 
-    return {"calls": call_list, "total": len(call_list)}
+    return {"calls": call_list, "total": total, "skip": skip, "limit": limit, "has_more": (skip + len(call_list)) < total}
 
 
 @router.post("/calls")

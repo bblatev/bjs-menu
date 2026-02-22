@@ -7,8 +7,9 @@ from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 from typing import Optional, List
 
-from fastapi import APIRouter, Query, Body, Request
+from fastapi import APIRouter, HTTPException, Query, Body, Request
 from fastapi.responses import StreamingResponse
+from pydantic import BaseModel
 
 from app.core.rbac import CurrentUser, OptionalCurrentUser
 from app.db.session import DbSession
@@ -688,14 +689,14 @@ def get_turnover_base_prices_report(
     from datetime import timedelta
 
     if not start_date:
-        start_date = (datetime.now().date() - timedelta(days=30)).strftime("%Y-%m-%d")
+        start_date = (datetime.now(timezone.utc).date() - timedelta(days=30)).strftime("%Y-%m-%d")
     if not end_date:
-        end_date = datetime.now().date().strftime("%Y-%m-%d")
+        end_date = datetime.now(timezone.utc).date().strftime("%Y-%m-%d")
     try:
         start = datetime.strptime(start_date, "%Y-%m-%d")
         end = datetime.strptime(end_date, "%Y-%m-%d").replace(hour=23, minute=59, second=59)
     except ValueError:
-        return {"error": "Invalid date format. Use YYYY-MM-DD"}
+        raise HTTPException(status_code=400, detail="Invalid date format. Use YYYY-MM-DD")
 
     # Query closed checks within date range
     check_query = db.query(Check).filter(
@@ -953,7 +954,7 @@ def _generate_inventory_export(db):
 def _generate_staff_export(db, start_date, end_date):
     """Generate staff data for export."""
     from app.models.staff import StaffUser, TimeClockEntry
-    
+
     staff = db.query(StaffUser).filter(StaffUser.is_active == True).all()
     result = []
     for s in staff:
@@ -965,3 +966,176 @@ def _generate_staff_export(db, start_date, end_date):
         total_hours = sum(e.total_hours or 0 for e in entries)
         result.append([s.full_name, s.role, total_hours, 0])  # Sales total would need POS data
     return result
+
+
+# ==================== MERGED FROM reports_enhanced.py ====================
+# The following endpoints were unique to reports_enhanced.py and have been
+# preserved here.  The /reports-enhanced prefix is kept via a backward-compat
+# mount in __init__.py.
+# ========================================================================
+
+class KPIMetric(BaseModel):
+    name: str
+    value: float
+    target: Optional[float] = None
+    unit: Optional[str] = None
+    change_percentage: Optional[float] = None
+    change_direction: Optional[str] = None
+    status: str = "normal"
+
+
+def _enhanced_get_date_range(
+    period: str,
+    start_date: Optional[str] = None,
+    end_date: Optional[str] = None,
+):
+    """Get date range for enhanced report period."""
+    now = datetime.now(timezone.utc)
+
+    if period == "custom" and start_date and end_date:
+        return datetime.fromisoformat(start_date), datetime.fromisoformat(end_date)
+
+    if period == "today":
+        start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+        end = now
+    elif period == "yesterday":
+        yesterday = now - timedelta(days=1)
+        start = yesterday.replace(hour=0, minute=0, second=0, microsecond=0)
+        end = yesterday.replace(hour=23, minute=59, second=59, microsecond=999999)
+    elif period == "week":
+        start = now - timedelta(days=7)
+        end = now
+    elif period == "month":
+        start = now - timedelta(days=30)
+        end = now
+    elif period == "quarter":
+        start = now - timedelta(days=90)
+        end = now
+    elif period == "year":
+        start = now - timedelta(days=365)
+        end = now
+    else:
+        start = now - timedelta(days=7)
+        end = now
+
+    return start, end
+
+
+@router.get("/enhanced-root")
+@limiter.limit("60/minute")
+def get_reports_enhanced_root(request: Request, db: DbSession):
+    """Enhanced reports overview (formerly GET /reports-enhanced/)."""
+    return _enhanced_detailed_sales(request=request, db=db)
+
+
+def _enhanced_detailed_sales(
+    request: Request,
+    db: DbSession,
+    period: str = "week",
+    start_date: Optional[str] = None,
+    end_date: Optional[str] = None,
+):
+    """Internal helper: enhanced detailed sales used by the enhanced root endpoint."""
+    start, end = _enhanced_get_date_range(period, start_date, end_date)
+
+    from app.models.analytics import DailyMetrics
+
+    metrics = db.query(DailyMetrics).filter(
+        DailyMetrics.date >= start.strftime("%Y-%m-%d"),
+        DailyMetrics.date <= end.strftime("%Y-%m-%d"),
+    ).order_by(DailyMetrics.date.desc()).all()
+
+    total_revenue = sum(float(m.total_revenue or 0) for m in metrics)
+    total_orders = sum(int(m.total_orders or 0) for m in metrics)
+    avg_order_value = round(total_revenue / total_orders, 2) if total_orders > 0 else 0
+
+    daily_breakdown = []
+    for m in metrics:
+        day_rev = float(m.total_revenue or 0)
+        day_orders = int(m.total_orders or 0)
+        daily_breakdown.append({
+            "date": str(m.date),
+            "orders_count": day_orders,
+            "revenue": round(day_rev, 2),
+            "average_order_value": round(day_rev / day_orders, 2) if day_orders > 0 else 0,
+        })
+
+    period_length = (end - start).days or 1
+    prev_start = start - timedelta(days=period_length)
+    prev_end = start
+
+    prev_metrics = db.query(DailyMetrics).filter(
+        DailyMetrics.date >= prev_start.strftime("%Y-%m-%d"),
+        DailyMetrics.date < prev_end.strftime("%Y-%m-%d"),
+    ).all()
+
+    prev_revenue = sum(float(m.total_revenue or 0) for m in prev_metrics)
+    revenue_growth = ((total_revenue - prev_revenue) / prev_revenue * 100) if prev_revenue > 0 else 0
+
+    return {
+        "period": period,
+        "start_date": start.isoformat(),
+        "end_date": end.isoformat(),
+        "total_revenue": round(total_revenue, 2),
+        "total_orders": total_orders,
+        "average_order_value": avg_order_value,
+        "daily_breakdown": daily_breakdown,
+        "revenue_growth": round(revenue_growth, 2),
+        "hourly_breakdown": [],
+        "category_breakdown": [],
+        "top_selling_items": [],
+    }
+
+
+@router.get("/dashboard/kpis")
+@limiter.limit("60/minute")
+def get_dashboard_kpis(
+    request: Request,
+    db: DbSession,
+    current_user: OptionalCurrentUser = None,
+):
+    """Get real-time dashboard KPIs."""
+    from app.models.analytics import DailyMetrics
+
+    now = datetime.now(timezone.utc)
+    today_str = now.strftime("%Y-%m-%d")
+    yesterday_str = (now - timedelta(days=1)).strftime("%Y-%m-%d")
+
+    today_metric = db.query(DailyMetrics).filter(DailyMetrics.date == today_str).first()
+    yesterday_metric = db.query(DailyMetrics).filter(DailyMetrics.date == yesterday_str).first()
+
+    today_revenue = float(today_metric.total_revenue or 0) if today_metric else 0
+    today_orders = int(today_metric.total_orders or 0) if today_metric else 0
+    today_aov = round(today_revenue / today_orders, 2) if today_orders > 0 else 0
+
+    yesterday_revenue = float(yesterday_metric.total_revenue or 0) if yesterday_metric else 0
+
+    revenue_change = ((today_revenue - yesterday_revenue) / yesterday_revenue * 100) if yesterday_revenue > 0 else 0
+
+    return {
+        "timestamp": now.isoformat(),
+        "period": "today",
+        "total_revenue": {
+            "name": "Total Revenue",
+            "value": today_revenue,
+            "change_percentage": round(revenue_change, 2),
+            "change_direction": "up" if revenue_change > 0 else "down",
+            "status": "good" if today_revenue > yesterday_revenue else "normal",
+        },
+        "total_orders": {
+            "name": "Total Orders",
+            "value": float(today_orders),
+            "status": "good",
+        },
+        "average_order_value": {
+            "name": "Average Order Value",
+            "value": today_aov,
+            "status": "good" if today_aov >= 50 else "normal",
+        },
+        "revenue_growth": {
+            "name": "Revenue Growth",
+            "value": round(revenue_change, 2),
+            "unit": "%",
+            "status": "good" if revenue_change > 0 else "warning",
+        },
+    }

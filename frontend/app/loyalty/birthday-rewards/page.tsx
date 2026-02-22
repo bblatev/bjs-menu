@@ -4,9 +4,9 @@ import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Link from 'next/link';
 import { PageLoading } from '@/components/ui/LoadingSpinner';
-import { ErrorAlert, EmptyState } from '@/components/ui/ErrorAlert';
+import { ErrorAlert } from '@/components/ui/ErrorAlert';
 
-import { API_URL, getAuthHeaders } from '@/lib/api';
+import { API_URL } from '@/lib/api';
 
 import { toast } from '@/lib/toast';
 interface RewardRule {
@@ -94,9 +94,9 @@ export default function BirthdayRewardsPage() {
     setError(null);
     try {
       const [rulesRes, rewardsRes, statsRes] = await Promise.all([
-        fetch(`${API_URL}/birthday-rewards/rules`),
-        fetch(`${API_URL}/birthday-rewards/rewards?limit=50`),
-        fetch(`${API_URL}/birthday-rewards/stats`),
+        fetch(`${API_URL}/birthday-rewards/rules`, { credentials: 'include' }),
+        fetch(`${API_URL}/birthday-rewards/rewards?limit=50`, { credentials: 'include' }),
+        fetch(`${API_URL}/birthday-rewards/stats`, { credentials: 'include' }),
       ]);
 
       if (rulesRes.ok) {
@@ -149,6 +149,7 @@ export default function BirthdayRewardsPage() {
         : `${API_URL}/birthday-rewards/rules`;
 
       const res = await fetch(url, {
+        credentials: 'include',
         method,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(ruleForm),
@@ -167,6 +168,7 @@ export default function BirthdayRewardsPage() {
     if (!confirm('Are you sure you want to delete this rule?')) return;
     try {
       const res = await fetch(`${API_URL}/birthday-rewards/rules/${ruleId}`, {
+        credentials: 'include',
         method: 'DELETE',
       });
       if (res.ok) {
@@ -180,6 +182,7 @@ export default function BirthdayRewardsPage() {
   const toggleRuleActive = async (rule: RewardRule) => {
     try {
       const res = await fetch(`${API_URL}/birthday-rewards/rules/${rule.rule_id}`, {
+        credentials: 'include',
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ ...rule, is_active: !rule.is_active }),
@@ -195,6 +198,7 @@ export default function BirthdayRewardsPage() {
   const triggerRewardScan = async () => {
     try {
       const res = await fetch(`${API_URL}/birthday-rewards/trigger`, {
+        credentials: 'include',
         method: 'POST',
       });
       if (res.ok) {

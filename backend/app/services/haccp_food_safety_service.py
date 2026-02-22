@@ -80,8 +80,10 @@ class HACCPFoodSafetyService:
         from app.models.v6_features_models import CriticalControlPoint
 
         if not self.db:
-            logger.warning("No database session - returning mock response")
-            return {"id": 1, "name": name, "venue_id": venue_id}
+            raise RuntimeError(
+                "HACCPFoodSafetyService requires a database session. "
+                "Cannot create CCP without database connectivity."
+            )
 
         if isinstance(hazard_type, HazardType):
             hazard_type = hazard_type.value
@@ -120,7 +122,10 @@ class HACCPFoodSafetyService:
         from app.models.v6_features_models import CriticalControlPoint
 
         if not self.db:
-            return {"success": False, "error": "No database session"}
+            raise RuntimeError(
+                "HACCPFoodSafetyService requires a database session. "
+                "Cannot update CCP without database connectivity."
+            )
 
         ccp = self.db.query(CriticalControlPoint).filter(
             CriticalControlPoint.id == ccp_id
@@ -149,7 +154,10 @@ class HACCPFoodSafetyService:
         from app.models.v6_features_models import CriticalControlPoint
 
         if not self.db:
-            return []
+            raise RuntimeError(
+                "HACCPFoodSafetyService requires a database session. "
+                "Cannot query CCPs without database connectivity."
+            )
 
         query = self.db.query(CriticalControlPoint).filter(
             CriticalControlPoint.venue_id == venue_id
@@ -185,7 +193,10 @@ class HACCPFoodSafetyService:
         from app.models.v6_features_models import CriticalControlPoint
 
         if not self.db:
-            return None
+            raise RuntimeError(
+                "HACCPFoodSafetyService requires a database session. "
+                "Cannot query CCP without database connectivity."
+            )
 
         ccp = self.db.query(CriticalControlPoint).filter(
             CriticalControlPoint.id == ccp_id
@@ -218,7 +229,10 @@ class HACCPFoodSafetyService:
         from app.models.v6_features_models import TemperatureReading, CriticalControlPoint
 
         if not self.db:
-            return {"success": False, "error": "No database session"}
+            raise RuntimeError(
+                "HACCPFoodSafetyService requires a database session. "
+                "Cannot record temperature without database connectivity."
+            )
 
         ccp = self.db.query(CriticalControlPoint).filter(
             CriticalControlPoint.id == ccp_id
@@ -279,7 +293,10 @@ class HACCPFoodSafetyService:
         from app.models.v6_features_models import TemperatureReading
 
         if not self.db:
-            return []
+            raise RuntimeError(
+                "HACCPFoodSafetyService requires a database session. "
+                "Cannot perform this operation without database connectivity."
+            )
 
         query = self.db.query(TemperatureReading).filter(
             TemperatureReading.venue_id == venue_id
@@ -347,7 +364,10 @@ class HACCPFoodSafetyService:
         from app.models.v6_features_models import HACCPFoodBatch
 
         if not self.db:
-            return {"success": False, "error": "No database session"}
+            raise RuntimeError(
+                "HACCPFoodSafetyService requires a database session. "
+                "Cannot perform this operation without database connectivity."
+            )
 
         batch = HACCPFoodBatch(
             venue_id=venue_id,
@@ -381,7 +401,10 @@ class HACCPFoodSafetyService:
         from app.models.v6_features_models import HACCPFoodBatch
 
         if not self.db:
-            return []
+            raise RuntimeError(
+                "HACCPFoodSafetyService requires a database session. "
+                "Cannot perform this operation without database connectivity."
+            )
 
         query = self.db.query(HACCPFoodBatch).filter(
             HACCPFoodBatch.venue_id == venue_id
@@ -414,7 +437,10 @@ class HACCPFoodSafetyService:
         from app.models.v6_features_models import HACCPFoodBatch
 
         if not self.db:
-            return []
+            raise RuntimeError(
+                "HACCPFoodSafetyService requires a database session. "
+                "Cannot perform this operation without database connectivity."
+            )
 
         threshold = date.today() + timedelta(days=days)
 
@@ -441,7 +467,10 @@ class HACCPFoodSafetyService:
         from app.models.v6_features_models import HACCPFoodBatch
 
         if not self.db:
-            return {"success": False, "error": "No database session"}
+            raise RuntimeError(
+                "HACCPFoodSafetyService requires a database session. "
+                "Cannot perform this operation without database connectivity."
+            )
 
         batch = self.db.query(HACCPFoodBatch).filter(
             HACCPFoodBatch.id == batch_id
@@ -461,7 +490,10 @@ class HACCPFoodSafetyService:
         from app.models.v6_features_models import HACCPFoodBatch
 
         if not self.db:
-            return []
+            raise RuntimeError(
+                "HACCPFoodSafetyService requires a database session. "
+                "Cannot perform this operation without database connectivity."
+            )
 
         batches = self.db.query(HACCPFoodBatch).filter(
             HACCPFoodBatch.venue_id == venue_id,
@@ -491,7 +523,10 @@ class HACCPFoodSafetyService:
         from app.models.v6_features_models import HACCPSupplierCertification
 
         if not self.db:
-            return {"success": False, "error": "No database session"}
+            raise RuntimeError(
+                "HACCPFoodSafetyService requires a database session. "
+                "Cannot perform this operation without database connectivity."
+            )
 
         cert = HACCPSupplierCertification(
             venue_id=venue_id,
@@ -523,7 +558,10 @@ class HACCPFoodSafetyService:
         from app.models.v6_features_models import HACCPSupplierCertification
 
         if not self.db:
-            return []
+            raise RuntimeError(
+                "HACCPFoodSafetyService requires a database session. "
+                "Cannot perform this operation without database connectivity."
+            )
 
         query = self.db.query(HACCPSupplierCertification).filter(
             HACCPSupplierCertification.venue_id == venue_id
@@ -555,7 +593,10 @@ class HACCPFoodSafetyService:
         from app.models.v6_features_models import HACCPSupplierCertification
 
         if not self.db:
-            return []
+            raise RuntimeError(
+                "HACCPFoodSafetyService requires a database session. "
+                "Cannot perform this operation without database connectivity."
+            )
 
         threshold = date.today() + timedelta(days=days)
 
@@ -583,7 +624,10 @@ class HACCPFoodSafetyService:
         from app.models.v6_features_models import HACCPInspectionChecklist
 
         if not self.db:
-            return {"success": False, "error": "No database session"}
+            raise RuntimeError(
+                "HACCPFoodSafetyService requires a database session. "
+                "Cannot perform this operation without database connectivity."
+            )
 
         checklist = HACCPInspectionChecklist(
             venue_id=venue_id,
@@ -613,7 +657,10 @@ class HACCPFoodSafetyService:
         from app.models.v6_features_models import HACCPInspectionChecklist
 
         if not self.db:
-            return {"success": False, "error": "No database session"}
+            raise RuntimeError(
+                "HACCPFoodSafetyService requires a database session. "
+                "Cannot perform this operation without database connectivity."
+            )
 
         checklist = self.db.query(HACCPInspectionChecklist).filter(
             HACCPInspectionChecklist.id == checklist_id
@@ -646,7 +693,10 @@ class HACCPFoodSafetyService:
         from app.models.v6_features_models import HACCPInspectionChecklist
 
         if not self.db:
-            return []
+            raise RuntimeError(
+                "HACCPFoodSafetyService requires a database session. "
+                "Cannot perform this operation without database connectivity."
+            )
 
         query = self.db.query(HACCPInspectionChecklist).filter(
             HACCPInspectionChecklist.venue_id == venue_id
@@ -682,7 +732,10 @@ class HACCPFoodSafetyService:
         from app.models.v6_features_models import HACCPCorrectiveAction
 
         if not self.db:
-            return {"success": False, "error": "No database session"}
+            raise RuntimeError(
+                "HACCPFoodSafetyService requires a database session. "
+                "Cannot perform this operation without database connectivity."
+            )
 
         if isinstance(severity, Severity):
             severity = severity.value
@@ -719,7 +772,10 @@ class HACCPFoodSafetyService:
         from app.models.v6_features_models import HACCPCorrectiveAction
 
         if not self.db:
-            return {"success": False, "error": "No database session"}
+            raise RuntimeError(
+                "HACCPFoodSafetyService requires a database session. "
+                "Cannot perform this operation without database connectivity."
+            )
 
         action = self.db.query(HACCPCorrectiveAction).filter(
             HACCPCorrectiveAction.id == action_id
@@ -751,7 +807,10 @@ class HACCPFoodSafetyService:
         from app.models.v6_features_models import HACCPCorrectiveAction
 
         if not self.db:
-            return []
+            raise RuntimeError(
+                "HACCPFoodSafetyService requires a database session. "
+                "Cannot perform this operation without database connectivity."
+            )
 
         query = self.db.query(HACCPCorrectiveAction).filter(
             HACCPCorrectiveAction.venue_id == venue_id
@@ -790,7 +849,10 @@ class HACCPFoodSafetyService:
         from app.models.v6_features_models import CriticalControlPoint
 
         if not self.db:
-            return []
+            raise RuntimeError(
+                "HACCPFoodSafetyService requires a database session. "
+                "Cannot perform this operation without database connectivity."
+            )
 
         query = self.db.query(CriticalControlPoint).filter(
             CriticalControlPoint.venue_id == venue_id
@@ -842,7 +904,10 @@ class HACCPFoodSafetyService:
         from app.models.v6_features_models import CriticalControlPoint
 
         if not self.db:
-            return []
+            raise RuntimeError(
+                "HACCPFoodSafetyService requires a database session. "
+                "Cannot perform this operation without database connectivity."
+            )
 
         # Get all active CCPs
         ccps = self.db.query(CriticalControlPoint).filter(
@@ -923,7 +988,10 @@ class HACCPFoodSafetyService:
         )
 
         if not self.db:
-            return {"error": "No database session"}
+            raise RuntimeError(
+                "HACCPFoodSafetyService requires a database session. "
+                "Cannot perform this operation without database connectivity."
+            )
 
         # Get all CCPs
         ccps = self.db.query(CriticalControlPoint).filter(

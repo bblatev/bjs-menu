@@ -53,7 +53,7 @@ export default function TanksPage() {
       let url = `${API_URL}/inventory-hardware/tanks`;
       if (filterStatus !== "all") url += `?status=${filterStatus}`;
 
-      const res = await fetch(url, { headers: getAuthHeaders() });
+      const res = await fetch(url, { credentials: 'include', headers: getAuthHeaders() });
       const data = await res.json();
       setTanks(data.tanks || []);
       setAlerts(data.alerts || []);
@@ -72,6 +72,7 @@ export default function TanksPage() {
     e.preventDefault();
     try {
       const res = await fetch(`${API_URL}/inventory-hardware/tanks`, {
+        credentials: 'include',
         method: "POST",
         headers: getAuthHeaders(),
         body: JSON.stringify(form),
@@ -98,6 +99,7 @@ export default function TanksPage() {
     e.preventDefault();
     try {
       const res = await fetch(`${API_URL}/inventory-hardware/tanks/level`, {
+        credentials: 'include',
         method: "PUT",
         headers: getAuthHeaders(),
         body: JSON.stringify(updateForm),

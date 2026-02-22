@@ -403,8 +403,8 @@ class FiscalAutoDetectService:
                                 confidence=0.7,
                                 matched_protocol="fpgate",
                             ))
-                    except Exception:
-                        pass
+                    except Exception as e:
+                        logger.debug("Fiscal device probe failed: %s", e)
             except ImportError:
                 break
 
@@ -423,8 +423,8 @@ class FiscalAutoDetectService:
                             confidence=0.7,
                             matched_protocol="erpnet_fp",
                         ))
-                except Exception:
-                    pass
+                except Exception as e:
+                    logger.debug("ErpNet.FP probe failed: %s", e)
         except ImportError:
             pass
 

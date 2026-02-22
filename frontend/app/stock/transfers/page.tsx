@@ -75,6 +75,7 @@ export default function StockTransfersPage() {
     try {
       // Load warehouses
       const warehouseRes = await fetch(`${API_URL}/warehouses`, {
+        credentials: 'include',
         headers: { Authorization: `Bearer ${token}` }
       });
       if (warehouseRes.ok) {
@@ -89,6 +90,7 @@ export default function StockTransfersPage() {
 
       // Load stock items
       const stockRes = await fetch(`${API_URL}/stock`, {
+        credentials: 'include',
         headers: { Authorization: `Bearer ${token}` }
       });
       if (stockRes.ok) {
@@ -104,6 +106,7 @@ export default function StockTransfersPage() {
 
       // Load transfers
       const transferRes = await fetch(`${API_URL}/warehouses/transfers`, {
+        credentials: 'include',
         headers: { Authorization: `Bearer ${token}` }
       });
       if (transferRes.ok) {
@@ -173,6 +176,7 @@ export default function StockTransfersPage() {
       // Create a transfer for each item (backend handles single items)
       for (const item of newTransfer.items) {
         const res = await fetch(`${API_URL}/warehouses/transfers`, {
+          credentials: 'include',
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -218,6 +222,7 @@ export default function StockTransfersPage() {
 
       if (endpoint) {
         const res = await fetch(endpoint, {
+          credentials: 'include',
           method: 'PUT',
           headers: { Authorization: `Bearer ${token}` }
         });

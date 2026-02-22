@@ -38,7 +38,6 @@ export default function WaitlistPage() {
   const [entries, setEntries] = useState<WaitlistEntry[]>([]);
   const [stats, setStats] = useState<WaitlistStats | null>(null);
   const [showAddModal, setShowAddModal] = useState(false);
-  const [selectedEntry, setSelectedEntry] = useState<WaitlistEntry | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [filter, setFilter] = useState<'all' | 'waiting' | 'notified'>('all');
@@ -66,23 +65,23 @@ export default function WaitlistPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filter]);
 
-  const getToken = () => localStorage.getItem('access_token');
-
   const loadData = async () => {
     try {
       setError(null);
-      const token = getToken();
-      if (!token) {
+      const headers = getAuthHeaders();
+      if (!headers['Authorization']) {
         window.location.href = '/';
         return;
       }
 
       const [entriesRes, statsRes] = await Promise.all([
         fetch(`${API_URL}/waitlist/?status=${filter === 'all' ? '' : filter}`, {
-          headers: { Authorization: `Bearer ${token}` },
+          credentials: 'include',
+          headers: getAuthHeaders(),
         }),
         fetch(`${API_URL}/waitlist/stats`, {
-          headers: { Authorization: `Bearer ${token}` },
+          credentials: 'include',
+          headers: getAuthHeaders(),
         }),
       ]);
 
@@ -110,13 +109,10 @@ export default function WaitlistPage() {
 
   const addToWaitlist = async () => {
     try {
-      const token = getToken();
       const response = await fetch(`${API_URL}/waitlist/`, {
+        credentials: 'include',
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
+        headers: getAuthHeaders(),
         body: JSON.stringify(newEntry),
       });
 
@@ -145,13 +141,10 @@ export default function WaitlistPage() {
 
   const sendNotification = async (entryId: number) => {
     try {
-      const token = getToken();
       const response = await fetch(`${API_URL}/waitlist/${entryId}/notify`, {
+        credentials: 'include',
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
+        headers: getAuthHeaders(),
       });
 
       if (response.ok) {
@@ -169,13 +162,10 @@ export default function WaitlistPage() {
 
   const seatGuest = async (entryId: number, tableId: string) => {
     try {
-      const token = getToken();
       const response = await fetch(`${API_URL}/waitlist/${entryId}/seat`, {
+        credentials: 'include',
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
+        headers: getAuthHeaders(),
         body: JSON.stringify({ table_number: tableId }),
       });
 
@@ -192,18 +182,15 @@ export default function WaitlistPage() {
 
   const cancelEntry = async (entryId: number, reason: 'cancelled' | 'no_show') => {
     try {
-      const token = getToken();
       const endpoint =
         reason === 'no_show'
           ? `${API_URL}/waitlist/${entryId}/no-show`
           : `${API_URL}/waitlist/${entryId}/cancel`;
 
       const response = await fetch(endpoint, {
+        credentials: 'include',
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
+        headers: getAuthHeaders(),
       });
 
       if (response.ok) {

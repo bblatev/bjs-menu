@@ -65,8 +65,8 @@ export default function SupplierPerformancePage() {
 
       try {
         const [suppliersRes, statsRes] = await Promise.all([
-          fetch(`${API_URL}/suppliers/performance`, { headers }),
-          fetch(`${API_URL}/suppliers/performance/stats`, { headers })
+          fetch(`${API_URL}/suppliers/performance`, { credentials: 'include', headers }),
+          fetch(`${API_URL}/suppliers/performance/stats`, { credentials: 'include', headers })
         ]);
 
         if (suppliersRes.ok && statsRes.ok) {

@@ -202,22 +202,22 @@ class POSAdapterBase(ABC):
         category: Optional[str] = None
     ) -> List[POSProduct]:
         """Fetch products from POS."""
-        pass
+        raise NotImplementedError("Subclasses must implement get_products")
 
     @abstractmethod
     def get_product_by_barcode(self, barcode: str) -> Optional[POSProduct]:
         """Fetch a single product by barcode."""
-        pass
+        raise NotImplementedError("Subclasses must implement get_product_by_barcode")
 
     @abstractmethod
     def get_product_by_id(self, product_id: int) -> Optional[POSProduct]:
         """Fetch a single product by ID."""
-        pass
+        raise NotImplementedError("Subclasses must implement get_product_by_id")
 
     @abstractmethod
     def get_suppliers(self, active_only: bool = True) -> List[POSSupplier]:
         """Fetch suppliers from POS."""
-        pass
+        raise NotImplementedError("Subclasses must implement get_suppliers")
 
     @abstractmethod
     def get_stock_levels(
@@ -226,7 +226,7 @@ class POSAdapterBase(ABC):
         product_ids: Optional[List[int]] = None
     ) -> List[POSStockLevel]:
         """Fetch current stock levels."""
-        pass
+        raise NotImplementedError("Subclasses must implement get_stock_levels")
 
     @abstractmethod
     def get_sales_aggregate(
@@ -237,7 +237,7 @@ class POSAdapterBase(ABC):
         product_ids: Optional[List[int]] = None
     ) -> List[POSSalesAggregate]:
         """Fetch aggregated sales data for a period."""
-        pass
+        raise NotImplementedError("Subclasses must implement get_sales_aggregate")
 
     @abstractmethod
     def get_in_transit_orders(
@@ -246,7 +246,7 @@ class POSAdapterBase(ABC):
         product_ids: Optional[List[int]] = None
     ) -> List[POSInTransitOrder]:
         """Fetch pending/in-transit orders."""
-        pass
+        raise NotImplementedError("Subclasses must implement get_in_transit_orders")
 
 
 # ============== Local Database Adapter ==============

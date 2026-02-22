@@ -1,10 +1,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { motion, AnimatePresence, Reorder } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import Link from 'next/link';
-import { PageLoading } from '@/components/ui/LoadingSpinner';
-import { ErrorAlert } from '@/components/ui/ErrorAlert';
 
 import { API_URL, getAuthHeaders } from '@/lib/api';
 
@@ -82,8 +80,8 @@ export default function TemplateBuilderPage() {
   const [selectedBlock, setSelectedBlock] = useState<string | null>(null);
   const [previewHtml, setPreviewHtml] = useState<string>('');
   const [saving, setSaving] = useState(false);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [, setLoading] = useState(true);
+  const [, setError] = useState<string | null>(null);
   const [templates, setTemplates] = useState<EmailTemplate[]>([]);
   const [showTemplateList, setShowTemplateList] = useState(false);
 
@@ -119,6 +117,7 @@ export default function TemplateBuilderPage() {
     setError(null);
     try {
       const res = await fetch(`${API_URL}/email-campaigns/templates`, {
+        credentials: 'include',
         headers: getAuthHeaders(),
       });
       if (res.ok) {
@@ -277,6 +276,7 @@ export default function TemplateBuilderPage() {
         : `${API_URL}/email-campaigns/templates`;
 
       const res = await fetch(url, {
+        credentials: 'include',
         method,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),

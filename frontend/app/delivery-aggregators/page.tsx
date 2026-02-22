@@ -83,6 +83,7 @@ export default function DeliveryAggregatorsPage() {
   const fetchPlatforms = useCallback(async () => {
     try {
       const response = await fetch(`${API_URL}/v6/${getVenueId()}/delivery/platforms`, {
+        credentials: 'include',
         headers: getAuthHeaders(),
       });
       if (!response.ok) throw new Error('Failed to fetch platforms');
@@ -127,6 +128,7 @@ export default function DeliveryAggregatorsPage() {
   const fetchOrders = useCallback(async () => {
     try {
       const response = await fetch(`${API_URL}/v6/${getVenueId()}/delivery/orders`, {
+        credentials: 'include',
         headers: getAuthHeaders(),
       });
       if (!response.ok) throw new Error('Failed to fetch orders');
@@ -157,6 +159,7 @@ export default function DeliveryAggregatorsPage() {
   const fetchZones = useCallback(async () => {
     try {
       const response = await fetch(`${API_URL}/v6/${getVenueId()}/delivery/zones`, {
+        credentials: 'include',
         headers: getAuthHeaders(),
       });
       if (!response.ok) throw new Error('Failed to fetch zones');
@@ -182,6 +185,7 @@ export default function DeliveryAggregatorsPage() {
   const fetchDrivers = useCallback(async () => {
     try {
       const response = await fetch(`${API_URL}/v6/${getVenueId()}/delivery/drivers`, {
+        credentials: 'include',
         headers: getAuthHeaders(),
       });
       if (!response.ok) throw new Error('Failed to fetch drivers');
@@ -213,7 +217,7 @@ export default function DeliveryAggregatorsPage() {
 
       const response = await fetch(
         `${API_URL}/v6/${getVenueId()}/delivery/stats?start=${startOfDay}&end=${endOfDay}`
-      );
+      , { credentials: 'include' });
       if (!response.ok) throw new Error('Failed to fetch stats');
       const data = await response.json();
 
@@ -282,7 +286,7 @@ export default function DeliveryAggregatorsPage() {
     try {
       const response = await fetch(
         `${API_URL}/v6/${getVenueId()}/delivery/orders/${orderId}/accept?prep_time=${prepTime}`,
-        { method: 'POST' }
+        { credentials: 'include', method: 'POST' }
       );
       if (!response.ok) throw new Error('Failed to accept order');
 
@@ -300,6 +304,7 @@ export default function DeliveryAggregatorsPage() {
       const response = await fetch(
         `${API_URL}/v6/${getVenueId()}/delivery/orders/${orderId}/reject`,
         {
+          credentials: 'include',
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ reason: 'Restaurant busy' })
@@ -319,7 +324,7 @@ export default function DeliveryAggregatorsPage() {
     try {
       const response = await fetch(
         `${API_URL}/v6/${getVenueId()}/delivery/orders/${orderId}/ready`,
-        { method: 'POST' }
+        { credentials: 'include', method: 'POST' }
       );
       if (!response.ok) throw new Error('Failed to mark order ready');
 
@@ -336,6 +341,7 @@ export default function DeliveryAggregatorsPage() {
       const response = await fetch(
         `${API_URL}/v6/${getVenueId()}/delivery/connect`,
         {
+          credentials: 'include',
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -371,7 +377,7 @@ export default function DeliveryAggregatorsPage() {
     try {
       const response = await fetch(
         `${API_URL}/v6/${getVenueId()}/delivery/${platformId}/disconnect`,
-        { method: 'DELETE' }
+        { credentials: 'include', method: 'DELETE' }
       );
       if (!response.ok) throw new Error('Failed to disconnect platform');
 

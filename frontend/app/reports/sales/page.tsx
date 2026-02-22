@@ -88,6 +88,7 @@ export default function ReportsSalesPage() {
       }
 
       const response = await fetch(url, {
+        credentials: 'include',
         headers: { Authorization: `Bearer ${token}` },
       });
 

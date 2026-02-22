@@ -1,7 +1,9 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { API_URL, getAuthHeaders } from '@/lib/api';
+import { useRouter } from 'next/navigation';
+import { API_URL } from '@/lib/api';
+import { useConfirm } from '@/hooks/useConfirm';
 
 import { toast } from '@/lib/toast';
 interface Table {
@@ -39,6 +41,8 @@ const statusConfig = {
 
 
 export default function TablesPage() {
+  const router = useRouter();
+  const confirm = useConfirm();
   const [tables, setTables] = useState<Table[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
@@ -79,6 +83,7 @@ export default function TablesPage() {
         }
 
         const response = await fetch(url, {
+          credentials: 'include',
           headers,
           signal: controller.signal,
         });
@@ -132,6 +137,7 @@ export default function TablesPage() {
     try {
       const token = localStorage.getItem('access_token');
       const response = await fetch(`${API_URL}/tables/`, {
+        credentials: 'include',
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -170,6 +176,7 @@ export default function TablesPage() {
     try {
       const token = localStorage.getItem('access_token');
       const response = await fetch(`${API_URL}/waiter/tables/${selectedTable.id}/seat?guest_count=${guestCount}`, {
+        credentials: 'include',
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -197,7 +204,7 @@ export default function TablesPage() {
 
       // Redirect to waiter terminal with check
       if (result.check_id) {
-        window.location.href = `/waiter?table=${selectedTable.id}&check=${result.check_id}`;
+        router.push(`/waiter?table=${selectedTable.id}&check=${result.check_id}`);
       }
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Failed to create order');
@@ -216,6 +223,7 @@ export default function TablesPage() {
 
       // First, create the reservation
       const reservationResponse = await fetch(`${API_URL}/reservations/`, {
+        credentials: 'include',
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -238,6 +246,7 @@ export default function TablesPage() {
 
       // Then update table status to reserved
       await fetch(`${API_URL}/tables/${selectedTable.id}/reserve`, {
+        credentials: 'include',
         method: 'POST',
         headers: {
           ...(token && { 'Authorization': `Bearer ${token}` }),
@@ -278,13 +287,14 @@ export default function TablesPage() {
   // Handle deleting a table
   const handleDeleteTable = async () => {
     if (!selectedTable) return;
-    if (!confirm(`Сигурни ли сте, че искате да изтриете маса ${selectedTable.number}?`)) return;
+    if (!(await confirm({ message: `Сигурни ли сте, че искате да изтриете маса ${selectedTable.number}?`, variant: 'danger' }))) return;
 
     setActionLoading(true);
 
     try {
       const token = localStorage.getItem('access_token');
       const response = await fetch(`${API_URL}/tables/${selectedTable.id}`, {
+        credentials: 'include',
         method: 'DELETE',
         headers: {
           ...(token && { 'Authorization': `Bearer ${token}` }),
@@ -314,6 +324,7 @@ export default function TablesPage() {
     try {
       const token = localStorage.getItem('access_token');
       await fetch(`${API_URL}/tables/${selectedTable.id}/free`, {
+        credentials: 'include',
         method: 'POST',
         headers: {
           ...(token && { 'Authorization': `Bearer ${token}` }),
@@ -673,13 +684,13 @@ export default function TablesPage() {
               {selectedTable.status === 'occupied' && (
                 <div className="grid grid-cols-2 gap-3">
                   <button
-                    onClick={() => window.location.href = `/waiter?table=${selectedTable.id}`}
+                    onClick={() => router.push(`/waiter?table=${selectedTable.id}`)}
                     className="py-3 bg-surface-100 text-surface-700 font-semibold rounded-xl hover:bg-surface-200 transition-colors"
                   >
                     ➕ Добави
                   </button>
                   <button
-                    onClick={() => window.location.href = `/waiter?table=${selectedTable.id}&action=payment`}
+                    onClick={() => router.push(`/waiter?table=${selectedTable.id}&action=payment`)}
                     className="py-3 bg-success-600 text-gray-900 font-semibold rounded-xl hover:bg-success-500 transition-colors"
                   >
                     💳 Плащане

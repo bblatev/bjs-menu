@@ -15,6 +15,10 @@ from pydantic import BaseModel, Field
 
 from app.core.rate_limit import limiter
 
+import logging
+
+logger = logging.getLogger(__name__)
+
 router = APIRouter()
 
 
@@ -206,7 +210,8 @@ def create_recipe(
         }
     
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        logger.error(f"Operation failed: {e}")
+        raise HTTPException(status_code=400, detail="Operation failed")
 
 
 @router.get(
@@ -367,7 +372,8 @@ def calculate_recipe_cost(
         return cost_data
     
     except ValueError as e:
-        raise HTTPException(status_code=404, detail=str(e))
+        logger.error(f"Resource not found: {e}")
+        raise HTTPException(status_code=404, detail="Resource not found")
 
 
 @router.put(
@@ -411,7 +417,8 @@ def update_recipe(
         }
     
     except ValueError as e:
-        raise HTTPException(status_code=404, detail=str(e))
+        logger.error(f"Resource not found: {e}")
+        raise HTTPException(status_code=404, detail="Resource not found")
 
 
 # ==================== PRODUCTION ORDER ENDPOINTS ====================
@@ -471,7 +478,8 @@ def create_production_order(
         }
     
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        logger.error(f"Operation failed: {e}")
+        raise HTTPException(status_code=400, detail="Operation failed")
 
 
 @router.post(
@@ -525,7 +533,8 @@ def start_production(
         }
     
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        logger.error(f"Operation failed: {e}")
+        raise HTTPException(status_code=400, detail="Operation failed")
 
 
 @router.post(
@@ -581,7 +590,8 @@ def complete_production(
         }
     
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        logger.error(f"Operation failed: {e}")
+        raise HTTPException(status_code=400, detail="Operation failed")
 
 
 @router.get(

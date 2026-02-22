@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import axios from 'axios';
 
-import { API_URL, WS_URL, getAuthHeaders } from '@/lib/api';
+import { API_URL, WS_URL } from '@/lib/api';
 
 import { toast } from '@/lib/toast';
 export default function KitchenStationPage() {
@@ -13,7 +13,7 @@ export default function KitchenStationPage() {
   const stationId = params?.station_id as string;
 
   const [orders, setOrders] = useState<any[]>([]);
-  const [ws, setWs] = useState<WebSocket | null>(null);
+  const [, setWs] = useState<WebSocket | null>(null);
   const [token, setToken] = useState('');
   const [filter, setFilter] = useState<'all' | 'dine-in' | 'takeaway'>('all');
   const [loading, setLoading] = useState(true);

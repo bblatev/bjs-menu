@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 
 export default function Error({
   error,
@@ -9,9 +10,27 @@ export default function Error({
   error: Error & { digest?: string };
   reset: () => void;
 }) {
+  const router = useRouter();
+
   useEffect(() => {
-    // Log the error to console for debugging
     console.error('Application error:', error);
+    // Report error to backend
+    try {
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || '';
+      if (API_URL) {
+        fetch(`${API_URL}/error-reports`, {
+          credentials: 'include',
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            message: error.message,
+            stack: error.stack,
+            url: window.location.href,
+            timestamp: new Date().toISOString(),
+          }),
+        }).catch(() => {}); // fire-and-forget
+      }
+    } catch {}
   }, [error]);
 
   return (
@@ -30,7 +49,7 @@ export default function Error({
             Try Again
           </button>
           <button
-            onClick={() => window.location.href = '/'}
+            onClick={() => router.push('/')}
             className="w-full px-6 py-3 bg-gray-100 text-gray-700 rounded-xl font-medium hover:bg-gray-200 transition"
           >
             Go to Home

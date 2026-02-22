@@ -4,8 +4,9 @@ import csv
 import io
 
 from decimal import Decimal
-from typing import Optional, List
+from typing import Optional, List, Dict, Any
 from fastapi import APIRouter, File, HTTPException, Query, Request, UploadFile, status
+from pydantic import BaseModel
 
 from app.core.file_utils import sanitize_filename
 from app.core.rbac import CurrentUser, OptionalCurrentUser, RequireManager
@@ -570,3 +571,180 @@ def get_recipe_stock_availability(
         raise HTTPException(status_code=404, detail=result["error"])
 
     return result
+
+
+# ==================== ADVANCED RECIPE FEATURES ====================
+# (merged from enhanced_inventory_endpoints.py)
+
+import logging as _logging
+_recipe_logger = _logging.getLogger(__name__)
+
+
+class AdvRecipeIngredientCreate(BaseModel):
+    ingredient_id: int
+    quantity: Decimal
+    unit: str
+    preparation: Optional[str] = None
+    is_optional: bool = False
+    substitutes: Optional[List[Dict[str, Any]]] = None
+
+
+class AdvRecipeInstructionCreate(BaseModel):
+    step_number: int
+    instruction: Dict[str, str]
+    duration_minutes: Optional[int] = None
+    temperature: Optional[str] = None
+    equipment: Optional[str] = None
+    tips: Optional[Dict[str, str]] = None
+    image_url: Optional[str] = None
+    video_url: Optional[str] = None
+
+
+class SubRecipeCreate(BaseModel):
+    parent_recipe_id: int
+    child_recipe_id: int
+    quantity: Decimal = Decimal("1")
+    unit: str = "portion"
+
+
+class RecipeScaleRequest(BaseModel):
+    recipe_id: int
+    target_yield: Decimal
+    target_unit: Optional[str] = None
+
+
+@router.post("/{recipe_id}/ingredients")
+@limiter.limit("30/minute")
+def add_recipe_ingredient(
+    request: Request,
+    recipe_id: int,
+    data: AdvRecipeIngredientCreate,
+    db: DbSession,
+    current_user: RequireManager,
+):
+    """Add ingredient to a recipe (advanced: cost lookup, substitutes)."""
+    try:
+        from app.models.complete_modules import RecipeIngredient
+        from app.models.complete_modules import Recipe as AdvRecipe
+        from app.models.product import Product as StockItem
+
+        recipe = db.query(AdvRecipe).filter(AdvRecipe.id == recipe_id).first()
+        if not recipe:
+            raise HTTPException(status_code=404, detail="Recipe not found")
+
+        stock_item = db.query(StockItem).filter(StockItem.id == data.ingredient_id).first()
+        unit_cost = float(stock_item.cost_price) if stock_item and stock_item.cost_price else 0
+
+        ingredient = RecipeIngredient(
+            recipe_id=recipe_id,
+            stock_item_id=data.ingredient_id,
+            quantity=float(data.quantity),
+            unit=data.unit,
+            cost_per_unit=unit_cost,
+            is_optional=data.is_optional,
+            substitutes=data.substitutes,
+        )
+        db.add(ingredient)
+        db.commit()
+        db.refresh(ingredient)
+        return {"status": "success", "id": ingredient.id}
+    except HTTPException:
+        raise
+    except Exception as e:
+        db.rollback()
+        _recipe_logger.error(f"Error adding recipe ingredient: {e}")
+        raise HTTPException(status_code=500, detail="Failed to add ingredient")
+
+
+@router.post("/{recipe_id}/instructions")
+@limiter.limit("30/minute")
+def add_recipe_instruction(
+    request: Request,
+    recipe_id: int,
+    data: AdvRecipeInstructionCreate,
+    db: DbSession,
+    current_user: RequireManager,
+):
+    """Add instruction step to a recipe."""
+    try:
+        from app.models.complete_modules import Recipe as AdvRecipe
+        from app.models.enhanced_inventory import RecipeInstruction
+
+        recipe = db.query(AdvRecipe).filter(AdvRecipe.id == recipe_id).first()
+        if not recipe:
+            raise HTTPException(status_code=404, detail="Recipe not found")
+
+        instruction = RecipeInstruction(
+            recipe_id=recipe_id,
+            step_number=data.step_number,
+            instruction_text=data.instruction,
+            estimated_time_minutes=data.duration_minutes,
+            temperature_celsius=float(data.temperature) if data.temperature else None,
+            equipment_needed=[data.equipment] if data.equipment else None,
+            tips=data.tips,
+            image_url=data.image_url,
+            video_url=data.video_url,
+        )
+        db.add(instruction)
+        db.commit()
+        db.refresh(instruction)
+        return instruction
+    except HTTPException:
+        raise
+    except Exception as e:
+        db.rollback()
+        _recipe_logger.error(f"Error adding recipe instruction: {e}")
+        raise HTTPException(status_code=500, detail="Failed to add instruction")
+
+
+@router.post("/sub-recipes")
+@limiter.limit("30/minute")
+def add_sub_recipe(
+    request: Request,
+    data: SubRecipeCreate,
+    db: DbSession,
+    current_user: RequireManager,
+):
+    """Add a sub-recipe to a parent recipe."""
+    try:
+        from app.services.inventory_management_service import AdvancedRecipeService
+
+        service = AdvancedRecipeService(db)
+        sub_recipe = service.add_sub_recipe(
+            parent_recipe_id=data.parent_recipe_id,
+            child_recipe_id=data.child_recipe_id,
+            quantity=float(data.quantity),
+            unit=data.unit,
+        )
+        return {"status": "success", "id": sub_recipe.id if sub_recipe else None}
+    except Exception as e:
+        db.rollback()
+        _recipe_logger.error(f"Error adding sub-recipe: {e}")
+        raise HTTPException(status_code=500, detail="Failed to add sub-recipe")
+
+
+@router.post("/scale")
+@limiter.limit("30/minute")
+def scale_recipe(
+    request: Request,
+    data: RecipeScaleRequest,
+    db: DbSession,
+    current_user: CurrentUser,
+):
+    """Scale a recipe to a target yield."""
+    try:
+        from app.services.inventory_management_service import AdvancedRecipeService
+
+        service = AdvancedRecipeService(db)
+        scaled = service.scale_recipe(
+            recipe_id=data.recipe_id,
+            target_yield=float(data.target_yield),
+        )
+        if not scaled:
+            raise HTTPException(status_code=404, detail="Recipe not found")
+        return scaled
+    except HTTPException:
+        raise
+    except Exception as e:
+        _recipe_logger.error(f"Error scaling recipe: {e}")
+        raise HTTPException(status_code=500, detail="Failed to scale recipe")

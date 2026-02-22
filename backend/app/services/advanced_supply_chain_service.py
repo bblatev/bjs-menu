@@ -614,52 +614,78 @@ class AdvancedSupplyChainService:
             return []
         
         suggestions = []
-        
-        # Get stock levels for all items across venues
-        for item in db.query(StockItem).filter(
-            StockItem.venue_id.in_([v.id for v in venues]),
-            StockItem.is_active == True
-        ).all():
-            # Find same item at other venues (by SKU)
-            if not item.sku:
+
+        # Fetch all active stock items across venues in a single query
+        venue_ids = [v.id for v in venues]
+        all_items = db.query(StockItem).filter(
+            StockItem.venue_id.in_(venue_ids),
+            StockItem.is_active == True,
+            StockItem.sku.isnot(None),
+            StockItem.sku != "",
+        ).all()
+
+        # Group items by SKU for O(n) comparison instead of N+1 queries
+        sku_groups: Dict[str, list] = {}
+        for item in all_items:
+            sku_groups.setdefault(item.sku, []).append(item)
+
+        # Compare items within the same SKU group
+        seen_pairs = set()
+        for sku, items in sku_groups.items():
+            if len(items) < 2:
                 continue
-            
-            related_items = db.query(StockItem).filter(
-                StockItem.sku == item.sku,
-                StockItem.venue_id != item.venue_id,
-                StockItem.venue_id.in_([v.id for v in venues]),
-                StockItem.is_active == True
-            ).all()
-            
-            for related in related_items:
-                # Check if one has surplus and other has shortage
-                item_status = "surplus" if item.quantity > item.low_stock_threshold * 2 else (
-                    "shortage" if item.quantity <= item.low_stock_threshold else "normal"
-                )
-                related_status = "surplus" if related.quantity > related.low_stock_threshold * 2 else (
-                    "shortage" if related.quantity <= related.low_stock_threshold else "normal"
-                )
-                
-                if item_status == "surplus" and related_status == "shortage":
-                    # Suggest transfer from item.venue to related.venue
-                    transfer_qty = min(
-                        item.quantity - item.low_stock_threshold,
-                        related.low_stock_threshold - related.quantity
+            for item in items:
+                for related in items:
+                    if item.venue_id == related.venue_id:
+                        continue
+                    pair_key = (min(item.id, related.id), max(item.id, related.id))
+                    if pair_key in seen_pairs:
+                        continue
+                    seen_pairs.add(pair_key)
+
+                    item_status = "surplus" if item.quantity > item.low_stock_threshold * 2 else (
+                        "shortage" if item.quantity <= item.low_stock_threshold else "normal"
                     )
-                    
-                    if transfer_qty > 0:
-                        suggestion = CrossStoreStockSuggestion(
-                            from_venue_id=item.venue_id,
-                            to_venue_id=related.venue_id,
-                            stock_item_id=item.id,
-                            suggested_quantity=transfer_qty,
-                            reason="shortage",
-                            from_store_quantity=item.quantity,
-                            to_store_quantity=related.quantity,
-                            status="pending"
+                    related_status = "surplus" if related.quantity > related.low_stock_threshold * 2 else (
+                        "shortage" if related.quantity <= related.low_stock_threshold else "normal"
+                    )
+
+                    if item_status == "surplus" and related_status == "shortage":
+                        transfer_qty = min(
+                            item.quantity - item.low_stock_threshold,
+                            related.low_stock_threshold - related.quantity
                         )
-                        db.add(suggestion)
-                        suggestions.append(suggestion)
+                        if transfer_qty > 0:
+                            suggestion = CrossStoreStockSuggestion(
+                                from_venue_id=item.venue_id,
+                                to_venue_id=related.venue_id,
+                                stock_item_id=item.id,
+                                suggested_quantity=transfer_qty,
+                                reason="shortage",
+                                from_store_quantity=item.quantity,
+                                to_store_quantity=related.quantity,
+                                status="pending"
+                            )
+                            db.add(suggestion)
+                            suggestions.append(suggestion)
+                    elif related_status == "surplus" and item_status == "shortage":
+                        transfer_qty = min(
+                            related.quantity - related.low_stock_threshold,
+                            item.low_stock_threshold - item.quantity
+                        )
+                        if transfer_qty > 0:
+                            suggestion = CrossStoreStockSuggestion(
+                                from_venue_id=related.venue_id,
+                                to_venue_id=item.venue_id,
+                                stock_item_id=related.id,
+                                suggested_quantity=transfer_qty,
+                                reason="shortage",
+                                from_store_quantity=related.quantity,
+                                to_store_quantity=item.quantity,
+                                status="pending"
+                            )
+                            db.add(suggestion)
+                            suggestions.append(suggestion)
         
         db.commit()
         return suggestions

@@ -50,25 +50,30 @@ class EmployeeFraudDetectionService:
     Monitors transactions, behaviors, and patterns to identify potential fraud.
     """
     
-    def __init__(self, db: Session):
+    # Default threshold values
+    DEFAULT_THRESHOLDS = {
+        "void_rate_threshold": 5.0,  # % of transactions
+        "discount_rate_threshold": 15.0,  # % of sales
+        "cash_variance_threshold": 50.0,  # EUR
+        "refund_rate_threshold": 3.0,  # % of transactions
+        "manager_override_threshold": 10,  # per shift
+        "unusual_hours_threshold": 2,  # hours before/after shift
+        "short_transaction_threshold": 30,  # seconds
+        "high_value_void_threshold": 50.0,  # EUR
+        "consecutive_voids_threshold": 3,
+        "tip_adjustment_threshold": 5  # per shift
+    }
+
+    def __init__(self, db: Session, thresholds: Optional[Dict[str, Any]] = None):
         self.db = db
         self.baseline_metrics = {}  # Store baseline metrics per venue
         self.alerts = []  # Active alerts
         self.fraud_scores = {}  # Current fraud scores by employee
-        
-        # Configurable thresholds
-        self.thresholds = {
-            "void_rate_threshold": 5.0,  # % of transactions
-            "discount_rate_threshold": 15.0,  # % of sales
-            "cash_variance_threshold": 50.0,  # EUR
-            "refund_rate_threshold": 3.0,  # % of transactions
-            "manager_override_threshold": 10,  # per shift
-            "unusual_hours_threshold": 2,  # hours before/after shift
-            "short_transaction_threshold": 30,  # seconds
-            "high_value_void_threshold": 50.0,  # EUR
-            "consecutive_voids_threshold": 3,
-            "tip_adjustment_threshold": 5  # per shift
-        }
+
+        # Configurable thresholds: merge defaults with any provided overrides
+        self.thresholds = dict(self.DEFAULT_THRESHOLDS)
+        if thresholds:
+            self.thresholds.update(thresholds)
     
     # ==================== FRAUD INDEX CALCULATION ====================
     

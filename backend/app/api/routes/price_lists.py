@@ -150,7 +150,7 @@ def get_active_price_list(
     """Get the currently active price list based on context and time."""
     _init_default_price_lists(db)
 
-    now = datetime.now()
+    now = datetime.now(timezone.utc)
     current_time = now.time()
     current_day = now.weekday()
 
@@ -376,7 +376,7 @@ def list_daily_menus(
 @limiter.limit("60/minute")
 def get_todays_menu(request: Request, db: DbSession):
     """Get today's daily menu."""
-    today = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
+    today = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
     tomorrow = today + timedelta(days=1)
 
     menus = db.query(DailyMenu).filter(
@@ -392,7 +392,7 @@ def get_todays_menu(request: Request, db: DbSession):
 @limiter.limit("60/minute")
 def get_current_menu(request: Request, db: DbSession):
     """Get currently available daily menu (active and within time window)."""
-    now = datetime.now()
+    now = datetime.now(timezone.utc)
     today = now.replace(hour=0, minute=0, second=0, microsecond=0)
     tomorrow = today + timedelta(days=1)
     current_time = now.time()

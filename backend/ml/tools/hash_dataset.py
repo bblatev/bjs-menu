@@ -15,7 +15,7 @@ import json
 import logging
 import os
 import sys
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Dict, List, Optional
 
@@ -99,7 +99,7 @@ def hash_dataset(
     result = {
         "dataset_hash": dataset_hash,
         "dataset_path": str(data_path.absolute()),
-        "created_at": datetime.now().isoformat(),
+        "created_at": datetime.now(timezone.utc).isoformat(),
         "statistics": stats,
         "file_hashes": file_hashes,
     }

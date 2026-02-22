@@ -218,7 +218,7 @@ export default function WaiterTerminal() {
   // API calls
   const loadTables = useCallback(async () => {
     try {
-      const res = await fetch(`${API()}/waiter/floor-plan`, { headers: { Authorization: `Bearer ${token()}` } });
+      const res = await fetch(`${API()}/waiter/floor-plan`, { credentials: 'include', headers: { Authorization: `Bearer ${token()}` } });
       if (res.status === 401) { window.location.href = "/waiter/login"; return; }
       if (res.ok) setTables(await res.json());
     } catch (err) {
@@ -228,7 +228,7 @@ export default function WaiterTerminal() {
 
   const loadMenu = useCallback(async () => {
     try {
-      const res = await fetch(`${API()}/waiter/menu/quick`, { headers: { Authorization: `Bearer ${token()}` } });
+      const res = await fetch(`${API()}/waiter/menu/quick`, { credentials: 'include', headers: { Authorization: `Bearer ${token()}` } });
       if (res.ok) setMenu(await res.json());
     } catch (err) {
       console.error('loadMenu failed:', err);
@@ -236,7 +236,7 @@ export default function WaiterTerminal() {
   }, []);
 
   const loadCheck = async (checkId: number) => {
-    const res = await fetch(`${API()}/waiter/checks/${checkId}`, { headers: { Authorization: `Bearer ${token()}` } });
+    const res = await fetch(`${API()}/waiter/checks/${checkId}`, { credentials: 'include', headers: { Authorization: `Bearer ${token()}` } });
     if (res.ok) {
       const data = await res.json();
       setCheck(data);
@@ -248,7 +248,7 @@ export default function WaiterTerminal() {
   const loadReservations = useCallback(async () => {
     try {
       const today = new Date().toISOString().split("T")[0];
-      const res = await fetch(`${API()}/reservations/?date=${today}`, { headers: { Authorization: `Bearer ${token()}` } });
+      const res = await fetch(`${API()}/reservations/?date=${today}`, { credentials: 'include', headers: { Authorization: `Bearer ${token()}` } });
       if (res.ok) {
         const data = await res.json();
         setReservations(Array.isArray(data) ? data : data.reservations || []);
@@ -259,7 +259,7 @@ export default function WaiterTerminal() {
   // Phase 4: Load tabs
   const loadTabs = useCallback(async () => {
     try {
-      const res = await fetch(`${API()}/tabs/?status=open`, { headers: { Authorization: `Bearer ${token()}` } });
+      const res = await fetch(`${API()}/tabs/?status=open`, { credentials: 'include', headers: { Authorization: `Bearer ${token()}` } });
       if (res.ok) {
         const data = await res.json();
         setTabs(data.tabs || (Array.isArray(data) ? data : []));
@@ -270,7 +270,7 @@ export default function WaiterTerminal() {
   // Phase 5: Load held orders
   const loadHeldOrders = useCallback(async () => {
     try {
-      const res = await fetch(`${API()}/held-orders/?status=held`, { headers: { Authorization: `Bearer ${token()}` } });
+      const res = await fetch(`${API()}/held-orders/?status=held`, { credentials: 'include', headers: { Authorization: `Bearer ${token()}` } });
       if (res.ok) {
         const data = await res.json();
         setHeldOrders(Array.isArray(data) ? data : data.orders || []);
@@ -281,7 +281,7 @@ export default function WaiterTerminal() {
   // Phase 6: Load merges
   const loadMerges = useCallback(async () => {
     try {
-      const res = await fetch(`${API()}/table-merges/?active_only=true`, { headers: { Authorization: `Bearer ${token()}` } });
+      const res = await fetch(`${API()}/table-merges/?active_only=true`, { credentials: 'include', headers: { Authorization: `Bearer ${token()}` } });
       if (res.ok) {
         const data = await res.json();
         setActiveMerges(Array.isArray(data) ? data : []);
@@ -342,6 +342,7 @@ export default function WaiterTerminal() {
     if (!table) return;
     setSending(true);
     const res = await fetch(`${API()}/waiter/tables/${table.table_id}/seat?guest_count=${guests}`, {
+      credentials: 'include',
       method: "POST", headers: headers()
     });
     if (res.ok) {
@@ -358,6 +359,7 @@ export default function WaiterTerminal() {
     if (!table || !cart.length) return;
     setSending(true);
     const res = await fetch(`${API()}/waiter/orders`, {
+      credentials: 'include',
       method: "POST",
       headers: headers(),
       body: JSON.stringify({
@@ -391,6 +393,7 @@ export default function WaiterTerminal() {
     if (!check) return;
     setSending(true);
     const res = await fetch(`${API()}/waiter/orders/${check.check_id}/fire-course`, {
+      credentials: 'include',
       method: "POST",
       headers: headers(),
       body: JSON.stringify({ course })
@@ -405,6 +408,7 @@ export default function WaiterTerminal() {
     if (!check) return;
     setSending(true);
     const res = await fetch(`${API()}/waiter/checks/${check.check_id}/discount`, {
+      credentials: 'include',
       method: "POST",
       headers: headers(),
       body: JSON.stringify({
@@ -430,6 +434,7 @@ export default function WaiterTerminal() {
     if (!showVoid) return;
     setSending(true);
     const res = await fetch(`${API()}/waiter/items/${showVoid.id}/void`, {
+      credentials: 'include',
       method: "POST",
       headers: headers(),
       body: JSON.stringify({ item_id: showVoid.id, reason: voidReason, manager_pin: managerPin || undefined })
@@ -451,6 +456,7 @@ export default function WaiterTerminal() {
     if (!check) return;
     setSending(true);
     const res = await fetch(`${API()}/waiter/checks/${check.check_id}/split-even`, {
+      credentials: 'include',
       method: "POST",
       headers: headers(),
       body: JSON.stringify({ num_ways: splitWays })
@@ -470,6 +476,7 @@ export default function WaiterTerminal() {
     if (!check) return;
     setSending(true);
     const res = await fetch(`${API()}/waiter/checks/${check.check_id}/split-by-seat`, {
+      credentials: 'include',
       method: "POST", headers: headers()
     });
     if (res.ok) {
@@ -491,6 +498,7 @@ export default function WaiterTerminal() {
     setSending(true);
     const tipAmt = check.subtotal * (tipPercent / 100);
     const res = await fetch(`${API()}/waiter/payments`, {
+      credentials: 'include',
       method: "POST",
       headers: headers(),
       body: JSON.stringify({
@@ -506,6 +514,7 @@ export default function WaiterTerminal() {
         // Clear table
         if (table) {
           await fetch(`${API()}/waiter/tables/${table.table_id}/clear`, {
+            credentials: 'include',
             method: "POST", headers: headers()
           });
         }
@@ -528,6 +537,7 @@ export default function WaiterTerminal() {
   const printCheck = async () => {
     if (!check) return;
     const res = await fetch(`${API()}/waiter/checks/${check.check_id}/print`, {
+      credentials: 'include',
       method: "POST", headers: headers()
     });
     if (res.ok) notify("Check printed");
@@ -539,6 +549,7 @@ export default function WaiterTerminal() {
     setFiscalStatus("printing");
     try {
       const res = await fetch(`${API()}/pos-fiscal-bridge/receipt`, {
+        credentials: 'include',
         method: "POST",
         headers: headers(),
         body: JSON.stringify({
@@ -564,6 +575,7 @@ export default function WaiterTerminal() {
   const openDrawer = async () => {
     try {
       const res = await fetch(`${API()}/pos-fiscal-bridge/drawer`, {
+        credentials: 'include',
         method: "POST",
         headers: headers()
       });
@@ -574,21 +586,6 @@ export default function WaiterTerminal() {
     }
   };
 
-  const getFiscalStatus = async () => {
-    try {
-      const res = await fetch(`${API()}/pos-fiscal-bridge/status`, {
-        headers: headers()
-      });
-      if (res.ok) {
-        const data = await res.json();
-        return data.connected;
-      }
-    } catch (e) {
-      return false;
-    }
-    return false;
-  };
-
   const processCardViaFiscal = async () => {
     if (!check) return;
     setFiscalStatus("processing");
@@ -597,6 +594,7 @@ export default function WaiterTerminal() {
       const totalAmount = check.total + tipAmt;
 
       const res = await fetch(`${API()}/pos-fiscal-bridge/card-payment`, {
+        credentials: 'include',
         method: "POST",
         headers: headers(),
         body: JSON.stringify({
@@ -611,6 +609,7 @@ export default function WaiterTerminal() {
           // Payment approved - clear table
           if (table) {
             await fetch(`${API()}/waiter/tables/${table.table_id}/clear`, {
+              credentials: 'include',
               method: "POST", headers: headers()
             });
           }
@@ -636,6 +635,7 @@ export default function WaiterTerminal() {
     setFiscalStatus("printing");
     try {
       const res = await fetch(`${API()}/pos-fiscal-bridge/report`, {
+        credentials: 'include',
         method: "POST",
         headers: headers(),
         body: JSON.stringify({ report_type: "x" })
@@ -653,6 +653,7 @@ export default function WaiterTerminal() {
     setFiscalStatus("printing");
     try {
       const res = await fetch(`${API()}/pos-fiscal-bridge/report`, {
+        credentials: 'include',
         method: "POST",
         headers: headers(),
         body: JSON.stringify({ report_type: "z" })
@@ -670,12 +671,13 @@ export default function WaiterTerminal() {
     setSending(true);
     try {
       const res = await fetch(`${API()}/waiter/checks/${check.check_id}/transfer`, {
+        credentials: 'include',
         method: "POST",
         headers: headers(),
         body: JSON.stringify({ to_table_id: toTableId }),
       });
       if (res.ok) {
-        const data = await res.json();
+        await res.json();
         notify(`Transferred to Table ${toTableId}`);
         // Refresh tables and go back to table view
         await loadTables();
@@ -699,6 +701,7 @@ export default function WaiterTerminal() {
     setSending(true);
     try {
       const res = await fetch(`${API()}/waiter/checks/${check.check_id}/transfer`, {
+        credentials: 'include',
         method: "POST", headers: headers(),
         body: JSON.stringify({ to_table_id: toTableId, items_to_transfer: moveSelectedItems })
       });
@@ -723,6 +726,7 @@ export default function WaiterTerminal() {
     setSending(true);
     try {
       const res = await fetch(`${API()}/waiter-terminal/checks/${check.check_id}/split-items`, {
+        credentials: 'include',
         method: "POST", headers: headers(),
         body: JSON.stringify({ item_ids: splitByItemsSelected })
       });
@@ -744,7 +748,7 @@ export default function WaiterTerminal() {
 
   const loadTableChecks = async (tableId: number) => {
     try {
-      const res = await fetch(`${API()}/waiter/checks?table_id=${tableId}`, { headers: { Authorization: `Bearer ${token()}` } });
+      const res = await fetch(`${API()}/waiter/checks?table_id=${tableId}`, { credentials: 'include', headers: { Authorization: `Bearer ${token()}` } });
       if (res.ok) {
         const data = await res.json();
         setTableChecks(data.checks || []);
@@ -757,6 +761,7 @@ export default function WaiterTerminal() {
     setSending(true);
     try {
       const res = await fetch(`${API()}/waiter-terminal/checks/merge`, {
+        credentials: 'include',
         method: "POST", headers: headers(),
         body: JSON.stringify({ check_ids: mergeSelectedChecks })
       });
@@ -779,6 +784,7 @@ export default function WaiterTerminal() {
     setSending(true);
     try {
       const res = await fetch(`${API()}/reservations/`, {
+        credentials: 'include',
         method: "POST", headers: headers(),
         body: JSON.stringify({
           guest_name: bookingForm.guest_name,
@@ -808,7 +814,7 @@ export default function WaiterTerminal() {
   const seatReservation = async (resv: Reservation) => {
     setSending(true);
     try {
-      const res = await fetch(`${API()}/reservations/${resv.id}/seat`, { method: "POST", headers: headers() });
+      const res = await fetch(`${API()}/reservations/${resv.id}/seat`, { credentials: 'include', method: "POST", headers: headers() });
       if (res.ok) {
         notify(`${resv.guest_name} seated`);
         setShowReservationDetail(null);
@@ -822,7 +828,7 @@ export default function WaiterTerminal() {
   const cancelReservation = async (resv: Reservation) => {
     setSending(true);
     try {
-      const res = await fetch(`${API()}/reservations/${resv.id}/cancel`, { method: "POST", headers: headers() });
+      const res = await fetch(`${API()}/reservations/${resv.id}/cancel`, { credentials: 'include', method: "POST", headers: headers() });
       if (res.ok) {
         notify("Reservation cancelled");
         setShowReservationDetail(null);
@@ -837,6 +843,7 @@ export default function WaiterTerminal() {
     setSending(true);
     try {
       const res = await fetch(`${API()}/tabs/`, {
+        credentials: 'include',
         method: "POST", headers: headers(),
         body: JSON.stringify({
           customer_name: tabForm.customer_name,
@@ -863,6 +870,7 @@ export default function WaiterTerminal() {
     setSending(true);
     try {
       const res = await fetch(`${API()}/tabs/${activeTab.id}/items`, {
+        credentials: 'include',
         method: "POST", headers: headers(),
         body: JSON.stringify({
           items: cart.map(c => ({
@@ -892,6 +900,7 @@ export default function WaiterTerminal() {
     setSending(true);
     try {
       const res = await fetch(`${API()}/tabs/${activeTab.id}/transfer`, {
+        credentials: 'include',
         method: "POST", headers: headers(),
         body: JSON.stringify({ new_table_id: tableId })
       });
@@ -914,6 +923,7 @@ export default function WaiterTerminal() {
     setSending(true);
     try {
       const res = await fetch(`${API()}/tabs/${tab.id}/close`, {
+        credentials: 'include',
         method: "POST", headers: headers(),
         body: JSON.stringify({ payment_method: "cash", tip_amount: 0 })
       });
@@ -933,6 +943,7 @@ export default function WaiterTerminal() {
     setSending(true);
     try {
       const res = await fetch(`${API()}/held-orders/`, {
+        credentials: 'include',
         method: "POST", headers: headers(),
         body: JSON.stringify({
           order_id: check.check_id,
@@ -965,7 +976,7 @@ export default function WaiterTerminal() {
       const url = targetTableId
         ? `${API()}/held-orders/${held.id}/resume?target_table_id=${targetTableId}`
         : `${API()}/held-orders/${held.id}/resume`;
-      const res = await fetch(url, { method: "POST", headers: headers() });
+      const res = await fetch(url, { credentials: 'include', method: "POST", headers: headers() });
       if (res.ok) {
         notify("Order resumed");
         setShowHeldOrders(false);
@@ -983,6 +994,7 @@ export default function WaiterTerminal() {
     setSending(true);
     try {
       const res = await fetch(`${API()}/waiter-terminal/quick-reorder/${itemId}?quantity=1`, {
+        credentials: 'include',
         method: "POST", headers: headers()
       });
       if (res.ok) {
@@ -1002,6 +1014,7 @@ export default function WaiterTerminal() {
     try {
       const [primary, ...secondary] = mergeSelected;
       const res = await fetch(`${API()}/table-merges/`, {
+        credentials: 'include',
         method: "POST", headers: headers(),
         body: JSON.stringify({ primary_table_id: primary, secondary_table_ids: secondary })
       });
@@ -1022,7 +1035,7 @@ export default function WaiterTerminal() {
   const unmergeTables = async (merge: TableMerge) => {
     setSending(true);
     try {
-      const res = await fetch(`${API()}/table-merges/${merge.id}/unmerge`, { method: "POST", headers: headers() });
+      const res = await fetch(`${API()}/table-merges/${merge.id}/unmerge`, { credentials: 'include', method: "POST", headers: headers() });
       if (res.ok) {
         notify("Tables unmerged");
         setShowUnmerge(null);

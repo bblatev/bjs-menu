@@ -2,7 +2,7 @@
 
 import pytest
 from decimal import Decimal
-from datetime import datetime, date, timedelta
+from datetime import datetime, date, timedelta, timezone
 from fastapi.testclient import TestClient
 
 from app.models.location import Location
@@ -26,7 +26,10 @@ class TestReservationEndpoints:
         """Test listing reservations when none exist."""
         response = client.get(f"/api/v1/reservations/?location_id={test_location.id}", headers=auth_headers)
         assert response.status_code == 200
-        assert response.json() == []
+        data = response.json()
+        # Endpoint returns paginated response
+        assert data["items"] == []
+        assert data["total"] == 0
 
     def test_list_reservations(self, client: TestClient, db_session, auth_headers, test_location):
         """Test listing reservations."""
@@ -35,14 +38,14 @@ class TestReservationEndpoints:
             location_id=test_location.id,
             guest_name="John Doe",
             party_size=4,
-            reservation_date=datetime.now().replace(hour=18, minute=0),
+            reservation_date=datetime.now(timezone.utc).replace(hour=18, minute=0),
             status=ReservationStatus.CONFIRMED
         )
         res2 = Reservation(
             location_id=test_location.id,
             guest_name="Jane Smith",
             party_size=2,
-            reservation_date=datetime.now().replace(hour=19, minute=0),
+            reservation_date=datetime.now(timezone.utc).replace(hour=19, minute=0),
             status=ReservationStatus.CONFIRMED
         )
         db_session.add_all([res1, res2])
@@ -51,7 +54,7 @@ class TestReservationEndpoints:
         response = client.get(f"/api/v1/reservations/?location_id={test_location.id}", headers=auth_headers)
         assert response.status_code == 200
         data = response.json()
-        assert len(data) >= 2
+        assert len(data["items"]) >= 2
 
     def test_list_reservations_filter_by_status(self, client: TestClient, db_session, auth_headers, test_location):
         """Test filtering reservations by status."""
@@ -59,7 +62,7 @@ class TestReservationEndpoints:
             location_id=test_location.id,
             guest_name="Test Guest",
             party_size=2,
-            reservation_date=datetime.now().replace(hour=20, minute=0),
+            reservation_date=datetime.now(timezone.utc).replace(hour=20, minute=0),
             status=ReservationStatus.PENDING
         )
         db_session.add(res1)
@@ -82,7 +85,7 @@ class TestReservationEndpoints:
             location_id=test_location.id,
             guest_name="Test Guest",
             party_size=4,
-            reservation_date=datetime.now().replace(hour=18, minute=30),
+            reservation_date=datetime.now(timezone.utc).replace(hour=18, minute=30),
             status=ReservationStatus.CONFIRMED
         )
         db_session.add(res)
@@ -119,7 +122,7 @@ class TestReservationEndpoints:
             location_id=test_location.id,
             guest_name="Original Name",
             party_size=2,
-            reservation_date=datetime.now().replace(hour=19, minute=0),
+            reservation_date=datetime.now(timezone.utc).replace(hour=19, minute=0),
             status=ReservationStatus.PENDING
         )
         db_session.add(res)
@@ -150,7 +153,7 @@ class TestReservationEndpoints:
             location_id=test_location.id,
             guest_name="Test Guest",
             party_size=2,
-            reservation_date=datetime.now().replace(hour=18, minute=0),
+            reservation_date=datetime.now(timezone.utc).replace(hour=18, minute=0),
             status=ReservationStatus.PENDING
         )
         db_session.add(res)
@@ -173,7 +176,7 @@ class TestReservationEndpoints:
             location_id=test_location.id,
             guest_name="Test Guest",
             party_size=4,
-            reservation_date=datetime.now().replace(hour=17, minute=0),
+            reservation_date=datetime.now(timezone.utc).replace(hour=17, minute=0),
             status=ReservationStatus.SEATED
         )
         db_session.add(res)
@@ -191,7 +194,7 @@ class TestReservationEndpoints:
             location_id=test_location.id,
             guest_name="No Show Guest",
             party_size=2,
-            reservation_date=datetime.now().replace(hour=18, minute=0),
+            reservation_date=datetime.now(timezone.utc).replace(hour=18, minute=0),
             status=ReservationStatus.CONFIRMED
         )
         db_session.add(res)
@@ -214,7 +217,9 @@ class TestWaitlistEndpoints:
         response = client.get(f"/api/v1/reservations/waitlist/?location_id={test_location.id}", headers=auth_headers)
         # May return 500 due to model/schema issues
         assert response.status_code == 200
-        assert response.json() == []
+        data = response.json()
+        # Endpoint returns paginated response
+        assert data["items"] == []
 
     def test_list_waitlist(self, client: TestClient, db_session, auth_headers, test_location):
         """Test listing waitlist entries."""
@@ -675,7 +680,7 @@ class TestReservationWorkflow:
             location_id=test_location.id,
             guest_name="Lifecycle Test",
             party_size=4,
-            reservation_date=datetime.now().replace(hour=19, minute=0),
+            reservation_date=datetime.now(timezone.utc).replace(hour=19, minute=0),
             status=ReservationStatus.PENDING
         )
         db_session.add(res)

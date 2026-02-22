@@ -13,6 +13,7 @@ from sqlalchemy.orm import Session
 from app.db.session import get_db
 from app.core.rbac import get_current_user, get_current_venue
 from app.core.rate_limit import limiter
+from app.core.security import validate_redirect_uri
 from app.models import StaffUser as Staff
 
 
@@ -458,6 +459,11 @@ async def create_bnpl_session(
     venue_id: int = Depends(get_current_venue)
 ):
     """Create a BNPL checkout session."""
+    if body.return_url and not validate_redirect_uri(body.return_url):
+        raise HTTPException(status_code=400, detail="Invalid return URL")
+    if body.cancel_url and not validate_redirect_uri(body.cancel_url):
+        raise HTTPException(status_code=400, detail="Invalid cancel URL")
+
     from app.services.hardware_sdk_service import BNPLService
 
     service = BNPLService(db)

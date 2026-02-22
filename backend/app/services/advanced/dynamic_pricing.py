@@ -94,7 +94,7 @@ class DynamicPricingService:
             elif rule.trigger_type == "time":
                 hours = conditions.get("hours", [])
                 days = conditions.get("days", [])
-                now = datetime.now()
+                now = datetime.now(timezone.utc)
                 if now.hour in hours and (not days or now.weekday() in days):
                     should_trigger = True
 

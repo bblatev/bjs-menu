@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 
-import { API_URL, getAuthHeaders } from '@/lib/api';
+import { API_URL } from '@/lib/api';
 
 interface RFMCustomer {
   id: number;
@@ -133,6 +133,7 @@ export default function RFMAnalyticsPage() {
     try {
       const token = localStorage.getItem('access_token');
       const response = await fetch(`${API_URL}/analytics/rfm/dashboard`, {
+        credentials: 'include',
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',
@@ -332,7 +333,6 @@ export default function RFMAnalyticsPage() {
   ];
 
   const totalCustomers = segments.reduce((sum, s) => sum + s.count, 0);
-  const totalRevenue = segments.reduce((sum, s) => sum + s.total_revenue, 0);
   const avgRFM = segments.length > 0 ? Math.round(segments.reduce((sum, s) => sum + s.avg_rfm * s.count, 0) / totalCustomers) : 0;
 
   const filteredCustomers = customers
