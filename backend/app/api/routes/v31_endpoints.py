@@ -12,6 +12,10 @@ from datetime import datetime, date, timedelta
 from app.db.session import get_db
 from app.core.rate_limit import limiter
 
+import logging
+
+logger = logging.getLogger(__name__)
+
 # Create V3.1 router
 v31_router = APIRouter(tags=["V3.1 Complete Parity"])
 
@@ -156,18 +160,52 @@ async def get_consolidated_report(
         start_date = date.today() - timedelta(days=30)
     if end_date is None:
         end_date = date.today()
-    from app.services.multi_location_service import MultiLocationService
-    service = MultiLocationService(db)
-    return service.get_consolidated_sales_report(start_date, end_date)
+    try:
+        from app.services.multi_location_service import MultiLocationService
+        service = MultiLocationService(db)
+        result = service.get_consolidated_sales_report(start_date, end_date)
+        return result if result is not None else {
+            "period": {"start": start_date.isoformat(), "end": end_date.isoformat()},
+            "locations": [],
+            "total_revenue": 0,
+            "total_orders": 0,
+            "message": "No data available for the selected period"
+        }
+    except Exception as e:
+        logger.exception("Failed to get consolidated report")
+        return {
+            "period": {"start": start_date.isoformat(), "end": end_date.isoformat()},
+            "locations": [],
+            "total_revenue": 0,
+            "total_orders": 0,
+            "error": str(e)
+        }
 
 
 @locations_router.get("/dashboard")
 @limiter.limit("60/minute")
 async def get_enterprise_dashboard(request: Request, db: Session = Depends(get_db)):
     """Get enterprise dashboard"""
-    from app.services.multi_location_service import MultiLocationService
-    service = MultiLocationService(db)
-    return service.get_enterprise_dashboard()
+    try:
+        from app.services.multi_location_service import MultiLocationService
+        service = MultiLocationService(db)
+        result = service.get_enterprise_dashboard()
+        return result if result is not None else {
+            "locations": [],
+            "total_locations": 0,
+            "total_revenue": 0,
+            "total_orders": 0,
+            "message": "No location data available"
+        }
+    except Exception as e:
+        logger.exception("Failed to get enterprise dashboard")
+        return {
+            "locations": [],
+            "total_locations": 0,
+            "total_revenue": 0,
+            "total_orders": 0,
+            "error": str(e)
+        }
 
 
 # ==================== PAYROLL ENDPOINTS ====================
@@ -339,9 +377,26 @@ async def get_labor_cost_report(
         start_date = date.today() - timedelta(days=30)
     if end_date is None:
         end_date = date.today()
-    from app.services.payroll_service import PayrollService
-    service = PayrollService(db)
-    return service.get_labor_cost_report(venue_id=1, start_date=start_date, end_date=end_date)
+    try:
+        from app.services.payroll_service import PayrollService
+        service = PayrollService(db)
+        result = service.get_labor_cost_report(venue_id=1, start_date=start_date, end_date=end_date)
+        return result if result is not None else {
+            "period": {"start": start_date.isoformat(), "end": end_date.isoformat()},
+            "total_labor_cost": 0,
+            "total_hours": 0,
+            "employees": [],
+            "message": "No labor data available for the selected period"
+        }
+    except Exception as e:
+        logger.exception("Failed to get labor cost report")
+        return {
+            "period": {"start": start_date.isoformat(), "end": end_date.isoformat()},
+            "total_labor_cost": 0,
+            "total_hours": 0,
+            "employees": [],
+            "error": str(e)
+        }
 
 
 # ==================== INTEGRATIONS ENDPOINTS ====================

@@ -15,12 +15,15 @@ Features:
 - Tax compliance
 """
 
+import logging
 from datetime import datetime, date, timezone
 from typing import Optional, List, Dict, Any
 from sqlalchemy.orm import Session
 from sqlalchemy import String
 import uuid
 import enum
+
+logger = logging.getLogger(__name__)
 
 
 class AccountingPlatform(str, enum.Enum):
@@ -876,142 +879,163 @@ class AccountingIntegrationService:
         end_date: date
     ) -> Dict[str, Any]:
         """Generate profit & loss report from actual sales and expense data"""
-        from app.models import Order, PurchaseOrder, StaffShift
-        from datetime import datetime as dt
+        try:
+            from app.models import Order, PurchaseOrder, StaffShift
+            from datetime import datetime as dt
 
-        # Convert dates to datetime
-        start_dt = dt.combine(start_date, dt.min.time())
-        end_dt = dt.combine(end_date, dt.max.time())
+            # Convert dates to datetime
+            start_dt = dt.combine(start_date, dt.min.time())
+            end_dt = dt.combine(end_date, dt.max.time())
 
-        # Get all paid orders in the period
-        orders = self.db.query(Order).join(Order.station).filter(
-            Order.station.has(venue_id=venue_id),
-            Order.created_at >= start_dt,
-            Order.created_at <= end_dt,
-            Order.payment_status == 'paid'
-        ).all()
+            # Get all paid orders in the period
+            try:
+                orders = self.db.query(Order).join(Order.station).filter(
+                    Order.station.has(venue_id=venue_id),
+                    Order.created_at >= start_dt,
+                    Order.created_at <= end_dt,
+                    Order.payment_status == 'paid'
+                ).all()
+            except Exception as e:
+                logger.warning(f"Failed to query orders for P&L: {e}")
+                orders = []
 
-        # Calculate revenue by category
-        food_sales = 0.0
-        beverage_sales = 0.0
-        other_sales = 0.0
-        tips_collected = 0.0
+            # Calculate revenue by category
+            food_sales = 0.0
+            beverage_sales = 0.0
+            other_sales = 0.0
+            tips_collected = 0.0
 
-        for order in orders:
-            tips_collected += float(order.tip_amount or 0)
-            for item in order.items:
-                item_total = float(item.subtotal or 0)
-                menu_item = item.menu_item
-                if menu_item and hasattr(menu_item, 'category') and menu_item.category:
-                    cat_name = menu_item.category.name
-                    cat_str = cat_name.get('en', cat_name.get('bg', '')) if isinstance(cat_name, dict) else str(cat_name)
-                    cat_lower = cat_str.lower()
-                    if any(word in cat_lower for word in ['beverage', 'drink', 'cocktail', 'wine', 'beer', 'alcohol']):
-                        beverage_sales += item_total
-                    elif any(word in cat_lower for word in ['food', 'appetizer', 'main', 'entree', 'dessert', 'salad', 'soup']):
-                        food_sales += item_total
+            for order in orders:
+                tips_collected += float(order.tip_amount or 0)
+                for item in (order.items or []):
+                    item_total = float(item.subtotal or 0)
+                    menu_item = getattr(item, 'menu_item', None)
+                    if menu_item and hasattr(menu_item, 'category') and menu_item.category:
+                        cat_name = menu_item.category.name
+                        cat_str = cat_name.get('en', cat_name.get('bg', '')) if isinstance(cat_name, dict) else str(cat_name or '')
+                        cat_lower = cat_str.lower()
+                        if any(word in cat_lower for word in ['beverage', 'drink', 'cocktail', 'wine', 'beer', 'alcohol']):
+                            beverage_sales += item_total
+                        elif any(word in cat_lower for word in ['food', 'appetizer', 'main', 'entree', 'dessert', 'salad', 'soup']):
+                            food_sales += item_total
+                        else:
+                            other_sales += item_total
                     else:
                         other_sales += item_total
-                else:
-                    other_sales += item_total
 
-        total_revenue = food_sales + beverage_sales + other_sales
+            total_revenue = food_sales + beverage_sales + other_sales
 
-        # Cost of goods - estimate from purchase orders
-        purchase_orders = self.db.query(PurchaseOrder).filter(
-            PurchaseOrder.location_id == venue_id,
-            PurchaseOrder.order_date >= start_date,
-            PurchaseOrder.order_date <= end_date,
-            PurchaseOrder.status.in_(['received', 'completed', 'invoiced'])
-        ).all()
+            # Cost of goods - estimate from purchase orders
+            try:
+                purchase_orders = self.db.query(PurchaseOrder).filter(
+                    PurchaseOrder.location_id == venue_id,
+                    PurchaseOrder.order_date >= start_date,
+                    PurchaseOrder.order_date <= end_date,
+                    PurchaseOrder.status.in_(['received', 'completed', 'invoiced'])
+                ).all()
+            except Exception as e:
+                logger.warning(f"Failed to query purchase orders for P&L: {e}")
+                purchase_orders = []
 
-        food_costs = 0.0
-        beverage_costs = 0.0
-        for po in purchase_orders:
-            po_total = float(po.total or 0)
-            # Estimate split based on typical restaurant ratios or supplier category
-            # For simplicity, attribute 60% to food, 40% to beverage
-            food_costs += po_total * 0.6
-            beverage_costs += po_total * 0.4
+            food_costs = 0.0
+            beverage_costs = 0.0
+            for po in purchase_orders:
+                po_total = float(po.total or 0)
+                food_costs += po_total * 0.6
+                beverage_costs += po_total * 0.4
 
-        total_cogs = food_costs + beverage_costs
-        gross_profit = total_revenue - total_cogs
-        gross_margin = round((gross_profit / total_revenue * 100), 1) if total_revenue > 0 else 0
+            total_cogs = food_costs + beverage_costs
+            gross_profit = total_revenue - total_cogs
+            gross_margin = round((gross_profit / total_revenue * 100), 1) if total_revenue > 0 else 0
 
-        # Labor costs from actual shifts
-        shifts = self.db.query(StaffShift).filter(
-            StaffShift.venue_id == venue_id,
-            StaffShift.scheduled_start >= start_dt,
-            StaffShift.scheduled_start <= end_dt
-        ).all()
+            # Labor costs from actual shifts
+            try:
+                shifts = self.db.query(StaffShift).filter(
+                    StaffShift.venue_id == venue_id,
+                    StaffShift.scheduled_start >= start_dt,
+                    StaffShift.scheduled_start <= end_dt
+                ).all()
+            except Exception as e:
+                logger.warning(f"Failed to query shifts for P&L: {e}")
+                shifts = []
 
-        labor_cost = 0.0
-        for shift in shifts:
-            start_time = shift.actual_start or shift.scheduled_start
-            end_time = shift.actual_end or shift.scheduled_end
-            if start_time and end_time:
-                hours = (end_time - start_time).total_seconds() / 3600
-                # Estimate hourly rate (BGN) - would come from staff profile
-                hourly_rate = 15.0
-                labor_cost += hours * hourly_rate
+            labor_cost = 0.0
+            for shift in shifts:
+                start_time = shift.actual_start or shift.scheduled_start
+                end_time = shift.actual_end or shift.scheduled_end
+                if start_time and end_time:
+                    hours = (end_time - start_time).total_seconds() / 3600
+                    hourly_rate = 15.0
+                    labor_cost += hours * hourly_rate
 
-        # Other operating expenses - would come from expense records
-        # Using pending journal entries as proxy for expenses
-        rent = 0.0
-        utilities = 0.0
-        marketing = 0.0
-        other_expenses = 0.0
+            # Other operating expenses
+            rent = 0.0
+            utilities = 0.0
+            marketing = 0.0
+            other_expenses = 0.0
 
-        for txn in self._pending_transactions:
-            if txn.get("venue_id") == venue_id:
-                entry_date = txn.get("entry_date", "")
-                if entry_date >= start_date.isoformat() and entry_date <= end_date.isoformat():
-                    for line in txn.get("lines", []):
-                        account = line.get("account", "")
-                        debit = float(line.get("debit", 0))
-                        if account == "6100":
-                            rent += debit
-                        elif account == "6200":
-                            utilities += debit
-                        elif account == "6300":
-                            marketing += debit
-                        elif account.startswith("6"):
-                            other_expenses += debit
+            for txn in self._pending_transactions:
+                if txn.get("venue_id") == venue_id:
+                    entry_date = txn.get("entry_date", "")
+                    if entry_date >= start_date.isoformat() and entry_date <= end_date.isoformat():
+                        for line in txn.get("lines", []):
+                            account = line.get("account", "")
+                            debit = float(line.get("debit", 0) or 0)
+                            if account == "6100":
+                                rent += debit
+                            elif account == "6200":
+                                utilities += debit
+                            elif account == "6300":
+                                marketing += debit
+                            elif account.startswith("6"):
+                                other_expenses += debit
 
-        total_expenses = labor_cost + rent + utilities + marketing + other_expenses
-        net_income = gross_profit - total_expenses
-        net_margin = round((net_income / total_revenue * 100), 1) if total_revenue > 0 else 0
+            total_expenses = labor_cost + rent + utilities + marketing + other_expenses
+            net_income = gross_profit - total_expenses
+            net_margin = round((net_income / total_revenue * 100), 1) if total_revenue > 0 else 0
 
-        return {
-            "success": True,
-            "period": {"start": start_date.isoformat(), "end": end_date.isoformat()},
-            "revenue": {
-                "food_sales": round(food_sales, 2),
-                "beverage_sales": round(beverage_sales, 2),
-                "other_revenue": round(other_sales, 2),
-                "tips_collected": round(tips_collected, 2),
-                "total_revenue": round(total_revenue, 2)
-            },
-            "cost_of_goods": {
-                "food_costs": round(food_costs, 2),
-                "beverage_costs": round(beverage_costs, 2),
-                "total_cogs": round(total_cogs, 2)
-            },
-            "gross_profit": round(gross_profit, 2),
-            "gross_margin": gross_margin,
-            "operating_expenses": {
-                "labor": round(labor_cost, 2),
-                "rent": round(rent, 2),
-                "utilities": round(utilities, 2),
-                "marketing": round(marketing, 2),
-                "other": round(other_expenses, 2),
-                "total_expenses": round(total_expenses, 2)
-            },
-            "net_income": round(net_income, 2),
-            "net_margin": net_margin,
-            "orders_count": len(orders),
-            "purchase_orders_count": len(purchase_orders)
-        }
+            return {
+                "success": True,
+                "period": {"start": start_date.isoformat(), "end": end_date.isoformat()},
+                "revenue": {
+                    "food_sales": round(food_sales, 2),
+                    "beverage_sales": round(beverage_sales, 2),
+                    "other_revenue": round(other_sales, 2),
+                    "tips_collected": round(tips_collected, 2),
+                    "total_revenue": round(total_revenue, 2)
+                },
+                "cost_of_goods": {
+                    "food_costs": round(food_costs, 2),
+                    "beverage_costs": round(beverage_costs, 2),
+                    "total_cogs": round(total_cogs, 2)
+                },
+                "gross_profit": round(gross_profit, 2),
+                "gross_margin": gross_margin,
+                "operating_expenses": {
+                    "labor": round(labor_cost, 2),
+                    "rent": round(rent, 2),
+                    "utilities": round(utilities, 2),
+                    "marketing": round(marketing, 2),
+                    "other": round(other_expenses, 2),
+                    "total_expenses": round(total_expenses, 2)
+                },
+                "net_income": round(net_income, 2),
+                "net_margin": net_margin,
+                "orders_count": len(orders),
+                "purchase_orders_count": len(purchase_orders)
+            }
+        except Exception as e:
+            logger.exception(f"Failed to generate profit & loss report for venue {venue_id}")
+            return {
+                "success": False,
+                "error": str(e),
+                "period": {"start": start_date.isoformat(), "end": end_date.isoformat()},
+                "revenue": {"food_sales": 0, "beverage_sales": 0, "other_revenue": 0, "tips_collected": 0, "total_revenue": 0},
+                "cost_of_goods": {"food_costs": 0, "beverage_costs": 0, "total_cogs": 0},
+                "gross_profit": 0, "gross_margin": 0,
+                "operating_expenses": {"labor": 0, "rent": 0, "utilities": 0, "marketing": 0, "other": 0, "total_expenses": 0},
+                "net_income": 0, "net_margin": 0, "orders_count": 0, "purchase_orders_count": 0
+            }
     
     def get_balance_sheet(
         self,
@@ -1019,128 +1043,145 @@ class AccountingIntegrationService:
         as_of_date: date
     ) -> Dict[str, Any]:
         """Generate balance sheet from actual data"""
-        from app.models import Order, StockItem, PurchaseOrder
-        from datetime import datetime as dt
+        try:
+            from app.models import Order, StockItem, PurchaseOrder
+            from datetime import datetime as dt
 
-        as_of_dt = dt.combine(as_of_date, dt.max.time())
+            as_of_dt = dt.combine(as_of_date, dt.max.time())
 
-        # ASSETS
-        # Cash - sum of cash payments received (simplified - real system would track cash drawer)
-        cash_orders = self.db.query(Order).join(Order.station).filter(
-            Order.station.has(venue_id=venue_id),
-            Order.payment_method == 'cash',
-            Order.payment_status == 'paid',
-            Order.created_at <= as_of_dt
-        ).all()
-        cash = sum(float(o.total or 0) for o in cash_orders)
+            # ASSETS
+            try:
+                cash_orders = self.db.query(Order).join(Order.station).filter(
+                    Order.station.has(venue_id=venue_id),
+                    Order.payment_method == 'cash',
+                    Order.payment_status == 'paid',
+                    Order.created_at <= as_of_dt
+                ).all()
+            except Exception:
+                cash_orders = []
+            cash = sum(float(o.total or 0) for o in cash_orders)
 
-        # Card receivables - recent card payments that may not have settled
-        card_orders = self.db.query(Order).join(Order.station).filter(
-            Order.station.has(venue_id=venue_id),
-            Order.payment_method == 'card',
-            Order.payment_status == 'paid',
-            Order.created_at <= as_of_dt
-        ).all()
-        # Assume 3% of card payments are still pending settlement
-        card_receivables = sum(float(o.total or 0) for o in card_orders) * 0.03
+            try:
+                card_orders = self.db.query(Order).join(Order.station).filter(
+                    Order.station.has(venue_id=venue_id),
+                    Order.payment_method == 'card',
+                    Order.payment_status == 'paid',
+                    Order.created_at <= as_of_dt
+                ).all()
+            except Exception:
+                card_orders = []
+            card_receivables = sum(float(o.total or 0) for o in card_orders) * 0.03
 
-        # Inventory value from stock items
-        stock_items = self.db.query(StockItem).filter(
-            StockItem.venue_id == venue_id,
-            StockItem.is_active == True
-        ).all()
-        inventory_value = sum(
-            float(item.quantity or 0) * float(item.cost_per_unit or 0)
-            for item in stock_items
-        )
+            try:
+                stock_items = self.db.query(StockItem).filter(
+                    StockItem.venue_id == venue_id,
+                    StockItem.is_active == True
+                ).all()
+            except Exception:
+                stock_items = []
+            inventory_value = sum(
+                float(item.quantity or 0) * float(item.cost_per_unit or 0)
+                for item in stock_items
+            )
 
-        total_current_assets = cash + card_receivables + inventory_value
+            total_current_assets = cash + card_receivables + inventory_value
 
-        # Fixed assets - from journal entries in accounts 13xx
-        equipment_value = 0.0
-        depreciation = 0.0
-        for txn in self._pending_transactions:
-            if txn.get("venue_id") == venue_id:
-                entry_date = txn.get("entry_date", "")
-                if entry_date <= as_of_date.isoformat():
-                    for line in txn.get("lines", []):
-                        account = line.get("account", "")
-                        if account.startswith("13"):
-                            equipment_value += float(line.get("debit", 0)) - float(line.get("credit", 0))
-                        elif account.startswith("14"):  # Accumulated depreciation
-                            depreciation += float(line.get("credit", 0)) - float(line.get("debit", 0))
+            equipment_value = 0.0
+            depreciation = 0.0
+            for txn in self._pending_transactions:
+                if txn.get("venue_id") == venue_id:
+                    entry_date = txn.get("entry_date", "")
+                    if entry_date <= as_of_date.isoformat():
+                        for line in txn.get("lines", []):
+                            account = line.get("account", "")
+                            if account.startswith("13"):
+                                equipment_value += float(line.get("debit", 0) or 0) - float(line.get("credit", 0) or 0)
+                            elif account.startswith("14"):
+                                depreciation += float(line.get("credit", 0) or 0) - float(line.get("debit", 0) or 0)
 
-        total_fixed_assets = equipment_value - depreciation
-        total_assets = total_current_assets + total_fixed_assets
+            total_fixed_assets = equipment_value - depreciation
+            total_assets = total_current_assets + total_fixed_assets
 
-        # LIABILITIES
-        # Accounts payable - unpaid purchase orders
-        unpaid_pos = self.db.query(PurchaseOrder).filter(
-            PurchaseOrder.location_id == venue_id,
-            PurchaseOrder.status.in_(['received', 'pending']),
-            PurchaseOrder.order_date <= as_of_date
-        ).all()
-        accounts_payable = sum(float(po.total or 0) for po in unpaid_pos)
+            # LIABILITIES
+            try:
+                unpaid_pos = self.db.query(PurchaseOrder).filter(
+                    PurchaseOrder.location_id == venue_id,
+                    PurchaseOrder.status.in_(['received', 'pending']),
+                    PurchaseOrder.order_date <= as_of_date
+                ).all()
+            except Exception:
+                unpaid_pos = []
+            accounts_payable = sum(float(po.total or 0) for po in unpaid_pos)
 
-        # VAT payable - approximately 20% of revenue collected
-        all_orders = self.db.query(Order).join(Order.station).filter(
-            Order.station.has(venue_id=venue_id),
-            Order.payment_status == 'paid',
-            Order.created_at <= as_of_dt
-        ).all()
-        total_revenue = sum(float(o.total or 0) for o in all_orders)
-        vat_rate = 0.20
-        vat_payable = total_revenue * (vat_rate / (1 + vat_rate))
+            try:
+                all_orders = self.db.query(Order).join(Order.station).filter(
+                    Order.station.has(venue_id=venue_id),
+                    Order.payment_status == 'paid',
+                    Order.created_at <= as_of_dt
+                ).all()
+            except Exception:
+                all_orders = []
+            total_revenue = sum(float(o.total or 0) for o in all_orders)
+            vat_rate = 0.20
+            vat_payable = total_revenue * (vat_rate / (1 + vat_rate))
 
-        # Tips payable to staff
-        tips_payable = sum(float(o.tip_amount or 0) for o in all_orders)
+            tips_payable = sum(float(o.tip_amount or 0) for o in all_orders)
 
-        total_current_liabilities = accounts_payable + vat_payable + tips_payable
-        total_liabilities = total_current_liabilities
+            total_current_liabilities = accounts_payable + vat_payable + tips_payable
+            total_liabilities = total_current_liabilities
 
-        # EQUITY
-        # Calculate retained earnings as total revenue minus expenses
-        # Simplified calculation
-        retained_earnings = total_assets - total_liabilities
-        owner_equity = 0.0  # Would come from initial capital records
+            retained_earnings = total_assets - total_liabilities
+            owner_equity = 0.0
 
-        total_equity = owner_equity + retained_earnings
-        total_liabilities_equity = total_liabilities + total_equity
+            total_equity = owner_equity + retained_earnings
+            total_liabilities_equity = total_liabilities + total_equity
 
-        return {
-            "success": True,
-            "as_of_date": as_of_date.isoformat(),
-            "assets": {
-                "current_assets": {
-                    "cash": round(cash, 2),
-                    "accounts_receivable": round(card_receivables, 2),
-                    "inventory": round(inventory_value, 2),
-                    "total_current": round(total_current_assets, 2)
+            return {
+                "success": True,
+                "as_of_date": as_of_date.isoformat(),
+                "assets": {
+                    "current_assets": {
+                        "cash": round(cash, 2),
+                        "accounts_receivable": round(card_receivables, 2),
+                        "inventory": round(inventory_value, 2),
+                        "total_current": round(total_current_assets, 2)
+                    },
+                    "fixed_assets": {
+                        "equipment": round(equipment_value, 2),
+                        "less_depreciation": round(-depreciation, 2),
+                        "total_fixed": round(total_fixed_assets, 2)
+                    },
+                    "total_assets": round(total_assets, 2)
                 },
-                "fixed_assets": {
-                    "equipment": round(equipment_value, 2),
-                    "less_depreciation": round(-depreciation, 2),
-                    "total_fixed": round(total_fixed_assets, 2)
+                "liabilities": {
+                    "current_liabilities": {
+                        "accounts_payable": round(accounts_payable, 2),
+                        "vat_payable": round(vat_payable, 2),
+                        "tips_payable": round(tips_payable, 2),
+                        "total_current": round(total_current_liabilities, 2)
+                    },
+                    "total_liabilities": round(total_liabilities, 2)
                 },
-                "total_assets": round(total_assets, 2)
-            },
-            "liabilities": {
-                "current_liabilities": {
-                    "accounts_payable": round(accounts_payable, 2),
-                    "vat_payable": round(vat_payable, 2),
-                    "tips_payable": round(tips_payable, 2),
-                    "total_current": round(total_current_liabilities, 2)
+                "equity": {
+                    "owner_equity": round(owner_equity, 2),
+                    "retained_earnings": round(retained_earnings, 2),
+                    "total_equity": round(total_equity, 2)
                 },
-                "total_liabilities": round(total_liabilities, 2)
-            },
-            "equity": {
-                "owner_equity": round(owner_equity, 2),
-                "retained_earnings": round(retained_earnings, 2),
-                "total_equity": round(total_equity, 2)
-            },
-            "total_liabilities_equity": round(total_liabilities_equity, 2),
-            "note": "Balance sheet is calculated from available transaction data"
-        }
+                "total_liabilities_equity": round(total_liabilities_equity, 2),
+                "note": "Balance sheet is calculated from available transaction data"
+            }
+        except Exception as e:
+            logger.exception(f"Failed to generate balance sheet for venue {venue_id}")
+            zero_section = {"cash": 0, "accounts_receivable": 0, "inventory": 0, "total_current": 0}
+            return {
+                "success": False, "error": str(e),
+                "as_of_date": as_of_date.isoformat(),
+                "assets": {"current_assets": zero_section, "fixed_assets": {"equipment": 0, "less_depreciation": 0, "total_fixed": 0}, "total_assets": 0},
+                "liabilities": {"current_liabilities": {"accounts_payable": 0, "vat_payable": 0, "tips_payable": 0, "total_current": 0}, "total_liabilities": 0},
+                "equity": {"owner_equity": 0, "retained_earnings": 0, "total_equity": 0},
+                "total_liabilities_equity": 0,
+                "note": "Balance sheet generation failed"
+            }
     
     def get_cash_flow(
         self,
@@ -1149,140 +1190,152 @@ class AccountingIntegrationService:
         end_date: date
     ) -> Dict[str, Any]:
         """Generate cash flow statement from actual data"""
-        from app.models import Order, PurchaseOrder
-        from datetime import datetime as dt, timedelta
+        try:
+            from app.models import Order, PurchaseOrder
+            from datetime import datetime as dt, timedelta
 
-        # Convert dates to datetime
-        start_dt = dt.combine(start_date, dt.min.time())
-        end_dt = dt.combine(end_date, dt.max.time())
-        period_start_dt = dt.combine(start_date - timedelta(days=1), dt.max.time())
+            # Convert dates to datetime
+            start_dt = dt.combine(start_date, dt.min.time())
+            end_dt = dt.combine(end_date, dt.max.time())
+            period_start_dt = dt.combine(start_date - timedelta(days=1), dt.max.time())
 
-        # Calculate net income from P&L for the period
-        pl_report = self.get_profit_loss(venue_id, start_date, end_date)
-        net_income = pl_report.get("net_income", 0)
+            # Calculate net income from P&L for the period
+            pl_report = self.get_profit_loss(venue_id, start_date, end_date)
+            net_income = float(pl_report.get("net_income", 0) or 0)
 
-        # OPERATING ACTIVITIES
-        # Depreciation - estimate based on equipment value (simplified)
-        depreciation = 0.0
-        for txn in self._pending_transactions:
-            if txn.get("venue_id") == venue_id:
-                entry_date = txn.get("entry_date", "")
-                if start_date.isoformat() <= entry_date <= end_date.isoformat():
-                    for line in txn.get("lines", []):
-                        if line.get("account", "").startswith("14"):  # Depreciation account
-                            depreciation += float(line.get("credit", 0))
+            # OPERATING ACTIVITIES
+            # Depreciation - estimate based on equipment value (simplified)
+            depreciation = 0.0
+            for txn in self._pending_transactions:
+                if txn.get("venue_id") == venue_id:
+                    entry_date = txn.get("entry_date", "")
+                    if start_date.isoformat() <= entry_date <= end_date.isoformat():
+                        for line in txn.get("lines", []):
+                            if line.get("account", "").startswith("14"):  # Depreciation account
+                                depreciation += float(line.get("credit", 0) or 0)
 
-        # AR change - change in card receivables
-        orders_start = self.db.query(Order).join(Order.station).filter(
-            Order.station.has(venue_id=venue_id),
-            Order.payment_method == 'card',
-            Order.payment_status == 'paid',
-            Order.created_at <= period_start_dt
-        ).all()
-        ar_start = sum(float(o.total or 0) for o in orders_start) * 0.03
+            # AR change - change in card receivables
+            orders_start = self.db.query(Order).join(Order.station).filter(
+                Order.station.has(venue_id=venue_id),
+                Order.payment_method == 'card',
+                Order.payment_status == 'paid',
+                Order.created_at <= period_start_dt
+            ).all()
+            ar_start = sum(float(o.total or 0) for o in orders_start) * 0.03
 
-        orders_end = self.db.query(Order).join(Order.station).filter(
-            Order.station.has(venue_id=venue_id),
-            Order.payment_method == 'card',
-            Order.payment_status == 'paid',
-            Order.created_at <= end_dt
-        ).all()
-        ar_end = sum(float(o.total or 0) for o in orders_end) * 0.03
+            orders_end = self.db.query(Order).join(Order.station).filter(
+                Order.station.has(venue_id=venue_id),
+                Order.payment_method == 'card',
+                Order.payment_status == 'paid',
+                Order.created_at <= end_dt
+            ).all()
+            ar_end = sum(float(o.total or 0) for o in orders_end) * 0.03
 
-        ar_change = ar_start - ar_end  # Decrease in AR is positive cash flow
+            ar_change = ar_start - ar_end  # Decrease in AR is positive cash flow
 
-        # AP change - change in accounts payable
-        po_start = self.db.query(PurchaseOrder).filter(
-            PurchaseOrder.location_id == venue_id,
-            PurchaseOrder.status.in_(['received', 'pending']),
-            PurchaseOrder.order_date < start_date
-        ).all()
-        ap_start = sum(float(po.total or 0) for po in po_start)
+            # AP change - change in accounts payable
+            po_start = self.db.query(PurchaseOrder).filter(
+                PurchaseOrder.location_id == venue_id,
+                PurchaseOrder.status.in_(['received', 'pending']),
+                PurchaseOrder.order_date < start_date
+            ).all()
+            ap_start = sum(float(po.total or 0) for po in po_start)
 
-        po_end = self.db.query(PurchaseOrder).filter(
-            PurchaseOrder.location_id == venue_id,
-            PurchaseOrder.status.in_(['received', 'pending']),
-            PurchaseOrder.order_date <= end_date
-        ).all()
-        ap_end = sum(float(po.total or 0) for po in po_end)
+            po_end = self.db.query(PurchaseOrder).filter(
+                PurchaseOrder.location_id == venue_id,
+                PurchaseOrder.status.in_(['received', 'pending']),
+                PurchaseOrder.order_date <= end_date
+            ).all()
+            ap_end = sum(float(po.total or 0) for po in po_end)
 
-        ap_change = ap_end - ap_start  # Increase in AP is positive cash flow
+            ap_change = ap_end - ap_start  # Increase in AP is positive cash flow
 
-        # Inventory change
-        # Would need historical inventory snapshots - using purchase orders as proxy
-        period_purchases = self.db.query(PurchaseOrder).filter(
-            PurchaseOrder.location_id == venue_id,
-            PurchaseOrder.order_date >= start_date,
-            PurchaseOrder.order_date <= end_date,
-            PurchaseOrder.status.in_(['received', 'completed'])
-        ).all()
-        inventory_change = -sum(float(po.total or 0) for po in period_purchases)
+            # Inventory change
+            # Would need historical inventory snapshots - using purchase orders as proxy
+            period_purchases = self.db.query(PurchaseOrder).filter(
+                PurchaseOrder.location_id == venue_id,
+                PurchaseOrder.order_date >= start_date,
+                PurchaseOrder.order_date <= end_date,
+                PurchaseOrder.status.in_(['received', 'completed'])
+            ).all()
+            inventory_change = -sum(float(po.total or 0) for po in period_purchases)
 
-        net_operating = net_income + depreciation + ar_change + ap_change + inventory_change
+            net_operating = net_income + depreciation + ar_change + ap_change + inventory_change
 
-        # INVESTING ACTIVITIES
-        equipment_purchases = 0.0
-        for txn in self._pending_transactions:
-            if txn.get("venue_id") == venue_id:
-                entry_date = txn.get("entry_date", "")
-                if start_date.isoformat() <= entry_date <= end_date.isoformat():
-                    for line in txn.get("lines", []):
-                        if line.get("account", "").startswith("13"):  # Equipment account
-                            equipment_purchases -= float(line.get("debit", 0))
+            # INVESTING ACTIVITIES
+            equipment_purchases = 0.0
+            for txn in self._pending_transactions:
+                if txn.get("venue_id") == venue_id:
+                    entry_date = txn.get("entry_date", "")
+                    if start_date.isoformat() <= entry_date <= end_date.isoformat():
+                        for line in txn.get("lines", []):
+                            if line.get("account", "").startswith("13"):  # Equipment account
+                                equipment_purchases -= float(line.get("debit", 0) or 0)
 
-        net_investing = equipment_purchases
+            net_investing = equipment_purchases
 
-        # FINANCING ACTIVITIES
-        owner_draws = 0.0
-        for txn in self._pending_transactions:
-            if txn.get("venue_id") == venue_id:
-                entry_date = txn.get("entry_date", "")
-                if start_date.isoformat() <= entry_date <= end_date.isoformat():
-                    for line in txn.get("lines", []):
-                        if line.get("account", "") == "3200":  # Owner draws account
-                            owner_draws -= float(line.get("debit", 0))
+            # FINANCING ACTIVITIES
+            owner_draws = 0.0
+            for txn in self._pending_transactions:
+                if txn.get("venue_id") == venue_id:
+                    entry_date = txn.get("entry_date", "")
+                    if start_date.isoformat() <= entry_date <= end_date.isoformat():
+                        for line in txn.get("lines", []):
+                            if line.get("account", "") == "3200":  # Owner draws account
+                                owner_draws -= float(line.get("debit", 0) or 0)
 
-        net_financing = owner_draws
+            net_financing = owner_draws
 
-        # Calculate cash changes
-        net_cash_change = net_operating + net_investing + net_financing
+            # Calculate cash changes
+            net_cash_change = net_operating + net_investing + net_financing
 
-        # Beginning and ending cash
-        cash_orders_start = self.db.query(Order).join(Order.station).filter(
-            Order.station.has(venue_id=venue_id),
-            Order.payment_method == 'cash',
-            Order.payment_status == 'paid',
-            Order.created_at <= period_start_dt
-        ).all()
-        beginning_cash = sum(float(o.total or 0) for o in cash_orders_start)
+            # Beginning and ending cash
+            cash_orders_start = self.db.query(Order).join(Order.station).filter(
+                Order.station.has(venue_id=venue_id),
+                Order.payment_method == 'cash',
+                Order.payment_status == 'paid',
+                Order.created_at <= period_start_dt
+            ).all()
+            beginning_cash = sum(float(o.total or 0) for o in cash_orders_start)
 
-        ending_cash = beginning_cash + net_cash_change
+            ending_cash = beginning_cash + net_cash_change
 
-        return {
-            "success": True,
-            "period": {"start": start_date.isoformat(), "end": end_date.isoformat()},
-            "operating_activities": {
-                "net_income": round(net_income, 2),
-                "depreciation": round(depreciation, 2),
-                "ar_change": round(ar_change, 2),
-                "ap_change": round(ap_change, 2),
-                "inventory_change": round(inventory_change, 2),
-                "net_operating": round(net_operating, 2)
-            },
-            "investing_activities": {
-                "equipment_purchases": round(equipment_purchases, 2),
-                "net_investing": round(net_investing, 2)
-            },
-            "financing_activities": {
-                "owner_draws": round(owner_draws, 2),
-                "net_financing": round(net_financing, 2)
-            },
-            "net_cash_change": round(net_cash_change, 2),
-            "beginning_cash": round(beginning_cash, 2),
-            "ending_cash": round(ending_cash, 2),
-            "note": "Cash flow is calculated from available transaction data"
-        }
-    
+            return {
+                "success": True,
+                "period": {"start": start_date.isoformat(), "end": end_date.isoformat()},
+                "operating_activities": {
+                    "net_income": round(net_income, 2),
+                    "depreciation": round(depreciation, 2),
+                    "ar_change": round(ar_change, 2),
+                    "ap_change": round(ap_change, 2),
+                    "inventory_change": round(inventory_change, 2),
+                    "net_operating": round(net_operating, 2)
+                },
+                "investing_activities": {
+                    "equipment_purchases": round(equipment_purchases, 2),
+                    "net_investing": round(net_investing, 2)
+                },
+                "financing_activities": {
+                    "owner_draws": round(owner_draws, 2),
+                    "net_financing": round(net_financing, 2)
+                },
+                "net_cash_change": round(net_cash_change, 2),
+                "beginning_cash": round(beginning_cash, 2),
+                "ending_cash": round(ending_cash, 2),
+                "note": "Cash flow is calculated from available transaction data"
+            }
+        except Exception as e:
+            logger.exception(f"Failed to generate cash flow for venue {venue_id}")
+            return {
+                "success": False, "error": str(e),
+                "period": {"start": start_date.isoformat(), "end": end_date.isoformat()},
+                "operating_activities": {"net_income": 0, "depreciation": 0, "ar_change": 0, "ap_change": 0, "inventory_change": 0, "net_operating": 0},
+                "investing_activities": {"equipment_purchases": 0, "net_investing": 0},
+                "financing_activities": {"owner_draws": 0, "net_financing": 0},
+                "net_cash_change": 0, "beginning_cash": 0, "ending_cash": 0,
+                "note": "Cash flow generation failed"
+            }
+
     # ========== SYNC MANAGEMENT ==========
     
     def run_sync(

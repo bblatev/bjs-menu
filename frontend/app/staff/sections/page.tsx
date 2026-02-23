@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { API_URL } from '@/lib/api';
+import { api } from '@/lib/api';
 
 import { toast } from '@/lib/toast';
 interface Server {
@@ -68,19 +68,8 @@ export default function ServerSectionsPage() {
 
   const loadServers = async () => {
     try {
-      const token = localStorage.getItem('access_token');
-      const response = await fetch(
-        `${API_URL}/staff/sections/servers`,
-        {
-          credentials: 'include',
-          headers: { Authorization: `Bearer ${token}` },
-        }
-      );
-
-      if (response.ok) {
-        const data = await response.json();
-        setServers(data);
-      }
+      const data = await api.get<Server[]>('/staff/sections/servers');
+      setServers(data);
     } catch (error) {
       console.error('Error loading servers:', error);
     }
@@ -88,19 +77,8 @@ export default function ServerSectionsPage() {
 
   const loadSections = async () => {
     try {
-      const token = localStorage.getItem('access_token');
-      const response = await fetch(
-        `${API_URL}/tables/sections`,
-        {
-          credentials: 'include',
-          headers: { Authorization: `Bearer ${token}` },
-        }
-      );
-
-      if (response.ok) {
-        const data = await response.json();
-        setSections(data);
-      }
+      const data = await api.get<TableSection[]>('/tables/sections');
+      setSections(data);
     } catch (error) {
       console.error('Error loading sections:', error);
     }
@@ -108,19 +86,8 @@ export default function ServerSectionsPage() {
 
   const loadTables = async () => {
     try {
-      const token = localStorage.getItem('access_token');
-      const response = await fetch(
-        `${API_URL}/tables/`,
-        {
-          credentials: 'include',
-          headers: { Authorization: `Bearer ${token}` },
-        }
-      );
-
-      if (response.ok) {
-        const data = await response.json();
-        setTables(data);
-      }
+      const data = await api.get<Table[]>('/tables/');
+      setTables(data);
     } catch (error) {
       console.error('Error loading tables:', error);
     }
@@ -131,35 +98,17 @@ export default function ServerSectionsPage() {
 
   const assignServerToSection = async (sectionId: number, serverId: number | undefined) => {
     try {
-      const token = localStorage.getItem('access_token');
-      const response = await fetch(
-        `${API_URL}/tables/sections/${sectionId}/assign`,
-        {
-          credentials: 'include',
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify({ server_id: serverId || null }),
-        }
-      );
-
-      if (response.ok) {
-        // Update local state optimistically
-        setSections(sections.map(s =>
-          s.id === sectionId ? { ...s, assigned_server_id: serverId } : s
-        ));
-        setTables(tables.map(t =>
-          t.section_id === sectionId ? { ...t, server_id: serverId } : t
-        ));
-      } else {
-        const error = await response.json();
-        toast.error(error.detail || 'Failed to assign server');
-      }
-    } catch (error) {
+      await api.post(`/tables/sections/${sectionId}/assign`, { server_id: serverId || null });
+      // Update local state optimistically
+      setSections(sections.map(s =>
+        s.id === sectionId ? { ...s, assigned_server_id: serverId } : s
+      ));
+      setTables(tables.map(t =>
+        t.section_id === sectionId ? { ...t, server_id: serverId } : t
+      ));
+    } catch (error: any) {
       console.error('Error assigning server:', error);
-      toast.error('Failed to assign server');
+      toast.error(error?.data?.detail || 'Failed to assign server');
     }
   };
 

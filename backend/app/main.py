@@ -44,6 +44,10 @@ PUBLIC_PATH_PREFIXES = [
     "/api/v1/auth/refresh",
     "/api/v1/guest-orders/menu",
     "/api/v1/guest-orders/create",
+    "/api/v1/guest-orders/delivery",
+    "/api/v1/guest-orders/pickup",
+    "/api/v1/guest-orders/upsell-suggestions",
+    "/api/v1/order-online",
     "/api/v1/orders/guest",
     "/api/v1/table/",
     "/api/v1/admin/tables",      # Guest QR flow needs table info

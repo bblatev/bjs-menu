@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { API_URL } from "@/lib/api";
+import { api } from "@/lib/api";
 
 interface AnalyticsData {
   summary: {
@@ -35,24 +35,14 @@ export default function AnalyticsPage() {
   const loadAnalytics = async () => {
     setLoading(true);
     try {
-      const token = localStorage.getItem("access_token");
-      let url = `${API_URL}/analytics/dashboard?range=${dateRange}`;
+      let path = `/analytics/dashboard?range=${dateRange}`;
 
       if (dateRange === "custom" && startDate && endDate) {
-        url += `&start_date=${startDate}&end_date=${endDate}`;
+        path += `&start_date=${startDate}&end_date=${endDate}`;
       }
 
-      const response = await fetch(url, {
-        credentials: 'include',
-        headers: { Authorization: `Bearer ${token}` },
-      });
-
-      if (response.ok) {
-        setData(await response.json());
-      } else {
-        console.error("Failed to load analytics data");
-        setData(null);
-      }
+      const result = await api.get<AnalyticsData>(path);
+      setData(result);
     } catch (error) {
       console.error("Error loading analytics:", error);
       setData(null);

@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { API_URL } from '@/lib/api';
+import { api } from '@/lib/api';
 
 import { toast } from '@/lib/toast';
 interface Warehouse {
@@ -110,33 +110,25 @@ export default function StockInventoryPage() {
   }, [activeTab]);
 
   const fetchData = async () => {
-    const token = localStorage.getItem("access_token");
-    const headers = { Authorization: `Bearer ${token}` };
-
     try {
       // Fetch warehouses
-      const warehousesRes = await fetch(`${API_URL}/warehouses`, { credentials: 'include', headers });
-      if (warehousesRes.ok) {
-        const data = await warehousesRes.json();
+      try {
+        const data = await api.get<any>('/warehouses');
         setWarehouses(data);
         if (data.length > 0) setSelectedWarehouse(data[0]);
-      }
+      } catch {}
 
       // Fetch stock items
-      const stockRes = await fetch(`${API_URL}/stock`, { credentials: 'include', headers });
-      if (stockRes.ok) setStockItems(await stockRes.json());
+      try { setStockItems(await api.get<any>('/stock')); } catch {}
 
       // Fetch batches
-      const batchesRes = await fetch(`${API_URL}/stock/batches`, { credentials: 'include', headers });
-      if (batchesRes.ok) setBatches(await batchesRes.json());
+      try { setBatches(await api.get<any>('/stock/batches')); } catch {}
 
       // Fetch transfers
-      const transfersRes = await fetch(`${API_URL}/warehouses/transfers`, { credentials: 'include', headers });
-      if (transfersRes.ok) setTransfers(await transfersRes.json());
+      try { setTransfers(await api.get<any>('/warehouses/transfers')); } catch {}
 
       // Fetch adjustments
-      const adjustmentsRes = await fetch(`${API_URL}/stock/adjustments`, { credentials: 'include', headers });
-      if (adjustmentsRes.ok) setAdjustments(await adjustmentsRes.json());
+      try { setAdjustments(await api.get<any>('/stock/adjustments')); } catch {}
 
     } catch (error) {
       console.error("Error fetching data:", error);
@@ -147,12 +139,7 @@ export default function StockInventoryPage() {
 
   const fetchExpiringItems = async () => {
     try {
-      const token = localStorage.getItem("access_token");
-      const res = await fetch(`${API_URL}/stock/expiring?days=30`, {
-        credentials: 'include',
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      if (res.ok) setExpiringItems(await res.json());
+      setExpiringItems(await api.get<any>('/stock/expiring?days=30'));
     } catch (error) {
       console.error("Error fetching expiring items:", error);
     }
@@ -160,12 +147,8 @@ export default function StockInventoryPage() {
 
   const fetchValuation = async () => {
     try {
-      const token = localStorage.getItem("access_token");
-      const res = await fetch(`${API_URL}/stock/valuation`, {
-        credentials: 'include',
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      if (res.ok) setValuation(await res.json());
+      const data = await api.get<any>('/stock/valuation');
+      setValuation(data);
     } catch (error) {
       console.error("Error fetching valuation:", error);
     }
@@ -174,21 +157,10 @@ export default function StockInventoryPage() {
   const handleCreateWarehouse = async () => {
     setSaving(true);
     try {
-      const token = localStorage.getItem("access_token");
-      const res = await fetch(`${API_URL}/warehouses`, {
-        credentials: 'include',
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`
-        },
-        body: JSON.stringify(warehouseForm)
-      });
-      if (res.ok) {
-        setShowWarehouseModal(false);
-        fetchData();
-        setWarehouseForm({ name: "", code: "", warehouse_type: "main", is_active: true });
-      }
+      await api.post<any>('/warehouses', warehouseForm);
+      setShowWarehouseModal(false);
+      fetchData();
+      setWarehouseForm({ name: "", code: "", warehouse_type: "main", is_active: true });
     } catch (error) {
       console.error("Error creating warehouse:", error);
     } finally {
@@ -203,20 +175,9 @@ export default function StockInventoryPage() {
     }
     setSaving(true);
     try {
-      const token = localStorage.getItem("access_token");
-      const res = await fetch(`${API_URL}/warehouses/transfers`, {
-        credentials: 'include',
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`
-        },
-        body: JSON.stringify(transferForm)
-      });
-      if (res.ok) {
-        setShowTransferModal(false);
-        fetchData();
-      }
+      await api.post<any>('/warehouses/transfers', transferForm);
+      setShowTransferModal(false);
+      fetchData();
     } catch (error) {
       console.error("Error creating transfer:", error);
     } finally {
@@ -227,15 +188,7 @@ export default function StockInventoryPage() {
   const handleCompleteTransfer = async (transferId: number) => {
     if (!confirm("Mark this transfer as completed?")) return;
     try {
-      const token = localStorage.getItem("access_token");
-      await fetch(`${API_URL}/warehouses/transfers/${transferId}/complete`, {
-        credentials: 'include',
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`
-        }
-      });
+      await api.put<any>(`/warehouses/transfers/${transferId}/complete`);
       fetchData();
     } catch (error) {
       console.error("Error completing transfer:", error);
@@ -244,12 +197,7 @@ export default function StockInventoryPage() {
 
   const handleApproveAdjustment = async (adjustmentId: number) => {
     try {
-      const token = localStorage.getItem("access_token");
-      await fetch(`${API_URL}/stock/adjustments/${adjustmentId}/approve`, {
-        credentials: 'include',
-        method: "PUT",
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      await api.put<any>(`/stock/adjustments/${adjustmentId}/approve`);
       fetchData();
     } catch (error) {
       console.error("Error approving adjustment:", error);

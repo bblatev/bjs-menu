@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
-import { API_URL } from '@/lib/api';
+import { api } from '@/lib/api';
 
 interface InventoryItem {
   id: number;
@@ -46,18 +46,8 @@ export default function ReportsInventoryPage() {
   const loadInventoryReport = async () => {
     setLoading(true);
     try {
-      const token = localStorage.getItem('access_token');
-      const response = await fetch(`${API_URL}/reports/inventory`, {
-        credentials: 'include',
-        headers: { Authorization: `Bearer ${token}` },
-      });
-
-      if (response.ok) {
-        setData(await response.json());
-      } else {
-        console.error('Failed to load inventory report');
-        setData(null);
-      }
+      const data = await api.get<InventoryReportData>(`/reports/inventory`);
+      setData(data);
     } catch (error) {
       console.error('Error loading inventory report:', error);
       setData(null);

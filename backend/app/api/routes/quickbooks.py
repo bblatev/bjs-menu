@@ -179,10 +179,11 @@ async def get_authorization_url(request: Request, state: str = "random_state"):
     """Get the OAuth2 authorization URL to connect QuickBooks."""
     qbo = get_quickbooks_service()
     if not qbo:
-        raise HTTPException(
-            status_code=503,
-            detail="QuickBooks not configured. Set QBO_CLIENT_ID and QBO_CLIENT_SECRET environment variables.",
-        )
+        return {
+            "status": "not_configured",
+            "message": "QuickBooks not configured. Set QBO_CLIENT_ID and QBO_CLIENT_SECRET environment variables.",
+            "data": None
+        }
 
     url = qbo.get_authorization_url(state=state)
     return {"authorization_url": url, "state": state}
@@ -204,7 +205,7 @@ async def oauth_callback(
     """
     qbo = get_quickbooks_service()
     if not qbo:
-        raise HTTPException(status_code=503, detail="QuickBooks not configured")
+        return {"status": "not_configured", "message": "QuickBooks integration is not configured. Set QBO_CLIENT_ID and QBO_CLIENT_SECRET.", "data": None}
 
     tokens = await qbo.exchange_code_for_tokens(
         authorization_code=code,
@@ -230,7 +231,7 @@ async def set_tokens(request: Request, db: DbSession, token_request: SetTokensRe
     """Set tokens manually and persist to database."""
     qbo = get_quickbooks_service()
     if not qbo:
-        raise HTTPException(status_code=503, detail="QuickBooks not configured")
+        return {"status": "not_configured", "message": "QuickBooks integration is not configured. Set QBO_CLIENT_ID and QBO_CLIENT_SECRET.", "data": None}
 
     tokens = QBOTokens(
         access_token=token_request.access_token,
@@ -250,7 +251,7 @@ async def refresh_tokens(request: Request, db: DbSession):
     """Refresh access tokens and persist new tokens to database."""
     qbo = get_quickbooks_service()
     if not qbo:
-        raise HTTPException(status_code=503, detail="QuickBooks not configured")
+        return {"status": "not_configured", "message": "QuickBooks integration is not configured. Set QBO_CLIENT_ID and QBO_CLIENT_SECRET.", "data": None}
 
     # Load tokens from DB if service doesn't have them in memory
     if not qbo.get_tokens():
@@ -336,7 +337,7 @@ async def get_customers(request: Request, limit: int = 100):
     """Get all customers from QuickBooks."""
     qbo = get_quickbooks_service()
     if not qbo:
-        raise HTTPException(status_code=503, detail="QuickBooks not configured")
+        return {"status": "not_configured", "message": "QuickBooks integration is not configured. Set QBO_CLIENT_ID and QBO_CLIENT_SECRET.", "data": None}
 
     customers = await qbo.get_customers(limit=limit)
     return {"customers": customers, "count": len(customers)}
@@ -348,7 +349,7 @@ async def sync_customer(request: Request, customer_request: CustomerSyncRequest)
     """Create or update a customer in QuickBooks."""
     qbo = get_quickbooks_service()
     if not qbo:
-        raise HTTPException(status_code=503, detail="QuickBooks not configured")
+        return {"status": "not_configured", "message": "QuickBooks integration is not configured. Set QBO_CLIENT_ID and QBO_CLIENT_SECRET.", "data": None}
 
     result = await qbo.sync_customer(
         display_name=customer_request.display_name,
@@ -375,7 +376,7 @@ async def sync_vendor(request: Request, vendor_request: VendorSyncRequest):
     """Create or update a vendor in QuickBooks."""
     qbo = get_quickbooks_service()
     if not qbo:
-        raise HTTPException(status_code=503, detail="QuickBooks not configured")
+        return {"status": "not_configured", "message": "QuickBooks integration is not configured. Set QBO_CLIENT_ID and QBO_CLIENT_SECRET.", "data": None}
 
     result = await qbo.sync_vendor(
         display_name=vendor_request.display_name,
@@ -400,7 +401,7 @@ async def get_items(request: Request, limit: int = 1000):
     """Get all items from QuickBooks."""
     qbo = get_quickbooks_service()
     if not qbo:
-        raise HTTPException(status_code=503, detail="QuickBooks not configured")
+        return {"status": "not_configured", "message": "QuickBooks integration is not configured. Set QBO_CLIENT_ID and QBO_CLIENT_SECRET.", "data": None}
 
     items = await qbo.get_items(limit=limit)
     return {"items": items, "count": len(items)}
@@ -412,7 +413,7 @@ async def sync_item(request: Request, item_request: ItemSyncRequest):
     """Create or update an item in QuickBooks."""
     qbo = get_quickbooks_service()
     if not qbo:
-        raise HTTPException(status_code=503, detail="QuickBooks not configured")
+        return {"status": "not_configured", "message": "QuickBooks integration is not configured. Set QBO_CLIENT_ID and QBO_CLIENT_SECRET.", "data": None}
 
     result = await qbo.sync_item(
         name=item_request.name,
@@ -441,7 +442,7 @@ async def create_sales_receipt(request: Request, receipt_request: SalesReceiptRe
     """Create a sales receipt in QuickBooks."""
     qbo = get_quickbooks_service()
     if not qbo:
-        raise HTTPException(status_code=503, detail="QuickBooks not configured")
+        return {"status": "not_configured", "message": "QuickBooks integration is not configured. Set QBO_CLIENT_ID and QBO_CLIENT_SECRET.", "data": None}
 
     line_items = [
         {
@@ -478,7 +479,7 @@ async def create_invoice(request: Request, invoice_request: InvoiceRequest):
     """Create an invoice in QuickBooks."""
     qbo = get_quickbooks_service()
     if not qbo:
-        raise HTTPException(status_code=503, detail="QuickBooks not configured")
+        return {"status": "not_configured", "message": "QuickBooks integration is not configured. Set QBO_CLIENT_ID and QBO_CLIENT_SECRET.", "data": None}
 
     line_items = [
         {
@@ -515,7 +516,7 @@ async def create_bill(request: Request, bill_request: BillRequest):
     """Create a bill (vendor invoice) in QuickBooks."""
     qbo = get_quickbooks_service()
     if not qbo:
-        raise HTTPException(status_code=503, detail="QuickBooks not configured")
+        return {"status": "not_configured", "message": "QuickBooks integration is not configured. Set QBO_CLIENT_ID and QBO_CLIENT_SECRET.", "data": None}
 
     line_items = [
         {
@@ -552,7 +553,7 @@ async def get_accounts(request: Request, account_type: Optional[str] = None):
     """Get chart of accounts from QuickBooks."""
     qbo = get_quickbooks_service()
     if not qbo:
-        raise HTTPException(status_code=503, detail="QuickBooks not configured")
+        return {"status": "not_configured", "message": "QuickBooks integration is not configured. Set QBO_CLIENT_ID and QBO_CLIENT_SECRET.", "data": None}
 
     accounts = await qbo.get_accounts(account_type=account_type)
     return {"accounts": accounts, "count": len(accounts)}
@@ -576,7 +577,7 @@ async def get_profit_and_loss(
         end_date = date.today().isoformat()
     qbo = get_quickbooks_service()
     if not qbo:
-        raise HTTPException(status_code=503, detail="QuickBooks not configured")
+        return {"status": "not_configured", "message": "QuickBooks integration is not configured. Set QBO_CLIENT_ID and QBO_CLIENT_SECRET.", "data": None}
 
     result = await qbo.get_profit_and_loss(start_date=start_date, end_date=end_date)
 
@@ -597,7 +598,7 @@ async def get_balance_sheet(
         as_of_date = date.today().isoformat()
     qbo = get_quickbooks_service()
     if not qbo:
-        raise HTTPException(status_code=503, detail="QuickBooks not configured")
+        return {"status": "not_configured", "message": "QuickBooks integration is not configured. Set QBO_CLIENT_ID and QBO_CLIENT_SECRET.", "data": None}
 
     result = await qbo.get_balance_sheet(as_of_date=as_of_date)
 
@@ -621,7 +622,7 @@ async def sync_daily_sales(request: Request, db: DbSession, sync_request: DailyS
     """
     qbo = get_quickbooks_service()
     if not qbo:
-        raise HTTPException(status_code=503, detail="QuickBooks not configured")
+        return {"status": "not_configured", "message": "QuickBooks integration is not configured. Set QBO_CLIENT_ID and QBO_CLIENT_SECRET.", "data": None}
 
     from app.models.restaurant import GuestOrder
     from sqlalchemy import and_

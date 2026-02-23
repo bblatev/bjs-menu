@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
-import { API_URL } from '@/lib/api';
+import { api } from '@/lib/api';
 
 import { toast } from '@/lib/toast';
 interface DaypartSchedule {
@@ -69,20 +69,8 @@ export default function MenuSchedulingPage() {
 
   const loadData = async () => {
     try {
-      const token = localStorage.getItem('access_token');
-      const response = await fetch(`${API_URL}/menu-admin/dayparts`, {
-        credentials: 'include',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        setDayparts(Array.isArray(data) ? data : (data.items || data.schedules || data.dayparts || []));
-      } else {
-        console.error('Failed to load dayparts');
-      }
+      const data = await api.get('/menu-admin/dayparts');
+      setDayparts(Array.isArray(data) ? data : ((data as any).items || (data as any).schedules || (data as any).dayparts || []));
     } catch (error) {
       console.error('Error loading dayparts:', error);
     } finally {
@@ -105,32 +93,17 @@ export default function MenuSchedulingPage() {
     };
 
     try {
-      const token = localStorage.getItem('access_token');
-      const url = editingDaypart
-        ? `${API_URL}/menu-admin/dayparts/${editingDaypart.id}`
-        : `${API_URL}/menu-admin/dayparts`;
-
-      const response = await fetch(url, {
-        credentials: 'include',
-        method: editingDaypart ? 'PUT' : 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
-        },
-        body: JSON.stringify(daypartData),
-      });
-
-      if (response.ok) {
-        loadData();
-        setShowDaypartModal(false);
-        resetForm();
+      if (editingDaypart) {
+        await api.put(`/menu-admin/dayparts/${editingDaypart.id}`, daypartData);
       } else {
-        const error = await response.json();
-        toast.error(error.detail || 'Error saving daypart');
+        await api.post('/menu-admin/dayparts', daypartData);
       }
-    } catch (error) {
+      loadData();
+      setShowDaypartModal(false);
+      resetForm();
+    } catch (error: any) {
       console.error('Error saving daypart:', error);
-      toast.error('Error saving daypart');
+      toast.error(error?.data?.detail || 'Error saving daypart');
     }
   };
 
@@ -138,20 +111,8 @@ export default function MenuSchedulingPage() {
     if (!confirm('Delete this daypart schedule?')) return;
 
     try {
-      const token = localStorage.getItem('access_token');
-      const response = await fetch(`${API_URL}/menu-admin/dayparts/${id}`, {
-        credentials: 'include',
-        method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
-      });
-
-      if (response.ok) {
-        loadData();
-      } else {
-        toast.error('Error deleting daypart');
-      }
+      await api.del(`/menu-admin/dayparts/${id}`);
+      loadData();
     } catch (error) {
       console.error('Error deleting daypart:', error);
       toast.error('Error deleting daypart');
@@ -206,22 +167,11 @@ export default function MenuSchedulingPage() {
 
   const toggleActive = async (id: number) => {
     try {
-      const token = localStorage.getItem('access_token');
-      const response = await fetch(`${API_URL}/menu-admin/dayparts/${id}/toggle-active`, {
-        credentials: 'include',
-        method: 'PATCH',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
-      });
-
-      if (response.ok) {
-        loadData();
-      } else {
-        toast.error('Error toggling daypart status');
-      }
+      await api.patch(`/menu-admin/dayparts/${id}/toggle-active`);
+      loadData();
     } catch (error) {
       console.error('Error toggling daypart active:', error);
+      toast.error('Error toggling daypart status');
     }
   };
 

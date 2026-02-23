@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import AdminLayout from '@/components/AdminLayout';
-import { API_URL } from '@/lib/api';
+import { api } from '@/lib/api';
 
 interface ForecastItem {
   item_id: number;
@@ -47,25 +47,21 @@ export default function ForecastingPage() {
   useEffect(() => {
     const fetchData = async () => {
       setLoading(true);
-      const token = localStorage.getItem('access_token');
 
       try {
         // Use existing analytics dashboard endpoint
-        const dashRes = await fetch(`${API_URL}/analytics/dashboard`, {
-          credentials: 'include',
-          headers: { 'Authorization': `Bearer ${token}` }
-        });
-        if (dashRes.ok) setDashboardData(await dashRes.json());
+        try {
+          const dashData = await api.get('/analytics/dashboard');
+          setDashboardData(dashData as DashboardData);
+        } catch {
+          // Dashboard data is optional
+        }
 
         // Use daily metrics for forecast data
-        const forecastRes = await fetch(
-          `${API_URL}/analytics/daily-metrics/?days=${forecastDays}`,
-          { credentials: 'include', headers: { 'Authorization': `Bearer ${token}` } }
-        );
-        if (forecastRes.ok) {
-          const data = await forecastRes.json();
+        try {
+          const data = await api.get<{ metrics?: Record<string, unknown>[] }>(`/analytics/daily-metrics/?days=${forecastDays}`);
           // Transform daily metrics to forecast format
-          const metrics = data.metrics || [];
+          const metrics = (data as { metrics?: Record<string, unknown>[] }).metrics || [];
           setForecasts(metrics.map((m: Record<string, unknown>, idx: number) => ({
             item_id: idx + 1,
             item_name: (m.date as string) || `Day ${idx + 1}`,
@@ -77,6 +73,8 @@ export default function ForecastingPage() {
             accuracy_score: 85,
             recommendations: [`${Number(m.order_count) || 0} orders`],
           })) || []);
+        } catch {
+          // Forecast data is optional
         }
       } catch (error) {
         console.error('Error:', error);

@@ -7,7 +7,7 @@ import dynamic from 'next/dynamic';
 import { ThemeToggle } from '@/components/ui/ThemeProvider';
 import { SkipLink } from '@/components/ui/SkipLink';
 import { getVenueId } from '@/lib/auth';
-import { TOKEN_KEY, APP_VERSION } from '@/lib/api';
+import { APP_VERSION, isAuthenticated, api } from '@/lib/api';
 
 const RealtimeNotifications = dynamic(
   () => import('./RealtimeNotifications'),
@@ -41,7 +41,9 @@ const navigationGroups = [
       { name: 'KDS Localization', href: '/kitchen/localization', icon: '🌐' },
       { name: '86\'d Items', href: '/kitchen/86-items', icon: '🚫' },
       { name: 'Bar Management', href: '/bar', icon: '🍺' },
+      { name: 'Prep Lists', href: '/kitchen/prep-lists', icon: '📋' },
       { name: 'Cocktail Recipes', href: '/bar/recipes', icon: '🍹' },
+      { name: 'Pour Tracking', href: '/bar/pour-tracking', icon: '🥃' },
       { name: 'Keg Tracking', href: '/bar/kegs', icon: '🛢️' },
       { name: 'Happy Hours', href: '/bar/happy-hours', icon: '🎉' },
       { name: 'Pour Costs', href: '/bar/pour-costs', icon: '💧' },
@@ -79,6 +81,7 @@ const navigationGroups = [
       { name: 'Variance Analysis', href: '/stock/variance', icon: '📉' },
       { name: 'Aging Report', href: '/stock/aging', icon: '📅' },
       { name: 'Recipe Costs', href: '/stock/recipe-costs', icon: '💰' },
+      { name: 'Shelf Life', href: '/inventory/shelf-life', icon: '📅' },
       { name: 'Supplier Performance', href: '/stock/supplier-performance', icon: '⭐' },
       { name: 'Inventory Intelligence', href: '/stock/intelligence', icon: '🧠' },
       { name: 'Warehouses', href: '/warehouses', icon: '🏭' },
@@ -93,7 +96,10 @@ const navigationGroups = [
       { name: 'Invoice OCR', href: '/invoices/ocr', icon: '📸' },
       { name: 'Invoice Upload', href: '/invoices/upload', icon: '⬆️' },
       { name: 'Price Tracker', href: '/price-tracker', icon: '💲' },
+      { name: 'Price Comparison', href: '/inventory/price-comparison', icon: '📊' },
+      { name: 'Supplier Scorecards', href: '/suppliers/scorecards', icon: '⭐' },
       { name: 'Auto Reorder', href: '/auto-reorder', icon: '🔄' },
+      { name: 'Forecast Orders', href: '/auto-reorder/forecast', icon: '🤖' },
     ]
   },
   {
@@ -105,6 +111,10 @@ const navigationGroups = [
       { name: 'Performance', href: '/staff/performance', icon: '📈' },
       { name: 'Sections', href: '/staff/sections', icon: '🗺️' },
       { name: 'Tips', href: '/staff/tips', icon: '💵' },
+      { name: 'Demand Scheduling', href: '/staff/demand-scheduling', icon: '📊' },
+      { name: 'Skills Matrix', href: '/staff/skills', icon: '🎯' },
+      { name: 'Shift Swap', href: '/shift-swaps', icon: '🔄' },
+      { name: 'Geo Clock', href: '/staff/geo-clock', icon: '📍' },
       { name: 'Commission', href: '/staff/commission', icon: '💲' },
       { name: 'Shifts', href: '/shifts', icon: '🔄' },
       { name: 'Payroll', href: '/payroll', icon: '💰' },
@@ -116,11 +126,19 @@ const navigationGroups = [
       { name: 'Customers', href: '/customers', icon: '👤' },
       { name: 'Customer Credits', href: '/customers/credits', icon: '💳' },
       { name: 'Loyalty Program', href: '/loyalty', icon: '⭐' },
+      { name: 'Loyalty Tiers', href: '/loyalty/tiers', icon: '🏆' },
       { name: 'Birthday Rewards', href: '/loyalty/birthday-rewards', icon: '🎂' },
+      { name: 'Sentiment Analysis', href: '/customers/sentiment', icon: '😊' },
+      { name: 'CLV Analysis', href: '/customers/clv', icon: '💎' },
       { name: 'VIP Management', href: '/vip-management', icon: '👑' },
       { name: 'Referrals', href: '/referrals', icon: '🤝' },
       { name: 'Feedback', href: '/feedback', icon: '💬' },
       { name: 'RFM Analytics', href: '/rfm-analytics', icon: '📊' },
+      { name: 'Gift Cards', href: '/loyalty/gift-cards', icon: '🎁' },
+      { name: 'Gamified Tiers', href: '/loyalty/gamification', icon: '🎮' },
+      { name: 'Birthday Automation', href: '/customer/birthday', icon: '🎉' },
+      { name: 'Subscriptions', href: '/customer/subscriptions', icon: '🔄' },
+      { name: 'Wait Times', href: '/customer/wait-times', icon: '⏱️' },
     ]
   },
   {
@@ -132,7 +150,11 @@ const navigationGroups = [
       { name: 'Email Marketing', href: '/marketing/email', icon: '📧' },
       { name: 'Email Templates', href: '/marketing/email/template-builder', icon: '✉️' },
       { name: 'SMS Marketing', href: '/sms-marketing', icon: '📱' },
-      { name: 'Dynamic Pricing', href: '/marketing/pricing', icon: '💰' },
+      { name: 'Dynamic Pricing', href: '/marketing/dynamic-pricing', icon: '💰' },
+      { name: 'Social Content AI', href: '/marketing/social-content', icon: '📱' },
+      { name: 'Influencer Tracking', href: '/marketing/influencers', icon: '🌟' },
+      { name: 'A/B Testing', href: '/marketing/ab-testing', icon: '🧪' },
+      { name: 'Seasonal Planner', href: '/marketing/seasonal', icon: '📅' },
       { name: 'Gamification', href: '/marketing/gamification', icon: '🎮' },
     ]
   },
@@ -165,6 +187,10 @@ const navigationGroups = [
     name: 'Finance',
     items: [
       { name: 'Financial Management', href: '/financial-management', icon: '💰' },
+      { name: 'Real-time P&L', href: '/financial-management/realtime-pl', icon: '📊' },
+      { name: 'Prime Cost', href: '/financial-management/prime-cost', icon: '💲' },
+      { name: 'Cash Flow', href: '/financial-management/cash-flow', icon: '💵' },
+      { name: 'Tax Filing', href: '/financial-management/tax-filing', icon: '📄' },
       { name: 'Daily Close', href: '/daily-close', icon: '📅' },
       { name: 'Expenses', href: '/expenses', icon: '💸' },
       { name: 'Budgets', href: '/budgets', icon: '📊' },
@@ -186,6 +212,10 @@ const navigationGroups = [
       { name: 'Table QR Codes', href: '/tables/qr', icon: '📱' },
       { name: 'Waitlist', href: '/reservations/waitlist', icon: '⏳' },
       { name: 'HACCP & Safety', href: '/haccp-safety', icon: '🛡️' },
+      { name: 'IoT Sensors', href: '/iot', icon: '🌡️' },
+      { name: 'Digital Signage', href: '/digital-signage', icon: '📺' },
+      { name: 'Pour Tracking', href: '/pour-tracking', icon: '🍸' },
+      { name: 'Order Online', href: '/order-online', icon: '🛒' },
     ]
   },
   {
@@ -198,6 +228,8 @@ const navigationGroups = [
       { name: 'QuickBooks', href: '/integrations/quickbooks', icon: '📗' },
       { name: 'Xero', href: '/integrations/xero', icon: '🔵' },
       { name: 'Delivery Platforms', href: '/delivery-aggregators', icon: '🚴' },
+      { name: 'Delivery Profitability', href: '/delivery-aggregators/profitability', icon: '📊' },
+      { name: 'Driver Tracking', href: '/delivery-aggregators/driver-tracking', icon: '🗺️' },
       { name: 'Hotel PMS', href: '/hotel-pms', icon: '🏨' },
       { name: 'Voice Assistant', href: '/voice', icon: '🎤' },
       { name: 'Conversational AI', href: '/conversational', icon: '🤖' },
@@ -220,20 +252,12 @@ const navigationGroups = [
       { name: 'Price Lists', href: '/settings/price-lists', icon: '💲' },
       { name: 'Workflow', href: '/settings/workflow', icon: '🔀' },
       { name: 'Notifications', href: '/settings/notifications', icon: '🔔' },
+      { name: 'Tenants', href: '/settings/tenants', icon: '🏢' },
+      { name: 'Mobile App', href: '/settings/mobile-app', icon: '📲' },
     ]
   },
 ];
 
-// Decode JWT payload without verification (for display only)
-function parseJwtPayload(token: string): { email?: string; role?: string } | null {
-  try {
-    const base64 = token.split('.')[1];
-    if (!base64) return null;
-    return JSON.parse(atob(base64));
-  } catch {
-    return null;
-  }
-}
 
 export default function AdminLayout({ children }: { children: ReactNode }) {
   const pathname = usePathname();
@@ -255,15 +279,20 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
     }, 300);
   }, []);
 
-  // Get user info from JWT token
+  // Get user info - try API first, fall back to any cached JWT
   const [userInfo, setUserInfo] = useState<{ email: string; role: string }>({ email: '', role: '' });
   useEffect(() => {
-    const token = localStorage.getItem(TOKEN_KEY);
-    if (token) {
-      const payload = parseJwtPayload(token);
-      if (payload?.email) {
-        setUserInfo({ email: payload.email, role: payload.role || 'staff' });
-      }
+    // Fetch user info from API using cookie auth
+    if (isAuthenticated()) {
+      api.get<{ email?: string; role?: string; username?: string }>('/auth/me')
+        .then(data => {
+          if (data?.email || data?.username) {
+            setUserInfo({ email: data.email || data.username || '', role: data.role || 'staff' });
+          }
+        })
+        .catch(() => {
+          // API call failed — user may not be authenticated
+        });
     }
   }, []);
 

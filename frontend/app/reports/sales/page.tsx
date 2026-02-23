@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
-import { API_URL } from '@/lib/api';
+import { api } from '@/lib/api';
 
 interface DailySale {
   date: string;
@@ -80,24 +80,14 @@ export default function ReportsSalesPage() {
   const loadSalesReport = async () => {
     setLoading(true);
     try {
-      const token = localStorage.getItem('access_token');
-      let url = `${API_URL}/reports/sales?period=${dateRange}`;
+      let url = `/reports/sales?period=${dateRange}`;
 
       if (startDate && endDate) {
         url += `&start_date=${startDate}&end_date=${endDate}`;
       }
 
-      const response = await fetch(url, {
-        credentials: 'include',
-        headers: { Authorization: `Bearer ${token}` },
-      });
-
-      if (response.ok) {
-        setData(await response.json());
-      } else {
-        console.error('Failed to load sales report');
-        setData(null);
-      }
+      const data = await api.get<SalesReportData>(url);
+      setData(data);
     } catch (error) {
       console.error('Error loading sales report:', error);
       setData(null);

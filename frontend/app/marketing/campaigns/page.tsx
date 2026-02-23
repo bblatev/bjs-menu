@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
-import { API_URL } from '@/lib/api';
+import { api } from '@/lib/api';
 
 import { toast } from '@/lib/toast';
 interface Campaign {
@@ -69,18 +69,8 @@ export default function MarketingCampaignsPage() {
 
   const loadCampaigns = async () => {
     try {
-      const token = localStorage.getItem('access_token');
-      const response = await fetch(`${API_URL}/marketing/campaigns`, {
-        credentials: 'include',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        setCampaigns(data.items || data);
-      }
+      const data = await api.get<any>('/marketing/campaigns');
+      setCampaigns(data.items || data);
     } catch (error) {
       console.error('Error loading campaigns:', error);
     } finally {
@@ -90,18 +80,8 @@ export default function MarketingCampaignsPage() {
 
   const loadSegments = async () => {
     try {
-      const token = localStorage.getItem('access_token');
-      const response = await fetch(`${API_URL}/marketing/segments`, {
-        credentials: 'include',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        setSegments(data.items || data);
-      }
+      const data = await api.get<any>('/marketing/segments');
+      setSegments(data.items || data);
     } catch (error) {
       console.error('Error loading segments:', error);
     }
@@ -116,78 +96,36 @@ export default function MarketingCampaignsPage() {
 
   const handleCreate = async () => {
     try {
-      const token = localStorage.getItem('access_token');
-      const response = await fetch(`${API_URL}/marketing/campaigns`, {
-        credentials: 'include',
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          ...formData,
-          status: formData.send_now ? 'active' : (formData.scheduled_at ? 'scheduled' : 'draft'),
-        }),
+      await api.post('/marketing/campaigns', {
+        ...formData,
+        status: formData.send_now ? 'active' : (formData.scheduled_at ? 'scheduled' : 'draft'),
       });
-
-      if (response.ok) {
-        loadCampaigns();
-        closeModal();
-      } else {
-        const error = await response.json();
-        toast.error(error.detail || 'Error creating campaign');
-      }
-    } catch (error) {
+      loadCampaigns();
+      closeModal();
+    } catch (error: any) {
       console.error('Error creating campaign:', error);
-      toast.error('Error creating campaign');
+      toast.error(error?.data?.detail || 'Error creating campaign');
     }
   };
 
   const handleUpdate = async () => {
     if (!editingCampaign) return;
     try {
-      const token = localStorage.getItem('access_token');
-      const response = await fetch(`${API_URL}/marketing/campaigns/${editingCampaign.id}`, {
-        credentials: 'include',
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
-        },
-        body: JSON.stringify(formData),
-      });
-
-      if (response.ok) {
-        loadCampaigns();
-        closeModal();
-      } else {
-        const error = await response.json();
-        toast.error(error.detail || 'Error updating campaign');
-      }
-    } catch (error) {
+      await api.put(`/marketing/campaigns/${editingCampaign.id}`, formData);
+      loadCampaigns();
+      closeModal();
+    } catch (error: any) {
       console.error('Error updating campaign:', error);
-      toast.error('Error updating campaign');
+      toast.error(error?.data?.detail || 'Error updating campaign');
     }
   };
 
   const handleDelete = async (id: string) => {
     if (confirm('Are you sure you want to delete this campaign?')) {
       try {
-        const token = localStorage.getItem('access_token');
-        const response = await fetch(`${API_URL}/marketing/campaigns/${id}`, {
-          credentials: 'include',
-          method: 'DELETE',
-          headers: {
-            'Authorization': `Bearer ${token}`,
-          },
-        });
-
-        if (response.ok) {
-          loadCampaigns();
-          setShowDetailsModal(false);
-        } else {
-          toast.error('Error deleting campaign');
-        }
+        await api.del(`/marketing/campaigns/${id}`);
+        loadCampaigns();
+        setShowDetailsModal(false);
       } catch (error) {
         console.error('Error deleting campaign:', error);
         toast.error('Error deleting campaign');
@@ -197,25 +135,11 @@ export default function MarketingCampaignsPage() {
 
   const handlePause = async (id: string) => {
     try {
-      const token = localStorage.getItem('access_token');
       const campaign = campaigns.find(c => c.id === id);
       const newStatus = campaign?.status === 'paused' ? 'active' : 'paused';
 
-      const response = await fetch(`${API_URL}/marketing/campaigns/${id}/status`, {
-        credentials: 'include',
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
-        },
-        body: JSON.stringify({ status: newStatus }),
-      });
-
-      if (response.ok) {
-        loadCampaigns();
-      } else {
-        toast.error('Error updating campaign status');
-      }
+      await api.patch(`/marketing/campaigns/${id}/status`, { status: newStatus });
+      loadCampaigns();
     } catch (error) {
       console.error('Error updating campaign status:', error);
       toast.error('Error updating campaign status');

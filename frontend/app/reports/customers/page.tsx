@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
-import { API_URL } from '@/lib/api';
+import { api } from '@/lib/api';
 
 interface Customer {
   id: number;
@@ -75,18 +75,8 @@ export default function ReportsCustomersPage() {
   const loadCustomerReport = async () => {
     setLoading(true);
     try {
-      const token = localStorage.getItem('access_token');
-      const response = await fetch(`${API_URL}/reports/customers?range=${dateRange}`, {
-        credentials: 'include',
-        headers: { Authorization: `Bearer ${token}` },
-      });
-
-      if (response.ok) {
-        setData(await response.json());
-      } else {
-        console.error('Failed to load customer report');
-        setData(null);
-      }
+      const data = await api.get<CustomerReportData>(`/reports/customers?range=${dateRange}`);
+      setData(data);
     } catch (error) {
       console.error('Error loading customer report:', error);
       setData(null);

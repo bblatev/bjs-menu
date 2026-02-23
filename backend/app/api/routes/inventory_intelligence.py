@@ -324,14 +324,14 @@ def get_inventory_turnover(
         .group_by(StockMovement.product_id)
         .all()
     )
-    usage_map = {r.product_id: float(r.total_out) for r in usage}
+    usage_map = {r.product_id: float(r.total_out or 0) for r in usage}
 
     # Current stock
     stock = (
         db.query(StockOnHand.product_id, StockOnHand.qty)
         .filter(StockOnHand.location_id == location_id, StockOnHand.qty > 0)
         .all()
-    )
+    ) or []
 
     product_ids = set(usage_map.keys()) | {s.product_id for s in stock}
     if not product_ids:
@@ -393,7 +393,7 @@ def get_dead_stock(
 ):
     """Identify dead stock — items with no movement for N days."""
     # Use naive UTC datetimes for SQLite compatibility (SQLite returns naive datetimes)
-    now = datetime.now(timezone.utc)
+    now = datetime.utcnow()  # Naive UTC for comparison with DB values
     cutoff = now - timedelta(days=threshold_days)
 
     # Get products with stock > 0
@@ -437,18 +437,25 @@ def get_dead_stock(
     total_dead_value = 0
     for pid in pids:
         last_ts = last_move_map.get(pid)
-        if last_ts is not None and last_ts >= cutoff:
-            continue  # active item
+        if last_ts is not None:
+            # Ensure both are naive for comparison (DB may return naive datetimes)
+            last_ts_naive = last_ts.replace(tzinfo=None) if last_ts.tzinfo else last_ts
+            if last_ts_naive >= cutoff:
+                continue  # active item
 
         p = products.get(pid)
         soh = stock_map.get(pid)
         if not p or not soh:
             continue
 
-        qty = float(soh.qty)
+        qty = float(soh.qty or 0)
         unit_cost = float(p.cost_price or 0)
         value = qty * unit_cost
-        days_since = (now - last_ts).days if last_ts else 9999
+        if last_ts is not None:
+            last_ts_naive = last_ts.replace(tzinfo=None) if last_ts.tzinfo else last_ts
+            days_since = (now - last_ts_naive).days
+        else:
+            days_since = 9999
 
         # Get the actual last movement reason
         last_reason = None
@@ -995,9 +1002,18 @@ def compare_snapshots(
             })
 
     if row_a.created_at and row_b.created_at:
-        _a_dt = row_a.created_at.replace(tzinfo=timezone.utc) if row_a.created_at.tzinfo is None else row_a.created_at
-        _b_dt = row_b.created_at.replace(tzinfo=timezone.utc) if row_b.created_at.tzinfo is None else row_b.created_at
-        period_days = abs((_b_dt - _a_dt).days)
+        try:
+            _a_dt = row_a.created_at.replace(tzinfo=timezone.utc) if hasattr(row_a.created_at, 'tzinfo') and row_a.created_at.tzinfo is None else row_a.created_at
+            _b_dt = row_b.created_at.replace(tzinfo=timezone.utc) if hasattr(row_b.created_at, 'tzinfo') and row_b.created_at.tzinfo is None else row_b.created_at
+            # Ensure both have same timezone awareness for subtraction
+            if hasattr(_a_dt, 'tzinfo') and hasattr(_b_dt, 'tzinfo'):
+                if _a_dt.tzinfo is None and _b_dt.tzinfo is not None:
+                    _a_dt = _a_dt.replace(tzinfo=timezone.utc)
+                elif _a_dt.tzinfo is not None and _b_dt.tzinfo is None:
+                    _b_dt = _b_dt.replace(tzinfo=timezone.utc)
+            period_days = abs((_b_dt - _a_dt).days)
+        except (TypeError, AttributeError):
+            period_days = 0
     else:
         period_days = 0
     val_change = total_val_b - total_val_a

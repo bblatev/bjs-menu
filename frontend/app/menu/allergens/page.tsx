@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
-import { API_URL } from '@/lib/api';
+import { api } from '@/lib/api';
 
 import { toast } from '@/lib/toast';
 interface NutritionInfo {
@@ -92,20 +92,8 @@ export default function AllergensNutritionPage() {
 
   const loadItems = async () => {
     try {
-      const token = localStorage.getItem('access_token');
-      const response = await fetch(`${API_URL}/menu-admin/items-with-allergens`, {
-        credentials: 'include',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        setItems(Array.isArray(data) ? data : (data.items || []));
-      } else {
-        console.error('Failed to load items');
-      }
+      const data = await api.get<any>('/menu-admin/items-with-allergens');
+      setItems(Array.isArray(data) ? data : (data.items || []));
     } catch (error) {
       console.error('Error loading items:', error);
     } finally {
@@ -134,28 +122,13 @@ export default function AllergensNutritionPage() {
     };
 
     try {
-      const token = localStorage.getItem('access_token');
-      const response = await fetch(`${API_URL}/menu-admin/items/${editingItem.id}/allergens-nutrition`, {
-        credentials: 'include',
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
-        },
-        body: JSON.stringify(updateData),
-      });
-
-      if (response.ok) {
-        loadItems();
-        setShowModal(false);
-        resetForm();
-      } else {
-        const error = await response.json();
-        toast.error(error.detail || 'Error saving item');
-      }
-    } catch (error) {
+      await api.put(`/menu-admin/items/${editingItem.id}/allergens-nutrition`, updateData);
+      loadItems();
+      setShowModal(false);
+      resetForm();
+    } catch (error: any) {
       console.error('Error saving item:', error);
-      toast.error('Error saving item');
+      toast.error(error?.data?.detail || 'Error saving item');
     }
   };
 

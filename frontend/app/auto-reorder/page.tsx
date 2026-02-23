@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Link from 'next/link';
-import { API_URL } from '@/lib/api';
+import { api } from '@/lib/api';
 
 import { toast } from '@/lib/toast';
 interface AutoReorderRule {
@@ -66,24 +66,20 @@ export default function AutoReorderPage() {
 
   const loadData = async () => {
     try {
-      const token = localStorage.getItem('access_token');
-
       // Load rules
-      const rulesResponse = await fetch(`${API_URL}/inventory-complete/auto-reorder/rules`, {
-        credentials: 'include',
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (rulesResponse.ok) {
-        setRules(await rulesResponse.json());
+      try {
+        const rulesData = await api.get<AutoReorderRule[]>('/inventory-complete/auto-reorder/rules');
+        setRules(rulesData);
+      } catch {
+        // Rules data may not be available
       }
 
       // Load history
-      const logsResponse = await fetch(`${API_URL}/inventory-complete/auto-reorder/history`, {
-        credentials: 'include',
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (logsResponse.ok) {
-        setLogs(await logsResponse.json());
+      try {
+        const logsData = await api.get<ReorderLog[]>('/inventory-complete/auto-reorder/history');
+        setLogs(logsData);
+      } catch {
+        // History data may not be available
       }
     } catch (error) {
       console.error('Error loading data:', error);
@@ -94,55 +90,32 @@ export default function AutoReorderPage() {
 
   const handleCreate = async () => {
     try {
-      const token = localStorage.getItem('access_token');
-      const response = await fetch(`${API_URL}/inventory-complete/auto-reorder/rules`, {
-        credentials: 'include',
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          ...formData,
-          stock_item_id: parseInt(formData.stock_item_id),
-          reorder_point: parseFloat(formData.reorder_point),
-          par_level: parseFloat(formData.par_level),
-          preferred_supplier_id: parseInt(formData.preferred_supplier_id),
-          min_order_quantity: formData.min_order_quantity ? parseFloat(formData.min_order_quantity) : null,
-          max_order_quantity: formData.max_order_quantity ? parseFloat(formData.max_order_quantity) : null,
-          order_multiple: formData.order_multiple ? parseFloat(formData.order_multiple) : null,
-          lead_time_days: parseInt(formData.lead_time_days),
-          auto_approve_below_amount: formData.auto_approve_below_amount ? parseFloat(formData.auto_approve_below_amount) : null,
-        }),
+      await api.post('/inventory-complete/auto-reorder/rules', {
+        ...formData,
+        stock_item_id: parseInt(formData.stock_item_id),
+        reorder_point: parseFloat(formData.reorder_point),
+        par_level: parseFloat(formData.par_level),
+        preferred_supplier_id: parseInt(formData.preferred_supplier_id),
+        min_order_quantity: formData.min_order_quantity ? parseFloat(formData.min_order_quantity) : null,
+        max_order_quantity: formData.max_order_quantity ? parseFloat(formData.max_order_quantity) : null,
+        order_multiple: formData.order_multiple ? parseFloat(formData.order_multiple) : null,
+        lead_time_days: parseInt(formData.lead_time_days),
+        auto_approve_below_amount: formData.auto_approve_below_amount ? parseFloat(formData.auto_approve_below_amount) : null,
       });
-      if (response.ok) {
-        loadData();
-        setShowModal(false);
-        resetForm();
-      } else {
-        const error = await response.json();
-        toast.error(error.detail || 'Error creating rule');
-      }
+      loadData();
+      setShowModal(false);
+      resetForm();
     } catch (error) {
       console.error('Error creating rule:', error);
+      const message = error instanceof Error ? error.message : 'Error creating rule';
+      toast.error(message);
     }
   };
 
   const handleToggleActive = async (ruleId: number, isActive: boolean) => {
     try {
-      const token = localStorage.getItem('access_token');
-      const response = await fetch(`${API_URL}/inventory-complete/auto-reorder/rules/${ruleId}`, {
-        credentials: 'include',
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ is_active: !isActive }),
-      });
-      if (response.ok) {
-        loadData();
-      }
+      await api.patch(`/inventory-complete/auto-reorder/rules/${ruleId}`, { is_active: !isActive });
+      loadData();
     } catch (error) {
       console.error('Error toggling rule:', error);
     }
@@ -151,15 +124,8 @@ export default function AutoReorderPage() {
   const handleDelete = async (ruleId: number) => {
     if (!confirm('Are you sure you want to delete this rule?')) return;
     try {
-      const token = localStorage.getItem('access_token');
-      const response = await fetch(`${API_URL}/inventory-complete/auto-reorder/rules/${ruleId}`, {
-        credentials: 'include',
-        method: 'DELETE',
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (response.ok) {
-        loadData();
-      }
+      await api.del(`/inventory-complete/auto-reorder/rules/${ruleId}`);
+      loadData();
     } catch (error) {
       console.error('Error deleting rule:', error);
     }
@@ -167,17 +133,9 @@ export default function AutoReorderPage() {
 
   const executeAutoReorder = async () => {
     try {
-      const token = localStorage.getItem('access_token');
-      const response = await fetch(`${API_URL}/inventory-complete/auto-reorder/execute`, {
-        credentials: 'include',
-        method: 'POST',
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (response.ok) {
-        const result = await response.json();
-        toast.success(`Auto-reorder executed: ${result.purchase_orders_created || 0} POs created`);
-        loadData();
-      }
+      const result = await api.post<{ purchase_orders_created?: number }>('/inventory-complete/auto-reorder/execute');
+      toast.success(`Auto-reorder executed: ${result.purchase_orders_created || 0} POs created`);
+      loadData();
     } catch (error) {
       console.error('Error executing auto-reorder:', error);
     }

@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 
-import { API_URL } from '@/lib/api';
+import { api } from '@/lib/api';
 
 import { toast } from '@/lib/toast';
 interface CateringEvent {
@@ -104,36 +104,23 @@ export default function CateringPage() {
     setLoading(true);
     setError(null);
     try {
-      const token = localStorage.getItem('access_token');
-      const headers = {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json',
-      };
-
-      const [eventsRes, packagesRes, staffRes] = await Promise.all([
-        fetch(`${API_URL}/v5/catering/events`, { credentials: 'include', headers }),
-        fetch(`${API_URL}/v5/catering/packages`, { credentials: 'include', headers }),
-        fetch(`${API_URL}/v5/catering/staff`, { credentials: 'include', headers }),
+      const [eventsData, packagesData, staffData] = await Promise.all([
+        api.get<any>('/v5/catering/events'),
+        api.get<any>('/v5/catering/packages').catch(() => null),
+        api.get<any>('/v5/catering/staff').catch(() => null),
       ]);
 
-      if (!eventsRes.ok) {
-        throw new Error('Failed to load catering events');
-      }
-
-      const eventsData = await eventsRes.json();
       setEvents(eventsData.events || eventsData || []);
 
-      if (packagesRes.ok) {
-        const packagesData = await packagesRes.json();
+      if (packagesData) {
         setPackages(packagesData.packages || packagesData || []);
       }
 
-      if (staffRes.ok) {
-        const staffData = await staffRes.json();
+      if (staffData) {
         setStaff(staffData.staff || staffData || []);
       }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load data');
+    } catch (err: any) {
+      setError(err?.data?.detail || err?.message || 'Failed to load data');
       setEvents([]);
       setPackages([]);
       setStaff([]);
@@ -185,26 +172,12 @@ export default function CateringPage() {
 
   const handleCreateEvent = async () => {
     try {
-      const token = localStorage.getItem('access_token');
-      const response = await fetch(`${API_URL}/v5/catering/events`, {
-        credentials: 'include',
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(eventForm),
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to create event');
-      }
-
+      await api.post<any>('/v5/catering/events', eventForm);
       setShowEventModal(false);
       resetEventForm();
       loadData();
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Failed to create event');
+    } catch (err: any) {
+      toast.error(err?.data?.detail || err?.message || 'Failed to create event');
     }
   };
 
@@ -230,24 +203,10 @@ export default function CateringPage() {
 
   const updateEventStatus = async (eventId: number, newStatus: CateringEvent['status']) => {
     try {
-      const token = localStorage.getItem('access_token');
-      const response = await fetch(`${API_URL}/v5/catering/events/${eventId}/status`, {
-        credentials: 'include',
-        method: 'PATCH',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ status: newStatus }),
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to update status');
-      }
-
+      await api.patch<any>(`/v5/catering/events/${eventId}/status`, { status: newStatus });
       loadData();
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Failed to update status');
+    } catch (err: any) {
+      toast.error(err?.data?.detail || err?.message || 'Failed to update status');
     }
   };
 

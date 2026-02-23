@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 
-import { API_URL, getAuthHeaders } from '@/lib/api';
+import { api, isAuthenticated } from '@/lib/api';
 
 export default function SettingsPage() {
   const router = useRouter();
@@ -20,25 +20,14 @@ export default function SettingsPage() {
 
   const loadSettings = async () => {
     try {
-      const token = localStorage.getItem("access_token");
-      if (!token) {
+      if (!isAuthenticated()) {
         router.push("/login");
         return;
       }
 
-      const response = await fetch(
-        `${API_URL}/settings/`,
-        { credentials: 'include', headers: getAuthHeaders() }
-      );
-      if (response.ok) {
-        const data = await response.json();
-        // API returns { venue_id, settings, updated_at }
-        setSettings(data.settings || {});
-      } else if (response.status === 401) {
-        router.push("/login");
-      } else {
-        setError("Failed to load settings");
-      }
+      const data = await api.get<any>('/settings/');
+      // API returns { venue_id, settings, updated_at }
+      setSettings(data.settings || {});
     } catch (err) {
       console.error("Error loading settings:", err);
       setError("Error loading settings");
@@ -53,21 +42,9 @@ export default function SettingsPage() {
     setSuccess("");
 
     try {
-      const response = await fetch(
-        `${API_URL}/settings/`,
-        {
-          credentials: 'include',
-          method: "PUT",
-          headers: getAuthHeaders(),
-          body: JSON.stringify({ settings }),
-        }
-      );
-      if (response.ok) {
-        setSuccess("Settings saved successfully!");
-        setTimeout(() => setSuccess(""), 3000);
-      } else {
-        setError("Failed to save settings");
-      }
+      await api.put('/settings/', { settings });
+      setSuccess("Settings saved successfully!");
+      setTimeout(() => setSuccess(""), 3000);
     } catch (err) {
       console.error("Error saving settings:", err);
       setError("Error saving settings");

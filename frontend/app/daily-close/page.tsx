@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { API_URL } from '@/lib/api';
+import { api } from '@/lib/api';
 import Link from 'next/link';
 
 import { toast } from '@/lib/toast';
@@ -56,19 +56,10 @@ export default function DailyClosePage() {
   const loadDailyData = async () => {
     setLoading(true);
     try {
-      const token = localStorage.getItem('access_token');
-      const response = await fetch(`${API_URL}/financial/daily-reconciliation/${selectedDate}`, {
-        credentials: 'include',
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (response.ok) {
-        const data = await response.json();
-        setReconciliation(data);
-      } else {
-        // No reconciliation for this date yet
-        setReconciliation(null);
-      }
+      const data = await api.get<any>(`/financial/daily-reconciliation/${selectedDate}`);
+      setReconciliation(data);
     } catch (error) {
+      // No reconciliation for this date yet, or error
       console.error('Error loading daily data:', error);
       setReconciliation(null);
     } finally {
@@ -78,15 +69,8 @@ export default function DailyClosePage() {
 
   const startDailyClose = async () => {
     try {
-      const token = localStorage.getItem('access_token');
-      const response = await fetch(`${API_URL}/financial/daily-close?business_date=${selectedDate}`, {
-        credentials: 'include',
-        method: 'POST',
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (response.ok) {
-        loadDailyData();
-      }
+      await api.post<any>(`/financial/daily-close?business_date=${selectedDate}`);
+      loadDailyData();
     } catch (error) {
       console.error('Error starting daily close:', error);
     }
@@ -95,7 +79,6 @@ export default function DailyClosePage() {
   const recordCashCount = async () => {
     if (!reconciliation) return;
     try {
-      const token = localStorage.getItem('access_token');
       const denominationCounts: Record<string, number> = {};
       denominations.forEach(d => {
         if (d.count > 0) {
@@ -103,19 +86,9 @@ export default function DailyClosePage() {
         }
       });
 
-      const response = await fetch(`${API_URL}/financial/daily-reconciliation/${reconciliation.id}/cash-count`, {
-        credentials: 'include',
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ denomination_counts: denominationCounts }),
-      });
-      if (response.ok) {
-        setShowCashCountModal(false);
-        loadDailyData();
-      }
+      await api.post<any>(`/financial/daily-reconciliation/${reconciliation.id}/cash-count`, { denomination_counts: denominationCounts });
+      setShowCashCountModal(false);
+      loadDailyData();
     } catch (error) {
       console.error('Error recording cash count:', error);
     }
@@ -126,21 +99,11 @@ export default function DailyClosePage() {
     if (!confirm('Are you sure you want to complete the daily close? This action cannot be undone.')) return;
 
     try {
-      const token = localStorage.getItem('access_token');
-      const response = await fetch(`${API_URL}/financial/daily-reconciliation/${reconciliation.id}/complete`, {
-        credentials: 'include',
-        method: 'POST',
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (response.ok) {
-        toast.success('Daily close completed successfully!');
-        loadDailyData();
-      } else {
-        const error = await response.json();
-        toast.error(error.detail || 'Error completing daily close');
-      }
-    } catch (error) {
-      console.error('Error completing daily close:', error);
+      await api.post<any>(`/financial/daily-reconciliation/${reconciliation.id}/complete`);
+      toast.success('Daily close completed successfully!');
+      loadDailyData();
+    } catch (error: any) {
+      toast.error(error?.data?.detail || 'Error completing daily close');
     }
   };
 

@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import Link from 'next/link';
-import { API_URL } from '@/lib/api';
+import { api, isAuthenticated } from '@/lib/api';
 
 interface SalesReportItem {
   date: string;
@@ -73,7 +73,7 @@ interface CustomerInsight {
 
 export default function ReportsPage() {
   const router = useRouter();
-  const [token, setToken] = useState<string | null>(null);
+  const [authenticated, setAuthenticated] = useState(false);
   const [activeTab, setActiveTab] = useState<'sales' | 'stock' | 'staff' | 'customers'>('sales');
   const [period, setPeriod] = useState<string>('week');
   const [loading, setLoading] = useState(false);
@@ -92,21 +92,14 @@ export default function ReportsPage() {
   const [hourTo, setHourTo] = useState<string>('23');
 
   const fetchSalesReport = async () => {
-    if (!token) return;
     setLoading(true);
     try {
-      let url = `${API_URL}/reports/sales?period=${period}`;
+      let url = `/reports/sales?period=${period}`;
       if (period === 'custom') {
-        url = `${API_URL}/reports/sales?period=custom&date_from=${dateFrom}&date_to=${dateTo}&hour_from=${hourFrom}&hour_to=${hourTo}`;
+        url = `/reports/sales?period=custom&date_from=${dateFrom}&date_to=${dateTo}&hour_from=${hourFrom}&hour_to=${hourTo}`;
       }
-      const res = await fetch(url, {
-        credentials: 'include',
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      if (res.ok) {
-        const data = await res.json();
-        setSalesReport(data);
-      }
+      const data = await api.get<SalesReport>(url);
+      setSalesReport(data);
     } catch (err) {
       console.error('Error fetching sales report:', err);
     } finally {
@@ -115,17 +108,10 @@ export default function ReportsPage() {
   };
 
   const fetchStockReport = async () => {
-    if (!token) return;
     setLoading(true);
     try {
-      const res = await fetch(`${API_URL}/reports/stock?low_stock_only=${lowStockOnly}`, {
-        credentials: 'include',
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      if (res.ok) {
-        const data = await res.json();
-        setStockReport(data);
-      }
+      const data = await api.get<StockReport[]>(`/reports/stock?low_stock_only=${lowStockOnly}`);
+      setStockReport(data);
     } catch (err) {
       console.error('Error fetching stock report:', err);
     } finally {
@@ -134,17 +120,10 @@ export default function ReportsPage() {
   };
 
   const fetchStaffReport = async () => {
-    if (!token) return;
     setLoading(true);
     try {
-      const res = await fetch(`${API_URL}/reports/staff-performance?period=${period}`, {
-        credentials: 'include',
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      if (res.ok) {
-        const data = await res.json();
-        setStaffReport(data);
-      }
+      const data = await api.get<StaffPerformance[]>(`/reports/staff-performance?period=${period}`);
+      setStaffReport(data);
     } catch (err) {
       console.error('Error fetching staff report:', err);
     } finally {
@@ -153,17 +132,10 @@ export default function ReportsPage() {
   };
 
   const fetchCustomerReport = async () => {
-    if (!token) return;
     setLoading(true);
     try {
-      const res = await fetch(`${API_URL}/reports/customer-insights?period=${period}`, {
-        credentials: 'include',
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      if (res.ok) {
-        const data = await res.json();
-        setCustomerReport(data);
-      }
+      const data = await api.get<CustomerInsight>(`/reports/customer-insights?period=${period}`);
+      setCustomerReport(data);
     } catch (err) {
       console.error('Error fetching customer report:', err);
     } finally {
@@ -171,24 +143,23 @@ export default function ReportsPage() {
     }
   };
 
-  // Get token from localStorage on mount
+  // Check authentication on mount
   useEffect(() => {
-    const storedToken = localStorage.getItem('access_token');
-    if (!storedToken) {
+    if (!isAuthenticated()) {
       router.push('/login');
       return;
     }
-    setToken(storedToken);
+    setAuthenticated(true);
   }, [router]);
 
   useEffect(() => {
-    if (!token) return;
+    if (!authenticated) return;
     if (activeTab === 'sales') fetchSalesReport();
     else if (activeTab === 'stock') fetchStockReport();
     else if (activeTab === 'staff') fetchStaffReport();
     else if (activeTab === 'customers') fetchCustomerReport();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeTab, period, lowStockOnly, token, dateFrom, dateTo, hourFrom, hourTo]);
+  }, [activeTab, period, lowStockOnly, authenticated, dateFrom, dateTo, hourFrom, hourTo]);
 
   const formatCurrency = (val: number) => `${(val || 0).toFixed(2)} лв`;
   const formatDate = (dateStr: string) => new Date(dateStr).toLocaleDateString('bg-BG');

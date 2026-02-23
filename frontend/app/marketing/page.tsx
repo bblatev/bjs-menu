@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
-import { API_URL } from "@/lib/api";
+import { api } from "@/lib/api";
 
 // Types
 interface Campaign {
@@ -109,37 +109,17 @@ export default function MarketingPage() {
 
   const loadMarketingData = async () => {
     try {
-      const token = localStorage.getItem('access_token');
-      const headers = {
-        'Authorization': `Bearer ${token}`,
-      };
-
-      const [campaignsRes, promotionsRes, segmentsRes, statsRes] = await Promise.all([
-        fetch(`${API_URL}/marketing/campaigns?limit=10`, { credentials: 'include', headers }),
-        fetch(`${API_URL}/marketing/promotions?limit=10`, { credentials: 'include', headers }),
-        fetch(`${API_URL}/marketing/segments`, { credentials: 'include', headers }),
-        fetch(`${API_URL}/marketing/stats`, { credentials: 'include', headers }),
+      const [campaignsData, promotionsData, segmentsData, statsData] = await Promise.all([
+        api.get<any>('/marketing/campaigns?limit=10').catch(() => null),
+        api.get<any>('/marketing/promotions?limit=10').catch(() => null),
+        api.get<any>('/marketing/segments').catch(() => null),
+        api.get<any>('/marketing/stats').catch(() => null),
       ]);
 
-      if (campaignsRes.ok) {
-        const campaignsData = await campaignsRes.json();
-        setCampaigns(campaignsData.items || campaignsData);
-      }
-
-      if (promotionsRes.ok) {
-        const promotionsData = await promotionsRes.json();
-        setPromotions(promotionsData.items || promotionsData);
-      }
-
-      if (segmentsRes.ok) {
-        const segmentsData = await segmentsRes.json();
-        setSegments(segmentsData.items || segmentsData);
-      }
-
-      if (statsRes.ok) {
-        const statsData = await statsRes.json();
-        setStats(statsData);
-      }
+      if (campaignsData) setCampaigns(campaignsData.items || campaignsData);
+      if (promotionsData) setPromotions(promotionsData.items || promotionsData);
+      if (segmentsData) setSegments(segmentsData.items || segmentsData);
+      if (statsData) setStats(statsData);
     } catch (error) {
       console.error('Error loading marketing data:', error);
     } finally {

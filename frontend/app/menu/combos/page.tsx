@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
-import { API_URL } from '@/lib/api';
+import { api } from '@/lib/api';
 
 import { toast } from '@/lib/toast';
 interface MultiLang {
@@ -91,34 +91,25 @@ export default function MenuCombosPage() {
 
   const loadData = async () => {
     try {
-      const token = localStorage.getItem('access_token');
-      const headers = { 'Authorization': `Bearer ${token}` };
-
-      const [combosRes, itemsRes] = await Promise.all([
-        fetch(`${API_URL}/menu-admin/combos`, { credentials: 'include', headers }),
-        fetch(`${API_URL}/menu-admin/items`, { credentials: 'include', headers }),
+      const [combosData, itemsData] = await Promise.all([
+        api.get<any>('/menu-admin/combos'),
+        api.get<any>('/menu-admin/items'),
       ]);
 
-      if (combosRes.ok) {
-        const combosData = await combosRes.json();
-        // Handle both array and {items: [...], combos: [...]} response formats
-        const combosArray = Array.isArray(combosData) ? combosData : (combosData.combos || combosData.items || []);
-        setCombos(combosArray);
-      }
+      // Handle both array and {items: [...], combos: [...]} response formats
+      const combosArray = Array.isArray(combosData) ? combosData : (combosData.combos || combosData.items || []);
+      setCombos(combosArray);
 
-      if (itemsRes.ok) {
-        const itemsData = await itemsRes.json();
-        // Handle both array and {items: [...]} response formats
-        const itemsArray = Array.isArray(itemsData) ? itemsData : (itemsData.items || []);
-        // Transform items to simple format
-        const simpleItems = itemsArray.map((item: any) => ({
-          id: item.id,
-          name: typeof item.name === 'string' ? item.name : (item.name?.en || item.name?.bg || 'Unknown'),
-          category: item.category_name || item.category || 'Unknown',
-          price: item.price,
-        }));
-        setMenuItems(simpleItems);
-      }
+      // Handle both array and {items: [...]} response formats
+      const itemsArray = Array.isArray(itemsData) ? itemsData : (itemsData.items || []);
+      // Transform items to simple format
+      const simpleItems = itemsArray.map((item: any) => ({
+        id: item.id,
+        name: typeof item.name === 'string' ? item.name : (item.name?.en || item.name?.bg || 'Unknown'),
+        category: item.category_name || item.category || 'Unknown',
+        price: item.price,
+      }));
+      setMenuItems(simpleItems);
     } catch (error) {
       console.error('Error loading data:', error);
     } finally {
@@ -157,32 +148,17 @@ export default function MenuCombosPage() {
     };
 
     try {
-      const token = localStorage.getItem('access_token');
-      const url = editingCombo
-        ? `${API_URL}/menu-admin/combos/${editingCombo.id}`
-        : `${API_URL}/menu-admin/combos`;
-
-      const response = await fetch(url, {
-        credentials: 'include',
-        method: editingCombo ? 'PUT' : 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
-        },
-        body: JSON.stringify(comboData),
-      });
-
-      if (response.ok) {
-        loadData();
-        setShowModal(false);
-        resetForm();
+      if (editingCombo) {
+        await api.put(`/menu-admin/combos/${editingCombo.id}`, comboData);
       } else {
-        const error = await response.json();
-        toast.error(error.detail || 'Error saving combo');
+        await api.post('/menu-admin/combos', comboData);
       }
-    } catch (error) {
+      loadData();
+      setShowModal(false);
+      resetForm();
+    } catch (error: any) {
       console.error('Error saving combo:', error);
-      toast.error('Error saving combo');
+      toast.error(error?.data?.detail || 'Error saving combo');
     }
   };
 
@@ -190,20 +166,8 @@ export default function MenuCombosPage() {
     if (!confirm('Delete this combo meal?')) return;
 
     try {
-      const token = localStorage.getItem('access_token');
-      const response = await fetch(`${API_URL}/menu-admin/combos/${id}`, {
-        credentials: 'include',
-        method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
-      });
-
-      if (response.ok) {
-        loadData();
-      } else {
-        toast.error('Error deleting combo');
-      }
+      await api.del(`/menu-admin/combos/${id}`);
+      loadData();
     } catch (error) {
       console.error('Error deleting combo:', error);
       toast.error('Error deleting combo');
@@ -309,43 +273,21 @@ export default function MenuCombosPage() {
 
   const toggleAvailable = async (id: number) => {
     try {
-      const token = localStorage.getItem('access_token');
-      const response = await fetch(`${API_URL}/menu-admin/combos/${id}/toggle-available`, {
-        credentials: 'include',
-        method: 'PATCH',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
-      });
-
-      if (response.ok) {
-        loadData();
-      } else {
-        toast.error('Error toggling combo availability');
-      }
+      await api.patch(`/menu-admin/combos/${id}/toggle-available`);
+      loadData();
     } catch (error) {
       console.error('Error toggling availability:', error);
+      toast.error('Error toggling combo availability');
     }
   };
 
   const toggleFeatured = async (id: number) => {
     try {
-      const token = localStorage.getItem('access_token');
-      const response = await fetch(`${API_URL}/menu-admin/combos/${id}/toggle-featured`, {
-        credentials: 'include',
-        method: 'PATCH',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
-      });
-
-      if (response.ok) {
-        loadData();
-      } else {
-        toast.error('Error toggling combo featured status');
-      }
+      await api.patch(`/menu-admin/combos/${id}/toggle-featured`);
+      loadData();
     } catch (error) {
       console.error('Error toggling featured:', error);
+      toast.error('Error toggling combo featured status');
     }
   };
 

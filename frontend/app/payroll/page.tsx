@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 
-import { API_URL } from '@/lib/api';
+import { api } from '@/lib/api';
 
 import { toast } from '@/lib/toast';
 interface PayrollEntry {
@@ -99,22 +99,13 @@ export default function PayrollPage() {
     try {
       setLoading(true);
       setError(null);
-      const token = localStorage.getItem('access_token');
-      const headers = {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json',
-      };
 
-      const staffRes = await fetch(`${API_URL}/staff/`, { credentials: 'include', headers });
-      if (!staffRes.ok) {
-        throw new Error('Failed to load staff');
-      }
-      const staffData = await staffRes.json();
+      const staffData = await api.get<any>('/staff/');
       setStaff(staffData.staff || staffData || []);
 
       await loadPayrollData(period);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load data');
+    } catch (err: any) {
+      setError(err?.data?.detail || err?.message || 'Failed to load data');
       setStaff([]);
       setPayrollEntries([]);
     } finally {
@@ -124,22 +115,12 @@ export default function PayrollPage() {
 
   const loadPayrollData = async (period: PayPeriod) => {
     try {
-      const token = localStorage.getItem('access_token');
-      const headers = {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json',
-      };
-
       const params = new URLSearchParams({
         period_start: period.start,
         period_end: period.end,
       });
 
-      const payrollRes = await fetch(`${API_URL}/payroll/entries?${params}`, { credentials: 'include', headers });
-      if (!payrollRes.ok) {
-        throw new Error('Failed to load payroll data');
-      }
-      const payrollData = await payrollRes.json();
+      const payrollData = await api.get<any>(`/payroll/entries?${params}`);
       setPayrollEntries(payrollData.entries || payrollData || []);
     } catch (err) {
       console.error('Failed to load payroll data:', err);
@@ -164,45 +145,23 @@ export default function PayrollPage() {
 
   const handleApprove = async (entryId: number) => {
     try {
-      const token = localStorage.getItem('access_token');
-      const response = await fetch(`${API_URL}/payroll/entries/${entryId}/approve`, {
-        credentials: 'include',
-        method: 'PUT',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-      });
-      if (!response.ok) {
-        throw new Error('Failed to approve entry');
-      }
+      await api.put<any>(`/payroll/entries/${entryId}/approve`);
       if (selectedPeriod) {
         loadPayrollData(selectedPeriod);
       }
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Failed to approve entry');
+    } catch (err: any) {
+      toast.error(err?.data?.detail || err?.message || 'Failed to approve entry');
     }
   };
 
   const handleMarkPaid = async (entryId: number) => {
     try {
-      const token = localStorage.getItem('access_token');
-      const response = await fetch(`${API_URL}/payroll/entries/${entryId}/mark-paid`, {
-        credentials: 'include',
-        method: 'PUT',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-      });
-      if (!response.ok) {
-        throw new Error('Failed to mark as paid');
-      }
+      await api.put<any>(`/payroll/entries/${entryId}/mark-paid`);
       if (selectedPeriod) {
         loadPayrollData(selectedPeriod);
       }
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Failed to mark as paid');
+    } catch (err: any) {
+      toast.error(err?.data?.detail || err?.message || 'Failed to mark as paid');
     }
   };
 
@@ -211,57 +170,33 @@ export default function PayrollPage() {
     if (!confirm("Generate payroll entries for all active staff for this period?")) return;
 
     try {
-      const token = localStorage.getItem('access_token');
       const params = new URLSearchParams({
         period_start: selectedPeriod.start,
         period_end: selectedPeriod.end,
         default_hours: '80',
       });
 
-      const response = await fetch(`${API_URL}/payroll/generate?${params}`, {
-        credentials: 'include',
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-      });
-      if (!response.ok) {
-        throw new Error('Failed to generate payroll');
-      }
-      const result = await response.json();
+      const result = await api.post<any>(`/payroll/generate?${params}`);
       toast.error(`Generated ${result.created} entries, skipped ${result.skipped} existing`);
       loadPayrollData(selectedPeriod);
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Failed to generate payroll');
+    } catch (err: any) {
+      toast.error(err?.data?.detail || err?.message || 'Failed to generate payroll');
     }
   };
 
   const handleApproveAll = async () => {
     if (confirm("Approve all pending payroll entries?")) {
       try {
-        const token = localStorage.getItem('access_token');
         const pendingIds = payrollEntries
           .filter((e) => e.status === "pending")
           .map((e) => e.id);
 
-        const response = await fetch(`${API_URL}/payroll/approve-all`, {
-          credentials: 'include',
-          method: 'PUT',
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ ids: pendingIds }),
-        });
-        if (!response.ok) {
-          throw new Error('Failed to approve all entries');
-        }
+        await api.put<any>('/payroll/approve-all', { ids: pendingIds });
         if (selectedPeriod) {
           loadPayrollData(selectedPeriod);
         }
-      } catch (err) {
-        toast.error(err instanceof Error ? err.message : 'Failed to approve all entries');
+      } catch (err: any) {
+        toast.error(err?.data?.detail || err?.message || 'Failed to approve all entries');
       }
     }
   };
@@ -269,28 +204,16 @@ export default function PayrollPage() {
   const handlePayAll = async () => {
     if (confirm("Mark all approved entries as paid?")) {
       try {
-        const token = localStorage.getItem('access_token');
         const approvedIds = payrollEntries
           .filter((e) => e.status === "approved")
           .map((e) => e.id);
 
-        const response = await fetch(`${API_URL}/payroll/pay-all`, {
-          credentials: 'include',
-          method: 'PUT',
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ ids: approvedIds }),
-        });
-        if (!response.ok) {
-          throw new Error('Failed to mark all as paid');
-        }
+        await api.put<any>('/payroll/pay-all', { ids: approvedIds });
         if (selectedPeriod) {
           loadPayrollData(selectedPeriod);
         }
-      } catch (err) {
-        toast.error(err instanceof Error ? err.message : 'Failed to mark all as paid');
+      } catch (err: any) {
+        toast.error(err?.data?.detail || err?.message || 'Failed to mark all as paid');
       }
     }
   };
@@ -300,12 +223,6 @@ export default function PayrollPage() {
     if (!staffMember) return;
 
     try {
-      const token = localStorage.getItem('access_token');
-      const headers = {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json',
-      };
-
       const entryData = {
         staff_id: formData.staff_id,
         period_start: selectedPeriod?.start || "",
@@ -318,25 +235,9 @@ export default function PayrollPage() {
       };
 
       if (editingEntry) {
-        const response = await fetch(`${API_URL}/payroll/entries/${editingEntry.id}`, {
-          credentials: 'include',
-          method: 'PUT',
-          headers,
-          body: JSON.stringify(entryData),
-        });
-        if (!response.ok) {
-          throw new Error('Failed to update entry');
-        }
+        await api.put<any>(`/payroll/entries/${editingEntry.id}`, entryData);
       } else {
-        const response = await fetch(`${API_URL}/payroll/entries`, {
-          credentials: 'include',
-          method: 'POST',
-          headers,
-          body: JSON.stringify(entryData),
-        });
-        if (!response.ok) {
-          throw new Error('Failed to create entry');
-        }
+        await api.post<any>('/payroll/entries', entryData);
       }
 
       setShowModal(false);
@@ -344,8 +245,8 @@ export default function PayrollPage() {
       if (selectedPeriod) {
         loadPayrollData(selectedPeriod);
       }
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Failed to save entry');
+    } catch (err: any) {
+      toast.error(err?.data?.detail || err?.message || 'Failed to save entry');
     }
   };
 

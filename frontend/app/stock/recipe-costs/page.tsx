@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import AdminLayout from '@/components/AdminLayout';
-import { API_URL, getAuthHeaders } from '@/lib/api';
+import { api, API_URL, getAuthHeaders } from '@/lib/api';
 
 import { toast } from '@/lib/toast';
 interface Ingredient {
@@ -70,27 +70,14 @@ export default function RecipeCostsPage() {
   const fetchRecipeData = async () => {
     setLoading(true);
     try {
-      const headers = getAuthHeaders();
+      const [recipesData, statsData] = await Promise.all([
+        api.get<any>('/recipes/costs'),
+        api.get<any>('/recipes/costs/stats')
+      ]);
 
-      try {
-        const [recipesRes, statsRes] = await Promise.all([
-          fetch(`${API_URL}/recipes/costs`, { credentials: 'include', headers }),
-          fetch(`${API_URL}/recipes/costs/stats`, { credentials: 'include', headers })
-        ]);
-
-        if (recipesRes.ok && statsRes.ok) {
-          const recipesData = await recipesRes.json();
-          const statsData = await statsRes.json();
-          setRecipes(recipesData.recipes || recipesData);
-          setStats(statsData);
-        } else {
-          throw new Error('API not available');
-        }
-      } catch {
-        loadDemoData();
-      }
-    } catch (error) {
-      console.error('Error fetching recipe data:', error);
+      setRecipes(recipesData.recipes || recipesData);
+      setStats(statsData);
+    } catch {
       loadDemoData();
     } finally {
       setLoading(false);
@@ -341,8 +328,8 @@ export default function RecipeCostsPage() {
 
   const exportReport = async () => {
     try {
-      const headers = getAuthHeaders();
-      const response = await fetch(`${API_URL}/recipes/export`, { credentials: 'include', headers });
+      // CSV export returns text, not JSON - use raw fetch with cookie auth headers
+      const response = await fetch(`${API_URL}/recipes/export`, { credentials: 'include', headers: getAuthHeaders() });
 
       if (response.ok) {
         const csvText = await response.text();
@@ -384,25 +371,12 @@ export default function RecipeCostsPage() {
       const formData = new FormData();
       formData.append('file', file);
 
-      const token = localStorage.getItem('access_token');
-      const response = await fetch(`${API_URL}/recipes/import`, {
-        credentials: 'include',
-        method: 'POST',
-        headers: { Authorization: `Bearer ${token}` },
-        body: formData,
-      });
-
-      if (response.ok) {
-        const result = await response.json();
-        setImportResult(result);
-        fetchRecipeData();
-        toast.success(`Импортирани: ${result.recipes_created} рецепти, ${result.lines_added} реда`);
-      } else {
-        const err = await response.json().catch(() => null);
-        toast.error(err?.detail || 'Грешка при импортиране');
-      }
-    } catch {
-      toast.error('Грешка при импортиране');
+      const result = await api.post<any>('/recipes/import', formData);
+      setImportResult(result);
+      fetchRecipeData();
+      toast.success(`Импортирани: ${result.recipes_created} рецепти, ${result.lines_added} реда`);
+    } catch (err: any) {
+      toast.error(err?.data?.detail || err?.message || 'Грешка при импортиране');
     }
   };
 

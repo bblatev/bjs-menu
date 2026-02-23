@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
-import { API_URL } from '@/lib/api';
+import { api } from '@/lib/api';
 
 import { toast } from '@/lib/toast';
 interface Badge {
@@ -98,37 +98,17 @@ export default function MarketingGamificationPage() {
 
   const loadGamificationData = async () => {
     try {
-      const token = localStorage.getItem('access_token');
-      const headers = {
-        'Authorization': `Bearer ${token}`,
-      };
-
-      const [badgesRes, challengesRes, leaderboardRes, achievementsRes] = await Promise.all([
-        fetch(`${API_URL}/gamification/badges`, { credentials: 'include', headers }),
-        fetch(`${API_URL}/gamification/challenges`, { credentials: 'include', headers }),
-        fetch(`${API_URL}/gamification/leaderboard`, { credentials: 'include', headers }),
-        fetch(`${API_URL}/gamification/achievements/recent`, { credentials: 'include', headers }),
+      const [badgesData, challengesData, leaderboardData, achievementsData] = await Promise.all([
+        api.get<any>('/gamification/badges').catch(() => null),
+        api.get<any>('/gamification/challenges').catch(() => null),
+        api.get<any>('/gamification/leaderboard').catch(() => null),
+        api.get<any>('/gamification/achievements/recent').catch(() => null),
       ]);
 
-      if (badgesRes.ok) {
-        const data = await badgesRes.json();
-        setBadges(data.items || data);
-      }
-
-      if (challengesRes.ok) {
-        const data = await challengesRes.json();
-        setChallenges(data.items || data);
-      }
-
-      if (leaderboardRes.ok) {
-        const data = await leaderboardRes.json();
-        setLeaderboard(data.items || data);
-      }
-
-      if (achievementsRes.ok) {
-        const data = await achievementsRes.json();
-        setRecentAchievements(data.items || data);
-      }
+      if (badgesData) setBadges(badgesData.items || badgesData);
+      if (challengesData) setChallenges(challengesData.items || challengesData);
+      if (leaderboardData) setLeaderboard(leaderboardData.items || leaderboardData);
+      if (achievementsData) setRecentAchievements(achievementsData.items || achievementsData);
     } catch (error) {
       console.error('Error loading gamification data:', error);
     } finally {
@@ -175,99 +155,57 @@ export default function MarketingGamificationPage() {
 
   const handleCreateBadge = async () => {
     try {
-      const token = localStorage.getItem('access_token');
-      const response = await fetch(`${API_URL}/gamification/badges`, {
-        credentials: 'include',
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          ...badgeForm,
-          active: true,
-        }),
+      await api.post('/gamification/badges', {
+        ...badgeForm,
+        active: true,
       });
-
-      if (response.ok) {
-        loadGamificationData();
-        setShowBadgeModal(false);
-        setBadgeForm({
-          name: '',
-          description: '',
-          icon: '⭐',
-          tier: 'bronze',
-          requirement_type: 'visits',
-          requirement_value: 1,
-          reward_points: 50,
-        });
-      } else {
-        const error = await response.json();
-        toast.error(error.detail || 'Error creating badge');
-      }
-    } catch (error) {
+      loadGamificationData();
+      setShowBadgeModal(false);
+      setBadgeForm({
+        name: '',
+        description: '',
+        icon: '⭐',
+        tier: 'bronze',
+        requirement_type: 'visits',
+        requirement_value: 1,
+        reward_points: 50,
+      });
+    } catch (error: any) {
       console.error('Error creating badge:', error);
-      toast.error('Error creating badge');
+      toast.error(error?.data?.detail || 'Error creating badge');
     }
   };
 
   const handleCreateChallenge = async () => {
     try {
-      const token = localStorage.getItem('access_token');
-      const response = await fetch(`${API_URL}/gamification/challenges`, {
-        credentials: 'include',
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          ...challengeForm,
-          active: true,
-        }),
+      await api.post('/gamification/challenges', {
+        ...challengeForm,
+        active: true,
       });
-
-      if (response.ok) {
-        loadGamificationData();
-        setShowChallengeModal(false);
-        setChallengeForm({
-          name: '',
-          description: '',
-          type: 'weekly',
-          goal_type: 'visits',
-          goal_value: 1,
-          reward_points: 100,
-          reward_discount: 0,
-          starts_at: '',
-          ends_at: '',
-        });
-      } else {
-        const error = await response.json();
-        toast.error(error.detail || 'Error creating challenge');
-      }
-    } catch (error) {
+      loadGamificationData();
+      setShowChallengeModal(false);
+      setChallengeForm({
+        name: '',
+        description: '',
+        type: 'weekly',
+        goal_type: 'visits',
+        goal_value: 1,
+        reward_points: 100,
+        reward_discount: 0,
+        starts_at: '',
+        ends_at: '',
+      });
+    } catch (error: any) {
       console.error('Error creating challenge:', error);
-      toast.error('Error creating challenge');
+      toast.error(error?.data?.detail || 'Error creating challenge');
     }
   };
 
   const handleDeleteBadge = async (id: string) => {
     if (confirm('Are you sure you want to delete this badge?')) {
       try {
-        const token = localStorage.getItem('access_token');
-        const response = await fetch(`${API_URL}/gamification/badges/${id}`, {
-          credentials: 'include',
-          method: 'DELETE',
-          headers: {
-            'Authorization': `Bearer ${token}`,
-          },
-        });
-
-        if (response.ok) {
-          loadGamificationData();
-        } else {
-          toast.error('Error deleting badge');
-        }
+        await api.del(`/gamification/badges/${id}`);
+        loadGamificationData();
       } catch (error) {
         console.error('Error deleting badge:', error);
         toast.error('Error deleting badge');
@@ -278,20 +216,8 @@ export default function MarketingGamificationPage() {
   const handleDeleteChallenge = async (id: string) => {
     if (confirm('Are you sure you want to delete this challenge?')) {
       try {
-        const token = localStorage.getItem('access_token');
-        const response = await fetch(`${API_URL}/gamification/challenges/${id}`, {
-          credentials: 'include',
-          method: 'DELETE',
-          headers: {
-            'Authorization': `Bearer ${token}`,
-          },
-        });
-
-        if (response.ok) {
-          loadGamificationData();
-        } else {
-          toast.error('Error deleting challenge');
-        }
+        await api.del(`/gamification/challenges/${id}`);
+        loadGamificationData();
       } catch (error) {
         console.error('Error deleting challenge:', error);
         toast.error('Error deleting challenge');
@@ -301,20 +227,8 @@ export default function MarketingGamificationPage() {
 
   const toggleBadgeActive = async (id: string) => {
     try {
-      const token = localStorage.getItem('access_token');
-      const response = await fetch(`${API_URL}/gamification/badges/${id}/toggle-active`, {
-        credentials: 'include',
-        method: 'PATCH',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
-      });
-
-      if (response.ok) {
-        loadGamificationData();
-      } else {
-        toast.error('Error toggling badge status');
-      }
+      await api.patch(`/gamification/badges/${id}/toggle-active`);
+      loadGamificationData();
     } catch (error) {
       console.error('Error toggling badge status:', error);
       toast.error('Error toggling badge status');
@@ -323,20 +237,8 @@ export default function MarketingGamificationPage() {
 
   const toggleChallengeActive = async (id: string) => {
     try {
-      const token = localStorage.getItem('access_token');
-      const response = await fetch(`${API_URL}/gamification/challenges/${id}/toggle-active`, {
-        credentials: 'include',
-        method: 'PATCH',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
-      });
-
-      if (response.ok) {
-        loadGamificationData();
-      } else {
-        toast.error('Error toggling challenge status');
-      }
+      await api.patch(`/gamification/challenges/${id}/toggle-active`);
+      loadGamificationData();
     } catch (error) {
       console.error('Error toggling challenge status:', error);
       toast.error('Error toggling challenge status');

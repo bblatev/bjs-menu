@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
-import { API_URL } from '@/lib/api';
+import { api } from '@/lib/api';
 
 import { toast } from '@/lib/toast';
 interface MultiLang {
@@ -96,23 +96,11 @@ export default function MenuModifiersPage() {
 
   const loadModifiers = async () => {
     try {
-      const token = localStorage.getItem('access_token');
-      const response = await fetch(`${API_URL}/menu-admin/modifier-groups`, {
-        credentials: 'include',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        const groups = Array.isArray(data) ? data : (data.modifier_groups || data.items || []);
-        setModifierGroups(groups);
-        if (groups.length > 0) {
-          setExpandedGroups([groups[0].id, groups[1]?.id].filter(Boolean));
-        }
-      } else {
-        console.error('Failed to load modifier groups');
+      const data = await api.get<any>('/menu-admin/modifier-groups');
+      const groups = Array.isArray(data) ? data : (data.modifier_groups || data.items || []);
+      setModifierGroups(groups);
+      if (groups.length > 0) {
+        setExpandedGroups([groups[0].id, groups[1]?.id].filter(Boolean));
       }
     } catch (error) {
       console.error('Error loading modifiers:', error);
@@ -145,32 +133,17 @@ export default function MenuModifiersPage() {
     };
 
     try {
-      const token = localStorage.getItem('access_token');
-      const url = editingGroup
-        ? `${API_URL}/menu-admin/modifier-groups/${editingGroup.id}`
-        : `${API_URL}/menu-admin/modifier-groups`;
-
-      const response = await fetch(url, {
-        credentials: 'include',
-        method: editingGroup ? 'PUT' : 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
-        },
-        body: JSON.stringify(groupData),
-      });
-
-      if (response.ok) {
-        loadModifiers();
-        setShowGroupModal(false);
-        resetGroupForm();
+      if (editingGroup) {
+        await api.put(`/menu-admin/modifier-groups/${editingGroup.id}`, groupData);
       } else {
-        const error = await response.json();
-        toast.error(error.detail || 'Error saving modifier group');
+        await api.post('/menu-admin/modifier-groups', groupData);
       }
-    } catch (error) {
+      loadModifiers();
+      setShowGroupModal(false);
+      resetGroupForm();
+    } catch (error: any) {
       console.error('Error saving modifier group:', error);
-      toast.error('Error saving modifier group');
+      toast.error(error?.data?.detail || 'Error saving modifier group');
     }
   };
 
@@ -187,32 +160,17 @@ export default function MenuModifiersPage() {
     };
 
     try {
-      const token = localStorage.getItem('access_token');
-      const url = editingOption
-        ? `${API_URL}/menu-admin/modifier-options/${editingOption.id}`
-        : `${API_URL}/menu-admin/modifier-groups/${selectedGroupId}/options`;
-
-      const response = await fetch(url, {
-        credentials: 'include',
-        method: editingOption ? 'PUT' : 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
-        },
-        body: JSON.stringify(optionData),
-      });
-
-      if (response.ok) {
-        loadModifiers();
-        setShowOptionModal(false);
-        resetOptionForm();
+      if (editingOption) {
+        await api.put(`/menu-admin/modifier-options/${editingOption.id}`, optionData);
       } else {
-        const error = await response.json();
-        toast.error(error.detail || 'Error saving option');
+        await api.post(`/menu-admin/modifier-groups/${selectedGroupId}/options`, optionData);
       }
-    } catch (error) {
+      loadModifiers();
+      setShowOptionModal(false);
+      resetOptionForm();
+    } catch (error: any) {
       console.error('Error saving option:', error);
-      toast.error('Error saving option');
+      toast.error(error?.data?.detail || 'Error saving option');
     }
   };
 
@@ -220,20 +178,8 @@ export default function MenuModifiersPage() {
     if (!confirm('Delete this modifier group and all its options?')) return;
 
     try {
-      const token = localStorage.getItem('access_token');
-      const response = await fetch(`${API_URL}/menu-admin/modifier-groups/${groupId}`, {
-        credentials: 'include',
-        method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
-      });
-
-      if (response.ok) {
-        loadModifiers();
-      } else {
-        toast.error('Error deleting modifier group');
-      }
+      await api.del(`/menu-admin/modifier-groups/${groupId}`);
+      loadModifiers();
     } catch (error) {
       console.error('Error deleting modifier group:', error);
       toast.error('Error deleting modifier group');
@@ -244,20 +190,8 @@ export default function MenuModifiersPage() {
     if (!confirm('Delete this option?')) return;
 
     try {
-      const token = localStorage.getItem('access_token');
-      const response = await fetch(`${API_URL}/menu-admin/modifier-options/${optionId}`, {
-        credentials: 'include',
-        method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
-      });
-
-      if (response.ok) {
-        loadModifiers();
-      } else {
-        toast.error('Error deleting option');
-      }
+      await api.del(`/menu-admin/modifier-options/${optionId}`);
+      loadModifiers();
     } catch (error) {
       console.error('Error deleting option:', error);
       toast.error('Error deleting option');
@@ -338,43 +272,21 @@ export default function MenuModifiersPage() {
 
   const toggleGroupActive = async (groupId: number) => {
     try {
-      const token = localStorage.getItem('access_token');
-      const response = await fetch(`${API_URL}/menu-admin/modifier-groups/${groupId}/toggle-active`, {
-        credentials: 'include',
-        method: 'PATCH',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
-      });
-
-      if (response.ok) {
-        loadModifiers();
-      } else {
-        toast.error('Error toggling group status');
-      }
+      await api.patch(`/menu-admin/modifier-groups/${groupId}/toggle-active`);
+      loadModifiers();
     } catch (error) {
       console.error('Error toggling group active:', error);
+      toast.error('Error toggling group status');
     }
   };
 
   const toggleOptionAvailable = async (_groupId: number, optionId: number) => {
     try {
-      const token = localStorage.getItem('access_token');
-      const response = await fetch(`${API_URL}/menu-admin/modifier-options/${optionId}/toggle-available`, {
-        credentials: 'include',
-        method: 'PATCH',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
-      });
-
-      if (response.ok) {
-        loadModifiers();
-      } else {
-        toast.error('Error toggling option availability');
-      }
+      await api.patch(`/menu-admin/modifier-options/${optionId}/toggle-available`);
+      loadModifiers();
     } catch (error) {
       console.error('Error toggling option available:', error);
+      toast.error('Error toggling option availability');
     }
   };
 

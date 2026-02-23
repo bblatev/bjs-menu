@@ -19,6 +19,11 @@ class MetricsCollector:
         self.request_duration: Dict[str, List[float]] = {}
         self.error_count: Dict[int, int] = {}
         self.active_requests: int = 0
+        # Infrastructure gauges
+        self.db_pool_size: int = 20
+        self.db_pool_checked_out: int = 0
+        self.redis_connected: int = 1
+        self.ws_active_connections: int = 0
 
     def record_request(self, method: str, path: str, status: int, duration: float):
         # Normalize path to avoid cardinality explosion
@@ -66,6 +71,24 @@ class MetricsCollector:
                 p99 = sorted(durations)[int(len(durations) * 0.99)] if len(durations) > 1 else durations[0]
                 lines.append(f'http_request_duration_seconds{{method="{method}",path="{path}",quantile="0.99"}} {p99:.4f}')
                 lines.append(f'http_request_duration_seconds{{method="{method}",path="{path}",quantile="0.5"}} {avg:.4f}')
+
+        # Database connection pool metrics
+        lines.append("# HELP db_pool_size Total database connection pool size")
+        lines.append("# TYPE db_pool_size gauge")
+        lines.append(f"db_pool_size {self.db_pool_size}")
+        lines.append("# HELP db_pool_checked_out Database connections currently in use")
+        lines.append("# TYPE db_pool_checked_out gauge")
+        lines.append(f"db_pool_checked_out {self.db_pool_checked_out}")
+
+        # Redis connection status
+        lines.append("# HELP redis_connected Redis connection status (1=connected, 0=disconnected)")
+        lines.append("# TYPE redis_connected gauge")
+        lines.append(f"redis_connected {self.redis_connected}")
+
+        # WebSocket active connections
+        lines.append("# HELP ws_active_connections Active WebSocket connections")
+        lines.append("# TYPE ws_active_connections gauge")
+        lines.append(f"ws_active_connections {self.ws_active_connections}")
 
         return "\n".join(lines) + "\n"
 

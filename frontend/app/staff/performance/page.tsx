@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { API_URL } from '@/lib/api';
+import { api } from '@/lib/api';
 
 import { toast } from '@/lib/toast';
 interface StaffMember {
@@ -80,27 +80,16 @@ export default function StaffPerformancePage() {
 
   const loadStaff = async () => {
     try {
-      const token = localStorage.getItem('access_token');
-      const response = await fetch(
-        `${API_URL}/staff`,
-        {
-          credentials: 'include',
-          headers: { Authorization: `Bearer ${token}` },
-        }
-      );
-
-      if (response.ok) {
-        const data = await response.json();
-        const staffArray = Array.isArray(data) ? data : (data.items || data.staff || []);
-        setStaff(staffArray.map((s: any) => ({
-          id: s.id,
-          name: s.name || s.full_name,
-          role: s.role,
-          avatar_initials: (s.name || s.full_name || '').split(' ').map((n: string) => n[0]).join('').toUpperCase(),
-          hired_date: s.created_at,
-          status: s.active ? 'active' : 'inactive',
-        })));
-      }
+      const data = await api.get<any>('/staff');
+      const staffArray = Array.isArray(data) ? data : (data.items || data.staff || []);
+      setStaff(staffArray.map((s: any) => ({
+        id: s.id,
+        name: s.name || s.full_name,
+        role: s.role,
+        avatar_initials: (s.name || s.full_name || '').split(' ').map((n: string) => n[0]).join('').toUpperCase(),
+        hired_date: s.created_at,
+        status: s.active ? 'active' : 'inactive',
+      })));
     } catch (error) {
       console.error('Error loading staff:', error);
     }
@@ -108,19 +97,10 @@ export default function StaffPerformancePage() {
 
   const loadLeaderboard = async () => {
     try {
-      const token = localStorage.getItem('access_token');
-      const response = await fetch(
-        `${API_URL}/staff/performance/leaderboard?period=${period}&sort_by=${sortBy}`,
-        {
-          credentials: 'include',
-          headers: { Authorization: `Bearer ${token}` },
-        }
+      const data = await api.get<LeaderboardEntry[]>(
+        `/staff/performance/leaderboard?period=${period}&sort_by=${sortBy}`
       );
-
-      if (response.ok) {
-        const data = await response.json();
-        setLeaderboard(data);
-      }
+      setLeaderboard(data);
     } catch (error) {
       console.error('Error loading leaderboard:', error);
     }
@@ -128,20 +108,9 @@ export default function StaffPerformancePage() {
 
   const loadGoals = async () => {
     try {
-      const token = localStorage.getItem('access_token');
-      const response = await fetch(
-        `${API_URL}/staff/performance/goals`,
-        {
-          credentials: 'include',
-          headers: { Authorization: `Bearer ${token}` },
-        }
-      );
-
-      if (response.ok) {
-        const data = await response.json();
-        if (data && data.length > 0) {
-          setGoals(data);
-        }
+      const data = await api.get<any[]>('/staff/performance/goals');
+      if (data && data.length > 0) {
+        setGoals(data);
       }
     } catch (error) {
       console.error('Error loading goals:', error);
@@ -150,29 +119,11 @@ export default function StaffPerformancePage() {
 
   const saveGoals = async () => {
     try {
-      const token = localStorage.getItem('access_token');
-      const response = await fetch(
-        `${API_URL}/staff/performance/goals`,
-        {
-          credentials: 'include',
-          method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify(goals),
-        }
-      );
-
-      if (response.ok) {
-        setShowGoalsModal(false);
-      } else {
-        const error = await response.json();
-        toast.error(error.detail || 'Failed to save goals');
-      }
-    } catch (error) {
+      await api.put('/staff/performance/goals', goals);
+      setShowGoalsModal(false);
+    } catch (error: any) {
       console.error('Error saving goals:', error);
-      toast.error('Failed to save goals');
+      toast.error(error?.data?.detail || 'Failed to save goals');
     }
   };
 

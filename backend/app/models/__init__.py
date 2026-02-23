@@ -214,6 +214,18 @@ from app.models.core_business_models import SMSMessage
 # Staff enums
 from app.models.staff import StaffRole
 
+# V99 feature models
+from app.models.v99_models import (
+    IoTSensor, IoTReading, IoTAlert,
+    DigitalDisplay, SignageContent,
+    PourRecord,
+    StaffSkill,
+    GeoFence, GeoClockEvent,
+    ShelfLifeItem,
+    SocialPost,
+    Tenant, TenantUsage,
+)
+
 __all__ = [
     # Core models
     "User",
@@ -359,4 +371,18 @@ __all__ = [
     "MenuItemModifierGroup",
     "ComboMeal",
     "ComboItem",
+    # V99 features
+    "IoTSensor",
+    "IoTReading",
+    "IoTAlert",
+    "DigitalDisplay",
+    "SignageContent",
+    "PourRecord",
+    "StaffSkill",
+    "GeoFence",
+    "GeoClockEvent",
+    "ShelfLifeItem",
+    "SocialPost",
+    "Tenant",
+    "TenantUsage",
 ]

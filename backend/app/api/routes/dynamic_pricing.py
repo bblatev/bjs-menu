@@ -112,17 +112,29 @@ def calculate_dynamic_price(
 
     Returns detailed breakdown of all price adjustments
     """
-    service = DynamicPricingService(db)
+    if body is None:
+        raise HTTPException(status_code=400, detail="Request body is required")
 
-    result = service.calculate_dynamic_price(
-        item_id=body.item_id,
-        venue_id=body.venue_id,
-        quantity=body.quantity,
-        current_time=datetime.now(timezone.utc),
-        weather_data=body.weather_data
-    )
-    
-    return result
+    try:
+        service = DynamicPricingService(db)
+
+        result = service.calculate_dynamic_price(
+            item_id=body.item_id,
+            venue_id=body.venue_id,
+            quantity=body.quantity,
+            current_time=datetime.now(timezone.utc),
+            weather_data=body.weather_data
+        )
+
+        if result is None:
+            raise HTTPException(status_code=404, detail=f"Item {body.item_id} not found or has no price")
+
+        return result
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error calculating dynamic price for item {body.item_id}: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to calculate dynamic price: {str(e)}")
 
 
 @router.get("/item/{item_id}", response_model=PriceCalculationResponse)
@@ -135,17 +147,26 @@ def get_item_current_price(
     db: Session = Depends(get_db)
 ):
     """Get current dynamic price for a specific item"""
-    service = DynamicPricingService(db)
-    
-    result = service.calculate_dynamic_price(
-        item_id=item_id,
-        venue_id=venue_id,
-        quantity=quantity,
-        current_time=datetime.now(timezone.utc),
-        weather_data=None
-    )
-    
-    return result
+    try:
+        service = DynamicPricingService(db)
+
+        result = service.calculate_dynamic_price(
+            item_id=item_id,
+            venue_id=venue_id,
+            quantity=quantity,
+            current_time=datetime.now(timezone.utc),
+            weather_data=None
+        )
+
+        if result is None:
+            raise HTTPException(status_code=404, detail=f"Item {item_id} not found or has no price")
+
+        return result
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error getting dynamic price for item {item_id}: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to get item price: {str(e)}")
 
 
 @router.get("/active-rules", response_model=List[ActivePricingRule])
@@ -156,14 +177,18 @@ def get_active_pricing_rules(
     db: Session = Depends(get_db)
 ):
     """Get all currently active pricing rules"""
-    service = DynamicPricingService(db)
-    
-    rules = service.get_active_pricing_rules(
-        venue_id=venue_id,
-        current_time=datetime.now(timezone.utc)
-    )
-    
-    return rules
+    try:
+        service = DynamicPricingService(db)
+
+        rules = service.get_active_pricing_rules(
+            venue_id=venue_id,
+            current_time=datetime.now(timezone.utc)
+        )
+
+        return rules or []
+    except Exception as e:
+        logger.error(f"Error getting active pricing rules: {e}")
+        return []
 
 
 @router.get("/rules")
@@ -366,15 +391,19 @@ def get_pricing_analytics(
     if end_date is None:
         end_date = date.today()
 
-    service = DynamicPricingService(db)
+    try:
+        service = DynamicPricingService(db)
 
-    analytics = service.get_pricing_analytics(
-        venue_id=venue_id,
-        start_date=datetime.combine(start_date, datetime.min.time()),
-        end_date=datetime.combine(end_date, datetime.max.time())
-    )
-    
-    return analytics
+        analytics = service.get_pricing_analytics(
+            venue_id=venue_id,
+            start_date=datetime.combine(start_date, datetime.min.time()),
+            end_date=datetime.combine(end_date, datetime.max.time())
+        )
+
+        return analytics
+    except Exception as e:
+        logger.error(f"Error getting pricing analytics: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to get pricing analytics: {str(e)}")
 
 
 @router.get("/forecast")
@@ -613,46 +642,55 @@ def simulate_pricing(
 ):
     """
     Simulate pricing for different scenarios
-    
+
     Useful for testing and forecasting
     """
-    service = DynamicPricingService(db)
-    
-    # Create simulated datetime
-    now = datetime.now(timezone.utc)
-    simulated_time = now.replace(hour=hour, minute=0, second=0)
-    if is_weekend:
-        # Adjust to next Saturday
-        days_ahead = 5 - simulated_time.weekday()
-        if days_ahead <= 0:
-            days_ahead += 7
-        simulated_time += timedelta(days=days_ahead)
-    
-    # Create weather data if temperature provided
-    weather_data = None
-    if temperature is not None:
-        weather_data = {
-            'temp': temperature,
-            'condition': 'Snow' if temperature < 0 else 'Clear'
+    try:
+        service = DynamicPricingService(db)
+
+        # Create simulated datetime
+        now = datetime.now(timezone.utc)
+        simulated_time = now.replace(hour=hour, minute=0, second=0)
+        if is_weekend:
+            # Adjust to next Saturday
+            days_ahead = 5 - simulated_time.weekday()
+            if days_ahead <= 0:
+                days_ahead += 7
+            simulated_time += timedelta(days=days_ahead)
+
+        # Create weather data if temperature provided
+        weather_data = None
+        if temperature is not None:
+            weather_data = {
+                'temp': temperature,
+                'condition': 'Snow' if temperature < 0 else 'Clear'
+            }
+
+        result = service.calculate_dynamic_price(
+            item_id=item_id,
+            venue_id=venue_id,
+            quantity=1,
+            current_time=simulated_time,
+            weather_data=weather_data
+        )
+
+        if result is None:
+            raise HTTPException(status_code=404, detail=f"Item {item_id} not found or has no price")
+
+        return {
+            'simulation': {
+                'hour': hour,
+                'temperature': temperature,
+                'is_weekend': is_weekend,
+                'simulated_time': simulated_time.isoformat()
+            },
+            'pricing': result
         }
-    
-    result = service.calculate_dynamic_price(
-        item_id=item_id,
-        venue_id=venue_id,
-        quantity=1,
-        current_time=simulated_time,
-        weather_data=weather_data
-    )
-    
-    return {
-        'simulation': {
-            'hour': hour,
-            'temperature': temperature,
-            'is_weekend': is_weekend,
-            'simulated_time': simulated_time.isoformat()
-        },
-        'pricing': result
-    }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error simulating pricing: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to simulate pricing: {str(e)}")
 
 
 @router.get("/comparison")

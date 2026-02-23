@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import AdminLayout from '@/components/AdminLayout';
-import { API_URL } from '@/lib/api';
+import { api } from '@/lib/api';
 
 import { toast } from '@/lib/toast';
 interface AlertConfig {
@@ -35,27 +35,13 @@ export default function NotificationSettingsPage() {
   }, []);
 
   const fetchData = async () => {
-    const token = localStorage.getItem('access_token');
     try {
-      const [alertsRes, prefsRes] = await Promise.all([
-        fetch(`${API_URL}/notifications/alerts/config`, {
-          credentials: 'include',
-          headers: { 'Authorization': `Bearer ${token}` }
-        }),
-        fetch(`${API_URL}/notifications/preferences`, {
-          credentials: 'include',
-          headers: { 'Authorization': `Bearer ${token}` }
-        })
+      const [alertsData, prefsData] = await Promise.all([
+        api.get<any>('/notifications/alerts/config'),
+        api.get<any>('/notifications/preferences'),
       ]);
-      
-      if (alertsRes.ok) {
-        const data = await alertsRes.json();
-        setAlerts(data.alerts || []);
-      }
-      if (prefsRes.ok) {
-        const data = await prefsRes.json();
-        setPreferences(data.preferences || null);
-      }
+      setAlerts(alertsData.alerts || []);
+      setPreferences(prefsData.preferences || null);
     } catch (error) {
       console.error('Error:', error);
     } finally {
@@ -64,18 +50,9 @@ export default function NotificationSettingsPage() {
   };
 
   const toggleAlert = async (alertType: string, enabled: boolean) => {
-    const token = localStorage.getItem('access_token');
     setSaving(true);
     try {
-      await fetch(`${API_URL}/notifications/alerts/config/${alertType}`, {
-        credentials: 'include',
-        method: 'PUT',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ alert_type: alertType, enabled })
-      });
+      await api.put(`/notifications/alerts/config/${alertType}`, { alert_type: alertType, enabled });
       setAlerts(prev => prev.map(a => a.type === alertType ? {...a, enabled} : a));
     } catch (error) {
       console.error('Error:', error);
@@ -85,13 +62,8 @@ export default function NotificationSettingsPage() {
   };
 
   const testNotification = async () => {
-    const token = localStorage.getItem('access_token');
     try {
-      await fetch(`${API_URL}/notifications/test/all-channels`, {
-        credentials: 'include',
-        method: 'POST',
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
+      await api.post('/notifications/test/all-channels');
       toast.info('Test notification sent!');
     } catch (error) {
       console.error('Error:', error);

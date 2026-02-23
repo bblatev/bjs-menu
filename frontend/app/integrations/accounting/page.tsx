@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import AdminLayout from '@/components/AdminLayout';
-import { API_URL } from '@/lib/api';
+import { api } from '@/lib/api';
 
 import { toast } from '@/lib/toast';
 interface Integration {
@@ -32,24 +32,13 @@ export default function AccountingIntegrationsPage() {
   }, []);
 
   const fetchData = async () => {
-    const token = localStorage.getItem('access_token');
     try {
-      const [availRes, connRes] = await Promise.all([
-        fetch(`${API_URL}/integrations/accounting/available`, { credentials: 'include' }),
-        fetch(`${API_URL}/integrations/accounting/status`, {
-          credentials: 'include',
-          headers: { 'Authorization': `Bearer ${token}` }
-        })
+      const [availData, connData] = await Promise.all([
+        api.get<any>('/integrations/accounting/available'),
+        api.get<any>('/integrations/accounting/status'),
       ]);
-      
-      if (availRes.ok) {
-        const data = await availRes.json();
-        setAvailable(data.integrations || []);
-      }
-      if (connRes.ok) {
-        const data = await connRes.json();
-        setConnected(data.integrations || []);
-      }
+      setAvailable(availData.integrations || []);
+      setConnected(connData.integrations || []);
     } catch (error) {
       console.error('Error:', error);
     } finally {
@@ -59,30 +48,18 @@ export default function AccountingIntegrationsPage() {
 
   const connectIntegration = async (type: string) => {
     setConnecting(type);
-    const token = localStorage.getItem('access_token');
-    
+
     try {
-      const res = await fetch(`${API_URL}/integrations/accounting/connect`, {
-        credentials: 'include',
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          integration_type: type,
-          // TODO: Replace with form inputs for real credentials
-          client_id: '',
-          client_secret: '',
-          access_token: '',
-          tenant_id: ''
-        })
+      await api.post('/integrations/accounting/connect', {
+        integration_type: type,
+        // TODO: Replace with form inputs for real credentials
+        client_id: '',
+        client_secret: '',
+        access_token: '',
+        tenant_id: ''
       });
-      
-      if (res.ok) {
-        await fetchData();
-        toast.success('Integration connected successfully!');
-      }
+      await fetchData();
+      toast.success('Integration connected successfully!');
     } catch {
       // Connection failed
     } finally {
@@ -91,13 +68,8 @@ export default function AccountingIntegrationsPage() {
   };
 
   const disconnectIntegration = async (type: string) => {
-    const token = localStorage.getItem('access_token');
     try {
-      await fetch(`${API_URL}/integrations/accounting/${type}`, {
-        credentials: 'include',
-        method: 'DELETE',
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
+      await api.del(`/integrations/accounting/${type}`);
       await fetchData();
     } catch {
       // Disconnect failed

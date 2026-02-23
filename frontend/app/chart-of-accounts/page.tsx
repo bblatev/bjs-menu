@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Link from 'next/link';
-import { API_URL } from '@/lib/api';
+import { api } from '@/lib/api';
 
 import { toast } from '@/lib/toast';
 interface Account {
@@ -47,15 +47,8 @@ export default function ChartOfAccountsPage() {
 
   const loadAccounts = async () => {
     try {
-      const token = localStorage.getItem('access_token');
-      const response = await fetch(`${API_URL}/financial/chart-of-accounts`, {
-        credentials: 'include',
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (response.ok) {
-        const data = await response.json();
-        setAccounts(data);
-      }
+      const data = await api.get<Account[]>('/financial/chart-of-accounts');
+      setAccounts(data);
     } catch (error) {
       console.error('Error loading accounts:', error);
     } finally {
@@ -65,25 +58,15 @@ export default function ChartOfAccountsPage() {
 
   const handleCreate = async () => {
     try {
-      const token = localStorage.getItem('access_token');
-      const response = await fetch(`${API_URL}/financial/chart-of-accounts`, {
-        credentials: 'include',
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify(formData),
-      });
-      if (response.ok) {
-        loadAccounts();
-        closeModal();
+      await api.post('/financial/chart-of-accounts', formData);
+      loadAccounts();
+      closeModal();
+    } catch (error: any) {
+      if (error?.data?.detail) {
+        toast.error(error.data.detail);
       } else {
-        const error = await response.json();
-        toast.error(error.detail || 'Error creating account');
+        console.error('Error creating account:', error);
       }
-    } catch (error) {
-      console.error('Error creating account:', error);
     }
   };
 

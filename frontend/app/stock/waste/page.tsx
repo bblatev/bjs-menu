@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { API_URL } from '@/lib/api';
+import { api } from '@/lib/api';
 
 import { toast } from '@/lib/toast';
 interface WasteRecord {
@@ -75,25 +75,16 @@ export default function WasteManagementPage() {
   }, []);
 
   const loadData = async () => {
-    const token = localStorage.getItem('access_token');
     try {
       // Load waste records
-      const recordsRes = await fetch(`${API_URL}/stock/waste/records`, {
-        credentials: 'include',
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      if (recordsRes.ok) {
-        const data = await recordsRes.json();
+      try {
+        const data = await api.get<any>('/stock/waste/records');
         setRecords(data);
-      }
+      } catch { /* ignore */ }
 
       // Load waste stats
-      const statsRes = await fetch(`${API_URL}/stock/waste/stats`, {
-        credentials: 'include',
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      if (statsRes.ok) {
-        const data = await statsRes.json();
+      try {
+        const data = await api.get<any>('/stock/waste/stats');
         setStats({
           totalWasteToday: data.total_waste_today,
           totalWasteWeek: data.total_waste_week,
@@ -102,31 +93,24 @@ export default function WasteManagementPage() {
           wastePercentage: 0,
           costSaved: 0,
         });
-      }
+      } catch { /* ignore */ }
 
       // Load stock items for the dropdown
-      const stockRes = await fetch(`${API_URL}/stock`, {
-        credentials: 'include',
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      if (stockRes.ok) {
-        const data = await stockRes.json();
-        setStockItems(data.map((s: any) => ({
+      try {
+        const data = await api.get<any>('/stock');
+        const stockList = Array.isArray(data) ? data : (data.items || data.stock || []);
+        setStockItems(stockList.map((s: any) => ({
           id: s.id,
           name: typeof s.name === 'object' ? (s.name?.bg || s.name?.en || 'Item') : (s.name || 'Item'),
           sku: s.sku || '',
           unit: s.unit || 'units',
           cost_per_unit: s.cost_per_unit || 0
         })));
-      }
+      } catch { /* ignore */ }
 
       // Load waste insights
-      const insightsRes = await fetch(`${API_URL}/stock/waste/insights`, {
-        credentials: 'include',
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      if (insightsRes.ok) {
-        const data = await insightsRes.json();
+      try {
+        const data = await api.get<any[]>('/stock/waste/insights');
         setInsights(data.map((i: any) => ({
           id: String(i.id),
           type: i.insight_type || i.type || 'general',
@@ -134,7 +118,7 @@ export default function WasteManagementPage() {
           message: i.message || i.description || '',
           icon: i.icon || (i.type === 'expiration' ? '📅' : i.type === 'overproduction' ? '📊' : i.type === 'compliance' ? '✓' : '💡'),
         })));
-      }
+      } catch { /* ignore */ }
     } catch (error) {
       console.error('Error loading data:', error);
     }
@@ -148,7 +132,6 @@ export default function WasteManagementPage() {
       return;
     }
 
-    const token = localStorage.getItem('access_token');
     try {
       const params = new URLSearchParams({
         stock_item_id: selectedStockItemId.toString(),
@@ -159,16 +142,7 @@ export default function WasteManagementPage() {
       if (newRecord.notes) params.append('notes', newRecord.notes);
       if (newRecord.batch_number) params.append('batch_number', newRecord.batch_number);
 
-      const res = await fetch(`${API_URL}/stock/waste/records?${params.toString()}`, {
-        credentials: 'include',
-        method: 'POST',
-        headers: { Authorization: `Bearer ${token}` }
-      });
-
-      if (!res.ok) {
-        const error = await res.json();
-        throw new Error(error.detail || 'Failed to record waste');
-      }
+      await api.post(`/stock/waste/records?${params.toString()}`);
 
       setNewRecord({ item_name: '', sku: '', quantity: 1, unit: 'kg', reason: 'expired', cost_per_unit: 0, notes: '', batch_number: '' });
       setSelectedStockItemId(0);

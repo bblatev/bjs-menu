@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { Button, Input, Card, CardBody, Badge } from '@/components/ui';
 
-import { API_URL } from '@/lib/api';
+import { api, isAuthenticated } from '@/lib/api';
 
 import { toast } from '@/lib/toast';
 interface Integration {
@@ -83,17 +83,11 @@ export default function SettingsIntegrationsPage() {
 
   const loadData = async () => {
     try {
-      const token = localStorage.getItem('access_token');
-      if (!token) return;
+      if (!isAuthenticated()) return;
 
       // Load integrations
-      const integrationsRes = await fetch(`${API_URL}/integrations/integrations`, {
-        credentials: 'include',
-        headers: { Authorization: `Bearer ${token}` },
-      });
-
-      if (integrationsRes.ok) {
-        const data = await integrationsRes.json();
+      try {
+        const data = await api.get<any>('/integrations/integrations');
         const items = (data.integrations || []).map((i: any) => ({
           ...i,
           category: i.type || i.category || '',
@@ -102,65 +96,40 @@ export default function SettingsIntegrationsPage() {
           status: i.status === 'connected' ? 'connected' : i.status === 'active' ? 'connected' : 'available',
         }));
         setIntegrations(items);
-      }
+      } catch {}
 
       // Load categories
-      const categoriesRes = await fetch(`${API_URL}/integrations/integrations/categories`, {
-        credentials: 'include',
-        headers: { Authorization: `Bearer ${token}` },
-      });
-
-      if (categoriesRes.ok) {
-        const data = await categoriesRes.json();
+      try {
+        const data = await api.get<any>('/integrations/integrations/categories');
         setCategories(data.categories || []);
-      }
+      } catch {}
 
       // Load hardware devices
-      const hardwareRes = await fetch(`${API_URL}/integrations/hardware/devices`, {
-        credentials: 'include',
-        headers: { Authorization: `Bearer ${token}` },
-      });
-
-      if (hardwareRes.ok) {
-        const data = await hardwareRes.json();
+      try {
+        const data = await api.get<any>('/integrations/hardware/devices');
         setHardwareDevices(data.devices || []);
-      }
+      } catch {}
 
       // Load webhooks
-      const webhooksRes = await fetch(`${API_URL}/integrations/webhooks`, {
-        credentials: 'include',
-        headers: { Authorization: `Bearer ${token}` },
-      });
-
-      if (webhooksRes.ok) {
-        const data = await webhooksRes.json();
+      try {
+        const data = await api.get<any>('/integrations/webhooks');
         setWebhooks({
           enabled: data?.enabled ?? false,
           endpoints: data?.endpoints || [],
           retry_attempts: data?.retry_attempts ?? 3,
           timeout_seconds: data?.timeout_seconds ?? 30,
         });
-      }
+      } catch {}
 
       // Load API keys
-      const apiKeysRes = await fetch(`${API_URL}/integrations/api-keys`, {
-        credentials: 'include',
-        headers: { Authorization: `Bearer ${token}` },
-      });
-
-      if (apiKeysRes.ok) {
-        const data = await apiKeysRes.json();
+      try {
+        const data = await api.get<any>('/integrations/api-keys');
         setApiKeys(data.keys || []);
-      }
+      } catch {}
 
       // Load multi-location sync settings
-      const syncRes = await fetch(`${API_URL}/integrations/multi-location/sync-settings`, {
-        credentials: 'include',
-        headers: { Authorization: `Bearer ${token}` },
-      });
-
-      if (syncRes.ok) {
-        const data = await syncRes.json();
+      try {
+        const data = await api.get<any>('/integrations/multi-location/sync-settings');
         setMultiLocationSync({
           enabled: data?.enabled ?? false,
           sync_menu: data?.sync_menu ?? true,
@@ -172,7 +141,7 @@ export default function SettingsIntegrationsPage() {
           master_location_id: data?.master_location_id ?? null,
           linked_locations: data?.linked_locations || [],
         });
-      }
+      } catch {}
     } catch (err) {
       console.error('Error loading data:', err);
     } finally {
@@ -190,27 +159,13 @@ export default function SettingsIntegrationsPage() {
     if (!connectIntegrationId || !connectCredentials) return;
 
     try {
-      const token = localStorage.getItem('access_token');
-      const response = await fetch(`${API_URL}/integrations/integrations/connect`, {
-        method: 'POST',
-        credentials: 'include',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          integration_id: connectIntegrationId,
-          credentials: { api_key: connectCredentials },
-          settings: {},
-        }),
+      await api.post('/integrations/integrations/connect', {
+        integration_id: connectIntegrationId,
+        credentials: { api_key: connectCredentials },
+        settings: {},
       });
-
-      if (response.ok) {
-        toast.success('Integration connected successfully!');
-        loadData();
-      } else {
-        toast.error('Failed to connect integration');
-      }
+      toast.success('Integration connected successfully!');
+      loadData();
     } catch (err) {
       console.error('Error connecting integration:', err);
       toast.error('Error connecting integration');
@@ -225,23 +180,9 @@ export default function SettingsIntegrationsPage() {
     if (!confirm('Are you sure you want to disconnect this integration?')) return;
 
     try {
-      const token = localStorage.getItem('access_token');
-      const response = await fetch(
-        `${API_URL}/integrations/integrations/${integrationId}/disconnect`,
-        {
-          credentials: 'include',
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
-
-      if (response.ok) {
-        toast.success('Integration disconnected');
-        loadData();
-      }
+      await api.post(`/integrations/integrations/${integrationId}/disconnect`);
+      toast.success('Integration disconnected');
+      loadData();
     } catch (err) {
       console.error('Error disconnecting integration:', err);
     }
@@ -250,20 +191,8 @@ export default function SettingsIntegrationsPage() {
   const saveWebhooks = async () => {
     setSaving(true);
     try {
-      const token = localStorage.getItem('access_token');
-      const response = await fetch(`${API_URL}/integrations/webhooks`, {
-        credentials: 'include',
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify(webhooks),
-      });
-
-      if (response.ok) {
-        toast.success('Webhook settings saved!');
-      }
+      await api.put('/integrations/webhooks', webhooks);
+      toast.success('Webhook settings saved!');
     } catch (err) {
       console.error('Error saving webhooks:', err);
       toast.error('Failed to save webhooks');
@@ -281,25 +210,12 @@ export default function SettingsIntegrationsPage() {
     if (!newApiKeyName) return;
 
     try {
-      const token = localStorage.getItem('access_token');
-      const response = await fetch(`${API_URL}/integrations/api-keys`, {
-        credentials: 'include',
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          name: newApiKeyName,
-          permissions: ['read', 'write'],
-        }),
+      const data = await api.post<any>('/integrations/api-keys', {
+        name: newApiKeyName,
+        permissions: ['read', 'write'],
       });
-
-      if (response.ok) {
-        const data = await response.json();
-        toast.success(`API Key created: ${data.key}\n\nSave this key securely, it won't be shown again.`);
-        loadData();
-      }
+      toast.success(`API Key created: ${data.key}\n\nSave this key securely, it won't be shown again.`);
+      loadData();
     } catch (err) {
       console.error('Error creating API key:', err);
     } finally {
@@ -312,12 +228,7 @@ export default function SettingsIntegrationsPage() {
     if (!confirm('Are you sure you want to revoke this API key?')) return;
 
     try {
-      const token = localStorage.getItem('access_token');
-      await fetch(`${API_URL}/integrations/api-keys/${keyId}`, {
-        credentials: 'include',
-        method: 'DELETE',
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      await api.del(`/integrations/api-keys/${keyId}`);
       loadData();
     } catch (err) {
       console.error('Error revoking API key:', err);
@@ -327,23 +238,8 @@ export default function SettingsIntegrationsPage() {
   const saveMultiLocationSync = async () => {
     setSaving(true);
     try {
-      const token = localStorage.getItem('access_token');
-      const response = await fetch(
-        `${API_URL}/integrations/multi-location/sync-settings`,
-        {
-          credentials: 'include',
-          method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify(multiLocationSync),
-        }
-      );
-
-      if (response.ok) {
-        toast.success('Multi-location sync settings saved!');
-      }
+      await api.put('/integrations/multi-location/sync-settings', multiLocationSync);
+      toast.success('Multi-location sync settings saved!');
     } catch (err) {
       console.error('Error saving settings:', err);
       toast.error('Failed to save settings');

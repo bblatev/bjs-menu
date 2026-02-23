@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { API_URL } from '@/lib/api';
+import { api } from '@/lib/api';
 
 interface KitchenMetrics {
   avgPrepTime: number;
@@ -70,18 +70,8 @@ export default function KitchenReportsPage() {
   const loadKitchenReport = async () => {
     setLoading(true);
     try {
-      const token = localStorage.getItem('access_token');
-      const response = await fetch(`${API_URL}/reports/kitchen?range=${dateRange}`, {
-        credentials: 'include',
-        headers: { Authorization: `Bearer ${token}` },
-      });
-
-      if (response.ok) {
-        setData(await response.json());
-      } else {
-        console.error('Failed to load kitchen report');
-        setData(null);
-      }
+      const data = await api.get<KitchenReportData>(`/reports/kitchen?range=${dateRange}`);
+      setData(data);
     } catch (error) {
       console.error('Error loading kitchen report:', error);
       setData(null);

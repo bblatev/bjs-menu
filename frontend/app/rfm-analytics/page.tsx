@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 
-import { API_URL } from '@/lib/api';
+import { api } from '@/lib/api';
 
 interface RFMCustomer {
   id: number;
@@ -131,25 +131,14 @@ export default function RFMAnalyticsPage() {
   const loadData = useCallback(async () => {
     setLoading(true);
     try {
-      const token = localStorage.getItem('access_token');
-      const response = await fetch(`${API_URL}/analytics/rfm/dashboard`, {
-        credentials: 'include',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        if (data && data.segments && data.segments.length > 0) {
-          setSegments(data.segments);
-          setCustomers(data.customers || []);
-          setTrends(data.trends || []);
-          setCampaigns(data.campaigns || []);
-          setLoading(false);
-          return;
-        }
+      const data = await api.get<any>('/analytics/rfm/dashboard');
+      if (data && data.segments && data.segments.length > 0) {
+        setSegments(data.segments);
+        setCustomers(data.customers || []);
+        setTrends(data.trends || []);
+        setCampaigns(data.campaigns || []);
+        setLoading(false);
+        return;
       }
     } catch (err) {
       console.warn('Failed to fetch from API, using demo data:', err);

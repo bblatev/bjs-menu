@@ -43,8 +43,7 @@ export default function WaiterLoginPage() {
       });
 
       if (res.ok) {
-        // Store token in localStorage as bridge for pages not yet migrated to cookie auth
-        try { const d = await res.json(); if (d.access_token) localStorage.setItem('access_token', d.access_token); } catch {}
+        // Cookie is set automatically by the server response (HttpOnly cookie)
         window.location.href = '/waiter';
       } else {
         setError('Invalid PIN');

@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { API_URL } from '@/lib/api';
+import { api } from '@/lib/api';
 
 import { toast } from '@/lib/toast';
 interface Item86 {
@@ -48,15 +48,9 @@ export default function Items86Page() {
   useEffect(() => {
     const loadData = async () => {
       try {
-        const token = localStorage.getItem('access_token');
-
         // Load 86'd items
-        const items86Response = await fetch(`${API_URL}/kitchen/86/list`, {
-          credentials: 'include',
-          headers: { 'Authorization': `Bearer ${token}` },
-        });
-        if (items86Response.ok) {
-          const items86Data = await items86Response.json();
+        try {
+          const items86Data = await api.get<any[]>('/kitchen/86/list');
           setItems86(items86Data.map((item: any) => ({
             id: item.menu_item_id || item.alert_id,
             name: item.menu_item_name || item.name,
@@ -68,35 +62,27 @@ export default function Items86Page() {
             notes: item.notes,
             affected_orders: 0,
           })));
-        }
+        } catch { /* ignore */ }
 
         // Load menu categories
-        const categoriesResponse = await fetch(`${API_URL}/menu/categories`, {
-          credentials: 'include',
-          headers: { 'Authorization': `Bearer ${token}` },
-        });
-        if (categoriesResponse.ok) {
-          const categoriesData = await categoriesResponse.json();
+        try {
+          const categoriesData = await api.get<any[]>('/menu/categories');
           setMenuCategories(categoriesData.map((cat: any) => ({
             id: cat.id,
             name: cat.name?.en || cat.name?.bg || cat.name,
           })));
-        }
+        } catch { /* ignore */ }
 
         // Load menu items
-        const itemsResponse = await fetch(`${API_URL}/menu/items`, {
-          credentials: 'include',
-          headers: { 'Authorization': `Bearer ${token}` },
-        });
-        if (itemsResponse.ok) {
-          const itemsData = await itemsResponse.json();
+        try {
+          const itemsData = await api.get<any[]>('/menu/items');
           setMenuItems(itemsData.map((item: any) => ({
             id: item.id,
             name: item.name?.en || item.name?.bg || item.name,
             category_id: item.category_id,
             is_available: item.is_available !== false,
           })));
-        }
+        } catch { /* ignore */ }
       } catch (error) {
         console.error('Error loading data:', error);
       }
@@ -107,17 +93,7 @@ export default function Items86Page() {
 
   const handleUn86 = async (itemId: number) => {
     try {
-      const token = localStorage.getItem('access_token');
-
-      const response = await fetch(`${API_URL}/kitchen/86/${itemId}`, {
-        credentials: 'include',
-        method: 'DELETE',
-        headers: { 'Authorization': `Bearer ${token}` },
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to remove item from 86 list');
-      }
+      await api.del(`/kitchen/86/${itemId}`);
 
       const item = items86.find(i => i.id === itemId);
       if (item) {
@@ -140,26 +116,12 @@ export default function Items86Page() {
     if (!newItem.item_id || !newItem.reason) return;
 
     try {
-      const token = localStorage.getItem('access_token');
-
-      const response = await fetch(`${API_URL}/kitchen/86`, {
-        credentials: 'include',
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          item_id: newItem.item_id,
-          reason: newItem.reason,
-          estimated_return: newItem.estimated_return || null,
-          notes: newItem.notes || null,
-        }),
+      await api.post('/kitchen/86', {
+        item_id: newItem.item_id,
+        reason: newItem.reason,
+        estimated_return: newItem.estimated_return || null,
+        notes: newItem.notes || null,
       });
-
-      if (!response.ok) {
-        throw new Error('Failed to mark item as 86');
-      }
 
       const menuItem = menuItems.find(i => i.id === newItem.item_id);
       const category = menuCategories.find(c => c.id === menuItem?.category_id);

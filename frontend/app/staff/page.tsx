@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { API_URL } from '@/lib/api';
+import { api } from '@/lib/api';
 import { useConfirm } from "@/hooks/useConfirm";
 
 import { toast } from '@/lib/toast';
@@ -74,25 +74,14 @@ export default function StaffManagementPage() {
 
   const loadStaff = async () => {
     try {
-      const token = localStorage.getItem("access_token");
-      let url = `${API_URL}/staff`;
-
       const params = new URLSearchParams();
       if (filterRole !== "all") params.append("role", filterRole);
       if (filterActive !== null) params.append("active_only", String(filterActive));
 
-      if (params.toString()) url += `?${params.toString()}`;
-
-      const response = await fetch(url, {
-        credentials: 'include',
-        headers: { Authorization: `Bearer ${token}` },
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        // Handle array, {items: [...]} and {staff: [...]} response formats
-        setStaff(Array.isArray(data) ? data : (data.items || data.staff || []));
-      }
+      const path = params.toString() ? `/staff?${params.toString()}` : '/staff';
+      const data = await api.get<any>(path);
+      // Handle array, {items: [...]} and {staff: [...]} response formats
+      setStaff(Array.isArray(data) ? data : (data.items || data.staff || []));
     } catch (error) {
       console.error("Error loading staff:", error);
     } finally {
@@ -102,19 +91,8 @@ export default function StaffManagementPage() {
 
   const loadTables = async () => {
     try {
-      const token = localStorage.getItem("access_token");
-      const response = await fetch(
-        `${API_URL}/tables/`,
-        {
-          credentials: 'include',
-          headers: { Authorization: `Bearer ${token}` },
-        }
-      );
-
-      if (response.ok) {
-        const data = await response.json();
-        setTables(data);
-      }
+      const data = await api.get<Table[]>('/tables/');
+      setTables(data);
     } catch (error) {
       console.error("Error loading tables:", error);
     }
@@ -122,59 +100,30 @@ export default function StaffManagementPage() {
 
   const loadAreas = async () => {
     try {
-      const token = localStorage.getItem("access_token");
       // Try the areas endpoint, fall back to extracting from tables
-      const response = await fetch(
-        `${API_URL}/tables/areas`,
-        {
-          credentials: 'include',
-          headers: { Authorization: `Bearer ${token}` },
-        }
-      );
-
-      if (response.ok) {
-        const data = await response.json();
-        setAreas(Array.isArray(data) ? data : (data.areas || []));
-      } else {
+      const data = await api.get<any>('/tables/areas');
+      setAreas(Array.isArray(data) ? data : (data.areas || []));
+    } catch {
+      try {
         // Fallback: extract unique areas from tables data
-        const tablesResponse = await fetch(
-          `${API_URL}/tables/`,
-          {
-            credentials: 'include',
-            headers: { Authorization: `Bearer ${token}` },
-          }
-        );
-        if (tablesResponse.ok) {
-          const tablesData = await tablesResponse.json();
-          const uniqueAreas = [...new Set(tablesData.map((t: Table) => t.area).filter(Boolean))] as string[];
-          setAreas(uniqueAreas);
-        }
+        const tablesData = await api.get<Table[]>('/tables/');
+        const uniqueAreas = [...new Set(tablesData.map((t: Table) => t.area).filter(Boolean))] as string[];
+        setAreas(uniqueAreas);
+      } catch (error) {
+        console.error("Error loading areas:", error);
       }
-    } catch (error) {
-      console.error("Error loading areas:", error);
     }
   };
 
   const loadStaffAssignments = async (staffId: number) => {
     try {
-      const token = localStorage.getItem("access_token");
-      const response = await fetch(
-        `${API_URL}/tables/assignments/?staff_user_id=${staffId}`,
-        {
-          credentials: 'include',
-          headers: { Authorization: `Bearer ${token}` },
-        }
-      );
-
-      if (response.ok) {
-        const data = await response.json();
-        setStaffAssignments(data);
-        // Set selected tables and areas based on current assignments
-        const tableIds = data.filter((a: TableAssignment) => a.table_id).map((a: TableAssignment) => a.table_id);
-        const areaNames = data.filter((a: TableAssignment) => a.area).map((a: TableAssignment) => a.area);
-        setSelectedTables(tableIds);
-        setSelectedAreas(areaNames);
-      }
+      const data = await api.get<TableAssignment[]>(`/tables/assignments/?staff_user_id=${staffId}`);
+      setStaffAssignments(data);
+      // Set selected tables and areas based on current assignments
+      const tableIds = data.filter((a: TableAssignment) => a.table_id != null).map((a: TableAssignment) => a.table_id as number);
+      const areaNames = data.filter((a: TableAssignment) => a.area != null).map((a: TableAssignment) => a.area as string);
+      setSelectedTables(tableIds);
+      setSelectedAreas(areaNames);
     } catch (error) {
       console.error("Error loading assignments:", error);
     }
@@ -189,38 +138,19 @@ export default function StaffManagementPage() {
   const handleSaveAssignments = async () => {
     if (!tableStaff) return;
 
-    const token = localStorage.getItem("access_token");
-
     try {
-      const response = await fetch(
-        `${API_URL}/tables/assignments/bulk`,
-        {
-          credentials: 'include',
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify({
-            staff_user_id: tableStaff.id,
-            table_ids: selectedTables,
-            areas: selectedAreas,
-          }),
-        }
-      );
-
-      if (response.ok) {
-        setShowTableModal(false);
-        setTableStaff(null);
-        setSelectedTables([]);
-        setSelectedAreas([]);
-      } else {
-        const error = await response.json();
-        toast.error(error.detail || "Failed to save assignments");
-      }
-    } catch (error) {
+      await api.post('/tables/assignments/bulk', {
+        staff_user_id: tableStaff.id,
+        table_ids: selectedTables,
+        areas: selectedAreas,
+      });
+      setShowTableModal(false);
+      setTableStaff(null);
+      setSelectedTables([]);
+      setSelectedAreas([]);
+    } catch (error: any) {
       console.error("Error saving assignments:", error);
-      toast.error("Failed to save assignments");
+      toast.error(error?.data?.detail || "Failed to save assignments");
     }
   };
 
@@ -242,7 +172,6 @@ export default function StaffManagementPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const token = localStorage.getItem("access_token");
 
     // Validate PIN only if provided
     if (!editingStaff && formData.pin_code && formData.pin_code.length < 4) {
@@ -253,26 +182,10 @@ export default function StaffManagementPage() {
     try {
       if (editingStaff) {
         // Update existing staff (name and role only)
-        const response = await fetch(
-          `${API_URL}/staff/${editingStaff.id}`,
-          {
-            credentials: 'include',
-            method: "PUT",
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: `Bearer ${token}`,
-            },
-            body: JSON.stringify({
-              full_name: formData.full_name,
-              role: formData.role,
-            }),
-          }
-        );
-
-        if (!response.ok) {
-          const errorData = await response.json().catch(() => ({}));
-          throw new Error(errorData.detail || "Failed to update staff");
-        }
+        await api.put(`/staff/${editingStaff.id}`, {
+          full_name: formData.full_name,
+          role: formData.role,
+        });
       } else {
         // Create new staff (PIN optional)
         const createData: { full_name: string; role: string; pin_code?: string } = {
@@ -282,24 +195,7 @@ export default function StaffManagementPage() {
         if (formData.pin_code) {
           createData.pin_code = formData.pin_code;
         }
-
-        const response = await fetch(
-          `${API_URL}/staff`,
-          {
-            credentials: 'include',
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: `Bearer ${token}`,
-            },
-            body: JSON.stringify(createData),
-          }
-        );
-
-        if (!response.ok) {
-          const errorData = await response.json().catch(() => ({}));
-          throw new Error(errorData.detail || `Failed to create staff: ${response.status}`);
-        }
+        await api.post('/staff', createData);
       }
 
       // Reset form and reload
@@ -307,9 +203,9 @@ export default function StaffManagementPage() {
       setEditingStaff(null);
       setFormData({ full_name: "", role: "waiter", pin_code: "" });
       loadStaff();
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error saving staff:", error);
-      const message = error instanceof Error ? error.message : "Error saving staff user";
+      const message = error?.message || error?.data?.detail || "Error saving staff user";
       toast.error(message);
     }
   };
@@ -325,22 +221,11 @@ export default function StaffManagementPage() {
   };
 
   const handleToggleActive = async (id: number, currentActive: boolean) => {
-    const token = localStorage.getItem("access_token");
     const endpoint = currentActive ? "deactivate" : "activate";
 
     try {
-      const response = await fetch(
-        `${API_URL}/staff/${id}/${endpoint}`,
-        {
-          credentials: 'include',
-          method: "PATCH",
-          headers: { Authorization: `Bearer ${token}` },
-        }
-      );
-
-      if (response.ok) {
-        loadStaff();
-      }
+      await api.patch(`/staff/${id}/${endpoint}`);
+      loadStaff();
     } catch (error) {
       console.error("Error toggling staff status:", error);
     }
@@ -349,21 +234,9 @@ export default function StaffManagementPage() {
   const handleDelete = async (id: number) => {
     if (!(await confirm({ message: "Are you sure you want to delete this staff member?", variant: 'danger' }))) return;
 
-    const token = localStorage.getItem("access_token");
-
     try {
-      const response = await fetch(
-        `${API_URL}/staff/${id}`,
-        {
-          credentials: 'include',
-          method: "DELETE",
-          headers: { Authorization: `Bearer ${token}` },
-        }
-      );
-
-      if (response.ok) {
-        loadStaff();
-      }
+      await api.del(`/staff/${id}`);
+      loadStaff();
     } catch (error) {
       console.error("Error deleting staff:", error);
     }
@@ -393,55 +266,24 @@ export default function StaffManagementPage() {
       return;
     }
 
-    const token = localStorage.getItem("access_token");
-
     try {
-      const response = await fetch(
-        `${API_URL}/staff/${pinStaff.id}/pin`,
-        {
-          credentials: 'include',
-          method: "PATCH",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify({ pin_code: pinValue }),
-        }
-      );
-
-      if (response.ok) {
-        setShowPinModal(false);
-        setPinStaff(null);
-        setPinValue("");
-        loadStaff();
-      } else {
-        const error = await response.json();
-        setPinError(error.detail || "Failed to set PIN");
-      }
-    } catch (error) {
+      await api.patch(`/staff/${pinStaff.id}/pin`, { pin_code: pinValue });
+      setShowPinModal(false);
+      setPinStaff(null);
+      setPinValue("");
+      loadStaff();
+    } catch (error: any) {
       console.error("Error setting PIN:", error);
-      setPinError("Failed to set PIN");
+      setPinError(error?.data?.detail || "Failed to set PIN");
     }
   };
 
   const handleRemovePin = async (staffUser: StaffUser) => {
     if (!(await confirm({ message: `Remove PIN for ${staffUser.full_name}?`, variant: 'warning' }))) return;
 
-    const token = localStorage.getItem("access_token");
-
     try {
-      const response = await fetch(
-        `${API_URL}/staff/${staffUser.id}/pin`,
-        {
-          credentials: 'include',
-          method: "DELETE",
-          headers: { Authorization: `Bearer ${token}` },
-        }
-      );
-
-      if (response.ok) {
-        loadStaff();
-      }
+      await api.del(`/staff/${staffUser.id}/pin`);
+      loadStaff();
     } catch (error) {
       console.error("Error removing PIN:", error);
     }

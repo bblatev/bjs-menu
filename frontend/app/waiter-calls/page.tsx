@@ -3,7 +3,7 @@
 import { useEffect, useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
-import { API_URL, WS_URL, getAuthHeaders } from '@/lib/api';
+import { api, WS_URL, isAuthenticated } from '@/lib/api';
 
 interface WaiterCall {
   id: number;
@@ -80,8 +80,7 @@ export default function WaiterCallsPage() {
   const wsRef = useRef<WebSocket | null>(null);
 
   useEffect(() => {
-    const token = localStorage.getItem('access_token');
-    if (!token) {
+    if (!isAuthenticated()) {
       router.push('/login');
       return;
     }
@@ -100,20 +99,15 @@ export default function WaiterCallsPage() {
 
   const loadData = async () => {
     setLoading(true);
-    if (!localStorage.getItem('access_token')) {
+    if (!isAuthenticated()) {
       router.push('/login');
       return;
     }
 
     try {
       // Load active waiter calls - use /waiter/calls endpoint
-      const callsResponse = await fetch(`${API_URL}/waiter/calls?status=pending`, {
-        credentials: 'include',
-        headers: getAuthHeaders(),
-      });
-
-      if (callsResponse.ok) {
-        const callsData = await callsResponse.json();
+      try {
+        const callsData = await api.get<any>('/waiter/calls?status=pending');
         // Transform API data to match component interface
         // Backend returns { calls: [...], total: N }
         const rawCalls = callsData.calls || callsData || [];
@@ -141,19 +135,14 @@ export default function WaiterCallsPage() {
           zone: 'Main Floor', // Default zone
         }));
         setCalls(transformedCalls);
-      } else {
-        console.error('Failed to load waiter calls:', callsResponse.status);
+      } catch {
+        console.error('Failed to load waiter calls');
         setCalls([]);
       }
 
       // Load staff
-      const staffResponse = await fetch(`${API_URL}/staff/`, {
-        credentials: 'include',
-        headers: getAuthHeaders(),
-      });
-
-      if (staffResponse.ok) {
-        const staffData = await staffResponse.json();
+      try {
+        const staffData = await api.get<any[]>('/staff/');
         const transformedStaff: Staff[] = staffData.map((s: {
           id: number;
           full_name: string;
@@ -171,19 +160,14 @@ export default function WaiterCallsPage() {
           zone: 'Main Floor',
         }));
         setStaff(transformedStaff);
-      } else {
+      } catch {
         console.error('Failed to load staff');
         setStaff([]);
       }
 
       // Load tables
-      const tablesResponse = await fetch(`${API_URL}/tables/`, {
-        credentials: 'include',
-        headers: getAuthHeaders(),
-      });
-
-      if (tablesResponse.ok) {
-        const tablesData = await tablesResponse.json();
+      try {
+        const tablesData = await api.get<any[]>('/tables/');
         const transformedTables: TableInfo[] = tablesData.map((t: {
           id: number;
           number: string;
@@ -204,7 +188,7 @@ export default function WaiterCallsPage() {
           };
         });
         setTables(transformedTables);
-      } else {
+      } catch {
         console.error('Failed to load tables');
         setTables([]);
       }
@@ -288,58 +272,43 @@ export default function WaiterCallsPage() {
   };
 
   const updateCallStatus = async (callId: number, newStatus: string, staffName?: string) => {
-    if (!localStorage.getItem('access_token')) return;
+    if (!isAuthenticated()) return;
 
     try {
-      // Map status to correct endpoint
-      let endpoint = '';
-      let method = 'POST';
-
       if (newStatus === 'acknowledged') {
-        endpoint = `${API_URL}/waiter/calls/${callId}/acknowledge`;
+        await api.post(`/waiter/calls/${callId}/acknowledge`);
       } else if (newStatus === 'resolved' || newStatus === 'completed') {
-        endpoint = `${API_URL}/waiter/calls/${callId}/complete`;
+        await api.post(`/waiter/calls/${callId}/complete`);
       } else if (newStatus === 'spam') {
         // For spam, we just dismiss/delete the call
-        endpoint = `${API_URL}/waiter/calls/${callId}`;
-        method = 'DELETE';
+        await api.del(`/waiter/calls/${callId}`);
       } else {
         console.error('Unknown status:', newStatus);
         return;
       }
 
-      const response = await fetch(endpoint, {
-        credentials: 'include',
-        method,
-        headers: getAuthHeaders(),
-      });
-
-      if (response.ok) {
-        // Update local state optimistically
-        setCalls(calls.map(call => {
-          if (call.id === callId) {
-            return {
-              ...call,
-              status: newStatus as WaiterCall['status'],
-              acknowledged_at: newStatus === 'acknowledged' ? new Date().toISOString() : call.acknowledged_at,
-              acknowledged_by: newStatus === 'acknowledged' ? (staffName || 'Current User') : call.acknowledged_by,
-              resolved_at: newStatus === 'resolved' ? new Date().toISOString() : call.resolved_at,
-              resolved_by: newStatus === 'resolved' ? (staffName || 'Current User') : call.resolved_by,
-            };
-          }
-          return call;
-        }));
-
-        // Move to history if resolved or spam
-        if (newStatus === 'resolved' || newStatus === 'spam') {
-          const call = calls.find(c => c.id === callId);
-          if (call) {
-            setCallHistory([{ ...call, status: newStatus as WaiterCall['status'] }, ...callHistory]);
-            setCalls(calls.filter(c => c.id !== callId));
-          }
+      // Update local state optimistically
+      setCalls(calls.map(call => {
+        if (call.id === callId) {
+          return {
+            ...call,
+            status: newStatus as WaiterCall['status'],
+            acknowledged_at: newStatus === 'acknowledged' ? new Date().toISOString() : call.acknowledged_at,
+            acknowledged_by: newStatus === 'acknowledged' ? (staffName || 'Current User') : call.acknowledged_by,
+            resolved_at: newStatus === 'resolved' ? new Date().toISOString() : call.resolved_at,
+            resolved_by: newStatus === 'resolved' ? (staffName || 'Current User') : call.resolved_by,
+          };
         }
-      } else {
-        console.error('Failed to update call status:', response.status);
+        return call;
+      }));
+
+      // Move to history if resolved or spam
+      if (newStatus === 'resolved' || newStatus === 'spam') {
+        const call = calls.find(c => c.id === callId);
+        if (call) {
+          setCallHistory([{ ...call, status: newStatus as WaiterCall['status'] }, ...callHistory]);
+          setCalls(calls.filter(c => c.id !== callId));
+        }
       }
     } catch (err) {
       console.error('Error updating call status:', err);

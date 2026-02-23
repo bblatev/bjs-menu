@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
-import { API_URL } from '@/lib/api';
+import { api, isAuthenticated } from '@/lib/api';
 
 interface AuditLog {
   id: number;
@@ -30,7 +30,7 @@ interface AuditSummary {
 
 export default function AuditLogsPage() {
   const router = useRouter();
-  const [token, setToken] = useState<string | null>(null);
+  const [authenticated, setAuthenticated] = useState(false);
   const [logs, setLogs] = useState<AuditLog[]>([]);
   const [summary, setSummary] = useState<AuditSummary | null>(null);
   const [loading, setLoading] = useState(false);
@@ -47,18 +47,17 @@ export default function AuditLogsPage() {
   const [availableEntityTypes, setAvailableEntityTypes] = useState<string[]>([]);
 
 
-  // Get token from localStorage on mount
+  // Check authentication on mount
   useEffect(() => {
-    const storedToken = localStorage.getItem('access_token');
-    if (!storedToken) {
+    if (!isAuthenticated()) {
       router.push('/login');
       return;
     }
-    setToken(storedToken);
+    setAuthenticated(true);
   }, [router]);
 
   const fetchLogs = async () => {
-    if (!token) return;
+    if (!authenticated) return;
     setLoading(true);
     try {
       const params = new URLSearchParams();
@@ -67,14 +66,8 @@ export default function AuditLogsPage() {
       if (staffFilter) params.append('staff_user_id', staffFilter);
       params.append('limit', '100');
 
-      const res = await fetch(`${API_URL}/audit-logs/?${params}`, {
-        credentials: 'include',
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      if (res.ok) {
-        const data = await res.json();
-        setLogs(data);
-      }
+      const data = await api.get<AuditLog[]>(`/audit-logs/?${params}`);
+      setLogs(data);
     } catch (err) {
       console.error('Error fetching audit logs:', err);
     } finally {
@@ -83,43 +76,25 @@ export default function AuditLogsPage() {
   };
 
   const fetchSummary = async () => {
-    if (!token) return;
+    if (!authenticated) return;
     try {
-      const res = await fetch(`${API_URL}/audit-logs/summary?period=${period}`, {
-        credentials: 'include',
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      if (res.ok) {
-        const data = await res.json();
-        setSummary(data);
-      }
+      const data = await api.get<AuditSummary>(`/audit-logs/summary?period=${period}`);
+      setSummary(data);
     } catch (err) {
       console.error('Error fetching summary:', err);
     }
   };
 
   const fetchFilterOptions = async () => {
-    if (!token) return;
+    if (!authenticated) return;
     try {
-      const [actionsRes, typesRes] = await Promise.all([
-        fetch(`${API_URL}/audit-logs/actions`, {
-          credentials: 'include',
-          headers: { Authorization: `Bearer ${token}` }
-        }),
-        fetch(`${API_URL}/audit-logs/entity-types`, {
-          credentials: 'include',
-          headers: { Authorization: `Bearer ${token}` }
-        })
+      const [actions, types] = await Promise.all([
+        api.get<string[]>('/audit-logs/actions'),
+        api.get<string[]>('/audit-logs/entity-types'),
       ]);
 
-      if (actionsRes.ok) {
-        const actions = await actionsRes.json();
-        setAvailableActions(actions);
-      }
-      if (typesRes.ok) {
-        const types = await typesRes.json();
-        setAvailableEntityTypes(types);
-      }
+      setAvailableActions(actions);
+      setAvailableEntityTypes(types);
     } catch (err) {
       console.error('Error fetching filter options:', err);
     }
@@ -129,12 +104,12 @@ export default function AuditLogsPage() {
     fetchLogs();
     fetchFilterOptions();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [token, actionFilter, entityTypeFilter, staffFilter]);
+  }, [authenticated, actionFilter, entityTypeFilter, staffFilter]);
 
   useEffect(() => {
     fetchSummary();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [token, period]);
+  }, [authenticated, period]);
 
   const formatDate = (dateStr: string) => {
     const date = new Date(dateStr);

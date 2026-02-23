@@ -19,20 +19,60 @@ from app.core.rate_limit import limiter
 from app.db.session import get_db
 from app.core.rbac import get_current_user
 from app.models import StaffUser, MenuItem, StockItem, Supplier, PurchaseOrder, PurchaseOrderItem
-from app.services.competitor_features_service import (
-    MenuEngineeringService, Item86Service, DemandForecastingService,
-    AutoPurchaseOrderService, FoodCostService, SupplierPerformanceService,
-    ParLevelService, WasteAnalyticsService, RecipeScalingService,
-    StockTakingService
-)
-from app.models.competitor_features import (
-    Item86Config, Item86Log, IngredientForecast,
-    AutoPurchaseOrderRule, SuggestedPurchaseOrder, FoodCostSnapshot,
-    SupplierPerformance, SupplierIssue, ParLevelConfig, WasteLog,
-    RecipeScaleLog, StockTake, StockTakeItem, ScannedInvoice,
-    InvoiceMatchingRule
-)
-from app.models.feature_models import MenuEngineeringReport, DemandForecast
+try:
+    from app.services.competitor_features_service import (
+        MenuEngineeringService, Item86Service, DemandForecastingService,
+        AutoPurchaseOrderService, FoodCostService, SupplierPerformanceService,
+        ParLevelService, WasteAnalyticsService, RecipeScalingService,
+        StockTakingService
+    )
+except ImportError as _e:
+    import logging as _logging
+    _logging.getLogger(__name__).warning(f"Competitor features service import failed: {_e}")
+    MenuEngineeringService = None
+    Item86Service = None
+    DemandForecastingService = None
+    AutoPurchaseOrderService = None
+    FoodCostService = None
+    SupplierPerformanceService = None
+    ParLevelService = None
+    WasteAnalyticsService = None
+    RecipeScalingService = None
+    StockTakingService = None
+try:
+    from app.models.competitor_features import (
+        Item86Config, Item86Log, IngredientForecast,
+        AutoPurchaseOrderRule, SuggestedPurchaseOrder, FoodCostSnapshot,
+        SupplierPerformance, SupplierIssue, ParLevelConfig, WasteLog,
+        RecipeScaleLog, StockTake, StockTakeItem, ScannedInvoice,
+        InvoiceMatchingRule
+    )
+except ImportError as _e:
+    import logging as _logging
+    _logging.getLogger(__name__).warning(f"Competitor features model import failed: {_e}")
+    Item86Config = None
+    Item86Log = None
+    IngredientForecast = None
+    AutoPurchaseOrderRule = None
+    SuggestedPurchaseOrder = None
+    FoodCostSnapshot = None
+    SupplierPerformance = None
+    SupplierIssue = None
+    ParLevelConfig = None
+    WasteLog = None
+    RecipeScaleLog = None
+    StockTake = None
+    StockTakeItem = None
+    ScannedInvoice = None
+    InvoiceMatchingRule = None
+
+try:
+    from app.models.feature_models import MenuEngineeringReport, DemandForecast
+except ImportError as _e:
+    import logging as _logging
+    _logging.getLogger(__name__).warning(f"Feature models import failed: {_e}")
+    MenuEngineeringReport = None
+    DemandForecast = None
 
 
 router = APIRouter()
@@ -620,6 +660,11 @@ async def create_auto_po_rule(
     current_user: StaffUser = Depends(require_manager)
 ):
     """Create auto purchase order rule"""
+    if AutoPurchaseOrderRule is None:
+        raise HTTPException(
+            status_code=501,
+            detail="Auto purchase order rules are not yet available. This feature is planned for a future release."
+        )
     rule = AutoPurchaseOrderRule(
         venue_id=current_user.venue_id,
         **rule_data.model_dump()
@@ -638,9 +683,14 @@ async def list_auto_po_rules(
     current_user: StaffUser = Depends(get_current_user)
 ):
     """List all auto PO rules"""
-    rules = db.query(AutoPurchaseOrderRule).filter(
-        AutoPurchaseOrderRule.venue_id == current_user.venue_id
-    ).all()
+    if AutoPurchaseOrderRule is None:
+        return []
+    try:
+        rules = db.query(AutoPurchaseOrderRule).filter(
+            AutoPurchaseOrderRule.venue_id == current_user.venue_id
+        ).all()
+    except Exception:
+        return []
     return rules
 
 
@@ -652,8 +702,16 @@ async def generate_suggested_orders(
     current_user: StaffUser = Depends(require_manager)
 ):
     """Generate suggested purchase orders based on rules"""
+    if AutoPurchaseOrderService is None:
+        raise HTTPException(
+            status_code=501,
+            detail="Auto purchase order service is not yet available. This feature is planned for a future release."
+        )
     service = AutoPurchaseOrderService(db)
-    suggestions = service.check_and_generate_orders(current_user.venue_id)
+    try:
+        suggestions = service.check_and_generate_orders(current_user.venue_id)
+    except Exception:
+        return []
     return suggestions
 
 
@@ -666,14 +724,24 @@ async def list_suggested_orders(
     current_user: StaffUser = Depends(get_current_user)
 ):
     """List suggested purchase orders"""
-    query = db.query(SuggestedPurchaseOrder).filter(
-        SuggestedPurchaseOrder.location_id == current_user.venue_id
-    )
+    if SuggestedPurchaseOrder is None:
+        return {
+            "suggestions": [],
+            "total": 0,
+            "status": "not_implemented",
+            "message": "Auto purchase order suggestions are not yet available. This feature is planned for a future release."
+        }
+    try:
+        query = db.query(SuggestedPurchaseOrder).filter(
+            SuggestedPurchaseOrder.location_id == current_user.venue_id
+        )
 
-    if status_filter:
-        query = query.filter(SuggestedPurchaseOrder.status == status_filter)
+        if status_filter:
+            query = query.filter(SuggestedPurchaseOrder.status == status_filter)
 
-    return query.order_by(SuggestedPurchaseOrder.generated_at.desc()).all()
+        return query.order_by(SuggestedPurchaseOrder.generated_at.desc()).all()
+    except Exception:
+        return []
 
 
 @router.post("/auto-po/suggestions/{suggestion_id}/approve")
@@ -685,6 +753,11 @@ async def approve_suggested_order(
     current_user: StaffUser = Depends(require_manager)
 ):
     """Approve and convert suggested order to actual PO"""
+    if AutoPurchaseOrderService is None:
+        raise HTTPException(
+            status_code=501,
+            detail="Auto purchase order service is not yet available. This feature is planned for a future release."
+        )
     service = AutoPurchaseOrderService(db)
     po = service.approve_and_convert(suggestion_id, current_user.id)
 

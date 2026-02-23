@@ -16,6 +16,7 @@ from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
 from fastapi import APIRouter, HTTPException, Query, Request, Header
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 
 from app.core.config import settings
@@ -216,17 +217,23 @@ class CheckoutSessionResponse(BaseModel):
 
 
 # ============================================================================
-# Helper: get gateway or raise 503
+# Helper: get gateway or return not-configured response
 # ============================================================================
 
 
-def _gateway() -> PaymentGatewayService:
+def _stripe_not_configured():
+    """Return a structured 'not configured' response for Stripe."""
+    return JSONResponse(status_code=200, content={
+        "status": "not_configured",
+        "message": "Stripe payment processing is not configured. Set STRIPE_SECRET_KEY in Settings > Integrations.",
+        "data": None,
+    })
+
+
+def _gateway() -> Optional[PaymentGatewayService]:
     gw = get_payment_gateway()
     if not gw.is_configured:
-        raise HTTPException(
-            status_code=503,
-            detail="Stripe is not configured. Set STRIPE_SECRET_KEY environment variable.",
-        )
+        return None
     return gw
 
 
@@ -280,6 +287,8 @@ def create_payment_intent_v2(
     ``stripe.confirmCardPayment()`` (Stripe.js / Elements).
     """
     gw = _gateway()
+    if not gw:
+        return _stripe_not_configured()
 
     metadata: Dict[str, str] = {}
     if body.order_id:
@@ -353,6 +362,8 @@ def confirm_payment(
     endpoint is available for server-side flows.
     """
     gw = _gateway()
+    if not gw:
+        return _stripe_not_configured()
     result = gw.confirm_payment(payment_intent_id)
 
     if not result.get("success"):
@@ -399,6 +410,8 @@ def refund_payment_v2(
     created.
     """
     gw = _gateway()
+    if not gw:
+        return _stripe_not_configured()
     result = gw.refund_payment(
         payment_intent_id=payment_intent_id,
         amount_cents=body.amount if body else None,
@@ -466,7 +479,7 @@ async def stripe_webhook(
         # Fallback to legacy stripe_service
         legacy = get_stripe_service()
         if not legacy:
-            raise HTTPException(status_code=503, detail="Stripe not configured")
+            return _stripe_not_configured()
         if not legacy.verify_webhook_signature(payload, stripe_signature):
             raise HTTPException(status_code=400, detail="Invalid webhook signature")
         parsed = json.loads(payload)
@@ -510,6 +523,8 @@ def get_payment_status_by_id(
 ):
     """Retrieve the current status of a PaymentIntent from Stripe."""
     gw = _gateway()
+    if not gw:
+        return _stripe_not_configured()
     result = gw.get_payment_status(payment_intent_id)
 
     if not result.get("success"):
@@ -541,28 +556,42 @@ def list_transactions(
     service model). Falls back to the legacy ``check_payments`` table
     when no gateway transactions exist yet.
     """
-    data = PaymentGatewayService.list_transactions(
-        db,
-        location_id=location_id,
-        status=status,
-        payment_method=payment_method,
-        limit=limit,
-        offset=offset,
-    )
+    try:
+        data = PaymentGatewayService.list_transactions(
+            db,
+            location_id=location_id,
+            status=status,
+            payment_method=payment_method,
+            limit=limit,
+            offset=offset,
+        )
 
-    txns = data["transactions"]
+        txns = data.get("transactions", [])
 
-    # If no gateway transactions found, try legacy check_payments
-    if not txns and not location_id and not status and not payment_method:
-        return _legacy_transactions(db, limit, offset)
+        # If no gateway transactions found, try legacy check_payments
+        if not txns and not location_id and not status and not payment_method:
+            try:
+                return _legacy_transactions(db, limit, offset)
+            except Exception as e:
+                logger.warning(f"Legacy transaction fallback failed: {e}")
+                return TransactionListResponse(
+                    transactions=[], total=0, limit=limit, offset=offset,
+                )
 
-    items = [TransactionOut.model_validate(t) for t in txns]
-    return TransactionListResponse(
-        transactions=items,
-        total=data["total"],
-        limit=limit,
-        offset=offset,
-    )
+        items = [TransactionOut.model_validate(t) for t in txns]
+        return TransactionListResponse(
+            transactions=items,
+            total=data.get("total", 0),
+            limit=limit,
+            offset=offset,
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.exception("Failed to list transactions")
+        return TransactionListResponse(
+            transactions=[], total=0, limit=limit, offset=offset,
+        )
 
 
 @router.get("/transactions/{transaction_id}", response_model=TransactionOut)
@@ -574,13 +603,19 @@ def get_transaction(
     current_user: CurrentUser,
 ):
     """Get a single payment transaction by its database ID."""
-    from sqlalchemy import select as sa_select
+    try:
+        from sqlalchemy import select as sa_select
 
-    stmt = sa_select(PaymentTransaction).where(PaymentTransaction.id == transaction_id)
-    txn = db.execute(stmt).scalar_one_or_none()
-    if txn is None:
-        raise HTTPException(status_code=404, detail="Transaction not found")
-    return TransactionOut.model_validate(txn)
+        stmt = sa_select(PaymentTransaction).where(PaymentTransaction.id == transaction_id)
+        txn = db.execute(stmt).scalar_one_or_none()
+        if txn is None:
+            raise HTTPException(status_code=404, detail="Transaction not found")
+        return TransactionOut.model_validate(txn)
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.exception(f"Failed to get transaction {transaction_id}")
+        raise HTTPException(status_code=500, detail=f"Failed to retrieve transaction: {str(e)}")
 
 
 # ============================================================================
@@ -596,6 +631,8 @@ def terminal_connection_token(
 ):
     """Create a connection token for Stripe Terminal (card reader devices)."""
     gw = _gateway()
+    if not gw:
+        return _stripe_not_configured()
     result = gw.create_terminal_connection_token()
 
     if not result.get("success"):
@@ -620,6 +657,8 @@ def terminal_capture(
 ):
     """Capture a terminal payment that was authorized with manual capture."""
     gw = _gateway()
+    if not gw:
+        return _stripe_not_configured()
     result = gw.capture_terminal_payment(
         payment_intent_id,
         amount_to_capture=body.amount_to_capture if body else None,
@@ -688,6 +727,8 @@ def create_checkout_session(
 ):
     """Create a Stripe Checkout Session for hosted payment pages."""
     gw = _gateway()
+    if not gw:
+        return _stripe_not_configured()
     items = [item.model_dump() for item in body.items]
     result = gw.create_checkout_session(
         items=items,
@@ -725,10 +766,7 @@ async def create_payment_intent_legacy(
     """
     stripe_svc = get_stripe_service()
     if not stripe_svc:
-        raise HTTPException(
-            status_code=503,
-            detail="Stripe is not configured. Set STRIPE_SECRET_KEY environment variable.",
-        )
+        return _stripe_not_configured()
 
     metadata: Dict[str, str] = {}
     if body.order_id:
@@ -768,7 +806,7 @@ async def get_payment_intent_legacy(
     """[Legacy] Get the status of a payment intent."""
     stripe_svc = get_stripe_service()
     if not stripe_svc:
-        raise HTTPException(status_code=503, detail="Stripe not configured")
+        return _stripe_not_configured()
 
     result = await stripe_svc.get_payment_intent(payment_intent_id)
 
@@ -793,7 +831,7 @@ async def capture_payment_intent_legacy(
     """[Legacy] Capture a previously authorized payment."""
     stripe_svc = get_stripe_service()
     if not stripe_svc:
-        raise HTTPException(status_code=503, detail="Stripe not configured")
+        return _stripe_not_configured()
 
     result = await stripe_svc.capture_payment_intent(
         payment_intent_id=payment_intent_id,
@@ -821,7 +859,7 @@ async def cancel_payment_intent_legacy(
     """[Legacy] Cancel a payment intent."""
     stripe_svc = get_stripe_service()
     if not stripe_svc:
-        raise HTTPException(status_code=503, detail="Stripe not configured")
+        return _stripe_not_configured()
 
     result = await stripe_svc.cancel_payment_intent(
         payment_intent_id=payment_intent_id,
@@ -847,7 +885,7 @@ async def refund_payment_legacy(
     """[Legacy] Create a refund via the httpx-based StripeService."""
     stripe_svc = get_stripe_service()
     if not stripe_svc:
-        raise HTTPException(status_code=503, detail="Stripe not configured")
+        return _stripe_not_configured()
 
     result = await stripe_svc.create_refund(
         payment_intent_id=payment_intent_id,
@@ -874,7 +912,7 @@ async def create_customer_legacy(
     """[Legacy] Create a Stripe customer."""
     stripe_svc = get_stripe_service()
     if not stripe_svc:
-        raise HTTPException(status_code=503, detail="Stripe not configured")
+        return _stripe_not_configured()
 
     metadata: Dict[str, str] = {}
     if body.customer_id:
@@ -907,7 +945,7 @@ async def list_customer_payment_methods_legacy(
     """[Legacy] List saved payment methods for a customer."""
     stripe_svc = get_stripe_service()
     if not stripe_svc:
-        raise HTTPException(status_code=503, detail="Stripe not configured")
+        return _stripe_not_configured()
 
     methods = await stripe_svc.list_payment_methods(customer_id=customer_id, type=type)
 
@@ -930,7 +968,7 @@ async def list_terminal_readers_legacy(request: Request, current_user: CurrentUs
     """[Legacy] List connected Stripe Terminal readers."""
     stripe_svc = get_stripe_service()
     if not stripe_svc:
-        raise HTTPException(status_code=503, detail="Stripe not configured")
+        return _stripe_not_configured()
 
     return {
         "readers": [],
@@ -1211,34 +1249,43 @@ def _handle_checkout_completed(db, event_data: Dict[str, Any]) -> Dict[str, Any]
 
 def _legacy_transactions(db, limit: int, offset: int) -> TransactionListResponse:
     """Fall back to check_payments table when no gateway transactions exist."""
-    from sqlalchemy import func as sa_func
-    from app.models.restaurant import CheckPayment
+    try:
+        from sqlalchemy import func as sa_func
+        from app.models.restaurant import CheckPayment
 
-    total = db.query(sa_func.count(CheckPayment.id)).scalar() or 0
-    payments = (
-        db.query(CheckPayment)
-        .order_by(CheckPayment.created_at.desc())
-        .offset(offset)
-        .limit(limit)
-        .all()
-    )
-
-    items = [
-        TransactionOut(
-            id=p.id,
-            location_id=0,
-            amount_cents=int((p.amount or 0) * 100),
-            currency="usd",
-            status="succeeded",
-            payment_method=p.payment_type or "card",
-            check_id=p.check_id,
-            created_at=p.created_at,
+        total = db.query(sa_func.count(CheckPayment.id)).scalar() or 0
+        payments = (
+            db.query(CheckPayment)
+            .order_by(CheckPayment.created_at.desc())
+            .offset(offset)
+            .limit(limit)
+            .all()
         )
-        for p in payments
-    ]
-    return TransactionListResponse(
-        transactions=items,
-        total=total,
-        limit=limit,
-        offset=offset,
-    )
+
+        items = [
+            TransactionOut(
+                id=p.id,
+                location_id=0,
+                amount_cents=int((p.amount or 0) * 100),
+                currency="usd",
+                status="succeeded",
+                payment_method=p.payment_type or "card",
+                check_id=getattr(p, 'check_id', None),
+                created_at=p.created_at,
+            )
+            for p in payments
+        ]
+        return TransactionListResponse(
+            transactions=items,
+            total=total,
+            limit=limit,
+            offset=offset,
+        )
+    except Exception as e:
+        logger.warning(f"Legacy transactions fallback failed: {e}")
+        return TransactionListResponse(
+            transactions=[],
+            total=0,
+            limit=limit,
+            offset=offset,
+        )

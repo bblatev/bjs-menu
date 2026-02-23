@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
-import { API_URL } from '@/lib/api';
+import { api, API_URL, getAuthHeaders } from '@/lib/api';
 
 import { toast } from '@/lib/toast';
 interface StockItem {
@@ -107,24 +107,10 @@ export default function StockPage() {
 
   const loadCategories = async () => {
     try {
-      const token = localStorage.getItem("access_token");
-      const response = await fetch(
-        `${API_URL}/stock/categories`,
-        {
-          credentials: 'include',
-          headers: { Authorization: `Bearer ${token}` },
-        }
-      );
-
-      if (response.ok) {
-        const data = await response.json();
-        const categoryNames = data.map((c: any) => typeof c === 'string' ? c : (c.name || c.category || ''));
-        setCategories(['all', ...categoryNames]);
-      } else {
-        // Fallback to default categories
-        setCategories(['all', 'ingredients', 'beverages', 'dry goods', 'frozen', 'dairy', 'produce', 'meat', 'seafood']);
-      }
-    } catch (error) {
+      const data = await api.get<any[]>('/stock/categories');
+      const categoryNames = data.map((c: any) => typeof c === 'string' ? c : (c.name || c.category || ''));
+      setCategories(['all', ...categoryNames]);
+    } catch {
       // Fallback to default categories on error
       setCategories(['all', 'ingredients', 'beverages', 'dry goods', 'frozen', 'dairy', 'produce', 'meat', 'seafood']);
     }
@@ -132,32 +118,22 @@ export default function StockPage() {
 
   const loadStock = async () => {
     try {
-      const token = localStorage.getItem("access_token");
-      let url = `${API_URL}/stock/`;
+      let path = '/stock/';
       const params = new URLSearchParams();
       if (searchTerm) params.append("search", searchTerm);
       if (filterLowStock) params.append("low_stock_only", "true");
       if (filterCategory !== 'all') params.append("category", filterCategory);
-      if (params.toString()) url += `?${params.toString()}`;
+      if (params.toString()) path += `?${params.toString()}`;
 
-      const response = await fetch(url, {
-        credentials: 'include',
-        headers: { Authorization: `Bearer ${token}` },
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        const raw = Array.isArray(data) ? data : (data.items || data.stock || []);
-        // Map backend field names to frontend interface
-        setItems(raw.map((item: any) => ({
-          ...item,
-          low_stock_threshold: item.low_stock_threshold ?? item.min_stock ?? item.par_level ?? 0,
-          cost_per_unit: item.cost_per_unit ?? item.cost_price ?? 0,
-          is_active: item.is_active ?? true,
-        })));
-      } else {
-        setItems([]);
-      }
+      const data = await api.get<any>(path);
+      const raw = Array.isArray(data) ? data : (data.items || data.stock || []);
+      // Map backend field names to frontend interface
+      setItems(raw.map((item: any) => ({
+        ...item,
+        low_stock_threshold: item.low_stock_threshold ?? item.min_stock ?? item.par_level ?? 0,
+        cost_per_unit: item.cost_per_unit ?? item.cost_price ?? 0,
+        is_active: item.is_active ?? true,
+      })));
     } catch {
       setItems([]);
     } finally {
@@ -167,31 +143,18 @@ export default function StockPage() {
 
   const loadMovements = async () => {
     try {
-      const token = localStorage.getItem("access_token");
-      const response = await fetch(
-        `${API_URL}/stock/movements/`,
-        {
-          credentials: 'include',
-          headers: { Authorization: `Bearer ${token}` },
-        }
-      );
-
-      if (response.ok) {
-        const data = await response.json();
-        const movementList = Array.isArray(data) ? data : (data.movements || []);
-        setMovements(movementList.map((m: any) => ({
-          id: String(m.id),
-          item_id: m.product_id || m.stock_item_id || m.item_id,
-          item_name: m.product_name || m.stock_item_name || m.item_name || 'Item #' + (m.product_id || ''),
-          type: m.reason || m.movement_type || m.type || 'adjustment',
-          quantity: m.qty_delta != null ? m.qty_delta : m.quantity,
-          reason: m.notes || m.reason || '',
-          date: m.timestamp || m.created_at || m.date,
-          user: m.created_by_name || m.created_by || m.user || 'System',
-        })));
-      } else {
-        setMovements([]);
-      }
+      const data = await api.get<any>('/stock/movements/');
+      const movementList = Array.isArray(data) ? data : (data.movements || []);
+      setMovements(movementList.map((m: any) => ({
+        id: String(m.id),
+        item_id: m.product_id || m.stock_item_id || m.item_id,
+        item_name: m.product_name || m.stock_item_name || m.item_name || 'Item #' + (m.product_id || ''),
+        type: m.reason || m.movement_type || m.type || 'adjustment',
+        quantity: m.qty_delta != null ? m.qty_delta : m.quantity,
+        reason: m.notes || m.reason || '',
+        date: m.timestamp || m.created_at || m.date,
+        user: m.created_by_name || m.created_by || m.user || 'System',
+      })));
     } catch {
       setMovements([]);
     }
@@ -199,29 +162,16 @@ export default function StockPage() {
 
   const loadSuppliers = async () => {
     try {
-      const token = localStorage.getItem("access_token");
-      const response = await fetch(
-        `${API_URL}/suppliers/`,
-        {
-          credentials: 'include',
-          headers: { Authorization: `Bearer ${token}` },
-        }
-      );
-
-      if (response.ok) {
-        const data = await response.json();
-        setSuppliers(data.map((s: { id: number; name?: string; company_name?: string; contact_name?: string; contact_person?: string; email?: string; phone?: string; phone_number?: string; lead_time_days?: number; delivery_days?: number; min_order?: number; minimum_order?: number }) => ({
-          id: String(s.id),
-          name: s.name || s.company_name || '',
-          contact: s.contact_name || s.contact_person || '',
-          email: s.email || '',
-          phone: s.phone || s.phone_number || '',
-          lead_time_days: s.lead_time_days || s.delivery_days || 0,
-          min_order: s.min_order || s.minimum_order || 0,
-        })));
-      } else {
-        setSuppliers([]);
-      }
+      const data = await api.get<any[]>('/suppliers/');
+      setSuppliers(data.map((s: { id: number; name?: string; company_name?: string; contact_name?: string; contact_person?: string; email?: string; phone?: string; phone_number?: string; lead_time_days?: number; delivery_days?: number; min_order?: number; minimum_order?: number }) => ({
+        id: String(s.id),
+        name: s.name || s.company_name || '',
+        contact: s.contact_name || s.contact_person || '',
+        email: s.email || '',
+        phone: s.phone || s.phone_number || '',
+        lead_time_days: s.lead_time_days || s.delivery_days || 0,
+        min_order: s.min_order || s.minimum_order || 0,
+      })));
     } catch {
       setSuppliers([]);
     }
@@ -229,30 +179,17 @@ export default function StockPage() {
 
   const loadAlerts = async () => {
     try {
-      const token = localStorage.getItem("access_token");
-      const response = await fetch(
-        `${API_URL}/stock/alerts/`,
-        {
-          credentials: 'include',
-          headers: { Authorization: `Bearer ${token}` },
-        }
-      );
-
-      if (response.ok) {
-        const data = await response.json();
-        const alertList = Array.isArray(data) ? data : (data.alerts || []);
-        setAlerts(alertList.map((a: any, idx: number) => ({
-          id: String(a.id || idx),
-          item_id: a.product_id || a.stock_item_id || a.item_id,
-          item_name: a.product_name || a.stock_item_name || a.item_name || 'Unknown Item',
-          type: a.type || a.alert_type || 'low_stock',
-          message: a.message || a.description || '',
-          created_at: a.created_at || new Date().toISOString(),
-          acknowledged: a.acknowledged || a.is_acknowledged || false,
-        })));
-      } else {
-        setAlerts([]);
-      }
+      const data = await api.get<any>('/stock/alerts/');
+      const alertList = Array.isArray(data) ? data : (data.alerts || []);
+      setAlerts(alertList.map((a: any, idx: number) => ({
+        id: String(a.id || idx),
+        item_id: a.product_id || a.stock_item_id || a.item_id,
+        item_name: a.product_name || a.stock_item_name || a.item_name || 'Unknown Item',
+        type: a.type || a.alert_type || 'low_stock',
+        message: a.message || a.description || '',
+        created_at: a.created_at || new Date().toISOString(),
+        acknowledged: a.acknowledged || a.is_acknowledged || false,
+      })));
     } catch {
       setAlerts([]);
     }
@@ -260,7 +197,6 @@ export default function StockPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const token = localStorage.getItem("access_token");
 
     try {
       const params = new URLSearchParams();
@@ -271,34 +207,18 @@ export default function StockPage() {
       if (form.low_stock_threshold) params.append("par_level", String(form.low_stock_threshold));
       if (form.sku) params.append("barcode", form.sku);
 
-      const response = await fetch(
-        `${API_URL}/stock/?${params.toString()}`,
-        {
-          credentials: 'include',
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
-
-      if (response.ok) {
-        setShowModal(false);
-        setForm({ name: "", sku: "", quantity: 0, unit: "kg", low_stock_threshold: 10, cost_per_unit: 0, category: "ingredients", supplier: "", location: "" });
-        loadStock();
-        toast.success("Item created successfully");
-      } else {
-        const err = await response.json().catch(() => null);
-        toast.error(err?.detail || "Failed to create item");
-      }
-    } catch {
-      toast.error("Error creating item");
+      await api.post(`/stock/?${params.toString()}`);
+      setShowModal(false);
+      setForm({ name: "", sku: "", quantity: 0, unit: "kg", low_stock_threshold: 10, cost_per_unit: 0, category: "ingredients", supplier: "", location: "" });
+      loadStock();
+      toast.success("Item created successfully");
+    } catch (err: any) {
+      toast.error(err?.data?.detail || err?.message || "Error creating item");
     }
   };
 
   const handleMovementSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const token = localStorage.getItem("access_token");
 
     try {
       // Backend expects query params: product_id, quantity (signed), reason, notes
@@ -312,29 +232,14 @@ export default function StockPage() {
       params.append("reason", movementForm.type);
       if (movementForm.reason) params.append("notes", movementForm.reason);
 
-      const response = await fetch(
-        `${API_URL}/stock/movements/?${params.toString()}`,
-        {
-          credentials: 'include',
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
-
-      if (response.ok) {
-        setShowMovementModal(false);
-        setMovementForm({ item_id: 0, type: 'in', quantity: 0, reason: '' });
-        loadStock();
-        loadMovements();
-        toast.success("Movement recorded");
-      } else {
-        const err = await response.json().catch(() => null);
-        toast.error(err?.detail || "Failed to record movement");
-      }
-    } catch {
-      toast.error("Error recording movement");
+      await api.post(`/stock/movements/?${params.toString()}`);
+      setShowMovementModal(false);
+      setMovementForm({ item_id: 0, type: 'in', quantity: 0, reason: '' });
+      loadStock();
+      loadMovements();
+      toast.success("Movement recorded");
+    } catch (err: any) {
+      toast.error(err?.data?.detail || err?.message || "Error recording movement");
     }
   };
 
@@ -351,8 +256,6 @@ export default function StockPage() {
   };
 
   const handleImport = async () => {
-    const token = localStorage.getItem("access_token");
-
     try {
       if (!importData.trim()) {
         toast.error("No CSV data to import");
@@ -365,40 +268,21 @@ export default function StockPage() {
       const formData = new FormData();
       formData.append("file", file);
 
-      const response = await fetch(
-        `${API_URL}/stock/import`,
-        {
-          credentials: 'include',
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-          body: formData,
-        }
-      );
-
-      if (response.ok) {
-        const result = await response.json();
-        setImportResult(result);
-        loadStock();
-      } else {
-        const err = await response.json().catch(() => null);
-        toast.error(err?.detail || "Import failed");
-      }
-    } catch (error) {
-      toast.error("Error importing data");
+      const result = await api.post<any>('/stock/import', formData);
+      setImportResult(result);
+      loadStock();
+    } catch (err: any) {
+      toast.error(err?.data?.detail || err?.message || "Error importing data");
     }
   };
 
   const handleExport = async () => {
-    const token = localStorage.getItem("access_token");
-
     try {
       const response = await fetch(
         `${API_URL}/stock/export`,
         {
           credentials: 'include',
-          headers: { Authorization: `Bearer ${token}` },
+          headers: getAuthHeaders(),
         }
       );
 
@@ -416,7 +300,7 @@ export default function StockPage() {
       } else {
         toast.error("Export failed");
       }
-    } catch (error) {
+    } catch {
       toast.error("Error exporting data");
     }
   };

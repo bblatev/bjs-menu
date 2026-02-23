@@ -3,7 +3,7 @@
  * Use this module for all API-related configuration to avoid duplication
  */
 
-// Auth token storage key - use this constant instead of hardcoding 'access_token'
+// Legacy token key - kept for backward compatibility during cleanup
 export const TOKEN_KEY = 'access_token';
 
 // API base URL - configured via environment variable
@@ -18,16 +18,11 @@ export const API_VERSION = '/api/v1';
 // Application version
 export const APP_VERSION = process.env.NEXT_PUBLIC_APP_VERSION || '9.0.0';
 
-// Common API headers
+// Common API headers - auth is handled via HttpOnly cookies (credentials: 'include')
 export const getAuthHeaders = (method?: string): Record<string, string> => {
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
   };
-  // Include Bearer token from localStorage (bridge during cookie migration)
-  const token = typeof window !== 'undefined' ? localStorage.getItem(TOKEN_KEY) : null;
-  if (token) {
-    headers['Authorization'] = `Bearer ${token}`;
-  }
   // For unsafe methods, include CSRF token for cookie-based auth
   const unsafeMethods = ['POST', 'PUT', 'PATCH', 'DELETE'];
   if (method && unsafeMethods.includes(method.toUpperCase())) {
@@ -39,18 +34,16 @@ export const getAuthHeaders = (method?: string): Record<string, string> => {
   return headers;
 };
 
-// Check if user is authenticated (cookie or legacy localStorage)
+// Check if user is authenticated via HttpOnly cookie session
 export const isAuthenticated = (): boolean => {
   if (typeof window === 'undefined') return false;
-  return document.cookie.includes('csrf_token=') || !!localStorage.getItem(TOKEN_KEY);
+  return document.cookie.includes('csrf_token=');
 };
 
-// Clear authentication
+// Clear authentication - server clears HttpOnly cookies via POST /auth/logout
 export const clearAuth = (): void => {
-  if (typeof window === 'undefined') return;
-  // Clear legacy localStorage tokens
-  localStorage.removeItem(TOKEN_KEY);
-  localStorage.removeItem('auth_token');
+  // HttpOnly cookies are cleared by the server's logout endpoint.
+  // No client-side cleanup needed.
 };
 
 // Get CSRF token from cookie (set by server, readable by JS)
@@ -61,10 +54,9 @@ export const getCsrfToken = (): string => {
 };
 
 // Legacy: tokens are now set as HttpOnly cookies by the server.
-// Kept for backward compatibility during migration.
-export const setAuthToken = (token: string): void => {
-  if (typeof window === 'undefined') return;
-  localStorage.setItem(TOKEN_KEY, token);
+// This function is a no-op but kept for backward compatibility.
+export const setAuthToken = (_token: string): void => {
+  // No-op: auth tokens are now managed as HttpOnly cookies by the server
 };
 
 // Build full API endpoint URL

@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import Link from 'next/link';
-import { API_URL } from '@/lib/api';
+import { api } from '@/lib/api';
 
 interface TimeClockEntry {
   id: number;
@@ -55,33 +55,23 @@ export default function TimeClockPage() {
 
   const loadData = async () => {
     try {
-      const token = localStorage.getItem('access_token');
-
       // Load current status
-      const statusResponse = await fetch(`${API_URL}/staff/time-clock/status`, {
-        credentials: 'include',
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (statusResponse.ok) {
-        setMyStatus(await statusResponse.json());
-      }
+      try {
+        const statusData = await api.get<ClockStatus>('/staff/time-clock/status');
+        setMyStatus(statusData);
+      } catch { /* ignore */ }
 
       // Load time entries
-      const entriesResponse = await fetch(
-        `${API_URL}/staff/time-clock/entries?start_date=${dateRange.start}&end_date=${dateRange.end}`,
-        { credentials: 'include', headers: { Authorization: `Bearer ${token}` } }
-      );
-      if (entriesResponse.ok) {
-        setEntries(await entriesResponse.json());
-      }
+      try {
+        const entriesData = await api.get<TimeClockEntry[]>(
+          `/staff/time-clock/entries?start_date=${dateRange.start}&end_date=${dateRange.end}`
+        );
+        setEntries(entriesData);
+      } catch { /* ignore */ }
 
       // Load staff from API
-      const staffResponse = await fetch(`${API_URL}/staff`, {
-        credentials: 'include',
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (staffResponse.ok) {
-        const staffData = await staffResponse.json();
+      try {
+        const staffData = await api.get<any>('/staff');
         const staffList = (staffData.items || staffData || []).map((s: Record<string, unknown>) => ({
           id: s.id,
           name: s.full_name || s.name || 'Unknown',
@@ -91,7 +81,7 @@ export default function TimeClockPage() {
           status: s.is_clocked_in ? 'clocked_in' : 'off',
         }));
         setStaff(staffList);
-      }
+      } catch { /* ignore */ }
     } catch (error) {
       console.error('Error loading data:', error);
     } finally {
@@ -101,19 +91,8 @@ export default function TimeClockPage() {
 
   const handlePunchIn = async () => {
     try {
-      const token = localStorage.getItem('access_token');
-      const response = await fetch(`${API_URL}/staff/time-clock/punch-in`, {
-        credentials: 'include',
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ clock_in_method: 'web' }),
-      });
-      if (response.ok) {
-        loadData();
-      }
+      await api.post('/staff/time-clock/punch-in', { clock_in_method: 'web' });
+      loadData();
     } catch (error) {
       console.error('Error punching in:', error);
     }
@@ -121,19 +100,8 @@ export default function TimeClockPage() {
 
   const handlePunchOut = async () => {
     try {
-      const token = localStorage.getItem('access_token');
-      const response = await fetch(`${API_URL}/staff/time-clock/punch-out`, {
-        credentials: 'include',
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ clock_out_method: 'web' }),
-      });
-      if (response.ok) {
-        loadData();
-      }
+      await api.post('/staff/time-clock/punch-out', { clock_out_method: 'web' });
+      loadData();
     } catch (error) {
       console.error('Error punching out:', error);
     }
@@ -141,15 +109,8 @@ export default function TimeClockPage() {
 
   const handleStartBreak = async () => {
     try {
-      const token = localStorage.getItem('access_token');
-      const response = await fetch(`${API_URL}/staff/time-clock/break/start`, {
-        credentials: 'include',
-        method: 'POST',
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (response.ok) {
-        loadData();
-      }
+      await api.post('/staff/time-clock/break/start');
+      loadData();
     } catch (error) {
       console.error('Error starting break:', error);
     }
@@ -157,15 +118,8 @@ export default function TimeClockPage() {
 
   const handleEndBreak = async () => {
     try {
-      const token = localStorage.getItem('access_token');
-      const response = await fetch(`${API_URL}/staff/time-clock/break/end`, {
-        credentials: 'include',
-        method: 'POST',
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (response.ok) {
-        loadData();
-      }
+      await api.post('/staff/time-clock/break/end');
+      loadData();
     } catch (error) {
       console.error('Error ending break:', error);
     }

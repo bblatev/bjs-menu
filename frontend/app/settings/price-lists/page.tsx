@@ -1,8 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-
-const API = () => '/api/v1';
+import { api } from '@/lib/api';
 
 interface PriceList {
   id: number;
@@ -73,15 +72,12 @@ export default function PriceListsPage() {
     adjustment_value: "",
   });
 
-  const token = () => localStorage.getItem("access_token") || "";
-  const headers = () => ({ Authorization: `Bearer ${token()}`, "Content-Type": "application/json" });
   const notify = (msg: string) => { setToast(msg); setTimeout(() => setToast(""), 3000); };
 
   const loadPriceLists = useCallback(async () => {
     try {
-      const h = { Authorization: `Bearer ${token()}`, "Content-Type": "application/json" };
-      const res = await fetch(`${API()}/price-lists`, { credentials: 'include', headers: h });
-      if (res.ok) setPriceLists(await res.json());
+      const data = await api.get<PriceList[]>('/price-lists');
+      setPriceLists(data);
     } catch (err) {
       console.error('Failed to load price lists:', err);
     }
@@ -89,17 +85,20 @@ export default function PriceListsPage() {
 
   const loadProducts = useCallback(async () => {
     try {
-      const h = { Authorization: `Bearer ${token()}`, "Content-Type": "application/json" };
-      const res = await fetch(`${API()}/waiter/menu/quick`, { credentials: 'include', headers: h });
-      if (res.ok) setProducts(await res.json());
+      const data = await api.get<Product[]>('/waiter/menu/quick');
+      setProducts(data);
     } catch (err) {
       console.error('Failed to load products:', err);
     }
   }, []);
 
   const loadProductPrices = async (priceListId: number) => {
-    const res = await fetch(`${API()}/price-lists/${priceListId}/products`, { credentials: 'include', headers: headers() });
-    if (res.ok) setProductPrices(await res.json());
+    try {
+      const data = await api.get<ProductPrice[]>(`/price-lists/${priceListId}/products`);
+      setProductPrices(data);
+    } catch (err) {
+      console.error('Failed to load product prices:', err);
+    }
   };
 
   useEffect(() => {
@@ -171,42 +170,31 @@ export default function PriceListsPage() {
       is_active: form.is_active,
     };
 
-    const url = editingList ? `${API()}/price-lists/${editingList.id}` : `${API()}/price-lists`;
-    const method = editingList ? "PUT" : "POST";
-
-    const res = await fetch(url, {
-      credentials: 'include',
-      method,
-      headers: headers(),
-      body: JSON.stringify(payload),
-    });
-
-    setSaving(false);
-
-    if (res.ok) {
+    try {
+      if (editingList) {
+        await api.put(`/price-lists/${editingList.id}`, payload);
+      } else {
+        await api.post('/price-lists', payload);
+      }
       notify(editingList ? "Price list updated" : "Price list created");
       setShowForm(false);
       resetForm();
       loadPriceLists();
-    } else {
-      const err = await res.json();
-      notify(err.detail || "Failed to save");
+    } catch (err: any) {
+      notify(err?.data?.detail || "Failed to save");
+    } finally {
+      setSaving(false);
     }
   };
 
   const handleDelete = async (id: number) => {
     if (!confirm("Delete this price list?")) return;
 
-    const res = await fetch(`${API()}/price-lists/${id}`, {
-      credentials: 'include',
-      method: "DELETE",
-      headers: headers(),
-    });
-
-    if (res.ok) {
+    try {
+      await api.del(`/price-lists/${id}`);
       notify("Price list deleted");
       loadPriceLists();
-    } else {
+    } catch {
       notify("Failed to delete");
     }
   };
@@ -223,23 +211,16 @@ export default function PriceListsPage() {
       adjustment_value: priceForm.adjustment_value ? parseFloat(priceForm.adjustment_value) : null,
     };
 
-    const res = await fetch(`${API()}/price-lists/${selectedPriceList.id}/products/${priceForm.product_id}`, {
-      credentials: 'include',
-      method: "POST",
-      headers: headers(),
-      body: JSON.stringify(payload),
-    });
-
-    setSaving(false);
-
-    if (res.ok) {
+    try {
+      await api.post(`/price-lists/${selectedPriceList.id}/products/${priceForm.product_id}`, payload);
       notify("Product price added");
       setShowPriceForm(false);
       setPriceForm({ product_id: "", price: "", adjustment_type: "fixed", adjustment_value: "" });
       loadProductPrices(selectedPriceList.id);
-    } else {
-      const err = await res.json();
-      notify(err.detail || "Failed to add price");
+    } catch (err: any) {
+      notify(err?.data?.detail || "Failed to add price");
+    } finally {
+      setSaving(false);
     }
   };
 

@@ -10,7 +10,10 @@ from datetime import datetime, date, timedelta
 from decimal import Decimal
 
 from app.db.session import get_db
-from app.services.production_service import ProductionService
+try:
+    from app.services.production_service import ProductionService
+except ImportError:
+    ProductionService = None
 from pydantic import BaseModel, Field
 
 from app.core.rate_limit import limiter
@@ -179,6 +182,8 @@ def create_recipe(
     }
     ```
     """
+    if ProductionService is None:
+        raise HTTPException(status_code=501, detail="Production service is not available. Required dependencies are not installed.")
     service = ProductionService(db)
     
     try:
@@ -227,6 +232,8 @@ def get_recipe(
     db: Session = Depends(get_db)
 ):
     """Get recipe details"""
+    if ProductionService is None:
+        raise HTTPException(status_code=501, detail="Production service is not available. Required dependencies are not installed.")
     service = ProductionService(db)
     recipe = service.get_recipe(recipe_id)
     
@@ -282,6 +289,8 @@ def list_recipes(
     - active: Only active recipes (default: true)
     - difficulty: Filter by difficulty (easy, medium, hard)
     """
+    if ProductionService is None:
+        raise HTTPException(status_code=501, detail="Production service is not available. Required dependencies are not installed.")
     service = ProductionService(db)
     recipes = service.get_recipes(
         menu_item_id=menu_item_id,
@@ -365,6 +374,8 @@ def calculate_recipe_cost(
     }
     ```
     """
+    if ProductionService is None:
+        raise HTTPException(status_code=501, detail="Production service is not available. Required dependencies are not installed.")
     service = ProductionService(db)
     
     try:
@@ -395,6 +406,8 @@ def update_recipe(
     If ingredients are changed, creates a new version.
     Version history is maintained for cost tracking.
     """
+    if ProductionService is None:
+        raise HTTPException(status_code=501, detail="Production service is not available. Required dependencies are not installed.")
     service = ProductionService(db)
     
     try:
@@ -448,6 +461,8 @@ def create_production_order(
     2. Start production (deducts stock)
     3. Complete production (creates batch)
     """
+    if ProductionService is None:
+        raise HTTPException(status_code=501, detail="Production service is not available. Required dependencies are not installed.")
     service = ProductionService(db)
     
     try:
@@ -506,6 +521,8 @@ def start_production(
     
     Throws error if insufficient stock
     """
+    if ProductionService is None:
+        raise HTTPException(status_code=501, detail="Production service is not available. Required dependencies are not installed.")
     service = ProductionService(db)
     
     try:
@@ -562,6 +579,8 @@ def complete_production(
     
     Batch code is auto-generated for tracking
     """
+    if ProductionService is None:
+        raise HTTPException(status_code=501, detail="Production service is not available. Required dependencies are not installed.")
     service = ProductionService(db)
     
     try:
@@ -621,6 +640,8 @@ def list_production_orders(
     - recipe_id: Orders for specific recipe
     - date_from/to: Date range
     """
+    if ProductionService is None:
+        raise HTTPException(status_code=501, detail="Production service is not available. Required dependencies are not installed.")
     service = ProductionService(db)
     orders = service.get_production_orders(
         venue_id=venue_id,
@@ -686,6 +707,8 @@ def list_production_batches(
     - Finding batches near expiry
     - Production tracking
     """
+    if ProductionService is None:
+        raise HTTPException(status_code=501, detail="Production service is not available. Required dependencies are not installed.")
     service = ProductionService(db)
     
     batches = service.get_batches(
@@ -752,6 +775,8 @@ def get_production_report(
         start_date = date.today() - timedelta(days=30)
     if end_date is None:
         end_date = date.today()
+    if ProductionService is None:
+        raise HTTPException(status_code=501, detail="Production service is not available. Required dependencies are not installed.")
     service = ProductionService(db)
 
     start_datetime = datetime.combine(start_date, datetime.min.time())

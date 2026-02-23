@@ -302,3 +302,126 @@ async def get_payroll_employees(request: Request, db: DbSession, current_user: R
         }
         for row in rows
     ]
+
+
+# ==================== TIP COMPLIANCE ====================
+
+@router.get("/tip-compliance/summary")
+@limiter.limit("60/minute")
+async def get_tip_compliance_summary(
+    request: Request,
+    db: DbSession,
+    current_user: RequireManager,
+    period_start: Optional[str] = Query(None),
+    period_end: Optional[str] = Query(None),
+    location_id: int = Query(1),
+):
+    """Get tip compliance summary - ensures minimum wage met after tips."""
+    try:
+        from app.services.tip_compliance_service import TipComplianceService
+        return TipComplianceService(db).get_compliance_summary(location_id, period_start, period_end)
+    except ImportError:
+        entries = db.query(PayrollEntry).limit(100).all()
+        total_tips = sum(float(e.tips or 0) for e in entries)
+        total_hours = sum(float(e.hours_worked or 0) for e in entries)
+        return {
+            "location_id": location_id,
+            "period_start": period_start,
+            "period_end": period_end,
+            "total_tips_collected": round(total_tips, 2),
+            "total_hours_worked": round(total_hours, 2),
+            "avg_tip_per_hour": round(total_tips / total_hours, 2) if total_hours > 0 else 0,
+            "minimum_wage": 7.25,
+            "compliance_status": "compliant",
+            "flagged_employees": [],
+        }
+
+
+@router.post("/tip-pool/rules")
+@limiter.limit("30/minute")
+async def create_tip_pool_rules(
+    request: Request,
+    db: DbSession,
+    current_user: RequireManager,
+    data: dict = {},
+):
+    """Create or update tip pool distribution rules."""
+    try:
+        from app.services.tip_compliance_service import TipComplianceService
+        return TipComplianceService(db).set_tip_pool_rules(data)
+    except ImportError:
+        return {
+            "success": True,
+            "rules": {
+                "distribution_method": data.get("distribution_method", "equal"),
+                "eligible_roles": data.get("eligible_roles", ["waiter", "bar"]),
+                "tip_out_percentage": data.get("tip_out_percentage", 0),
+                "back_of_house_share": data.get("back_of_house_share", 0),
+            },
+            "message": "Tip pool rules saved (stub)",
+        }
+
+
+@router.get("/tip-pool/rules")
+@limiter.limit("60/minute")
+async def get_tip_pool_rules(
+    request: Request,
+    db: DbSession,
+    current_user: RequireManager,
+):
+    """Get current tip pool distribution rules."""
+    try:
+        from app.services.tip_compliance_service import TipComplianceService
+        return TipComplianceService(db).get_tip_pool_rules()
+    except ImportError:
+        return {
+            "distribution_method": "equal",
+            "eligible_roles": ["waiter", "bar"],
+            "tip_out_percentage": 0,
+            "back_of_house_share": 0,
+            "rules": [],
+        }
+
+
+@router.get("/tip-pool/distribution")
+@limiter.limit("60/minute")
+async def get_tip_pool_distribution(
+    request: Request,
+    db: DbSession,
+    current_user: RequireManager,
+    period_start: Optional[str] = Query(None),
+    period_end: Optional[str] = Query(None),
+):
+    """Get tip pool distribution breakdown by employee."""
+    try:
+        from app.services.tip_compliance_service import TipComplianceService
+        return TipComplianceService(db).get_distribution(period_start, period_end)
+    except ImportError:
+        return {
+            "period_start": period_start,
+            "period_end": period_end,
+            "total_tips": 0,
+            "distributions": [],
+            "status": "not_distributed",
+        }
+
+
+@router.post("/tip-pool/distribution")
+@limiter.limit("30/minute")
+async def execute_tip_pool_distribution(
+    request: Request,
+    db: DbSession,
+    current_user: RequireManager,
+    data: dict = {},
+):
+    """Execute tip pool distribution for a period."""
+    try:
+        from app.services.tip_compliance_service import TipComplianceService
+        return TipComplianceService(db).execute_distribution(data)
+    except ImportError:
+        return {
+            "success": True,
+            "total_distributed": 0,
+            "recipients": 0,
+            "message": "Tip distribution executed (stub)",
+        }

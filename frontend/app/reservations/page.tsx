@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 
-import { API_URL, getAuthHeaders } from '@/lib/api';
+import { api, isAuthenticated } from '@/lib/api';
 import { getVenueId } from '@/lib/auth';
 import { useConfirm } from '@/hooks/useConfirm';
 
@@ -102,38 +102,31 @@ export default function ReservationsPage() {
   const loadReservations = async () => {
     try {
       setError(null);
-      if (!localStorage.getItem('access_token')) {
+      if (!isAuthenticated()) {
         router.push('/login');
         return;
       }
 
-      const response = await fetch(
-        `${API_URL}/reservations/?date=${selectedDate}`,
-        { credentials: 'include', headers: getAuthHeaders() }
-      );
-
-      if (response.ok) {
-        const data = await response.json();
-        setReservations(data.reservations || data || []);
-      } else if (response.status === 401) {
+      const data = await api.get<any>(`/reservations/?date=${selectedDate}`);
+      setReservations(data.reservations || data || []);
+    } catch (err: any) {
+      console.error('Error loading reservations:', err);
+      if (err?.status === 401) {
         router.push('/login');
         return;
-      } else if (response.status === 404) {
+      } else if (err?.status === 404) {
         setError('Reservations API endpoint not found. Please check server configuration.');
         setReservations([]);
-      } else {
-        const errorData = await response.json().catch(() => ({}));
-        setError(errorData.message || `Failed to load reservations (Error ${response.status})`);
+      } else if (err?.status) {
+        setError(err?.data?.message || `Failed to load reservations (Error ${err.status})`);
         setReservations([]);
-      }
-    } catch (err) {
-      console.error('Error loading reservations:', err);
-      if (err instanceof TypeError && err.message.includes('fetch')) {
+      } else if (err instanceof TypeError && err.message.includes('fetch')) {
         setError('Unable to connect to server. Please check if the API server is running.');
+        setReservations([]);
       } else {
         setError('An unexpected error occurred while loading reservations.');
+        setReservations([]);
       }
-      setReservations([]);
     } finally {
       setLoading(false);
     }
@@ -141,14 +134,8 @@ export default function ReservationsPage() {
 
   const loadTables = async () => {
     try {
-      const response = await fetch(`${API_URL}/tables/`, {
-        credentials: 'include',
-        headers: getAuthHeaders(),
-      });
-      if (response.ok) {
-        const data = await response.json();
-        setTables(data || []);
-      }
+      const data = await api.get<any>('/tables/');
+      setTables(data || []);
     } catch (err) {
       console.error('Error loading tables:', err);
     }
@@ -156,53 +143,40 @@ export default function ReservationsPage() {
 
   const saveReservation = async () => {
     try {
-      const url = editingReservation
-        ? `${API_URL}/reservations/${editingReservation.id}`
-        : `${API_URL}/reservations/`;
-
       // Combine date and time into ISO datetime
       const reservationDateTime = `${formData.reservation_date}T${formData.reservation_time}:00`;
 
-      const response = await fetch(url, {
-        credentials: 'include',
-        method: editingReservation ? 'PUT' : 'POST',
-        headers: getAuthHeaders(),
-        body: JSON.stringify({
-          guest_name: formData.guest_name,
-          guest_phone: formData.guest_phone,
-          guest_email: formData.guest_email || null,
-          party_size: formData.party_size,
-          table_id: formData.table_id ? parseInt(formData.table_id) : null,
-          reservation_date: reservationDateTime,
-          duration_minutes: formData.duration_minutes,
-          special_requests: formData.special_requests || null,
-          notes: formData.notes || null,
-        }),
-      });
+      const body = {
+        guest_name: formData.guest_name,
+        guest_phone: formData.guest_phone,
+        guest_email: formData.guest_email || null,
+        party_size: formData.party_size,
+        table_id: formData.table_id ? parseInt(formData.table_id) : null,
+        reservation_date: reservationDateTime,
+        duration_minutes: formData.duration_minutes,
+        special_requests: formData.special_requests || null,
+        notes: formData.notes || null,
+      };
 
-      if (response.ok) {
-        setShowModal(false);
-        setEditingReservation(null);
-        resetForm();
-        loadReservations();
+      if (editingReservation) {
+        await api.put(`/reservations/${editingReservation.id}`, body);
       } else {
-        const errorData = await response.json().catch(() => ({}));
-        toast.error(errorData.detail || 'Failed to save reservation');
+        await api.post('/reservations/', body);
       }
-    } catch (err) {
+
+      setShowModal(false);
+      setEditingReservation(null);
+      resetForm();
+      loadReservations();
+    } catch (err: any) {
       console.error('Error saving reservation:', err);
-      toast.error('Failed to save reservation. Please try again.');
+      toast.error(err?.data?.detail || 'Failed to save reservation. Please try again.');
     }
   };
 
   const updateStatus = async (id: number, status: string) => {
     try {
-      await fetch(`${API_URL}/reservations/${id}/status`, {
-        credentials: 'include',
-        method: 'PUT',
-        headers: getAuthHeaders(),
-        body: JSON.stringify({ status }),
-      });
+      await api.put(`/reservations/${id}/status`, { status });
       loadReservations();
     } catch (err) {
       console.error('Error updating status:', err);
@@ -228,14 +202,8 @@ export default function ReservationsPage() {
   const deleteReservation = async (id: number) => {
     if (!(await confirm({ message: 'Are you sure you want to delete this reservation?', variant: 'danger' }))) return;
     try {
-      const response = await fetch(`${API_URL}/reservations/${id}`, {
-        credentials: 'include',
-        method: 'DELETE',
-        headers: getAuthHeaders(),
-      });
-      if (response.ok) {
-        loadReservations();
-      }
+      await api.del(`/reservations/${id}`);
+      loadReservations();
     } catch (err) {
       console.error('Error deleting reservation:', err);
     }
@@ -250,14 +218,8 @@ export default function ReservationsPage() {
         party_size: formData.party_size.toString(),
         duration: formData.duration_minutes.toString(),
       });
-      const response = await fetch(`${API_URL}/reservations/check-availability?${params}`, {
-        credentials: 'include',
-        headers: getAuthHeaders(),
-      });
-      if (response.ok) {
-        const data = await response.json();
-        setAvailabilityCheck(data);
-      }
+      const data = await api.get<any>(`/reservations/check-availability?${params}`);
+      setAvailabilityCheck(data);
     } catch (err) {
       console.error('Error checking availability:', err);
     } finally {
@@ -267,14 +229,8 @@ export default function ReservationsPage() {
 
   const loadPlatforms = async () => {
     try {
-      const response = await fetch(`${API_URL}/reservations/${getVenueId()}/platforms`, {
-        credentials: 'include',
-        headers: getAuthHeaders(),
-      });
-      if (response.ok) {
-        const data = await response.json();
-        setConnectedPlatforms(data.platforms || []);
-      }
+      const data = await api.get<any>(`/reservations/${getVenueId()}/platforms`);
+      setConnectedPlatforms(data.platforms || []);
     } catch (err) {
       console.error('Error loading platforms:', err);
     }
@@ -283,21 +239,14 @@ export default function ReservationsPage() {
   const collectDeposit = async () => {
     if (!selectedReservationForDeposit) return;
     try {
-      const response = await fetch(`${API_URL}/reservations/${getVenueId()}/deposits`, {
-        credentials: 'include',
-        method: 'POST',
-        headers: getAuthHeaders(),
-        body: JSON.stringify({
-          reservation_id: selectedReservationForDeposit.id,
-          amount: depositAmount,
-          payment_method: 'card',
-        }),
+      await api.post(`/reservations/${getVenueId()}/deposits`, {
+        reservation_id: selectedReservationForDeposit.id,
+        amount: depositAmount,
+        payment_method: 'card',
       });
-      if (response.ok) {
-        setShowDepositModal(false);
-        setSelectedReservationForDeposit(null);
-        loadReservations();
-      }
+      setShowDepositModal(false);
+      setSelectedReservationForDeposit(null);
+      loadReservations();
     } catch (err) {
       console.error('Error collecting deposit:', err);
     }
@@ -305,11 +254,7 @@ export default function ReservationsPage() {
 
   const syncExternalReservations = async () => {
     try {
-      await fetch(`${API_URL}/reservations/${getVenueId()}/external/sync`, {
-        credentials: 'include',
-        method: 'POST',
-        headers: getAuthHeaders(),
-      });
+      await api.post(`/reservations/${getVenueId()}/external/sync`, {});
       loadReservations();
     } catch (err) {
       console.error('Error syncing:', err);
@@ -319,14 +264,8 @@ export default function ReservationsPage() {
   // Load Turn Times Analytics
   const loadTurnTimes = async () => {
     try {
-      const response = await fetch(`${API_URL}/reservations/${getVenueId()}/turn-times?date=${selectedDate}`, {
-        credentials: 'include',
-        headers: getAuthHeaders(),
-      });
-      if (response.ok) {
-        const data = await response.json();
-        setTurnTimes(data);
-      }
+      const data = await api.get<any>(`/reservations/${getVenueId()}/turn-times?date=${selectedDate}`);
+      setTurnTimes(data);
     } catch (err) {
       console.error('Error loading turn times:', err);
     }
@@ -335,14 +274,8 @@ export default function ReservationsPage() {
   // Load Party Size Optimization
   const loadPartySizeOptimization = async () => {
     try {
-      const response = await fetch(`${API_URL}/reservations/${getVenueId()}/party-size-optimization?date=${selectedDate}`, {
-        credentials: 'include',
-        headers: getAuthHeaders(),
-      });
-      if (response.ok) {
-        const data = await response.json();
-        setPartySizeOptimization(data);
-      }
+      const data = await api.get<any>(`/reservations/${getVenueId()}/party-size-optimization?date=${selectedDate}`);
+      setPartySizeOptimization(data);
     } catch (err) {
       console.error('Error loading optimization:', err);
     }
@@ -352,17 +285,9 @@ export default function ReservationsPage() {
   const autoAssignTables = async () => {
     setAutoAssigning(true);
     try {
-      const response = await fetch(`${API_URL}/reservations/${getVenueId()}/auto-assign-tables`, {
-        credentials: 'include',
-        method: 'POST',
-        headers: getAuthHeaders(),
-        body: JSON.stringify({ date: selectedDate }),
-      });
-      if (response.ok) {
-        const data = await response.json();
-        toast.success(`Auto-assigned ${data.assigned_count} tables with ${data.optimization_score}% efficiency`);
-        loadReservations();
-      }
+      const data = await api.post<any>(`/reservations/${getVenueId()}/auto-assign-tables`, { date: selectedDate });
+      toast.success(`Auto-assigned ${data.assigned_count} tables with ${data.optimization_score}% efficiency`);
+      loadReservations();
     } catch (err) {
       console.error('Error auto-assigning:', err);
     } finally {
@@ -373,14 +298,8 @@ export default function ReservationsPage() {
   // Load Cancellation Policies
   const loadCancellationPolicies = async () => {
     try {
-      const response = await fetch(`${API_URL}/reservations/${getVenueId()}/cancellation-policy`, {
-        credentials: 'include',
-        headers: getAuthHeaders(),
-      });
-      if (response.ok) {
-        const data = await response.json();
-        setCancellationPolicies(data.policies || []);
-      }
+      const data = await api.get<any>(`/reservations/${getVenueId()}/cancellation-policy`);
+      setCancellationPolicies(data.policies || []);
     } catch (err) {
       console.error('Error loading policies:', err);
     }
@@ -389,15 +308,8 @@ export default function ReservationsPage() {
   // Create Cancellation Policy
   const createCancellationPolicy = async (policy: any) => {
     try {
-      const response = await fetch(`${API_URL}/reservations/${getVenueId()}/cancellation-policy`, {
-        credentials: 'include',
-        method: 'POST',
-        headers: getAuthHeaders(),
-        body: JSON.stringify(policy),
-      });
-      if (response.ok) {
-        loadCancellationPolicies();
-      }
+      await api.post(`/reservations/${getVenueId()}/cancellation-policy`, policy);
+      loadCancellationPolicies();
     } catch (err) {
       console.error('Error creating policy:', err);
     }
@@ -408,17 +320,11 @@ export default function ReservationsPage() {
     if (!selectedReservationForRefund) return;
     try {
       const venueId = getVenueId();
-      const response = await fetch(`${API_URL}/reservations/${venueId}/reservations/${selectedReservationForRefund.id}/refund?amount=${refundAmount}`, {
-        credentials: 'include',
-        method: 'POST',
-        headers: getAuthHeaders(),
-      });
-      if (response.ok) {
-        setShowRefundModal(false);
-        setSelectedReservationForRefund(null);
-        toast.success('Refund processed successfully');
-        loadReservations();
-      }
+      await api.post(`/reservations/${venueId}/reservations/${selectedReservationForRefund.id}/refund?amount=${refundAmount}`, {});
+      setShowRefundModal(false);
+      setSelectedReservationForRefund(null);
+      toast.success('Refund processed successfully');
+      loadReservations();
     } catch (err) {
       console.error('Error processing refund:', err);
     }
@@ -427,14 +333,8 @@ export default function ReservationsPage() {
   // Load Webhook Logs
   const loadWebhookLogs = async () => {
     try {
-      const response = await fetch(`${API_URL}/reservations/${getVenueId()}/webhooks/logs`, {
-        credentials: 'include',
-        headers: getAuthHeaders(),
-      });
-      if (response.ok) {
-        const data = await response.json();
-        setWebhookLogs(data.logs || []);
-      }
+      const data = await api.get<any>(`/reservations/${getVenueId()}/webhooks/logs`);
+      setWebhookLogs(data.logs || []);
     } catch (err) {
       console.error('Error loading webhook logs:', err);
     }

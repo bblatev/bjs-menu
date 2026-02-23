@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { API_URL } from '@/lib/api';
+import { api } from '@/lib/api';
 import { toast } from '@/lib/toast';
 
 // ============================================================================
@@ -96,35 +96,22 @@ export default function FloorPlanEditor() {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [newPlanName, setNewPlanName] = useState('Main Floor');
 
-  const getHeaders = () => {
-    const token = localStorage.getItem('access_token');
-    const h: Record<string, string> = { 'Content-Type': 'application/json' };
-    if (token) h['Authorization'] = `Bearer ${token}`;
-    return h;
-  };
-
   // ============================================================================
   // API Functions
   // ============================================================================
 
   const fetchFloorPlan = useCallback(async () => {
     try {
-      // Fetch active floor plan and all tables in parallel
-      const [fpRes, tablesRes] = await Promise.all([
-        fetch(`${API_URL}/floor-plans/active`, { credentials: 'include', headers: getHeaders() }),
-        fetch(`${API_URL}/tables/`, { credentials: 'include', headers: getHeaders() }),
-      ]);
-
-      // Parse tables
+      // Fetch tables first (needed for both cases)
       let tables: ApiTable[] = [];
-      if (tablesRes.ok) {
-        const td = await tablesRes.json();
+      try {
+        const td = await api.get<any>('/tables/');
         tables = Array.isArray(td) ? td : (td.tables || td.items || []);
         setAllTables(tables);
-      }
+      } catch { /* ignore */ }
 
-      if (fpRes.ok) {
-        const fp = await fpRes.json();
+      try {
+        const fp = await api.get<any>('/floor-plans/active');
         if (fp.id && fp.id !== 0) {
           // Merge table info (number, capacity, status) into positions
           const tableMap = new Map(tables.map(t => [t.id, t]));
@@ -154,13 +141,10 @@ export default function FloorPlanEditor() {
             areas: fp.areas || [],
           });
         } else {
-          // No active floor plan - show create option
           setFloorPlan(null);
         }
-      } else if (fpRes.status === 401) {
-        // Not authenticated - still show create option
-        setFloorPlan(null);
-      } else {
+      } catch {
+        // No active floor plan or not authenticated - show create option
         setFloorPlan(null);
       }
     } catch (error) {
@@ -185,29 +169,19 @@ export default function FloorPlanEditor() {
         shape: 'rectangle',
       }));
 
-      const res = await fetch(`${API_URL}/floor-plans/`, {
-        credentials: 'include',
-        method: 'POST',
-        headers: getHeaders(),
-        body: JSON.stringify({
-          name: newPlanName,
-          width: 1200,
-          height: 800,
-          tables: tablePositions,
-          areas: [],
-        }),
+      await api.post('/floor-plans/', {
+        name: newPlanName,
+        width: 1200,
+        height: 800,
+        tables: tablePositions,
+        areas: [],
       });
 
-      if (res.ok) {
-        toast.success('Floor plan created!');
-        setShowCreateModal(false);
-        await fetchFloorPlan();
-      } else {
-        const err = await res.json().catch(() => ({}));
-        toast.error(err.detail || 'Failed to create floor plan');
-      }
-    } catch (error) {
-      toast.error('Failed to create floor plan');
+      toast.success('Floor plan created!');
+      setShowCreateModal(false);
+      await fetchFloorPlan();
+    } catch (err: any) {
+      toast.error(err?.data?.detail || err?.message || 'Failed to create floor plan');
     } finally {
       setSaving(false);
     }
@@ -217,35 +191,25 @@ export default function FloorPlanEditor() {
     if (!floorPlan) return;
     setSaving(true);
     try {
-      const res = await fetch(`${API_URL}/floor-plans/${floorPlan.id}`, {
-        credentials: 'include',
-        method: 'PUT',
-        headers: getHeaders(),
-        body: JSON.stringify({
-          name: floorPlan.name,
-          width: floorPlan.width,
-          height: floorPlan.height,
-          tables: floorPlan.tables.map(t => ({
-            table_id: t.table_id,
-            x: Math.round(t.x),
-            y: Math.round(t.y),
-            width: Math.round(t.width),
-            height: Math.round(t.height),
-            rotation: t.rotation,
-            shape: t.shape,
-          })),
-          areas: floorPlan.areas,
-        }),
+      await api.put(`/floor-plans/${floorPlan.id}`, {
+        name: floorPlan.name,
+        width: floorPlan.width,
+        height: floorPlan.height,
+        tables: floorPlan.tables.map(t => ({
+          table_id: t.table_id,
+          x: Math.round(t.x),
+          y: Math.round(t.y),
+          width: Math.round(t.width),
+          height: Math.round(t.height),
+          rotation: t.rotation,
+          shape: t.shape,
+        })),
+        areas: floorPlan.areas,
       });
 
-      if (res.ok) {
-        toast.success('Floor plan saved!');
-      } else {
-        const err = await res.json().catch(() => ({}));
-        toast.error(err.detail || 'Failed to save floor plan');
-      }
-    } catch (error) {
-      toast.error('Failed to save floor plan');
+      toast.success('Floor plan saved!');
+    } catch (err: any) {
+      toast.error(err?.data?.detail || err?.message || 'Failed to save floor plan');
     } finally {
       setSaving(false);
     }

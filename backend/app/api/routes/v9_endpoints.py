@@ -23,9 +23,12 @@ TerminalHealthService = PermissionOverrideService
 SafeModeService = PermissionOverrideService
 CashVarianceService = PermissionOverrideService
 SessionTimeoutService = PermissionOverrideService
-from app.services.advanced_kitchen_service import (
-    AdvancedKitchenService as ProductionForecastService,
-)
+try:
+    from app.services.advanced_kitchen_service import (
+        AdvancedKitchenService as ProductionForecastService,
+    )
+except ImportError:
+    ProductionForecastService = None
 StationLoadBalancingService = ProductionForecastService
 CourseFireService = ProductionForecastService
 KitchenPerformanceService = ProductionForecastService
@@ -39,9 +42,12 @@ from app.services.financial_controls_service import (
     FinancialControlsService as PrimeCostService,
 )
 AbuseDetectionService = PrimeCostService
-from app.services.advanced_crm_service import (
-    AdvancedCRMService as GuestPreferencesService,
-)
+try:
+    from app.services.advanced_crm_service import (
+        AdvancedCRMService as GuestPreferencesService,
+    )
+except ImportError:
+    GuestPreferencesService = None
 CustomerLifetimeValueService = GuestPreferencesService
 CustomerSegmentationService = GuestPreferencesService
 VIPManagementService = GuestPreferencesService
@@ -65,11 +71,16 @@ PredictionService = AIModelService
 AutomationRuleService = AIModelService
 MenuOptimizationService = AIModelService
 StaffingRecommendationService = AIModelService
-from app.services.legal_training_crisis_service import (
-    LegalRiskService,
-    TrainingService,
-    CrisisManagementService
-)
+try:
+    from app.services.legal_training_crisis_service import (
+        LegalRiskService,
+        TrainingService,
+        CrisisManagementService
+    )
+except ImportError:
+    LegalRiskService = None
+    TrainingService = None
+    CrisisManagementService = None
 from app.services.platform_qr_service import (
     PlatformService,
     QRSelfServiceService
@@ -433,6 +444,8 @@ async def generate_production_forecast(
     current_user: dict = Depends(get_current_user)
 ):
     """Generate ML-based production forecast for menu item"""
+    if ProductionForecastService is None:
+        raise HTTPException(status_code=501, detail="Advanced kitchen service is not available. Required model 'CourseTiming' is missing.")
     service = ProductionForecastService(db)
     return service.forecast_demand(
         menu_item_id=data.menu_item_id,
@@ -451,6 +464,8 @@ async def get_ingredient_requirements(
     current_user: dict = Depends(get_current_user)
 ):
     """Get ingredient requirements based on forecasts"""
+    if ProductionForecastService is None:
+        raise HTTPException(status_code=501, detail="Advanced kitchen service is not available. Required model 'CourseTiming' is missing.")
     service = ProductionForecastService(db)
     return service.calculate_ingredient_requirements(forecast_date)
 
@@ -466,6 +481,8 @@ async def create_kitchen_station(
     current_user: dict = Depends(get_current_user)
 ):
     """Create a kitchen station"""
+    if StationLoadBalancingService is None:
+        raise HTTPException(status_code=501, detail="Advanced kitchen service is not available. Required model 'CourseTiming' is missing.")
     service = StationLoadBalancingService(db)
     return service.create_station(
         station_name=data.station_name,
@@ -483,6 +500,8 @@ async def get_station_loads(
     current_user: dict = Depends(get_current_user)
 ):
     """Get current load for all kitchen stations"""
+    if StationLoadBalancingService is None:
+        raise HTTPException(status_code=501, detail="Advanced kitchen service is not available. Required model 'CourseTiming' is missing.")
     service = StationLoadBalancingService(db)
     return service.get_all_station_loads()
 
@@ -495,6 +514,8 @@ async def get_routing_suggestions(
     current_user: dict = Depends(get_current_user)
 ):
     """Get smart routing suggestions for pending orders"""
+    if StationLoadBalancingService is None:
+        raise HTTPException(status_code=501, detail="Advanced kitchen service is not available. Required model 'CourseTiming' is missing.")
     service = StationLoadBalancingService(db)
     return service.get_routing_suggestions()
 
@@ -509,6 +530,8 @@ async def apply_routing_suggestion(
     current_user: dict = Depends(get_current_user)
 ):
     """Apply routing suggestion to move order to different station"""
+    if StationLoadBalancingService is None:
+        raise HTTPException(status_code=501, detail="Advanced kitchen service is not available. Required model 'CourseTiming' is missing.")
     service = StationLoadBalancingService(db)
     result = service.route_to_station(order_item_id, target_station_id)
     return SuccessResponse(success=result, message="Order routed" if result else "Routing failed")
@@ -525,6 +548,8 @@ async def create_course_fire_rule(
     current_user: dict = Depends(get_current_user)
 ):
     """Create automatic course firing rule"""
+    if CourseFireService is None:
+        raise HTTPException(status_code=501, detail="Advanced kitchen service is not available. Required model 'CourseTiming' is missing.")
     service = CourseFireService(db)
     return service.create_rule(
         menu_item_id=data.menu_item_id,
@@ -544,6 +569,8 @@ async def get_course_fire_rules(
     current_user: dict = Depends(get_current_user)
 ):
     """Get all course fire rules"""
+    if CourseFireService is None:
+        raise HTTPException(status_code=501, detail="Advanced kitchen service is not available. Required model 'CourseTiming' is missing.")
     service = CourseFireService(db)
     return service.get_rules(menu_item_id)
 
@@ -557,6 +584,8 @@ async def check_course_fire(
     current_user: dict = Depends(get_current_user)
 ):
     """Check and fire courses for an order based on rules"""
+    if CourseFireService is None:
+        raise HTTPException(status_code=501, detail="Advanced kitchen service is not available. Required model 'CourseTiming' is missing.")
     service = CourseFireService(db)
     return service.check_and_fire_courses(order_id)
 
@@ -573,6 +602,8 @@ async def get_kitchen_performance(
     current_user: dict = Depends(get_current_user)
 ):
     """Get kitchen performance metrics"""
+    if KitchenPerformanceService is None:
+        raise HTTPException(status_code=501, detail="Advanced kitchen service is not available. Required model 'CourseTiming' is missing.")
     service = KitchenPerformanceService(db)
     return service.get_performance_metrics(start_date, end_date)
 
@@ -975,6 +1006,8 @@ async def set_guest_preferences(
     current_user: dict = Depends(get_current_user)
 ):
     """Set or update guest preferences"""
+    if GuestPreferencesService is None:
+        raise HTTPException(status_code=501, detail="Advanced CRM service is not available. Required dependencies are not installed.")
     return GuestPreferencesService.set_guest_preferences(db, guest_id, preferences)
 
 
@@ -987,6 +1020,8 @@ async def get_guest_preferences(
     current_user: dict = Depends(get_current_user)
 ):
     """Get all preferences for a guest"""
+    if GuestPreferencesService is None:
+        raise HTTPException(status_code=501, detail="Advanced CRM service is not available. Required dependencies are not installed.")
     return GuestPreferencesService.get_guest_preferences(db, guest_id)
 
 
@@ -999,6 +1034,8 @@ async def get_service_alerts(
     current_user: dict = Depends(get_current_user)
 ):
     """Get service alerts for a guest (allergies, preferences, VIP status)"""
+    if GuestPreferencesService is None:
+        raise HTTPException(status_code=501, detail="Advanced CRM service is not available. Required dependencies are not installed.")
     return GuestPreferencesService.get_service_alerts(db, guest_id)
 
 
@@ -1016,6 +1053,8 @@ async def calculate_clv(
     venue_id = current_user.venue_id
     if not venue_id:
         raise HTTPException(status_code=400, detail="User has no venue assigned")
+    if CustomerLifetimeValueService is None:
+        raise HTTPException(status_code=501, detail="CRM CLV service is not available. Required dependencies are not installed.")
     return CustomerLifetimeValueService.calculate_clv(db, guest_id, venue_id)
 
 
@@ -1035,6 +1074,8 @@ async def update_clv_from_order(
         raise HTTPException(status_code=400, detail="User has no venue assigned")
     if not order_date:
         order_date = datetime.now(timezone.utc)
+    if CustomerLifetimeValueService is None:
+        raise HTTPException(status_code=501, detail="CRM CLV service is not available. Required dependencies are not installed.")
     return CustomerLifetimeValueService.update_clv_from_order(db, guest_id, venue_id, order_total, order_date)
 
 
@@ -1067,6 +1108,8 @@ async def get_customer_segments(
     venue_id = current_user.venue_id
     if not venue_id:
         raise HTTPException(status_code=400, detail="User has no venue assigned")
+    if CustomerSegmentationService is None:
+        raise HTTPException(status_code=501, detail="Advanced CRM service is not available. Required dependencies are not installed.")
     return CustomerSegmentationService.get_customer_segments(db, venue_id)
 
 
@@ -1085,6 +1128,8 @@ async def set_vip_status(
 ):
     """Set or update VIP status for a guest"""
     set_by = current_user.id
+    if VIPManagementService is None:
+        raise HTTPException(status_code=501, detail="Advanced CRM service is not available. Required dependencies are not installed.")
     return VIPManagementService.set_vip_status(db, guest_id, vip_status, vip_tier, reason, set_by)
 
 
@@ -1100,6 +1145,8 @@ async def get_vip_guests(
     venue_id = current_user.venue_id
     if not venue_id:
         raise HTTPException(status_code=400, detail="User has no venue assigned")
+    if VIPManagementService is None:
+        raise HTTPException(status_code=501, detail="Advanced CRM service is not available. Required dependencies are not installed.")
     return VIPManagementService.get_vip_guests(db, venue_id, tier)
 
 
@@ -1118,6 +1165,8 @@ async def get_personalized_recommendations(
     venue_id = current_user.venue_id
     if not venue_id:
         raise HTTPException(status_code=400, detail="User has no venue assigned")
+    if PersonalizationService is None:
+        raise HTTPException(status_code=501, detail="Advanced CRM service is not available. Required dependencies are not installed.")
     return PersonalizationService.get_personalized_recommendations(db, guest_id, venue_id, limit)
 
 
@@ -1137,6 +1186,8 @@ async def record_feedback(
     venue_id = current_user.venue_id
     if not venue_id:
         raise HTTPException(status_code=400, detail="User has no venue assigned")
+    if PersonalizationService is None:
+        raise HTTPException(status_code=501, detail="Advanced CRM service is not available. Required dependencies are not installed.")
     return PersonalizationService.record_feedback(db, guest_id, venue_id, order_id, rating, feedback_type, comments)
 
 
@@ -1786,6 +1837,8 @@ async def create_incident_report(
     if not venue_id:
         raise HTTPException(status_code=400, detail="User has no venue assigned")
     reported_by = current_user.id
+    if LegalRiskService is None:
+        raise HTTPException(status_code=501, detail="Legal risk service is not available. Required dependencies are not installed.")
     return LegalRiskService.create_incident_report(
         db, venue_id, reported_by, incident_type, incident_date, location,
         description, severity, persons_involved, witnesses, immediate_actions
@@ -1805,6 +1858,8 @@ async def add_incident_evidence(
 ):
     """Add evidence to an incident report"""
     uploaded_by = current_user.id
+    if LegalRiskService is None:
+        raise HTTPException(status_code=501, detail="Legal risk service is not available. Required dependencies are not installed.")
     return LegalRiskService.add_evidence(db, report_id, evidence_type, file_path, description, uploaded_by)
 
 
@@ -1821,6 +1876,8 @@ async def update_incident_status(
 ):
     """Update incident report status"""
     updated_by = current_user.id
+    if LegalRiskService is None:
+        raise HTTPException(status_code=501, detail="Legal risk service is not available. Required dependencies are not installed.")
     return LegalRiskService.update_incident_status(db, report_id, status, updated_by, notes, resolution)
 
 
@@ -1839,6 +1896,8 @@ async def get_incident_reports(
     venue_id = current_user.venue_id
     if not venue_id:
         raise HTTPException(status_code=400, detail="User has no venue assigned")
+    if LegalRiskService is None:
+        raise HTTPException(status_code=501, detail="Legal risk service is not available. Required dependencies are not installed.")
     return LegalRiskService.get_incident_reports(db, venue_id, status, incident_type, start_date, end_date)
 
 
@@ -1853,6 +1912,8 @@ async def link_insurance_claim(
     current_user: dict = Depends(get_current_user)
 ):
     """Link an insurance claim to an incident report"""
+    if LegalRiskService is None:
+        raise HTTPException(status_code=501, detail="Legal risk service is not available. Required dependencies are not installed.")
     return LegalRiskService.link_insurance_claim(db, report_id, claim_number, claim_details)
 
 
@@ -1877,6 +1938,8 @@ async def create_training_module(
     venue_id = current_user.venue_id
     if not venue_id:
         raise HTTPException(status_code=400, detail="User has no venue assigned")
+    if TrainingService is None:
+        raise HTTPException(status_code=501, detail="Training service is not available. Required dependencies are not installed.")
     return TrainingService.create_training_module(
         db, venue_id, module_name, module_type, description, content,
         duration_minutes, required_roles, passing_score, certification_valid_days
@@ -1896,6 +1959,8 @@ async def get_training_modules(
     venue_id = current_user.venue_id
     if not venue_id:
         raise HTTPException(status_code=400, detail="User has no venue assigned")
+    if TrainingService is None:
+        raise HTTPException(status_code=501, detail="Training service is not available. Required dependencies are not installed.")
     return TrainingService.get_training_modules(db, venue_id, module_type, role)
 
 
@@ -1909,6 +1974,8 @@ async def start_training(
     current_user: dict = Depends(get_current_user)
 ):
     """Start a training session for a staff member"""
+    if TrainingService is None:
+        raise HTTPException(status_code=501, detail="Training service is not available. Required dependencies are not installed.")
     return TrainingService.start_training(db, staff_id, module_id)
 
 
@@ -1922,6 +1989,8 @@ async def complete_training(
     current_user: dict = Depends(get_current_user)
 ):
     """Complete a training session with score"""
+    if TrainingService is None:
+        raise HTTPException(status_code=501, detail="Training service is not available. Required dependencies are not installed.")
     return TrainingService.complete_training(db, record_id, score)
 
 
@@ -1937,6 +2006,8 @@ async def get_staff_training_status(
     venue_id = current_user.venue_id
     if not venue_id:
         raise HTTPException(status_code=400, detail="User has no venue assigned")
+    if TrainingService is None:
+        raise HTTPException(status_code=501, detail="Training service is not available. Required dependencies are not installed.")
     return TrainingService.get_staff_training_status(db, staff_id, venue_id)
 
 
@@ -1952,6 +2023,8 @@ async def get_expiring_certifications(
     venue_id = current_user.venue_id
     if not venue_id:
         raise HTTPException(status_code=400, detail="User has no venue assigned")
+    if TrainingService is None:
+        raise HTTPException(status_code=501, detail="Training service is not available. Required dependencies are not installed.")
     return TrainingService.get_expiring_certifications(db, venue_id, days_ahead)
 
 
@@ -1975,6 +2048,8 @@ async def create_crisis_mode(
     venue_id = current_user.venue_id
     if not venue_id:
         raise HTTPException(status_code=400, detail="User has no venue assigned")
+    if CrisisManagementService is None:
+        raise HTTPException(status_code=501, detail="Crisis management service is not available. Required dependencies are not installed.")
     return CrisisManagementService.create_crisis_mode(
         db, venue_id, mode_name, mode_type, description, simplified_menu_ids,
         margin_protection_percentage, operational_changes, auto_activation_conditions
@@ -1992,6 +2067,8 @@ async def activate_crisis_mode(
 ):
     """Activate a crisis mode"""
     activated_by = current_user.id
+    if CrisisManagementService is None:
+        raise HTTPException(status_code=501, detail="Crisis management service is not available. Required dependencies are not installed.")
     return CrisisManagementService.activate_crisis_mode(db, crisis_mode_id, activated_by, reason)
 
 
@@ -2008,6 +2085,8 @@ async def deactivate_crisis_mode(
     if not venue_id:
         raise HTTPException(status_code=400, detail="User has no venue assigned")
     deactivated_by = current_user.id
+    if CrisisManagementService is None:
+        raise HTTPException(status_code=501, detail="Crisis management service is not available. Required dependencies are not installed.")
     return CrisisManagementService.deactivate_crisis_mode(db, venue_id, deactivated_by, reason)
 
 
@@ -2022,6 +2101,8 @@ async def get_active_crisis_mode(
     venue_id = current_user.venue_id
     if not venue_id:
         raise HTTPException(status_code=400, detail="User has no venue assigned")
+    if CrisisManagementService is None:
+        raise HTTPException(status_code=501, detail="Crisis management service is not available. Required dependencies are not installed.")
     return CrisisManagementService.get_active_crisis_mode(db, venue_id)
 
 
@@ -2036,6 +2117,8 @@ async def get_crisis_modes(
     venue_id = current_user.venue_id
     if not venue_id:
         raise HTTPException(status_code=400, detail="User has no venue assigned")
+    if CrisisManagementService is None:
+        raise HTTPException(status_code=501, detail="Crisis management service is not available. Required dependencies are not installed.")
     return CrisisManagementService.get_crisis_modes(db, venue_id)
 
 
@@ -2051,6 +2134,8 @@ async def check_crisis_auto_activation(
     venue_id = current_user.venue_id
     if not venue_id:
         raise HTTPException(status_code=400, detail="User has no venue assigned")
+    if CrisisManagementService is None:
+        raise HTTPException(status_code=501, detail="Crisis management service is not available. Required dependencies are not installed.")
     return CrisisManagementService.check_auto_activation(db, venue_id, current_conditions)
 
 

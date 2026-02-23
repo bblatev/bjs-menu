@@ -394,3 +394,27 @@ _ei_compat.include_router(suppliers.router, prefix="/suppliers", tags=["inventor
 _ei_compat.include_router(purchase_orders.router, prefix="/purchase-orders", tags=["inventory", "enhanced"])
 api_router.include_router(_ei_compat, prefix="/enhanced-inventory", tags=["inventory", "enhanced"])
 logger.info("Backward-compat mount: /enhanced-inventory -> composite router")
+
+# ============================================================================
+# V99 NEW FEATURE ROUTES
+# ============================================================================
+
+_v99_modules = [
+    ("prep_lists", "/prep-lists", ["prep-lists", "kitchen", "ai"]),
+    ("iot", "/iot", ["iot", "sensors", "temperature"]),
+    ("multi_tenant", "/admin/tenants", ["admin", "tenants", "multi-tenant"]),
+    ("mobile_api", "/mobile", ["mobile", "app"]),
+    ("signage", "/signage", ["signage", "digital-displays"]),
+    ("shelf_life", "/inventory/shelf-life", ["inventory", "shelf-life"]),
+    ("shift_swap", "/staff/shift-swaps", ["staff", "shift-swap"]),
+    ("social_content", "/marketing/social-content", ["marketing", "social"]),
+]
+
+for _module_name, _prefix, _tags in _v99_modules:
+    try:
+        import importlib
+        _mod = importlib.import_module(f"app.api.routes.{_module_name}")
+        api_router.include_router(_mod.router, prefix=_prefix, tags=_tags)
+        logger.info(f"V99 module loaded: {_module_name}")
+    except Exception as e:
+        logger.warning(f"V99 module {_module_name} skipped: {e}")

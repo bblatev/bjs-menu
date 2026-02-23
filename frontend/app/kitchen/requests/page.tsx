@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Button, Card, CardBody } from '@/components/ui';
 
-import { API_URL } from '@/lib/api';
+import { api } from '@/lib/api';
 
 import { toast } from '@/lib/toast';
 interface OrderItem {
@@ -37,16 +37,8 @@ export default function KitchenRequestsPage() {
 
   const loadRequests = useCallback(async () => {
     try {
-      const token = localStorage.getItem('access_token');
-      const response = await fetch(`${API_URL}/kitchen/requests/pending`, {
-        credentials: 'include',
-        headers: { Authorization: `Bearer ${token}` },
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        setRequests(data.requests || []);
-      }
+      const data = await api.get<any>('/kitchen/requests/pending');
+      setRequests(data.requests || []);
     } catch (err) {
       console.error('Error loading requests:', err);
     } finally {
@@ -71,24 +63,11 @@ export default function KitchenRequestsPage() {
   const confirmRequest = async (requestId: number) => {
     setProcessingId(requestId);
     try {
-      const token = localStorage.getItem('access_token');
-      const response = await fetch(`${API_URL}/kitchen/requests/${requestId}/confirm`, {
-        credentials: 'include',
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-      });
-
-      if (response.ok) {
-        setRequests(requests.filter((r) => r.id !== requestId));
-      } else {
-        const err = await response.json();
-        toast.error(err.detail || 'Failed to confirm request');
-      }
-    } catch (err) {
+      await api.post(`/kitchen/requests/${requestId}/confirm`);
+      setRequests(requests.filter((r) => r.id !== requestId));
+    } catch (err: any) {
       console.error('Error confirming request:', err);
+      toast.error(err?.data?.detail || 'Failed to confirm request');
     } finally {
       setProcessingId(null);
     }
@@ -97,26 +76,13 @@ export default function KitchenRequestsPage() {
   const rejectRequest = async (requestId: number) => {
     setProcessingId(requestId);
     try {
-      const token = localStorage.getItem('access_token');
-      const response = await fetch(`${API_URL}/kitchen/requests/${requestId}/reject?reason=${encodeURIComponent(rejectReason)}`, {
-        credentials: 'include',
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-      });
-
-      if (response.ok) {
-        setRequests(requests.filter((r) => r.id !== requestId));
-        setRejectModalId(null);
-        setRejectReason('');
-      } else {
-        const err = await response.json();
-        toast.error(err.detail || 'Failed to reject request');
-      }
-    } catch (err) {
+      await api.post(`/kitchen/requests/${requestId}/reject?reason=${encodeURIComponent(rejectReason)}`);
+      setRequests(requests.filter((r) => r.id !== requestId));
+      setRejectModalId(null);
+      setRejectReason('');
+    } catch (err: any) {
       console.error('Error rejecting request:', err);
+      toast.error(err?.data?.detail || 'Failed to reject request');
     } finally {
       setProcessingId(null);
     }

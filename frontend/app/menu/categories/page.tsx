@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
-import { API_URL } from '@/lib/api';
+import { api } from '@/lib/api';
 
 import { toast } from '@/lib/toast';
 interface MultiLang {
@@ -129,20 +129,8 @@ export default function MenuCategoriesPage() {
 
   const loadCategories = async () => {
     try {
-      const token = localStorage.getItem('access_token');
-      const response = await fetch(`${API_URL}/menu-admin/categories`, {
-        credentials: 'include',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        setCategories(data);
-      } else {
-        console.error('Failed to load categories');
-      }
+      const data = await api.get<Category[]>('/menu-admin/categories');
+      setCategories(data);
     } catch (error) {
       console.error('Error loading categories:', error);
     } finally {
@@ -173,32 +161,17 @@ export default function MenuCategoriesPage() {
     };
 
     try {
-      const token = localStorage.getItem('access_token');
-      const url = editingCategory
-        ? `${API_URL}/menu-admin/categories/${editingCategory.id}`
-        : `${API_URL}/menu-admin/categories`;
-
-      const response = await fetch(url, {
-        credentials: 'include',
-        method: editingCategory ? 'PUT' : 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
-        },
-        body: JSON.stringify(categoryData),
-      });
-
-      if (response.ok) {
-        loadCategories();
-        setShowModal(false);
-        resetForm();
+      if (editingCategory) {
+        await api.put(`/menu-admin/categories/${editingCategory.id}`, categoryData);
       } else {
-        const error = await response.json();
-        toast.error(error.detail || 'Error saving category');
+        await api.post('/menu-admin/categories', categoryData);
       }
-    } catch (error) {
+      loadCategories();
+      setShowModal(false);
+      resetForm();
+    } catch (error: any) {
       console.error('Error saving category:', error);
-      toast.error('Error saving category');
+      toast.error(error?.data?.detail || 'Error saving category');
     }
   };
 
@@ -211,20 +184,8 @@ export default function MenuCategoriesPage() {
     if (!confirm('Are you sure you want to delete this category?')) return;
 
     try {
-      const token = localStorage.getItem('access_token');
-      const response = await fetch(`${API_URL}/menu-admin/categories/${id}`, {
-        credentials: 'include',
-        method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
-      });
-
-      if (response.ok) {
-        loadCategories();
-      } else {
-        toast.error('Error deleting category');
-      }
+      await api.del(`/menu-admin/categories/${id}`);
+      loadCategories();
     } catch (error) {
       console.error('Error deleting category:', error);
       toast.error('Error deleting category');
@@ -282,22 +243,11 @@ export default function MenuCategoriesPage() {
 
   const toggleActive = async (id: number) => {
     try {
-      const token = localStorage.getItem('access_token');
-      const response = await fetch(`${API_URL}/menu-admin/categories/${id}/toggle-active`, {
-        credentials: 'include',
-        method: 'PATCH',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
-      });
-
-      if (response.ok) {
-        loadCategories();
-      } else {
-        toast.error('Error toggling category status');
-      }
+      await api.patch(`/menu-admin/categories/${id}/toggle-active`);
+      loadCategories();
     } catch (error) {
       console.error('Error toggling category active:', error);
+      toast.error('Error toggling category status');
     }
   };
 
@@ -329,21 +279,12 @@ export default function MenuCategoriesPage() {
 
     // Save new order to API
     try {
-      const token = localStorage.getItem('access_token');
       const orderData = categories.map((cat, index) => ({
         id: cat.id,
         sort_order: index + 1,
       }));
 
-      await fetch(`${API_URL}/menu-admin/categories/reorder`, {
-        credentials: 'include',
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
-        },
-        body: JSON.stringify({ categories: orderData }),
-      });
+      await api.put('/menu-admin/categories/reorder', { categories: orderData });
     } catch (error) {
       console.error('Error saving category order:', error);
     }

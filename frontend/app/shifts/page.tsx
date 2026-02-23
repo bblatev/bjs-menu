@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 
-import { API_URL } from '@/lib/api';
+import { api } from '@/lib/api';
 
 import { toast } from '@/lib/toast';
 interface Shift {
@@ -67,11 +67,6 @@ export default function ShiftSchedulingPage() {
     try {
       setLoading(true);
       setError(null);
-      const token = localStorage.getItem('access_token');
-      const headers = {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json',
-      };
 
       // Calculate week start and end dates
       const startOfWeek = new Date(selectedDate);
@@ -84,25 +79,15 @@ export default function ShiftSchedulingPage() {
         end_date: endOfWeek.toISOString().split('T')[0],
       });
 
-      const [staffRes, shiftsRes] = await Promise.all([
-        fetch(`${API_URL}/v5/staff`, { credentials: 'include', headers }),
-        fetch(`${API_URL}/v5/shifts?${params}`, { credentials: 'include', headers }),
+      const [staffData, shiftsData] = await Promise.all([
+        api.get<any>('/v5/staff'),
+        api.get<any>(`/v5/shifts?${params}`),
       ]);
-
-      if (!staffRes.ok) {
-        throw new Error('Failed to load staff');
-      }
-      if (!shiftsRes.ok) {
-        throw new Error('Failed to load shifts');
-      }
-
-      const staffData = await staffRes.json();
-      const shiftsData = await shiftsRes.json();
 
       setStaff(Array.isArray(staffData) ? staffData : (staffData.items || staffData.staff || []));
       setShifts(Array.isArray(shiftsData) ? shiftsData : (shiftsData.items || shiftsData.shifts || []));
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load data');
+    } catch (err: any) {
+      setError(err?.data?.detail || err?.message || 'Failed to load data');
       setStaff([]);
       setShifts([]);
     } finally {
@@ -135,12 +120,6 @@ export default function ShiftSchedulingPage() {
     }
 
     try {
-      const token = localStorage.getItem('access_token');
-      const headers = {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json',
-      };
-
       const shiftData = {
         staff_id: formData.staff_id,
         shift_type: formData.shift_type,
@@ -152,55 +131,26 @@ export default function ShiftSchedulingPage() {
       };
 
       if (editingShift) {
-        const response = await fetch(`${API_URL}/v5/shifts/${editingShift.id}`, {
-          credentials: 'include',
-          method: 'PUT',
-          headers,
-          body: JSON.stringify(shiftData),
-        });
-        if (!response.ok) {
-          throw new Error('Failed to update shift');
-        }
+        await api.put<any>(`/v5/shifts/${editingShift.id}`, shiftData);
       } else {
-        const response = await fetch(`${API_URL}/v5/shifts`, {
-          credentials: 'include',
-          method: 'POST',
-          headers,
-          body: JSON.stringify(shiftData),
-        });
-        if (!response.ok) {
-          throw new Error('Failed to create shift');
-        }
+        await api.post<any>('/v5/shifts', shiftData);
       }
 
       setShowModal(false);
       resetForm();
       loadData();
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Failed to save shift');
+    } catch (err: any) {
+      toast.error(err?.data?.detail || err?.message || 'Failed to save shift');
     }
   };
 
   const handleDeleteShift = async (shiftId: number) => {
     if (confirm("Are you sure you want to delete this shift?")) {
       try {
-        const token = localStorage.getItem('access_token');
-        const response = await fetch(`${API_URL}/v5/shifts/${shiftId}`, {
-          credentials: 'include',
-          method: 'DELETE',
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json',
-          },
-        });
-
-        if (!response.ok) {
-          throw new Error('Failed to delete shift');
-        }
-
+        await api.del<any>(`/v5/shifts/${shiftId}`);
         loadData();
-      } catch (err) {
-        toast.error(err instanceof Error ? err.message : 'Failed to delete shift');
+      } catch (err: any) {
+        toast.error(err?.data?.detail || err?.message || 'Failed to delete shift');
       }
     }
   };

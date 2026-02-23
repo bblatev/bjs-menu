@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { API_URL } from '@/lib/api';
+import { api } from '@/lib/api';
 
 import { toast } from '@/lib/toast';
 interface StockItem {
@@ -59,105 +59,67 @@ export default function StockCountsPage() {
   }, []);
 
   const loadCategoriesAndLocations = async () => {
-    const token = localStorage.getItem('access_token');
     try {
       // Load categories
-      const catRes = await fetch(`${API_URL}/stock/categories`, {
-        credentials: 'include',
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      if (catRes.ok) {
-        const data = await catRes.json();
+      try {
+        const data = await api.get<any>('/stock/categories');
         setCategories(data.map((c: any) => typeof c === 'string' ? c : (c.name || c.category || '')));
-      } else {
-        // Fallback defaults if API not available
+      } catch {
         setCategories(['Vegetables', 'Meat', 'Seafood', 'Dairy', 'Alcohol', 'Dry Goods', 'Beverages']);
       }
 
       // Load locations/warehouses
-      const locRes = await fetch(`${API_URL}/warehouses`, {
-        credentials: 'include',
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      if (locRes.ok) {
-        const data = await locRes.json();
+      try {
+        const data = await api.get<any>('/warehouses');
         setLocations(data.map((l: any) => l.name || l.location || ''));
-      } else {
-        // Fallback defaults if API not available
+      } catch {
         setLocations(['Main Storage', 'Kitchen Storage', 'Bar Storage', 'Cold Storage']);
       }
     } catch (error) {
-      // Fallback defaults on error
       setCategories(['Vegetables', 'Meat', 'Seafood', 'Dairy', 'Alcohol', 'Dry Goods', 'Beverages']);
       setLocations(['Main Storage', 'Kitchen Storage', 'Bar Storage', 'Cold Storage']);
     }
   };
 
   const loadCounts = async () => {
-    const token = localStorage.getItem('access_token');
     try {
-      const res = await fetch(`${API_URL}/stock/counts`, {
-        credentials: 'include',
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      if (res.ok) {
-        const data = await res.json();
-        setCounts(data);
-      }
+      const data = await api.get<any>('/stock/counts');
+      setCounts(data);
     } catch (error) {
       console.error('Error loading counts:', error);
     }
   };
 
   const loadCountItems = async (countId: number) => {
-    const token = localStorage.getItem('access_token');
     try {
-      const res = await fetch(`${API_URL}/stock/counts/${countId}`, {
-        credentials: 'include',
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      if (res.ok) {
-        const data = await res.json();
-        setCountItems(data.items.map((item: any) => ({
-          id: item.id,
-          name: item.name,
-          sku: item.sku,
-          system_quantity: item.system_quantity,
-          counted_quantity: item.counted_quantity,
-          unit: item.unit,
-          variance: item.variance,
-          variance_cost: item.variance_cost,
-          cost_per_unit: item.cost_per_unit,
-          category: item.category || '',
-          location: '',
-          last_counted: null
-        })));
-      }
+      const data = await api.get<any>(`/stock/counts/${countId}`);
+      setCountItems(data.items.map((item: any) => ({
+        id: item.id,
+        name: item.name,
+        sku: item.sku,
+        system_quantity: item.system_quantity,
+        counted_quantity: item.counted_quantity,
+        unit: item.unit,
+        variance: item.variance,
+        variance_cost: item.variance_cost,
+        cost_per_unit: item.cost_per_unit,
+        category: item.category || '',
+        location: '',
+        last_counted: null
+      })));
     } catch (error) {
       console.error('Error loading count items:', error);
     }
   };
 
   const handleStartCount = async () => {
-    const token = localStorage.getItem('access_token');
     try {
       const params = new URLSearchParams({
         count_type: newCount.type,
       });
       if (newCount.location) params.append('location', newCount.location);
 
-      const res = await fetch(`${API_URL}/stock/counts?${params.toString()}`, {
-        credentials: 'include',
-        method: 'POST',
-        headers: { Authorization: `Bearer ${token}` }
-      });
-
-      if (!res.ok) {
-        const error = await res.json();
-        throw new Error(error.detail || 'Failed to create count');
-      }
-
-      const data = await res.json();
+      const data = await api.post<any>(`/stock/counts?${params.toString()}`);
 
       // Load the count details
       await loadCountItems(data.id);
@@ -178,8 +140,8 @@ export default function StockCountsPage() {
       setShowNewCountModal(false);
       setShowCountModal(true);
       loadCounts();
-    } catch (error: unknown) {
-      const message = error instanceof Error ? error.message : 'An error occurred';
+    } catch (error: any) {
+      const message = error?.data?.detail || error?.message || 'An error occurred';
       toast.error(message);
     }
   };
@@ -187,29 +149,20 @@ export default function StockCountsPage() {
   const handleUpdateCount = async (itemId: number, countedQty: number) => {
     if (!activeCount) return;
 
-    const token = localStorage.getItem('access_token');
     try {
-      const res = await fetch(`${API_URL}/stock/counts/${activeCount.id}/items/${itemId}?counted_quantity=${countedQty}`, {
-        credentials: 'include',
-        method: 'PUT',
-        headers: { Authorization: `Bearer ${token}` }
-      });
-
-      if (res.ok) {
-        const data = await res.json();
-        // Update local state
-        setCountItems(prev => prev.map(item => {
-          if (item.id === itemId) {
-            return {
-              ...item,
-              counted_quantity: countedQty,
-              variance: data.variance,
-              variance_cost: data.variance_cost,
-            };
-          }
-          return item;
-        }));
-      }
+      const data = await api.put<any>(`/stock/counts/${activeCount.id}/items/${itemId}?counted_quantity=${countedQty}`);
+      // Update local state
+      setCountItems(prev => prev.map(item => {
+        if (item.id === itemId) {
+          return {
+            ...item,
+            counted_quantity: countedQty,
+            variance: data.variance,
+            variance_cost: data.variance_cost,
+          };
+        }
+        return item;
+      }));
     } catch (error) {
       console.error('Error updating count:', error);
     }
@@ -218,45 +171,23 @@ export default function StockCountsPage() {
   const handleCompleteCount = async () => {
     if (!activeCount) return;
 
-    const token = localStorage.getItem('access_token');
     try {
-      const res = await fetch(`${API_URL}/stock/counts/${activeCount.id}/complete`, {
-        credentials: 'include',
-        method: 'PUT',
-        headers: { Authorization: `Bearer ${token}` }
-      });
-
-      if (!res.ok) {
-        const error = await res.json();
-        throw new Error(error.detail || 'Failed to complete count');
-      }
-
+      await api.put(`/stock/counts/${activeCount.id}/complete`);
       setShowCountModal(false);
       setActiveCount(null);
       loadCounts();
-    } catch (error: unknown) {
-      const message = error instanceof Error ? error.message : 'An error occurred';
+    } catch (error: any) {
+      const message = error?.data?.detail || error?.message || 'An error occurred';
       toast.error(message);
     }
   };
 
   const handleApproveCount = async (countId: number) => {
-    const token = localStorage.getItem('access_token');
     try {
-      const res = await fetch(`${API_URL}/stock/counts/${countId}/approve?apply_adjustments=true`, {
-        credentials: 'include',
-        method: 'PUT',
-        headers: { Authorization: `Bearer ${token}` }
-      });
-
-      if (!res.ok) {
-        const error = await res.json();
-        throw new Error(error.detail || 'Failed to approve count');
-      }
-
+      await api.put(`/stock/counts/${countId}/approve?apply_adjustments=true`);
       loadCounts();
-    } catch (error: unknown) {
-      const message = error instanceof Error ? error.message : 'An error occurred';
+    } catch (error: any) {
+      const message = error?.data?.detail || error?.message || 'An error occurred';
       toast.error(message);
     }
   };

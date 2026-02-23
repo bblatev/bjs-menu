@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
-import { API_URL } from '@/lib/api';
+import { api } from '@/lib/api';
 
 import { toast } from '@/lib/toast';
 interface PricingRule {
@@ -77,18 +77,8 @@ export default function DynamicPricingPage() {
 
   const loadRules = async () => {
     try {
-      const token = localStorage.getItem('access_token');
-      const response = await fetch(`${API_URL}/marketing/pricing-rules`, {
-        credentials: 'include',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        setRules(data.items || data);
-      }
+      const data = await api.get<any>('/marketing/pricing-rules');
+      setRules(data.items || data);
     } catch (error) {
       console.error('Error loading pricing rules:', error);
     } finally {
@@ -131,52 +121,25 @@ export default function DynamicPricingPage() {
     };
 
     try {
-      const token = localStorage.getItem('access_token');
-      const url = editingRule
-        ? `${API_URL}/marketing/pricing-rules/${editingRule.id}`
-        : `${API_URL}/marketing/pricing-rules`;
-
-      const response = await fetch(url, {
-        credentials: 'include',
-        method: editingRule ? 'PUT' : 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
-        },
-        body: JSON.stringify(ruleData),
-      });
-
-      if (response.ok) {
-        loadRules();
-        setShowModal(false);
-        resetForm();
+      if (editingRule) {
+        await api.put(`/marketing/pricing-rules/${editingRule.id}`, ruleData);
       } else {
-        const error = await response.json();
-        toast.error(error.detail || 'Error saving pricing rule');
+        await api.post('/marketing/pricing-rules', ruleData);
       }
-    } catch (error) {
+      loadRules();
+      setShowModal(false);
+      resetForm();
+    } catch (error: any) {
       console.error('Error saving pricing rule:', error);
-      toast.error('Error saving pricing rule');
+      toast.error(error?.data?.detail || 'Error saving pricing rule');
     }
   };
 
   const handleDelete = async (id: number) => {
     if (confirm('Delete this pricing rule?')) {
       try {
-        const token = localStorage.getItem('access_token');
-        const response = await fetch(`${API_URL}/marketing/pricing-rules/${id}`, {
-          credentials: 'include',
-          method: 'DELETE',
-          headers: {
-            'Authorization': `Bearer ${token}`,
-          },
-        });
-
-        if (response.ok) {
-          loadRules();
-        } else {
-          toast.error('Error deleting pricing rule');
-        }
+        await api.del(`/marketing/pricing-rules/${id}`);
+        loadRules();
       } catch (error) {
         console.error('Error deleting pricing rule:', error);
         toast.error('Error deleting pricing rule');
@@ -242,20 +205,8 @@ export default function DynamicPricingPage() {
 
   const toggleActive = async (id: number) => {
     try {
-      const token = localStorage.getItem('access_token');
-      const response = await fetch(`${API_URL}/marketing/pricing-rules/${id}/toggle-active`, {
-        credentials: 'include',
-        method: 'PATCH',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
-      });
-
-      if (response.ok) {
-        loadRules();
-      } else {
-        toast.error('Error toggling rule status');
-      }
+      await api.patch(`/marketing/pricing-rules/${id}/toggle-active`);
+      loadRules();
     } catch (error) {
       console.error('Error toggling rule status:', error);
       toast.error('Error toggling rule status');

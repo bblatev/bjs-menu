@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { API_URL } from '@/lib/api';
+import { api, ApiError } from '@/lib/api';
 import { useConfirm } from '@/hooks/useConfirm';
 
 import { toast } from '@/lib/toast';
@@ -69,37 +69,7 @@ export default function TablesPage() {
         setLoading(true);
         setError(null);
 
-        const token = localStorage.getItem('access_token');
-        const url = `${API_URL}/tables/`;
-
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 10000); // 10s timeout
-
-        const headers: Record<string, string> = {
-          'Content-Type': 'application/json',
-        };
-        if (token) {
-          headers['Authorization'] = `Bearer ${token}`;
-        }
-
-        const response = await fetch(url, {
-          credentials: 'include',
-          headers,
-          signal: controller.signal,
-        });
-
-        clearTimeout(timeoutId);
-
-        if (!response.ok) {
-          if (response.status === 401) {
-            localStorage.removeItem('access_token');
-            setError('Сесията изтече. Моля, влезте отново.');
-            return;
-          }
-          throw new Error(`Грешка при зареждане на масите (${response.status})`);
-        }
-
-        const responseData = await response.json();
+        const responseData = await api.get<any>('/tables/');
 
         // Handle different response formats
         const data: ApiTableResponse[] = Array.isArray(responseData)
@@ -118,7 +88,9 @@ export default function TablesPage() {
 
         setTables(mappedTables);
       } catch (err) {
-        if (err instanceof Error && err.name === 'AbortError') {
+        if (err instanceof ApiError && err.status === 401) {
+          setError('Сесията изтече. Моля, влезте отново.');
+        } else if (err instanceof Error && err.name === 'AbortError') {
           setError('Заявката отне твърде дълго време. Моля, опитайте отново.');
         } else {
           setError(err instanceof Error ? err.message : 'Възникна неочаквана грешка');
@@ -135,23 +107,7 @@ export default function TablesPage() {
 
   const handleAddTable = async () => {
     try {
-      const token = localStorage.getItem('access_token');
-      const response = await fetch(`${API_URL}/tables/`, {
-        credentials: 'include',
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(token && { 'Authorization': `Bearer ${token}` }),
-        },
-        body: JSON.stringify(newTable),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.detail || 'Failed to create table');
-      }
-
-      const created: ApiTableResponse = await response.json();
+      const created = await api.post<ApiTableResponse>('/tables/', newTable);
       const mappedTable: Table = {
         id: created.id,
         number: created.table_number,
@@ -174,22 +130,7 @@ export default function TablesPage() {
     setActionLoading(true);
 
     try {
-      const token = localStorage.getItem('access_token');
-      const response = await fetch(`${API_URL}/waiter/tables/${selectedTable.id}/seat?guest_count=${guestCount}`, {
-        credentials: 'include',
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(token && { 'Authorization': `Bearer ${token}` }),
-        },
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.detail || 'Failed to create order');
-      }
-
-      const result = await response.json();
+      const result = await api.post<any>(`/waiter/tables/${selectedTable.id}/seat?guest_count=${guestCount}`);
 
       // Update table status locally
       setTables(tables.map(t =>
@@ -219,39 +160,18 @@ export default function TablesPage() {
     setActionLoading(true);
 
     try {
-      const token = localStorage.getItem('access_token');
-
       // First, create the reservation
-      const reservationResponse = await fetch(`${API_URL}/reservations/`, {
-        credentials: 'include',
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(token && { 'Authorization': `Bearer ${token}` }),
-        },
-        body: JSON.stringify({
-          table_ids: [selectedTable.id],
-          guest_name: newReservation.guest_name,
-          party_size: newReservation.guest_count,
-          date: newReservation.date,
-          time: newReservation.time,
-          notes: newReservation.notes,
-        }),
+      await api.post('/reservations/', {
+        table_ids: [selectedTable.id],
+        guest_name: newReservation.guest_name,
+        party_size: newReservation.guest_count,
+        date: newReservation.date,
+        time: newReservation.time,
+        notes: newReservation.notes,
       });
-
-      if (!reservationResponse.ok) {
-        const errorData = await reservationResponse.json().catch(() => ({}));
-        throw new Error(errorData.detail || 'Failed to create reservation');
-      }
 
       // Then update table status to reserved
-      await fetch(`${API_URL}/tables/${selectedTable.id}/reserve`, {
-        credentials: 'include',
-        method: 'POST',
-        headers: {
-          ...(token && { 'Authorization': `Bearer ${token}` }),
-        },
-      });
+      await api.post(`/tables/${selectedTable.id}/reserve`);
 
       // Update table status locally
       setTables(tables.map(t =>
@@ -292,19 +212,7 @@ export default function TablesPage() {
     setActionLoading(true);
 
     try {
-      const token = localStorage.getItem('access_token');
-      const response = await fetch(`${API_URL}/tables/${selectedTable.id}`, {
-        credentials: 'include',
-        method: 'DELETE',
-        headers: {
-          ...(token && { 'Authorization': `Bearer ${token}` }),
-        },
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.detail || 'Failed to delete table');
-      }
+      await api.del(`/tables/${selectedTable.id}`);
 
       // Remove table from local state
       setTables(tables.filter(t => t.id !== selectedTable.id));
@@ -322,14 +230,7 @@ export default function TablesPage() {
     setActionLoading(true);
 
     try {
-      const token = localStorage.getItem('access_token');
-      await fetch(`${API_URL}/tables/${selectedTable.id}/free`, {
-        credentials: 'include',
-        method: 'POST',
-        headers: {
-          ...(token && { 'Authorization': `Bearer ${token}` }),
-        },
-      });
+      await api.post(`/tables/${selectedTable.id}/free`);
 
       setTables(tables.map(t =>
         t.id === selectedTable.id

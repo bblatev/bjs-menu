@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { Button, Input, Card, CardBody } from '@/components/ui';
 
-import { API_URL } from '@/lib/api';
+import { api, isAuthenticated } from '@/lib/api';
 
 import { toast } from '@/lib/toast';
 export default function SettingsGeneralPage() {
@@ -35,19 +35,11 @@ export default function SettingsGeneralPage() {
 
   const loadSettings = async () => {
     try {
-      const token = localStorage.getItem('access_token');
-      if (!token) return;
+      if (!isAuthenticated()) return;
 
-      const response = await fetch(`${API_URL}/settings/`, {
-        credentials: 'include',
-        headers: { Authorization: `Bearer ${token}` },
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        if (data.settings?.general) {
-          setSettings({ ...settings, ...data.settings.general });
-        }
+      const data = await api.get<any>('/settings/');
+      if (data.settings?.general) {
+        setSettings({ ...settings, ...data.settings.general });
       }
     } catch (err) {
       console.error('Error loading settings:', err);
@@ -59,20 +51,8 @@ export default function SettingsGeneralPage() {
   const handleSave = async () => {
     setSaving(true);
     try {
-      const token = localStorage.getItem('access_token');
-      const response = await fetch(`${API_URL}/settings/`, {
-        credentials: 'include',
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ settings: { general: settings } }),
-      });
-
-      if (response.ok) {
-        toast.success('Settings saved successfully!');
-      }
+      await api.put('/settings/', { settings: { general: settings } });
+      toast.success('Settings saved successfully!');
     } catch (err) {
       console.error('Error saving settings:', err);
       toast.error('Failed to save settings');

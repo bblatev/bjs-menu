@@ -435,6 +435,182 @@ def mark_recommendation_presented(
     return {"status": "ok"}
 
 
+# ==================== DYNAMIC PRICING, EVENT TRIGGERS, SOCIAL CONTENT, A/B TEST, SEASONAL, WIFI ====================
+
+@router.get("/dynamic-pricing/suggestions")
+@limiter.limit("60/minute")
+def get_dynamic_pricing_suggestions(
+    request: Request,
+    db: DbSession,
+    location_id: int = Query(1),
+):
+    """Get AI-generated dynamic pricing suggestions based on demand patterns."""
+    from app.models.advanced_features import DynamicPricingRule
+    rules = db.query(DynamicPricingRule).filter(DynamicPricingRule.is_active == True).all()
+
+    suggestions = []
+    for rule in rules:
+        suggestions.append({
+            "rule_id": rule.id,
+            "name": rule.name,
+            "trigger_type": rule.trigger_type,
+            "adjustment_type": rule.adjustment_type,
+            "adjustment_value": float(rule.adjustment_value),
+            "applies_to": rule.applies_to,
+            "estimated_revenue_impact": 0,
+        })
+
+    return {
+        "location_id": location_id,
+        "suggestions": suggestions,
+        "total": len(suggestions),
+        "generated_at": datetime.now(timezone.utc).isoformat(),
+    }
+
+
+@router.post("/event-triggers")
+@limiter.limit("30/minute")
+def create_event_trigger(request: Request, db: DbSession, data: dict = None):
+    """Create a marketing event trigger (e.g., weather-based, time-based promotions)."""
+    if data is None:
+        data = {}
+    trigger = AutomatedTrigger(
+        name=data.get("name", ""),
+        trigger_type=data.get("trigger_type", "event"),
+        conditions=data.get("conditions", {}),
+        action_type=data.get("action_type", "send_campaign"),
+        action_config=data.get("action_config", {}),
+        is_active=True,
+    )
+    db.add(trigger)
+    db.commit()
+    db.refresh(trigger)
+    return {"success": True, "id": trigger.id, "name": trigger.name}
+
+
+@router.get("/social-content/generate")
+@limiter.limit("30/minute")
+def generate_social_content(
+    request: Request,
+    db: DbSession,
+    content_type: str = Query("post", description="post, story, reel"),
+    topic: Optional[str] = Query(None),
+):
+    """Generate AI social media content suggestions."""
+    return {
+        "content_type": content_type,
+        "topic": topic,
+        "suggestions": [
+            {
+                "platform": "instagram",
+                "text": f"Check out our amazing {topic or 'specials'} today! Fresh ingredients, crafted with love.",
+                "hashtags": ["#restaurant", "#foodie", "#freshfood", "#eatlocal"],
+                "best_time_to_post": "12:00 PM",
+            },
+            {
+                "platform": "facebook",
+                "text": f"Join us for {topic or 'an unforgettable dining experience'}. Reserve your table now!",
+                "hashtags": ["#dining", "#foodlovers"],
+                "best_time_to_post": "6:00 PM",
+            },
+        ],
+        "generated_at": datetime.now(timezone.utc).isoformat(),
+    }
+
+
+@router.get("/promotions/ab-test")
+@limiter.limit("60/minute")
+def get_ab_test_results(
+    request: Request,
+    db: DbSession,
+    campaign_id: Optional[int] = Query(None),
+):
+    """Get A/B test results for promotion campaigns."""
+    if campaign_id:
+        campaign = db.query(MarketingCampaign).filter(MarketingCampaign.id == campaign_id).first()
+        if not campaign:
+            raise HTTPException(status_code=404, detail="Campaign not found")
+
+    return {
+        "campaign_id": campaign_id,
+        "variants": [
+            {"name": "Variant A (Control)", "sent": 0, "opened": 0, "clicked": 0, "converted": 0, "revenue": 0},
+            {"name": "Variant B", "sent": 0, "opened": 0, "clicked": 0, "converted": 0, "revenue": 0},
+        ],
+        "winner": None,
+        "confidence_level": 0,
+        "status": "not_started",
+    }
+
+
+@router.get("/seasonal-planner")
+@limiter.limit("60/minute")
+def get_seasonal_planner(
+    request: Request,
+    db: DbSession,
+):
+    """Get seasonal marketing planner with holiday/event suggestions."""
+    from datetime import timedelta as td
+    today = datetime.now(timezone.utc).date()
+
+    upcoming_events = [
+        {"name": "Valentine's Day", "date": f"{today.year}-02-14", "type": "holiday", "suggested_campaign": "Couple's dinner special"},
+        {"name": "St. Patrick's Day", "date": f"{today.year}-03-17", "type": "holiday", "suggested_campaign": "Green beer and Irish specials"},
+        {"name": "Mother's Day", "date": f"{today.year}-05-11", "type": "holiday", "suggested_campaign": "Brunch special for moms"},
+        {"name": "Father's Day", "date": f"{today.year}-06-15", "type": "holiday", "suggested_campaign": "BBQ and beer specials"},
+        {"name": "July 4th", "date": f"{today.year}-07-04", "type": "holiday", "suggested_campaign": "Independence Day party"},
+        {"name": "Halloween", "date": f"{today.year}-10-31", "type": "holiday", "suggested_campaign": "Spooky cocktails and themed menu"},
+        {"name": "Thanksgiving", "date": f"{today.year}-11-27", "type": "holiday", "suggested_campaign": "Thanksgiving feast pre-order"},
+        {"name": "Christmas", "date": f"{today.year}-12-25", "type": "holiday", "suggested_campaign": "Holiday party catering"},
+        {"name": "New Year's Eve", "date": f"{today.year}-12-31", "type": "holiday", "suggested_campaign": "NYE dinner and champagne toast"},
+    ]
+
+    # Filter to future events
+    future_events = [e for e in upcoming_events if e["date"] >= today.isoformat()]
+
+    return {
+        "upcoming_events": future_events[:6],
+        "current_season": "winter" if today.month in [12, 1, 2] else "spring" if today.month in [3, 4, 5] else "summer" if today.month in [6, 7, 8] else "fall",
+        "seasonal_suggestions": [
+            "Update menu with seasonal ingredients",
+            "Create limited-time seasonal cocktails",
+            "Launch seasonal loyalty bonus points",
+        ],
+    }
+
+
+@router.get("/wifi-portal/config")
+@limiter.limit("60/minute")
+def get_wifi_portal_config(request: Request, db: DbSession):
+    """Get WiFi captive portal marketing configuration."""
+    return {
+        "enabled": False,
+        "portal_type": "email_capture",
+        "branding": {
+            "logo_url": None,
+            "background_color": "#ffffff",
+            "accent_color": "#3B82F6",
+            "welcome_message": "Welcome! Connect to free WiFi",
+        },
+        "data_collection": {
+            "require_email": True,
+            "require_name": False,
+            "marketing_opt_in": True,
+            "survey_enabled": False,
+        },
+        "post_connect": {
+            "redirect_url": None,
+            "show_promotion": True,
+            "promotion_id": None,
+        },
+        "stats": {
+            "total_connections": 0,
+            "emails_collected": 0,
+            "opt_in_rate": 0,
+        },
+    }
+
+
 @router.post("/recommendations/{recommendation_id}/purchased")
 @limiter.limit("30/minute")
 def mark_recommendation_purchased(

@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { Button, Card, CardBody } from '@/components/ui';
 
-import { API_URL } from '@/lib/api';
+import { api } from '@/lib/api';
 
 import { toast } from '@/lib/toast';
 export default function WorkflowSettingsPage() {
@@ -40,21 +40,13 @@ export default function WorkflowSettingsPage() {
 
   const loadSettings = async () => {
     try {
-      const token = localStorage.getItem('access_token');
-      const response = await fetch(`${API_URL}/kitchen/workflow/settings`, {
-        credentials: 'include',
-        headers: { Authorization: `Bearer ${token}` },
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        // Merge with defaults
-        setSettings((prev) => ({
-          ...prev,
-          defaultWorkflowMode: data.default_workflow_mode || 'order',
-          confirmationTimeoutMinutes: data.confirmation_timeout_minutes || 5,
-        }));
-      }
+      const data = await api.get<any>('/kitchen/workflow/settings');
+      // Merge with defaults
+      setSettings((prev) => ({
+        ...prev,
+        defaultWorkflowMode: data.default_workflow_mode || 'order',
+        confirmationTimeoutMinutes: data.confirmation_timeout_minutes || 5,
+      }));
     } catch (err) {
       console.error('Error loading settings:', err);
     } finally {
@@ -65,19 +57,8 @@ export default function WorkflowSettingsPage() {
   const handleSave = async () => {
     setSaving(true);
     try {
-      const token = localStorage.getItem('access_token');
-      const response = await fetch(`${API_URL}/kitchen/workflow/settings?default_mode=${settings.defaultWorkflowMode}&confirmation_timeout=${settings.confirmationTimeoutMinutes}`, {
-        credentials: 'include',
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-      });
-
-      if (response.ok) {
-        toast.success('Настройките са запазени успешно! / Settings saved successfully!');
-      }
+      await api.put(`/kitchen/workflow/settings?default_mode=${settings.defaultWorkflowMode}&confirmation_timeout=${settings.confirmationTimeoutMinutes}`);
+      toast.success('Настройките са запазени успешно! / Settings saved successfully!');
     } catch (err) {
       console.error('Error saving settings:', err);
       toast.error('Грешка при запазване / Failed to save settings');

@@ -1,13 +1,12 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { api, isAuthenticated, clearAuth } from "@/lib/api";
 
 // =============================================================================
 // COMPREHENSIVE MOBILE WAITER TERMINAL
 // All features: modifiers, courses, split check, discounts, void, tips, etc.
 // =============================================================================
-
-const API = () => '/api/v1';
 
 // Types
 interface Table {
@@ -210,17 +209,15 @@ export default function WaiterTerminal() {
   const [paymentMethod, setPaymentMethod] = useState<"cash" | "card">("card");
   const [paymentAmount, setPaymentAmount] = useState(0);
 
-  const token = () => localStorage.getItem("access_token") || "";
-  const headers = () => ({ Authorization: `Bearer ${token()}`, "Content-Type": "application/json" });
+  // Auth and headers now handled by api.* helpers
 
   const notify = (msg: string) => { setToast(msg); setTimeout(() => setToast(""), 2500); };
 
   // API calls
   const loadTables = useCallback(async () => {
     try {
-      const res = await fetch(`${API()}/waiter/floor-plan`, { credentials: 'include', headers: { Authorization: `Bearer ${token()}` } });
-      if (res.status === 401) { window.location.href = "/waiter/login"; return; }
-      if (res.ok) setTables(await res.json());
+      const data = await api.get<Table[]>('/waiter/floor-plan');
+      setTables(data);
     } catch (err) {
       console.error('loadTables failed:', err);
     }
@@ -228,69 +225,56 @@ export default function WaiterTerminal() {
 
   const loadMenu = useCallback(async () => {
     try {
-      const res = await fetch(`${API()}/waiter/menu/quick`, { credentials: 'include', headers: { Authorization: `Bearer ${token()}` } });
-      if (res.ok) setMenu(await res.json());
+      const data = await api.get<MenuItem[]>('/waiter/menu/quick');
+      setMenu(data);
     } catch (err) {
       console.error('loadMenu failed:', err);
     }
   }, []);
 
   const loadCheck = async (checkId: number) => {
-    const res = await fetch(`${API()}/waiter/checks/${checkId}`, { credentials: 'include', headers: { Authorization: `Bearer ${token()}` } });
-    if (res.ok) {
-      const data = await res.json();
+    try {
+      const data = await api.get<Check>(`/waiter/checks/${checkId}`);
       setCheck(data);
       setPaymentAmount(data.balance_due || data.total);
-    }
+    } catch { /* handled by apiFetch */ }
   };
 
   // Phase 3: Load reservations
   const loadReservations = useCallback(async () => {
     try {
       const today = new Date().toISOString().split("T")[0];
-      const res = await fetch(`${API()}/reservations/?date=${today}`, { credentials: 'include', headers: { Authorization: `Bearer ${token()}` } });
-      if (res.ok) {
-        const data = await res.json();
-        setReservations(Array.isArray(data) ? data : data.reservations || []);
-      }
+      const data = await api.get<any>(`/reservations/?date=${today}`);
+      setReservations(Array.isArray(data) ? data : data.reservations || []);
     } catch { /* ignore */ }
   }, []);
 
   // Phase 4: Load tabs
   const loadTabs = useCallback(async () => {
     try {
-      const res = await fetch(`${API()}/tabs/?status=open`, { credentials: 'include', headers: { Authorization: `Bearer ${token()}` } });
-      if (res.ok) {
-        const data = await res.json();
-        setTabs(data.tabs || (Array.isArray(data) ? data : []));
-      }
+      const data = await api.get<any>('/tabs/?status=open');
+      setTabs(data.tabs || (Array.isArray(data) ? data : []));
     } catch { /* ignore */ }
   }, []);
 
   // Phase 5: Load held orders
   const loadHeldOrders = useCallback(async () => {
     try {
-      const res = await fetch(`${API()}/held-orders/?status=held`, { credentials: 'include', headers: { Authorization: `Bearer ${token()}` } });
-      if (res.ok) {
-        const data = await res.json();
-        setHeldOrders(Array.isArray(data) ? data : data.orders || []);
-      }
+      const data = await api.get<any>('/held-orders/?status=held');
+      setHeldOrders(Array.isArray(data) ? data : data.orders || []);
     } catch { /* ignore */ }
   }, []);
 
   // Phase 6: Load merges
   const loadMerges = useCallback(async () => {
     try {
-      const res = await fetch(`${API()}/table-merges/?active_only=true`, { credentials: 'include', headers: { Authorization: `Bearer ${token()}` } });
-      if (res.ok) {
-        const data = await res.json();
-        setActiveMerges(Array.isArray(data) ? data : []);
-      }
+      const data = await api.get<any>('/table-merges/?active_only=true');
+      setActiveMerges(Array.isArray(data) ? data : []);
     } catch { /* ignore */ }
   }, []);
 
   useEffect(() => {
-    if (!localStorage.getItem("access_token")) { window.location.href = "/waiter/login"; return; }
+    if (!isAuthenticated()) { window.location.href = "/waiter/login"; return; }
     Promise.all([loadTables(), loadMenu(), loadReservations(), loadTabs(), loadHeldOrders(), loadMerges()])
       .catch(err => console.error('Failed to load:', err)).finally(() => setLoading(false));
     const i = setInterval(() => { loadTables(); loadReservations(); loadTabs(); loadHeldOrders(); loadMerges(); }, 30000);
@@ -341,28 +325,22 @@ export default function WaiterTerminal() {
   const seatTable = async () => {
     if (!table) return;
     setSending(true);
-    const res = await fetch(`${API()}/waiter/tables/${table.table_id}/seat?guest_count=${guests}`, {
-      credentials: 'include',
-      method: "POST", headers: headers()
-    });
-    if (res.ok) {
+    try {
+      await api.post(`/waiter/tables/${table.table_id}/seat?guest_count=${guests}`);
       setShowSeat(false);
       await loadTables();
       setTable({ ...table, status: "occupied", guest_count: guests });
       setScreen("menu");
       notify(`Seated ${guests} guests`);
-    } else notify("Failed to seat");
+    } catch { notify("Failed to seat"); }
     setSending(false);
   };
 
   const sendOrder = async () => {
     if (!table || !cart.length) return;
     setSending(true);
-    const res = await fetch(`${API()}/waiter/orders`, {
-      credentials: 'include',
-      method: "POST",
-      headers: headers(),
-      body: JSON.stringify({
+    try {
+      await api.post('/waiter/orders', {
         table_id: table.table_id,
         items: cart.map(c => ({
           menu_item_id: c.menu_item_id,
@@ -374,17 +352,14 @@ export default function WaiterTerminal() {
         })),
         guest_count: table.guest_count || guests,
         send_to_kitchen: true
-      })
-    });
-    if (res.ok) {
+      });
       setCart([]);
       notify("Sent to kitchen!");
       await loadTables();
       setScreen("tables");
       setTable(null);
-    } else {
-      const d = await res.json();
-      notify(d.detail || "Order failed");
+    } catch (e: any) {
+      notify(e?.data?.detail || "Order failed");
     }
     setSending(false);
   };
@@ -392,14 +367,10 @@ export default function WaiterTerminal() {
   const fireCourse = async (course: string) => {
     if (!check) return;
     setSending(true);
-    const res = await fetch(`${API()}/waiter/orders/${check.check_id}/fire-course`, {
-      credentials: 'include',
-      method: "POST",
-      headers: headers(),
-      body: JSON.stringify({ course })
-    });
-    if (res.ok) notify(`${course} fired!`);
-    else notify("Failed to fire");
+    try {
+      await api.post(`/waiter/orders/${check.check_id}/fire-course`, { course });
+      notify(`${course} fired!`);
+    } catch { notify("Failed to fire"); }
     setSending(false);
   };
 
@@ -407,25 +378,19 @@ export default function WaiterTerminal() {
   const applyDiscount = async () => {
     if (!check) return;
     setSending(true);
-    const res = await fetch(`${API()}/waiter/checks/${check.check_id}/discount`, {
-      credentials: 'include',
-      method: "POST",
-      headers: headers(),
-      body: JSON.stringify({
+    try {
+      await api.post(`/waiter/checks/${check.check_id}/discount`, {
         check_id: check.check_id,
         discount_type: discountType,
         discount_value: discountValue,
         reason: discountReason,
         manager_pin: managerPin || undefined
-      })
-    });
-    if (res.ok) {
+      });
       await loadCheck(check.check_id);
       setShowDiscount(false);
       notify("Discount applied");
-    } else {
-      const d = await res.json();
-      notify(d.detail || "Failed");
+    } catch (e: any) {
+      notify(e?.data?.detail || "Failed");
     }
     setSending(false);
   };
@@ -433,21 +398,15 @@ export default function WaiterTerminal() {
   const voidItem = async () => {
     if (!showVoid) return;
     setSending(true);
-    const res = await fetch(`${API()}/waiter/items/${showVoid.id}/void`, {
-      credentials: 'include',
-      method: "POST",
-      headers: headers(),
-      body: JSON.stringify({ item_id: showVoid.id, reason: voidReason, manager_pin: managerPin || undefined })
-    });
-    if (res.ok) {
+    try {
+      await api.post(`/waiter/items/${showVoid.id}/void`, { item_id: showVoid.id, reason: voidReason, manager_pin: managerPin || undefined });
       if (check) await loadCheck(check.check_id);
       setShowVoid(null);
       setVoidReason("");
       setManagerPin("");
       notify("Item voided");
-    } else {
-      const d = await res.json();
-      notify(d.detail || "Failed");
+    } catch (e: any) {
+      notify(e?.data?.detail || "Failed");
     }
     setSending(false);
   };
@@ -455,19 +414,12 @@ export default function WaiterTerminal() {
   const splitEven = async () => {
     if (!check) return;
     setSending(true);
-    const res = await fetch(`${API()}/waiter/checks/${check.check_id}/split-even`, {
-      credentials: 'include',
-      method: "POST",
-      headers: headers(),
-      body: JSON.stringify({ num_ways: splitWays })
-    });
-    if (res.ok) {
-      const data = await res.json();
+    try {
+      const data = await api.post<any>(`/waiter/checks/${check.check_id}/split-even`, { num_ways: splitWays });
       setShowSplit(false);
       notify(`Split ${splitWays} ways: $${(data.amount_per_person || 0).toFixed(2)} each`);
-    } else {
-      const err = await res.json();
-      notify(err.detail || "Split failed");
+    } catch (e: any) {
+      notify(e?.data?.detail || "Split failed");
     }
     setSending(false);
   };
@@ -475,20 +427,15 @@ export default function WaiterTerminal() {
   const splitBySeat = async () => {
     if (!check) return;
     setSending(true);
-    const res = await fetch(`${API()}/waiter/checks/${check.check_id}/split-by-seat`, {
-      credentials: 'include',
-      method: "POST", headers: headers()
-    });
-    if (res.ok) {
-      const data = await res.json();
+    try {
+      const data = await api.post<any>(`/waiter/checks/${check.check_id}/split-by-seat`);
       setShowSplit(false);
       notify(`Split into ${data.length} checks`);
       await loadTables();
       setCheck(null);
       setScreen("tables");
-    } else {
-      const err = await res.json();
-      notify(err.detail || "Split failed");
+    } catch (e: any) {
+      notify(e?.data?.detail || "Split failed");
     }
     setSending(false);
   };
@@ -497,26 +444,17 @@ export default function WaiterTerminal() {
     if (!check) return;
     setSending(true);
     const tipAmt = check.subtotal * (tipPercent / 100);
-    const res = await fetch(`${API()}/waiter/payments`, {
-      credentials: 'include',
-      method: "POST",
-      headers: headers(),
-      body: JSON.stringify({
+    try {
+      const data = await api.post<any>('/waiter/payments', {
         check_id: check.check_id,
         amount: paymentAmount,
         payment_method: paymentMethod,
         tip_amount: tipAmt
-      })
-    });
-    if (res.ok) {
-      const data = await res.json();
+      });
       if (data.data?.fully_paid) {
         // Clear table
         if (table) {
-          await fetch(`${API()}/waiter/tables/${table.table_id}/clear`, {
-            credentials: 'include',
-            method: "POST", headers: headers()
-          });
+          await api.post(`/waiter/tables/${table.table_id}/clear`);
         }
         setScreen("tables");
         setTable(null);
@@ -527,20 +465,18 @@ export default function WaiterTerminal() {
         notify(`Paid $${paymentAmount}. Remaining: $${(data.data?.balance_remaining || 0).toFixed(2)}`);
       }
       setShowTip(false);
-    } else {
-      const d = await res.json();
-      notify(d.detail || "Payment failed");
+    } catch (e: any) {
+      notify(e?.data?.detail || "Payment failed");
     }
     setSending(false);
   };
 
   const printCheck = async () => {
     if (!check) return;
-    const res = await fetch(`${API()}/waiter/checks/${check.check_id}/print`, {
-      credentials: 'include',
-      method: "POST", headers: headers()
-    });
-    if (res.ok) notify("Check printed");
+    try {
+      await api.post(`/waiter/checks/${check.check_id}/print`);
+      notify("Check printed");
+    } catch { /* print failed */ }
   };
 
   // Fiscal printing functions
@@ -548,41 +484,25 @@ export default function WaiterTerminal() {
     if (!check) return;
     setFiscalStatus("printing");
     try {
-      const res = await fetch(`${API()}/pos-fiscal-bridge/receipt`, {
-        credentials: 'include',
-        method: "POST",
-        headers: headers(),
-        body: JSON.stringify({
-          order_id: check.check_id,
-          payment_type: payment_type,
-          payment_amount: check.total
-        })
+      const data = await api.post<any>('/pos-fiscal-bridge/receipt', {
+        order_id: check.check_id,
+        payment_type: payment_type,
+        payment_amount: check.total
       });
-      if (res.ok) {
-        const data = await res.json();
-        notify(`Fiscal receipt #${data.receipt_number || "OK"}`);
-        setShowFiscal(false);
-      } else {
-        const err = await res.json();
-        notify(err.detail || "Fiscal print failed");
-      }
-    } catch (e) {
-      notify("Connection error");
+      notify(`Fiscal receipt #${data.receipt_number || "OK"}`);
+      setShowFiscal(false);
+    } catch (e: any) {
+      notify(e?.data?.detail || "Fiscal print failed");
     }
     setFiscalStatus("idle");
   };
 
   const openDrawer = async () => {
     try {
-      const res = await fetch(`${API()}/pos-fiscal-bridge/drawer`, {
-        credentials: 'include',
-        method: "POST",
-        headers: headers()
-      });
-      if (res.ok) notify("Drawer opened");
-      else notify("Drawer failed");
-    } catch (e) {
-      notify("Connection error");
+      await api.post('/pos-fiscal-bridge/drawer');
+      notify("Drawer opened");
+    } catch {
+      notify("Drawer failed");
     }
   };
 
@@ -593,40 +513,26 @@ export default function WaiterTerminal() {
       const tipAmt = check.subtotal * (tipPercent / 100);
       const totalAmount = check.total + tipAmt;
 
-      const res = await fetch(`${API()}/pos-fiscal-bridge/card-payment`, {
-        credentials: 'include',
-        method: "POST",
-        headers: headers(),
-        body: JSON.stringify({
-          order_id: check.check_id,
-          amount: totalAmount
-        })
+      const data = await api.post<any>('/pos-fiscal-bridge/card-payment', {
+        order_id: check.check_id,
+        amount: totalAmount
       });
 
-      if (res.ok) {
-        const data = await res.json();
-        if (data.approved) {
-          // Payment approved - clear table
-          if (table) {
-            await fetch(`${API()}/waiter/tables/${table.table_id}/clear`, {
-              credentials: 'include',
-              method: "POST", headers: headers()
-            });
-          }
-          notify("Card payment approved!");
-          setShowTip(false);
-          setScreen("tables");
-          setTable(null);
-          setCheck(null);
-        } else {
-          notify(data.error || "Card declined");
+      if (data.approved) {
+        // Payment approved - clear table
+        if (table) {
+          await api.post(`/waiter/tables/${table.table_id}/clear`);
         }
+        notify("Card payment approved!");
+        setShowTip(false);
+        setScreen("tables");
+        setTable(null);
+        setCheck(null);
       } else {
-        const err = await res.json();
-        notify(err.detail || "Card payment failed");
+        notify(data.error || "Card declined");
       }
-    } catch (e) {
-      notify("Connection error");
+    } catch (e: any) {
+      notify(e?.data?.detail || "Card payment failed");
     }
     setFiscalStatus("idle");
   };
@@ -634,16 +540,10 @@ export default function WaiterTerminal() {
   const printXReport = async () => {
     setFiscalStatus("printing");
     try {
-      const res = await fetch(`${API()}/pos-fiscal-bridge/report`, {
-        credentials: 'include',
-        method: "POST",
-        headers: headers(),
-        body: JSON.stringify({ report_type: "x" })
-      });
-      if (res.ok) notify("X-Report printed");
-      else notify("Report failed");
-    } catch (e) {
-      notify("Connection error");
+      await api.post('/pos-fiscal-bridge/report', { report_type: "x" });
+      notify("X-Report printed");
+    } catch {
+      notify("Report failed");
     }
     setFiscalStatus("idle");
   };
@@ -652,16 +552,10 @@ export default function WaiterTerminal() {
     if (!confirm("Print Z-Report? This closes the fiscal day!")) return;
     setFiscalStatus("printing");
     try {
-      const res = await fetch(`${API()}/pos-fiscal-bridge/report`, {
-        credentials: 'include',
-        method: "POST",
-        headers: headers(),
-        body: JSON.stringify({ report_type: "z" })
-      });
-      if (res.ok) notify("Z-Report printed");
-      else notify("Report failed");
-    } catch (e) {
-      notify("Connection error");
+      await api.post('/pos-fiscal-bridge/report', { report_type: "z" });
+      notify("Z-Report printed");
+    } catch {
+      notify("Report failed");
     }
     setFiscalStatus("idle");
   };
@@ -670,26 +564,15 @@ export default function WaiterTerminal() {
     if (!table || !check) return;
     setSending(true);
     try {
-      const res = await fetch(`${API()}/waiter/checks/${check.check_id}/transfer`, {
-        credentials: 'include',
-        method: "POST",
-        headers: headers(),
-        body: JSON.stringify({ to_table_id: toTableId }),
-      });
-      if (res.ok) {
-        await res.json();
-        notify(`Transferred to Table ${toTableId}`);
-        // Refresh tables and go back to table view
-        await loadTables();
-        setScreen("tables");
-        setTable(null);
-        setCheck(null);
-      } else {
-        const err = await res.json();
-        notify(err.detail || "Transfer failed");
-      }
-    } catch (e) {
-      notify("Connection error");
+      await api.post(`/waiter/checks/${check.check_id}/transfer`, { to_table_id: toTableId });
+      notify(`Transferred to Table ${toTableId}`);
+      // Refresh tables and go back to table view
+      await loadTables();
+      setScreen("tables");
+      setTable(null);
+      setCheck(null);
+    } catch (e: any) {
+      notify(e?.data?.detail || "Transfer failed");
     }
     setSending(false);
     setShowTransfer(false);
@@ -700,23 +583,16 @@ export default function WaiterTerminal() {
     if (!check || moveSelectedItems.length === 0) return;
     setSending(true);
     try {
-      const res = await fetch(`${API()}/waiter/checks/${check.check_id}/transfer`, {
-        credentials: 'include',
-        method: "POST", headers: headers(),
-        body: JSON.stringify({ to_table_id: toTableId, items_to_transfer: moveSelectedItems })
-      });
-      if (res.ok) {
-        notify(`Moved ${moveSelectedItems.length} items to table`);
-        setShowMoveItems(false);
-        setMoveSelectedItems([]);
-        setMoveStep(1);
-        await loadCheck(check.check_id);
-        await loadTables();
-      } else {
-        const err = await res.json();
-        notify(err.detail || "Move failed");
-      }
-    } catch { notify("Connection error"); }
+      await api.post(`/waiter/checks/${check.check_id}/transfer`, { to_table_id: toTableId, items_to_transfer: moveSelectedItems });
+      notify(`Moved ${moveSelectedItems.length} items to table`);
+      setShowMoveItems(false);
+      setMoveSelectedItems([]);
+      setMoveStep(1);
+      await loadCheck(check.check_id);
+      await loadTables();
+    } catch (e: any) {
+      notify(e?.data?.detail || "Move failed");
+    }
     setSending(false);
   };
 
@@ -725,34 +601,23 @@ export default function WaiterTerminal() {
     if (!check || splitByItemsSelected.length === 0) return;
     setSending(true);
     try {
-      const res = await fetch(`${API()}/waiter-terminal/checks/${check.check_id}/split-items`, {
-        credentials: 'include',
-        method: "POST", headers: headers(),
-        body: JSON.stringify({ item_ids: splitByItemsSelected })
-      });
-      if (res.ok) {
-        const data = await res.json();
-        notify("Split by items done");
-        setShowSplitByItems(false);
-        setSplitByItemsSelected([]);
-        setShowSplit(false);
-        if (data.original_check) await loadCheck(check.check_id);
-        await loadTables();
-      } else {
-        const err = await res.json();
-        notify(err.detail || "Split failed");
-      }
-    } catch { notify("Connection error"); }
+      const data = await api.post<any>(`/waiter-terminal/checks/${check.check_id}/split-items`, { item_ids: splitByItemsSelected });
+      notify("Split by items done");
+      setShowSplitByItems(false);
+      setSplitByItemsSelected([]);
+      setShowSplit(false);
+      if (data.original_check) await loadCheck(check.check_id);
+      await loadTables();
+    } catch (e: any) {
+      notify(e?.data?.detail || "Split failed");
+    }
     setSending(false);
   };
 
   const loadTableChecks = async (tableId: number) => {
     try {
-      const res = await fetch(`${API()}/waiter/checks?table_id=${tableId}`, { credentials: 'include', headers: { Authorization: `Bearer ${token()}` } });
-      if (res.ok) {
-        const data = await res.json();
-        setTableChecks(data.checks || []);
-      }
+      const data = await api.get<any>(`/waiter/checks?table_id=${tableId}`);
+      setTableChecks(data.checks || []);
     } catch { /* ignore */ }
   };
 
@@ -760,81 +625,62 @@ export default function WaiterTerminal() {
     if (mergeSelectedChecks.length < 2) return;
     setSending(true);
     try {
-      const res = await fetch(`${API()}/waiter-terminal/checks/merge`, {
-        credentials: 'include',
-        method: "POST", headers: headers(),
-        body: JSON.stringify({ check_ids: mergeSelectedChecks })
-      });
-      if (res.ok) {
-        const data = await res.json();
-        notify(`Merged into check #${data.merged_check_id}`);
-        setShowMergeChecks(false);
-        setMergeSelectedChecks([]);
-        if (data.merged_check_id) await loadCheck(data.merged_check_id);
-        await loadTables();
-      } else {
-        const err = await res.json();
-        notify(err.detail || "Merge failed");
-      }
-    } catch { notify("Connection error"); }
+      const data = await api.post<any>('/waiter-terminal/checks/merge', { check_ids: mergeSelectedChecks });
+      notify(`Merged into check #${data.merged_check_id}`);
+      setShowMergeChecks(false);
+      setMergeSelectedChecks([]);
+      if (data.merged_check_id) await loadCheck(data.merged_check_id);
+      await loadTables();
+    } catch (e: any) {
+      notify(e?.data?.detail || "Merge failed");
+    }
     setSending(false);
   };
 
   const createReservation = async () => {
     setSending(true);
     try {
-      const res = await fetch(`${API()}/reservations/`, {
-        credentials: 'include',
-        method: "POST", headers: headers(),
-        body: JSON.stringify({
-          guest_name: bookingForm.guest_name,
-          guest_phone: bookingForm.guest_phone || null,
-          party_size: bookingForm.party_size,
-          date: bookingForm.date,
-          time: bookingForm.time,
-          duration_minutes: 90,
-          table_ids: bookingForm.table_ids,
-          special_requests: bookingForm.special_requests || null,
-          occasion: bookingForm.occasion || null
-        })
+      await api.post('/reservations/', {
+        guest_name: bookingForm.guest_name,
+        guest_phone: bookingForm.guest_phone || null,
+        party_size: bookingForm.party_size,
+        date: bookingForm.date,
+        time: bookingForm.time,
+        duration_minutes: 90,
+        table_ids: bookingForm.table_ids,
+        special_requests: bookingForm.special_requests || null,
+        occasion: bookingForm.occasion || null
       });
-      if (res.ok) {
-        notify("Reservation created");
-        setShowBooking(false);
-        setBookingForm({ guest_name: "", guest_phone: "", date: new Date().toISOString().split("T")[0], time: "19:00", party_size: 2, table_ids: null, special_requests: "", occasion: "" });
-        await loadReservations();
-      } else {
-        const err = await res.json();
-        notify(err.detail || "Booking failed");
-      }
-    } catch { notify("Connection error"); }
+      notify("Reservation created");
+      setShowBooking(false);
+      setBookingForm({ guest_name: "", guest_phone: "", date: new Date().toISOString().split("T")[0], time: "19:00", party_size: 2, table_ids: null, special_requests: "", occasion: "" });
+      await loadReservations();
+    } catch (e: any) {
+      notify(e?.data?.detail || "Booking failed");
+    }
     setSending(false);
   };
 
   const seatReservation = async (resv: Reservation) => {
     setSending(true);
     try {
-      const res = await fetch(`${API()}/reservations/${resv.id}/seat`, { credentials: 'include', method: "POST", headers: headers() });
-      if (res.ok) {
-        notify(`${resv.guest_name} seated`);
-        setShowReservationDetail(null);
-        await loadReservations();
-        await loadTables();
-      } else { notify("Failed to seat"); }
-    } catch { notify("Connection error"); }
+      await api.post(`/reservations/${resv.id}/seat`);
+      notify(`${resv.guest_name} seated`);
+      setShowReservationDetail(null);
+      await loadReservations();
+      await loadTables();
+    } catch { notify("Failed to seat"); }
     setSending(false);
   };
 
   const cancelReservation = async (resv: Reservation) => {
     setSending(true);
     try {
-      const res = await fetch(`${API()}/reservations/${resv.id}/cancel`, { credentials: 'include', method: "POST", headers: headers() });
-      if (res.ok) {
-        notify("Reservation cancelled");
-        setShowReservationDetail(null);
-        await loadReservations();
-      } else { notify("Cancel failed"); }
-    } catch { notify("Connection error"); }
+      await api.post(`/reservations/${resv.id}/cancel`);
+      notify("Reservation cancelled");
+      setShowReservationDetail(null);
+      await loadReservations();
+    } catch { notify("Cancel failed"); }
     setSending(false);
   };
 
@@ -842,26 +688,19 @@ export default function WaiterTerminal() {
     if (!tabForm.customer_name.trim()) { notify("Name required"); return; }
     setSending(true);
     try {
-      const res = await fetch(`${API()}/tabs/`, {
-        credentials: 'include',
-        method: "POST", headers: headers(),
-        body: JSON.stringify({
-          customer_name: tabForm.customer_name,
-          card_last_four: tabForm.card_last_four || null,
-          pre_auth_amount: tabForm.pre_auth_amount,
-          credit_limit: 500
-        })
+      await api.post('/tabs/', {
+        customer_name: tabForm.customer_name,
+        card_last_four: tabForm.card_last_four || null,
+        pre_auth_amount: tabForm.pre_auth_amount,
+        credit_limit: 500
       });
-      if (res.ok) {
-        notify("Tab opened");
-        setShowOpenTab(false);
-        setTabForm({ customer_name: "", card_last_four: "", pre_auth_amount: 50 });
-        await loadTabs();
-      } else {
-        const err = await res.json();
-        notify(err.detail || "Failed to open tab");
-      }
-    } catch { notify("Connection error"); }
+      notify("Tab opened");
+      setShowOpenTab(false);
+      setTabForm({ customer_name: "", card_last_four: "", pre_auth_amount: 50 });
+      await loadTabs();
+    } catch (e: any) {
+      notify(e?.data?.detail || "Failed to open tab");
+    }
     setSending(false);
   };
 
@@ -869,29 +708,22 @@ export default function WaiterTerminal() {
     if (!activeTab || !cart.length) return;
     setSending(true);
     try {
-      const res = await fetch(`${API()}/tabs/${activeTab.id}/items`, {
-        credentials: 'include',
-        method: "POST", headers: headers(),
-        body: JSON.stringify({
-          items: cart.map(c => ({
-            menu_item_id: c.menu_item_id,
-            quantity: c.quantity,
-            modifiers: c.modifiers ? Object.fromEntries(c.modifiers.map((m, i) => [String(i), m])) : null,
-            notes: c.notes || null
-          }))
-        })
+      await api.post(`/tabs/${activeTab.id}/items`, {
+        items: cart.map(c => ({
+          menu_item_id: c.menu_item_id,
+          quantity: c.quantity,
+          modifiers: c.modifiers ? Object.fromEntries(c.modifiers.map((m, i) => [String(i), m])) : null,
+          notes: c.notes || null
+        }))
       });
-      if (res.ok) {
-        setCart([]);
-        notify("Added to tab!");
-        await loadTabs();
-        setScreen("tables");
-        setActiveTab(null);
-      } else {
-        const err = await res.json();
-        notify(err.detail || "Failed");
-      }
-    } catch { notify("Connection error"); }
+      setCart([]);
+      notify("Added to tab!");
+      await loadTabs();
+      setScreen("tables");
+      setActiveTab(null);
+    } catch (e: any) {
+      notify(e?.data?.detail || "Failed");
+    }
     setSending(false);
   };
 
@@ -899,42 +731,28 @@ export default function WaiterTerminal() {
     if (!activeTab) return;
     setSending(true);
     try {
-      const res = await fetch(`${API()}/tabs/${activeTab.id}/transfer`, {
-        credentials: 'include',
-        method: "POST", headers: headers(),
-        body: JSON.stringify({ new_table_id: tableId })
-      });
-      if (res.ok) {
-        notify("Tab moved to table");
-        setShowTabTransfer(false);
-        setActiveTab(null);
-        setShowTabs(false);
-        await loadTabs();
-        await loadTables();
-      } else {
-        const err = await res.json();
-        notify(err.detail || "Transfer failed");
-      }
-    } catch { notify("Connection error"); }
+      await api.post(`/tabs/${activeTab.id}/transfer`, { new_table_id: tableId });
+      notify("Tab moved to table");
+      setShowTabTransfer(false);
+      setActiveTab(null);
+      setShowTabs(false);
+      await loadTabs();
+      await loadTables();
+    } catch (e: any) {
+      notify(e?.data?.detail || "Transfer failed");
+    }
     setSending(false);
   };
 
   const closeTab = async (tab: Tab) => {
     setSending(true);
     try {
-      const res = await fetch(`${API()}/tabs/${tab.id}/close`, {
-        credentials: 'include',
-        method: "POST", headers: headers(),
-        body: JSON.stringify({ payment_method: "cash", tip_amount: 0 })
-      });
-      if (res.ok) {
-        notify("Tab closed");
-        await loadTabs();
-      } else {
-        const err = await res.json();
-        notify(err.detail || "Close failed");
-      }
-    } catch { notify("Connection error"); }
+      await api.post(`/tabs/${tab.id}/close`, { payment_method: "cash", tip_amount: 0 });
+      notify("Tab closed");
+      await loadTabs();
+    } catch (e: any) {
+      notify(e?.data?.detail || "Close failed");
+    }
     setSending(false);
   };
 
@@ -942,31 +760,24 @@ export default function WaiterTerminal() {
     if (!check || !table) return;
     setSending(true);
     try {
-      const res = await fetch(`${API()}/held-orders/`, {
-        credentials: 'include',
-        method: "POST", headers: headers(),
-        body: JSON.stringify({
-          order_id: check.check_id,
-          table_id: table.table_id,
-          hold_reason: holdReason || "Held by waiter",
-          order_data: { check_id: check.check_id, items: check.items, total: check.total },
-          total_amount: check.total,
-          expires_hours: 24
-        })
+      await api.post('/held-orders/', {
+        order_id: check.check_id,
+        table_id: table.table_id,
+        hold_reason: holdReason || "Held by waiter",
+        order_data: { check_id: check.check_id, items: check.items, total: check.total },
+        total_amount: check.total,
+        expires_hours: 24
       });
-      if (res.ok) {
-        notify("Order held");
-        setShowHoldOrder(false);
-        setHoldReason("");
-        await loadHeldOrders();
-        setScreen("tables");
-        setTable(null);
-        setCheck(null);
-      } else {
-        const err = await res.json();
-        notify(err.detail || "Hold failed");
-      }
-    } catch { notify("Connection error"); }
+      notify("Order held");
+      setShowHoldOrder(false);
+      setHoldReason("");
+      await loadHeldOrders();
+      setScreen("tables");
+      setTable(null);
+      setCheck(null);
+    } catch (e: any) {
+      notify(e?.data?.detail || "Hold failed");
+    }
     setSending(false);
   };
 
@@ -974,37 +785,28 @@ export default function WaiterTerminal() {
     setSending(true);
     try {
       const url = targetTableId
-        ? `${API()}/held-orders/${held.id}/resume?target_table_id=${targetTableId}`
-        : `${API()}/held-orders/${held.id}/resume`;
-      const res = await fetch(url, { credentials: 'include', method: "POST", headers: headers() });
-      if (res.ok) {
-        notify("Order resumed");
-        setShowHeldOrders(false);
-        await loadHeldOrders();
-        await loadTables();
-      } else {
-        const err = await res.json();
-        notify(err.detail || "Resume failed");
-      }
-    } catch { notify("Connection error"); }
+        ? `/held-orders/${held.id}/resume?target_table_id=${targetTableId}`
+        : `/held-orders/${held.id}/resume`;
+      await api.post(url);
+      notify("Order resumed");
+      setShowHeldOrders(false);
+      await loadHeldOrders();
+      await loadTables();
+    } catch (e: any) {
+      notify(e?.data?.detail || "Resume failed");
+    }
     setSending(false);
   };
 
   const quickReorder = async (itemId: number) => {
     setSending(true);
     try {
-      const res = await fetch(`${API()}/waiter-terminal/quick-reorder/${itemId}?quantity=1`, {
-        credentials: 'include',
-        method: "POST", headers: headers()
-      });
-      if (res.ok) {
-        notify("Reordered!");
-        if (check) await loadCheck(check.check_id);
-      } else {
-        const err = await res.json();
-        notify(err.detail || "Reorder failed");
-      }
-    } catch { notify("Connection error"); }
+      await api.post(`/waiter-terminal/quick-reorder/${itemId}?quantity=1`);
+      notify("Reordered!");
+      if (check) await loadCheck(check.check_id);
+    } catch (e: any) {
+      notify(e?.data?.detail || "Reorder failed");
+    }
     setSending(false);
   };
 
@@ -1013,39 +815,29 @@ export default function WaiterTerminal() {
     setSending(true);
     try {
       const [primary, ...secondary] = mergeSelected;
-      const res = await fetch(`${API()}/table-merges/`, {
-        credentials: 'include',
-        method: "POST", headers: headers(),
-        body: JSON.stringify({ primary_table_id: primary, secondary_table_ids: secondary })
-      });
-      if (res.ok) {
-        notify(`Merged ${mergeSelected.length} tables`);
-        setMergeMode(false);
-        setMergeSelected([]);
-        await loadMerges();
-        await loadTables();
-      } else {
-        const err = await res.json();
-        notify(err.detail || "Merge failed");
-      }
-    } catch { notify("Connection error"); }
+      await api.post('/table-merges/', { primary_table_id: primary, secondary_table_ids: secondary });
+      notify(`Merged ${mergeSelected.length} tables`);
+      setMergeMode(false);
+      setMergeSelected([]);
+      await loadMerges();
+      await loadTables();
+    } catch (e: any) {
+      notify(e?.data?.detail || "Merge failed");
+    }
     setSending(false);
   };
 
   const unmergeTables = async (merge: TableMerge) => {
     setSending(true);
     try {
-      const res = await fetch(`${API()}/table-merges/${merge.id}/unmerge`, { credentials: 'include', method: "POST", headers: headers() });
-      if (res.ok) {
-        notify("Tables unmerged");
-        setShowUnmerge(null);
-        await loadMerges();
-        await loadTables();
-      } else {
-        const err = await res.json();
-        notify(err.detail || "Unmerge failed");
-      }
-    } catch { notify("Connection error"); }
+      await api.post(`/table-merges/${merge.id}/unmerge`);
+      notify("Tables unmerged");
+      setShowUnmerge(null);
+      await loadMerges();
+      await loadTables();
+    } catch (e: any) {
+      notify(e?.data?.detail || "Unmerge failed");
+    }
     setSending(false);
   };
 
@@ -1125,7 +917,7 @@ export default function WaiterTerminal() {
               Close
             </button>
           )}
-          <button onClick={() => { localStorage.removeItem("access_token"); window.location.href = "/waiter/login"; }}
+          <button onClick={() => { clearAuth(); window.location.href = "/waiter/login"; }}
             className="p-3 text-gray-500 bg-gray-100 hover:bg-gray-200 rounded-xl">
             <svg className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />

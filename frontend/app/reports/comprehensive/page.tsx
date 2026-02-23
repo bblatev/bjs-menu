@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import Link from 'next/link';
-import { API_URL } from '@/lib/api';
+import { api, apiFetch, isAuthenticated } from '@/lib/api';
 
 // Types
 interface ReportTab {
@@ -49,7 +49,6 @@ interface DashboardKPIs {
 
 export default function ComprehensiveReportsPage() {
   const router = useRouter();
-  const [token, setToken] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState('kpis');
   const [period, setPeriod] = useState('week');
   const [loading, setLoading] = useState(false);
@@ -77,47 +76,38 @@ export default function ComprehensiveReportsPage() {
   ];
 
   useEffect(() => {
-    const storedToken = localStorage.getItem('access_token');
-    if (!storedToken) {
+    if (!isAuthenticated()) {
       router.push('/login');
       return;
     }
-    setToken(storedToken);
+    fetchReportData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [router]);
 
   useEffect(() => {
-    if (token) {
+    if (isAuthenticated()) {
       fetchReportData();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeTab, period, token]);
+  }, [activeTab, period]);
 
   const fetchReportData = async () => {
-    if (!token) return;
+    if (!isAuthenticated()) return;
     setLoading(true);
 
     try {
       const currentTab = tabs.find(t => t.key === activeTab);
       if (!currentTab) return;
 
-      const url = activeTab === 'kpis'
-        ? `${API_URL}${currentTab.endpoint}`
-        : `${API_URL}${currentTab.endpoint}?period=${period}`;
+      const path = activeTab === 'kpis'
+        ? currentTab.endpoint
+        : `${currentTab.endpoint}?period=${period}`;
 
-      const res = await fetch(url, {
-        credentials: 'include',
-        headers: { Authorization: `Bearer ${token}` }
-      });
-
-      if (res.ok) {
-        const data = await res.json();
-        if (activeTab === 'kpis') {
-          setKpis(data);
-        } else {
-          setReportData(data);
-        }
+      const data = await api.get<any>(path);
+      if (activeTab === 'kpis') {
+        setKpis(data);
       } else {
-        console.error('Failed to fetch report data');
+        setReportData(data);
       }
     } catch (err) {
       console.error('Error fetching report data:', err);
@@ -127,25 +117,20 @@ export default function ComprehensiveReportsPage() {
   };
 
   const exportReport = async (format: 'pdf' | 'excel' | 'csv') => {
-    if (!token) return;
+    if (!isAuthenticated()) return;
 
     try {
-      const res = await fetch(`${API_URL}/reports/export/${activeTab}`, {
-        credentials: 'include',
+      // Use apiFetch for blob download - need raw response
+      const blob = await apiFetch<Blob>(`/reports/export/${activeTab}`, {
         method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
         body: JSON.stringify({
           report_type: activeTab,
           format: format,
           period: period
-        })
+        }),
       });
 
-      if (res.ok) {
-        const blob = await res.blob();
+      if (blob instanceof Blob) {
         const url = window.URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;

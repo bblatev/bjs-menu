@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import Link from 'next/link';
-import { API_URL } from '@/lib/api';
+import { api } from '@/lib/api';
 
 interface Camera {
   id: string;
@@ -51,23 +51,10 @@ export default function AnalyticsVideoPage() {
   const loadVideoData = async () => {
     setLoading(true);
     try {
-      const token = localStorage.getItem('access_token');
-      const response = await fetch(`${API_URL}/analytics/video`, {
-        credentials: 'include',
-        headers: { Authorization: `Bearer ${token}` },
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        setCameras(data.cameras || []);
-        setEvents(data.events || []);
-        setStats(data.stats);
-      } else {
-        console.error('Failed to load video analytics data');
-        setCameras([]);
-        setEvents([]);
-        setStats(null);
-      }
+      const data = await api.get<{ cameras?: Camera[]; events?: VideoEvent[]; stats?: VideoStats }>('/analytics/video');
+      setCameras(data.cameras || []);
+      setEvents(data.events || []);
+      setStats(data.stats || null);
     } catch (error) {
       console.error('Error loading video analytics data:', error);
       setCameras([]);

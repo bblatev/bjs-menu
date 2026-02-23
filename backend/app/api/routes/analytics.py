@@ -1049,6 +1049,55 @@ def get_scale_integration_status(request: Request, db: DbSession):
     }
 
 
+# ==================== LABOR VS REVENUE ====================
+
+@router.get("/labor-vs-revenue")
+@limiter.limit("60/minute")
+def get_labor_vs_revenue(
+    request: Request,
+    db: DbSession,
+    location_id: Optional[int] = None,
+    days: int = Query(30),
+):
+    """Get labor cost vs revenue comparison over time."""
+    start_date = date.today() - timedelta(days=days)
+    query = db.query(DailyMetrics).filter(DailyMetrics.date >= start_date)
+    if location_id:
+        query = query.filter(DailyMetrics.location_id == location_id)
+    metrics = query.order_by(DailyMetrics.date).limit(10000).all()
+
+    data_points = []
+    total_revenue = 0.0
+    total_labor = 0.0
+    for m in metrics:
+        rev = float(m.total_revenue or 0)
+        labor = float(m.labor_cost or 0)
+        total_revenue += rev
+        total_labor += labor
+        data_points.append({
+            "date": m.date.isoformat() if m.date else None,
+            "revenue": round(rev, 2),
+            "labor_cost": round(labor, 2),
+            "labor_pct": round((labor / rev * 100), 1) if rev > 0 else 0,
+        })
+
+    avg_labor_pct = round((total_labor / total_revenue * 100), 1) if total_revenue > 0 else 0
+    target_labor_pct = 30.0
+
+    return {
+        "period_days": days,
+        "location_id": location_id,
+        "total_revenue": round(total_revenue, 2),
+        "total_labor_cost": round(total_labor, 2),
+        "avg_labor_percentage": avg_labor_pct,
+        "target_labor_percentage": target_labor_pct,
+        "variance": round(avg_labor_pct - target_labor_pct, 1),
+        "status": "on_track" if avg_labor_pct <= target_labor_pct + 3 else "warning" if avg_labor_pct <= target_labor_pct + 6 else "critical",
+        "data_points": data_points,
+        "generated_at": datetime.now(timezone.utc).isoformat(),
+    }
+
+
 @router.get("/menu-analysis")
 @limiter.limit("60/minute")
 def get_menu_analysis(request: Request, db: DbSession):

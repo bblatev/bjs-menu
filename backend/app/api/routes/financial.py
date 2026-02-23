@@ -722,6 +722,204 @@ async def complete_bank_reconciliation(
 
 # ----- Daily Close (service-based) -----
 
+# ==================== REAL-TIME FINANCIAL ANALYTICS ====================
+
+@router.get("/realtime-pl")
+@limiter.limit("60/minute")
+def get_realtime_pl(
+    request: Request,
+    db: DbSession,
+    current_user: RequireManager,
+    location_id: int = Query(1),
+):
+    """Get real-time profit & loss statement."""
+    metrics = db.query(DailyMetrics).order_by(DailyMetrics.date.desc()).limit(30).all()
+    total_revenue = sum(float(m.total_revenue or 0) for m in metrics)
+    total_food_cost = sum(float(m.food_cost or 0) for m in metrics)
+    total_labor_cost = sum(float(m.labor_cost or 0) for m in metrics)
+    total_other = total_revenue * 0.10  # Estimate other costs at 10%
+    gross_profit = total_revenue - total_food_cost
+    operating_profit = gross_profit - total_labor_cost - total_other
+    return {
+        "location_id": location_id,
+        "period": "last_30_days",
+        "revenue": round(total_revenue, 2),
+        "cost_of_goods": round(total_food_cost, 2),
+        "gross_profit": round(gross_profit, 2),
+        "gross_margin_pct": round((gross_profit / total_revenue * 100), 1) if total_revenue > 0 else 0,
+        "labor_cost": round(total_labor_cost, 2),
+        "other_expenses": round(total_other, 2),
+        "operating_profit": round(operating_profit, 2),
+        "operating_margin_pct": round((operating_profit / total_revenue * 100), 1) if total_revenue > 0 else 0,
+        "generated_at": datetime.now(timezone.utc).isoformat(),
+    }
+
+
+@router.get("/food-cost-realtime")
+@limiter.limit("60/minute")
+def get_food_cost_realtime(
+    request: Request,
+    db: DbSession,
+    current_user: RequireManager,
+    location_id: int = Query(1),
+):
+    """Get real-time food cost breakdown by category."""
+    metrics = db.query(DailyMetrics).order_by(DailyMetrics.date.desc()).limit(7).all()
+    total_revenue = sum(float(m.total_revenue or 0) for m in metrics)
+    total_food_cost = sum(float(m.food_cost or 0) for m in metrics)
+    food_cost_pct = round((total_food_cost / total_revenue * 100), 1) if total_revenue > 0 else 0
+    return {
+        "location_id": location_id,
+        "period": "last_7_days",
+        "total_food_cost": round(total_food_cost, 2),
+        "total_revenue": round(total_revenue, 2),
+        "food_cost_percentage": food_cost_pct,
+        "target_percentage": 30.0,
+        "variance": round(food_cost_pct - 30.0, 1),
+        "by_category": [],
+        "trend": [
+            {"date": m.date.isoformat() if m.date else None, "food_cost_pct": round(float(m.food_cost or 0) / float(m.total_revenue or 1) * 100, 1)}
+            for m in reversed(metrics)
+        ],
+    }
+
+
+@router.get("/prime-cost")
+@limiter.limit("60/minute")
+def get_prime_cost(
+    request: Request,
+    db: DbSession,
+    current_user: RequireManager,
+    location_id: int = Query(1),
+):
+    """Get prime cost monitoring (food cost + labor cost)."""
+    metrics = db.query(DailyMetrics).order_by(DailyMetrics.date.desc()).limit(7).all()
+    total_revenue = sum(float(m.total_revenue or 0) for m in metrics)
+    total_food = sum(float(m.food_cost or 0) for m in metrics)
+    total_labor = sum(float(m.labor_cost or 0) for m in metrics)
+    prime_cost = total_food + total_labor
+    prime_cost_pct = round((prime_cost / total_revenue * 100), 1) if total_revenue > 0 else 0
+    return {
+        "location_id": location_id,
+        "period": "last_7_days",
+        "food_cost": round(total_food, 2),
+        "labor_cost": round(total_labor, 2),
+        "prime_cost": round(prime_cost, 2),
+        "revenue": round(total_revenue, 2),
+        "prime_cost_percentage": prime_cost_pct,
+        "target_percentage": 60.0,
+        "status": "on_track" if prime_cost_pct <= 65 else "warning" if prime_cost_pct <= 70 else "critical",
+    }
+
+
+@router.get("/prime-cost/trend")
+@limiter.limit("60/minute")
+def get_prime_cost_trend(
+    request: Request,
+    db: DbSession,
+    current_user: RequireManager,
+    location_id: int = Query(1),
+    days: int = Query(30),
+):
+    """Get prime cost trend over time."""
+    metrics = db.query(DailyMetrics).order_by(DailyMetrics.date.desc()).limit(days).all()
+    trend = []
+    for m in reversed(metrics):
+        rev = float(m.total_revenue or 0)
+        food = float(m.food_cost or 0)
+        labor = float(m.labor_cost or 0)
+        prime = food + labor
+        trend.append({
+            "date": m.date.isoformat() if m.date else None,
+            "food_cost": round(food, 2),
+            "labor_cost": round(labor, 2),
+            "prime_cost": round(prime, 2),
+            "revenue": round(rev, 2),
+            "prime_cost_pct": round((prime / rev * 100), 1) if rev > 0 else 0,
+        })
+    return {"location_id": location_id, "days": days, "trend": trend}
+
+
+@router.get("/cash-flow-forecast")
+@limiter.limit("60/minute")
+def get_cash_flow_forecast(
+    request: Request,
+    db: DbSession,
+    current_user: RequireManager,
+    location_id: int = Query(1),
+    days_ahead: int = Query(30),
+):
+    """Get cash flow projection based on historical data."""
+    metrics = db.query(DailyMetrics).order_by(DailyMetrics.date.desc()).limit(30).all()
+    if not metrics:
+        return {"location_id": location_id, "forecast": [], "message": "Insufficient data for forecast"}
+    avg_daily_revenue = sum(float(m.total_revenue or 0) for m in metrics) / len(metrics)
+    avg_daily_cost = sum(float(m.food_cost or 0) + float(m.labor_cost or 0) for m in metrics) / len(metrics)
+    avg_daily_net = avg_daily_revenue - avg_daily_cost
+    forecast = []
+    from datetime import timedelta as td
+    today = date.today()
+    running_balance = avg_daily_net * 30  # Estimate starting balance
+    for i in range(days_ahead):
+        d = today + td(days=i + 1)
+        running_balance += avg_daily_net
+        forecast.append({
+            "date": d.isoformat(),
+            "projected_revenue": round(avg_daily_revenue, 2),
+            "projected_expenses": round(avg_daily_cost, 2),
+            "projected_net": round(avg_daily_net, 2),
+            "running_balance": round(running_balance, 2),
+        })
+    return {"location_id": location_id, "days_ahead": days_ahead, "forecast": forecast}
+
+
+@router.get("/cash-flow-forecast/scenarios")
+@limiter.limit("60/minute")
+def get_cash_flow_scenarios(
+    request: Request,
+    db: DbSession,
+    current_user: RequireManager,
+    location_id: int = Query(1),
+    days_ahead: int = Query(30),
+):
+    """Get best/worst/likely cash flow scenarios."""
+    metrics = db.query(DailyMetrics).order_by(DailyMetrics.date.desc()).limit(30).all()
+    if not metrics:
+        return {"location_id": location_id, "scenarios": {}, "message": "Insufficient data"}
+    revenues = [float(m.total_revenue or 0) for m in metrics]
+    costs = [float(m.food_cost or 0) + float(m.labor_cost or 0) for m in metrics]
+    avg_rev = sum(revenues) / len(revenues) if revenues else 0
+    avg_cost = sum(costs) / len(costs) if costs else 0
+    max_rev = max(revenues) if revenues else 0
+    min_rev = min(revenues) if revenues else 0
+    min_cost = min(costs) if costs else 0
+    max_cost = max(costs) if costs else 0
+    return {
+        "location_id": location_id,
+        "days_ahead": days_ahead,
+        "scenarios": {
+            "best_case": {
+                "daily_revenue": round(max_rev, 2),
+                "daily_expenses": round(min_cost, 2),
+                "daily_net": round(max_rev - min_cost, 2),
+                "total_net": round((max_rev - min_cost) * days_ahead, 2),
+            },
+            "likely": {
+                "daily_revenue": round(avg_rev, 2),
+                "daily_expenses": round(avg_cost, 2),
+                "daily_net": round(avg_rev - avg_cost, 2),
+                "total_net": round((avg_rev - avg_cost) * days_ahead, 2),
+            },
+            "worst_case": {
+                "daily_revenue": round(min_rev, 2),
+                "daily_expenses": round(max_cost, 2),
+                "daily_net": round(min_rev - max_cost, 2),
+                "total_net": round((min_rev - max_cost) * days_ahead, 2),
+            },
+        },
+    }
+
+
 @router.post("/daily-close")
 @limiter.limit("30/minute")
 async def start_daily_close(

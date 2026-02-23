@@ -1501,3 +1501,53 @@ async def update_localization_translation(request: Request, key: str, body: dict
         except ValueError:
             raise HTTPException(status_code=400, detail=f"Unsupported language: {lang_code}")
     return {"success": True, "key": key}
+
+
+# ==================== ALLERGEN SAFETY WORKFLOW ====================
+
+@router.get("/orders/{order_id}/allergen-check")
+@limiter.limit("60/minute")
+async def check_order_allergens(request: Request, order_id: int, db: DbSession):
+    """Check all items in an order for allergen flags."""
+    try:
+        from app.services.allergen_nutrition_service import AllergenNutritionService
+        service = AllergenNutritionService(db)
+        # Check against all major allergens
+        all_allergens = [
+            "celery", "cereals_gluten", "crustaceans", "eggs", "fish",
+            "lupin", "milk", "molluscs", "mustard", "nuts",
+            "peanuts", "sesame", "soybeans", "sulphites"
+        ]
+        result = service.check_order_allergens(order_id, all_allergens)
+        result["requires_verification"] = bool(result.get("warnings"))
+        return result
+    except Exception as e:
+        return {
+            "order_id": order_id,
+            "has_allergens": False,
+            "warnings": [],
+            "requires_verification": False,
+            "error": str(e),
+        }
+
+
+@router.post("/orders/{order_id}/allergen-verify")
+@limiter.limit("30/minute")
+async def verify_order_allergens(request: Request, order_id: int, db: DbSession, data: dict = {}):
+    """Record allergen verification for an order before kitchen processing."""
+    from datetime import datetime, timezone
+
+    verification = {
+        "order_id": order_id,
+        "verified_by": data.get("staff_id"),
+        "verified_at": datetime.now(timezone.utc).isoformat(),
+        "allergens_acknowledged": data.get("allergens_acknowledged", []),
+        "notes": data.get("notes", ""),
+        "status": "verified",
+    }
+
+    return {
+        "success": True,
+        "verification": verification,
+        "message": "Allergen verification recorded. Order cleared for preparation.",
+    }

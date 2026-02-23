@@ -2,9 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import axios from 'axios';
-
-import { API_URL, WS_URL } from '@/lib/api';
+import { api, isAuthenticated, WS_URL } from '@/lib/api';
 
 import { toast } from '@/lib/toast';
 export default function KitchenStationPage() {
@@ -14,48 +12,40 @@ export default function KitchenStationPage() {
 
   const [orders, setOrders] = useState<any[]>([]);
   const [, setWs] = useState<WebSocket | null>(null);
-  const [token, setToken] = useState('');
   const [filter, setFilter] = useState<'all' | 'dine-in' | 'takeaway'>('all');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [printing, setPrinting] = useState<number | null>(null);
 
   useEffect(() => {
-    const storedToken = localStorage.getItem('access_token');
-    if (!storedToken) {
+    if (!isAuthenticated()) {
       router.push('/login');
       return;
     }
-    setToken(storedToken);
-    loadOrders(storedToken);
-    const cleanup = connectWebSocket(storedToken);
+    loadOrders();
+    const cleanup = connectWebSocket();
     return cleanup;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [stationId]);
 
-  const loadOrders = async (authToken: string) => {
+  const loadOrders = async () => {
     try {
       setLoading(true);
       setError('');
-      const response = await axios.get(
-        `${API_URL}/orders/station/${stationId}?status=new&status=accepted&status=preparing&status=ready`,
-        { headers: { Authorization: `Bearer ${authToken}` } }
+      const data = await api.get<any[]>(
+        `/orders/station/${stationId}?status=new&status=accepted&status=preparing&status=ready`
       );
-      setOrders(response.data);
-    } catch (err: unknown) {
+      setOrders(data);
+    } catch (err: any) {
       console.error('Failed to load orders', err);
-      const message = err instanceof Error ? err.message : typeof err === 'object' && err && 'response' in err ? String((err as any).response?.data?.detail || 'Failed to load orders') : 'Failed to load orders';
+      const message = err?.message || err?.data?.detail || 'Failed to load orders';
       setError(message);
-      if (typeof err === 'object' && err && 'response' in err && (err as any).response?.status === 401) {
-        localStorage.removeItem('access_token');
-        router.push('/login');
-      }
     } finally {
       setLoading(false);
     }
   };
 
-  const connectWebSocket = (authToken: string) => {
+  const connectWebSocket = () => {
     const socket = new WebSocket(`${WS_URL}/ws/station/${stationId}`);
 
     socket.onopen = () => { /* WebSocket connected */ };
@@ -63,7 +53,7 @@ export default function KitchenStationPage() {
       try {
         const data = JSON.parse(event.data);
         if (data.type === 'order_update') {
-          loadOrders(authToken);
+          loadOrders();
         }
       } catch { /* ignore malformed messages */ }
     };
@@ -77,12 +67,8 @@ export default function KitchenStationPage() {
 
   const updateOrderStatus = async (orderId: number, status: string) => {
     try {
-      await axios.put(
-        `${API_URL}/orders/${orderId}/status`,
-        { status },
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-      loadOrders(token);
+      await api.put(`/orders/${orderId}/status`, { status });
+      loadOrders();
     } catch (err) {
       toast.error('Failed to update order status');
     }
@@ -91,18 +77,14 @@ export default function KitchenStationPage() {
   const printFiscalReceipt = async (orderId: number, paymentType: string = 'cash') => {
     try {
       setPrinting(orderId);
-      const response = await axios.post(
-        `${API_URL}/fiscal/receipt`,
-        { order_id: orderId, payment_type: paymentType },
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-      if (response.data.success) {
-        toast.success(`Receipt printed! Number: ${response.data.receipt_number || 'N/A'}`);
+      const data = await api.post<any>('/fiscal/receipt', { order_id: orderId, payment_type: paymentType });
+      if (data.success) {
+        toast.success(`Receipt printed! Number: ${data.receipt_number || 'N/A'}`);
       } else {
-        toast.error(`Print failed: ${response.data.error || 'Unknown error'}`);
+        toast.error(`Print failed: ${data.error || 'Unknown error'}`);
       }
-    } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : typeof err === 'object' && err && 'response' in err ? String((err as any).response?.data?.detail || 'An error occurred') : 'An error occurred';
+    } catch (err: any) {
+      const message = err?.message || err?.data?.detail || 'An error occurred';
       toast.error(`Print error: ${message}`);
     } finally {
       setPrinting(null);
@@ -112,18 +94,14 @@ export default function KitchenStationPage() {
   const printKitchenTicket = async (orderId: number) => {
     try {
       setPrinting(orderId);
-      const response = await axios.post(
-        `${API_URL}/fiscal/kitchen-ticket/${orderId}`,
-        {},
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-      if (response.data.success) {
+      const data = await api.post<any>(`/fiscal/kitchen-ticket/${orderId}`, {});
+      if (data.success) {
         toast.success('Kitchen ticket printed!');
       } else {
-        toast.error(`Print failed: ${response.data.error || 'Unknown error'}`);
+        toast.error(`Print failed: ${data.error || 'Unknown error'}`);
       }
-    } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : typeof err === 'object' && err && 'response' in err ? String((err as any).response?.data?.detail || 'An error occurred') : 'An error occurred';
+    } catch (err: any) {
+      const message = err?.message || err?.data?.detail || 'An error occurred';
       toast.error(`Print error: ${message}`);
     } finally {
       setPrinting(null);

@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { Button, Card, CardBody } from '@/components/ui';
 
-import { API_URL } from '@/lib/api';
+import { api } from '@/lib/api';
 
 interface CategoryData {
   category: string;
@@ -59,21 +59,13 @@ export default function TurnoverBasePricesPage() {
   const loadReport = useCallback(async () => {
     setLoading(true);
     try {
-      const token = localStorage.getItem('access_token');
-      let url = `${API_URL}/reports/turnover-base-prices?start_date=${startDate}&end_date=${endDate}`;
+      let url = `/reports/turnover-base-prices?start_date=${startDate}&end_date=${endDate}`;
       if (selectedCategory) {
         url += `&category=${encodeURIComponent(selectedCategory)}`;
       }
 
-      const response = await fetch(url, {
-        credentials: 'include',
-        headers: { Authorization: `Bearer ${token}` },
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        setReport(data);
-      }
+      const data = await api.get<ReportData>(url);
+      setReport(data);
     } catch (err) {
       console.error('Error loading report:', err);
     } finally {

@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { API_URL } from '@/lib/api';
+import { api } from '@/lib/api';
 
 import { toast } from '@/lib/toast';
 interface StaffMember {
@@ -115,19 +115,8 @@ export default function StaffSchedulesPage() {
 
   const loadStaff = async () => {
     try {
-      const token = localStorage.getItem('access_token');
-      const response = await fetch(
-        `${API_URL}/staff/schedules/staff`,
-        {
-          credentials: 'include',
-          headers: { Authorization: `Bearer ${token}` },
-        }
-      );
-
-      if (response.ok) {
-        const data = await response.json();
-        setStaff(data);
-      }
+      const data = await api.get<StaffMember[]>('/staff/schedules/staff');
+      setStaff(data);
     } catch (error) {
       console.error('Error loading staff:', error);
     }
@@ -135,24 +124,15 @@ export default function StaffSchedulesPage() {
 
   const loadShifts = async () => {
     try {
-      const token = localStorage.getItem('access_token');
       const startDate = formatDateKey(selectedWeek);
       const endDateObj = new Date(selectedWeek);
       endDateObj.setDate(endDateObj.getDate() + 6);
       const endDate = formatDateKey(endDateObj);
 
-      const response = await fetch(
-        `${API_URL}/staff/shifts?start_date=${startDate}&end_date=${endDate}`,
-        {
-          credentials: 'include',
-          headers: { Authorization: `Bearer ${token}` },
-        }
+      const data = await api.get<Shift[]>(
+        `/staff/shifts?start_date=${startDate}&end_date=${endDate}`
       );
-
-      if (response.ok) {
-        const data = await response.json();
-        setShifts(data);
-      }
+      setShifts(data);
     } catch (error) {
       console.error('Error loading shifts:', error);
     }
@@ -160,24 +140,15 @@ export default function StaffSchedulesPage() {
 
   const loadTimeOffs = async () => {
     try {
-      const token = localStorage.getItem('access_token');
       const startDate = formatDateKey(selectedWeek);
       const endDateObj = new Date(selectedWeek);
       endDateObj.setDate(endDateObj.getDate() + 6);
       const endDate = formatDateKey(endDateObj);
 
-      const response = await fetch(
-        `${API_URL}/staff/time-off?start_date=${startDate}&end_date=${endDate}`,
-        {
-          credentials: 'include',
-          headers: { Authorization: `Bearer ${token}` },
-        }
+      const data = await api.get<TimeOff[]>(
+        `/staff/time-off?start_date=${startDate}&end_date=${endDate}`
       );
-
-      if (response.ok) {
-        const data = await response.json();
-        setTimeOffs(data);
-      }
+      setTimeOffs(data);
     } catch (error) {
       console.error('Error loading time off:', error);
     }
@@ -242,31 +213,16 @@ export default function StaffSchedulesPage() {
 
   const saveShift = async () => {
     try {
-      const token = localStorage.getItem('access_token');
-      const url = editingShift
-        ? `${API_URL}/staff/shifts/${editingShift.id}`
-        : `${API_URL}/staff/shifts`;
-
-      const response = await fetch(url, {
-        credentials: 'include',
-        method: editingShift ? 'PUT' : 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify(shiftForm),
-      });
-
-      if (response.ok) {
-        setShowShiftModal(false);
-        loadShifts();
+      if (editingShift) {
+        await api.put(`/staff/shifts/${editingShift.id}`, shiftForm);
       } else {
-        const error = await response.json();
-        toast.error(error.detail || 'Failed to save shift');
+        await api.post('/staff/shifts', shiftForm);
       }
-    } catch (error) {
+      setShowShiftModal(false);
+      loadShifts();
+    } catch (error: any) {
       console.error('Error saving shift:', error);
-      toast.error('Failed to save shift');
+      toast.error(error?.data?.detail || 'Failed to save shift');
     }
   };
 
@@ -274,91 +230,40 @@ export default function StaffSchedulesPage() {
     if (!confirm('Are you sure you want to delete this shift?')) return;
 
     try {
-      const token = localStorage.getItem('access_token');
-      const response = await fetch(
-        `${API_URL}/staff/shifts/${shiftId}`,
-        {
-          credentials: 'include',
-          method: 'DELETE',
-          headers: { Authorization: `Bearer ${token}` },
-        }
-      );
-
-      if (response.ok) {
-        setShifts(shifts.filter(s => s.id !== shiftId));
-        setShowShiftModal(false);
-      } else {
-        const error = await response.json();
-        toast.error(error.detail || 'Failed to delete shift');
-      }
-    } catch (error) {
+      await api.del(`/staff/shifts/${shiftId}`);
+      setShifts(shifts.filter(s => s.id !== shiftId));
+      setShowShiftModal(false);
+    } catch (error: any) {
       console.error('Error deleting shift:', error);
-      toast.error('Failed to delete shift');
+      toast.error(error?.data?.detail || 'Failed to delete shift');
     }
   };
 
   const copyLastWeek = async () => {
     try {
-      const token = localStorage.getItem('access_token');
       const startDate = formatDateKey(selectedWeek);
-
-      const response = await fetch(
-        `${API_URL}/staff/shifts/copy-week`,
-        {
-          credentials: 'include',
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify({ target_week_start: startDate }),
-        }
-      );
-
-      if (response.ok) {
-        loadShifts();
-        toast.success('Shifts copied from last week successfully!');
-      } else {
-        const error = await response.json();
-        toast.error(error.detail || 'Failed to copy shifts');
-      }
-    } catch (error) {
+      await api.post('/staff/shifts/copy-week', { target_week_start: startDate });
+      loadShifts();
+      toast.success('Shifts copied from last week successfully!');
+    } catch (error: any) {
       console.error('Error copying shifts:', error);
-      toast.error('Failed to copy shifts');
+      toast.error(error?.data?.detail || 'Failed to copy shifts');
     }
   };
 
   const publishSchedule = async () => {
     try {
-      const token = localStorage.getItem('access_token');
       const startDate = formatDateKey(selectedWeek);
       const endDateObj = new Date(selectedWeek);
       endDateObj.setDate(endDateObj.getDate() + 6);
       const endDate = formatDateKey(endDateObj);
 
-      const response = await fetch(
-        `${API_URL}/staff/shifts/publish`,
-        {
-          credentials: 'include',
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify({ start_date: startDate, end_date: endDate }),
-        }
-      );
-
-      if (response.ok) {
-        toast.info('Schedule published! Staff will be notified.');
-        loadShifts();
-      } else {
-        const error = await response.json();
-        toast.error(error.detail || 'Failed to publish schedule');
-      }
-    } catch (error) {
+      await api.post('/staff/shifts/publish', { start_date: startDate, end_date: endDate });
+      toast.info('Schedule published! Staff will be notified.');
+      loadShifts();
+    } catch (error: any) {
       console.error('Error publishing schedule:', error);
-      toast.error('Failed to publish schedule');
+      toast.error(error?.data?.detail || 'Failed to publish schedule');
     }
   };
 

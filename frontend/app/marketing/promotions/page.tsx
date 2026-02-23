@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
-import { API_URL } from '@/lib/api';
+import { api } from '@/lib/api';
 
 import { toast } from '@/lib/toast';
 interface Promotion {
@@ -83,18 +83,8 @@ export default function MarketingPromotionsPage() {
 
   const loadPromotions = async () => {
     try {
-      const token = localStorage.getItem('access_token');
-      const response = await fetch(`${API_URL}/marketing/promotions`, {
-        credentials: 'include',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        setPromotions(data.items || data);
-      }
+      const data = await api.get<any>('/marketing/promotions');
+      setPromotions(data.items || data);
     } catch (error) {
       console.error('Error loading promotions:', error);
     } finally {
@@ -104,18 +94,8 @@ export default function MarketingPromotionsPage() {
 
   const loadCategories = async () => {
     try {
-      const token = localStorage.getItem('access_token');
-      const response = await fetch(`${API_URL}/menu-admin/categories`, {
-        credentials: 'include',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        setCategories(data.items || data);
-      }
+      const data = await api.get<any>('/menu-admin/categories');
+      setCategories(data.items || data);
     } catch (error) {
       console.error('Error loading categories:', error);
     }
@@ -128,77 +108,35 @@ export default function MarketingPromotionsPage() {
 
   const handleCreate = async () => {
     try {
-      const token = localStorage.getItem('access_token');
-      const response = await fetch(`${API_URL}/marketing/promotions`, {
-        credentials: 'include',
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          ...formData,
-          active: true,
-        }),
+      await api.post('/marketing/promotions', {
+        ...formData,
+        active: true,
       });
-
-      if (response.ok) {
-        loadPromotions();
-        closeModal();
-      } else {
-        const error = await response.json();
-        toast.error(error.detail || 'Error creating promotion');
-      }
-    } catch (error) {
+      loadPromotions();
+      closeModal();
+    } catch (error: any) {
       console.error('Error creating promotion:', error);
-      toast.error('Error creating promotion');
+      toast.error(error?.data?.detail || 'Error creating promotion');
     }
   };
 
   const handleUpdate = async () => {
     if (!editingPromo) return;
     try {
-      const token = localStorage.getItem('access_token');
-      const response = await fetch(`${API_URL}/marketing/promotions/${editingPromo.id}`, {
-        credentials: 'include',
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
-        },
-        body: JSON.stringify(formData),
-      });
-
-      if (response.ok) {
-        loadPromotions();
-        closeModal();
-      } else {
-        const error = await response.json();
-        toast.error(error.detail || 'Error updating promotion');
-      }
-    } catch (error) {
+      await api.put(`/marketing/promotions/${editingPromo.id}`, formData);
+      loadPromotions();
+      closeModal();
+    } catch (error: any) {
       console.error('Error updating promotion:', error);
-      toast.error('Error updating promotion');
+      toast.error(error?.data?.detail || 'Error updating promotion');
     }
   };
 
   const handleDelete = async (id: string) => {
     if (confirm('Are you sure you want to delete this promotion?')) {
       try {
-        const token = localStorage.getItem('access_token');
-        const response = await fetch(`${API_URL}/marketing/promotions/${id}`, {
-          credentials: 'include',
-          method: 'DELETE',
-          headers: {
-            'Authorization': `Bearer ${token}`,
-          },
-        });
-
-        if (response.ok) {
-          loadPromotions();
-        } else {
-          toast.error('Error deleting promotion');
-        }
+        await api.del(`/marketing/promotions/${id}`);
+        loadPromotions();
       } catch (error) {
         console.error('Error deleting promotion:', error);
         toast.error('Error deleting promotion');
@@ -208,20 +146,8 @@ export default function MarketingPromotionsPage() {
 
   const toggleActive = async (id: string) => {
     try {
-      const token = localStorage.getItem('access_token');
-      const response = await fetch(`${API_URL}/marketing/promotions/${id}/toggle-active`, {
-        credentials: 'include',
-        method: 'PATCH',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
-      });
-
-      if (response.ok) {
-        loadPromotions();
-      } else {
-        toast.error('Error toggling promotion status');
-      }
+      await api.patch(`/marketing/promotions/${id}/toggle-active`);
+      loadPromotions();
     } catch (error) {
       console.error('Error toggling promotion status:', error);
       toast.error('Error toggling promotion status');

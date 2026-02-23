@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
-import { API_URL } from "@/lib/api";
+import { api, isAuthenticated } from "@/lib/api";
 
 interface VoiceCommand {
   id: number;
@@ -37,8 +37,7 @@ export default function VoiceAssistantPage() {
 
   // Check authentication on mount
   useEffect(() => {
-    const token = localStorage.getItem("access_token");
-    if (!token) {
+    if (!isAuthenticated()) {
       router.push("/login");
       return;
     }
@@ -191,33 +190,19 @@ export default function VoiceAssistantPage() {
     setCommands((prev) => [newCommand, ...prev]);
 
     try {
-      const token = localStorage.getItem("access_token");
-      const response = await fetch(
-        `${API_URL}/voice/command`,
-        {
-          credentials: 'include',
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify({ command_text: text, language }),
-        }
+      const data = await api.post<{ intent: string; confidence: number; response: string }>(
+        '/voice/command',
+        { command_text: text, language }
       );
 
-      if (response.ok) {
-        const data = await response.json();
-        updateCommand(newCommand.id, {
-          intent: data.intent,
-          confidence: data.confidence,
-          response: data.response,
-          status: "success",
-        });
-        setCurrentResponse(data.response);
-        speak(data.response);
-      } else {
-        throw new Error("API error");
-      }
+      updateCommand(newCommand.id, {
+        intent: data.intent,
+        confidence: data.confidence,
+        response: data.response,
+        status: "success",
+      });
+      setCurrentResponse(data.response);
+      speak(data.response);
     } catch (error) {
       console.error("Voice command error:", error);
       const errorMessage = "Sorry, I couldn't process that command. Please try again.";

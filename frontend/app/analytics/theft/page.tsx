@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import Link from 'next/link';
-import { API_URL } from '@/lib/api';
+import { api } from '@/lib/api';
 
 interface TheftAlert {
   id: string;
@@ -41,21 +41,9 @@ export default function AnalyticsTheftPage() {
   const loadTheftData = async () => {
     setLoading(true);
     try {
-      const token = localStorage.getItem('access_token');
-      const response = await fetch(`${API_URL}/analytics/theft`, {
-        credentials: 'include',
-        headers: { Authorization: `Bearer ${token}` },
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        setAlerts(data.alerts || []);
-        setStats(data.stats);
-      } else {
-        console.error('Failed to load theft detection data');
-        setAlerts([]);
-        setStats(null);
-      }
+      const data = await api.get<{ alerts?: TheftAlert[]; stats?: TheftStats }>('/analytics/theft');
+      setAlerts(data.alerts || []);
+      setStats(data.stats || null);
     } catch (error) {
       console.error('Error loading theft detection data:', error);
       setAlerts([]);

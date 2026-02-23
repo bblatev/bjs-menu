@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Link from 'next/link';
-import { API_URL } from '@/lib/api';
+import { api } from '@/lib/api';
 
 import { toast } from '@/lib/toast';
 interface BankAccount {
@@ -59,17 +59,10 @@ export default function BankReconciliationPage() {
 
   const loadBankAccounts = async () => {
     try {
-      const token = localStorage.getItem('access_token');
-      const response = await fetch(`${API_URL}/financial/bank-accounts`, {
-        credentials: 'include',
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (response.ok) {
-        const data = await response.json();
-        setBankAccounts(data);
-        if (data.length > 0) {
-          setSelectedAccount(data[0]);
-        }
+      const data = await api.get<BankAccount[]>('/financial/bank-accounts');
+      setBankAccounts(data);
+      if (data.length > 0) {
+        setSelectedAccount(data[0]);
       }
     } catch (error) {
       console.error('Error loading bank accounts:', error);
@@ -81,25 +74,13 @@ export default function BankReconciliationPage() {
   const startReconciliation = async () => {
     if (!selectedAccount || !formData.statement_balance) return;
     try {
-      const token = localStorage.getItem('access_token');
-      const response = await fetch(`${API_URL}/financial/bank-reconciliation`, {
-        credentials: 'include',
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          bank_account_id: selectedAccount.id,
-          statement_date: formData.statement_date,
-          statement_balance: parseFloat(formData.statement_balance),
-        }),
+      const data = await api.post<Reconciliation>('/financial/bank-reconciliation', {
+        bank_account_id: selectedAccount.id,
+        statement_date: formData.statement_date,
+        statement_balance: parseFloat(formData.statement_balance),
       });
-      if (response.ok) {
-        const data = await response.json();
-        setReconciliation(data);
-        setShowNewReconciliation(false);
-      }
+      setReconciliation(data);
+      setShowNewReconciliation(false);
     } catch (error) {
       console.error('Error starting reconciliation:', error);
     }
@@ -108,21 +89,15 @@ export default function BankReconciliationPage() {
   const completeReconciliation = async () => {
     if (!reconciliation) return;
     try {
-      const token = localStorage.getItem('access_token');
-      const response = await fetch(`${API_URL}/financial/bank-reconciliation/${reconciliation.id}/complete`, {
-        credentials: 'include',
-        method: 'POST',
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (response.ok) {
-        toast.success('Reconciliation completed successfully!');
-        setReconciliation(null);
+      await api.post(`/financial/bank-reconciliation/${reconciliation.id}/complete`);
+      toast.success('Reconciliation completed successfully!');
+      setReconciliation(null);
+    } catch (error: any) {
+      if (error?.data?.detail) {
+        toast.error(error.data.detail);
       } else {
-        const error = await response.json();
-        toast.error(error.detail || 'Error completing reconciliation');
+        console.error('Error completing reconciliation:', error);
       }
-    } catch (error) {
-      console.error('Error completing reconciliation:', error);
     }
   };
 

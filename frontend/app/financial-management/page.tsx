@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 
-import { API_URL, getAuthHeaders } from '@/lib/api';
+import { api, isAuthenticated } from '@/lib/api';
 
 // ============ INTERFACES ============
 
@@ -210,46 +210,30 @@ export default function FinancialManagementPage() {
 
 
 
-  const handleApiResponse = async (response: Response, fallbackError: string) => {
-    if (response.status === 401 || response.status === 403) {
-      setAuthError(true);
-      throw new Error('AUTH_ERROR');
-    }
-    if (!response.ok) throw new Error(fallbackError);
-    return response.json();
-  };
-
   const fetchAccounts = useCallback(async () => {
-    const response = await fetch(`${API_URL}/financial/accounts/`, { credentials: 'include', headers: getAuthHeaders() });
-    const data = await handleApiResponse(response, 'Failed to fetch accounts');
+    const data = await api.get<any>('/financial/accounts/');
     setAccounts(Array.isArray(data) ? data : data.accounts || []);
   }, []);
 
   const fetchTransactions = useCallback(async () => {
-    const response = await fetch(`${API_URL}/financial/transactions/`, { credentials: 'include', headers: getAuthHeaders() });
-    const data = await handleApiResponse(response, 'Failed to fetch transactions');
+    const data = await api.get<any>('/financial/transactions/');
     setTransactions(Array.isArray(data) ? data : data.transactions || []);
   }, []);
 
   const fetchInvoices = useCallback(async () => {
-    const response = await fetch(`${API_URL}/invoices/`, { credentials: 'include', headers: getAuthHeaders() });
-    const data = await handleApiResponse(response, 'Failed to fetch invoices');
+    const data = await api.get<any>('/invoices/');
     setInvoices(Array.isArray(data) ? data : data.items || data.invoices || []);
   }, []);
 
   const fetchVendors = useCallback(async () => {
-    const response = await fetch(`${API_URL}/suppliers/`, { credentials: 'include', headers: getAuthHeaders() });
-    const data = await handleApiResponse(response, 'Failed to fetch vendors');
+    const data = await api.get<any>('/suppliers/');
     setVendors(Array.isArray(data) ? data : data.suppliers || []);
   }, []);
 
   const fetchBudgets = useCallback(async () => {
     try {
-      const response = await fetch(`${API_URL}/financial/budgets/`, { credentials: 'include', headers: getAuthHeaders() });
-      if (response.ok) {
-        const data = await response.json();
-        setBudgets(Array.isArray(data) ? data : data.budgets || []);
-      }
+      const data = await api.get<any>('/financial/budgets/');
+      setBudgets(Array.isArray(data) ? data : data.budgets || []);
     } catch (err) {
       console.error('Error fetching budgets:', err);
     }
@@ -257,11 +241,8 @@ export default function FinancialManagementPage() {
 
   const fetchFinancialAlerts = useCallback(async () => {
     try {
-      const response = await fetch(`${API_URL}/financial/financial-alerts/`, { credentials: 'include', headers: getAuthHeaders() });
-      if (response.ok) {
-        const data = await response.json();
-        setAlerts(Array.isArray(data) ? data : data.alerts || []);
-      }
+      const data = await api.get<any>('/financial/financial-alerts/');
+      setAlerts(Array.isArray(data) ? data : data.alerts || []);
     } catch (err) {
       console.error('Error fetching financial alerts:', err);
     }
@@ -269,11 +250,8 @@ export default function FinancialManagementPage() {
 
   const fetchTaxConfigs = useCallback(async () => {
     try {
-      const response = await fetch(`${API_URL}/settings/tax/`, { credentials: 'include', headers: getAuthHeaders() });
-      if (response.ok) {
-        const data = await response.json();
-        setTaxConfigs(Array.isArray(data) ? data : data.configs || []);
-      }
+      const data = await api.get<any>('/settings/tax/');
+      setTaxConfigs(Array.isArray(data) ? data : data.configs || []);
     } catch (err) {
       console.error('Error fetching tax configs:', err);
     }
@@ -285,9 +263,8 @@ export default function FinancialManagementPage() {
     setAuthError(false);
     setIsDemoMode(false);
 
-    const token = localStorage.getItem('access_token');
-    if (!token) {
-      // No token - load demo data
+    if (!isAuthenticated()) {
+      // Not authenticated - load demo data
       loadDemoData();
       setIsDemoMode(true);
       setLoading(false);

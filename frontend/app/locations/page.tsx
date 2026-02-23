@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 
-import { API_URL } from '@/lib/api';
+import { api } from '@/lib/api';
 
 import { toast } from '@/lib/toast';
 interface Location {
@@ -97,37 +97,25 @@ export default function MultiLocationPage() {
     setLoading(true);
     setError(null);
     try {
-      const token = localStorage.getItem('access_token');
-      const headers = {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json',
-      };
+      const locationsData = await api.get<Location[] | { items?: Location[]; locations?: Location[] }>('/v3.1/locations/');
+      setLocations(Array.isArray(locationsData) ? locationsData : ((locationsData as { items?: Location[]; locations?: Location[] }).items || (locationsData as { items?: Location[]; locations?: Location[] }).locations || []));
 
-      const [locationsRes, statsRes, consolidatedRes] = await Promise.all([
-        fetch(`${API_URL}/v3.1/locations/`, { credentials: 'include', headers }),
-        fetch(`${API_URL}/v3.1/locations/dashboard`, { credentials: 'include', headers }),
-        fetch(`${API_URL}/v3.1/locations/reports/consolidated`, { credentials: 'include', headers }),
-      ]);
-
-      if (!locationsRes.ok) {
-        throw new Error('Failed to load locations');
-      }
-
-      const locationsData = await locationsRes.json();
-      setLocations(Array.isArray(locationsData) ? locationsData : (locationsData.items || locationsData.locations || []));
-
-      if (statsRes.ok) {
-        const statsData = await statsRes.json();
+      try {
+        const statsData = await api.get<LocationStats[] | { stats?: LocationStats[] }>('/v3.1/locations/dashboard');
         const statsMap = new Map<number, LocationStats>();
-        (Array.isArray(statsData) ? statsData : (statsData.stats || [])).forEach((stat: LocationStats) => {
+        (Array.isArray(statsData) ? statsData : ((statsData as { stats?: LocationStats[] }).stats || [])).forEach((stat: LocationStats) => {
           statsMap.set(stat.location_id, stat);
         });
         setLocationStats(statsMap);
+      } catch {
+        // Stats data is optional
       }
 
-      if (consolidatedRes.ok) {
-        const consolidatedData = await consolidatedRes.json();
+      try {
+        const consolidatedData = await api.get<ConsolidatedStats>('/v3.1/locations/reports/consolidated');
         setConsolidatedStats(consolidatedData);
+      } catch {
+        // Consolidated stats are optional
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load data');
@@ -163,23 +151,10 @@ export default function MultiLocationPage() {
 
   const executeSyncMenu = async () => {
     try {
-      const token = localStorage.getItem('access_token');
-      const response = await fetch(`${API_URL}/v3.1/locations/sync-menu`, {
-        credentials: 'include',
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          target_locations: selectedLocations,
-          options: syncOptions,
-        }),
+      await api.post('/v3.1/locations/sync-menu', {
+        target_locations: selectedLocations,
+        options: syncOptions,
       });
-
-      if (!response.ok) {
-        throw new Error('Failed to sync menu');
-      }
 
       toast.error('Menu synced successfully!');
       setShowSyncModal(false);
@@ -190,20 +165,7 @@ export default function MultiLocationPage() {
 
   const handleAddLocation = async () => {
     try {
-      const token = localStorage.getItem('access_token');
-      const response = await fetch(`${API_URL}/v3.1/locations/`, {
-        credentials: 'include',
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(newLocation),
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to create location');
-      }
+      await api.post('/v3.1/locations/', newLocation);
 
       toast.error('Location created!');
       setShowAddModal(false);

@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 
-import { API_URL } from '@/lib/api';
+import { api } from '@/lib/api';
 
 interface Review {
   id: number;
@@ -61,28 +61,15 @@ export default function FeedbackPage() {
     try {
       setLoading(true);
       setError(null);
-      const token = localStorage.getItem('access_token');
       const params = new URLSearchParams();
       if (filter !== 'all') params.append('filter', filter);
       if (sourceFilter !== 'all') params.append('source', sourceFilter);
       if (period !== 'all') params.append('period', period);
 
-      const response = await fetch(`${API_URL}/feedback/reviews?${params}`, {
-        credentials: 'include',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to load reviews');
-      }
-
-      const data = await response.json();
+      const data = await api.get<any>(`/feedback/reviews?${params}`);
       setReviews(Array.isArray(data) ? data : (data.items || data.reviews || []));
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load reviews');
+    } catch (err: any) {
+      setError(err?.data?.detail || err?.message || 'Failed to load reviews');
       setReviews([]);
     } finally {
       setLoading(false);
@@ -91,23 +78,10 @@ export default function FeedbackPage() {
 
   const loadStats = async () => {
     try {
-      const token = localStorage.getItem('access_token');
       const params = new URLSearchParams();
       if (period !== 'all') params.append('period', period);
 
-      const response = await fetch(`${API_URL}/feedback/stats?${params}`, {
-        credentials: 'include',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to load stats');
-      }
-
-      const data = await response.json();
+      const data = await api.get<any>(`/feedback/stats?${params}`);
       setStats(data);
     } catch (err) {
       console.error('Failed to load stats:', err);
@@ -118,21 +92,7 @@ export default function FeedbackPage() {
   const sendResponse = async () => {
     if (!selectedReview || !responseText.trim()) return;
     try {
-      const token = localStorage.getItem('access_token');
-      const response = await fetch(`${API_URL}/feedback/reviews/${selectedReview.id}/respond`, {
-        credentials: 'include',
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ response: responseText }),
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to send response');
-      }
-
+      await api.post<any>(`/feedback/reviews/${selectedReview.id}/respond`, { response: responseText });
       setShowResponseModal(false);
       setResponseText('');
       loadReviews();
@@ -143,21 +103,7 @@ export default function FeedbackPage() {
 
   const updateStatus = async (reviewId: number, newStatus: Review['status']) => {
     try {
-      const token = localStorage.getItem('access_token');
-      const response = await fetch(`${API_URL}/feedback/reviews/${reviewId}/status`, {
-        credentials: 'include',
-        method: 'PATCH',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ status: newStatus }),
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to update status');
-      }
-
+      await api.patch<any>(`/feedback/reviews/${reviewId}/status`, { status: newStatus });
       loadReviews();
     } catch (err) {
       console.error('Failed to update status:', err);

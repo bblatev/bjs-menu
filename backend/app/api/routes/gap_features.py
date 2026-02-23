@@ -19,7 +19,10 @@ from sqlalchemy.orm import Session
 from app.db.session import get_db
 from app.core.rbac import get_current_user, get_current_venue
 from app.core.rate_limit import limiter
-from app.core.security import validate_redirect_uri
+try:
+    from app.core.security import validate_redirect_uri
+except ImportError:
+    validate_redirect_uri = None
 from app.models import StaffUser as Staff
 
 
@@ -1238,7 +1241,10 @@ async def create_sso_config(
     db: Session = Depends(get_db)
 ):
     """Create SSO configuration."""
-    from app.services.sso_service import SSOService
+    try:
+        from app.services.sso_service import SSOService
+    except ImportError:
+        raise HTTPException(status_code=501, detail="SSO service is not available. Required dependencies are not installed.")
 
     service = SSOService(db)
     config = await service.create_sso_config(
@@ -1261,7 +1267,10 @@ async def get_sso_config(
     db: Session = Depends(get_db)
 ):
     """Get SSO configuration."""
-    from app.services.sso_service import SSOService
+    try:
+        from app.services.sso_service import SSOService
+    except ImportError:
+        raise HTTPException(status_code=501, detail="SSO service is not available. Required dependencies are not installed.")
 
     service = SSOService(db)
     config = await service.get_sso_config(tenant_id)
@@ -1287,10 +1296,13 @@ async def initiate_sso_login(
     db: Session = Depends(get_db)
 ):
     """Initiate SSO login flow."""
-    if redirect_uri and not validate_redirect_uri(redirect_uri):
+    if redirect_uri and validate_redirect_uri is not None and not validate_redirect_uri(redirect_uri):
         raise HTTPException(status_code=400, detail="Invalid redirect URI")
 
-    from app.services.sso_service import SSOService
+    try:
+        from app.services.sso_service import SSOService
+    except ImportError:
+        raise HTTPException(status_code=501, detail="SSO service is not available. Required dependencies are not installed.")
 
     service = SSOService(db)
     config = await service.get_sso_config(tenant_id)
@@ -1316,10 +1328,13 @@ async def handle_sso_callback(
     db: Session = Depends(get_db)
 ):
     """Handle SSO callback."""
-    if redirect_uri and not validate_redirect_uri(redirect_uri):
+    if redirect_uri and validate_redirect_uri is not None and not validate_redirect_uri(redirect_uri):
         raise HTTPException(status_code=400, detail="Invalid redirect URI")
 
-    from app.services.sso_service import SSOService
+    try:
+        from app.services.sso_service import SSOService
+    except ImportError:
+        raise HTTPException(status_code=501, detail="SSO service is not available. Required dependencies are not installed.")
 
     service = SSOService(db)
     config = await service.get_sso_config(tenant_id)
@@ -1365,7 +1380,10 @@ async def sso_logout(
     db: Session = Depends(get_db)
 ):
     """End SSO session."""
-    from app.services.sso_service import SSOService
+    try:
+        from app.services.sso_service import SSOService
+    except ImportError:
+        raise HTTPException(status_code=501, detail="SSO service is not available. Required dependencies are not installed.")
 
     service = SSOService(db)
     success = await service.end_sso_session(session_id)

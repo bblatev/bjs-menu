@@ -121,6 +121,48 @@ def process_auto_reorder(request: Request, db: DbSession, location_id: int = Que
     return {"orders_created": orders_created}
 
 
+# ==================== FORECAST ORDERS ====================
+
+@router.get("/forecast-orders")
+@limiter.limit("60/minute")
+def get_forecast_orders(request: Request, db: DbSession, location_id: int = Query(1), days_ahead: int = Query(7)):
+    """Get AI-generated draft purchase orders based on demand forecast."""
+    try:
+        from app.services.forecast_to_po_service import ForecastToPOService
+        return ForecastToPOService.generate_forecast_orders(db, location_id, days_ahead)
+    except ImportError:
+        # Stub response when service is not yet available
+        return {
+            "draft_orders": [],
+            "location_id": location_id,
+            "days_ahead": days_ahead,
+            "generated_at": None,
+            "message": "Forecast-to-PO service not yet configured",
+        }
+
+
+@router.post("/forecast-orders/approve")
+@limiter.limit("30/minute")
+def approve_forecast_order(request: Request, db: DbSession, data: dict = {}):
+    """Approve and convert a draft forecast order into an actual PO."""
+    try:
+        from app.services.forecast_to_po_service import ForecastToPOService
+        return ForecastToPOService.approve_forecast_order(db, data.get("draft_order_id", 0), data.get("approved_by", 0))
+    except ImportError:
+        return {"success": False, "message": "Forecast-to-PO service not yet configured"}
+
+
+@router.get("/forecast-orders/history")
+@limiter.limit("60/minute")
+def get_forecast_order_history(request: Request, db: DbSession, location_id: int = Query(1)):
+    """Get history of forecast-generated orders."""
+    try:
+        from app.services.forecast_to_po_service import ForecastToPOService
+        return ForecastToPOService.get_forecast_order_history(db, location_id)
+    except ImportError:
+        return {"history": [], "location_id": location_id, "message": "Forecast-to-PO service not yet configured"}
+
+
 # ==================== INTERNAL HELPERS ====================
 
 def _get_rules(db: DbSession, location_id: int):

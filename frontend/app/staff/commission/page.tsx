@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { Button, Card, CardBody } from '@/components/ui';
 
-import { API_URL } from '@/lib/api';
+import { api } from '@/lib/api';
 
 import { toast } from '@/lib/toast';
 interface StaffMember {
@@ -37,16 +37,8 @@ export default function StaffCommissionPage() {
 
   const loadStaff = async () => {
     try {
-      const token = localStorage.getItem('access_token');
-      const response = await fetch(`${API_URL}/staff`, {
-        credentials: 'include',
-        headers: { Authorization: `Bearer ${token}` },
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        setStaff(data);
-      }
+      const data = await api.get<StaffMember[]>('/staff');
+      setStaff(data);
     } catch (err) {
       console.error('Error loading staff:', err);
     } finally {
@@ -75,28 +67,12 @@ export default function StaffCommissionPage() {
   const saveCommission = async (staffId: number) => {
     setSaving(staffId);
     try {
-      const token = localStorage.getItem('access_token');
-      const response = await fetch(`${API_URL}/staff/${staffId}/commission`, {
-        credentials: 'include',
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify(editForm),
-      });
-
-      if (response.ok) {
-        const updated = await response.json();
-        setStaff(staff.map((s) => (s.id === staffId ? { ...s, ...updated } : s)));
-        setEditingId(null);
-      } else {
-        const err = await response.json();
-        toast.error(err.detail || 'Failed to save');
-      }
-    } catch (err) {
+      const updated = await api.patch<any>(`/staff/${staffId}/commission`, editForm);
+      setStaff(staff.map((s) => (s.id === staffId ? { ...s, ...updated } : s)));
+      setEditingId(null);
+    } catch (err: any) {
       console.error('Error saving commission:', err);
-      toast.error('Failed to save commission settings');
+      toast.error(err?.data?.detail || 'Failed to save commission settings');
     } finally {
       setSaving(null);
     }

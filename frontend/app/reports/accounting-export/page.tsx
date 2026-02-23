@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { Button, Card, CardBody } from '@/components/ui';
 
-import { API_URL } from '@/lib/api';
+import { api, API_URL } from '@/lib/api';
 
 import { toast } from '@/lib/toast';
 interface PreviewEntry {
@@ -52,19 +52,10 @@ export default function AccountingExportPage() {
 
       setLoading(true);
       try {
-        const token = localStorage.getItem('access_token');
-        const response = await fetch(
-          `${API_URL}/accounting-export/sales-journal/preview?start_date=${startDate}&end_date=${endDate}&limit=5`,
-          {
-            credentials: 'include',
-            headers: { Authorization: `Bearer ${token}` },
-          }
+        const data = await api.get<PreviewData>(
+          `/accounting-export/sales-journal/preview?start_date=${startDate}&end_date=${endDate}&limit=5`
         );
-
-        if (response.ok) {
-          const data = await response.json();
-          setPreview(data);
-        }
+        setPreview(data);
       } catch (err) {
         console.error('Error loading preview:', err);
       } finally {
@@ -75,35 +66,32 @@ export default function AccountingExportPage() {
   }, [startDate, endDate, exportType]);
 
   const handleExport = async () => {
-    const token = localStorage.getItem('access_token');
-
-    let url = '';
+    let path = '';
     if (exportType === 'sales') {
-      url = `${API_URL}/accounting-export/sales-journal?start_date=${startDate}&end_date=${endDate}&format=${format}`;
+      path = `/accounting-export/sales-journal?start_date=${startDate}&end_date=${endDate}&format=${format}`;
     } else if (exportType === 'purchases') {
-      url = `${API_URL}/accounting-export/purchase-journal?start_date=${startDate}&end_date=${endDate}&format=${format}`;
+      path = `/accounting-export/purchase-journal?start_date=${startDate}&end_date=${endDate}&format=${format}`;
     } else if (exportType === 'vat') {
-      url = `${API_URL}/accounting-export/vat-declaration?month=${vatMonth}&year=${vatYear}`;
+      path = `/accounting-export/vat-declaration?month=${vatMonth}&year=${vatYear}`;
     }
 
     try {
-      const response = await fetch(url, {
-        credentials: 'include',
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      if (exportType === 'vat') {
+        // VAT declaration returns JSON
+        const data = await api.get(path);
+        const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+        const downloadUrl = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = downloadUrl;
+        link.download = `vat_declaration_${vatMonth}_${vatYear}.json`;
+        link.click();
+      } else {
+        // Download file - use raw fetch with credentials for blob response
+        const response = await fetch(`${API_URL}${path}`, {
+          credentials: 'include',
+        });
 
-      if (response.ok) {
-        if (exportType === 'vat') {
-          // VAT declaration returns JSON
-          const data = await response.json();
-          const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-          const downloadUrl = URL.createObjectURL(blob);
-          const link = document.createElement('a');
-          link.href = downloadUrl;
-          link.download = `vat_declaration_${vatMonth}_${vatYear}.json`;
-          link.click();
-        } else {
-          // Download file
+        if (response.ok) {
           const blob = await response.blob();
           const downloadUrl = URL.createObjectURL(blob);
           const link = document.createElement('a');

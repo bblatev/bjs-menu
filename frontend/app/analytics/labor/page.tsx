@@ -1,116 +1,126 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
-import Link from 'next/link';
-import { API_URL } from '@/lib/api';
+import { useState, useEffect, useCallback } from 'react';
+import { api } from '@/lib/api';
 
-interface LaborStats {
-  total_labor_cost: number;
-  avg_hourly_cost: number;
-  labor_percentage: number;
-  total_hours_scheduled: number;
-  efficiency_score: number;
-  overtime_hours: number;
-  cost_by_department: { department: string; cost: number; hours: number }[];
-  cost_by_day: { day: string; cost: number; revenue: number; percentage: number }[];
-  shift_coverage: { shift: string; required: number; scheduled: number; efficiency: number }[];
-  top_performers: { name: string; hours: number; sales_per_hour: number; efficiency: number }[];
+// ── Types ───────────────────────────────────────────────────────────────────
+
+interface LaborVsRevenueData {
+  venue_id: number;
+  venue_name: string;
+  period: string;
+  summary: {
+    total_labor_cost: number;
+    total_revenue: number;
+    labor_percentage: number;
+    target_labor_pct: number;
+    total_overtime_hours: number;
+    overtime_cost: number;
+    avg_hourly_cost: number;
+    efficiency_score: number;
+  };
+  daily_trend: DailyLaborData[];
+  department_breakdown: DepartmentData[];
+  overtime_by_staff: OvertimeEntry[];
 }
 
-interface ScheduleIssue {
-  id: string;
-  type: 'understaffed' | 'overstaffed' | 'overtime' | 'skill_gap' | 'conflict';
-  severity: 'low' | 'medium' | 'high';
-  shift: string;
+interface DailyLaborData {
   date: string;
-  description: string;
-  recommendation: string;
+  labor_cost: number;
+  revenue: number;
+  labor_pct: number;
+  overtime_hours: number;
 }
 
-export default function AnalyticsLaborPage() {
-  const [stats, setStats] = useState<LaborStats | null>(null);
-  const [issues, setIssues] = useState<ScheduleIssue[]>([]);
+interface DepartmentData {
+  department: string;
+  labor_cost: number;
+  revenue_attributed: number;
+  labor_pct: number;
+  headcount: number;
+  avg_hourly_rate: number;
+  hours_worked: number;
+}
+
+interface OvertimeEntry {
+  staff_name: string;
+  department: string;
+  regular_hours: number;
+  overtime_hours: number;
+  overtime_cost: number;
+}
+
+// ── Helpers ─────────────────────────────────────────────────────────────────
+
+const formatCurrency = (v: number) =>
+  `$${v.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+
+const formatCurrencyShort = (v: number) => {
+  if (v >= 1000) return `$${(v / 1000).toFixed(1)}k`;
+  return `$${v.toFixed(0)}`;
+};
+
+const formatPct = (v: number) => `${v.toFixed(1)}%`;
+
+const laborPctColor = (pct: number, target: number): string => {
+  if (pct <= target) return 'text-green-600';
+  if (pct <= target + 3) return 'text-yellow-600';
+  return 'text-red-600';
+};
+
+const laborPctBarColor = (pct: number, target: number): string => {
+  if (pct <= target) return 'bg-green-500';
+  if (pct <= target + 3) return 'bg-yellow-500';
+  return 'bg-red-500';
+};
+
+// ── Component ───────────────────────────────────────────────────────────────
+
+export default function LaborAnalyticsPage() {
+  const [data, setData] = useState<LaborVsRevenueData | null>(null);
   const [loading, setLoading] = useState(true);
-  useEffect(() => {
-    loadLaborData();
-  }, []);
+  const [error, setError] = useState<string | null>(null);
+  const [venueId, setVenueId] = useState(1);
 
-  const loadLaborData = async () => {
+  const loadData = useCallback(async () => {
     setLoading(true);
+    setError(null);
     try {
-      const token = localStorage.getItem('access_token');
-      const response = await fetch(`${API_URL}/analytics/labor`, {
-        credentials: 'include',
-        headers: { Authorization: `Bearer ${token}` },
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        setStats(data.stats);
-        setIssues(data.issues || []);
-      } else {
-        console.error('Failed to load labor analytics data');
-        setStats(null);
-        setIssues([]);
-      }
-    } catch (error) {
-      console.error('Error loading labor analytics:', error);
-      setStats(null);
-      setIssues([]);
+      const result = await api.get<LaborVsRevenueData>(
+        `/analytics/labor-vs-revenue?venue_id=${venueId}`
+      );
+      setData(result);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to load labor analytics');
     } finally {
       setLoading(false);
     }
-  };
+  }, [venueId]);
 
-  const formatCurrency = (amount: number) => `€${(amount || 0).toFixed(2)}`;
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
 
-  const getSeverityColor = (severity: string) => {
-    switch (severity) {
-      case 'high': return 'error';
-      case 'medium': return 'warning';
-      case 'low': return 'primary';
-      default: return 'surface';
-    }
-  };
-
-  const getIssueIcon = (type: string) => {
-    switch (type) {
-      case 'understaffed': return '⚠️';
-      case 'overstaffed': return '📊';
-      case 'overtime': return '⏰';
-      case 'skill_gap': return '🎓';
-      case 'conflict': return '❌';
-      default: return '📋';
-    }
-  };
-
-  const getEfficiencyColor = (efficiency: number) => {
-    if (efficiency >= 95) return 'success';
-    if (efficiency >= 85) return 'primary';
-    if (efficiency >= 75) return 'warning';
-    return 'error';
-  };
+  // ── Loading ───────────────────────────────────────────────────────────────
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-500"></div>
+      <div className="min-h-screen bg-white flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4" />
+          <p className="text-gray-500">Loading labor vs revenue data...</p>
+        </div>
       </div>
     );
   }
 
-  if (!stats) {
+  if (error && !data) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="min-h-screen bg-white flex items-center justify-center">
         <div className="text-center">
-          <div className="text-6xl mb-4">👥</div>
-          <h2 className="text-2xl font-bold text-surface-900 mb-2">No Labor Data</h2>
-          <p className="text-surface-600 mb-4">Unable to load labor analytics data. Please try again later.</p>
-          <button
-            onClick={loadLaborData}
-            className="px-6 py-3 bg-primary-500 text-white rounded-lg hover:bg-primary-600 transition-colors"
-          >
+          <h2 className="text-2xl font-bold text-gray-900 mb-2">Failed to Load</h2>
+          <p className="text-gray-600 mb-4">{error}</p>
+          <button onClick={loadData} className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
             Retry
           </button>
         </div>
@@ -118,350 +128,264 @@ export default function AnalyticsLaborPage() {
     );
   }
 
+  if (!data) return null;
+
+  const maxDailyValue = Math.max(
+    ...data.daily_trend.map(d => Math.max(d.labor_cost, d.revenue)),
+    1
+  );
+
+  const totalDeptLabor = data.department_breakdown.reduce((s, d) => s + d.labor_cost, 0) || 1;
+
+  // ── Render ────────────────────────────────────────────────────────────────
+
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center gap-4">
-        <Link href="/analytics" className="p-2 rounded-lg hover:bg-surface-100 transition-colors">
-          <svg className="w-5 h-5 text-surface-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-          </svg>
-        </Link>
-        <div className="flex-1">
-          <h1 className="text-3xl font-display font-bold text-surface-900">Labor Optimization</h1>
-          <p className="text-surface-500 mt-1">Staff scheduling efficiency and cost analysis</p>
+    <div className="min-h-screen bg-white p-6">
+      <div className="max-w-7xl mx-auto">
+        {/* Header */}
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900">Labor vs Revenue Analytics</h1>
+            <p className="text-gray-500 mt-1">{data.venue_name} -- {data.period}</p>
+          </div>
+          <div className="flex items-center gap-3">
+            <label className="text-sm text-gray-600">Venue:</label>
+            <select
+              value={venueId}
+              onChange={e => setVenueId(parseInt(e.target.value))}
+              className="px-4 py-2 border border-gray-200 rounded-lg bg-gray-50 text-gray-700"
+            >
+              <option value={1}>Main Location</option>
+              <option value={2}>Branch 2</option>
+              <option value={3}>Branch 3</option>
+            </select>
+          </div>
         </div>
-        <button className="px-4 py-2 bg-primary-500 text-gray-900 rounded-lg hover:bg-primary-600 transition-colors text-sm font-medium flex items-center gap-2">
-          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-          </svg>
-          View Schedule
-        </button>
-      </div>
 
-      {/* Summary Cards */}
-      <div className="grid grid-cols-5 gap-4">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="bg-gradient-to-br from-accent-50 to-accent-100 rounded-2xl p-6 border border-accent-200"
-        >
-          <div className="text-accent-600 text-sm font-semibold mb-1">Labor Cost (7d)</div>
-          <div className="text-3xl font-bold text-accent-900">
-            {formatCurrency(stats?.total_labor_cost || 0)}
+        {error && (
+          <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg text-red-800">{error}</div>
+        )}
+
+        {/* Summary Cards */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+          <div className="bg-blue-50 rounded-xl p-5 border border-blue-100">
+            <div className="text-sm text-blue-600 font-medium">Total Revenue</div>
+            <div className="text-2xl font-bold text-blue-900 mt-1">{formatCurrency(data.summary.total_revenue)}</div>
           </div>
-          <div className="text-accent-600 text-xs mt-1">Total this week</div>
-        </motion.div>
-
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.1 }}
-          className="bg-gradient-to-br from-primary-50 to-primary-100 rounded-2xl p-6 border border-primary-200"
-        >
-          <div className="text-primary-600 text-sm font-semibold mb-1">Labor %</div>
-          <div className="text-3xl font-bold text-primary-900">
-            {stats?.labor_percentage || 0}%
+          <div className="bg-orange-50 rounded-xl p-5 border border-orange-100">
+            <div className="text-sm text-orange-600 font-medium">Total Labor Cost</div>
+            <div className="text-2xl font-bold text-orange-900 mt-1">{formatCurrency(data.summary.total_labor_cost)}</div>
           </div>
-          <div className="text-primary-600 text-xs mt-1">Of revenue</div>
-        </motion.div>
-
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2 }}
-          className="bg-gradient-to-br from-success-50 to-success-100 rounded-2xl p-6 border border-success-200"
-        >
-          <div className="text-success-600 text-sm font-semibold mb-1">Efficiency Score</div>
-          <div className="text-3xl font-bold text-success-900">
-            {stats?.efficiency_score || 0}%
+          <div className={`rounded-xl p-5 border ${
+            data.summary.labor_percentage <= data.summary.target_labor_pct
+              ? 'bg-green-50 border-green-100'
+              : 'bg-red-50 border-red-100'
+          }`}>
+            <div className="text-sm font-medium text-gray-600">Labor %</div>
+            <div className={`text-2xl font-bold mt-1 ${laborPctColor(data.summary.labor_percentage, data.summary.target_labor_pct)}`}>
+              {formatPct(data.summary.labor_percentage)}
+            </div>
+            <div className="text-xs text-gray-500 mt-0.5">Target: {formatPct(data.summary.target_labor_pct)}</div>
           </div>
-          <div className="text-success-600 text-xs mt-1">Schedule optimization</div>
-        </motion.div>
-
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.3 }}
-          className="bg-gradient-to-br from-warning-50 to-warning-100 rounded-2xl p-6 border border-warning-200"
-        >
-          <div className="text-warning-600 text-sm font-semibold mb-1">Overtime Hours</div>
-          <div className="text-3xl font-bold text-warning-900">
-            {stats?.overtime_hours || 0}h
+          <div className="bg-purple-50 rounded-xl p-5 border border-purple-100">
+            <div className="text-sm text-purple-600 font-medium">Overtime</div>
+            <div className="text-2xl font-bold text-purple-900 mt-1">{data.summary.total_overtime_hours.toFixed(1)}h</div>
+            <div className="text-xs text-purple-500 mt-0.5">{formatCurrency(data.summary.overtime_cost)} cost</div>
           </div>
-          <div className="text-warning-600 text-xs mt-1">This week</div>
-        </motion.div>
+        </div>
 
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.4 }}
-          className="bg-gradient-to-br from-error-50 to-error-100 rounded-2xl p-6 border border-error-200"
-        >
-          <div className="text-error-600 text-sm font-semibold mb-1">Avg Hourly Cost</div>
-          <div className="text-3xl font-bold text-error-900">
-            {formatCurrency(stats?.avg_hourly_cost || 0)}
-          </div>
-          <div className="text-error-600 text-xs mt-1">Per employee</div>
-        </motion.div>
-      </div>
-
-      {/* Main Content */}
-      <div className="grid grid-cols-3 gap-6">
-        {/* Cost by Department */}
-        <motion.div
-          initial={{ opacity: 0, x: -20 }}
-          animate={{ opacity: 1, x: 0 }}
-          className="bg-white rounded-2xl p-6 shadow-sm border border-surface-100"
-        >
-          <h3 className="text-xl font-semibold text-surface-900 mb-4">Cost by Department</h3>
-          <div className="space-y-4">
-            {stats?.cost_by_department.map((dept, i) => {
-              const totalCost = stats.cost_by_department.reduce((sum, d) => sum + d.cost, 0);
-              const percentage = (((dept.cost / totalCost) * 100) || 0).toFixed(0);
-              const avgHourlyRate = dept.cost / dept.hours;
+        {/* Side-by-Side: Labor $ vs Revenue $ */}
+        <div className="bg-gray-50 rounded-xl border border-gray-200 p-6 mb-8">
+          <h2 className="text-xl font-bold text-gray-900 mb-4">Daily Labor vs Revenue</h2>
+          <div className="flex items-end gap-1 h-56">
+            {data.daily_trend.map((day, idx) => {
+              const revenueHeight = (day.revenue / maxDailyValue) * 100;
+              const laborHeight = (day.labor_cost / maxDailyValue) * 100;
+              const shortDate = day.date.split('-').slice(1).join('/');
 
               return (
-                <motion.div
-                  key={i}
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: i * 0.05 }}
-                  className="space-y-2"
-                >
-                  <div className="flex justify-between">
-                    <div>
-                      <span className="text-surface-900 font-medium">{dept.department}</span>
-                      <div className="text-xs text-surface-500">{dept.hours}h @ {formatCurrency(avgHourlyRate)}/h</div>
-                    </div>
-                    <div className="text-right">
-                      <div className="text-surface-900 font-bold">{formatCurrency(dept.cost)}</div>
-                      <div className="text-xs text-surface-500">{percentage}%</div>
-                    </div>
-                  </div>
-                  <div className="h-2 bg-surface-100 rounded-full overflow-hidden">
-                    <motion.div
-                      initial={{ width: 0 }}
-                      animate={{ width: `${percentage}%` }}
-                      transition={{ delay: i * 0.1 }}
-                      className="h-full bg-gradient-to-r from-primary-400 to-primary-500 rounded-full"
-                    />
-                  </div>
-                </motion.div>
-              );
-            })}
-          </div>
-        </motion.div>
-
-        {/* Weekly Cost & Revenue */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="bg-white rounded-2xl p-6 shadow-sm border border-surface-100"
-        >
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-xl font-semibold text-surface-900">Weekly Labor %</h3>
-            <span className="text-xs text-surface-500">Target: &lt;30%</span>
-          </div>
-          <div className="flex items-end justify-between h-48 gap-2">
-            {stats?.cost_by_day.map((day, i) => {
-              const percentage = day.percentage;
-              const isGood = percentage < 30;
-              const isOk = percentage < 35;
-
-              return (
-                <div key={i} className="flex flex-col items-center flex-1">
-                  <div className="w-full flex flex-col rounded-t-sm overflow-hidden"
-                    style={{ height: `${Math.min(percentage * 2, 100)}%`, minHeight: '8px' }}
-                  >
+                <div key={idx} className="flex-1 flex flex-col items-center group">
+                  <div className="w-full flex gap-0.5 items-end" style={{ height: '200px' }}>
+                    {/* Revenue bar */}
                     <div
-                      className={`w-full flex-1 ${
-                        isGood
-                          ? 'bg-gradient-to-t from-success-500 to-success-400'
-                          : isOk
-                          ? 'bg-gradient-to-t from-warning-500 to-warning-400'
-                          : 'bg-gradient-to-t from-error-500 to-error-400'
-                      }`}
-                      title={`${(percentage || 0).toFixed(1)}% labor cost`}
+                      className="flex-1 bg-blue-400 rounded-t transition-all group-hover:bg-blue-500"
+                      style={{ height: `${revenueHeight}%`, minHeight: '2px' }}
+                      title={`Revenue: ${formatCurrency(day.revenue)}`}
+                    />
+                    {/* Labor bar */}
+                    <div
+                      className="flex-1 bg-orange-400 rounded-t transition-all group-hover:bg-orange-500"
+                      style={{ height: `${laborHeight}%`, minHeight: '2px' }}
+                      title={`Labor: ${formatCurrency(day.labor_cost)}`}
                     />
                   </div>
-                  <span className="text-xs font-medium text-surface-900 mt-2">{(percentage || 0).toFixed(1)}%</span>
-                  <span className="text-xs text-surface-500 mt-0.5">{day.day}</span>
+                  <div className="text-xs text-gray-500 mt-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                    {formatPct(day.labor_pct)}
+                  </div>
+                  <span className="text-xs text-gray-400">{shortDate}</span>
                 </div>
               );
             })}
           </div>
-        </motion.div>
+          <div className="flex justify-center gap-6 mt-4">
+            <div className="flex items-center gap-2">
+              <div className="w-4 h-3 bg-blue-400 rounded" />
+              <span className="text-gray-600 text-sm">Revenue</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="w-4 h-3 bg-orange-400 rounded" />
+              <span className="text-gray-600 text-sm">Labor Cost</span>
+            </div>
+          </div>
+        </div>
 
-        {/* Shift Coverage */}
-        <motion.div
-          initial={{ opacity: 0, x: 20 }}
-          animate={{ opacity: 1, x: 0 }}
-          className="bg-white rounded-2xl p-6 shadow-sm border border-surface-100"
-        >
-          <h3 className="text-xl font-semibold text-surface-900 mb-4">Shift Coverage</h3>
-          <div className="space-y-4">
-            {stats?.shift_coverage.map((shift, i) => {
-              const efficiencyColor = getEfficiencyColor(shift.efficiency);
-              const isUnder = shift.scheduled < shift.required;
-              const isOver = shift.scheduled > shift.required;
+        {/* Labor % Trend */}
+        <div className="bg-gray-50 rounded-xl border border-gray-200 p-6 mb-8">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-xl font-bold text-gray-900">Labor % Trend</h2>
+            <span className="text-sm text-gray-500">
+              Target: {formatPct(data.summary.target_labor_pct)}
+            </span>
+          </div>
+          <div className="flex items-end gap-2 h-40">
+            {data.daily_trend.map((day, idx) => {
+              const maxPct = Math.max(...data.daily_trend.map(d => d.labor_pct), 1);
+              const height = (day.labor_pct / maxPct) * 100;
+              const shortDate = day.date.split('-').slice(1).join('/');
+              const barColor = laborPctBarColor(day.labor_pct, data.summary.target_labor_pct);
 
               return (
-                <motion.div
-                  key={i}
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: i * 0.05 }}
-                  className="p-3 bg-surface-50 rounded-xl"
-                >
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-sm font-medium text-surface-900">{shift.shift}</span>
-                    <span className={`text-sm font-bold text-${efficiencyColor}-600`}>
-                      {shift.efficiency}%
-                    </span>
+                <div key={idx} className="flex-1 flex flex-col items-center group">
+                  <div className="text-xs font-medium text-gray-600 mb-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                    {formatPct(day.labor_pct)}
                   </div>
-                  <div className="flex items-center gap-2 text-xs text-surface-600 mb-2">
-                    <span>Required: {shift.required}</span>
-                    <span>•</span>
-                    <span className={
-                      isUnder ? 'text-error-600 font-semibold' :
-                      isOver ? 'text-warning-600 font-semibold' :
-                      'text-success-600 font-semibold'
-                    }>
-                      Scheduled: {shift.scheduled}
-                    </span>
-                  </div>
-                  <div className="h-2 bg-surface-200 rounded-full overflow-hidden">
-                    <motion.div
-                      initial={{ width: 0 }}
-                      animate={{ width: `${shift.efficiency}%` }}
-                      transition={{ delay: i * 0.05 + 0.2 }}
-                      className={`h-full rounded-full bg-${efficiencyColor}-500`}
-                    />
-                  </div>
-                </motion.div>
+                  <div
+                    className={`w-full rounded-t ${barColor} transition-all group-hover:opacity-80`}
+                    style={{ height: `${height}%`, minHeight: '2px' }}
+                    title={`${day.date}: ${formatPct(day.labor_pct)}`}
+                  />
+                  <span className="text-xs text-gray-400 mt-1">{shortDate}</span>
+                </div>
               );
             })}
           </div>
-        </motion.div>
-      </div>
-
-      {/* Bottom Row */}
-      <div className="grid grid-cols-2 gap-6">
-        {/* Schedule Issues */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.3 }}
-          className="bg-white rounded-2xl shadow-sm border border-surface-100 overflow-hidden"
-        >
-          <div className="px-6 py-4 border-b border-surface-100 bg-gradient-to-r from-surface-50 to-white">
-            <h3 className="text-xl font-semibold text-surface-900">Schedule Issues</h3>
+          <div className="flex justify-center gap-4 mt-4 text-sm">
+            <span className="flex items-center gap-1.5"><span className="w-3 h-3 bg-green-500 rounded" /> Under target</span>
+            <span className="flex items-center gap-1.5"><span className="w-3 h-3 bg-yellow-500 rounded" /> Near target</span>
+            <span className="flex items-center gap-1.5"><span className="w-3 h-3 bg-red-500 rounded" /> Over target</span>
           </div>
-          <div className="divide-y divide-surface-100">
-            {issues.map((issue, i) => {
-              const severityColor = getSeverityColor(issue.severity);
-              return (
-                <motion.div
-                  key={issue.id}
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: i * 0.05 }}
-                  className="p-4 hover:bg-surface-50 transition-colors"
-                >
-                  <div className="flex items-start gap-4">
-                    <div className={`p-3 rounded-xl bg-${severityColor}-100 text-2xl`}>
-                      {getIssueIcon(issue.type)}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-start justify-between gap-2">
-                        <div>
-                          <h4 className="font-semibold text-surface-900">{issue.description}</h4>
-                          <p className="text-sm text-surface-500 mt-0.5">{issue.recommendation}</p>
-                        </div>
-                        <span className={`px-3 py-1 rounded-full text-xs font-semibold bg-${severityColor}-100 text-${severityColor}-700 whitespace-nowrap`}>
-                          {issue.severity.toUpperCase()}
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+          {/* Department Breakdown */}
+          <div className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm">
+            <h2 className="text-xl font-bold text-gray-900 mb-4">Department Breakdown</h2>
+            <div className="space-y-4">
+              {data.department_breakdown.map((dept, idx) => {
+                const pctOfTotal = (dept.labor_cost / totalDeptLabor) * 100;
+                return (
+                  <div key={idx}>
+                    <div className="flex items-center justify-between mb-1">
+                      <div>
+                        <span className="font-medium text-gray-900">{dept.department}</span>
+                        <span className="text-xs text-gray-500 ml-2">{dept.headcount} staff</span>
+                      </div>
+                      <div className="text-right">
+                        <span className="font-bold text-gray-900">{formatCurrency(dept.labor_cost)}</span>
+                        <span className={`ml-2 text-sm ${laborPctColor(dept.labor_pct, data.summary.target_labor_pct)}`}>
+                          ({formatPct(dept.labor_pct)})
                         </span>
                       </div>
-                      <div className="flex items-center gap-4 mt-2 text-xs text-surface-500">
-                        <span>📅 {issue.date}</span>
-                        <span>⏰ {issue.shift}</span>
-                      </div>
+                    </div>
+                    <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
+                      <div
+                        className="h-full bg-blue-500 rounded-full transition-all"
+                        style={{ width: `${pctOfTotal}%` }}
+                      />
+                    </div>
+                    <div className="flex justify-between text-xs text-gray-500 mt-1">
+                      <span>{dept.hours_worked.toFixed(0)}h worked</span>
+                      <span>{formatCurrency(dept.avg_hourly_rate)}/hr avg</span>
+                      <span>Revenue: {formatCurrencyShort(dept.revenue_attributed)}</span>
                     </div>
                   </div>
-                </motion.div>
-              );
-            })}
+                );
+              })}
+            </div>
           </div>
-        </motion.div>
 
-        {/* Top Performers */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.4 }}
-          className="bg-white rounded-2xl p-6 shadow-sm border border-surface-100"
-        >
-          <h3 className="text-xl font-semibold text-surface-900 mb-4">Top Performers</h3>
-          <div className="space-y-3">
-            {stats?.top_performers.map((performer, i) => (
-              <motion.div
-                key={i}
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: i * 0.05 }}
-                className="flex items-center justify-between p-3 bg-surface-50 rounded-xl hover:bg-surface-100 transition-colors"
-              >
-                <div className="flex items-center gap-3 flex-1">
-                  <span className="text-2xl">
-                    {i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : '⭐'}
-                  </span>
-                  <div className="flex-1">
-                    <div className="font-medium text-surface-900">{performer.name}</div>
-                    <div className="text-xs text-surface-500">
-                      {performer.hours}h • {formatCurrency(performer.sales_per_hour)}/h
-                    </div>
-                  </div>
-                </div>
-                <div className="text-right">
-                  <div className={`text-sm font-bold ${
-                    performer.efficiency >= 90 ? 'text-success-600' :
-                    performer.efficiency >= 80 ? 'text-primary-600' :
-                    'text-warning-600'
-                  }`}>
-                    {performer.efficiency}%
-                  </div>
-                  <div className="text-xs text-surface-500">efficiency</div>
-                </div>
-              </motion.div>
-            ))}
+          {/* Overtime Tracking */}
+          <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+            <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
+              <h2 className="text-xl font-bold text-gray-900">Overtime Tracking</h2>
+              <span className="text-sm font-medium text-purple-600">
+                {data.summary.total_overtime_hours.toFixed(1)}h total
+              </span>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="min-w-full">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Staff</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Dept</th>
+                    <th className="px-4 py-3 text-right text-xs font-semibold text-gray-500 uppercase">Regular</th>
+                    <th className="px-4 py-3 text-right text-xs font-semibold text-gray-500 uppercase">OT Hours</th>
+                    <th className="px-4 py-3 text-right text-xs font-semibold text-gray-500 uppercase">OT Cost</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-200">
+                  {data.overtime_by_staff.map((entry, idx) => (
+                    <tr key={idx} className="hover:bg-gray-50">
+                      <td className="px-4 py-3 text-sm font-medium text-gray-900">{entry.staff_name}</td>
+                      <td className="px-4 py-3 text-sm text-gray-600">{entry.department}</td>
+                      <td className="px-4 py-3 text-sm text-right text-gray-600">{entry.regular_hours.toFixed(1)}h</td>
+                      <td className={`px-4 py-3 text-sm text-right font-medium ${
+                        entry.overtime_hours > 10 ? 'text-red-600' : entry.overtime_hours > 5 ? 'text-yellow-600' : 'text-gray-900'
+                      }`}>
+                        {entry.overtime_hours.toFixed(1)}h
+                      </td>
+                      <td className="px-4 py-3 text-sm text-right font-medium text-purple-600">
+                        {formatCurrency(entry.overtime_cost)}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            {data.overtime_by_staff.length === 0 && (
+              <div className="text-center py-8 text-gray-500">No overtime recorded this period.</div>
+            )}
           </div>
-        </motion.div>
-      </div>
-
-      {/* Info Panel */}
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ delay: 0.5 }}
-        className="bg-gradient-to-r from-primary-50 to-primary-100 rounded-2xl p-6 border border-primary-200"
-      >
-        <div className="flex items-start gap-4">
-          <span className="text-3xl">💡</span>
-          <div className="flex-1">
-            <h4 className="font-semibold text-primary-900 mb-2">Smart Labor Optimization</h4>
-            <p className="text-sm text-primary-700 leading-relaxed">
-              Our AI-powered scheduling system analyzes historical sales data, foot traffic patterns, and employee
-              performance to optimize shift coverage. The system identifies overstaffing, understaffing, and skill gaps
-              automatically. Target labor cost is 25-30% of revenue. Monitor efficiency scores and address scheduling
-              issues proactively to reduce overtime costs and improve service quality.
-            </p>
-          </div>
-          <button className="px-4 py-2 bg-primary-500 text-gray-900 rounded-lg hover:bg-primary-600 transition-colors text-sm font-medium">
-            Optimize Schedule
-          </button>
         </div>
-      </motion.div>
+
+        {/* Efficiency Insight */}
+        <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl border border-blue-200 p-6">
+          <div className="flex items-start gap-4">
+            <div className="flex-1">
+              <h3 className="font-semibold text-blue-900 mb-2">Labor Efficiency Score</h3>
+              <div className="flex items-center gap-4 mb-2">
+                <div className="text-4xl font-bold text-blue-700">{data.summary.efficiency_score}%</div>
+                <div className="flex-1">
+                  <div className="h-3 bg-blue-200 rounded-full overflow-hidden">
+                    <div
+                      className={`h-full rounded-full ${
+                        data.summary.efficiency_score >= 90 ? 'bg-green-500' :
+                        data.summary.efficiency_score >= 75 ? 'bg-blue-500' :
+                        'bg-yellow-500'
+                      }`}
+                      style={{ width: `${data.summary.efficiency_score}%` }}
+                    />
+                  </div>
+                </div>
+              </div>
+              <p className="text-sm text-blue-700 leading-relaxed">
+                Avg hourly cost: {formatCurrency(data.summary.avg_hourly_cost)} per employee.
+                Overtime accounts for {formatCurrency(data.summary.overtime_cost)} ({data.summary.total_overtime_hours.toFixed(1)}h) of total labor cost.
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

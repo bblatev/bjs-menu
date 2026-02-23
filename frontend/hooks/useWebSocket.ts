@@ -125,20 +125,12 @@ export function useWebSocket(options: UseWebSocketOptions): UseWebSocketReturn {
     wsRef.current = new WebSocket(url);
 
     wsRef.current.onopen = () => {
-      // If we have a localStorage token (legacy), send it as first-message auth.
-      // With HttpOnly cookies, the cookie is sent during the WS handshake automatically,
-      // and the server authenticates from that — no first-message needed.
-      const token = typeof window !== 'undefined' ? localStorage.getItem('access_token') : null;
-      if (token && wsRef.current?.readyState === WebSocket.OPEN) {
-        wsRef.current.send(JSON.stringify({ event: 'auth', token }));
-      } else {
-        // Cookie-based auth: server validates during handshake.
-        // Mark as connected immediately (server sends auth_success if needed).
-        setIsConnected(true);
-        reconnectAttemptsRef.current = 0;
-        startPingInterval();
-        onConnect?.();
-      }
+      // Cookie-based auth: HttpOnly cookies are sent during the WS handshake
+      // automatically. No need to send tokens via first-message auth.
+      setIsConnected(true);
+      reconnectAttemptsRef.current = 0;
+      startPingInterval();
+      onConnect?.();
     };
 
     wsRef.current.onmessage = (event) => {

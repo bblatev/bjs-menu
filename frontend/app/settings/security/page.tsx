@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { Button, Card, CardBody } from '@/components/ui';
 
-import { API_URL } from '@/lib/api';
+import { api, isAuthenticated } from '@/lib/api';
 
 import { toast } from '@/lib/toast';
 interface UserRole {
@@ -109,19 +109,11 @@ export default function SettingsSecurityPage() {
 
   const loadSettings = async () => {
     try {
-      const token = localStorage.getItem('access_token');
-      if (!token) return;
+      if (!isAuthenticated()) return;
 
-      const response = await fetch(`${API_URL}/settings/`, {
-        credentials: 'include',
-        headers: { Authorization: `Bearer ${token}` },
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        if (data.settings?.security) {
-          setSettings({ ...settings, ...data.settings.security });
-        }
+      const data = await api.get<any>('/settings/');
+      if (data.settings?.security) {
+        setSettings({ ...settings, ...data.settings.security });
       }
     } catch (err) {
       console.error('Error loading settings:', err);
@@ -132,18 +124,10 @@ export default function SettingsSecurityPage() {
 
   const loadUserRoles = async () => {
     try {
-      const token = localStorage.getItem('access_token');
-      if (!token) return;
+      if (!isAuthenticated()) return;
 
-      const response = await fetch(`${API_URL}/roles/`, {
-        credentials: 'include',
-        headers: { Authorization: `Bearer ${token}` },
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        setUserRoles(data.roles || data || []);
-      }
+      const data = await api.get<any>('/roles/');
+      setUserRoles(data.roles || data || []);
     } catch (err) {
       console.error('Error loading user roles:', err);
     }
@@ -152,18 +136,10 @@ export default function SettingsSecurityPage() {
   const loadAuditLogs = async () => {
     setLoadingAuditLogs(true);
     try {
-      const token = localStorage.getItem('access_token');
-      if (!token) return;
+      if (!isAuthenticated()) return;
 
-      const response = await fetch(`${API_URL}/audit-logs/?limit=10`, {
-        credentials: 'include',
-        headers: { Authorization: `Bearer ${token}` },
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        setAuditLogs(data.logs || data || []);
-      }
+      const data = await api.get<any>('/audit-logs/?limit=10');
+      setAuditLogs(data.logs || data || []);
     } catch (err) {
       console.error('Error loading audit logs:', err);
     } finally {
@@ -174,20 +150,8 @@ export default function SettingsSecurityPage() {
   const handleSave = async () => {
     setSaving(true);
     try {
-      const token = localStorage.getItem('access_token');
-      const response = await fetch(`${API_URL}/settings/`, {
-        credentials: 'include',
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ settings: { security: settings } }),
-      });
-
-      if (response.ok) {
-        toast.success('Security settings saved successfully!');
-      }
+      await api.put('/settings/', { settings: { security: settings } });
+      toast.success('Security settings saved successfully!');
     } catch (err) {
       console.error('Error saving settings:', err);
       toast.error('Failed to save settings');

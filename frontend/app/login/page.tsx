@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 
-import { API_URL, APP_VERSION, TOKEN_KEY } from '@/lib/api';
+import { API_URL, APP_VERSION } from '@/lib/api';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -44,8 +44,7 @@ export default function LoginPage() {
       });
 
       if (res.ok) {
-        // Store token in localStorage as bridge for pages not yet migrated to cookie auth
-        try { const d = await res.json(); if (d.access_token) localStorage.setItem(TOKEN_KEY, d.access_token); } catch {}
+        // Auth token is set as HttpOnly cookie by the server
         router.push('/dashboard');
       } else {
         setError('Invalid PIN');

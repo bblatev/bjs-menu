@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { API_URL } from "@/lib/api";
+import { api } from "@/lib/api";
 
 interface Recipe {
   id: number;
@@ -99,17 +99,10 @@ export default function RecipeManagementPage() {
 
   const fetchRecipes = async () => {
     try {
-      const token = localStorage.getItem("access_token");
-      const res = await fetch(`${API_URL}/recipes?venue_id=1`, {
-        credentials: 'include',
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      if (res.ok) {
-        const data = await res.json();
-        const list = Array.isArray(data) ? data : (data.items || data.recipes || []);
-        setRecipes(list);
-        if (list.length > 0) setSelectedRecipe(list[0]);
-      }
+      const data = await api.get('/recipes?venue_id=1');
+      const list = Array.isArray(data) ? data : ((data as Record<string, unknown>).items || (data as Record<string, unknown>).recipes || []);
+      setRecipes(list as Recipe[]);
+      if ((list as Recipe[]).length > 0) setSelectedRecipe((list as Recipe[])[0]);
     } catch (error) {
       console.error("Error fetching recipes:", error);
     } finally {
@@ -118,28 +111,38 @@ export default function RecipeManagementPage() {
   };
 
   const fetchRecipeDetails = async (recipeId: number) => {
-    const token = localStorage.getItem("access_token");
-    const headers = { Authorization: `Bearer ${token}` };
-
     try {
       // Fetch full recipe with ingredients
-      const recipeRes = await fetch(`${API_URL}/recipes/${recipeId}`, { credentials: 'include', headers });
-      if (recipeRes.ok) {
-        const data = await recipeRes.json();
+      try {
+        const data = await api.get<{ ingredients?: RecipeIngredient[] }>(`/recipes/${recipeId}`);
         if (data.ingredients) setIngredients(data.ingredients);
+      } catch {
+        // Recipe detail may not be available
       }
 
       // Fetch versions
-      const versionsRes = await fetch(`${API_URL}/recipes/${recipeId}/versions`, { credentials: 'include', headers });
-      if (versionsRes.ok) setVersions(await versionsRes.json());
+      try {
+        const versionsData = await api.get<RecipeVersion[]>(`/recipes/${recipeId}/versions`);
+        setVersions(versionsData);
+      } catch {
+        // Versions may not be available
+      }
 
       // Fetch current cost
-      const costRes = await fetch(`${API_URL}/recipes/${recipeId}/cost`, { credentials: 'include', headers });
-      if (costRes.ok) setCurrentCost(await costRes.json());
+      try {
+        const costData = await api.get(`/recipes/${recipeId}/cost`);
+        setCurrentCost(costData);
+      } catch {
+        // Cost data may not be available
+      }
 
       // Fetch cost history
-      const historyRes = await fetch(`${API_URL}/recipes/${recipeId}/cost-history`, { credentials: 'include', headers });
-      if (historyRes.ok) setCostHistory(await historyRes.json());
+      try {
+        const historyData = await api.get<RecipeCostHistory[]>(`/recipes/${recipeId}/cost-history`);
+        setCostHistory(historyData);
+      } catch {
+        // Cost history may not be available
+      }
 
     } catch (error) {
       console.error("Error fetching recipe details:", error);
@@ -151,24 +154,12 @@ export default function RecipeManagementPage() {
     setSaving(true);
 
     try {
-      const token = localStorage.getItem("access_token");
-      const res = await fetch(`${API_URL}/recipes/scale`, {
-        credentials: 'include',
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`
-        },
-        body: JSON.stringify({
-          recipe_id: selectedRecipe.id,
-          target_yield: scaleForm.target_yield,
-          target_unit: scaleForm.target_unit
-        })
+      const data = await api.post('/recipes/scale', {
+        recipe_id: selectedRecipe.id,
+        target_yield: scaleForm.target_yield,
+        target_unit: scaleForm.target_unit
       });
-      if (res.ok) {
-        const data = await res.json();
-        setScaledRecipe(data);
-      }
+      setScaledRecipe(data);
     } catch (error) {
       console.error("Error scaling recipe:", error);
     } finally {
@@ -179,28 +170,17 @@ export default function RecipeManagementPage() {
   const handleCreateRecipe = async () => {
     setSaving(true);
     try {
-      const token = localStorage.getItem("access_token");
-      const res = await fetch(`${API_URL}/recipes?venue_id=1`, {
-        credentials: 'include',
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`
-        },
-        body: JSON.stringify({
-          name: { bg: recipeForm.name_bg, en: recipeForm.name_en },
-          description: { bg: recipeForm.description_bg, en: recipeForm.description_en },
-          yield_quantity: recipeForm.yield_quantity,
-          yield_unit: recipeForm.yield_unit,
-          prep_time_minutes: recipeForm.prep_time_minutes,
-          cook_time_minutes: recipeForm.cook_time_minutes,
-          difficulty_level: recipeForm.difficulty_level
-        })
+      await api.post('/recipes?venue_id=1', {
+        name: { bg: recipeForm.name_bg, en: recipeForm.name_en },
+        description: { bg: recipeForm.description_bg, en: recipeForm.description_en },
+        yield_quantity: recipeForm.yield_quantity,
+        yield_unit: recipeForm.yield_unit,
+        prep_time_minutes: recipeForm.prep_time_minutes,
+        cook_time_minutes: recipeForm.cook_time_minutes,
+        difficulty_level: recipeForm.difficulty_level
       });
-      if (res.ok) {
-        setShowRecipeModal(false);
-        fetchRecipes();
-      }
+      setShowRecipeModal(false);
+      fetchRecipes();
     } catch (error) {
       console.error("Error creating recipe:", error);
     } finally {

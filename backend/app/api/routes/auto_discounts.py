@@ -13,6 +13,9 @@ from app.core.rate_limit import limiter
 from app.models import StaffUser, AutoDiscount
 from app.schemas import AutoDiscountCreate, AutoDiscountResponse, AutoDiscountType
 
+import logging
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -35,6 +38,9 @@ def is_discount_currently_active(discount: AutoDiscount) -> bool:
     start_time = discount.start_time
     end_time = discount.end_time
 
+    if not start_time or not end_time:
+        return False
+
     # Handle overnight ranges (e.g., 22:00 to 02:00)
     if start_time <= end_time:
         return start_time <= current_time <= end_time
@@ -49,6 +55,9 @@ def calculate_discount(
     category_id: int = None
 ) -> float:
     """Calculate discount amount for an item"""
+    # Guard against None price
+    if item_price is None:
+        item_price = 0.0
     # Check if item is applicable
     if discount.applicable_items:
         if item_id not in discount.applicable_items:
@@ -89,29 +98,36 @@ async def create_auto_discount(
     try:
         datetime.strptime(data.start_time, "%H:%M")
         datetime.strptime(data.end_time, "%H:%M")
-    except ValueError:
+    except (ValueError, TypeError):
         raise HTTPException(status_code=400, detail="Invalid time format. Use HH:MM")
 
-    discount = AutoDiscount(
-        venue_id=current_user.venue_id,
-        name=data.name,
-        discount_type=data.discount_type.value,
-        discount_percentage=data.discount_percentage,
-        discount_amount=data.discount_amount,
-        start_time=data.start_time,
-        end_time=data.end_time,
-        valid_days=data.valid_days,
-        applicable_categories=data.applicable_categories,
-        applicable_items=data.applicable_items,
-        min_order_amount=data.min_order_amount,
-        max_discount_amount=data.max_discount_amount,
-        active=data.active
-    )
-    db.add(discount)
-    db.commit()
-    db.refresh(discount)
+    try:
+        discount = AutoDiscount(
+            venue_id=current_user.venue_id,
+            name=data.name,
+            discount_type=data.discount_type.value if data.discount_type else None,
+            discount_percentage=data.discount_percentage,
+            discount_amount=data.discount_amount,
+            start_time=data.start_time,
+            end_time=data.end_time,
+            valid_days=data.valid_days or [],
+            applicable_categories=data.applicable_categories,
+            applicable_items=data.applicable_items,
+            min_order_amount=data.min_order_amount,
+            max_discount_amount=data.max_discount_amount,
+            active=data.active if data.active is not None else True
+        )
+        db.add(discount)
+        db.commit()
+        db.refresh(discount)
 
-    return _format_discount_response(discount)
+        return _format_discount_response(discount)
+    except HTTPException:
+        raise
+    except Exception as e:
+        db.rollback()
+        logger.exception("Failed to create auto discount")
+        raise HTTPException(status_code=500, detail=f"Failed to create discount: {str(e)}")
 
 
 @router.get("/", response_model=List[AutoDiscountResponse])
@@ -274,72 +290,92 @@ async def calculate_order_discount(
     current_user: StaffUser = Depends(get_current_user)
 ):
     """Calculate total discount for an order based on active automatic discounts"""
-    # Get currently active discounts
-    discounts = db.query(AutoDiscount).filter(
-        AutoDiscount.venue_id == current_user.venue_id,
-        AutoDiscount.active == True
-    ).all()
+    try:
+        if not item_prices:
+            return {
+                "total_discount": 0,
+                "applied_discounts": [],
+                "message": "No items provided"
+            }
 
-    active_discounts = [d for d in discounts if is_discount_currently_active(d)]
+        # Get currently active discounts
+        discounts = db.query(AutoDiscount).filter(
+            AutoDiscount.venue_id == current_user.venue_id,
+            AutoDiscount.active == True
+        ).all()
 
-    if not active_discounts:
+        active_discounts = [d for d in discounts if is_discount_currently_active(d)]
+
+        if not active_discounts:
+            return {
+                "total_discount": 0,
+                "applied_discounts": [],
+                "message": "No active discounts"
+            }
+
+        total_discount = 0
+        applied_discounts = []
+
+        for discount in active_discounts:
+            # Check minimum order amount
+            if discount.min_order_amount and order_total:
+                if order_total < discount.min_order_amount:
+                    continue
+
+            discount_total = 0
+            for item in item_prices:
+                if not isinstance(item, dict):
+                    continue
+                item_discount = calculate_discount(
+                    discount,
+                    item.get("price", 0) or 0,
+                    item.get("item_id"),
+                    item.get("category_id")
+                )
+                discount_total += item_discount
+
+            if discount_total > 0:
+                total_discount += discount_total
+                applied_discounts.append({
+                    "discount_id": discount.id,
+                    "discount_name": discount.name,
+                    "discount_type": discount.discount_type,
+                    "amount": round(discount_total, 2)
+                })
+
         return {
-            "total_discount": 0,
-            "applied_discounts": [],
-            "message": "No active discounts"
+            "total_discount": round(total_discount, 2),
+            "applied_discounts": applied_discounts,
+            "message": f"{len(applied_discounts)} discount(s) applied"
         }
-
-    total_discount = 0
-    applied_discounts = []
-
-    for discount in active_discounts:
-        # Check minimum order amount
-        if discount.min_order_amount and order_total:
-            if order_total < discount.min_order_amount:
-                continue
-
-        discount_total = 0
-        for item in item_prices:
-            item_discount = calculate_discount(
-                discount,
-                item.get("price", 0),
-                item.get("item_id"),
-                item.get("category_id")
-            )
-            discount_total += item_discount
-
-        if discount_total > 0:
-            total_discount += discount_total
-            applied_discounts.append({
-                "discount_id": discount.id,
-                "discount_name": discount.name,
-                "discount_type": discount.discount_type,
-                "amount": round(discount_total, 2)
-            })
-
-    return {
-        "total_discount": round(total_discount, 2),
-        "applied_discounts": applied_discounts,
-        "message": f"{len(applied_discounts)} discount(s) applied"
-    }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.exception("Failed to calculate order discount")
+        raise HTTPException(status_code=500, detail=f"Failed to calculate discount: {str(e)}")
 
 
 def _format_discount_response(discount: AutoDiscount) -> AutoDiscountResponse:
     """Format discount for response"""
+    try:
+        discount_type_val = AutoDiscountType(discount.discount_type) if discount.discount_type else AutoDiscountType("percentage")
+    except (ValueError, KeyError):
+        discount_type_val = AutoDiscountType("percentage")
+
     return AutoDiscountResponse(
         id=discount.id,
-        name=discount.name,
-        discount_type=AutoDiscountType(discount.discount_type),
+        name=discount.name or "",
+        discount_type=discount_type_val,
         discount_percentage=discount.discount_percentage,
         discount_amount=discount.discount_amount,
-        start_time=discount.start_time,
-        end_time=discount.end_time,
+        start_time=discount.start_time or "",
+        end_time=discount.end_time or "",
         valid_days=discount.valid_days or [],
-        applicable_categories=discount.applicable_categories,
-        applicable_items=discount.applicable_items,
+        applicable_categories=discount.applicable_categories or [],
+        applicable_items=discount.applicable_items or [],
         min_order_amount=discount.min_order_amount,
         max_discount_amount=discount.max_discount_amount,
-        active=discount.active,
+        active=discount.active if discount.active is not None else False,
         currently_active=is_discount_currently_active(discount),
         created_at=discount.created_at
     )

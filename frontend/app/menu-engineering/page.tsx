@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 
-import { API_URL } from '@/lib/api';
+import { api } from '@/lib/api';
 
 interface MenuItem {
   id: number;
@@ -81,27 +81,12 @@ export default function MenuEngineeringPage() {
     try {
       setLoading(true);
       setError(null);
-      const token = localStorage.getItem('access_token');
-      const headers = {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json',
-      };
 
       const params = new URLSearchParams({ days: selectedDays.toString() });
 
-      const [itemsRes, categoriesRes, pricingRes] = await Promise.all([
-        fetch(`${API_URL}/menu-engineering/items?${params}`, { credentials: 'include', headers }),
-        fetch(`${API_URL}/menu-engineering/categories?${params}`, { credentials: 'include', headers }),
-        fetch(`${API_URL}/menu-engineering/pricing-recommendations?${params}`, { credentials: 'include', headers }),
-      ]);
-
-      if (!itemsRes.ok) {
-        throw new Error('Failed to load menu engineering data');
-      }
-
-      const itemsData = await itemsRes.json();
-      const rawItems = itemsData.items || itemsData;
-      const menuItems = Array.isArray(rawItems) ? rawItems : [];
+      const itemsData = await api.get<{ items?: MenuItem[] } | MenuItem[]>(`/menu-engineering/items?${params}`);
+      const rawItems = Array.isArray(itemsData) ? itemsData : ((itemsData as { items?: MenuItem[] }).items || itemsData);
+      const menuItems: MenuItem[] = Array.isArray(rawItems) ? rawItems : [];
       setItems(menuItems);
 
       // Calculate quadrant data
@@ -119,14 +104,18 @@ export default function MenuEngineeringPage() {
         avg_popularity: menuItems.length > 0 ? menuItems.reduce((s: number, i: MenuItem) => s + i.popularity_score, 0) / menuItems.length : 0,
       });
 
-      if (categoriesRes.ok) {
-        const categoriesData = await categoriesRes.json();
-        setCategories(categoriesData.categories || categoriesData || []);
+      try {
+        const categoriesData = await api.get<{ categories?: CategoryAnalysis[] } | CategoryAnalysis[]>(`/menu-engineering/categories?${params}`);
+        setCategories(Array.isArray(categoriesData) ? categoriesData : ((categoriesData as { categories?: CategoryAnalysis[] }).categories || []));
+      } catch {
+        // Categories data is optional
       }
 
-      if (pricingRes.ok) {
-        const pricingData = await pricingRes.json();
-        setPricingRecs(pricingData.recommendations || pricingData || []);
+      try {
+        const pricingData = await api.get<{ recommendations?: PricingRecommendation[] } | PricingRecommendation[]>(`/menu-engineering/pricing-recommendations?${params}`);
+        setPricingRecs(Array.isArray(pricingData) ? pricingData : ((pricingData as { recommendations?: PricingRecommendation[] }).recommendations || []));
+      } catch {
+        // Pricing data is optional
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load data');

@@ -12,6 +12,10 @@ from datetime import datetime, date, time, timedelta, timezone
 from app.db.session import get_db
 from app.core.rate_limit import limiter
 
+import logging
+
+logger = logging.getLogger(__name__)
+
 # Create V3 router
 v3_router = APIRouter(tags=["V3.0 Features"])
 
@@ -513,19 +517,27 @@ async def profit_loss(request: Request, start_date: date = Query(default=None), 
         start_date = date.today() - timedelta(days=30)
     if end_date is None:
         end_date = date.today()
-    from app.services.accounting_integration_service import AccountingIntegrationService
-    service = AccountingIntegrationService(db)
-    return service.get_profit_loss(venue_id=1, start_date=start_date, end_date=end_date)
+    try:
+        from app.services.accounting_integration_service import AccountingIntegrationService
+        service = AccountingIntegrationService(db)
+        return service.get_profit_loss(venue_id=1, start_date=start_date, end_date=end_date)
+    except Exception as e:
+        logger.exception("Failed to generate P&L report")
+        return {"success": False, "error": str(e), "period": {"start": start_date.isoformat(), "end": end_date.isoformat()}}
 
 @accounting_router.get("/reports/balance-sheet")
 @limiter.limit("60/minute")
 async def balance_sheet(request: Request, as_of_date: date = Query(default=None), db: Session = Depends(get_db)):
     """Get balance sheet"""
-    from app.services.accounting_integration_service import AccountingIntegrationService
-    service = AccountingIntegrationService(db)
     if as_of_date is None:
         as_of_date = date.today()
-    return service.get_balance_sheet(venue_id=1, as_of_date=as_of_date)
+    try:
+        from app.services.accounting_integration_service import AccountingIntegrationService
+        service = AccountingIntegrationService(db)
+        return service.get_balance_sheet(venue_id=1, as_of_date=as_of_date)
+    except Exception as e:
+        logger.exception("Failed to generate balance sheet")
+        return {"success": False, "error": str(e), "as_of_date": as_of_date.isoformat()}
 
 @accounting_router.get("/reports/cash-flow")
 @limiter.limit("60/minute")
@@ -535,9 +547,13 @@ async def cash_flow(request: Request, start_date: date = Query(default=None), en
         start_date = date.today() - timedelta(days=30)
     if end_date is None:
         end_date = date.today()
-    from app.services.accounting_integration_service import AccountingIntegrationService
-    service = AccountingIntegrationService(db)
-    return service.get_cash_flow(venue_id=1, start_date=start_date, end_date=end_date)
+    try:
+        from app.services.accounting_integration_service import AccountingIntegrationService
+        service = AccountingIntegrationService(db)
+        return service.get_cash_flow(venue_id=1, start_date=start_date, end_date=end_date)
+    except Exception as e:
+        logger.exception("Failed to generate cash flow report")
+        return {"success": False, "error": str(e), "period": {"start": start_date.isoformat(), "end": end_date.isoformat()}}
 
 
 # ==================== REPORTS ====================

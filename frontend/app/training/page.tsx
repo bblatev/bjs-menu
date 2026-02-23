@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { API_URL } from '@/lib/api';
+import { api } from '@/lib/api';
 
 interface TrainingSession {
   sessionId: string;
@@ -78,17 +78,10 @@ export default function TrainingModePage() {
     setIsLoading(true);
     try {
       // Load active training sessions from API
-      const token = localStorage.getItem('access_token');
-      const res = await fetch(`${API_URL}/training/sessions/active`, {
-        credentials: 'include',
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (res.ok) {
-        const data = await res.json();
-        setActiveSessions(Array.isArray(data) ? data : data.sessions || []);
-      } else {
-        setActiveSessions([]);
-      }
+      const data = await api.get<TrainingSession[] | { sessions: TrainingSession[] }>(`/training/sessions/active`);
+      setActiveSessions(Array.isArray(data) ? data : (data as { sessions: TrainingSession[] }).sessions || []);
+    } catch {
+      setActiveSessions([]);
     } finally {
       setIsLoading(false);
     }
@@ -97,45 +90,36 @@ export default function TrainingModePage() {
   const startTrainingSession = async () => {
     setIsLoading(true);
     try {
-      const token = localStorage.getItem('access_token');
-      const res = await fetch(`${API_URL}/training/sessions/start`, {
-        credentials: 'include',
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ user_id: selectedUser }),
-      });
-      if (res.ok) {
-        const data = await res.json();
-        const newSession: TrainingSession = {
-          sessionId: data.session_id || `TS-${Date.now()}-${selectedUser}`,
-          userId: selectedUser,
-          userName: users.find(u => u.id === selectedUser)?.name,
-          startedAt: data.started_at || new Date().toISOString(),
-          ordersCreated: 0,
-          paymentsProcessed: 0,
-          totalSales: 0,
-          averageTicket: 0,
-        };
-        setCurrentSession(newSession);
-      } else {
-        const newSession: TrainingSession = {
-          sessionId: `TS-${Date.now()}-${selectedUser}`,
-          userId: selectedUser,
-          userName: users.find(u => u.id === selectedUser)?.name,
-          startedAt: new Date().toISOString(),
-          ordersCreated: 0,
-          paymentsProcessed: 0,
-          totalSales: 0,
-          averageTicket: 0,
-        };
-        setCurrentSession(newSession);
-      }
-      setIsTrainingActive(true);
-      setPracticeMode('menu');
-      setPracticeCart([]);
-    } finally {
-      setIsLoading(false);
+      const data = await api.post<{ session_id?: string; started_at?: string }>(`/training/sessions/start`, { user_id: selectedUser });
+      const newSession: TrainingSession = {
+        sessionId: data.session_id || `TS-${Date.now()}-${selectedUser}`,
+        userId: selectedUser,
+        userName: users.find(u => u.id === selectedUser)?.name,
+        startedAt: data.started_at || new Date().toISOString(),
+        ordersCreated: 0,
+        paymentsProcessed: 0,
+        totalSales: 0,
+        averageTicket: 0,
+      };
+      setCurrentSession(newSession);
+    } catch {
+      // Fallback to local session if API fails
+      const newSession: TrainingSession = {
+        sessionId: `TS-${Date.now()}-${selectedUser}`,
+        userId: selectedUser,
+        userName: users.find(u => u.id === selectedUser)?.name,
+        startedAt: new Date().toISOString(),
+        ordersCreated: 0,
+        paymentsProcessed: 0,
+        totalSales: 0,
+        averageTicket: 0,
+      };
+      setCurrentSession(newSession);
     }
+    setIsTrainingActive(true);
+    setPracticeMode('menu');
+    setPracticeCart([]);
+    setIsLoading(false);
   };
 
   const endTrainingSession = async () => {
@@ -143,13 +127,7 @@ export default function TrainingModePage() {
 
     setIsLoading(true);
     try {
-      const token = localStorage.getItem('access_token');
-      await fetch(`${API_URL}/training/sessions/end`, {
-        credentials: 'include',
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ session_id: currentSession.sessionId }),
-      }).catch(() => {});
+      await api.post(`/training/sessions/end`, { session_id: currentSession.sessionId }).catch(() => {});
 
       const stats: SessionStats = {
         sessionId: currentSession.sessionId,

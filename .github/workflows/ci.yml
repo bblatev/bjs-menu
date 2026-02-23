@@ -76,7 +76,7 @@ jobs:
           DATABASE_URL: postgresql://${{ secrets.TEST_DB_USER || 'test' }}:${{ secrets.TEST_DB_PASSWORD || 'test' }}@localhost:5432/${{ secrets.TEST_DB_NAME || 'test' }}
           SECRET_KEY: ${{ secrets.TEST_SECRET_KEY || 'ci-test-key-not-for-production-use-minimum-32chars' }}
         run: |
-          pytest tests/ -v --cov=app --cov-report=xml --cov-fail-under=50
+          pytest tests/ -v --cov=app --cov-report=xml --cov-fail-under=80
 
       - name: Upload coverage
         uses: codecov/codecov-action@v4
@@ -252,3 +252,43 @@ jobs:
           format: 'table'
           exit-code: '1'
           severity: 'CRITICAL,HIGH'
+
+  # Deploy to Staging
+  deploy-staging:
+    needs: [docker-build]
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    environment: staging
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Deploy to Staging
+        run: bash scripts/deploy.sh staging
+
+      - name: Health Check
+        run: bash scripts/health-check.sh staging
+
+  # Deploy to Production
+  deploy-production:
+    needs: [deploy-staging]
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    environment: production
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Deploy to Production
+        run: bash scripts/deploy.sh production
+
+      - name: Health Check
+        run: bash scripts/health-check.sh production
+
+      - name: Notify Deployment Success
+        if: success()
+        run: echo "Production deployment successful"
+
+      - name: Rollback on Failure
+        if: failure()
+        run: bash scripts/rollback.sh production

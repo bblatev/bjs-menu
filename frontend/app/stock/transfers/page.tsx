@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { API_URL } from '@/lib/api';
+import { api } from '@/lib/api';
 
 import { toast } from '@/lib/toast';
 interface Warehouse {
@@ -71,30 +71,21 @@ export default function StockTransfersPage() {
   }, []);
 
   const loadData = async () => {
-    const token = localStorage.getItem('access_token');
     try {
       // Load warehouses
-      const warehouseRes = await fetch(`${API_URL}/warehouses`, {
-        credentials: 'include',
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      if (warehouseRes.ok) {
-        const data = await warehouseRes.json();
+      try {
+        const data = await api.get<any>('/warehouses');
         setWarehouses(data.map((w: any) => ({
           id: w.id,
           name: w.name,
           location: w.address || '',
           is_primary: w.is_default
         })));
-      }
+      } catch {}
 
       // Load stock items
-      const stockRes = await fetch(`${API_URL}/stock`, {
-        credentials: 'include',
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      if (stockRes.ok) {
-        const data = await stockRes.json();
+      try {
+        const data = await api.get<any>('/stock');
         setStockItems(data.map((s: any) => ({
           id: s.id,
           name: typeof s.name === 'object' ? (s.name?.bg || s.name?.en || 'Item') : (s.name || 'Item'),
@@ -102,15 +93,11 @@ export default function StockTransfersPage() {
           quantity: s.quantity,
           unit: s.unit
         })));
-      }
+      } catch {}
 
       // Load transfers
-      const transferRes = await fetch(`${API_URL}/warehouses/transfers`, {
-        credentials: 'include',
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      if (transferRes.ok) {
-        const data = await transferRes.json();
+      try {
+        const data = await api.get<any>('/warehouses/transfers');
         setTransfers(data.map((t: any) => ({
           id: t.id,
           transfer_number: `TRF-${t.id}`,
@@ -125,7 +112,7 @@ export default function StockTransfersPage() {
           total_items: 1,
           total_quantity: t.quantity
         })));
-      }
+      } catch {}
     } catch (error) {
       console.error('Error loading data:', error);
     }
@@ -171,72 +158,48 @@ export default function StockTransfersPage() {
       return;
     }
 
-    const token = localStorage.getItem('access_token');
     try {
       // Create a transfer for each item (backend handles single items)
       for (const item of newTransfer.items) {
-        const res = await fetch(`${API_URL}/warehouses/transfers`, {
-          credentials: 'include',
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${token}`
-          },
-          body: JSON.stringify({
-            source_warehouse_id: newTransfer.from_warehouse_id,
-            destination_warehouse_id: newTransfer.to_warehouse_id,
-            stock_item_id: item.item_id,
-            quantity: item.quantity,
-            notes: newTransfer.notes
-          })
+        await api.post('/warehouses/transfers', {
+          source_warehouse_id: newTransfer.from_warehouse_id,
+          destination_warehouse_id: newTransfer.to_warehouse_id,
+          stock_item_id: item.item_id,
+          quantity: item.quantity,
+          notes: newTransfer.notes
         });
-
-        if (!res.ok) {
-          const error = await res.json();
-          throw new Error(error.detail || 'Failed to create transfer');
-        }
       }
 
       setNewTransfer({ from_warehouse_id: 0, to_warehouse_id: 0, items: [], notes: '' });
       setShowModal(false);
       loadData(); // Reload data
-    } catch (error: unknown) {
-      const message = error instanceof Error ? error.message : 'An error occurred';
+    } catch (error: any) {
+      const message = error?.data?.detail || error?.message || 'An error occurred';
       toast.error(message);
     }
   };
 
   const handleUpdateStatus = async (transferId: number, newStatus: Transfer['status']) => {
-    const token = localStorage.getItem('access_token');
     try {
-      let endpoint = '';
+      let path = '';
       if (newStatus === 'pending') {
-        endpoint = `${API_URL}/warehouses/transfers/${transferId}/submit`;
+        path = `/warehouses/transfers/${transferId}/submit`;
       } else if (newStatus === 'in_transit') {
-        endpoint = `${API_URL}/warehouses/transfers/${transferId}/start`;
+        path = `/warehouses/transfers/${transferId}/start`;
       } else if (newStatus === 'received') {
-        endpoint = `${API_URL}/warehouses/transfers/${transferId}/complete`;
+        path = `/warehouses/transfers/${transferId}/complete`;
       } else if (newStatus === 'cancelled') {
-        endpoint = `${API_URL}/warehouses/transfers/${transferId}/cancel`;
+        path = `/warehouses/transfers/${transferId}/cancel`;
       }
 
-      if (endpoint) {
-        const res = await fetch(endpoint, {
-          credentials: 'include',
-          method: 'PUT',
-          headers: { Authorization: `Bearer ${token}` }
-        });
-
-        if (!res.ok) {
-          const error = await res.json();
-          throw new Error(error.detail || 'Failed to update transfer');
-        }
+      if (path) {
+        await api.put(path);
       }
 
       setShowDetailModal(null);
       loadData(); // Reload data
-    } catch (error: unknown) {
-      const message = error instanceof Error ? error.message : 'An error occurred';
+    } catch (error: any) {
+      const message = error?.data?.detail || error?.message || 'An error occurred';
       toast.error(message);
     }
   };

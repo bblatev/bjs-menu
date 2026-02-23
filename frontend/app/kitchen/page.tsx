@@ -3,6 +3,8 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import Link from 'next/link';
 
+import { api, clearAuth } from '@/lib/api';
+
 import { toast } from '@/lib/toast';
 type OrderType = 'dine_in' | 'takeout' | 'delivery' | 'drive_thru';
 type TicketStatus = 'new' | 'in_progress' | 'ready' | 'bumped' | 'recalled' | 'voided';
@@ -195,21 +197,7 @@ export default function KitchenPage() {
     try {
       if (isInitialLoadRef.current) setIsLoadingStations(true);
       setStationsError(null);
-      const token = localStorage.getItem('access_token');
-      const apiUrl = '/api/v1';
-      const response = await fetch(`${apiUrl}/kitchen/stations`, {
-        credentials: 'include',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
-      });
-      if (!response.ok) {
-        if (response.status === 401) {
-          throw new Error('Not authenticated. Please log in first.');
-        }
-        throw new Error(`Failed to fetch stations: ${response.status}`);
-      }
-      const data = await response.json();
+      const data = await api.get<any[]>('/kitchen/stations');
       setStations(Array.isArray(data) ? data.map((s: any) => ({
         ...s,
         station_id: s.station_id || s.id,
@@ -227,76 +215,38 @@ export default function KitchenPage() {
     try {
       if (isInitialLoadRef.current) setIsLoadingTickets(true);
       setTicketsError(null);
-      const token = localStorage.getItem('access_token');
-      const apiUrl = '/api/v1';
-      const response = await fetch(`${apiUrl}/kitchen/tickets`, {
-        credentials: 'include',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
-      });
-      if (!response.ok) {
-        if (response.status === 401) {
-          throw new Error('Not authenticated. Please log in first.');
-        }
-        throw new Error(`Failed to fetch tickets: ${response.status}`);
-      }
-      const data = await response.json();
+      const data = await api.get<any>('/kitchen/tickets');
       const ticketsList: KitchenTicket[] = Array.isArray(data) ? data : (data.tickets || []);
 
       // Fetch 86'd items
-      const items86Response = await fetch(`${apiUrl}/kitchen/86/list`, {
-        credentials: 'include',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
-      });
-      if (items86Response.ok) {
-        const items86Data = await items86Response.json();
+      try {
+        const items86Data = await api.get<any[]>('/kitchen/86/list');
         setItems86(items86Data.map((item: any) => ({
           id: item.menu_item_id || item.id,
           name: item.menu_item_name || item.name,
           marked_at: item.created_at,
           estimated_return: item.estimated_return,
         })));
-      }
+      } catch { /* ignore */ }
 
       // Fetch expo display (ready orders)
-      const expoResponse = await fetch(`${apiUrl}/kitchen/expo`, {
-        credentials: 'include',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
-      });
-      if (expoResponse.ok) {
-        const expoData = await expoResponse.json();
+      try {
+        const expoData = await api.get<any>('/kitchen/expo');
         setExpoTickets(expoData.ready_orders || []);
         setBumpedTickets(expoData.ready_orders || []);
-      }
+      } catch { /* ignore */ }
 
       // Fetch kitchen stats
-      const statsResponse = await fetch(`${apiUrl}/kitchen/stats`, {
-        credentials: 'include',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
-      });
-      if (statsResponse.ok) {
-        const statsData = await statsResponse.json();
+      try {
+        const statsData = await api.get<KitchenStats>('/kitchen/stats');
         setKitchenStats(statsData);
-      }
+      } catch { /* ignore */ }
 
       // Fetch cook time alerts
-      const alertsResponse = await fetch(`${apiUrl}/kitchen/alerts/cook-time`, {
-        credentials: 'include',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
-      });
-      if (alertsResponse.ok) {
-        const alertsData = await alertsResponse.json();
+      try {
+        const alertsData = await api.get<any>('/kitchen/alerts/cook-time');
         setCookTimeAlerts(alertsData.alerts || []);
-      }
+      } catch { /* ignore */ }
 
       // Group tickets by station
       const grouped: Record<string, KitchenTicket[]> = {};
@@ -344,20 +294,7 @@ export default function KitchenPage() {
 
   const handleBump = useCallback(async (ticketId: string) => {
     try {
-      const token = localStorage.getItem('access_token');
-      const apiUrl = '/api/v1';
-      const response = await fetch(`${apiUrl}/kitchen/tickets/${ticketId}/bump`, {
-        credentials: 'include',
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to bump ticket');
-      }
-
+      await api.post(`/kitchen/tickets/${ticketId}/bump`);
       await fetchTickets();
     } catch (error) {
       console.error('Error bumping ticket:', error);
@@ -367,20 +304,7 @@ export default function KitchenPage() {
 
   const handleStart = useCallback(async (ticketId: string) => {
     try {
-      const token = localStorage.getItem('access_token');
-      const apiUrl = '/api/v1';
-      const response = await fetch(`${apiUrl}/kitchen/tickets/${ticketId}/start`, {
-        credentials: 'include',
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to start ticket');
-      }
-
+      await api.post(`/kitchen/tickets/${ticketId}/start`);
       await fetchTickets();
     } catch (error) {
       console.error('Error starting ticket:', error);
@@ -390,22 +314,7 @@ export default function KitchenPage() {
 
   const handleRecall = useCallback(async (ticketId: string) => {
     try {
-      const token = localStorage.getItem('access_token');
-      const apiUrl = '/api/v1';
-      const response = await fetch(`${apiUrl}/kitchen/tickets/${ticketId}/recall`, {
-        credentials: 'include',
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ reason: 'Recalled by kitchen staff' }),
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to recall ticket');
-      }
-
+      await api.post(`/kitchen/tickets/${ticketId}/recall`, { reason: 'Recalled by kitchen staff' });
       await fetchTickets();
     } catch (error) {
       console.error('Error recalling ticket:', error);
@@ -419,24 +328,10 @@ export default function KitchenPage() {
       const ticket = allTickets.find(t => t.ticket_id === ticketId);
       if (!ticket) return;
 
-      const token = localStorage.getItem('access_token');
-      const apiUrl = '/api/v1';
-      const response = await fetch(`${apiUrl}/kitchen/fire-course`, {
-        credentials: 'include',
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          order_id: ticket.order_id,
-          course: course,
-        }),
+      await api.post('/kitchen/fire-course', {
+        order_id: ticket.order_id,
+        course: course,
       });
-
-      if (!response.ok) {
-        throw new Error('Failed to fire course');
-      }
 
       await fetchTickets();
     } catch (error) {
@@ -456,33 +351,22 @@ export default function KitchenPage() {
     const { ticketId, itemId } = voidItemContext;
 
     try {
-      const token = localStorage.getItem('access_token');
-      const apiUrl = '/api/v1';
-      const response = await fetch(`${apiUrl}/kitchen/tickets/${ticketId}/void?reason=${encodeURIComponent(voidItemReason)}`, {
-        credentials: 'include',
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
-      });
-
-      if (response.ok) {
-        await fetchTickets();
-      } else {
-        setTickets(prev => {
-          const updated = { ...prev };
-          for (const stationId in updated) {
-            updated[stationId] = updated[stationId].map(ticket =>
-              ticket.ticket_id === ticketId
-                ? { ...ticket, items: ticket.items.map(item => item.id === itemId ? { ...item, is_voided: true } : item) }
-                : ticket
-            );
-          }
-          return updated;
-        });
-      }
+      await api.post(`/kitchen/tickets/${ticketId}/void?reason=${encodeURIComponent(voidItemReason)}`);
+      await fetchTickets();
     } catch (error) {
       console.error('Error voiding item:', error);
+      // Optimistic fallback
+      setTickets(prev => {
+        const updated = { ...prev };
+        for (const stationId in updated) {
+          updated[stationId] = updated[stationId].map(ticket =>
+            ticket.ticket_id === ticketId
+              ? { ...ticket, items: ticket.items.map(item => item.id === itemId ? { ...item, is_voided: true } : item) }
+              : ticket
+          );
+        }
+        return updated;
+      });
     } finally {
       setShowVoidItemModal(false);
       setVoidItemContext(null);
@@ -492,19 +376,8 @@ export default function KitchenPage() {
 
   const handleUn86Item = useCallback(async (itemId: number) => {
     try {
-      const token = localStorage.getItem('access_token');
-      const apiUrl = '/api/v1';
-      const response = await fetch(`${apiUrl}/kitchen/86/${itemId}`, {
-        credentials: 'include',
-        method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
-      });
-
-      if (response.ok) {
-        setItems86(prev => prev.filter(i => i.id !== itemId));
-      }
+      await api.del(`/kitchen/86/${itemId}`);
+      setItems86(prev => prev.filter(i => i.id !== itemId));
     } catch (error) {
       console.error('Error un-86 item:', error);
     }
@@ -514,24 +387,11 @@ export default function KitchenPage() {
     if (!mark86Context || !mark86Reason) return;
 
     try {
-      const token = localStorage.getItem('access_token');
-      const apiUrl = '/api/v1';
-      const response = await fetch(`${apiUrl}/kitchen/86`, {
-        credentials: 'include',
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          item_id: mark86Context.itemId,
-          reason: mark86Reason,
-        }),
+      await api.post('/kitchen/86', {
+        item_id: mark86Context.itemId,
+        reason: mark86Reason,
       });
-
-      if (response.ok) {
-        await fetchTickets();
-      }
+      await fetchTickets();
     } catch (error) {
       console.error('Error marking item as 86:', error);
     } finally {
@@ -543,19 +403,8 @@ export default function KitchenPage() {
 
   const handleSetPriority = useCallback(async (ticketId: string, priority: number) => {
     try {
-      const token = localStorage.getItem('access_token');
-      const apiUrl = '/api/v1';
-      const response = await fetch(`${apiUrl}/kitchen/tickets/${ticketId}/priority?priority=${priority}`, {
-        credentials: 'include',
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
-      });
-
-      if (response.ok) {
-        await fetchTickets();
-      }
+      await api.post(`/kitchen/tickets/${ticketId}/priority?priority=${priority}`);
+      await fetchTickets();
     } catch (error) {
       console.error('Error setting priority:', error);
     }
@@ -591,34 +440,13 @@ export default function KitchenPage() {
 
   const handleSaveStation = async () => {
     try {
-      const token = localStorage.getItem('access_token');
-      const apiUrl = '/api/v1';
-
       if (editingStation) {
-        const response = await fetch(`${apiUrl}/kitchen/stations/${editingStation.station_id}`, {
-          credentials: 'include',
-          method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`,
-          },
-          body: JSON.stringify(stationFormData),
-        });
-        if (!response.ok) throw new Error('Failed to update station');
+        await api.put(`/kitchen/stations/${editingStation.station_id}`, stationFormData);
       } else {
-        const response = await fetch(`${apiUrl}/kitchen/stations`, {
-          credentials: 'include',
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`,
-          },
-          body: JSON.stringify({
-            ...stationFormData,
-            display_order: stations.length + 1,
-          }),
+        await api.post('/kitchen/stations', {
+          ...stationFormData,
+          display_order: stations.length + 1,
         });
-        if (!response.ok) throw new Error('Failed to create station');
       }
 
       setShowStationModal(false);
@@ -632,19 +460,7 @@ export default function KitchenPage() {
   const handleDeleteStation = async (stationId: string) => {
     if (confirm('Are you sure you want to delete this station?')) {
       try {
-        const token = localStorage.getItem('access_token');
-        const apiUrl = '/api/v1';
-        const response = await fetch(`${apiUrl}/kitchen/stations/${stationId}`, {
-          credentials: 'include',
-          method: 'DELETE',
-          headers: {
-            'Authorization': `Bearer ${token}`,
-          },
-        });
-        if (!response.ok) {
-          const error = await response.json();
-          throw new Error(error.detail || 'Failed to delete station');
-        }
+        await api.del(`/kitchen/stations/${stationId}`);
         await fetchStations();
       } catch (err) {
         toast.error(err instanceof Error ? err.message : 'Failed to delete station');
@@ -657,18 +473,7 @@ export default function KitchenPage() {
       const station = stations.find(s => s.station_id === stationId);
       if (!station) return;
 
-      const token = localStorage.getItem('access_token');
-      const apiUrl = '/api/v1';
-      const response = await fetch(`${apiUrl}/kitchen/stations/${stationId}`, {
-        credentials: 'include',
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
-        },
-        body: JSON.stringify({ is_active: !station.is_active }),
-      });
-      if (!response.ok) throw new Error('Failed to toggle station status');
+      await api.put(`/kitchen/stations/${stationId}`, { is_active: !station.is_active });
       await fetchStations();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Failed to toggle station status');
@@ -843,7 +648,7 @@ export default function KitchenPage() {
 
             <button
               onClick={() => {
-                localStorage.removeItem('access_token');
+                clearAuth();
                 window.location.href = '/login';
               }}
               className={`p-2 rounded-lg ${isFullscreen ? 'bg-gray-200 text-gray-900 hover:bg-gray-300' : 'bg-surface-100 text-surface-600 hover:bg-surface-200'}`}

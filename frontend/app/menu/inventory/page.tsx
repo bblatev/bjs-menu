@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { API_URL } from "@/lib/api";
+import { api } from "@/lib/api";
 
 import { toast } from '@/lib/toast';
 interface MultiLang {
@@ -145,18 +145,11 @@ export default function MenuInventoryPage() {
 
   const fetchMenuItems = async () => {
     try {
-      const token = localStorage.getItem("access_token");
-      const res = await fetch(`${API_URL}/menu-admin/items`, {
-        credentials: 'include',
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      if (res.ok) {
-        const data = await res.json();
-        const itemsArray = Array.isArray(data) ? data : (data.items || []);
-        setItems(itemsArray);
-        if (itemsArray.length > 0) {
-          setSelectedItem(itemsArray[0]);
-        }
+      const data = await api.get('/menu-admin/items');
+      const itemsArray = Array.isArray(data) ? data : ((data as any).items || []);
+      setItems(itemsArray);
+      if (itemsArray.length > 0) {
+        setSelectedItem(itemsArray[0]);
       }
     } catch (error) {
       console.error("Error fetching menu items:", error);
@@ -166,32 +159,26 @@ export default function MenuInventoryPage() {
   };
 
   const fetchItemData = async (itemId: number) => {
-    const token = localStorage.getItem("access_token");
-    const headers = { Authorization: `Bearer ${token}` };
-
     try {
       switch (activeTab) {
         case "versions":
-          const versionsRes = await fetch(`${API_URL}/menu-admin/versions/${itemId}`, { credentials: 'include', headers });
-          if (versionsRes.ok) setVersions(await versionsRes.json());
+          const versionsData = await api.get<MenuVersion[]>(`/menu-admin/versions/${itemId}`);
+          setVersions(versionsData);
           break;
 
         case "scheduling":
-          const schedulesRes = await fetch(`${API_URL}/menu-admin/schedules?menu_item_id=${itemId}`, { credentials: 'include', headers });
-          if (schedulesRes.ok) setSchedules(await schedulesRes.json());
+          const schedulesData = await api.get<MenuSchedule[]>(`/menu-admin/schedules?menu_item_id=${itemId}`);
+          setSchedules(schedulesData);
           break;
 
         case "nutrition":
-          const nutritionRes = await fetch(`${API_URL}/menu-admin/nutrition/${itemId}`, { credentials: 'include', headers });
-          if (nutritionRes.ok) setNutrition(await nutritionRes.json());
+          const nutritionData = await api.get<NutritionInfo>(`/menu-admin/nutrition/${itemId}`);
+          setNutrition(nutritionData);
           break;
 
         case "allergens":
-          const allergensRes = await fetch(`${API_URL}/menu-admin/allergens/${itemId}`, { credentials: 'include', headers });
-          if (allergensRes.ok) {
-            const data = await allergensRes.json();
-            setAllergens(data.allergens || []);
-          }
+          const allergensData = await api.get<any>(`/menu-admin/allergens/${itemId}`);
+          setAllergens(allergensData.allergens || []);
           break;
       }
     } catch (error) {
@@ -203,17 +190,10 @@ export default function MenuInventoryPage() {
     if (!confirm("Restore this version? Current item data will be overwritten.")) return;
 
     try {
-      const token = localStorage.getItem("access_token");
-      const res = await fetch(`${API_URL}/menu-admin/versions/${versionId}/restore`, {
-        credentials: 'include',
-        method: "POST",
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      if (res.ok) {
-        toast.success("Version restored successfully!");
-        fetchMenuItems();
-        fetchItemData(selectedItem!.id);
-      }
+      await api.post(`/menu-admin/versions/${versionId}/restore`);
+      toast.success("Version restored successfully!");
+      fetchMenuItems();
+      fetchItemData(selectedItem!.id);
     } catch (error) {
       console.error("Error restoring version:", error);
     }
@@ -224,23 +204,12 @@ export default function MenuInventoryPage() {
     setSaving(true);
 
     try {
-      const token = localStorage.getItem("access_token");
-      const res = await fetch(`${API_URL}/menu-admin/schedules?venue_id=1`, {
-        credentials: 'include',
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`
-        },
-        body: JSON.stringify({
-          menu_item_id: selectedItem.id,
-          ...scheduleForm
-        })
+      await api.post('/menu-admin/schedules?venue_id=1', {
+        menu_item_id: selectedItem.id,
+        ...scheduleForm
       });
-      if (res.ok) {
-        setShowScheduleModal(false);
-        fetchItemData(selectedItem.id);
-      }
+      setShowScheduleModal(false);
+      fetchItemData(selectedItem.id);
     } catch (error) {
       console.error("Error adding schedule:", error);
     } finally {
@@ -252,12 +221,7 @@ export default function MenuInventoryPage() {
     if (!confirm("Delete this schedule?")) return;
 
     try {
-      const token = localStorage.getItem("access_token");
-      await fetch(`${API_URL}/menu-admin/schedules/${scheduleId}`, {
-        credentials: 'include',
-        method: "DELETE",
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      await api.del(`/menu-admin/schedules/${scheduleId}`);
       fetchItemData(selectedItem!.id);
     } catch (error) {
       console.error("Error deleting schedule:", error);
@@ -269,23 +233,12 @@ export default function MenuInventoryPage() {
     setSaving(true);
 
     try {
-      const token = localStorage.getItem("access_token");
-      const res = await fetch(`${API_URL}/menu-admin/nutrition`, {
-        credentials: 'include',
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`
-        },
-        body: JSON.stringify({
-          menu_item_id: selectedItem.id,
-          ...nutritionForm
-        })
+      await api.post('/menu-admin/nutrition', {
+        menu_item_id: selectedItem.id,
+        ...nutritionForm
       });
-      if (res.ok) {
-        setShowNutritionModal(false);
-        fetchItemData(selectedItem.id);
-      }
+      setShowNutritionModal(false);
+      fetchItemData(selectedItem.id);
     } catch (error) {
       console.error("Error saving nutrition:", error);
     } finally {
@@ -298,23 +251,12 @@ export default function MenuInventoryPage() {
     setSaving(true);
 
     try {
-      const token = localStorage.getItem("access_token");
-      const res = await fetch(`${API_URL}/menu-admin/allergens`, {
-        credentials: 'include',
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`
-        },
-        body: JSON.stringify({
-          menu_item_id: selectedItem.id,
-          ...allergenForm
-        })
+      await api.post('/menu-admin/allergens', {
+        menu_item_id: selectedItem.id,
+        ...allergenForm
       });
-      if (res.ok) {
-        setShowAllergenModal(false);
-        fetchItemData(selectedItem.id);
-      }
+      setShowAllergenModal(false);
+      fetchItemData(selectedItem.id);
     } catch (error) {
       console.error("Error adding allergen:", error);
     } finally {
@@ -324,12 +266,7 @@ export default function MenuInventoryPage() {
 
   const handleDeleteAllergen = async (allergenId: number) => {
     try {
-      const token = localStorage.getItem("access_token");
-      await fetch(`${API_URL}/menu-admin/allergens/${allergenId}`, {
-        credentials: 'include',
-        method: "DELETE",
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      await api.del(`/menu-admin/allergens/${allergenId}`);
       fetchItemData(selectedItem!.id);
     } catch (error) {
       console.error("Error deleting allergen:", error);
@@ -344,26 +281,14 @@ export default function MenuInventoryPage() {
     setSaving(true);
 
     try {
-      const token = localStorage.getItem("access_token");
-      const res = await fetch(`${API_URL}/menu-admin/bulk-price-update?venue_id=1`, {
-        credentials: 'include',
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`
-        },
-        body: JSON.stringify({
-          item_ids: bulkPriceForm.selected_items,
-          adjustment_type: bulkPriceForm.adjustment_type,
-          adjustment_value: bulkPriceForm.adjustment_value
-        })
+      const result = await api.post<any>('/menu-admin/bulk-price-update?venue_id=1', {
+        item_ids: bulkPriceForm.selected_items,
+        adjustment_type: bulkPriceForm.adjustment_type,
+        adjustment_value: bulkPriceForm.adjustment_value
       });
-      if (res.ok) {
-        const result = await res.json();
-        toast.success(`Updated ${result.updated_count} items!`);
-        setShowBulkPriceModal(false);
-        fetchMenuItems();
-      }
+      toast.success(`Updated ${result.updated_count} items!`);
+      setShowBulkPriceModal(false);
+      fetchMenuItems();
     } catch (error) {
       console.error("Error updating prices:", error);
     } finally {

@@ -12,6 +12,7 @@ import logging
 from typing import Optional, List
 from datetime import datetime, timedelta, timezone
 from fastapi import APIRouter, HTTPException, Request, Header, Body
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 
 from app.core.rate_limit import limiter
@@ -101,7 +102,7 @@ async def check_availability(
     """
     service = get_google_reserve_service()
     if not service:
-        raise HTTPException(status_code=503, detail="Google Reserve not configured")
+        return {"status": "not_configured", "message": "Google Reserve integration is not configured", "data": None}
 
     slot_time = datetime.fromtimestamp(body.slot.start_sec)
     duration = body.slot.duration_sec // 60
@@ -129,7 +130,7 @@ async def create_booking(
     """
     service = get_google_reserve_service()
     if not service:
-        raise HTTPException(status_code=503, detail="Google Reserve not configured")
+        return {"status": "not_configured", "message": "Google Reserve integration is not configured", "data": None}
 
     result = await service.handle_create_booking(body.model_dump())
 
@@ -150,7 +151,7 @@ async def update_booking(
     """
     service = get_google_reserve_service()
     if not service:
-        raise HTTPException(status_code=503, detail="Google Reserve not configured")
+        return {"status": "not_configured", "message": "Google Reserve integration is not configured", "data": None}
 
     booking_id = body.booking.get("booking_id")
     if not booking_id:
@@ -175,7 +176,7 @@ async def get_booking_status(
     """
     service = get_google_reserve_service()
     if not service:
-        raise HTTPException(status_code=503, detail="Google Reserve not configured")
+        return {"status": "not_configured", "message": "Google Reserve integration is not configured", "data": None}
 
     result = await service.handle_get_booking_status(booking_id)
 
@@ -196,7 +197,7 @@ async def list_bookings(
     """
     service = get_google_reserve_service()
     if not service:
-        raise HTTPException(status_code=503, detail="Google Reserve not configured")
+        return {"status": "not_configured", "message": "Google Reserve integration is not configured", "data": None}
 
     result = await service.handle_list_bookings(user_id)
 
@@ -218,7 +219,7 @@ async def push_availability(request: Request, body: PushAvailabilityRequest):
     """
     service = get_google_reserve_service()
     if not service:
-        raise HTTPException(status_code=503, detail="Google Reserve not configured")
+        return {"status": "not_configured", "message": "Google Reserve integration is not configured", "data": None}
 
     slots = []
     for slot in body.slots:
@@ -252,7 +253,7 @@ async def update_booking_status(request: Request, booking_id: str, body: Booking
     """
     service = get_google_reserve_service()
     if not service:
-        raise HTTPException(status_code=503, detail="Google Reserve not configured")
+        return {"status": "not_configured", "message": "Google Reserve integration is not configured", "data": None}
 
     try:
         status = BookingStatus(body.status)
@@ -291,7 +292,7 @@ async def get_merchant_feed(
     """
     service = get_google_reserve_service()
     if not service:
-        raise HTTPException(status_code=503, detail="Google Reserve not configured")
+        return {"status": "not_configured", "message": "Google Reserve integration is not configured", "data": None}
 
     merchant = MerchantInfo(
         merchant_id=service.merchant_id,
@@ -317,7 +318,7 @@ async def get_service_feed(request: Request):
     """
     service = get_google_reserve_service()
     if not service:
-        raise HTTPException(status_code=503, detail="Google Reserve not configured")
+        return {"status": "not_configured", "message": "Google Reserve integration is not configured", "data": None}
 
     return service.generate_service_feed()
 
@@ -340,7 +341,7 @@ async def get_availability_feed(
     """
     service = get_google_reserve_service()
     if not service:
-        raise HTTPException(status_code=503, detail="Google Reserve not configured")
+        return {"status": "not_configured", "message": "Google Reserve integration is not configured", "data": None}
 
     # Query existing reservations to compute availability
     from app.db.session import SessionLocal
