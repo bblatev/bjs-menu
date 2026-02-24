@@ -346,6 +346,15 @@ _ported_modules = [
     # v9_endpoints_part2 merged into v9_endpoints — backward-compat mount below
     ("admin", "/admin", ["admin", "tables"]),
     ("waiter_calls", "/waiter-calls", ["waiter", "calls"]),
+    # --- Gap-closing modules (Payment, Table, Integration, Hardware) ---
+    ("paypal", "/paypal", ["paypal", "payments"]),
+    ("square", "/square", ["square", "payments"]),
+    ("table_enhancements", "/table-enhancements", ["tables", "enhancements"]),
+    ("automation", "/automation", ["automation", "zapier", "make"]),
+    ("whatsapp", "/whatsapp", ["whatsapp", "messaging"]),
+    ("supplier_portal", "/supplier-portal", ["suppliers", "portal"]),
+    ("label_printers", "/label-printers", ["labels", "printers", "zpl"]),
+    ("customer_displays", "/customer-displays", ["displays", "pole-display", "second-screen"]),
 ]
 
 _loaded = 0
