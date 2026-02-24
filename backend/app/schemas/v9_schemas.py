@@ -10,6 +10,59 @@ from datetime import datetime, date, time
 from decimal import Decimal
 from enum import Enum
 
+__all__ = [
+    # Enums
+    "OverrideType", "TerminalStatus", "SafeModeType", "SafeModeLevel",
+    "VarianceSeverity", "IoTDeviceType", "AlertSeverity", "AbuseType",
+    "CustomerSegment", "VIPTier", "AutomationTriggerType", "AutomationActionType",
+    "IncidentType", "TrainingType", "CrisisType", "QRCodeType", "CostingMethod",
+    # Permission & Terminal
+    "PermissionOverrideCreate", "PermissionOverrideResponse", "UseOverrideRequest",
+    "TerminalHealthCreate", "TerminalHealthUpdate", "TerminalHealthResponse",
+    "GeoFenceConfig", "SafeModeActivate", "SafeModeResponse",
+    "CashCountSubmit", "CashVarianceResponse",
+    # Kitchen & Production
+    "ForecastRequest", "ForecastResponse", "IngredientRequirementResponse",
+    "StationCreate", "StationLoadResponse", "RoutingSuggestion",
+    "CourseFireRuleCreate", "CourseFireRuleResponse", "KitchenPerformanceMetrics",
+    # Supply Chain & Finance
+    "AutoPOConfig", "AutoPOResponse", "SupplierLeadTimeUpdate",
+    "InventoryCostingConfig", "PrimeCostRecord", "PrimeCostDashboard",
+    "CrossStoreBalancingSuggestion",
+    # Abuse & CRM
+    "AbuseConfigUpdate", "AbuseAlertResponse", "InvestigationSubmit",
+    "GuestPreferencesUpdate", "GuestPreferencesResponse", "ServiceAlert",
+    "CLVResponse", "VIPStatusUpdate", "CustomerSegmentResponse",
+    "PersonalizedRecommendation",
+    # IoT & Compliance
+    "IoTDeviceRegister", "IoTDeviceResponse", "TemperatureReading",
+    "TemperatureAlertResponse", "HACCPReport", "PourReading", "PourAnalytics",
+    "AuditLogCreate", "AuditLogResponse", "AuditChainVerification",
+    "FiscalArchiveCreate", "NRAExportRequest", "NRAExportResponse",
+    "AgeVerificationLog",
+    # AI & Automation
+    "AIModelRegister", "AIModelResponse", "PredictionLog", "PredictionAccuracyReport",
+    "AutomationRuleCreate", "AutomationRuleResponse",
+    "MenuOptimizationSuggestion", "StaffingRecommendation",
+    # Incidents & Training
+    "IncidentReportCreate", "IncidentReportResponse", "EvidenceAdd",
+    "TrainingModuleCreate", "TrainingModuleResponse",
+    "TrainingCompletion", "StaffTrainingStatus",
+    # Crisis & Feature Flags
+    "CrisisModeCreate", "CrisisModeResponse",
+    "FeatureFlagCreate", "FeatureFlagResponse",
+    "WhiteLabelConfig", "WhiteLabelResponse",
+    # QR & Kiosk & Sessions
+    "QRPaymentSessionCreate", "QRPaymentSessionResponse",
+    "SplitPaymentConfig", "PaymentRecord",
+    "ReorderSessionCreate", "ReorderSessionResponse", "ReorderConfirm",
+    "TableQRGenerate", "TableQRResponse",
+    "KioskMenuResponse", "KioskOrderSubmit", "KioskOrderResponse",
+    "SessionTimeoutConfig", "SessionTimeoutResponse",
+    # Generic
+    "PaginatedResponse", "SuccessResponse", "ErrorResponse",
+]
+
 
 # ============== ENUMS ==============
 

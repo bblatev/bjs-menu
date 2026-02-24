@@ -1,0 +1,79 @@
+groups:
+  - name: bjs-menu-alerts
+    rules:
+      # High error rate (>5% of requests returning 5xx)
+      - alert: HighErrorRate
+        expr: |
+          (
+            sum(rate(http_requests_total{status=~"5.."}[5m]))
+            /
+            sum(rate(http_requests_total[5m]))
+          ) > 0.05
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "High HTTP 5xx error rate"
+          description: "More than 5% of requests are failing with 5xx errors for 5 minutes."
+
+      # High latency (P95 > 2 seconds)
+      - alert: HighLatencyP95
+        expr: |
+          histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket[5m])) by (le))
+          > 2
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High P95 latency"
+          description: "P95 response time is above 2 seconds for 5 minutes."
+
+      # Backend down
+      - alert: BackendDown
+        expr: up{job="bjs-backend"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Backend service is down"
+          description: "The BJS backend has been unreachable for 1 minute."
+
+      # Database connection pool exhaustion
+      - alert: DBPoolExhausted
+        expr: db_pool_checked_out / db_pool_size > 0.9
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Database connection pool near capacity"
+          description: "More than 90% of DB pool connections are in use."
+
+      # Redis disconnected
+      - alert: RedisDisconnected
+        expr: redis_connected == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Redis cache disconnected"
+          description: "The backend has lost connection to Redis."
+
+      # No requests (possible outage)
+      - alert: NoTraffic
+        expr: sum(rate(http_requests_total[5m])) == 0
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "No HTTP traffic detected"
+          description: "No requests received in the last 10 minutes."
+
+      # High WebSocket connection count
+      - alert: HighWebSocketConnections
+        expr: ws_active_connections > 500
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High WebSocket connection count"
+          description: "More than 500 active WebSocket connections."

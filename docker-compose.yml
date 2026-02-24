@@ -146,6 +146,7 @@ services:
       - "127.0.0.1:9090:9090"
     volumes:
       - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml
+      - ./monitoring/alert.rules.yml:/etc/prometheus/alert.rules.yml
       - prometheus_data:/prometheus
     command:
       - '--config.file=/etc/prometheus/prometheus.yml'
@@ -227,6 +228,7 @@ services:
     volumes:
       - ./monitoring/promtail.yml:/etc/promtail/config.yml
       - /var/run/docker.sock:/var/run/docker.sock:ro
+      - promtail_positions:/var/lib/promtail
     command: -config.file=/etc/promtail/config.yml
     depends_on:
       - loki
@@ -247,6 +249,7 @@ volumes:
   prometheus_data:
   grafana_data:
   loki_data:
+  promtail_positions:
 
 networks:
   default:

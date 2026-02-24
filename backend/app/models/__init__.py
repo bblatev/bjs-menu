@@ -1,4 +1,7 @@
 """SQLAlchemy models."""
+import logging
+
+_logger = logging.getLogger(__name__)
 
 from app.models.user import User
 from app.models.supplier import Supplier
@@ -198,7 +201,7 @@ try:
         GoodsReceivedNote, GoodsReceivedNoteItem,
     )
 except ImportError:
-    pass
+    _logger.warning("Failed to import enhanced_inventory models", exc_info=True)
 
 # Purchase order advanced models (needed for table metadata)
 try:
@@ -206,7 +209,7 @@ try:
         SupplierReturn,
     )
 except ImportError:
-    pass
+    _logger.warning("Failed to import purchase_order_advanced models", exc_info=True)
 
 # Core business models (SMS, etc.)
 from app.models.core_business_models import SMSMessage

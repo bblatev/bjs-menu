@@ -88,7 +88,13 @@ elif [[ "${DATABASE_URL}" == postgresql* ]]; then
     POSTGRES_DB="${POSTGRES_DB:-bjs_menu}"
     BACKUP_FILE="${BACKUP_DIR}/bjsbar_${TIMESTAMP}.sql"
 
-    docker compose -f /opt/bjs-menu/docker-compose.yml exec -T db \
+    # Use production compose file if it exists and services are running, else default
+    COMPOSE_FILE="/opt/bjs-menu/docker-compose.yml"
+    if docker compose -f /opt/bjs-menu/docker-compose.prod.yml ps db --status running 2>/dev/null | grep -q db; then
+        COMPOSE_FILE="/opt/bjs-menu/docker-compose.prod.yml"
+    fi
+
+    docker compose -f "${COMPOSE_FILE}" exec -T db \
         pg_dump -U "${POSTGRES_USER}" "${POSTGRES_DB}" > "${BACKUP_FILE}"
 
     if [ ! -s "${BACKUP_FILE}" ]; then

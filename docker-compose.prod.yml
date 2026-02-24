@@ -186,6 +186,7 @@ services:
     restart: always
     volumes:
       - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./monitoring/alert.rules.yml:/etc/prometheus/alert.rules.yml:ro
       - prometheus_data:/prometheus
     expose:
       - "9090"
@@ -223,7 +224,7 @@ services:
       - ./monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
       - ./monitoring/grafana/dashboards:/var/lib/grafana/dashboards:ro
     expose:
-      - "3001"
+      - "3000"
     depends_on:
       - prometheus
       - loki
@@ -271,6 +272,7 @@ services:
       - ./monitoring/promtail.yml:/etc/promtail/config.yml:ro
       - /var/run/docker.sock:/var/run/docker.sock:ro
       - /var/lib/docker/containers:/var/lib/docker/containers:ro
+      - promtail_positions:/var/lib/promtail
     command: -config.file=/etc/promtail/config.yml
     depends_on:
       - loki
@@ -295,6 +297,8 @@ volumes:
   grafana_data:
     driver: local
   loki_data:
+    driver: local
+  promtail_positions:
     driver: local
 
 networks:
