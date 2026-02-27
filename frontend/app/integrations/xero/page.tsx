@@ -1,10 +1,9 @@
 'use client';
-
 import { useState, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import Link from 'next/link';
-import { API_URL, getAuthHeaders } from '@/lib/api';
 
+import { api } from '@/lib/api';
 interface SyncLog {
   id: number;
   sync_type: string;
@@ -14,7 +13,6 @@ interface SyncLog {
   completed_at?: string;
   error_message?: string;
 }
-
 interface AccountMapping {
   id: number;
   local_category: string;
@@ -23,7 +21,6 @@ interface AccountMapping {
   sync_direction: string;
   is_active: boolean;
 }
-
 export default function XeroIntegrationPage() {
   const [isConnected, setIsConnected] = useState(false);
   const [organizationName, setOrganizationName] = useState('');
@@ -41,50 +38,42 @@ export default function XeroIntegrationPage() {
     auto_sync_enabled: false,
     sync_frequency: 'daily',
   });
-
   const loadIntegrationData = useCallback(async () => {
-    const headers = getAuthHeaders();
     try {
-      const [statusRes, logsRes, mappingsRes] = await Promise.all([
-        fetch(`${API_URL}/xero/status`, { credentials: 'include', headers }),
-        fetch(`${API_URL}/xero/sync-logs`, { credentials: 'include', headers }),
-        fetch(`${API_URL}/xero/mappings`, { credentials: 'include', headers }),
-      ]);
-
-      const status = await statusRes.json();
-      setIsConnected(status.connected || false);
-      setOrganizationName(status.organization_name || '');
-      setLastSyncTime(status.last_sync || null);
-      if (status.sync_enabled !== undefined) {
-        setSettings(prev => ({ ...prev, auto_sync_enabled: status.sync_enabled }));
+      const [statusRes, logsRes, mappingsRes] = await Promise.allSettled([
+  api.get('/xero/status'),
+  api.get('/xero/sync-logs'),
+  api.get('/xero/mappings')
+]);
+      if (statusRes.status === 'fulfilled') {
+        const status: any = statusRes.value;
+        setIsConnected(status.connected || false);
+        setOrganizationName(status.organization_name || '');
+        setLastSyncTime(status.last_sync || null);
+        if (status.sync_enabled !== undefined) {
+          setSettings(prev => ({ ...prev, auto_sync_enabled: status.sync_enabled }));
+        }
       }
-
-      const logs = await logsRes.json();
-      setSyncLogs(Array.isArray(logs) ? logs : []);
-
-      const maps = await mappingsRes.json();
-      setMappings(Array.isArray(maps) ? maps : []);
+      if (logsRes.status === 'fulfilled') {
+        const logs: any = logsRes.value;
+        setSyncLogs(Array.isArray(logs) ? logs : []);
+      }
+      if (mappingsRes.status === 'fulfilled') {
+        const maps: any = mappingsRes.value;
+        setMappings(Array.isArray(maps) ? maps : []);
+      }
     } catch (error) {
       console.error('Error loading integration data:', error);
     } finally {
       setLoading(false);
     }
   }, []);
-
   useEffect(() => {
     loadIntegrationData();
   }, [loadIntegrationData]);
-
   const handleConnect = async () => {
-    const headers = getAuthHeaders();
     try {
-      const res = await fetch(`${API_URL}/xero/connect`, {
-        credentials: 'include',
-        method: 'POST',
-        headers,
-        body: JSON.stringify({ redirect_uri: `${window.location.origin}/integrations/xero/callback` }),
-      });
-      const data = await res.json();
+      const data: any = await api.post('/xero/connect', { redirect_uri: `${window.location.origin}/integrations/xero/callback` });
       if (data.auth_url) {
         window.open(data.auth_url, '_blank');
       }
@@ -92,17 +81,10 @@ export default function XeroIntegrationPage() {
       console.error('Connect error:', error);
     }
   };
-
   const handleDisconnect = async () => {
     if (!confirm('Are you sure you want to disconnect Xero?')) return;
-    const headers = getAuthHeaders();
     try {
-      await fetch(`${API_URL}/xero/disconnect`, {
-        credentials: 'include',
-        method: 'POST',
-        headers,
-        body: JSON.stringify({ confirm: true }),
-      });
+      await api.post('/xero/disconnect', { confirm: true });
       setIsConnected(false);
       setOrganizationName('');
       loadIntegrationData();
@@ -110,18 +92,10 @@ export default function XeroIntegrationPage() {
       console.error('Disconnect error:', error);
     }
   };
-
   const handleSync = async (syncType: string) => {
     setSyncing(true);
-    const headers = getAuthHeaders();
     try {
-      const res = await fetch(`${API_URL}/xero/sync`, {
-        credentials: 'include',
-        method: 'POST',
-        headers,
-        body: JSON.stringify({ sync_type: syncType.toLowerCase() }),
-      });
-      const data = await res.json();
+      const data: any = await api.post('/xero/sync', { sync_type: syncType.toLowerCase() });
       if (data.status === 'success') {
         loadIntegrationData();
       }
@@ -131,21 +105,13 @@ export default function XeroIntegrationPage() {
       setSyncing(false);
     }
   };
-
   const saveSettings = async () => {
-    const headers = getAuthHeaders();
     try {
-      await fetch(`${API_URL}/xero/settings`, {
-        credentials: 'include',
-        method: 'PUT',
-        headers,
-        body: JSON.stringify(settings),
-      });
+      await api.put('/xero/settings', settings);
     } catch (error) {
       console.error('Settings save error:', error);
     }
   };
-
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
@@ -153,7 +119,6 @@ export default function XeroIntegrationPage() {
       </div>
     );
   }
-
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -184,7 +149,6 @@ export default function XeroIntegrationPage() {
           </button>
         )}
       </div>
-
       {/* Connection Status */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
@@ -225,7 +189,6 @@ export default function XeroIntegrationPage() {
           )}
         </div>
       </motion.div>
-
       {/* Tabs */}
       <div className="border-b border-surface-200">
         <div className="flex gap-4">
@@ -244,7 +207,6 @@ export default function XeroIntegrationPage() {
           ))}
         </div>
       </div>
-
       {/* Overview Tab */}
       {activeTab === 'overview' && (
         <div className="space-y-6">
@@ -263,7 +225,7 @@ export default function XeroIntegrationPage() {
                   { key: 'sync_bank_transactions', label: 'Bank Transactions', desc: 'Sync bank feeds' },
                   { key: 'sync_contacts', label: 'Contacts', desc: 'Sync customers and suppliers' },
                 ].map((item) => (
-                  <label key={item.key} className="flex items-center gap-3 p-3 bg-surface-50 rounded-lg">
+                  <label key={item.key} aria-label={item.label} className="flex items-center gap-3 p-3 bg-surface-50 rounded-lg">
                     <input
                       type="checkbox"
                       checked={settings[item.key as keyof typeof settings] as boolean}
@@ -286,7 +248,7 @@ export default function XeroIntegrationPage() {
                     className="w-5 h-5 rounded text-amber-500"
                   />
                   <span className="text-sm font-medium text-surface-900">Auto-sync</span>
-                </label>
+                
                 <select
                   value={settings.sync_frequency}
                   onChange={(e) => setSettings({ ...settings, sync_frequency: e.target.value })}
@@ -295,11 +257,10 @@ export default function XeroIntegrationPage() {
                   <option value="hourly">Hourly</option>
                   <option value="daily">Daily</option>
                   <option value="weekly">Weekly</option>
-                </select>
+                </select></label>
               </div>
             </div>
           </div>
-
           <div className="grid grid-cols-4 gap-4">
             {[
               { label: 'Sync Invoices', icon: 'INV', action: () => handleSync('invoices') },
@@ -323,7 +284,6 @@ export default function XeroIntegrationPage() {
           </div>
         </div>
       )}
-
       {/* Mappings Tab */}
       {activeTab === 'mappings' && (
         <div className="space-y-4">
@@ -372,7 +332,6 @@ export default function XeroIntegrationPage() {
           )}
         </div>
       )}
-
       {/* Logs Tab */}
       {activeTab === 'logs' && (
         <div className="space-y-4">

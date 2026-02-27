@@ -425,7 +425,7 @@ export default function DynamicPricingPage() {
               {(editingRule || selectedType) && (
                 <div className="space-y-4">
                   <div>
-                    <label className="text-gray-700 text-sm">Rule Name</label>
+                    <label className="text-gray-700 text-sm">Rule Name
                     <input
                       type="text"
                       value={form.name}
@@ -433,22 +433,24 @@ export default function DynamicPricingPage() {
                       className="w-full px-4 py-3 bg-gray-100 text-gray-900 rounded-xl mt-1"
                       placeholder="e.g. Happy Hour Discount"
                     />
+                    </label>
                   </div>
 
                   <div>
-                    <label className="text-gray-700 text-sm">Description</label>
+                    <label className="text-gray-700 text-sm">Description
                     <input
                       type="text"
                       value={form.description}
                       onChange={(e) => setForm({ ...form, description: e.target.value })}
                       className="w-full px-4 py-3 bg-gray-100 text-gray-900 rounded-xl mt-1"
                     />
+                    </label>
                   </div>
 
                   {/* Adjustment */}
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <label className="text-gray-700 text-sm">Adjustment Type</label>
+                      <span className="text-gray-700 text-sm">Adjustment Type</span>
                       <div className="flex gap-2 mt-2">
                         <button
                           type="button"
@@ -477,7 +479,6 @@ export default function DynamicPricingPage() {
                     <div>
                       <label className="text-gray-700 text-sm">
                         Value ({form.adjustment_type === 'percentage' ? '%' : 'lv'})
-                      </label>
                       <input
                         type="number"
                         value={form.adjustment_value}
@@ -485,6 +486,7 @@ export default function DynamicPricingPage() {
                         className="w-full px-4 py-3 bg-gray-100 text-gray-900 rounded-xl mt-1"
                         placeholder="-10 for discount, +10 for premium"
                       />
+                      </label>
                     </div>
                   </div>
 
@@ -493,26 +495,28 @@ export default function DynamicPricingPage() {
                     <>
                       <div className="grid grid-cols-2 gap-4">
                         <div>
-                          <label className="text-gray-700 text-sm">Start Time</label>
+                          <label className="text-gray-700 text-sm">Start Time
                           <input
                             type="time"
                             value={form.time_start}
                             onChange={(e) => setForm({ ...form, time_start: e.target.value })}
                             className="w-full px-4 py-3 bg-gray-100 text-gray-900 rounded-xl mt-1"
                           />
+                          </label>
                         </div>
                         <div>
-                          <label className="text-gray-700 text-sm">End Time</label>
+                          <label className="text-gray-700 text-sm">End Time
                           <input
                             type="time"
                             value={form.time_end}
                             onChange={(e) => setForm({ ...form, time_end: e.target.value })}
                             className="w-full px-4 py-3 bg-gray-100 text-gray-900 rounded-xl mt-1"
                           />
+                          </label>
                         </div>
                       </div>
                       <div>
-                        <label className="text-gray-700 text-sm mb-2 block">Days</label>
+                        <span className="text-gray-700 text-sm mb-2 block">Days</span>
                         <div className="flex gap-2">
                           {DAYS.map(day => (
                             <button
@@ -540,7 +544,7 @@ export default function DynamicPricingPage() {
 
                   {(form.type === 'channel' || selectedType === 'channel') && (
                     <div>
-                      <label className="text-gray-700 text-sm mb-2 block">Channels</label>
+                      <span className="text-gray-700 text-sm mb-2 block">Channels</span>
                       <div className="flex flex-wrap gap-2">
                         {CHANNELS.map(channel => (
                           <button
@@ -567,7 +571,7 @@ export default function DynamicPricingPage() {
 
                   {(form.type === 'loyalty' || selectedType === 'loyalty') && (
                     <div>
-                      <label className="text-gray-700 text-sm mb-2 block">Loyalty Tiers</label>
+                      <span className="text-gray-700 text-sm mb-2 block">Loyalty Tiers</span>
                       <div className="flex flex-wrap gap-2">
                         {LOYALTY_TIERS.map(tier => (
                           <button
@@ -594,7 +598,7 @@ export default function DynamicPricingPage() {
 
                   {(form.type === 'quantity' || selectedType === 'quantity') && (
                     <div>
-                      <label className="text-gray-700 text-sm">Minimum Quantity</label>
+                      <label className="text-gray-700 text-sm">Minimum Quantity
                       <input
                         type="number"
                         min="1"
@@ -602,12 +606,13 @@ export default function DynamicPricingPage() {
                         onChange={(e) => setForm({ ...form, min_quantity: parseInt(e.target.value) || 0 })}
                         className="w-full px-4 py-3 bg-gray-100 text-gray-900 rounded-xl mt-1"
                       />
+                      </label>
                     </div>
                   )}
 
                   {(form.type === 'demand' || selectedType === 'demand') && (
                     <div>
-                      <label className="text-gray-700 text-sm">Occupancy Threshold (%)</label>
+                      <label className="text-gray-700 text-sm">Occupancy Threshold (%)
                       <input
                         type="number"
                         min="0"
@@ -616,13 +621,14 @@ export default function DynamicPricingPage() {
                         onChange={(e) => setForm({ ...form, demand_threshold: parseInt(e.target.value) || 0 })}
                         className="w-full px-4 py-3 bg-gray-100 text-gray-900 rounded-xl mt-1"
                       />
+                      </label>
                       <p className="text-white/40 text-xs mt-1">Rule activates when occupancy exceeds this threshold</p>
                     </div>
                   )}
 
                   {(form.type === 'weather' || selectedType === 'weather') && (
                     <div>
-                      <label className="text-gray-700 text-sm mb-2 block">Weather Conditions</label>
+                      <span className="text-gray-700 text-sm mb-2 block">Weather Conditions</span>
                       <div className="flex flex-wrap gap-2">
                         {['sunny', 'cloudy', 'rainy', 'stormy', 'snowy', 'hot', 'cold'].map(weather => (
                           <button
@@ -649,7 +655,7 @@ export default function DynamicPricingPage() {
 
                   {/* Priority */}
                   <div>
-                    <label className="text-gray-700 text-sm">Priority (lower = higher priority)</label>
+                    <label className="text-gray-700 text-sm">Priority (lower = higher priority)
                     <input
                       type="number"
                       min="1"
@@ -657,6 +663,7 @@ export default function DynamicPricingPage() {
                       onChange={(e) => setForm({ ...form, priority: parseInt(e.target.value) || 1 })}
                       className="w-full px-4 py-3 bg-gray-100 text-gray-900 rounded-xl mt-1"
                     />
+                    </label>
                   </div>
 
                   <label className="flex items-center gap-2 text-gray-900 cursor-pointer">

@@ -1,9 +1,8 @@
 "use client";
-
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { API_URL, getAuthHeaders } from '@/lib/api';
 
+import { api } from '@/lib/api';
 interface Supplier {
   id: number;
   name: string;
@@ -13,7 +12,6 @@ interface Supplier {
   rating?: number;
   is_active: boolean;
 }
-
 interface SupplierContact {
   id: number;
   supplier_id: number;
@@ -23,7 +21,6 @@ interface SupplierContact {
   phone?: string;
   is_primary: boolean;
 }
-
 interface PriceList {
   id: number;
   supplier_id: number;
@@ -33,7 +30,6 @@ interface PriceList {
   is_active: boolean;
   item_count?: number;
 }
-
 interface SupplierRating {
   id: number;
   supplier_id: number;
@@ -43,7 +39,6 @@ interface SupplierRating {
   overall_score: number;
   rating_period_end: string;
 }
-
 interface SupplierDocument {
   id: number;
   supplier_id: number;
@@ -52,14 +47,11 @@ interface SupplierDocument {
   expiry_date?: string;
   is_verified: boolean;
 }
-
 type TabType = "list" | "contacts" | "pricelists" | "ratings" | "documents" | "compare";
-
 export default function SupplierManagementPage() {
   const [activeTab, setActiveTab] = useState<TabType>("list");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-
   // Data
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [selectedSupplier, setSelectedSupplier] = useState<Supplier | null>(null);
@@ -68,12 +60,10 @@ export default function SupplierManagementPage() {
   const [ratings, setRatings] = useState<SupplierRating[]>([]);
   const [documents, setDocuments] = useState<SupplierDocument[]>([]);
   const [expiringDocs, setExpiringDocs] = useState<SupplierDocument[]>([]);
-
   // Modals
   const [showContactModal, setShowContactModal] = useState(false);
   const [showPriceListModal, setShowPriceListModal] = useState(false);
   const [showDocumentModal, setShowDocumentModal] = useState(false);
-
   // Forms
   const [contactForm, setContactForm] = useState({
     contact_name: "",
@@ -82,245 +72,171 @@ export default function SupplierManagementPage() {
     phone: "",
     is_primary: false
   });
-
   const [ratingForm, setRatingForm] = useState({
     quality_score: 5,
     delivery_score: 5,
     price_score: 5,
     notes: ""
   });
-
   const [priceListForm, setPriceListForm] = useState({
     name: "",
     effective_from: new Date().toISOString().split('T')[0],
     effective_to: ""
   });
-
   const [documentForm, setDocumentForm] = useState({
     document_type: "license",
     document_name: "",
     file_url: "",
     expiry_date: ""
   });
-
   const [showRatingModal, setShowRatingModal] = useState(false);
   const [bestPrices, setBestPrices] = useState<any[]>([]);
   const [stockItems, setStockItems] = useState<any[]>([]);
   const [selectedItem, setSelectedItem] = useState<number | null>(null);
-
   useEffect(() => {
     fetchSuppliers();
     fetchExpiringDocuments();
     fetchStockItems();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-
   useEffect(() => {
     if (selectedSupplier) {
       fetchSupplierDetails(selectedSupplier.id);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedSupplier]);
-
-
   const fetchSuppliers = async () => {
     try {
-      const res = await fetch(`${API_URL}/suppliers/`, {
-        credentials: 'include',
-        headers: getAuthHeaders()
-      });
-      if (res.ok) {
-        const data = await res.json();
-        const list = Array.isArray(data) ? data : (data.items || data.suppliers || []);
-        setSuppliers(list);
-        if (list.length > 0) setSelectedSupplier(list[0]);
-      }
+      const data: any = await api.get('/suppliers/');
+            const list = Array.isArray(data) ? data : (data.items || data.suppliers || []);
+      setSuppliers(list);
+      if (list.length > 0) setSelectedSupplier(list[0]);
     } catch (error) {
       console.error("Error fetching suppliers:", error);
     } finally {
       setLoading(false);
     }
   };
-
   const fetchSupplierDetails = async (supplierId: number) => {
-    const headers = getAuthHeaders();
-
     try {
       // Contacts
-      const contactsRes = await fetch(`${API_URL}/suppliers/${supplierId}/contacts`, { credentials: 'include', headers });
-      if (contactsRes.ok) setContacts(await contactsRes.json());
-
+      const contactsData: any = await api.get(`/suppliers/${supplierId}/contacts`);
+      setContacts(Array.isArray(contactsData) ? contactsData : (contactsData.contacts || []));
       // Price Lists
-      const priceListsRes = await fetch(`${API_URL}/suppliers/${supplierId}/price-lists`, { credentials: 'include', headers });
-      if (priceListsRes.ok) setPriceLists(await priceListsRes.json());
-
+      const priceListsData: any = await api.get(`/suppliers/${supplierId}/price-lists`);
+      setPriceLists(Array.isArray(priceListsData) ? priceListsData : (priceListsData.price_lists || []));
       // Ratings
-      const ratingsRes = await fetch(`${API_URL}/suppliers/${supplierId}/ratings`, { credentials: 'include', headers });
-      if (ratingsRes.ok) setRatings(await ratingsRes.json());
-
+      const ratingsData: any = await api.get(`/suppliers/${supplierId}/ratings`);
+      setRatings(Array.isArray(ratingsData) ? ratingsData : (ratingsData.ratings || []));
       // Documents
-      const docsRes = await fetch(`${API_URL}/suppliers/${supplierId}/documents`, { credentials: 'include', headers });
-      if (docsRes.ok) setDocuments(await docsRes.json());
-
+      const docsData: any = await api.get(`/suppliers/${supplierId}/documents`);
+      setDocuments(Array.isArray(docsData) ? docsData : (docsData.documents || []));
     } catch (error) {
       console.error("Error fetching supplier details:", error);
     }
   };
-
   const fetchExpiringDocuments = async () => {
     try {
-      const res = await fetch(`${API_URL}/suppliers/expiring-documents?days=30`, {
-        credentials: 'include',
-        headers: getAuthHeaders()
-      });
-      if (res.ok) setExpiringDocs(await res.json());
+      const expiringData: any = await api.get('/suppliers/expiring-documents?days=30');
+      setExpiringDocs(Array.isArray(expiringData) ? expiringData : (expiringData.documents || []));
     } catch (error) {
       console.error("Error fetching expiring documents:", error);
     }
   };
-
   const handleAddContact = async () => {
     if (!selectedSupplier) return;
     setSaving(true);
-
     try {
-      const res = await fetch(`${API_URL}/suppliers/contacts`, {
-        credentials: 'include',
-        method: "POST",
-        headers: getAuthHeaders(),
-        body: JSON.stringify({
+      await api.post('/suppliers/contacts', {
           supplier_id: selectedSupplier.id,
           ...contactForm
-        })
-      });
-      if (res.ok) {
-        setShowContactModal(false);
-        fetchSupplierDetails(selectedSupplier.id);
-        setContactForm({ contact_name: "", role: "", email: "", phone: "", is_primary: false });
-      }
+        });
+      setShowContactModal(false);
+      fetchSupplierDetails(selectedSupplier.id);
+      setContactForm({ contact_name: "", role: "", email: "", phone: "", is_primary: false });
     } catch (error) {
       console.error("Error adding contact:", error);
     } finally {
       setSaving(false);
     }
   };
-
   const fetchStockItems = async () => {
     try {
-      const res = await fetch(`${API_URL}/stock/items`, {
-        credentials: 'include',
-        headers: getAuthHeaders()
-      });
-      if (res.ok) setStockItems(await res.json());
+      const data: any = await api.get('/stock/items');
+      setStockItems(Array.isArray(data) ? data : (data.items || []));
     } catch (error) {
       console.error("Error fetching stock items:", error);
     }
   };
-
   const handleAddRating = async () => {
     if (!selectedSupplier) return;
     setSaving(true);
-
     try {
-      const res = await fetch(`${API_URL}/suppliers/ratings`, {
-        credentials: 'include',
-        method: "POST",
-        headers: getAuthHeaders(),
-        body: JSON.stringify({
+      await api.post('/suppliers/ratings', {
           supplier_id: selectedSupplier.id,
           ...ratingForm
-        })
-      });
-      if (res.ok) {
-        setShowRatingModal(false);
-        fetchSupplierDetails(selectedSupplier.id);
-        setRatingForm({ quality_score: 5, delivery_score: 5, price_score: 5, notes: "" });
-      }
+        });
+      setShowRatingModal(false);
+      fetchSupplierDetails(selectedSupplier.id);
+      setRatingForm({ quality_score: 5, delivery_score: 5, price_score: 5, notes: "" });
     } catch (error) {
       console.error("Error adding rating:", error);
     } finally {
       setSaving(false);
     }
   };
-
   const handleAddPriceList = async () => {
     if (!selectedSupplier) return;
     setSaving(true);
-
     try {
-      const res = await fetch(`${API_URL}/suppliers/price-lists`, {
-        credentials: 'include',
-        method: "POST",
-        headers: getAuthHeaders(),
-        body: JSON.stringify({
+      await api.post('/suppliers/price-lists', {
           supplier_id: selectedSupplier.id,
           ...priceListForm,
           effective_to: priceListForm.effective_to || null
-        })
-      });
-      if (res.ok) {
-        setShowPriceListModal(false);
-        fetchSupplierDetails(selectedSupplier.id);
-        setPriceListForm({ name: "", effective_from: new Date().toISOString().split('T')[0], effective_to: "" });
-      }
+        });
+      setShowPriceListModal(false);
+      fetchSupplierDetails(selectedSupplier.id);
+      setPriceListForm({ name: "", effective_from: new Date().toISOString().split('T')[0], effective_to: "" });
     } catch (error) {
       console.error("Error adding price list:", error);
     } finally {
       setSaving(false);
     }
   };
-
   const handleAddDocument = async () => {
     if (!selectedSupplier) return;
     setSaving(true);
-
     try {
-      const res = await fetch(`${API_URL}/suppliers/documents`, {
-        credentials: 'include',
-        method: "POST",
-        headers: getAuthHeaders(),
-        body: JSON.stringify({
+      await api.post('/suppliers/documents', {
           supplier_id: selectedSupplier.id,
           ...documentForm,
           expiry_date: documentForm.expiry_date || null
-        })
-      });
-      if (res.ok) {
-        setShowDocumentModal(false);
-        fetchSupplierDetails(selectedSupplier.id);
-        fetchExpiringDocuments();
-        setDocumentForm({ document_type: "license", document_name: "", file_url: "", expiry_date: "" });
-      }
+        });
+      setShowDocumentModal(false);
+      fetchSupplierDetails(selectedSupplier.id);
+      fetchExpiringDocuments();
+      setDocumentForm({ document_type: "license", document_name: "", file_url: "", expiry_date: "" });
     } catch (error) {
       console.error("Error adding document:", error);
     } finally {
       setSaving(false);
     }
   };
-
   const handleComparePrice = async (itemId: number) => {
     setSelectedItem(itemId);
     try {
-      const res = await fetch(`${API_URL}/suppliers/best-price/${itemId}`, {
-        credentials: 'include',
-        headers: getAuthHeaders()
-      });
-      if (res.ok) {
-        const data = await res.json();
-        setBestPrices(data.prices || [data]);
-      }
+      const data: any = await api.get(`/suppliers/best-price/${itemId}`);
+            setBestPrices(data.prices || [data]);
     } catch (error) {
       console.error("Error comparing prices:", error);
     }
   };
-
   const getScoreColor = (score: number) => {
     if (score >= 4.5) return "text-green-400";
     if (score >= 3.5) return "text-yellow-400";
     if (score >= 2.5) return "text-orange-400";
     return "text-red-400";
   };
-
   const tabs: { id: TabType; label: string; icon: string }[] = [
     { id: "list", label: "All Suppliers", icon: "📋" },
     { id: "contacts", label: "Contacts", icon: "👥" },
@@ -329,7 +245,6 @@ export default function SupplierManagementPage() {
     { id: "documents", label: "Documents", icon: "📄" },
     { id: "compare", label: "Compare Prices", icon: "📊" }
   ];
-
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-white">
@@ -337,7 +252,6 @@ export default function SupplierManagementPage() {
       </div>
     );
   }
-
   return (
     <div className="p-6 bg-white min-h-screen text-gray-900">
       {/* Header */}
@@ -347,7 +261,6 @@ export default function SupplierManagementPage() {
           <p className="text-gray-400 mt-1">Contacts, price lists, ratings, and documents</p>
         </div>
       </div>
-
       {/* Alert for expiring documents */}
       {expiringDocs.length > 0 && (
         <div className="bg-yellow-600/20 border border-yellow-600 rounded-xl p-4 mb-6">
@@ -359,7 +272,6 @@ export default function SupplierManagementPage() {
           </div>
         </div>
       )}
-
       {/* Stats */}
       <div className="grid grid-cols-4 gap-4 mb-6">
         <div className="bg-gray-50 rounded-xl p-4">
@@ -381,7 +293,6 @@ export default function SupplierManagementPage() {
           <div className="text-2xl font-bold text-yellow-400">{expiringDocs.length}</div>
         </div>
       </div>
-
       <div className="grid grid-cols-12 gap-6">
         {/* Supplier List */}
         <div className="col-span-3 bg-gray-50 rounded-xl p-4 max-h-[70vh] overflow-y-auto">
@@ -415,7 +326,6 @@ export default function SupplierManagementPage() {
             ))}
           </div>
         </div>
-
         {/* Main Content */}
         <div className="col-span-9">
           {/* Tabs */}
@@ -434,7 +344,6 @@ export default function SupplierManagementPage() {
               </button>
             ))}
           </div>
-
           {/* Content */}
           <div className="bg-gray-50 rounded-xl p-6">
             {activeTab === "list" && (
@@ -483,7 +392,6 @@ export default function SupplierManagementPage() {
                 </table>
               </div>
             )}
-
             {activeTab === "contacts" && selectedSupplier && (
               <div>
                 <div className="flex justify-between items-center mb-4">
@@ -520,7 +428,6 @@ export default function SupplierManagementPage() {
                 )}
               </div>
             )}
-
             {activeTab === "pricelists" && selectedSupplier && (
               <div>
                 <div className="flex justify-between items-center mb-4">
@@ -558,7 +465,6 @@ export default function SupplierManagementPage() {
                 )}
               </div>
             )}
-
             {activeTab === "ratings" && selectedSupplier && (
               <div>
                 <div className="flex justify-between items-center mb-4">
@@ -610,7 +516,6 @@ export default function SupplierManagementPage() {
                 )}
               </div>
             )}
-
             {activeTab === "documents" && selectedSupplier && (
               <div>
                 <div className="flex justify-between items-center mb-4">
@@ -654,12 +559,11 @@ export default function SupplierManagementPage() {
                 )}
               </div>
             )}
-
             {activeTab === "compare" && (
               <div>
                 <h3 className="text-xl font-semibold mb-4">Price Comparison</h3>
                 <div className="mb-6">
-                  <label className="block text-sm text-gray-400 mb-2">Select Item to Compare</label>
+                  <label className="block text-sm text-gray-400 mb-2">Select Item to Compare
                   <select
                     value={selectedItem || ""}
                     onChange={(e) => e.target.value && handleComparePrice(Number(e.target.value))}
@@ -672,8 +576,8 @@ export default function SupplierManagementPage() {
                       </option>
                     ))}
                   </select>
+                  </label>
                 </div>
-
                 {selectedItem && bestPrices.length > 0 && (
                   <div className="space-y-3">
                     <h4 className="font-semibold">Price Comparison Results</h4>
@@ -702,7 +606,6 @@ export default function SupplierManagementPage() {
                     </table>
                   </div>
                 )}
-
                 {selectedItem && bestPrices.length === 0 && (
                   <p className="text-gray-400">No price data found for this item.</p>
                 )}
@@ -711,7 +614,6 @@ export default function SupplierManagementPage() {
           </div>
         </div>
       </div>
-
       {/* Rating Modal */}
       <AnimatePresence>
         {showRatingModal && (
@@ -732,7 +634,7 @@ export default function SupplierManagementPage() {
               <h3 className="text-xl font-semibold mb-4">Add Rating for {selectedSupplier?.name}</h3>
               <div className="space-y-4">
                 <div>
-                  <label className="block text-sm text-gray-400 mb-1">Quality Score (1-5)</label>
+                  <label className="block text-sm text-gray-400 mb-1">Quality Score (1-5)
                   <input
                     type="range"
                     min="1"
@@ -742,10 +644,11 @@ export default function SupplierManagementPage() {
                     onChange={(e) => setRatingForm({ ...ratingForm, quality_score: parseFloat(e.target.value) })}
                     className="w-full"
                   />
+                  </label>
                   <div className="text-center font-bold">{ratingForm.quality_score}</div>
                 </div>
                 <div>
-                  <label className="block text-sm text-gray-400 mb-1">Delivery Score (1-5)</label>
+                  <label className="block text-sm text-gray-400 mb-1">Delivery Score (1-5)
                   <input
                     type="range"
                     min="1"
@@ -755,10 +658,11 @@ export default function SupplierManagementPage() {
                     onChange={(e) => setRatingForm({ ...ratingForm, delivery_score: parseFloat(e.target.value) })}
                     className="w-full"
                   />
+                  </label>
                   <div className="text-center font-bold">{ratingForm.delivery_score}</div>
                 </div>
                 <div>
-                  <label className="block text-sm text-gray-400 mb-1">Price Score (1-5)</label>
+                  <label className="block text-sm text-gray-400 mb-1">Price Score (1-5)
                   <input
                     type="range"
                     min="1"
@@ -768,16 +672,18 @@ export default function SupplierManagementPage() {
                     onChange={(e) => setRatingForm({ ...ratingForm, price_score: parseFloat(e.target.value) })}
                     className="w-full"
                   />
+                  </label>
                   <div className="text-center font-bold">{ratingForm.price_score}</div>
                 </div>
                 <div>
-                  <label className="block text-sm text-gray-400 mb-1">Notes</label>
+                  <label className="block text-sm text-gray-400 mb-1">Notes
                   <textarea
                     value={ratingForm.notes}
                     onChange={(e) => setRatingForm({ ...ratingForm, notes: e.target.value })}
                     className="w-full p-2 bg-gray-100 rounded-lg"
                     rows={3}
                   />
+                  </label>
                 </div>
               </div>
               <div className="flex gap-3 mt-6">
@@ -799,7 +705,6 @@ export default function SupplierManagementPage() {
           </motion.div>
         )}
       </AnimatePresence>
-
       {/* Price List Modal */}
       <AnimatePresence>
         {showPriceListModal && (
@@ -820,7 +725,7 @@ export default function SupplierManagementPage() {
               <h3 className="text-xl font-semibold mb-4">New Price List for {selectedSupplier?.name}</h3>
               <div className="space-y-4">
                 <div>
-                  <label className="block text-sm text-gray-400 mb-1">Name</label>
+                  <label className="block text-sm text-gray-400 mb-1">Name
                   <input
                     type="text"
                     value={priceListForm.name}
@@ -828,25 +733,28 @@ export default function SupplierManagementPage() {
                     className="w-full p-2 bg-gray-100 rounded-lg"
                     placeholder="e.g., Q1 2025 Prices"
                   />
+                  </label>
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm text-gray-400 mb-1">Effective From</label>
+                    <label className="block text-sm text-gray-400 mb-1">Effective From
                     <input
                       type="date"
                       value={priceListForm.effective_from}
                       onChange={(e) => setPriceListForm({ ...priceListForm, effective_from: e.target.value })}
                       className="w-full p-2 bg-gray-100 rounded-lg"
                     />
+                    </label>
                   </div>
                   <div>
-                    <label className="block text-sm text-gray-400 mb-1">Effective To (optional)</label>
+                    <label className="block text-sm text-gray-400 mb-1">Effective To (optional)
                     <input
                       type="date"
                       value={priceListForm.effective_to}
                       onChange={(e) => setPriceListForm({ ...priceListForm, effective_to: e.target.value })}
                       className="w-full p-2 bg-gray-100 rounded-lg"
                     />
+                    </label>
                   </div>
                 </div>
               </div>
@@ -869,7 +777,6 @@ export default function SupplierManagementPage() {
           </motion.div>
         )}
       </AnimatePresence>
-
       {/* Document Modal */}
       <AnimatePresence>
         {showDocumentModal && (
@@ -890,7 +797,7 @@ export default function SupplierManagementPage() {
               <h3 className="text-xl font-semibold mb-4">Upload Document for {selectedSupplier?.name}</h3>
               <div className="space-y-4">
                 <div>
-                  <label className="block text-sm text-gray-400 mb-1">Document Type</label>
+                  <label className="block text-sm text-gray-400 mb-1">Document Type
                   <select
                     value={documentForm.document_type}
                     onChange={(e) => setDocumentForm({ ...documentForm, document_type: e.target.value })}
@@ -904,9 +811,10 @@ export default function SupplierManagementPage() {
                     <option value="haccp">HACCP Certificate</option>
                     <option value="other">Other</option>
                   </select>
+                  </label>
                 </div>
                 <div>
-                  <label className="block text-sm text-gray-400 mb-1">Document Name</label>
+                  <label className="block text-sm text-gray-400 mb-1">Document Name
                   <input
                     type="text"
                     value={documentForm.document_name}
@@ -914,9 +822,10 @@ export default function SupplierManagementPage() {
                     className="w-full p-2 bg-gray-100 rounded-lg"
                     placeholder="e.g., Business License 2025"
                   />
+                  </label>
                 </div>
                 <div>
-                  <label className="block text-sm text-gray-400 mb-1">File URL</label>
+                  <label className="block text-sm text-gray-400 mb-1">File URL
                   <input
                     type="text"
                     value={documentForm.file_url}
@@ -924,15 +833,17 @@ export default function SupplierManagementPage() {
                     className="w-full p-2 bg-gray-100 rounded-lg"
                     placeholder="https://..."
                   />
+                  </label>
                 </div>
                 <div>
-                  <label className="block text-sm text-gray-400 mb-1">Expiry Date (optional)</label>
+                  <label className="block text-sm text-gray-400 mb-1">Expiry Date (optional)
                   <input
                     type="date"
                     value={documentForm.expiry_date}
                     onChange={(e) => setDocumentForm({ ...documentForm, expiry_date: e.target.value })}
                     className="w-full p-2 bg-gray-100 rounded-lg"
                   />
+                  </label>
                 </div>
               </div>
               <div className="flex gap-3 mt-6">
@@ -954,7 +865,6 @@ export default function SupplierManagementPage() {
           </motion.div>
         )}
       </AnimatePresence>
-
       {/* Contact Modal */}
       <AnimatePresence>
         {showContactModal && (
@@ -975,16 +885,17 @@ export default function SupplierManagementPage() {
               <h3 className="text-xl font-semibold mb-4">Add Contact</h3>
               <div className="space-y-4">
                 <div>
-                  <label className="block text-sm text-gray-400 mb-1">Name</label>
+                  <label className="block text-sm text-gray-400 mb-1">Name
                   <input
                     type="text"
                     value={contactForm.contact_name}
                     onChange={(e) => setContactForm({ ...contactForm, contact_name: e.target.value })}
                     className="w-full p-2 bg-gray-100 rounded-lg"
                   />
+                  </label>
                 </div>
                 <div>
-                  <label className="block text-sm text-gray-400 mb-1">Role</label>
+                  <label className="block text-sm text-gray-400 mb-1">Role
                   <input
                     type="text"
                     value={contactForm.role}
@@ -992,25 +903,28 @@ export default function SupplierManagementPage() {
                     className="w-full p-2 bg-gray-100 rounded-lg"
                     placeholder="e.g., Sales Manager"
                   />
+                  </label>
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm text-gray-400 mb-1">Email</label>
+                    <label className="block text-sm text-gray-400 mb-1">Email
                     <input
                       type="email"
                       value={contactForm.email}
                       onChange={(e) => setContactForm({ ...contactForm, email: e.target.value })}
                       className="w-full p-2 bg-gray-100 rounded-lg"
                     />
+                    </label>
                   </div>
                   <div>
-                    <label className="block text-sm text-gray-400 mb-1">Phone</label>
+                    <label className="block text-sm text-gray-400 mb-1">Phone
                     <input
                       type="text"
                       value={contactForm.phone}
                       onChange={(e) => setContactForm({ ...contactForm, phone: e.target.value })}
                       className="w-full p-2 bg-gray-100 rounded-lg"
                     />
+                    </label>
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
@@ -1020,7 +934,7 @@ export default function SupplierManagementPage() {
                     onChange={(e) => setContactForm({ ...contactForm, is_primary: e.target.checked })}
                     className="w-4 h-4"
                   />
-                  <label>Primary contact</label>
+                  <span>Primary contact</span>
                 </div>
               </div>
               <div className="flex gap-3 mt-6">

@@ -1,13 +1,11 @@
 "use client";
-
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
-
-import { API_URL, getAuthHeaders } from '@/lib/api';
-
 import { toast } from '@/lib/toast';
+
+import { api } from '@/lib/api';
 interface OrderItem {
   product_id: number;
   name: string;
@@ -15,7 +13,6 @@ interface OrderItem {
   unit_price: number;
   modifiers?: { id: number; name: string; price: number }[];
 }
-
 interface RecentOrder {
   id: number;
   order_number: string;
@@ -28,7 +25,6 @@ interface RecentOrder {
   created_at: string;
   type: string;
 }
-
 interface RecentItem {
   product_id: number;
   name?: string;
@@ -36,20 +32,17 @@ interface RecentItem {
   last_used: string;
   use_count: number;
 }
-
 interface Product {
   id: number;
   name: { bg: string; en: string };
   price: number;
   category_id?: number;
 }
-
 interface Table {
   id: number;
   number: string;
   status: string;
 }
-
 export default function QuickReorderPage() {
   const router = useRouter();
   const [recentOrders, setRecentOrders] = useState<RecentOrder[]>([]);
@@ -59,59 +52,46 @@ export default function QuickReorderPage() {
   const [tables, setTables] = useState<Table[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<"orders" | "items">("orders");
-
   // Reorder modal state
   const [showReorderModal, setShowReorderModal] = useState(false);
   const [selectedOrder, setSelectedOrder] = useState<RecentOrder | null>(null);
   const [selectedTable, setSelectedTable] = useState<number | null>(null);
   const [reorderItems, setReorderItems] = useState<OrderItem[]>([]);
   const [submitting, setSubmitting] = useState(false);
-
   // Search
   const [customerSearch, setCustomerSearch] = useState("");
-
   useEffect(() => {
     loadData();
   }, []);
-
-
   const loadData = async () => {
     try {
       const staffId = localStorage.getItem("staff_id") || "1";
-      const headers = getAuthHeaders();
-
-      const [ordersRes, productsRes, tablesRes, recentItemsRes, mostUsedRes] =
-        await Promise.all([
-          fetch(`${API_URL}/orders/?limit=50&status=paid`, { credentials: 'include', headers }),
-          fetch(`${API_URL}/menu-admin/items`, { credentials: 'include', headers }),
-          fetch(`${API_URL}/tables/`, { credentials: 'include', headers }),
-          fetch(`${API_URL}/staff/${staffId}/recent-items?limit=20`, { credentials: 'include', headers }),
-          fetch(`${API_URL}/recent-items/most-used?limit=10`, { credentials: 'include', headers }),
-        ]);
-
-      if (ordersRes.ok) {
-        const data = await ordersRes.json();
+      const [ordersRes, productsRes, tablesRes, recentItemsRes, mostUsedRes] = await Promise.allSettled([
+  api.get('/orders/?limit=50&status=paid'),
+  api.get('/menu-admin/items'),
+  api.get('/tables/'),
+  api.get(`/staff/${staffId}/recent-items?limit=20`),
+  api.get('/recent-items/most-used?limit=10')
+]);
+      if (ordersRes.status === 'fulfilled') {
+        const data: any = ordersRes.value;
         setRecentOrders(Array.isArray(data) ? data : data.orders || []);
       }
-
-      if (productsRes.ok) {
-        const data = await productsRes.json();
-        setProducts(Array.isArray(data) ? data : data.items || []);
+      if (productsRes.status === 'fulfilled') {
+        const data_products: any = productsRes.value;
+        setProducts(Array.isArray(data_products) ? data_products : data_products.items || []);
       }
-
-      if (tablesRes.ok) {
-        const data = await tablesRes.json();
-        setTables(Array.isArray(data) ? data : data.tables || []);
+      if (tablesRes.status === 'fulfilled') {
+        const data_tables: any = tablesRes.value;
+        setTables(Array.isArray(data_tables) ? data_tables : data_tables.tables || []);
       }
-
-      if (recentItemsRes.ok) {
-        const data = await recentItemsRes.json();
-        setRecentItems(Array.isArray(data) ? data : []);
+      if (recentItemsRes.status === 'fulfilled') {
+        const data_recentItems: any = recentItemsRes.value;
+        setRecentItems(Array.isArray(data_recentItems) ? data_recentItems : []);
       }
-
-      if (mostUsedRes.ok) {
-        const data = await mostUsedRes.json();
-        setMostUsedItems(Array.isArray(data) ? data : []);
+      if (mostUsedRes.status === 'fulfilled') {
+        const data_mostUsedItems: any = mostUsedRes.value;
+        setMostUsedItems(Array.isArray(data_mostUsedItems) ? data_mostUsedItems : []);
       }
     } catch (error) {
       console.error("Error loading data:", error);
@@ -119,7 +99,6 @@ export default function QuickReorderPage() {
       setLoading(false);
     }
   };
-
   const getProductInfo = (productId: number) => {
     const product = products.find((p) => p.id === productId);
     return {
@@ -127,14 +106,12 @@ export default function QuickReorderPage() {
       price: product?.price || 0,
     };
   };
-
   const openReorderModal = (order: RecentOrder) => {
     setSelectedOrder(order);
     setReorderItems([...order.items]);
     setSelectedTable(order.table_id || null);
     setShowReorderModal(true);
   };
-
   const updateReorderQuantity = (productId: number, delta: number) => {
     setReorderItems((items) =>
       items
@@ -146,19 +123,16 @@ export default function QuickReorderPage() {
         .filter((item) => item.quantity > 0)
     );
   };
-
   const removeReorderItem = (productId: number) => {
     setReorderItems((items) =>
       items.filter((item) => item.product_id !== productId)
     );
   };
-
   const submitReorder = async () => {
     if (!selectedTable || reorderItems.length === 0) {
       toast.success("Please select a table and ensure there are items to order");
       return;
     }
-
     setSubmitting(true);
     try {
       const payload = {
@@ -173,33 +147,18 @@ export default function QuickReorderPage() {
           ? `Reorder from #${selectedOrder.order_number}`
           : undefined,
       };
-
-      const response = await fetch(`${API_URL}/orders/`, {
-        credentials: 'include',
-        method: "POST",
-        headers: getAuthHeaders(),
-        body: JSON.stringify(payload),
-      });
-
-      if (response.ok) {
-        const newOrder = await response.json();
-        setShowReorderModal(false);
-        router.push(`/orders?highlight=${newOrder.id}`);
-      } else {
-        const err = await response.json();
-        toast.error(err.detail || "Error creating order");
-      }
+      const newOrder: any = await api.post('/orders/', payload);
+            setShowReorderModal(false);
+      router.push(`/orders?highlight=${newOrder.id}`);
     } catch (error) {
       toast.error("Error creating order");
     } finally {
       setSubmitting(false);
     }
   };
-
   const quickAddItem = (productId: number) => {
     const product = products.find((p) => p.id === productId);
     if (!product) return;
-
     const existing = reorderItems.find((i) => i.product_id === productId);
     if (existing) {
       updateReorderQuantity(productId, 1);
@@ -215,12 +174,10 @@ export default function QuickReorderPage() {
       ]);
     }
   };
-
   const reorderTotal = reorderItems.reduce(
     (sum, item) => sum + item.unit_price * item.quantity,
     0
   );
-
   // Filter orders by customer search
   const filteredOrders = recentOrders.filter((order) => {
     if (!customerSearch) return true;
@@ -231,18 +188,15 @@ export default function QuickReorderPage() {
       order.order_number.includes(search)
     );
   });
-
   // Enrich recent items with product info
   const enrichedRecentItems = recentItems.map((item) => ({
     ...item,
     ...getProductInfo(item.product_id),
   }));
-
   const enrichedMostUsed = mostUsedItems.map((item) => ({
     ...item,
     ...getProductInfo(item.product_id),
   }));
-
   if (loading) {
     return (
       <div className="min-h-screen bg-white flex items-center justify-center">
@@ -250,7 +204,6 @@ export default function QuickReorderPage() {
       </div>
     );
   }
-
   return (
     <div className="min-h-screen bg-white p-6">
       <div className="max-w-7xl mx-auto">
@@ -276,7 +229,6 @@ export default function QuickReorderPage() {
             + New Order
           </Link>
         </div>
-
         {/* Tabs */}
         <div className="flex gap-2 mb-6">
           <button
@@ -300,7 +252,6 @@ export default function QuickReorderPage() {
             Frequent Items
           </button>
         </div>
-
         {/* Recent Orders Tab */}
         {activeTab === "orders" && (
           <div className="space-y-6">
@@ -314,7 +265,6 @@ export default function QuickReorderPage() {
                 className="flex-1 max-w-md px-4 py-3 bg-gray-50 text-gray-900 rounded-xl border border-gray-200"
               />
             </div>
-
             {/* Orders Grid */}
             {filteredOrders.length === 0 ? (
               <div className="text-center py-16 bg-gray-50 rounded-2xl">
@@ -350,7 +300,6 @@ export default function QuickReorderPage() {
                         {(order.total || 0).toFixed(2)} lv
                       </span>
                     </div>
-
                     <div className="space-y-1 mb-4">
                       {order.items.slice(0, 3).map((item, idx) => (
                         <div
@@ -371,7 +320,6 @@ export default function QuickReorderPage() {
                         </p>
                       )}
                     </div>
-
                     <div className="flex justify-between items-center pt-3 border-t border-gray-100">
                       <span className="text-gray-400 text-sm">
                         {new Date(order.created_at).toLocaleDateString()}
@@ -386,7 +334,6 @@ export default function QuickReorderPage() {
             )}
           </div>
         )}
-
         {/* Frequent Items Tab */}
         {activeTab === "items" && (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -434,7 +381,6 @@ export default function QuickReorderPage() {
                 </div>
               )}
             </div>
-
             {/* Most Popular Items */}
             <div className="bg-white rounded-2xl border border-gray-200 p-6">
               <h2 className="text-lg font-bold text-gray-900 mb-4">
@@ -496,7 +442,6 @@ export default function QuickReorderPage() {
           </div>
         )}
       </div>
-
       {/* Reorder Modal */}
       <AnimatePresence>
         {showReorderModal && (
@@ -517,12 +462,11 @@ export default function QuickReorderPage() {
                   Customer: {selectedOrder.customer_name}
                 </p>
               )}
-
               {/* Table Selection */}
               <div className="mb-6">
-                <label className="text-gray-700 text-sm font-medium mb-2 block">
+                <span className="text-gray-700 text-sm font-medium mb-2 block">
                   Select Table
-                </label>
+                </span>
                 <div className="grid grid-cols-5 gap-2">
                   {tables
                     .filter((t) => t.status === "available" || t.status === "occupied")
@@ -544,12 +488,11 @@ export default function QuickReorderPage() {
                     ))}
                 </div>
               </div>
-
               {/* Items */}
               <div className="mb-6">
-                <label className="text-gray-700 text-sm font-medium mb-2 block">
+                <span className="text-gray-700 text-sm font-medium mb-2 block">
                   Order Items
-                </label>
+                </span>
                 {reorderItems.length === 0 ? (
                   <p className="text-gray-400 text-center py-4 bg-gray-50 rounded-xl">
                     No items in order
@@ -599,7 +542,6 @@ export default function QuickReorderPage() {
                   </div>
                 )}
               </div>
-
               {/* Total */}
               <div className="flex justify-between items-center p-4 bg-orange-50 rounded-xl mb-6">
                 <span className="text-gray-700 font-medium">Total</span>
@@ -607,7 +549,6 @@ export default function QuickReorderPage() {
                   {(reorderTotal || 0).toFixed(2)} lv
                 </span>
               </div>
-
               {/* Actions */}
               <div className="flex gap-3">
                 <button

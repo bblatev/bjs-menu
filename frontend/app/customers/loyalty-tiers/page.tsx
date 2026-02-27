@@ -206,16 +206,17 @@ export default function LoyaltyTiersPage() {
                   {isEditing ? (
                     <div className="space-y-3 pt-3 border-t border-gray-200">
                       <div>
-                        <label className="block text-xs font-medium text-gray-600 mb-1">Min Points</label>
+                        <label className="block text-xs font-medium text-gray-600 mb-1">Min Points
                         <input
                           type="number"
                           value={editing.min_points}
                           onChange={e => setEditing({ ...editing, min_points: parseInt(e.target.value) || 0 })}
                           className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900 bg-white"
                         />
+                        </label>
                       </div>
                       <div>
-                        <label className="block text-xs font-medium text-gray-600 mb-1">Multiplier</label>
+                        <label className="block text-xs font-medium text-gray-600 mb-1">Multiplier
                         <input
                           type="number"
                           step="0.1"
@@ -223,6 +224,7 @@ export default function LoyaltyTiersPage() {
                           onChange={e => setEditing({ ...editing, multiplier: parseFloat(e.target.value) || 1 })}
                           className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900 bg-white"
                         />
+                        </label>
                       </div>
                       <div className="flex gap-2">
                         <button

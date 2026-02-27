@@ -6,7 +6,7 @@ import Link from 'next/link';
 import { PageLoading } from '@/components/ui/LoadingSpinner';
 import { ErrorAlert } from '@/components/ui/ErrorAlert';
 
-import { API_URL } from '@/lib/api';
+import { api } from '@/lib/api';
 
 import { toast } from '@/lib/toast';
 interface RewardRule {
@@ -93,23 +93,23 @@ export default function BirthdayRewardsPage() {
     setLoading(true);
     setError(null);
     try {
-      const [rulesRes, rewardsRes, statsRes] = await Promise.all([
-        fetch(`${API_URL}/birthday-rewards/rules`, { credentials: 'include' }),
-        fetch(`${API_URL}/birthday-rewards/rewards?limit=50`, { credentials: 'include' }),
-        fetch(`${API_URL}/birthday-rewards/stats`, { credentials: 'include' }),
-      ]);
+      const [rulesRes, rewardsRes, statsRes] = await Promise.allSettled([
+  api.get('/birthday-rewards/rules'),
+  api.get('/birthday-rewards/rewards?limit=50'),
+  api.get('/birthday-rewards/stats')
+]);
 
-      if (rulesRes.ok) {
-        const data = await rulesRes.json();
+      if (rulesRes.status === 'fulfilled') {
+        const data: any = rulesRes.value;
         setRules(data);
       }
-      if (rewardsRes.ok) {
-        const data = await rewardsRes.json();
-        setIssuedRewards(data);
+      if (rewardsRes.status === 'fulfilled') {
+        const data_issuedRewards: any = rewardsRes.value;
+        setIssuedRewards(data_issuedRewards);
       }
-      if (statsRes.ok) {
-        const data = await statsRes.json();
-        setStats(data);
+      if (statsRes.status === 'fulfilled') {
+        const data_stats: any = statsRes.value;
+        setStats(data_stats);
       }
     } catch (err) {
       console.error('Error loading data:', err);
@@ -143,22 +143,13 @@ export default function BirthdayRewardsPage() {
 
   const saveRule = async () => {
     try {
-      const method = editingRule ? 'PUT' : 'POST';
-      const url = editingRule
-        ? `${API_URL}/birthday-rewards/rules/${editingRule.rule_id}`
-        : `${API_URL}/birthday-rewards/rules`;
-
-      const res = await fetch(url, {
-        credentials: 'include',
-        method,
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(ruleForm),
-      });
-
-      if (res.ok) {
-        loadData();
-        setShowRuleModal(false);
+      if (editingRule) {
+        await api.put(`/birthday-rewards/rules/${editingRule.rule_id}`, ruleForm);
+      } else {
+        await api.post('/birthday-rewards/rules', ruleForm);
       }
+      loadData();
+      setShowRuleModal(false);
     } catch (error) {
       console.error('Error saving rule:', error);
     }
@@ -167,13 +158,8 @@ export default function BirthdayRewardsPage() {
   const deleteRule = async (ruleId: string) => {
     if (!confirm('Are you sure you want to delete this rule?')) return;
     try {
-      const res = await fetch(`${API_URL}/birthday-rewards/rules/${ruleId}`, {
-        credentials: 'include',
-        method: 'DELETE',
-      });
-      if (res.ok) {
-        loadData();
-      }
+      await api.del(`/birthday-rewards/rules/${ruleId}`);
+      loadData();
     } catch (error) {
       console.error('Error deleting rule:', error);
     }
@@ -181,15 +167,8 @@ export default function BirthdayRewardsPage() {
 
   const toggleRuleActive = async (rule: RewardRule) => {
     try {
-      const res = await fetch(`${API_URL}/birthday-rewards/rules/${rule.rule_id}`, {
-        credentials: 'include',
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...rule, is_active: !rule.is_active }),
-      });
-      if (res.ok) {
-        loadData();
-      }
+      await api.put(`/birthday-rewards/rules/${rule.rule_id}`, { ...rule, is_active: !rule.is_active });
+      loadData();
     } catch (error) {
       console.error('Error updating rule:', error);
     }
@@ -197,15 +176,9 @@ export default function BirthdayRewardsPage() {
 
   const triggerRewardScan = async () => {
     try {
-      const res = await fetch(`${API_URL}/birthday-rewards/trigger`, {
-        credentials: 'include',
-        method: 'POST',
-      });
-      if (res.ok) {
-        const data = await res.json();
-        toast.success(`Triggered ${data.rewards_sent || 0} new rewards!`);
-        loadData();
-      }
+      const data: any = await api.post('/birthday-rewards/trigger');
+            toast.success(`Triggered ${data.rewards_sent || 0} new rewards!`);
+      loadData();
     } catch (error) {
       console.error('Error triggering scan:', error);
     }
@@ -500,7 +473,7 @@ export default function BirthdayRewardsPage() {
               </div>
               <div className="p-6 space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-surface-700 mb-1">Rule Name</label>
+                  <label className="block text-sm font-medium text-surface-700 mb-1">Rule Name
                   <input
                     type="text"
                     value={ruleForm.name || ''}
@@ -508,10 +481,11 @@ export default function BirthdayRewardsPage() {
                     className="w-full px-3 py-2 border border-surface-200 rounded-lg focus:ring-2 focus:ring-amber-500"
                     placeholder="e.g., Birthday 10% Discount"
                   />
+                  </label>
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-surface-700 mb-2">Occasion Type</label>
+                  <span className="block text-sm font-medium text-surface-700 mb-2">Occasion Type</span>
                   <div className="grid grid-cols-2 gap-2">
                     {OCCASION_TYPES.map((occasion) => (
                       <button
@@ -532,7 +506,7 @@ export default function BirthdayRewardsPage() {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-surface-700 mb-2">Reward Type</label>
+                  <span className="block text-sm font-medium text-surface-700 mb-2">Reward Type</span>
                   <div className="space-y-2">
                     {REWARD_TYPES.map((reward) => (
                       <button
@@ -553,7 +527,7 @@ export default function BirthdayRewardsPage() {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-surface-700 mb-1">Reward Value</label>
+                  <label className="block text-sm font-medium text-surface-700 mb-1">Reward Value
                   <div className="flex items-center gap-2">
                     <input
                       type="number"
@@ -566,11 +540,12 @@ export default function BirthdayRewardsPage() {
                       {REWARD_TYPES.find(r => r.id === ruleForm.reward_type)?.unit}
                     </span>
                   </div>
+                  </label>
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-surface-700 mb-1">Days Before</label>
+                    <label className="block text-sm font-medium text-surface-700 mb-1">Days Before
                     <input
                       type="number"
                       value={ruleForm.valid_days_before || 0}
@@ -578,10 +553,11 @@ export default function BirthdayRewardsPage() {
                       className="w-full px-3 py-2 border border-surface-200 rounded-lg"
                       min="0"
                     />
+                    </label>
                     <p className="text-xs text-surface-500 mt-1">Send reward N days before</p>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-surface-700 mb-1">Days After</label>
+                    <label className="block text-sm font-medium text-surface-700 mb-1">Days After
                     <input
                       type="number"
                       value={ruleForm.valid_days_after || 0}
@@ -589,13 +565,14 @@ export default function BirthdayRewardsPage() {
                       className="w-full px-3 py-2 border border-surface-200 rounded-lg"
                       min="0"
                     />
+                    </label>
                     <p className="text-xs text-surface-500 mt-1">Valid until N days after</p>
                   </div>
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-surface-700 mb-1">Min Visits</label>
+                    <label className="block text-sm font-medium text-surface-700 mb-1">Min Visits
                     <input
                       type="number"
                       value={ruleForm.min_visits || 0}
@@ -603,9 +580,10 @@ export default function BirthdayRewardsPage() {
                       className="w-full px-3 py-2 border border-surface-200 rounded-lg"
                       min="0"
                     />
+                    </label>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-surface-700 mb-1">Min Spend ($)</label>
+                    <label className="block text-sm font-medium text-surface-700 mb-1">Min Spend ($)
                     <input
                       type="number"
                       value={ruleForm.min_spend || 0}
@@ -613,11 +591,12 @@ export default function BirthdayRewardsPage() {
                       className="w-full px-3 py-2 border border-surface-200 rounded-lg"
                       min="0"
                     />
+                    </label>
                   </div>
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-surface-700 mb-1">Message Template</label>
+                  <label className="block text-sm font-medium text-surface-700 mb-1">Message Template
                   <textarea
                     value={ruleForm.message_template || ''}
                     onChange={(e) => setRuleForm({ ...ruleForm, message_template: e.target.value })}
@@ -625,6 +604,7 @@ export default function BirthdayRewardsPage() {
                     className="w-full px-3 py-2 border border-surface-200 rounded-lg"
                     placeholder="Happy {{occasion}}! Enjoy {{reward}} on us."
                   />
+                  </label>
                   <p className="text-xs text-surface-500 mt-1">
                     Variables: {'{{customer_name}}'}, {'{{occasion}}'}, {'{{reward}}'}, {'{{code}}'}
                   </p>
@@ -638,7 +618,7 @@ export default function BirthdayRewardsPage() {
                     onChange={(e) => setRuleForm({ ...ruleForm, is_active: e.target.checked })}
                     className="rounded border-surface-300 text-amber-500 focus:ring-amber-500"
                   />
-                  <label htmlFor="is_active" className="text-sm text-surface-700">Rule is active</label>
+                  <span className="text-sm text-surface-700">Rule is active</span>
                 </div>
               </div>
               <div className="p-6 border-t border-surface-100 flex justify-end gap-3">

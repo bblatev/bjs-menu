@@ -1,11 +1,10 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
 
-import { API_URL, getAuthHeaders } from '@/lib/api';
 
-import { toast } from '@/lib/toast';
+import { api } from '@/lib/api';
+
 // ============================================================================
 // GIFT CARDS TAB COMPONENT
 // ============================================================================
@@ -72,14 +71,8 @@ function GiftCardsTab() {
 
   const loadGiftCards = async () => {
     try {
-      const res = await fetch(`${API_URL}/gift-cards/`, {
-        credentials: 'include',
-        headers: getAuthHeaders(),
-      });
-      if (res.ok) {
-        const data = await res.json();
-        setGiftCards(data || []);
-      }
+      const data: any = await api.get('/gift-cards/');
+            setGiftCards(data || []);
     } catch (err) {
       console.error('Error loading gift cards:', err);
     } finally {
@@ -89,14 +82,8 @@ function GiftCardsTab() {
 
   const loadStats = async () => {
     try {
-      const res = await fetch(`${API_URL}/gift-cards/stats/summary`, {
-        credentials: 'include',
-        headers: getAuthHeaders(),
-      });
-      if (res.ok) {
-        const data = await res.json();
-        setStats(data);
-      }
+      const data: any = await api.get('/gift-cards/stats/summary');
+            setStats(data);
     } catch (err) {
       console.error('Error loading stats:', err);
     }
@@ -104,14 +91,8 @@ function GiftCardsTab() {
 
   const loadTransactions = async (cardId: number) => {
     try {
-      const res = await fetch(`${API_URL}/gift-cards/${cardId}/transactions`, {
-        credentials: 'include',
-        headers: getAuthHeaders(),
-      });
-      if (res.ok) {
-        const data = await res.json();
-        setTransactions(data || []);
-      }
+      const data: any = await api.get(`/gift-cards/${cardId}/transactions`);
+            setTransactions(data || []);
     } catch (err) {
       console.error('Error loading transactions:', err);
     }
@@ -119,30 +100,19 @@ function GiftCardsTab() {
 
   const createGiftCard = async () => {
     try {
-      const res = await fetch(`${API_URL}/gift-cards/`, {
-        credentials: 'include',
-        method: 'POST',
-        headers: getAuthHeaders(),
-        body: JSON.stringify(createForm),
+      await api.post('/gift-cards/', createForm);
+      setShowCreateModal(false);
+      setCreateForm({
+        amount: 50,
+        purchaser_name: '',
+        purchaser_email: '',
+        recipient_name: '',
+        recipient_email: '',
+        message: '',
+        expires_in_days: 365,
       });
-
-      if (res.ok) {
-        setShowCreateModal(false);
-        setCreateForm({
-          amount: 50,
-          purchaser_name: '',
-          purchaser_email: '',
-          recipient_name: '',
-          recipient_email: '',
-          message: '',
-          expires_in_days: 365,
-        });
-        loadGiftCards();
-        loadStats();
-      } else {
-        const error = await res.json();
-        toast.error(error.detail || 'Failed to create gift card');
-      }
+      loadGiftCards();
+      loadStats();
     } catch (err) {
       console.error('Error creating gift card:', err);
     }
@@ -152,18 +122,11 @@ function GiftCardsTab() {
     if (!confirm('Are you sure you want to cancel this gift card?')) return;
 
     try {
-      const res = await fetch(`${API_URL}/gift-cards/${cardId}/cancel`, {
-        credentials: 'include',
-        method: 'POST',
-        headers: getAuthHeaders(),
-      });
-
-      if (res.ok) {
-        loadGiftCards();
-        loadStats();
-        if (selectedCard?.id === cardId) {
-          setShowDetailsModal(false);
-        }
+      await api.post(`/gift-cards/${cardId}/cancel`);
+      loadGiftCards();
+      loadStats();
+      if (selectedCard?.id === cardId) {
+        setShowDetailsModal(false);
       }
     } catch (err) {
       console.error('Error cancelling gift card:', err);
@@ -174,19 +137,10 @@ function GiftCardsTab() {
     if (!searchCode.trim()) return;
 
     try {
-      const res = await fetch(`${API_URL}/gift-cards/lookup/${searchCode.trim()}`, {
-        credentials: 'include',
-        headers: getAuthHeaders(),
-      });
-
-      if (res.ok) {
-        const card = await res.json();
-        setSelectedCard(card);
-        loadTransactions(card.id);
-        setShowDetailsModal(true);
-      } else {
-        toast.error('Gift card not found');
-      }
+      const card: any = await api.get(`/gift-cards/lookup/${searchCode.trim()}`);
+            setSelectedCard(card);
+      loadTransactions(card.id);
+      setShowDetailsModal(true);
     } catch (err) {
       console.error('Error looking up gift card:', err);
     }
@@ -390,7 +344,7 @@ function GiftCardsTab() {
 
               <div className="space-y-4">
                 <div>
-                  <label className="block text-gray-300 mb-1">Amount (лв.) *</label>
+                  <label className="block text-gray-300 mb-1">Amount (лв.) *
                   <input
                     type="number"
                     min="1"
@@ -398,52 +352,57 @@ function GiftCardsTab() {
                     onChange={(e) => setCreateForm({ ...createForm, amount: parseFloat(e.target.value) })}
                     className="w-full px-4 py-2 bg-white border border-gray-300 rounded-lg text-gray-900"
                   />
+                  </label>
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-gray-300 mb-1">Purchaser Name</label>
+                    <label className="block text-gray-300 mb-1">Purchaser Name
                     <input
                       type="text"
                       value={createForm.purchaser_name}
                       onChange={(e) => setCreateForm({ ...createForm, purchaser_name: e.target.value })}
                       className="w-full px-4 py-2 bg-white border border-gray-300 rounded-lg text-gray-900"
                     />
+                    </label>
                   </div>
                   <div>
-                    <label className="block text-gray-300 mb-1">Purchaser Email</label>
+                    <label className="block text-gray-300 mb-1">Purchaser Email
                     <input
                       type="email"
                       value={createForm.purchaser_email}
                       onChange={(e) => setCreateForm({ ...createForm, purchaser_email: e.target.value })}
                       className="w-full px-4 py-2 bg-white border border-gray-300 rounded-lg text-gray-900"
                     />
+                    </label>
                   </div>
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-gray-300 mb-1">Recipient Name</label>
+                    <label className="block text-gray-300 mb-1">Recipient Name
                     <input
                       type="text"
                       value={createForm.recipient_name}
                       onChange={(e) => setCreateForm({ ...createForm, recipient_name: e.target.value })}
                       className="w-full px-4 py-2 bg-white border border-gray-300 rounded-lg text-gray-900"
                     />
+                    </label>
                   </div>
                   <div>
-                    <label className="block text-gray-300 mb-1">Recipient Email</label>
+                    <label className="block text-gray-300 mb-1">Recipient Email
                     <input
                       type="email"
                       value={createForm.recipient_email}
                       onChange={(e) => setCreateForm({ ...createForm, recipient_email: e.target.value })}
                       className="w-full px-4 py-2 bg-white border border-gray-300 rounded-lg text-gray-900"
                     />
+                    </label>
                   </div>
                 </div>
 
                 <div>
-                  <label className="block text-gray-300 mb-1">Gift Message</label>
+                  <label className="block text-gray-300 mb-1">Gift Message
                   <textarea
                     value={createForm.message}
                     onChange={(e) => setCreateForm({ ...createForm, message: e.target.value })}
@@ -451,10 +410,11 @@ function GiftCardsTab() {
                     rows={3}
                     placeholder="A personal message to the recipient..."
                   />
+                  </label>
                 </div>
 
                 <div>
-                  <label className="block text-gray-300 mb-1">Expires In (days)</label>
+                  <label className="block text-gray-300 mb-1">Expires In (days)
                   <select
                     value={createForm.expires_in_days}
                     onChange={(e) => setCreateForm({ ...createForm, expires_in_days: parseInt(e.target.value) })}
@@ -466,6 +426,7 @@ function GiftCardsTab() {
                     <option value={730}>2 years</option>
                     <option value={0}>Never expires</option>
                   </select>
+                  </label>
                 </div>
               </div>
 
@@ -668,7 +629,6 @@ interface Promotion {
 }
 
 export default function LoyaltyPage() {
-  const router = useRouter();
   const [activeTab, setActiveTab] = useState<'program' | 'members' | 'promotions' | 'giftcards'>('program');
   const [loading, setLoading] = useState(true);
   const [program, setProgram] = useState<LoyaltyProgram | null>(null);
@@ -697,41 +657,17 @@ export default function LoyaltyPage() {
 
   const loadData = async () => {
     try {
-      const headers = getAuthHeaders();
-      if (!headers['Authorization']) {
-        router.push('/login');
-        return;
-      }
-
       // Load loyalty program
-      const programRes = await fetch(`${API_URL}/loyalty/program`, {
-        credentials: 'include',
-        headers: getAuthHeaders(),
-      });
-      if (programRes.ok) {
-        const data = await programRes.json();
-        setProgram(data);
-      }
+      const data: any = await api.get('/loyalty/program');
+            setProgram(data);
 
       // Load members
-      const membersRes = await fetch(`${API_URL}/loyalty/members`, {
-        credentials: 'include',
-        headers: getAuthHeaders(),
-      });
-      if (membersRes.ok) {
-        const data = await membersRes.json();
-        setMembers(data.members || data || []);
-      }
+      const data_members: any = await api.get('/loyalty/members');
+            setMembers(data_members.members || data_members || []);
 
       // Load promotions
-      const promosRes = await fetch(`${API_URL}/promotions/`, {
-        credentials: 'include',
-        headers: getAuthHeaders(),
-      });
-      if (promosRes.ok) {
-        const data = await promosRes.json();
-        setPromotions(data.promotions || data || []);
-      }
+      const data_promotions: any = await api.get('/promotions/');
+            setPromotions(data_promotions.promotions || data_promotions || []);
     } catch (err) {
       console.error('Error loading data:', err);
     } finally {
@@ -741,12 +677,7 @@ export default function LoyaltyPage() {
 
   const saveProgram = async (updates: Partial<LoyaltyProgram>) => {
     try {
-      await fetch(`${API_URL}/loyalty/program`, {
-        credentials: 'include',
-        method: 'PUT',
-        headers: getAuthHeaders(),
-        body: JSON.stringify(updates),
-      });
+      await api.put('/loyalty/program', updates);
       loadData();
     } catch (err) {
       console.error('Error saving program:', err);
@@ -755,16 +686,11 @@ export default function LoyaltyPage() {
 
   const savePromotion = async () => {
     try {
-      const url = editingPromo
-        ? `${API_URL}/promotions/${editingPromo.id}`
-        : `${API_URL}/promotions/`;
-
-      await fetch(url, {
-        credentials: 'include',
-        method: editingPromo ? 'PUT' : 'POST',
-        headers: getAuthHeaders(),
-        body: JSON.stringify(promoForm),
-      });
+      if (editingPromo) {
+        await api.put(`/promotions/${editingPromo.id}`, promoForm);
+      } else {
+        await api.post('/promotions/', promoForm);
+      }
 
       setShowPromoModal(false);
       setEditingPromo(null);
@@ -777,12 +703,7 @@ export default function LoyaltyPage() {
 
   const togglePromotion = async (id: number, active: boolean) => {
     try {
-      await fetch(`${API_URL}/promotions/${id}`, {
-        credentials: 'include',
-        method: 'PUT',
-        headers: getAuthHeaders(),
-        body: JSON.stringify({ active }),
-      });
+      await api.put(`/promotions/${id}`, { active });
       loadData();
     } catch (err) {
       console.error('Error toggling promotion:', err);
@@ -792,11 +713,7 @@ export default function LoyaltyPage() {
   const deletePromotion = async (id: number) => {
     if (!confirm('Are you sure you want to delete this promotion?')) return;
     try {
-      await fetch(`${API_URL}/promotions/${id}`, {
-        credentials: 'include',
-        method: 'DELETE',
-        headers: getAuthHeaders(),
-      });
+      await api.del(`/promotions/${id}`);
       loadData();
     } catch (err) {
       console.error('Error deleting promotion:', err);
@@ -890,17 +807,18 @@ export default function LoyaltyPage() {
             <h2 className="text-xl font-bold text-gray-900 mb-4">Loyalty Program Settings</h2>
             <div className="space-y-4">
               <div>
-                <label className="block text-gray-300 mb-1">Program Name</label>
+                <label className="block text-gray-300 mb-1">Program Name
                 <input
                   type="text"
                   value={program?.name || 'BJ\'s Rewards'}
                   onChange={(e) => setProgram({ ...program!, name: e.target.value })}
                   className="w-full px-4 py-2 bg-white border border-gray-300 rounded-lg text-gray-900"
                 />
+                </label>
               </div>
 
               <div>
-                <label className="block text-gray-300 mb-1">Program Type</label>
+                <label className="block text-gray-300 mb-1">Program Type
                 <select
                   value={program?.type || 'points'}
                   onChange={(e) => setProgram({ ...program!, type: e.target.value as any })}
@@ -910,30 +828,33 @@ export default function LoyaltyPage() {
                   <option value="visits">Visit-based</option>
                   <option value="spend">Spend-based</option>
                 </select>
+                </label>
               </div>
 
               <div>
-                <label className="block text-gray-300 mb-1">Points per 1 lv. spent</label>
+                <label className="block text-gray-300 mb-1">Points per 1 lv. spent
                 <input
                   type="number"
                   value={program?.points_per_currency || 1}
                   onChange={(e) => setProgram({ ...program!, points_per_currency: parseInt(e.target.value) })}
                   className="w-full px-4 py-2 bg-white border border-gray-300 rounded-lg text-gray-900"
                 />
+                </label>
               </div>
 
               <div>
-                <label className="block text-gray-300 mb-1">Points needed for reward</label>
+                <label className="block text-gray-300 mb-1">Points needed for reward
                 <input
                   type="number"
                   value={program?.points_to_reward || 100}
                   onChange={(e) => setProgram({ ...program!, points_to_reward: parseInt(e.target.value) })}
                   className="w-full px-4 py-2 bg-white border border-gray-300 rounded-lg text-gray-900"
                 />
+                </label>
               </div>
 
               <div>
-                <label className="block text-gray-300 mb-1">Reward value (lv.)</label>
+                <label className="block text-gray-300 mb-1">Reward value (lv.)
                 <input
                   type="number"
                   step="0.01"
@@ -941,6 +862,7 @@ export default function LoyaltyPage() {
                   onChange={(e) => setProgram({ ...program!, reward_value: parseFloat(e.target.value) })}
                   className="w-full px-4 py-2 bg-white border border-gray-300 rounded-lg text-gray-900"
                 />
+                </label>
               </div>
 
               <div className="flex items-center gap-2">
@@ -1157,7 +1079,7 @@ export default function LoyaltyPage() {
 
               <div className="space-y-4">
                 <div>
-                  <label className="block text-gray-300 mb-1">Name *</label>
+                  <label className="block text-gray-300 mb-1">Name *
                   <input
                     type="text"
                     value={promoForm.name}
@@ -1165,21 +1087,23 @@ export default function LoyaltyPage() {
                     className="w-full px-4 py-2 bg-white border border-gray-300 rounded-lg text-gray-900"
                     placeholder="e.g., Happy Hour 20% OFF"
                   />
+                  </label>
                 </div>
 
                 <div>
-                  <label className="block text-gray-300 mb-1">Description</label>
+                  <label className="block text-gray-300 mb-1">Description
                   <textarea
                     value={promoForm.description}
                     onChange={(e) => setPromoForm({ ...promoForm, description: e.target.value })}
                     className="w-full px-4 py-2 bg-white border border-gray-300 rounded-lg text-gray-900"
                     rows={2}
                   />
+                  </label>
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-gray-300 mb-1">Type</label>
+                    <label className="block text-gray-300 mb-1">Type
                     <select
                       value={promoForm.type}
                       onChange={(e) => setPromoForm({ ...promoForm, type: e.target.value as any })}
@@ -1190,20 +1114,22 @@ export default function LoyaltyPage() {
                       <option value="bogo">Buy One Get One</option>
                       <option value="freebie">Free Item</option>
                     </select>
+                    </label>
                   </div>
                   <div>
-                    <label className="block text-gray-300 mb-1">Value</label>
+                    <label className="block text-gray-300 mb-1">Value
                     <input
                       type="number"
                       value={promoForm.value}
                       onChange={(e) => setPromoForm({ ...promoForm, value: parseFloat(e.target.value) })}
                       className="w-full px-4 py-2 bg-white border border-gray-300 rounded-lg text-gray-900"
                     />
+                    </label>
                   </div>
                 </div>
 
                 <div>
-                  <label className="block text-gray-300 mb-1">Promo Code (optional)</label>
+                  <label className="block text-gray-300 mb-1">Promo Code (optional)
                   <input
                     type="text"
                     value={promoForm.code}
@@ -1211,47 +1137,52 @@ export default function LoyaltyPage() {
                     className="w-full px-4 py-2 bg-white border border-gray-300 rounded-lg text-gray-900 font-mono"
                     placeholder="e.g., SUMMER20"
                   />
+                  </label>
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-gray-300 mb-1">Start Date</label>
+                    <label className="block text-gray-300 mb-1">Start Date
                     <input
                       type="date"
                       value={promoForm.start_date}
                       onChange={(e) => setPromoForm({ ...promoForm, start_date: e.target.value })}
                       className="w-full px-4 py-2 bg-white border border-gray-300 rounded-lg text-gray-900"
                     />
+                    </label>
                   </div>
                   <div>
-                    <label className="block text-gray-300 mb-1">End Date</label>
+                    <label className="block text-gray-300 mb-1">End Date
                     <input
                       type="date"
                       value={promoForm.end_date}
                       onChange={(e) => setPromoForm({ ...promoForm, end_date: e.target.value })}
                       className="w-full px-4 py-2 bg-white border border-gray-300 rounded-lg text-gray-900"
                     />
+                    </label>
                   </div>
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-gray-300 mb-1">Min Order (lv.)</label>
+                    <label className="block text-gray-300 mb-1">Min Order (lv.)
                     <input
                       type="number"
                       value={promoForm.min_order_amount}
                       onChange={(e) => setPromoForm({ ...promoForm, min_order_amount: parseFloat(e.target.value) })}
                       className="w-full px-4 py-2 bg-white border border-gray-300 rounded-lg text-gray-900"
                     />
+                    </label>
                   </div>
                   <div>
-                    <label className="block text-gray-300 mb-1">Max Uses (0=unlimited)</label>
+                    <label className="block text-gray-300 mb-1">Max Uses (0=unlimited)
                     <input
                       type="number"
                       value={promoForm.max_uses}
                       onChange={(e) => setPromoForm({ ...promoForm, max_uses: parseInt(e.target.value) })}
                       className="w-full px-4 py-2 bg-white border border-gray-300 rounded-lg text-gray-900"
                     />
+                    </label>
                   </div>
                 </div>
               </div>

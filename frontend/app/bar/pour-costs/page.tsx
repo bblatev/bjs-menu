@@ -1,9 +1,8 @@
 'use client';
-
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
-import { API_URL, getAuthHeaders } from '@/lib/api';
 
+import { api } from '@/lib/api';
 interface PourCostItem {
   id: number;
   name: string;
@@ -20,7 +19,6 @@ interface PourCostItem {
   sold_today: number;
   revenue_today: number;
 }
-
 interface CategorySummary {
   category: string;
   items: number;
@@ -30,7 +28,6 @@ interface CategorySummary {
   revenue: number;
   profit: number;
 }
-
 const CATEGORIES = [
   { value: 'spirits', label: 'Spirits', icon: '🥃', target: 22 },
   { value: 'beer', label: 'Beer', icon: '🍺', target: 20 },
@@ -38,7 +35,6 @@ const CATEGORIES = [
   { value: 'cocktails', label: 'Cocktails', icon: '🍸', target: 25 },
   { value: 'non_alcoholic', label: 'Non-Alcoholic', icon: '🥤', target: 18 },
 ];
-
 export default function PourCostsPage() {
   const [items, setItems] = useState<PourCostItem[]>([]);
   const [categorySummaries, setCategorySummaries] = useState<CategorySummary[]>([]);
@@ -48,7 +44,6 @@ export default function PourCostsPage() {
   const [showModal, setShowModal] = useState(false);
   const [sortBy, setSortBy] = useState<'name' | 'pour_cost' | 'variance' | 'revenue'>('pour_cost');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
-
   const [newItem, setNewItem] = useState({
     name: '',
     category: 'spirits' as PourCostItem['category'],
@@ -58,35 +53,22 @@ export default function PourCostsPage() {
     sell_price: 0,
     ideal_pour_cost: 22,
   });
-
   const fetchPourCosts = useCallback(async () => {
     setIsLoading(true);
     try {
-      const headers = getAuthHeaders();
-      const response = await fetch(`${API_URL}/bar/pour-costs/summary`, {
-        credentials: 'include',
-        headers,
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        setItems(data.items || []);
-        setCategorySummaries(data.summaries || []);
-      } else {
-        console.error('Failed to load pour costs:', response.status);
-      }
+      const data: any = await api.get('/bar/pour-costs/summary');
+            setItems(data.items || []);
+      setCategorySummaries(data.summaries || []);
     } catch (err) {
       console.error('Failed to fetch pour costs:', err);
     } finally {
       setIsLoading(false);
     }
   }, []);
-
   useEffect(() => {
     fetchPourCosts();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-
   // Loading state
   if (isLoading) {
     return (
@@ -100,7 +82,6 @@ export default function PourCostsPage() {
       </div>
     );
   }
-
   const getPourCostColor = (cost: number, target?: number) => {
     if (target) {
       if (cost <= target - 3) return 'text-success-600';
@@ -113,14 +94,12 @@ export default function PourCostsPage() {
     if (cost <= 30) return 'text-warning-600';
     return 'text-error-600';
   };
-
   const getVarianceColor = (variance: number) => {
     if (variance <= -3) return 'text-success-600 bg-success-50';
     if (variance < 0) return 'text-success-600 bg-success-50';
     if (variance <= 2) return 'text-warning-600 bg-warning-50';
     return 'text-error-600 bg-error-50';
   };
-
   const filteredItems = items
     .filter(item => selectedCategory === 'all' || item.category === selectedCategory)
     .filter(item => (item.name ?? '').toLowerCase().includes(searchQuery.toLowerCase()))
@@ -142,12 +121,10 @@ export default function PourCostsPage() {
       }
       return sortOrder === 'asc' ? comparison : -comparison;
     });
-
   const handleAddItem = () => {
     const poursPerBottle = parseFloat(newItem.size) / parseFloat(newItem.pour_size.replace('ml', ''));
     const costPerPour = newItem.bottle_cost / poursPerBottle;
     const pourCostPercentage = (costPerPour / newItem.sell_price) * 100;
-
     const item: PourCostItem = {
       id: items.length + 1,
       name: newItem.name,
@@ -164,7 +141,6 @@ export default function PourCostsPage() {
       sold_today: 0,
       revenue_today: 0,
     };
-
     setItems([...items, item]);
     setShowModal(false);
     setNewItem({
@@ -177,11 +153,9 @@ export default function PourCostsPage() {
       ideal_pour_cost: 22,
     });
   };
-
   const totalRevenue = filteredItems.reduce((sum, item) => sum + (item.revenue_today || 0), 0);
   const totalCost = filteredItems.reduce((sum, item) => sum + ((item.cost_per_pour || 0) * (item.sold_today || 0)), 0);
   const overallPourCost = totalRevenue > 0 ? (totalCost / totalRevenue) * 100 : 0;
-
   return (
     <div className="p-6 max-w-7xl mx-auto">
       {/* Header */}
@@ -210,7 +184,6 @@ export default function PourCostsPage() {
           Add Item
         </button>
       </div>
-
       {/* Summary Stats */}
       <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
         <div className="bg-white p-4 rounded-xl border border-surface-200 shadow-sm">
@@ -238,7 +211,6 @@ export default function PourCostsPage() {
           </p>
         </div>
       </div>
-
       {/* Category Summary */}
       <div className="bg-white rounded-xl border border-surface-200 shadow-sm mb-6 overflow-hidden">
         <div className="p-4 border-b border-surface-200">
@@ -287,7 +259,6 @@ export default function PourCostsPage() {
           </table>
         </div>
       </div>
-
       {/* Filters */}
       <div className="flex flex-wrap items-center gap-4 mb-4">
         <div className="flex items-center gap-2 flex-wrap">
@@ -341,7 +312,6 @@ export default function PourCostsPage() {
           <option value="name-asc">Name A-Z</option>
         </select>
       </div>
-
       {/* Items Table */}
       <div className="bg-white rounded-xl border border-surface-200 shadow-sm overflow-hidden">
         <div className="overflow-x-auto">
@@ -409,7 +379,6 @@ export default function PourCostsPage() {
           </table>
         </div>
       </div>
-
       {/* Add Item Modal */}
       {showModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
@@ -419,7 +388,7 @@ export default function PourCostsPage() {
             </div>
             <div className="p-6 space-y-4">
               <div>
-                <label className="block text-sm font-medium text-surface-700 mb-1">Item Name</label>
+                <label className="block text-sm font-medium text-surface-700 mb-1">Item Name
                 <input
                   type="text"
                   value={newItem.name}
@@ -427,10 +396,11 @@ export default function PourCostsPage() {
                   className="w-full px-4 py-2 border border-surface-300 rounded-lg focus:ring-2 focus:ring-primary-500"
                   placeholder="e.g., Grey Goose Vodka"
                 />
+                </label>
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-surface-700 mb-1">Category</label>
+                  <label className="block text-sm font-medium text-surface-700 mb-1">Category
                   <select
                     value={newItem.category}
                     onChange={(e) => setNewItem({ ...newItem, category: e.target.value as PourCostItem['category'] })}
@@ -440,9 +410,10 @@ export default function PourCostsPage() {
                       <option key={cat.value} value={cat.value}>{cat.icon} {cat.label}</option>
                     ))}
                   </select>
+                  </label>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-surface-700 mb-1">Bottle Size</label>
+                  <label className="block text-sm font-medium text-surface-700 mb-1">Bottle Size
                   <select
                     value={newItem.size}
                     onChange={(e) => setNewItem({ ...newItem, size: e.target.value })}
@@ -454,11 +425,12 @@ export default function PourCostsPage() {
                     <option value="1.5L">1.5L (1500ml)</option>
                     <option value="recipe">Recipe (Cocktail)</option>
                   </select>
+                  </label>
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-surface-700 mb-1">Bottle Cost ($)</label>
+                  <label className="block text-sm font-medium text-surface-700 mb-1">Bottle Cost ($)
                   <input
                     type="number"
                     step="0.01"
@@ -467,9 +439,10 @@ export default function PourCostsPage() {
                     className="w-full px-4 py-2 border border-surface-300 rounded-lg focus:ring-2 focus:ring-primary-500"
                     placeholder="0.00"
                   />
+                  </label>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-surface-700 mb-1">Pour Size</label>
+                  <label className="block text-sm font-medium text-surface-700 mb-1">Pour Size
                   <select
                     value={newItem.pour_size}
                     onChange={(e) => setNewItem({ ...newItem, pour_size: e.target.value })}
@@ -482,11 +455,12 @@ export default function PourCostsPage() {
                     <option value="330ml">330ml (Bottle Beer)</option>
                     <option value="500ml">500ml (Draft Beer)</option>
                   </select>
+                  </label>
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-surface-700 mb-1">Sell Price ($)</label>
+                  <label className="block text-sm font-medium text-surface-700 mb-1">Sell Price ($)
                   <input
                     type="number"
                     step="0.01"
@@ -495,15 +469,17 @@ export default function PourCostsPage() {
                     className="w-full px-4 py-2 border border-surface-300 rounded-lg focus:ring-2 focus:ring-primary-500"
                     placeholder="0.00"
                   />
+                  </label>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-surface-700 mb-1">Target Pour Cost (%)</label>
+                  <label className="block text-sm font-medium text-surface-700 mb-1">Target Pour Cost (%)
                   <input
                     type="number"
                     value={newItem.ideal_pour_cost}
                     onChange={(e) => setNewItem({ ...newItem, ideal_pour_cost: parseInt(e.target.value) || 0 })}
                     className="w-full px-4 py-2 border border-surface-300 rounded-lg focus:ring-2 focus:ring-primary-500"
                   />
+                  </label>
                 </div>
               </div>
               {/* Preview Calculation */}

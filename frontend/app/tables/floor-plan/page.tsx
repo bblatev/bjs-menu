@@ -494,7 +494,7 @@ export default function FloorPlanEditor() {
             <div className="bg-white rounded-2xl border border-surface-200 p-6 text-left">
               <h3 className="font-semibold mb-4">Нов План</h3>
               <div className="mb-4">
-                <label className="block text-sm font-medium text-surface-700 mb-1">Име на плана</label>
+                <label className="block text-sm font-medium text-surface-700 mb-1">Име на плана
                 <input
                   type="text"
                   value={newPlanName}
@@ -502,6 +502,7 @@ export default function FloorPlanEditor() {
                   className="w-full px-4 py-3 border border-surface-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500"
                   placeholder="напр. Основна зала"
                 />
+                </label>
               </div>
               <p className="text-sm text-surface-500 mb-4">
                 {allTables.length} маси ще бъдат добавени автоматично.
@@ -588,8 +589,9 @@ export default function FloorPlanEditor() {
               <span className="text-sm">Прилепване</span>
             </label>
             <div className="mt-3">
-              <label className="text-sm text-surface-600 block mb-1">Мащаб</label>
+              <label className="text-sm text-surface-600 block mb-1">Мащаб
               <input type="range" min="0.5" max="2" step="0.1" value={zoom} onChange={e => setZoom(parseFloat(e.target.value))} className="w-full" />
+              </label>
               <div className="text-center text-sm text-surface-500">{Math.round(zoom * 100)}%</div>
             </div>
           </div>
@@ -600,22 +602,24 @@ export default function FloorPlanEditor() {
               <h3 className="font-semibold mb-3">Свойства</h3>
               <div className="space-y-3">
                 <div>
-                  <label className="text-sm text-surface-600 block mb-1">Маса</label>
+                  <span className="text-sm text-surface-600 block mb-1">Маса</span>
                   <div className="px-3 py-2 rounded-lg border border-surface-200 bg-surface-50 text-surface-700">
                     {selectedTable.table_number}
                   </div>
                 </div>
                 <div>
-                  <label className="text-sm text-surface-600 block mb-1">Форма</label>
+                  <label className="text-sm text-surface-600 block mb-1">Форма
                   <select value={selectedTable.shape} onChange={e => updateSelectedTable({ shape: e.target.value as any })} className="w-full px-3 py-2 rounded-lg border border-surface-200">
                     <option value="rectangle">Правоъгълник</option>
                     <option value="square">Квадрат</option>
                     <option value="circle">Кръг</option>
                   </select>
+                  </label>
                 </div>
                 <div>
-                  <label className="text-sm text-surface-600 block mb-1">Завъртане</label>
+                  <label className="text-sm text-surface-600 block mb-1">Завъртане
                   <input type="range" min="0" max="360" step="15" value={selectedTable.rotation} onChange={e => updateSelectedTable({ rotation: parseInt(e.target.value) })} className="w-full" />
+                  </label>
                   <div className="text-center text-sm text-surface-500">{selectedTable.rotation}°</div>
                 </div>
               </div>

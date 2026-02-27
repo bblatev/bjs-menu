@@ -2,9 +2,11 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useParams } from 'next/navigation';
-import { API_URL } from '@/lib/api';
+
 
 import { toast } from '@/lib/toast';
+
+import { api } from '@/lib/api';
 interface MenuItem {
   id: number;
   name: string;
@@ -85,11 +87,8 @@ export default function TableOrderPage() {
 
   const loadTableOrders = useCallback(async () => {
     try {
-      const response = await fetch(`${API_URL}/orders/table/${token}`, { credentials: 'include' });
-      if (response.ok) {
-        const data = await response.json();
-        setTableOrders(data.orders || []);
-      }
+      const data: any = await api.get(`/orders/table/${token}`);
+            setTableOrders(data.orders || []);
     } catch (err) {
       console.error('Error loading orders:', err);
     }
@@ -105,46 +104,41 @@ export default function TableOrderPage() {
 
   const loadData = async () => {
     try {
-      const menuRes = await fetch(`${API_URL}/menu/table/${token}`, { credentials: 'include' });
-      if (menuRes.ok) {
-        const menuData = await menuRes.json();
-        if (menuData.table) {
-          setTableInfo({
-            id: menuData.table.id || 1,
-            number: menuData.table.number || token,
-            seats: menuData.table.capacity || 4
-          });
-        } else {
-          const tableNumber = token.replace('table', '').replace('-token', '') || '1';
-          setTableInfo({ id: parseInt(tableNumber) || 1, number: tableNumber, seats: 4 });
-        }
-
-        const cats: Category[] = [];
-        const rawCategories = menuData.categories || menuData.menu?.categories || [];
-        if (Array.isArray(rawCategories)) {
-          rawCategories.forEach((cat: any) => {
-            const items: MenuItem[] = (cat.items || []).map((item: any) => ({
-              id: item.id,
-              name: (item.name && typeof item.name === 'object') ? (item.name.bg || item.name.en || Object.values(item.name)[0]) : (item.name || ''),
-              description: (item.description && typeof item.description === 'object') ? (item.description.bg || item.description.en || Object.values(item.description)[0] || '') : (item.description || ''),
-              price: item.price || 0,
-              image_url: item.image || item.image_url || item.images?.[0]?.url || item.primary_image_url,
-              category: (cat.name && typeof cat.name === 'object') ? (cat.name.bg || cat.name.en || Object.values(cat.name)[0]) : (cat.name || ''),
-              available: item.available !== false,
-            }));
-            if (items.length > 0) {
-              cats.push({
-                id: cat.id,
-                name: (cat.name && typeof cat.name === 'object') ? (cat.name.bg || cat.name.en || Object.values(cat.name)[0]) : (cat.name || ''),
-                items,
-              });
-            }
-          });
-        }
-        setCategories(cats);
+      const menuData: any = await api.get(`/menu/table/${token}`);
+            if (menuData.table) {
+      setTableInfo({
+        id: menuData.table.id || 1,
+        number: menuData.table.number || token,
+        seats: menuData.table.capacity || 4
+      });
       } else {
-        setError('Menu is currently unavailable. Please ask your server for assistance.');
+      const tableNumber = token.replace('table', '').replace('-token', '') || '1';
+      setTableInfo({ id: parseInt(tableNumber) || 1, number: tableNumber, seats: 4 });
       }
+
+      const cats: Category[] = [];
+      const rawCategories = menuData.categories || menuData.menu?.categories || [];
+      if (Array.isArray(rawCategories)) {
+      rawCategories.forEach((cat: any) => {
+        const items: MenuItem[] = (cat.items || []).map((item: any) => ({
+          id: item.id,
+          name: (item.name && typeof item.name === 'object') ? (item.name.bg || item.name.en || Object.values(item.name)[0]) : (item.name || ''),
+          description: (item.description && typeof item.description === 'object') ? (item.description.bg || item.description.en || Object.values(item.description)[0] || '') : (item.description || ''),
+          price: item.price || 0,
+          image_url: item.image || item.image_url || item.images?.[0]?.url || item.primary_image_url,
+          category: (cat.name && typeof cat.name === 'object') ? (cat.name.bg || cat.name.en || Object.values(cat.name)[0]) : (cat.name || ''),
+          available: item.available !== false,
+        }));
+        if (items.length > 0) {
+          cats.push({
+            id: cat.id,
+            name: (cat.name && typeof cat.name === 'object') ? (cat.name.bg || cat.name.en || Object.values(cat.name)[0]) : (cat.name || ''),
+            items,
+          });
+        }
+      });
+      }
+      setCategories(cats);
     } catch (err) {
       console.error('Error loading data:', err);
       setError('Unable to load menu. Please check your connection or ask your server for assistance.');
@@ -206,22 +200,11 @@ export default function TableOrderPage() {
         notes: '',
         order_type: 'dine-in',
       };
-      const response = await fetch(`${API_URL}/orders/guest`, {
-        credentials: 'include',
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(orderData),
-      });
-      if (response.ok) {
-        await response.json();
-        setOrderPlaced(true);
-        setCart([]);
-        setShowCart(false);
-        loadTableOrders();
-      } else {
-        const errorData = await response.json().catch(() => ({}));
-        toast.error(`Failed to place order: ${errorData.detail || 'Please try again.'}`);
-      }
+      await api.post('/orders/guest', orderData);
+      setOrderPlaced(true);
+      setCart([]);
+      setShowCart(false);
+      loadTableOrders();
     } catch (err) {
       console.error('Error placing order:', err);
       toast.error('Failed to place order. Please check your connection.');
@@ -232,11 +215,8 @@ export default function TableOrderPage() {
 
   const loadPaymentSummary = async () => {
     try {
-      const response = await fetch(`${API_URL}/orders/table/${token}/payment-summary`, { credentials: 'include' });
-      if (response.ok) {
-        const data = await response.json();
-        setPaymentSummary(data);
-      }
+      const data: any = await api.get(`/orders/table/${token}/payment-summary`);
+            setPaymentSummary(data);
     } catch (err) {
       console.error('Error loading payment summary:', err);
     }
@@ -251,27 +231,17 @@ export default function TableOrderPage() {
     setProcessingPayment(true);
     try {
       const tipAmount = customTip ? parseFloat(customTip) : (balanceDue * selectedTip / 100);
-      const response = await fetch(`${API_URL}/orders/table/${token}/pay-all?payment_method=${paymentMethod}&tip_percent=${customTip ? 0 : selectedTip}&tip_amount=${customTip ? tipAmount : 0}`, {
-        credentials: 'include',
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+      const result: any = await api.post(`/orders/table/${token}/pay-all?payment_method=${paymentMethod}&tip_percent=${customTip ? 0 : selectedTip}&tip_amount=${customTip ? tipAmount : 0}`);
+            setPaymentComplete(true);
+      setReceipt({
+      orders_paid: result.orders_paid,
+      subtotal: paymentSummary?.subtotal || (balanceDue * 0.92),
+      tax: paymentSummary?.tax || (balanceDue * 0.08),
+      tip: result.tip,
+      total_charged: result.total_charged,
+      payment_method: result.payment_method,
       });
-      if (response.ok) {
-        const result = await response.json();
-        setPaymentComplete(true);
-        setReceipt({
-          orders_paid: result.orders_paid,
-          subtotal: paymentSummary?.subtotal || (balanceDue * 0.92),
-          tax: paymentSummary?.tax || (balanceDue * 0.08),
-          tip: result.tip,
-          total_charged: result.total_charged,
-          payment_method: result.payment_method,
-        });
-        loadTableOrders();
-      } else {
-        const errorData = await response.json().catch(() => ({}));
-        toast.error(`Payment failed: ${errorData.detail || 'Please try again or ask your server.'}`);
-      }
+      loadTableOrders();
     } catch (err) {
       console.error('Error processing payment:', err);
       toast.error('Payment failed. Please ask your server for assistance.');
@@ -282,23 +252,14 @@ export default function TableOrderPage() {
 
   const requestWaiterForBill = async () => {
     try {
-      const response = await fetch(`${API_URL}/waiter/calls`, {
-        credentials: 'include',
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
+      await api.post('/waiter/calls', {
           table_id: tableInfo?.id || 1,
           table_number: tableInfo?.number || token,
           call_type: 'check',
           message: 'Guest requesting bill/payment',
-        }),
-      });
-      if (response.ok) {
-        setPaymentRequested(true);
-        setShowPayment(false);
-      } else {
-        toast.error('Failed to request payment. Please ask your server.');
-      }
+        });
+      setPaymentRequested(true);
+      setShowPayment(false);
     } catch (err) {
       toast.error('Failed to request payment. Please ask your server.');
     }
@@ -863,7 +824,7 @@ export default function TableOrderPage() {
 
               {/* Tip */}
               <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2.5">Add a tip</label>
+                <span className="block text-sm font-semibold text-gray-700 mb-2.5">Add a tip</span>
                 <div className="grid grid-cols-4 gap-2 mb-3">
                   {[0, 10, 15, 20].map(tip => (
                     <button
@@ -896,7 +857,7 @@ export default function TableOrderPage() {
 
               {/* Payment method */}
               <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2.5">Payment method</label>
+                <span className="block text-sm font-semibold text-gray-700 mb-2.5">Payment method</span>
                 <div className="grid grid-cols-2 gap-2">
                   {[
                     { id: 'card', label: 'Card', icon: '💳' },

@@ -375,36 +375,40 @@ export default function InvoiceUploadPage() {
             <h3 className="font-semibold text-surface-900 mb-4">Invoice Details</h3>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               <div>
-                <label className="block text-sm text-surface-500 mb-1">Invoice Number</label>
+                <label className="block text-sm text-surface-500 mb-1">Invoice Number
                 <input
                   type="text"
                   value={extractedData.invoice_number}
                   className="w-full px-3 py-2 border border-surface-300 rounded-lg focus:ring-2 focus:ring-primary-500"
                 />
+                </label>
               </div>
               <div>
-                <label className="block text-sm text-surface-500 mb-1">Supplier</label>
+                <label className="block text-sm text-surface-500 mb-1">Supplier
                 <input
                   type="text"
                   value={extractedData.supplier_name}
                   className="w-full px-3 py-2 border border-surface-300 rounded-lg focus:ring-2 focus:ring-primary-500"
                 />
+                </label>
               </div>
               <div>
-                <label className="block text-sm text-surface-500 mb-1">Invoice Date</label>
+                <label className="block text-sm text-surface-500 mb-1">Invoice Date
                 <input
                   type="date"
                   value={extractedData.invoice_date}
                   className="w-full px-3 py-2 border border-surface-300 rounded-lg focus:ring-2 focus:ring-primary-500"
                 />
+                </label>
               </div>
               <div>
-                <label className="block text-sm text-surface-500 mb-1">Due Date</label>
+                <label className="block text-sm text-surface-500 mb-1">Due Date
                 <input
                   type="date"
                   value={extractedData.due_date}
                   className="w-full px-3 py-2 border border-surface-300 rounded-lg focus:ring-2 focus:ring-primary-500"
                 />
+                </label>
               </div>
             </div>
           </div>
@@ -562,9 +566,9 @@ export default function InvoiceUploadPage() {
             <div className="mt-6 p-4 bg-primary-50 rounded-lg">
               <div className="flex items-center gap-2">
                 <input type="checkbox" id="remember" className="rounded text-primary-600" defaultChecked />
-                <label htmlFor="remember" className="text-sm text-primary-900">
+                <span className="text-sm text-primary-900">
                   Remember these mappings for future invoices from this supplier
-                </label>
+                </span>
               </div>
             </div>
           </div>

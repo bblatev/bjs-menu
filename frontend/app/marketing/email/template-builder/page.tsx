@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Link from 'next/link';
 
-import { API_URL, getAuthHeaders } from '@/lib/api';
+import { api } from '@/lib/api';
 
 /** Escape HTML special characters to prevent XSS in template preview */
 function escapeHtml(str: string): string {
@@ -116,14 +116,8 @@ export default function TemplateBuilderPage() {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch(`${API_URL}/email-campaigns/templates`, {
-        credentials: 'include',
-        headers: getAuthHeaders(),
-      });
-      if (res.ok) {
-        const data = await res.json();
-        setTemplates(data);
-      }
+      const data: any = await api.get('/email-campaigns/templates');
+            setTemplates(data);
     } catch (err) {
       console.error('Error loading templates:', err);
       setError('Failed to load email templates. Please try again.');
@@ -270,23 +264,14 @@ export default function TemplateBuilderPage() {
         global_styles: template.global_styles,
       };
 
-      const method = template.template_id ? 'PUT' : 'POST';
-      const url = template.template_id
-        ? `${API_URL}/email-campaigns/templates/${template.template_id}`
-        : `${API_URL}/email-campaigns/templates`;
-
-      const res = await fetch(url, {
-        credentials: 'include',
-        method,
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      });
-
-      if (res.ok) {
-        const saved = await res.json();
-        setTemplate({ ...template, template_id: saved.template_id });
-        loadTemplates();
+      let saved: any;
+      if (template.template_id) {
+        saved = await api.put(`/email-campaigns/templates/${template.template_id}`, payload);
+      } else {
+        saved = await api.post('/email-campaigns/templates', payload);
       }
+      setTemplate({ ...template, template_id: saved.template_id });
+      loadTemplates();
     } catch (error) {
       console.error('Error saving template:', error);
     } finally {
@@ -408,22 +393,24 @@ export default function TemplateBuilderPage() {
             {/* Subject & Preview */}
             <div className="bg-white rounded-xl p-4 mb-4 border border-surface-200">
               <div className="mb-3">
-                <label className="block text-sm font-medium text-surface-700 mb-1">Subject Line</label>
+                <label className="block text-sm font-medium text-surface-700 mb-1">Subject Line
                 <input
                   type="text"
                   value={template.subject}
                   onChange={(e) => setTemplate({ ...template, subject: e.target.value })}
                   className="w-full px-3 py-2 border border-surface-200 rounded-lg focus:ring-2 focus:ring-amber-500"
                 />
+                </label>
               </div>
               <div>
-                <label className="block text-sm font-medium text-surface-700 mb-1">Preview Text</label>
+                <label className="block text-sm font-medium text-surface-700 mb-1">Preview Text
                 <input
                   type="text"
                   value={template.preview_text}
                   onChange={(e) => setTemplate({ ...template, preview_text: e.target.value })}
                   className="w-full px-3 py-2 border border-surface-200 rounded-lg focus:ring-2 focus:ring-amber-500"
                 />
+                </label>
               </div>
             </div>
 
@@ -513,7 +500,7 @@ export default function TemplateBuilderPage() {
                 {selectedBlockData.type === 'header' && (
                   <>
                     <div>
-                      <label className="block text-sm font-medium text-surface-700 mb-1">Logo URL</label>
+                      <label className="block text-sm font-medium text-surface-700 mb-1">Logo URL
                       <input
                         type="text"
                         value={selectedBlockData.content.logo_url || ''}
@@ -521,35 +508,38 @@ export default function TemplateBuilderPage() {
                         className="w-full px-3 py-2 border border-surface-200 rounded-lg text-sm"
                         placeholder="https://..."
                       />
+                      </label>
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-surface-700 mb-1">Title</label>
+                      <label className="block text-sm font-medium text-surface-700 mb-1">Title
                       <input
                         type="text"
                         value={selectedBlockData.content.title || ''}
                         onChange={(e) => updateBlock(selectedBlockData.block_id, { ...selectedBlockData.content, title: e.target.value })}
                         className="w-full px-3 py-2 border border-surface-200 rounded-lg text-sm"
                       />
+                      </label>
                     </div>
                   </>
                 )}
 
                 {selectedBlockData.type === 'text' && (
                   <div>
-                    <label className="block text-sm font-medium text-surface-700 mb-1">Content</label>
+                    <label className="block text-sm font-medium text-surface-700 mb-1">Content
                     <textarea
                       value={selectedBlockData.content.text || ''}
                       onChange={(e) => updateBlock(selectedBlockData.block_id, { ...selectedBlockData.content, text: e.target.value })}
                       rows={6}
                       className="w-full px-3 py-2 border border-surface-200 rounded-lg text-sm"
                     />
+                    </label>
                   </div>
                 )}
 
                 {selectedBlockData.type === 'image' && (
                   <>
                     <div>
-                      <label className="block text-sm font-medium text-surface-700 mb-1">Image URL</label>
+                      <label className="block text-sm font-medium text-surface-700 mb-1">Image URL
                       <input
                         type="text"
                         value={selectedBlockData.content.url || ''}
@@ -557,15 +547,17 @@ export default function TemplateBuilderPage() {
                         className="w-full px-3 py-2 border border-surface-200 rounded-lg text-sm"
                         placeholder="https://..."
                       />
+                      </label>
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-surface-700 mb-1">Alt Text</label>
+                      <label className="block text-sm font-medium text-surface-700 mb-1">Alt Text
                       <input
                         type="text"
                         value={selectedBlockData.content.alt || ''}
                         onChange={(e) => updateBlock(selectedBlockData.block_id, { ...selectedBlockData.content, alt: e.target.value })}
                         className="w-full px-3 py-2 border border-surface-200 rounded-lg text-sm"
                       />
+                      </label>
                     </div>
                   </>
                 )}
@@ -573,16 +565,17 @@ export default function TemplateBuilderPage() {
                 {selectedBlockData.type === 'button' && (
                   <>
                     <div>
-                      <label className="block text-sm font-medium text-surface-700 mb-1">Button Text</label>
+                      <label className="block text-sm font-medium text-surface-700 mb-1">Button Text
                       <input
                         type="text"
                         value={selectedBlockData.content.text || ''}
                         onChange={(e) => updateBlock(selectedBlockData.block_id, { ...selectedBlockData.content, text: e.target.value })}
                         className="w-full px-3 py-2 border border-surface-200 rounded-lg text-sm"
                       />
+                      </label>
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-surface-700 mb-1">Link URL</label>
+                      <label className="block text-sm font-medium text-surface-700 mb-1">Link URL
                       <input
                         type="text"
                         value={selectedBlockData.content.url || ''}
@@ -590,6 +583,7 @@ export default function TemplateBuilderPage() {
                         className="w-full px-3 py-2 border border-surface-200 rounded-lg text-sm"
                         placeholder="https://..."
                       />
+                      </label>
                     </div>
                   </>
                 )}
@@ -597,16 +591,17 @@ export default function TemplateBuilderPage() {
                 {selectedBlockData.type === 'coupon' && (
                   <>
                     <div>
-                      <label className="block text-sm font-medium text-surface-700 mb-1">Coupon Code</label>
+                      <label className="block text-sm font-medium text-surface-700 mb-1">Coupon Code
                       <input
                         type="text"
                         value={selectedBlockData.content.code || ''}
                         onChange={(e) => updateBlock(selectedBlockData.block_id, { ...selectedBlockData.content, code: e.target.value })}
                         className="w-full px-3 py-2 border border-surface-200 rounded-lg text-sm font-mono"
                       />
+                      </label>
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-surface-700 mb-1">Discount</label>
+                      <label className="block text-sm font-medium text-surface-700 mb-1">Discount
                       <input
                         type="text"
                         value={selectedBlockData.content.discount || ''}
@@ -614,18 +609,20 @@ export default function TemplateBuilderPage() {
                         className="w-full px-3 py-2 border border-surface-200 rounded-lg text-sm"
                         placeholder="e.g., 20% OFF"
                       />
+                      </label>
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-surface-700 mb-1">Description</label>
+                      <label className="block text-sm font-medium text-surface-700 mb-1">Description
                       <input
                         type="text"
                         value={selectedBlockData.content.description || ''}
                         onChange={(e) => updateBlock(selectedBlockData.block_id, { ...selectedBlockData.content, description: e.target.value })}
                         className="w-full px-3 py-2 border border-surface-200 rounded-lg text-sm"
                       />
+                      </label>
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-surface-700 mb-1">Expires</label>
+                      <label className="block text-sm font-medium text-surface-700 mb-1">Expires
                       <input
                         type="text"
                         value={selectedBlockData.content.expires || ''}
@@ -633,6 +630,7 @@ export default function TemplateBuilderPage() {
                         className="w-full px-3 py-2 border border-surface-200 rounded-lg text-sm"
                         placeholder="e.g., 12/31/2026"
                       />
+                      </label>
                     </div>
                   </>
                 )}
@@ -640,31 +638,34 @@ export default function TemplateBuilderPage() {
                 {selectedBlockData.type === 'footer' && (
                   <>
                     <div>
-                      <label className="block text-sm font-medium text-surface-700 mb-1">Address</label>
+                      <label className="block text-sm font-medium text-surface-700 mb-1">Address
                       <input
                         type="text"
                         value={selectedBlockData.content.address || ''}
                         onChange={(e) => updateBlock(selectedBlockData.block_id, { ...selectedBlockData.content, address: e.target.value })}
                         className="w-full px-3 py-2 border border-surface-200 rounded-lg text-sm"
                       />
+                      </label>
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-surface-700 mb-1">Phone</label>
+                      <label className="block text-sm font-medium text-surface-700 mb-1">Phone
                       <input
                         type="text"
                         value={selectedBlockData.content.phone || ''}
                         onChange={(e) => updateBlock(selectedBlockData.block_id, { ...selectedBlockData.content, phone: e.target.value })}
                         className="w-full px-3 py-2 border border-surface-200 rounded-lg text-sm"
                       />
+                      </label>
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-surface-700 mb-1">Unsubscribe URL</label>
+                      <label className="block text-sm font-medium text-surface-700 mb-1">Unsubscribe URL
                       <input
                         type="text"
                         value={selectedBlockData.content.unsubscribe_url || ''}
                         onChange={(e) => updateBlock(selectedBlockData.block_id, { ...selectedBlockData.content, unsubscribe_url: e.target.value })}
                         className="w-full px-3 py-2 border border-surface-200 rounded-lg text-sm"
                       />
+                      </label>
                     </div>
                   </>
                 )}

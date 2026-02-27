@@ -1,10 +1,9 @@
 "use client";
-
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { API_URL, getAuthHeaders } from '@/lib/api';
-
 import { toast } from '@/lib/toast';
+
+import { api } from '@/lib/api';
 // Types
 interface StockItem {
   id: number;
@@ -13,7 +12,6 @@ interface StockItem {
   quantity: number;
   unit: string;
 }
-
 interface Barcode {
   id: number;
   stock_item_id: number;
@@ -22,7 +20,6 @@ interface Barcode {
   is_primary: boolean;
   is_active: boolean;
 }
-
 interface AutoReorderRule {
   id: number;
   stock_item_id: number;
@@ -33,7 +30,6 @@ interface AutoReorderRule {
   is_active: boolean;
   last_triggered?: string;
 }
-
 interface StockBatch {
   id: number;
   stock_item_id: number;
@@ -44,7 +40,6 @@ interface StockBatch {
   cost_per_unit?: number;
   is_active: boolean;
 }
-
 interface ShrinkageRecord {
   id: number;
   stock_item_id: number;
@@ -54,7 +49,6 @@ interface ShrinkageRecord {
   recorded_at: string;
   notes?: string;
 }
-
 interface CycleCountSchedule {
   id: number;
   name: string;
@@ -63,7 +57,6 @@ interface CycleCountSchedule {
   next_count_date?: string;
   is_active: boolean;
 }
-
 interface CycleCountTask {
   id: number;
   schedule_id: number;
@@ -73,7 +66,6 @@ interface CycleCountTask {
   items_counted: number;
   discrepancies_found: number;
 }
-
 interface ReconciliationSession {
   id: number;
   session_name: string;
@@ -84,7 +76,6 @@ interface ReconciliationSession {
   discrepancies: number;
   total_variance_value?: number;
 }
-
 interface UnitConversion {
   id: number;
   from_unit: string;
@@ -92,7 +83,6 @@ interface UnitConversion {
   conversion_factor: number;
   is_active: boolean;
 }
-
 interface SupplierPerformance {
   id: number;
   supplier_id: number;
@@ -103,14 +93,12 @@ interface SupplierPerformance {
   total_orders: number;
   total_value: number;
 }
-
 type TabType = "barcodes" | "reorder" | "batches" | "shrinkage" | "counts" | "reconciliation" | "units" | "suppliers";
 export default function StockFeaturesPage() {
   const [activeTab, setActiveTab] = useState<TabType>("barcodes");
   const [loading, setLoading] = useState(true);
   const [stockItems, setStockItems] = useState<StockItem[]>([]);
   const [selectedItem, setSelectedItem] = useState<StockItem | null>(null);
-
   // Data states
   const [barcodes, setBarcodes] = useState<Barcode[]>([]);
   const [reorderRules, setReorderRules] = useState<AutoReorderRule[]>([]);
@@ -122,7 +110,6 @@ export default function StockFeaturesPage() {
   const [conversions, setConversions] = useState<UnitConversion[]>([]);
   const [supplierPerf, setSupplierPerf] = useState<SupplierPerformance[]>([]);
   const [reorderAlerts, setReorderAlerts] = useState<any[]>([]);
-
   // Modal states
   const [showBarcodeModal, setShowBarcodeModal] = useState(false);
   const [showReorderModal, setShowReorderModal] = useState(false);
@@ -131,293 +118,184 @@ export default function StockFeaturesPage() {
   const [showCountModal, setShowCountModal] = useState(false);
   const [showReconcileModal, setShowReconcileModal] = useState(false);
   const [showConversionModal, setShowConversionModal] = useState(false);
-
   // Form states
   const [barcodeForm, setBarcodeForm] = useState({
     stock_item_id: 0, barcode_value: "", barcode_type: "ean13", is_primary: false
   });
-
   const [reorderForm, setReorderForm] = useState({
     stock_item_id: 0, reorder_point: 10, reorder_quantity: 50, priority: "medium"
   });
-
   const [batchForm, setBatchForm] = useState({
     stock_item_id: 0, batch_number: "", quantity: 0, received_date: "", expiry_date: "", cost_per_unit: 0
   });
-
   const [shrinkageForm, setShrinkageForm] = useState({
     stock_item_id: 0, quantity: 0, reason: "spoilage", notes: ""
   });
-
   const [countForm, setCountForm] = useState({
     name: "", count_type: "full", frequency_days: 30
   });
-
   const [reconcileForm, setReconcileForm] = useState({
     session_name: "", notes: ""
   });
-
   const [conversionForm, setConversionForm] = useState({
     from_unit: "", to_unit: "", conversion_factor: 1
   });
-
   useEffect(() => {
     loadStockItems();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-
   useEffect(() => {
     loadTabData();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTab, selectedItem]);
-
   const loadStockItems = async () => {
     try {
-      const res = await fetch(`${API_URL}/stock`, {
-        credentials: 'include',
-        headers: getAuthHeaders()
-      });
-      if (res.ok) {
-        const data = await res.json();
-        setStockItems(data);
-        if (data.length > 0) setSelectedItem(data[0]);
-      }
+      const data: any = await api.get('/stock');
+            setStockItems(data);
+      if (data.length > 0) setSelectedItem(data[0]);
     } catch (error) {
       console.error("Error loading stock items:", error);
     } finally {
       setLoading(false);
     }
   };
-
   const loadTabData = async () => {
-    const headers = getAuthHeaders();
-
     try {
       switch (activeTab) {
         case "barcodes":
           if (selectedItem) {
-            const res = await fetch(`${API_URL}/inventory-complete/barcodes/item/${selectedItem.id}`, { credentials: 'include', headers });
-            if (res.ok) {
-              const data = await res.json();
-              setBarcodes(Array.isArray(data) ? data : (data.barcodes || []));
-            }
+            const data: any = await api.get(`/inventory-complete/barcodes/item/${selectedItem.id}`);
+                        setBarcodes(Array.isArray(data) ? data : (data.barcodes || []));
           }
           break;
         case "reorder":
-          const rulesRes = await fetch(`${API_URL}/inventory-complete/auto-reorder/rules`, { credentials: 'include', headers });
-          if (rulesRes.ok) {
-            const rulesData = await rulesRes.json();
-            setReorderRules(Array.isArray(rulesData) ? rulesData : (rulesData.rules || []));
-          }
-          const alertsRes = await fetch(`${API_URL}/inventory-complete/auto-reorder/alerts`, { credentials: 'include', headers });
-          if (alertsRes.ok) {
-            const alertsData = await alertsRes.json();
-            setReorderAlerts(Array.isArray(alertsData) ? alertsData : (alertsData.alerts || []));
-          }
+          const rulesData: any = await api.get('/inventory-complete/auto-reorder/rules');
+                    setReorderRules(Array.isArray(rulesData) ? rulesData : (rulesData.rules || []));
+          const alertsData: any = await api.get('/inventory-complete/auto-reorder/alerts');
+                    setReorderAlerts(Array.isArray(alertsData) ? alertsData : (alertsData.alerts || []));
           break;
         case "batches":
           if (selectedItem) {
-            const res = await fetch(`${API_URL}/inventory-complete/batches/item/${selectedItem.id}`, { credentials: 'include', headers });
-            if (res.ok) {
-              const data = await res.json();
-              setBatches(Array.isArray(data) ? data : (data.batches || []));
-            }
+            const data_batches: any = await api.get(`/inventory-complete/batches/item/${selectedItem.id}`);
+                        setBatches(Array.isArray(data_batches) ? data_batches : (data_batches.batches || []));
           }
           break;
         case "shrinkage":
-          const shrinkRes = await fetch(`${API_URL}/inventory-complete/shrinkage`, { credentials: 'include', headers });
-          if (shrinkRes.ok) setShrinkage(await shrinkRes.json());
+          const shrinkData: any = await api.get('/inventory-complete/shrinkage');
+          setShrinkage(shrinkData);
           break;
         case "counts":
-          const schedRes = await fetch(`${API_URL}/inventory-complete/cycle-counts/schedules`, { credentials: 'include', headers });
-          if (schedRes.ok) {
-            const schedData = await schedRes.json();
-            setCountSchedules(Array.isArray(schedData) ? schedData : (schedData.schedules || []));
-          }
-          const tasksRes = await fetch(`${API_URL}/inventory-complete/cycle-counts/tasks`, { credentials: 'include', headers });
-          if (tasksRes.ok) {
-            const tasksData = await tasksRes.json();
-            setCountTasks(Array.isArray(tasksData) ? tasksData : (tasksData.tasks || []));
-          }
+          const schedData: any = await api.get('/inventory-complete/cycle-counts/schedules');
+                    setCountSchedules(Array.isArray(schedData) ? schedData : (schedData.schedules || []));
+          const tasksData: any = await api.get('/inventory-complete/cycle-counts/tasks');
+                    setCountTasks(Array.isArray(tasksData) ? tasksData : (tasksData.tasks || []));
           break;
         case "reconciliation":
-          const reconRes = await fetch(`${API_URL}/inventory-complete/reconciliation/sessions`, { credentials: 'include', headers });
-          if (reconRes.ok) {
-            const reconData = await reconRes.json();
-            setReconciliations(Array.isArray(reconData) ? reconData : (reconData.sessions || []));
-          }
+          const reconData: any = await api.get('/inventory-complete/reconciliation/sessions');
+                    setReconciliations(Array.isArray(reconData) ? reconData : (reconData.sessions || []));
           break;
         case "units":
-          const convRes = await fetch(`${API_URL}/inventory-complete/unit-conversions`, { credentials: 'include', headers });
-          if (convRes.ok) {
-            const convData = await convRes.json();
-            setConversions(Array.isArray(convData) ? convData : (convData.conversions || []));
-          }
+          const convData: any = await api.get('/inventory-complete/unit-conversions');
+                    setConversions(Array.isArray(convData) ? convData : (convData.conversions || []));
           break;
         case "suppliers":
-          const perfRes = await fetch(`${API_URL}/inventory-complete/supplier-performance`, { credentials: 'include', headers });
-          if (perfRes.ok) setSupplierPerf(await perfRes.json());
+          const perfData: any = await api.get('/inventory-complete/supplier-performance');
+          setSupplierPerf(perfData);
           break;
       }
     } catch (error) {
       console.error("Error loading tab data:", error);
     }
   };
-
   // CRUD Handlers
   const handleCreateBarcode = async () => {
     try {
-      const res = await fetch(`${API_URL}/inventory-complete/barcodes`, {
-        credentials: 'include',
-        method: "POST",
-        headers: getAuthHeaders(),
-        body: JSON.stringify(barcodeForm)
-      });
-      if (res.ok) {
-        setShowBarcodeModal(false);
-        setBarcodeForm({ stock_item_id: 0, barcode_value: "", barcode_type: "ean13", is_primary: false });
-        loadTabData();
-      }
+      await api.post('/inventory-complete/barcodes', barcodeForm);
+      setShowBarcodeModal(false);
+      setBarcodeForm({ stock_item_id: 0, barcode_value: "", barcode_type: "ean13", is_primary: false });
+      loadTabData();
     } catch (error) {
       toast.error("Error creating barcode");
     }
   };
-
   const handleCreateReorderRule = async () => {
     try {
-      const res = await fetch(`${API_URL}/inventory-complete/auto-reorder/rules`, {
-        credentials: 'include',
-        method: "POST",
-        headers: getAuthHeaders(),
-        body: JSON.stringify(reorderForm)
-      });
-      if (res.ok) {
-        setShowReorderModal(false);
-        setReorderForm({ stock_item_id: 0, reorder_point: 10, reorder_quantity: 50, priority: "medium" });
-        loadTabData();
-      }
+      await api.post('/inventory-complete/auto-reorder/rules', reorderForm);
+      setShowReorderModal(false);
+      setReorderForm({ stock_item_id: 0, reorder_point: 10, reorder_quantity: 50, priority: "medium" });
+      loadTabData();
     } catch (error) {
       toast.error("Error creating reorder rule");
     }
   };
-
   const handleCreateBatch = async () => {
     try {
-      const res = await fetch(`${API_URL}/inventory-complete/batches`, {
-        credentials: 'include',
-        method: "POST",
-        headers: getAuthHeaders(),
-        body: JSON.stringify(batchForm)
-      });
-      if (res.ok) {
-        setShowBatchModal(false);
-        setBatchForm({ stock_item_id: 0, batch_number: "", quantity: 0, received_date: "", expiry_date: "", cost_per_unit: 0 });
-        loadTabData();
-      }
+      await api.post('/inventory-complete/batches', batchForm);
+      setShowBatchModal(false);
+      setBatchForm({ stock_item_id: 0, batch_number: "", quantity: 0, received_date: "", expiry_date: "", cost_per_unit: 0 });
+      loadTabData();
     } catch (error) {
       toast.error("Error creating batch");
     }
   };
-
   const handleRecordShrinkage = async () => {
     try {
-      const res = await fetch(`${API_URL}/inventory-complete/shrinkage/record`, {
-        credentials: 'include',
-        method: "POST",
-        headers: getAuthHeaders(),
-        body: JSON.stringify({
+      await api.post('/inventory-complete/shrinkage/record', {
           stock_item_id: shrinkageForm.stock_item_id,
           quantity_lost: shrinkageForm.quantity,
           reason: shrinkageForm.reason,
           notes: shrinkageForm.notes
-        })
-      });
-      if (res.ok) {
-        setShowShrinkageModal(false);
-        setShrinkageForm({ stock_item_id: 0, quantity: 0, reason: "spoilage", notes: "" });
-        loadTabData();
-      }
+        });
+      setShowShrinkageModal(false);
+      setShrinkageForm({ stock_item_id: 0, quantity: 0, reason: "spoilage", notes: "" });
+      loadTabData();
     } catch (error) {
       toast.error("Error recording shrinkage");
     }
   };
-
   const handleCreateCountSchedule = async () => {
     try {
-      const res = await fetch(`${API_URL}/inventory-complete/cycle-counts/schedules`, {
-        credentials: 'include',
-        method: "POST",
-        headers: getAuthHeaders(),
-        body: JSON.stringify(countForm)
-      });
-      if (res.ok) {
-        setShowCountModal(false);
-        setCountForm({ name: "", count_type: "full", frequency_days: 30 });
-        loadTabData();
-      }
+      await api.post('/inventory-complete/cycle-counts/schedules', countForm);
+      setShowCountModal(false);
+      setCountForm({ name: "", count_type: "full", frequency_days: 30 });
+      loadTabData();
     } catch (error) {
       toast.error("Error creating schedule");
     }
   };
-
   const handleStartReconciliation = async () => {
     try {
-      const res = await fetch(`${API_URL}/inventory-complete/reconciliation/start`, {
-        credentials: 'include',
-        method: "POST",
-        headers: getAuthHeaders(),
-        body: JSON.stringify(reconcileForm)
-      });
-      if (res.ok) {
-        setShowReconcileModal(false);
-        setReconcileForm({ session_name: "", notes: "" });
-        loadTabData();
-      }
+      await api.post('/inventory-complete/reconciliation/start', reconcileForm);
+      setShowReconcileModal(false);
+      setReconcileForm({ session_name: "", notes: "" });
+      loadTabData();
     } catch (error) {
       toast.error("Error starting reconciliation");
     }
   };
-
   const handleCreateConversion = async () => {
     try {
-      const res = await fetch(`${API_URL}/inventory-complete/unit-conversions`, {
-        credentials: 'include',
-        method: "POST",
-        headers: getAuthHeaders(),
-        body: JSON.stringify(conversionForm)
-      });
-      if (res.ok) {
-        setShowConversionModal(false);
-        setConversionForm({ from_unit: "", to_unit: "", conversion_factor: 1 });
-        loadTabData();
-      }
+      await api.post('/inventory-complete/unit-conversions', conversionForm);
+      setShowConversionModal(false);
+      setConversionForm({ from_unit: "", to_unit: "", conversion_factor: 1 });
+      loadTabData();
     } catch (error) {
       toast.error("Error creating conversion");
     }
   };
-
   const handleProcessReorders = async () => {
     try {
-      const res = await fetch(`${API_URL}/inventory-complete/auto-reorder/process`, {
-        credentials: 'include',
-        method: "POST",
-        headers: getAuthHeaders()
-      });
-      if (res.ok) {
-        const result = await res.json();
-        toast.success(`Processed ${result.orders_created || 0} reorder requests`);
-        loadTabData();
-      }
+      const result: any = await api.post('/inventory-complete/auto-reorder/process');
+            toast.success(`Processed ${result.orders_created || 0} reorder requests`);
+      loadTabData();
     } catch (error) {
       toast.error("Error processing reorders");
     }
   };
-
   const getItemName = (id: number) => {
     const item = stockItems.find(i => i.id === id);
     return typeof item?.name === 'object' ? (item?.name as any)?.en || (item?.name as any)?.bg : item?.name || `Item #${id}`;
   };
-
   const tabs = [
     { id: "barcodes", label: "Barcodes", icon: "📊", desc: "Scan & generate" },
     { id: "reorder", label: "Auto-Reorder", icon: "🔄", desc: "Reorder rules" },
@@ -428,7 +306,6 @@ export default function StockFeaturesPage() {
     { id: "units", label: "Units", icon: "⚖️", desc: "Conversions" },
     { id: "suppliers", label: "Suppliers", icon: "🏭", desc: "Performance" },
   ];
-
   if (loading) {
     return (
       <div className="min-h-screen bg-white flex items-center justify-center">
@@ -436,7 +313,6 @@ export default function StockFeaturesPage() {
       </div>
     );
   }
-
   return (
     <div className="min-h-screen bg-gray-50 p-6">
       <div className="max-w-7xl mx-auto">
@@ -445,7 +321,6 @@ export default function StockFeaturesPage() {
           <h1 className="text-3xl font-bold text-gray-900">Inventory Features</h1>
           <p className="text-gray-500 mt-1">Advanced inventory management: barcodes, auto-reorder, FIFO/FEFO, and more</p>
         </div>
-
         {/* Tabs */}
         <div className="grid grid-cols-8 gap-2 mb-6">
           {tabs.map(tab => (
@@ -463,7 +338,6 @@ export default function StockFeaturesPage() {
             </button>
           ))}
         </div>
-
         {/* Content */}
         <div className="bg-white rounded-xl shadow-sm p-6">
           {/* Barcodes Tab */}
@@ -489,7 +363,6 @@ export default function StockFeaturesPage() {
                   + Add Barcode
                 </button>
               </div>
-
               {barcodes.length === 0 ? (
                 <div className="text-center py-12 text-gray-500">
                   <div className="text-4xl mb-3">📊</div>
@@ -510,7 +383,6 @@ export default function StockFeaturesPage() {
               )}
             </div>
           )}
-
           {/* Auto-Reorder Tab */}
           {activeTab === "reorder" && (
             <div>
@@ -531,7 +403,6 @@ export default function StockFeaturesPage() {
                   </button>
                 </div>
               </div>
-
               {/* Alerts */}
               {reorderAlerts.length > 0 && (
                 <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-xl">
@@ -546,7 +417,6 @@ export default function StockFeaturesPage() {
                   </div>
                 </div>
               )}
-
               {reorderRules.length === 0 ? (
                 <div className="text-center py-12 text-gray-500">
                   <div className="text-4xl mb-3">🔄</div>
@@ -578,7 +448,6 @@ export default function StockFeaturesPage() {
               )}
             </div>
           )}
-
           {/* FIFO/FEFO Batches Tab */}
           {activeTab === "batches" && (
             <div>
@@ -602,7 +471,6 @@ export default function StockFeaturesPage() {
                   + Add Batch
                 </button>
               </div>
-
               {batches.length === 0 ? (
                 <div className="text-center py-12 text-gray-500">
                   <div className="text-4xl mb-3">📦</div>
@@ -639,7 +507,6 @@ export default function StockFeaturesPage() {
               )}
             </div>
           )}
-
           {/* Shrinkage Tab */}
           {activeTab === "shrinkage" && (
             <div>
@@ -652,7 +519,6 @@ export default function StockFeaturesPage() {
                   + Record Loss
                 </button>
               </div>
-
               {/* Summary */}
               <div className="grid grid-cols-4 gap-4 mb-6">
                 <div className="p-4 rounded-xl bg-red-50 border border-red-200">
@@ -672,7 +538,6 @@ export default function StockFeaturesPage() {
                   <p className="text-2xl font-bold text-gray-700">{shrinkage.filter(s => !['spoilage', 'theft'].includes(s.reason)).length}</p>
                 </div>
               </div>
-
               {shrinkage.length === 0 ? (
                 <div className="text-center py-12 text-gray-500">
                   <div className="text-4xl mb-3">✅</div>
@@ -701,7 +566,6 @@ export default function StockFeaturesPage() {
               )}
             </div>
           )}
-
           {/* Cycle Counts Tab */}
           {activeTab === "counts" && (
             <div>
@@ -714,7 +578,6 @@ export default function StockFeaturesPage() {
                   + Create Schedule
                 </button>
               </div>
-
               {countSchedules.length === 0 ? (
                 <div className="text-center py-12 text-gray-500">
                   <div className="text-4xl mb-3">📋</div>
@@ -741,7 +604,6 @@ export default function StockFeaturesPage() {
                   ))}
                 </div>
               )}
-
               {countTasks.length > 0 && (
                 <div>
                   <h3 className="font-semibold mb-3">Recent Count Tasks</h3>
@@ -768,7 +630,6 @@ export default function StockFeaturesPage() {
               )}
             </div>
           )}
-
           {/* Reconciliation Tab */}
           {activeTab === "reconciliation" && (
             <div>
@@ -781,7 +642,6 @@ export default function StockFeaturesPage() {
                   + Start Reconciliation
                 </button>
               </div>
-
               {reconciliations.length === 0 ? (
                 <div className="text-center py-12 text-gray-500">
                   <div className="text-4xl mb-3">✅</div>
@@ -826,7 +686,6 @@ export default function StockFeaturesPage() {
               )}
             </div>
           )}
-
           {/* Unit Conversions Tab */}
           {activeTab === "units" && (
             <div>
@@ -839,7 +698,6 @@ export default function StockFeaturesPage() {
                   + Add Conversion
                 </button>
               </div>
-
               {conversions.length === 0 ? (
                 <div className="text-center py-12 text-gray-500">
                   <div className="text-4xl mb-3">⚖️</div>
@@ -861,14 +719,12 @@ export default function StockFeaturesPage() {
               )}
             </div>
           )}
-
           {/* Supplier Performance Tab */}
           {activeTab === "suppliers" && (
             <div>
               <div className="flex justify-between items-center mb-6">
                 <h2 className="text-xl font-semibold">Supplier Performance</h2>
               </div>
-
               {supplierPerf.length === 0 ? (
                 <div className="text-center py-12 text-gray-500">
                   <div className="text-4xl mb-3">🏭</div>
@@ -910,7 +766,6 @@ export default function StockFeaturesPage() {
           )}
         </div>
       </div>
-
       {/* Barcode Modal */}
       <AnimatePresence>
         {showBarcodeModal && (
@@ -943,7 +798,6 @@ export default function StockFeaturesPage() {
           </div>
         )}
       </AnimatePresence>
-
       {/* Reorder Rule Modal */}
       <AnimatePresence>
         {showReorderModal && (
@@ -957,12 +811,14 @@ export default function StockFeaturesPage() {
                 </select>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="text-sm text-gray-500">Reorder Point</label>
+                    <label className="text-sm text-gray-500">Reorder Point
                     <input type="number" value={reorderForm.reorder_point} onChange={e => setReorderForm({...reorderForm, reorder_point: Number(e.target.value)})} className="w-full px-4 py-2 border rounded-lg mt-1" />
+                    </label>
                   </div>
                   <div>
-                    <label className="text-sm text-gray-500">Order Quantity</label>
+                    <label className="text-sm text-gray-500">Order Quantity
                     <input type="number" value={reorderForm.reorder_quantity} onChange={e => setReorderForm({...reorderForm, reorder_quantity: Number(e.target.value)})} className="w-full px-4 py-2 border rounded-lg mt-1" />
+                    </label>
                   </div>
                 </div>
                 <select value={reorderForm.priority} onChange={e => setReorderForm({...reorderForm, priority: e.target.value})} className="w-full px-4 py-2 border rounded-lg">
@@ -980,7 +836,6 @@ export default function StockFeaturesPage() {
           </div>
         )}
       </AnimatePresence>
-
       {/* Batch Modal */}
       <AnimatePresence>
         {showBatchModal && (
@@ -996,12 +851,14 @@ export default function StockFeaturesPage() {
                 <input type="number" placeholder="Quantity" value={batchForm.quantity || ""} onChange={e => setBatchForm({...batchForm, quantity: Number(e.target.value)})} className="w-full px-4 py-2 border rounded-lg" />
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="text-sm text-gray-500">Received Date</label>
+                    <label className="text-sm text-gray-500">Received Date
                     <input type="date" value={batchForm.received_date} onChange={e => setBatchForm({...batchForm, received_date: e.target.value})} className="w-full px-4 py-2 border rounded-lg mt-1" />
+                    </label>
                   </div>
                   <div>
-                    <label className="text-sm text-gray-500">Expiry Date</label>
+                    <label className="text-sm text-gray-500">Expiry Date
                     <input type="date" value={batchForm.expiry_date} onChange={e => setBatchForm({...batchForm, expiry_date: e.target.value})} className="w-full px-4 py-2 border rounded-lg mt-1" />
+                    </label>
                   </div>
                 </div>
                 <input type="number" step="0.01" placeholder="Cost per Unit" value={batchForm.cost_per_unit || ""} onChange={e => setBatchForm({...batchForm, cost_per_unit: Number(e.target.value)})} className="w-full px-4 py-2 border rounded-lg" />
@@ -1014,7 +871,6 @@ export default function StockFeaturesPage() {
           </div>
         )}
       </AnimatePresence>
-
       {/* Shrinkage Modal */}
       <AnimatePresence>
         {showShrinkageModal && (
@@ -1045,7 +901,6 @@ export default function StockFeaturesPage() {
           </div>
         )}
       </AnimatePresence>
-
       {/* Count Schedule Modal */}
       <AnimatePresence>
         {showCountModal && (
@@ -1061,8 +916,9 @@ export default function StockFeaturesPage() {
                   <option value="random">Random Sample</option>
                 </select>
                 <div>
-                  <label className="text-sm text-gray-500">Frequency (days)</label>
+                  <label className="text-sm text-gray-500">Frequency (days)
                   <input type="number" value={countForm.frequency_days} onChange={e => setCountForm({...countForm, frequency_days: Number(e.target.value)})} className="w-full px-4 py-2 border rounded-lg mt-1" />
+                  </label>
                 </div>
               </div>
               <div className="flex gap-3 mt-6">
@@ -1073,7 +929,6 @@ export default function StockFeaturesPage() {
           </div>
         )}
       </AnimatePresence>
-
       {/* Reconciliation Modal */}
       <AnimatePresence>
         {showReconcileModal && (
@@ -1092,7 +947,6 @@ export default function StockFeaturesPage() {
           </div>
         )}
       </AnimatePresence>
-
       {/* Conversion Modal */}
       <AnimatePresence>
         {showConversionModal && (
@@ -1105,8 +959,9 @@ export default function StockFeaturesPage() {
                   <input placeholder="To Unit (e.g., g)" value={conversionForm.to_unit} onChange={e => setConversionForm({...conversionForm, to_unit: e.target.value})} className="px-4 py-2 border rounded-lg" />
                 </div>
                 <div>
-                  <label className="text-sm text-gray-500">Conversion Factor (1 from = X to)</label>
+                  <label className="text-sm text-gray-500">Conversion Factor (1 from = X to)
                   <input type="number" step="0.001" value={conversionForm.conversion_factor} onChange={e => setConversionForm({...conversionForm, conversion_factor: Number(e.target.value)})} className="w-full px-4 py-2 border rounded-lg mt-1" />
+                  </label>
                 </div>
               </div>
               <div className="flex gap-3 mt-6">

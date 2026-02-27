@@ -254,7 +254,7 @@ export default function StaffCommissionPage() {
                     </td>
                     <td className="text-center py-3 px-4">
                       {editingId === member.id ? (
-                        <label className="flex items-center justify-center cursor-pointer">
+                        <label aria-label="Auto logout after close" className="flex items-center justify-center cursor-pointer">
                           <input
                             type="checkbox"
                             checked={editForm.auto_logout_after_close}

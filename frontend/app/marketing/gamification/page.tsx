@@ -614,7 +614,7 @@ export default function MarketingGamificationPage() {
 
               <div className="p-6 space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-surface-700 mb-1">Badge Name</label>
+                  <label className="block text-sm font-medium text-surface-700 mb-1">Badge Name
                   <input
                     type="text"
                     value={badgeForm.name}
@@ -622,10 +622,11 @@ export default function MarketingGamificationPage() {
                     className="w-full px-4 py-2 border border-surface-200 rounded-lg focus:ring-2 focus:ring-amber-500"
                     placeholder="e.g., Super Fan"
                   />
+                  </label>
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-surface-700 mb-1">Description</label>
+                  <label className="block text-sm font-medium text-surface-700 mb-1">Description
                   <textarea
                     value={badgeForm.description}
                     onChange={(e) => setBadgeForm({ ...badgeForm, description: e.target.value })}
@@ -633,11 +634,12 @@ export default function MarketingGamificationPage() {
                     className="w-full px-4 py-2 border border-surface-200 rounded-lg focus:ring-2 focus:ring-amber-500"
                     placeholder="Describe how to earn this badge..."
                   />
+                  </label>
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-surface-700 mb-1">Icon (Emoji)</label>
+                    <label className="block text-sm font-medium text-surface-700 mb-1">Icon (Emoji)
                     <input
                       type="text"
                       value={badgeForm.icon}
@@ -645,9 +647,10 @@ export default function MarketingGamificationPage() {
                       className="w-full px-4 py-2 border border-surface-200 rounded-lg focus:ring-2 focus:ring-amber-500 text-2xl text-center"
                       maxLength={2}
                     />
+                    </label>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-surface-700 mb-1">Tier</label>
+                    <label className="block text-sm font-medium text-surface-700 mb-1">Tier
                     <select
                       value={badgeForm.tier}
                       onChange={(e) => setBadgeForm({ ...badgeForm, tier: e.target.value as any })}
@@ -658,12 +661,13 @@ export default function MarketingGamificationPage() {
                       <option value="gold">Gold</option>
                       <option value="platinum">Platinum</option>
                     </select>
+                    </label>
                   </div>
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-surface-700 mb-1">Requirement Type</label>
+                    <label className="block text-sm font-medium text-surface-700 mb-1">Requirement Type
                     <select
                       value={badgeForm.requirement_type}
                       onChange={(e) => setBadgeForm({ ...badgeForm, requirement_type: e.target.value as any })}
@@ -675,26 +679,29 @@ export default function MarketingGamificationPage() {
                       <option value="referrals">Referrals</option>
                       <option value="reviews">Reviews</option>
                     </select>
+                    </label>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-surface-700 mb-1">Required Value</label>
+                    <label className="block text-sm font-medium text-surface-700 mb-1">Required Value
                     <input
                       type="number"
                       value={badgeForm.requirement_value}
                       onChange={(e) => setBadgeForm({ ...badgeForm, requirement_value: parseInt(e.target.value) })}
                       className="w-full px-4 py-2 border border-surface-200 rounded-lg focus:ring-2 focus:ring-amber-500"
                     />
+                    </label>
                   </div>
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-surface-700 mb-1">Reward Points</label>
+                  <label className="block text-sm font-medium text-surface-700 mb-1">Reward Points
                   <input
                     type="number"
                     value={badgeForm.reward_points}
                     onChange={(e) => setBadgeForm({ ...badgeForm, reward_points: parseInt(e.target.value) })}
                     className="w-full px-4 py-2 border border-surface-200 rounded-lg focus:ring-2 focus:ring-amber-500"
                   />
+                  </label>
                 </div>
               </div>
 
@@ -733,7 +740,7 @@ export default function MarketingGamificationPage() {
 
               <div className="p-6 space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-surface-700 mb-1">Challenge Name</label>
+                  <label className="block text-sm font-medium text-surface-700 mb-1">Challenge Name
                   <input
                     type="text"
                     value={challengeForm.name}
@@ -741,10 +748,11 @@ export default function MarketingGamificationPage() {
                     className="w-full px-4 py-2 border border-surface-200 rounded-lg focus:ring-2 focus:ring-amber-500"
                     placeholder="e.g., Weekend Warrior"
                   />
+                  </label>
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-surface-700 mb-1">Description</label>
+                  <label className="block text-sm font-medium text-surface-700 mb-1">Description
                   <textarea
                     value={challengeForm.description}
                     onChange={(e) => setChallengeForm({ ...challengeForm, description: e.target.value })}
@@ -752,11 +760,12 @@ export default function MarketingGamificationPage() {
                     className="w-full px-4 py-2 border border-surface-200 rounded-lg focus:ring-2 focus:ring-amber-500"
                     placeholder="Describe the challenge..."
                   />
+                  </label>
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-surface-700 mb-1">Type</label>
+                    <label className="block text-sm font-medium text-surface-700 mb-1">Type
                     <select
                       value={challengeForm.type}
                       onChange={(e) => setChallengeForm({ ...challengeForm, type: e.target.value as any })}
@@ -767,9 +776,10 @@ export default function MarketingGamificationPage() {
                       <option value="monthly">Monthly</option>
                       <option value="special">Special Event</option>
                     </select>
+                    </label>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-surface-700 mb-1">Goal Type</label>
+                    <label className="block text-sm font-medium text-surface-700 mb-1">Goal Type
                     <select
                       value={challengeForm.goal_type}
                       onChange={(e) => setChallengeForm({ ...challengeForm, goal_type: e.target.value as any })}
@@ -780,58 +790,64 @@ export default function MarketingGamificationPage() {
                       <option value="items">Items Ordered</option>
                       <option value="referrals">Referrals</option>
                     </select>
+                    </label>
                   </div>
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-surface-700 mb-1">Goal Value</label>
+                  <label className="block text-sm font-medium text-surface-700 mb-1">Goal Value
                   <input
                     type="number"
                     value={challengeForm.goal_value}
                     onChange={(e) => setChallengeForm({ ...challengeForm, goal_value: parseInt(e.target.value) })}
                     className="w-full px-4 py-2 border border-surface-200 rounded-lg focus:ring-2 focus:ring-amber-500"
                   />
+                  </label>
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-surface-700 mb-1">Reward Points</label>
+                    <label className="block text-sm font-medium text-surface-700 mb-1">Reward Points
                     <input
                       type="number"
                       value={challengeForm.reward_points}
                       onChange={(e) => setChallengeForm({ ...challengeForm, reward_points: parseInt(e.target.value) })}
                       className="w-full px-4 py-2 border border-surface-200 rounded-lg focus:ring-2 focus:ring-amber-500"
                     />
+                    </label>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-surface-700 mb-1">Bonus Discount (%)</label>
+                    <label className="block text-sm font-medium text-surface-700 mb-1">Bonus Discount (%)
                     <input
                       type="number"
                       value={challengeForm.reward_discount}
                       onChange={(e) => setChallengeForm({ ...challengeForm, reward_discount: parseInt(e.target.value) })}
                       className="w-full px-4 py-2 border border-surface-200 rounded-lg focus:ring-2 focus:ring-amber-500"
                     />
+                    </label>
                   </div>
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-surface-700 mb-1">Start Date</label>
+                    <label className="block text-sm font-medium text-surface-700 mb-1">Start Date
                     <input
                       type="datetime-local"
                       value={challengeForm.starts_at}
                       onChange={(e) => setChallengeForm({ ...challengeForm, starts_at: e.target.value })}
                       className="w-full px-4 py-2 border border-surface-200 rounded-lg focus:ring-2 focus:ring-amber-500"
                     />
+                    </label>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-surface-700 mb-1">End Date</label>
+                    <label className="block text-sm font-medium text-surface-700 mb-1">End Date
                     <input
                       type="datetime-local"
                       value={challengeForm.ends_at}
                       onChange={(e) => setChallengeForm({ ...challengeForm, ends_at: e.target.value })}
                       className="w-full px-4 py-2 border border-surface-200 rounded-lg focus:ring-2 focus:ring-amber-500"
                     />
+                    </label>
                   </div>
                 </div>
               </div>

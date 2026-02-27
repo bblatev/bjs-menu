@@ -400,7 +400,7 @@ export default function StockTransfersPage() {
               {/* Warehouses */}
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-surface-700 mb-1">From Warehouse *</label>
+                  <label className="block text-sm font-medium text-surface-700 mb-1">From Warehouse *
                   <select
                     value={newTransfer.from_warehouse_id}
                     onChange={e => setNewTransfer(prev => ({ ...prev, from_warehouse_id: Number(e.target.value) }))}
@@ -411,9 +411,10 @@ export default function StockTransfersPage() {
                       <option key={w.id} value={w.id}>{w.name} - {w.location}</option>
                     ))}
                   </select>
+                  </label>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-surface-700 mb-1">To Warehouse *</label>
+                  <label className="block text-sm font-medium text-surface-700 mb-1">To Warehouse *
                   <select
                     value={newTransfer.to_warehouse_id}
                     onChange={e => setNewTransfer(prev => ({ ...prev, to_warehouse_id: Number(e.target.value) }))}
@@ -424,12 +425,13 @@ export default function StockTransfersPage() {
                       <option key={w.id} value={w.id}>{w.name} - {w.location}</option>
                     ))}
                   </select>
+                  </label>
                 </div>
               </div>
 
               {/* Add Items */}
               <div>
-                <label className="block text-sm font-medium text-surface-700 mb-2">Add Items to Transfer</label>
+                <label className="block text-sm font-medium text-surface-700 mb-2">Add Items to Transfer
                 <div className="flex gap-2">
                   <select
                     value={selectedItem.item_id}
@@ -457,6 +459,7 @@ export default function StockTransfersPage() {
                     Add
                   </button>
                 </div>
+                </label>
               </div>
 
               {/* Items List */}
@@ -500,7 +503,7 @@ export default function StockTransfersPage() {
 
               {/* Notes */}
               <div>
-                <label className="block text-sm font-medium text-surface-700 mb-1">Notes (optional)</label>
+                <label className="block text-sm font-medium text-surface-700 mb-1">Notes (optional)
                 <textarea
                   value={newTransfer.notes}
                   onChange={e => setNewTransfer(prev => ({ ...prev, notes: e.target.value }))}
@@ -508,6 +511,7 @@ export default function StockTransfersPage() {
                   className="w-full px-3 py-2 border border-surface-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 resize-none"
                   placeholder="Add any notes about this transfer..."
                 />
+                </label>
               </div>
             </div>
             <div className="px-6 py-4 border-t border-surface-100 flex justify-between">

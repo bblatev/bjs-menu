@@ -520,7 +520,7 @@ export default function ShiftSchedulingPage() {
             <div className="p-6 space-y-4">
               {/* Staff Selection */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Staff Member *</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Staff Member *
                 <select
                   value={formData.staff_id}
                   onChange={(e) => setFormData({ ...formData, staff_id: Number(e.target.value) })}
@@ -533,22 +533,24 @@ export default function ShiftSchedulingPage() {
                     </option>
                   ))}
                 </select>
+                </label>
               </div>
 
               {/* Date */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Date *</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Date *
                 <input
                   type="date"
                   value={formData.date}
                   onChange={(e) => setFormData({ ...formData, date: e.target.value })}
                   className="w-full border rounded-lg px-3 py-2"
                 />
+                </label>
               </div>
 
               {/* Shift Type */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Shift Type</label>
+                <span className="block text-sm font-medium text-gray-700 mb-1">Shift Type</span>
                 <div className="grid grid-cols-5 gap-2">
                   {SHIFT_TYPES.map((type) => (
                     <button
@@ -579,28 +581,30 @@ export default function ShiftSchedulingPage() {
               {/* Time */}
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Start Time *</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Start Time *
                   <input
                     type="time"
                     value={formData.start_time}
                     onChange={(e) => setFormData({ ...formData, start_time: e.target.value })}
                     className="w-full border rounded-lg px-3 py-2"
                   />
+                  </label>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">End Time *</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">End Time *
                   <input
                     type="time"
                     value={formData.end_time}
                     onChange={(e) => setFormData({ ...formData, end_time: e.target.value })}
                     className="w-full border rounded-lg px-3 py-2"
                   />
+                  </label>
                 </div>
               </div>
 
               {/* Break */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Break (minutes)</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Break (minutes)
                 <input
                   type="number"
                   value={formData.break_minutes}
@@ -609,11 +613,12 @@ export default function ShiftSchedulingPage() {
                   min={0}
                   max={120}
                 />
+                </label>
               </div>
 
               {/* Notes */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Notes</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Notes
                 <textarea
                   value={formData.notes}
                   onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
@@ -621,6 +626,7 @@ export default function ShiftSchedulingPage() {
                   rows={2}
                   placeholder="Optional notes..."
                 />
+                </label>
               </div>
 
               {/* Working hours preview */}

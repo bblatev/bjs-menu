@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from 'react';
 import { api } from '@/lib/api';
-import { toast } from '@/lib/toast';
 
 export default function AutomationPage() {
   const [activeTab, setActiveTab] = useState<'subscriptions' | 'events' | 'actions' | 'log'>('subscriptions');
@@ -10,18 +9,18 @@ export default function AutomationPage() {
   const [stats, setStats] = useState<any>({});
   const [subscriptions, setSubs] = useState<any[]>([]);
   const [eventLog, setEventLog] = useState<any[]>([]);
-  const [showCreate, setShowCreate] = useState(false);
-  const [newSub, setNewSub] = useState({ name: '', webhook_url: '', events: [] as string[], platform: 'zapier', secret: '' });
+  const [, setShowCreate] = useState(false);
+  // const [newSub, setNewSub] = useState({ name: '', webhook_url: '', events: [] as string[], platform: 'zapier', secret: '' });
 
   useEffect(() => {
     Promise.all([
       api.get('/api/v1/automation/').catch(() => ({ data: {} })),
       api.get('/api/v1/automation/subscriptions').catch(() => ({ data: { subscriptions: [] } })),
       api.get('/api/v1/automation/events').catch(() => ({ data: { events: [] } })),
-    ]).then(([s, sub, ev]) => {
-      setStats(s.data);
-      setSubs(sub.data.subscriptions || []);
-      setEventLog(ev.data.events || []);
+    ]).then(([s, sub, ev]: any[]) => {
+      setStats(s);
+      setSubs(sub.subscriptions || []);
+      setEventLog(ev.events || []);
     }).finally(() => setLoading(false));
   }, []);
 

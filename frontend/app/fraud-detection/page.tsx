@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { API_URL, getAuthHeaders, isAuthenticated } from '@/lib/api';
+import { isAuthenticated, api } from '@/lib/api';
 
 import { toast } from '@/lib/toast';
 interface FraudAlert {
@@ -113,18 +113,12 @@ export default function FraudDetectionPage() {
   const [error, setError] = useState<string | null>(null);
 
   const fetchAlerts = useCallback(async () => {
-    const response = await fetch(`${API_URL}/risk-alerts/alerts`, { credentials: 'include', headers: getAuthHeaders() });
-    if (response.status === 401 || response.status === 403) throw new Error('AUTH_ERROR');
-    if (!response.ok) throw new Error('Failed to fetch alerts');
-    const data = await response.json();
+    const data: any = await api.get('/risk-alerts/alerts');
     setAlerts(Array.isArray(data) ? data : data.alerts || []);
   }, []);
 
   const fetchRiskScores = useCallback(async () => {
-    const response = await fetch(`${API_URL}/risk-alerts/scores`, { credentials: 'include', headers: getAuthHeaders() });
-    if (response.status === 401 || response.status === 403) throw new Error('AUTH_ERROR');
-    if (!response.ok) throw new Error('Failed to fetch risk scores');
-    const data = await response.json();
+    const data: any = await api.get('/risk-alerts/scores');
     const risks: StaffRisk[] = (Array.isArray(data) ? data : data.scores || []).map((score: { staff_user_id: number; staff_name?: string; position?: string; overall_risk_score: number; is_flagged: boolean; flag_reason?: string }) => ({
       id: score.staff_user_id,
       name: score.staff_name || `Staff ${score.staff_user_id}`,
@@ -142,11 +136,8 @@ export default function FraudDetectionPage() {
 
   const fetchPatterns = useCallback(async () => {
     try {
-      const response = await fetch(`${API_URL}/risk-alerts/patterns`, { credentials: 'include', headers: getAuthHeaders() });
-      if (response.ok) {
-        const data = await response.json();
-        setPatterns(Array.isArray(data) ? data : data.patterns || []);
-      }
+      const data: any = await api.get('/risk-alerts/patterns');
+            setPatterns(Array.isArray(data) ? data : data.patterns || []);
     } catch (err) {
       console.error('Error fetching patterns:', err);
     }
@@ -154,12 +145,9 @@ export default function FraudDetectionPage() {
 
   const fetchDashboard = useCallback(async () => {
     try {
-      const response = await fetch(`${API_URL}/risk-alerts/dashboard`, { credentials: 'include', headers: getAuthHeaders() });
-      if (response.ok) {
-        const data = await response.json();
-        if (data.cases) setCases(data.cases);
-        if (data.rules) setRules(data.rules);
-      }
+      const data: any = await api.get('/risk-alerts/dashboard');
+            if (data.cases) setCases(data.cases);
+      if (data.rules) setRules(data.rules);
     } catch (err) {
       console.error('Error fetching dashboard:', err);
     }
@@ -250,13 +238,7 @@ export default function FraudDetectionPage() {
 
   const acknowledgeAlert = async (alertId: string) => {
     try {
-      const response = await fetch(`${API_URL}/risk-alerts/alerts/${alertId}/acknowledge`, {
-        credentials: 'include',
-        method: 'POST',
-        headers: getAuthHeaders(),
-      });
-      if (!response.ok) throw new Error('Failed to acknowledge alert');
-
+      await api.post(`/risk-alerts/alerts/${alertId}/acknowledge`);
       // Update local state
       setAlerts(alerts.map(a =>
         a.id === alertId
@@ -1190,22 +1172,24 @@ export default function FraudDetectionPage() {
 
               <div className="space-y-4">
                 <div>
-                  <label className="text-gray-500 text-sm block mb-1">Case Title</label>
+                  <label className="text-gray-500 text-sm block mb-1">Case Title
                   <input
                     type="text"
                     value={caseForm.title}
                     onChange={(e) => setCaseForm({ ...caseForm, title: e.target.value })}
                     className="w-full px-4 py-3 border border-gray-200 text-gray-900 rounded-xl"
                   />
+                  </label>
                 </div>
                 <div>
-                  <label className="text-gray-500 text-sm block mb-1">Initial Notes</label>
+                  <label className="text-gray-500 text-sm block mb-1">Initial Notes
                   <textarea
                     value={caseForm.notes}
                     onChange={(e) => setCaseForm({ ...caseForm, notes: e.target.value })}
                     rows={4}
                     className="w-full px-4 py-3 border border-gray-200 text-gray-900 rounded-xl resize-none"
                   />
+                  </label>
                 </div>
               </div>
 

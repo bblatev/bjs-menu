@@ -461,7 +461,7 @@ export default function MenuSchedulingPage() {
               {/* Quick Presets */}
               {!editingDaypart && (
                 <div className="mb-6">
-                  <label className="text-gray-700 text-sm mb-2 block">Quick Presets</label>
+                  <span className="text-gray-700 text-sm mb-2 block">Quick Presets</span>
                   <div className="flex flex-wrap gap-2">
                     {DAYPART_PRESETS.map(preset => (
                       <button
@@ -481,7 +481,7 @@ export default function MenuSchedulingPage() {
               <div className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="text-gray-700 text-sm">Internal Name</label>
+                    <label className="text-gray-700 text-sm">Internal Name
                     <input
                       type="text"
                       value={form.name}
@@ -489,9 +489,10 @@ export default function MenuSchedulingPage() {
                       className="w-full px-4 py-3 bg-gray-100 text-gray-900 rounded-xl mt-1"
                       placeholder="e.g. Breakfast"
                     />
+                    </label>
                   </div>
                   <div>
-                    <label className="text-gray-700 text-sm">Color</label>
+                    <span className="text-gray-700 text-sm">Color</span>
                     <div className="flex gap-2 mt-1">
                       {['#F59E0B', '#22C55E', '#EF4444', '#8B5CF6', '#06B6D4', '#EC4899', '#6366F1'].map(color => (
                         <button
@@ -508,48 +509,52 @@ export default function MenuSchedulingPage() {
 
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="text-gray-700 text-sm">Display Name (EN)</label>
+                    <label className="text-gray-700 text-sm">Display Name (EN)
                     <input
                       type="text"
                       value={form.display_name_en}
                       onChange={(e) => setForm({ ...form, display_name_en: e.target.value })}
                       className="w-full px-4 py-3 bg-gray-100 text-gray-900 rounded-xl mt-1"
                     />
+                    </label>
                   </div>
                   <div>
-                    <label className="text-gray-700 text-sm">Display Name (BG)</label>
+                    <label className="text-gray-700 text-sm">Display Name (BG)
                     <input
                       type="text"
                       value={form.display_name_bg}
                       onChange={(e) => setForm({ ...form, display_name_bg: e.target.value })}
                       className="w-full px-4 py-3 bg-gray-100 text-gray-900 rounded-xl mt-1"
                     />
+                    </label>
                   </div>
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="text-gray-700 text-sm">Start Time</label>
+                    <label className="text-gray-700 text-sm">Start Time
                     <input
                       type="time"
                       value={form.start_time}
                       onChange={(e) => setForm({ ...form, start_time: e.target.value })}
                       className="w-full px-4 py-3 bg-gray-100 text-gray-900 rounded-xl mt-1"
                     />
+                    </label>
                   </div>
                   <div>
-                    <label className="text-gray-700 text-sm">End Time</label>
+                    <label className="text-gray-700 text-sm">End Time
                     <input
                       type="time"
                       value={form.end_time}
                       onChange={(e) => setForm({ ...form, end_time: e.target.value })}
                       className="w-full px-4 py-3 bg-gray-100 text-gray-900 rounded-xl mt-1"
                     />
+                    </label>
                   </div>
                 </div>
 
                 <div>
-                  <label className="text-gray-700 text-sm mb-2 block">Days</label>
+                  <span className="text-gray-700 text-sm mb-2 block">Days</span>
                   <div className="flex gap-2">
                     {DAYS.map(day => (
                       <button
@@ -574,7 +579,7 @@ export default function MenuSchedulingPage() {
                 </div>
 
                 <div>
-                  <label className="text-gray-700 text-sm">Price Adjustment (%)</label>
+                  <label className="text-gray-700 text-sm">Price Adjustment (%)
                   <input
                     type="number"
                     value={form.price_adjustment}
@@ -582,6 +587,7 @@ export default function MenuSchedulingPage() {
                     className="w-full px-4 py-3 bg-gray-100 text-gray-900 rounded-xl mt-1"
                     placeholder="-10 for discount, +10 for premium"
                   />
+                  </label>
                   <p className="text-gray-500 text-xs mt-1">
                     Negative for discounts, positive for premium pricing
                   </p>

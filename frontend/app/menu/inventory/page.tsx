@@ -650,7 +650,7 @@ export default function MenuInventoryPage() {
               <h3 className="text-xl font-semibold mb-4">Add Schedule</h3>
               <div className="space-y-4">
                 <div>
-                  <label className="block text-sm text-gray-400 mb-1">Day of Week</label>
+                  <label className="block text-sm text-gray-400 mb-1">Day of Week
                   <select
                     value={scheduleForm.day_of_week}
                     onChange={(e) => setScheduleForm({ ...scheduleForm, day_of_week: parseInt(e.target.value) })}
@@ -660,25 +660,28 @@ export default function MenuInventoryPage() {
                       <option key={i} value={i}>{day}</option>
                     ))}
                   </select>
+                  </label>
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm text-gray-400 mb-1">Start Time</label>
+                    <label className="block text-sm text-gray-400 mb-1">Start Time
                     <input
                       type="time"
                       value={scheduleForm.start_time}
                       onChange={(e) => setScheduleForm({ ...scheduleForm, start_time: e.target.value })}
                       className="w-full p-2 bg-gray-100 rounded-lg"
                     />
+                    </label>
                   </div>
                   <div>
-                    <label className="block text-sm text-gray-400 mb-1">End Time</label>
+                    <label className="block text-sm text-gray-400 mb-1">End Time
                     <input
                       type="time"
                       value={scheduleForm.end_time}
                       onChange={(e) => setScheduleForm({ ...scheduleForm, end_time: e.target.value })}
                       className="w-full p-2 bg-gray-100 rounded-lg"
                     />
+                    </label>
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
@@ -688,7 +691,7 @@ export default function MenuInventoryPage() {
                     onChange={(e) => setScheduleForm({ ...scheduleForm, is_available: e.target.checked })}
                     className="w-4 h-4"
                   />
-                  <label>Item is available during this time</label>
+                  <span>Item is available during this time</span>
                 </div>
               </div>
               <div className="flex gap-3 mt-6">
@@ -731,7 +734,7 @@ export default function MenuInventoryPage() {
               <h3 className="text-xl font-semibold mb-4">Nutrition Information</h3>
               <div className="grid grid-cols-2 gap-4">
                 <div className="col-span-2">
-                  <label className="block text-sm text-gray-400 mb-1">Serving Size</label>
+                  <label className="block text-sm text-gray-400 mb-1">Serving Size
                   <input
                     type="text"
                     value={nutritionForm.serving_size}
@@ -739,87 +742,97 @@ export default function MenuInventoryPage() {
                     placeholder="e.g., 1 portion (250g)"
                     className="w-full p-2 bg-gray-100 rounded-lg"
                   />
+                  </label>
                 </div>
                 <div>
-                  <label className="block text-sm text-gray-400 mb-1">Calories</label>
+                  <label className="block text-sm text-gray-400 mb-1">Calories
                   <input
                     type="number"
                     value={nutritionForm.calories}
                     onChange={(e) => setNutritionForm({ ...nutritionForm, calories: parseFloat(e.target.value) })}
                     className="w-full p-2 bg-gray-100 rounded-lg"
                   />
+                  </label>
                 </div>
                 <div>
-                  <label className="block text-sm text-gray-400 mb-1">Protein (g)</label>
+                  <label className="block text-sm text-gray-400 mb-1">Protein (g)
                   <input
                     type="number"
                     value={nutritionForm.protein_g}
                     onChange={(e) => setNutritionForm({ ...nutritionForm, protein_g: parseFloat(e.target.value) })}
                     className="w-full p-2 bg-gray-100 rounded-lg"
                   />
+                  </label>
                 </div>
                 <div>
-                  <label className="block text-sm text-gray-400 mb-1">Total Carbs (g)</label>
+                  <label className="block text-sm text-gray-400 mb-1">Total Carbs (g)
                   <input
                     type="number"
                     value={nutritionForm.total_carbs_g}
                     onChange={(e) => setNutritionForm({ ...nutritionForm, total_carbs_g: parseFloat(e.target.value) })}
                     className="w-full p-2 bg-gray-100 rounded-lg"
                   />
+                  </label>
                 </div>
                 <div>
-                  <label className="block text-sm text-gray-400 mb-1">Total Fat (g)</label>
+                  <label className="block text-sm text-gray-400 mb-1">Total Fat (g)
                   <input
                     type="number"
                     value={nutritionForm.total_fat_g}
                     onChange={(e) => setNutritionForm({ ...nutritionForm, total_fat_g: parseFloat(e.target.value) })}
                     className="w-full p-2 bg-gray-100 rounded-lg"
                   />
+                  </label>
                 </div>
                 <div>
-                  <label className="block text-sm text-gray-400 mb-1">Saturated Fat (g)</label>
+                  <label className="block text-sm text-gray-400 mb-1">Saturated Fat (g)
                   <input
                     type="number"
                     value={nutritionForm.saturated_fat_g}
                     onChange={(e) => setNutritionForm({ ...nutritionForm, saturated_fat_g: parseFloat(e.target.value) })}
                     className="w-full p-2 bg-gray-100 rounded-lg"
                   />
+                  </label>
                 </div>
                 <div>
-                  <label className="block text-sm text-gray-400 mb-1">Dietary Fiber (g)</label>
+                  <label className="block text-sm text-gray-400 mb-1">Dietary Fiber (g)
                   <input
                     type="number"
                     value={nutritionForm.dietary_fiber_g}
                     onChange={(e) => setNutritionForm({ ...nutritionForm, dietary_fiber_g: parseFloat(e.target.value) })}
                     className="w-full p-2 bg-gray-100 rounded-lg"
                   />
+                  </label>
                 </div>
                 <div>
-                  <label className="block text-sm text-gray-400 mb-1">Sugars (g)</label>
+                  <label className="block text-sm text-gray-400 mb-1">Sugars (g)
                   <input
                     type="number"
                     value={nutritionForm.sugars_g}
                     onChange={(e) => setNutritionForm({ ...nutritionForm, sugars_g: parseFloat(e.target.value) })}
                     className="w-full p-2 bg-gray-100 rounded-lg"
                   />
+                  </label>
                 </div>
                 <div>
-                  <label className="block text-sm text-gray-400 mb-1">Cholesterol (mg)</label>
+                  <label className="block text-sm text-gray-400 mb-1">Cholesterol (mg)
                   <input
                     type="number"
                     value={nutritionForm.cholesterol_mg}
                     onChange={(e) => setNutritionForm({ ...nutritionForm, cholesterol_mg: parseFloat(e.target.value) })}
                     className="w-full p-2 bg-gray-100 rounded-lg"
                   />
+                  </label>
                 </div>
                 <div>
-                  <label className="block text-sm text-gray-400 mb-1">Sodium (mg)</label>
+                  <label className="block text-sm text-gray-400 mb-1">Sodium (mg)
                   <input
                     type="number"
                     value={nutritionForm.sodium_mg}
                     onChange={(e) => setNutritionForm({ ...nutritionForm, sodium_mg: parseFloat(e.target.value) })}
                     className="w-full p-2 bg-gray-100 rounded-lg"
                   />
+                  </label>
                 </div>
               </div>
               <div className="flex gap-3 mt-6">
@@ -862,7 +875,7 @@ export default function MenuInventoryPage() {
               <h3 className="text-xl font-semibold mb-4">Add Allergen</h3>
               <div className="space-y-4">
                 <div>
-                  <label className="block text-sm text-gray-400 mb-1">Allergen Type</label>
+                  <label className="block text-sm text-gray-400 mb-1">Allergen Type
                   <select
                     value={allergenForm.allergen_type}
                     onChange={(e) => setAllergenForm({ ...allergenForm, allergen_type: e.target.value })}
@@ -874,9 +887,10 @@ export default function MenuInventoryPage() {
                       </option>
                     ))}
                   </select>
+                  </label>
                 </div>
                 <div>
-                  <label className="block text-sm text-gray-400 mb-1">Severity</label>
+                  <label className="block text-sm text-gray-400 mb-1">Severity
                   <select
                     value={allergenForm.severity}
                     onChange={(e) => setAllergenForm({ ...allergenForm, severity: e.target.value })}
@@ -886,15 +900,17 @@ export default function MenuInventoryPage() {
                     <option value="may_contain">May Contain</option>
                     <option value="trace">Trace Amounts</option>
                   </select>
+                  </label>
                 </div>
                 <div>
-                  <label className="block text-sm text-gray-400 mb-1">Notes (optional)</label>
+                  <label className="block text-sm text-gray-400 mb-1">Notes (optional)
                   <textarea
                     value={allergenForm.notes}
                     onChange={(e) => setAllergenForm({ ...allergenForm, notes: e.target.value })}
                     className="w-full p-2 bg-gray-100 rounded-lg"
                     rows={2}
                   />
+                  </label>
                 </div>
               </div>
               <div className="flex gap-3 mt-6">
@@ -938,7 +954,7 @@ export default function MenuInventoryPage() {
               <div className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm text-gray-400 mb-1">Adjustment Type</label>
+                    <label className="block text-sm text-gray-400 mb-1">Adjustment Type
                     <select
                       value={bulkPriceForm.adjustment_type}
                       onChange={(e) => setBulkPriceForm({ ...bulkPriceForm, adjustment_type: e.target.value })}
@@ -947,11 +963,11 @@ export default function MenuInventoryPage() {
                       <option value="percentage">Percentage (%)</option>
                       <option value="fixed">Fixed Amount (лв)</option>
                     </select>
+                    </label>
                   </div>
                   <div>
                     <label className="block text-sm text-gray-400 mb-1">
                       {bulkPriceForm.adjustment_type === "percentage" ? "Percentage" : "Amount"}
-                    </label>
                     <input
                       type="number"
                       value={bulkPriceForm.adjustment_value}
@@ -959,10 +975,11 @@ export default function MenuInventoryPage() {
                       placeholder={bulkPriceForm.adjustment_type === "percentage" ? "e.g., 10 for +10%" : "e.g., 1.50"}
                       className="w-full p-2 bg-gray-100 rounded-lg"
                     />
+                    </label>
                   </div>
                 </div>
                 <div>
-                  <label className="block text-sm text-gray-400 mb-2">Select Items to Update</label>
+                  <label className="block text-sm text-gray-400 mb-2">Select Items to Update
                   <div className="bg-gray-100 rounded-lg p-3 max-h-60 overflow-y-auto space-y-2">
                     {items.map((item) => (
                       <label key={item.id} className="flex items-center gap-2 cursor-pointer">
@@ -989,6 +1006,7 @@ export default function MenuInventoryPage() {
                       </label>
                     ))}
                   </div>
+                  </label>
                   <div className="mt-2 text-sm text-gray-400">
                     {bulkPriceForm.selected_items.length} items selected
                   </div>

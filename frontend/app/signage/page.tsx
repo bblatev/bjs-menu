@@ -328,7 +328,7 @@ export default function SignagePage() {
               </div>
               <div className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Template</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Template
                   <select
                     value={assignForm.template_id}
                     onChange={e => setAssignForm({ ...assignForm, template_id: parseInt(e.target.value) })}
@@ -338,9 +338,10 @@ export default function SignagePage() {
                       <option key={t.id} value={t.id}>{t.name}</option>
                     ))}
                   </select>
+                  </label>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Title</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Title
                   <input
                     type="text"
                     value={assignForm.title}
@@ -348,29 +349,32 @@ export default function SignagePage() {
                     placeholder="Content title"
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg text-gray-900 bg-white"
                   />
+                  </label>
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Start Time</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Start Time
                     <input
                       type="time"
                       value={assignForm.start_time}
                       onChange={e => setAssignForm({ ...assignForm, start_time: e.target.value })}
                       className="w-full px-4 py-2 border border-gray-300 rounded-lg text-gray-900 bg-white"
                     />
+                    </label>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">End Time</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">End Time
                     <input
                       type="time"
                       value={assignForm.end_time}
                       onChange={e => setAssignForm({ ...assignForm, end_time: e.target.value })}
                       className="w-full px-4 py-2 border border-gray-300 rounded-lg text-gray-900 bg-white"
                     />
+                    </label>
                   </div>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Days</label>
+                  <span className="block text-sm font-medium text-gray-700 mb-1">Days</span>
                   <div className="flex flex-wrap gap-2">
                     {DAYS.map(day => (
                       <button

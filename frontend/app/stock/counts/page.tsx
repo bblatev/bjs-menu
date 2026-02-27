@@ -367,7 +367,7 @@ export default function StockCountsPage() {
             </div>
             <div className="p-6 space-y-4">
               <div>
-                <label className="block text-sm font-medium text-surface-700 mb-2">Count Type</label>
+                <span className="block text-sm font-medium text-surface-700 mb-2">Count Type</span>
                 <div className="grid grid-cols-3 gap-2">
                   {(['full', 'partial', 'spot'] as const).map(type => (
                     <button
@@ -395,7 +395,7 @@ export default function StockCountsPage() {
                 </div>
               </div>
               <div>
-                <label className="block text-sm font-medium text-surface-700 mb-1">Location</label>
+                <label className="block text-sm font-medium text-surface-700 mb-1">Location
                 <select
                   value={newCount.location}
                   onChange={e => setNewCount(prev => ({ ...prev, location: e.target.value }))}
@@ -406,6 +406,7 @@ export default function StockCountsPage() {
                     <option key={loc} value={loc}>{loc}</option>
                   ))}
                 </select>
+                </label>
               </div>
             </div>
             <div className="px-6 py-4 border-t border-surface-100 flex justify-end gap-3">

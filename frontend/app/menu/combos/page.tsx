@@ -498,7 +498,7 @@ export default function MenuCombosPage() {
               <div className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="text-gray-700 text-sm">Name (EN)</label>
+                    <label className="text-gray-700 text-sm">Name (EN)
                     <input
                       type="text"
                       value={form.name_en}
@@ -506,21 +506,23 @@ export default function MenuCombosPage() {
                       className="w-full px-4 py-3 bg-gray-100 text-gray-900 rounded-xl mt-1"
                       placeholder="e.g. Classic Combo"
                     />
+                    </label>
                   </div>
                   <div>
-                    <label className="text-gray-700 text-sm">Name (BG)</label>
+                    <label className="text-gray-700 text-sm">Name (BG)
                     <input
                       type="text"
                       value={form.name_bg}
                       onChange={(e) => setForm({ ...form, name_bg: e.target.value })}
                       className="w-full px-4 py-3 bg-gray-100 text-gray-900 rounded-xl mt-1"
                     />
+                    </label>
                   </div>
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="text-gray-700 text-sm">Description (EN)</label>
+                    <label className="text-gray-700 text-sm">Description (EN)
                     <input
                       type="text"
                       value={form.description_en}
@@ -528,22 +530,24 @@ export default function MenuCombosPage() {
                       className="w-full px-4 py-3 bg-gray-100 text-gray-900 rounded-xl mt-1"
                       placeholder="e.g. Burger + Fries + Drink"
                     />
+                    </label>
                   </div>
                   <div>
-                    <label className="text-gray-700 text-sm">Description (BG)</label>
+                    <label className="text-gray-700 text-sm">Description (BG)
                     <input
                       type="text"
                       value={form.description_bg}
                       onChange={(e) => setForm({ ...form, description_bg: e.target.value })}
                       className="w-full px-4 py-3 bg-gray-100 text-gray-900 rounded-xl mt-1"
                     />
+                    </label>
                   </div>
                 </div>
 
                 {/* Components */}
                 <div>
                   <div className="flex items-center justify-between mb-2">
-                    <label className="text-gray-700 text-sm">Components</label>
+                    <span className="text-gray-700 text-sm">Components</span>
                     <button
                       type="button"
                       onClick={() => { resetComponentForm(); setShowComponentModal(true); }}
@@ -594,7 +598,7 @@ export default function MenuCombosPage() {
                 {/* Price */}
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="text-gray-700 text-sm">Combo Price (lv)</label>
+                    <label className="text-gray-700 text-sm">Combo Price (lv)
                     <input
                       type="number"
                       step="0.01"
@@ -602,9 +606,10 @@ export default function MenuCombosPage() {
                       onChange={(e) => setForm({ ...form, price: parseFloat(e.target.value) || 0 })}
                       className="w-full px-4 py-3 bg-gray-100 text-gray-900 rounded-xl mt-1"
                     />
+                    </label>
                   </div>
                   <div>
-                    <label className="text-gray-700 text-sm">Original Price</label>
+                    <span className="text-gray-700 text-sm">Original Price</span>
                     <div className="px-4 py-3 bg-gray-50 text-gray-500 rounded-xl mt-1">
                       {(calculateOriginalPrice(form.components) || 0).toFixed(2)} lv
                       {form.price > 0 && calculateOriginalPrice(form.components) > form.price && (
@@ -618,7 +623,7 @@ export default function MenuCombosPage() {
 
                 {/* Availability */}
                 <div>
-                  <label className="text-gray-700 text-sm mb-2 block">Available Days</label>
+                  <span className="text-gray-700 text-sm mb-2 block">Available Days</span>
                   <div className="flex gap-2">
                     {DAYS.map(day => (
                       <button
@@ -644,22 +649,24 @@ export default function MenuCombosPage() {
 
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="text-gray-700 text-sm">Available From (optional)</label>
+                    <label className="text-gray-700 text-sm">Available From (optional)
                     <input
                       type="time"
                       value={form.available_start}
                       onChange={(e) => setForm({ ...form, available_start: e.target.value })}
                       className="w-full px-4 py-3 bg-gray-100 text-gray-900 rounded-xl mt-1"
                     />
+                    </label>
                   </div>
                   <div>
-                    <label className="text-gray-700 text-sm">Available Until (optional)</label>
+                    <label className="text-gray-700 text-sm">Available Until (optional)
                     <input
                       type="time"
                       value={form.available_end}
                       onChange={(e) => setForm({ ...form, available_end: e.target.value })}
                       className="w-full px-4 py-3 bg-gray-100 text-gray-900 rounded-xl mt-1"
                     />
+                    </label>
                   </div>
                 </div>
 
@@ -720,7 +727,7 @@ export default function MenuCombosPage() {
 
               <div className="space-y-4">
                 <div>
-                  <label className="text-gray-700 text-sm">Type</label>
+                  <span className="text-gray-700 text-sm">Type</span>
                   <div className="flex gap-2 mt-2">
                     <button
                       type="button"
@@ -749,7 +756,7 @@ export default function MenuCombosPage() {
 
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="text-gray-700 text-sm">Name (EN)</label>
+                    <label className="text-gray-700 text-sm">Name (EN)
                     <input
                       type="text"
                       value={componentForm.name_en}
@@ -757,9 +764,10 @@ export default function MenuCombosPage() {
                       className="w-full px-4 py-2 bg-gray-100 text-gray-900 rounded-lg mt-1"
                       placeholder="e.g. Burger"
                     />
+                    </label>
                   </div>
                   <div>
-                    <label className="text-gray-700 text-sm">Quantity</label>
+                    <label className="text-gray-700 text-sm">Quantity
                     <input
                       type="number"
                       min="1"
@@ -767,11 +775,12 @@ export default function MenuCombosPage() {
                       onChange={(e) => setComponentForm({ ...componentForm, quantity: parseInt(e.target.value) || 1 })}
                       className="w-full px-4 py-2 bg-gray-100 text-gray-900 rounded-lg mt-1"
                     />
+                    </label>
                   </div>
                 </div>
 
                 <div>
-                  <label className="text-gray-700 text-sm mb-2 block">Select Items</label>
+                  <label className="text-gray-700 text-sm mb-2 block">Select Items
                   <div className="max-h-48 overflow-y-auto bg-gray-50 rounded-lg p-2 space-y-1">
                     {menuItems.map(item => (
                       <label
@@ -799,6 +808,7 @@ export default function MenuCombosPage() {
                       </label>
                     ))}
                   </div>
+                  </label>
                 </div>
               </div>
 

@@ -259,7 +259,7 @@ export default function AuditLogsPage() {
         <div className="bg-gray-50 p-4 rounded-xl border border-gray-200 mb-6">
           <div className="flex flex-wrap gap-4">
             <div>
-              <label className="block text-gray-600 text-sm mb-1">Действие</label>
+              <label className="block text-gray-600 text-sm mb-1">Действие
               <select
                 value={actionFilter}
                 onChange={(e) => setActionFilter(e.target.value)}
@@ -272,10 +272,11 @@ export default function AuditLogsPage() {
                   </option>
                 ))}
               </select>
+              </label>
             </div>
 
             <div>
-              <label className="block text-gray-600 text-sm mb-1">Тип обект</label>
+              <label className="block text-gray-600 text-sm mb-1">Тип обект
               <select
                 value={entityTypeFilter}
                 onChange={(e) => setEntityTypeFilter(e.target.value)}
@@ -288,6 +289,7 @@ export default function AuditLogsPage() {
                   </option>
                 ))}
               </select>
+              </label>
             </div>
 
             <div className="flex-1" />
@@ -397,15 +399,15 @@ export default function AuditLogsPage() {
                 <div className="space-y-4">
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <label className="text-gray-600 text-sm">Дата/час</label>
+                      <span className="text-gray-600 text-sm">Дата/час</span>
                       <p className="text-gray-900">{formatDate(selectedLog.created_at)}</p>
                     </div>
                     <div>
-                      <label className="text-gray-600 text-sm">Служител</label>
+                      <span className="text-gray-600 text-sm">Служител</span>
                       <p className="text-gray-900">{selectedLog.staff_name || 'Система'}</p>
                     </div>
                     <div>
-                      <label className="text-gray-600 text-sm">Действие</label>
+                      <span className="text-gray-600 text-sm">Действие</span>
                       <p className="text-gray-900">
                         <span className={`px-2 py-1 rounded text-xs ${getActionColor(selectedLog.action)}`}>
                           {actionLabels[selectedLog.action] || selectedLog.action}
@@ -413,7 +415,7 @@ export default function AuditLogsPage() {
                       </p>
                     </div>
                     <div>
-                      <label className="text-gray-600 text-sm">Обект</label>
+                      <span className="text-gray-600 text-sm">Обект</span>
                       <p className="text-gray-900">
                         {entityLabels[selectedLog.entity_type] || selectedLog.entity_type}
                         {selectedLog.entity_id && ` #${selectedLog.entity_id}`}
@@ -421,13 +423,13 @@ export default function AuditLogsPage() {
                     </div>
                     {selectedLog.ip_address && (
                       <div>
-                        <label className="text-gray-600 text-sm">IP адрес</label>
+                        <span className="text-gray-600 text-sm">IP адрес</span>
                         <p className="text-gray-900">{selectedLog.ip_address}</p>
                       </div>
                     )}
                     {selectedLog.notes && (
                       <div className="col-span-2">
-                        <label className="text-gray-600 text-sm">Бележки</label>
+                        <span className="text-gray-600 text-sm">Бележки</span>
                         <p className="text-gray-900">{selectedLog.notes}</p>
                       </div>
                     )}
@@ -435,7 +437,7 @@ export default function AuditLogsPage() {
 
                   {selectedLog.old_values && (
                     <div>
-                      <label className="text-gray-600 text-sm block mb-2">Стари стойности</label>
+                      <span className="text-gray-600 text-sm block mb-2">Стари стойности</span>
                       <pre className="bg-gray-50 p-4 rounded-lg text-sm text-red-300 overflow-x-auto">
                         {JSON.stringify(selectedLog.old_values, null, 2)}
                       </pre>
@@ -444,7 +446,7 @@ export default function AuditLogsPage() {
 
                   {selectedLog.new_values && (
                     <div>
-                      <label className="text-gray-600 text-sm block mb-2">Нови стойности</label>
+                      <span className="text-gray-600 text-sm block mb-2">Нови стойности</span>
                       <pre className="bg-gray-50 p-4 rounded-lg text-sm text-green-300 overflow-x-auto">
                         {JSON.stringify(selectedLog.new_values, null, 2)}
                       </pre>

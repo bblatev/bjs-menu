@@ -1,7 +1,9 @@
 'use client';
 import React, { useState, useEffect, useCallback } from 'react';
 
-import { API_URL, getAuthHeaders } from '@/lib/api';
+import { api } from '@/lib/api';
+
+
 
 interface CriticalControlPoint {
   id: string;
@@ -65,20 +67,11 @@ export default function HACCPFoodSafetyPage() {
   const fetchHACCPData = useCallback(async () => {
     setIsLoading(true);
     try {
-      const response = await fetch(`${API_URL}/haccp/dashboard`, {
-        credentials: 'include',
-        headers: getAuthHeaders(),
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        setCcps(data.ccps || []);
-        setTempLogs(data.temperature_logs || []);
-        setBatches(data.batches || []);
-        setInspections(data.inspections || []);
-      } else {
-        console.error('Failed to load HACCP data:', response.status);
-      }
+      const data: any = await api.get('/haccp/dashboard');
+            setCcps(data.ccps || []);
+      setTempLogs(data.temperature_logs || []);
+      setBatches(data.batches || []);
+      setInspections(data.inspections || []);
     } catch (err) {
       console.error('Error fetching HACCP data:', err);
     } finally {
@@ -588,7 +581,7 @@ export default function HACCPFoodSafetyPage() {
               <p className="text-gray-600 mb-4">{selectedCcp.name} ({selectedCcp.location})</p>
               
               <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 mb-1">Стойност ({selectedCcp.unit})</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Стойност ({selectedCcp.unit})
                 <input 
                   type="number" 
                   step="0.1"
@@ -597,18 +590,20 @@ export default function HACCPFoodSafetyPage() {
                   className="w-full border rounded-lg px-3 py-2 text-2xl font-bold text-center" 
                   placeholder="0.0"
                 />
+                </label>
                 <p className="text-sm text-gray-500 mt-1">
                   Критичен лимит: {selectedCcp.criticalLimitMin}{selectedCcp.criticalLimitMax && ` - ${selectedCcp.criticalLimitMax}`}{selectedCcp.unit}
                 </p>
               </div>
 
               <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 mb-1">Записал</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Записал
                 <select className="w-full border rounded-lg px-3 py-2">
                   <option>Иван Петров</option>
                   <option>Мария Стоянова</option>
                   <option>Петър Колев</option>
                 </select>
+                </label>
               </div>
 
               <div className="flex gap-3">

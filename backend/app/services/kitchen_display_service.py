@@ -150,10 +150,15 @@ class KitchenDisplayService:
                 is_active=True,
                 current_load=0
             )
-            self.db.add(station)
-            self.db.commit()
-            self.db.refresh(station)
-            logger.info(f"Created KDS station: {station_code} for venue {venue_id}")
+            try:
+                self.db.add(station)
+                self.db.commit()
+                self.db.refresh(station)
+                logger.info(f"Created KDS station: {station_code} for venue {venue_id}")
+            except Exception as e:
+                self.db.rollback()
+                logger.error(f"Failed to create KDS station {station_code}: {e}")
+                raise
 
         return {
             "id": station.id,

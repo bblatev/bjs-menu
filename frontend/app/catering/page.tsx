@@ -1095,7 +1095,7 @@ export default function CateringPage() {
                   </select>
 
                   <div>
-                    <label className="text-gray-600 text-sm mb-2 block">Dietary Requirements</label>
+                    <span className="text-gray-600 text-sm mb-2 block">Dietary Requirements</span>
                     <div className="flex flex-wrap gap-2">
                       {['Vegetarian', 'Vegan', 'Gluten-Free', 'Halal', 'Kosher', 'Nut-Free'].map(diet => (
                         <button
@@ -1120,7 +1120,7 @@ export default function CateringPage() {
                   </div>
 
                   <div>
-                    <label className="text-gray-600 text-sm mb-2 block">Equipment Needed</label>
+                    <span className="text-gray-600 text-sm mb-2 block">Equipment Needed</span>
                     <div className="flex flex-wrap gap-2">
                       {['Tables', 'Chairs', 'Linens', 'Dance Floor', 'Stage', 'Projector', 'Sound System', 'Lighting'].map(eq => (
                         <button

@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 
-import { API_URL, APP_VERSION } from '@/lib/api';
+import { APP_VERSION, api } from '@/lib/api';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -36,20 +36,9 @@ export default function LoginPage() {
     setError('');
 
     try {
-      const res = await fetch(`${API_URL}/auth/login/pin`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ pin: pinCode }),
-      });
-
-      if (res.ok) {
-        // Auth token is set as HttpOnly cookie by the server
-        router.push('/dashboard');
-      } else {
-        setError('Invalid PIN');
-        setPin('');
-      }
+      await api.post('/auth/login/pin', { pin: pinCode });
+      // Auth token is set as HttpOnly cookie by the server
+      router.push('/dashboard');
     } catch (err) {
       setError('Connection error');
       setPin('');

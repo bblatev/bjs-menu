@@ -251,27 +251,29 @@ export default function ReportsPage() {
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                   {/* Date From */}
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">От дата</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">От дата
                     <input
                       type="date"
                       value={dateFrom}
                       onChange={(e) => setDateFrom(e.target.value)}
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                     />
+                    </label>
                   </div>
                   {/* Date To */}
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">До дата</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">До дата
                     <input
                       type="date"
                       value={dateTo}
                       onChange={(e) => setDateTo(e.target.value)}
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                     />
+                    </label>
                   </div>
                   {/* Hour From */}
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">От час</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">От час
                     <select
                       value={hourFrom}
                       onChange={(e) => setHourFrom(e.target.value)}
@@ -281,10 +283,11 @@ export default function ReportsPage() {
                         <option key={h} value={h}>{h}:00</option>
                       ))}
                     </select>
+                    </label>
                   </div>
                   {/* Hour To */}
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">До час</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">До час
                     <select
                       value={hourTo}
                       onChange={(e) => setHourTo(e.target.value)}
@@ -294,6 +297,7 @@ export default function ReportsPage() {
                         <option key={h} value={h}>{h}:59</option>
                       ))}
                     </select>
+                    </label>
                   </div>
                 </div>
                 <p className="mt-3 text-sm text-gray-500">

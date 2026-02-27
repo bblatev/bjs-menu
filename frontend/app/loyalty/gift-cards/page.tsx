@@ -43,14 +43,16 @@ export default function GiftCardsPage() {
             <h2 className="text-lg font-semibold mb-3 text-gray-900 dark:text-white">Issue New Gift Card</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Amount ($)</label>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Amount ($)
                 <select value={newCard.amount} onChange={e => setNewCard({ ...newCard, amount: Number(e.target.value) })} className="w-full px-3 py-2 border rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-white">
                   {[10, 25, 50, 75, 100, 150, 200].map(v => <option key={v} value={v}>${v}</option>)}
                 </select>
+                </label>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Recipient Email</label>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Recipient Email
                 <input type="email" value={newCard.recipient_email} onChange={e => setNewCard({ ...newCard, recipient_email: e.target.value })} className="w-full px-3 py-2 border rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-white" placeholder="email@example.com" />
+                </label>
               </div>
             </div>
             <div className="flex gap-2 mt-4">

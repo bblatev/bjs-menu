@@ -117,7 +117,7 @@ export default function TenantsPage() {
             <h2 className="text-lg font-semibold mb-4 text-gray-900 dark:text-white">Create New Tenant</h2>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Name</label>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Name
                 <input
                   type="text"
                   value={newTenant.name}
@@ -125,9 +125,10 @@ export default function TenantsPage() {
                   className="w-full px-3 py-2 border rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-white"
                   placeholder="Restaurant Name"
                 />
+                </label>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Slug</label>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Slug
                 <input
                   type="text"
                   value={newTenant.slug}
@@ -135,9 +136,10 @@ export default function TenantsPage() {
                   className="w-full px-3 py-2 border rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-white"
                   placeholder="restaurant-name"
                 />
+                </label>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Plan</label>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Plan
                 <select
                   value={newTenant.plan}
                   onChange={(e) => setNewTenant({ ...newTenant, plan: e.target.value })}
@@ -147,6 +149,7 @@ export default function TenantsPage() {
                   <option value="professional">Professional</option>
                   <option value="enterprise">Enterprise</option>
                 </select>
+                </label>
               </div>
             </div>
             <div className="flex gap-2 mt-4">

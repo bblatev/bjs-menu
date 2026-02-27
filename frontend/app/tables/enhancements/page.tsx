@@ -8,7 +8,7 @@ export default function TableEnhancementsPage() {
   const [activeTab, setActiveTab] = useState<'states' | 'waitlist' | 'alerts' | 'balance' | 'maintenance'>('states');
   const [loading, setLoading] = useState(true);
   const [states, setStates] = useState<any[]>([]);
-  const [alerts, setAlerts] = useState<any[]>([]);
+  const [alerts] = useState<any[]>([]);
   const [maintenanceLog, setMaintenanceLog] = useState<any[]>([]);
   const [alertThreshold, setAlertThreshold] = useState(90);
 
@@ -16,9 +16,9 @@ export default function TableEnhancementsPage() {
     Promise.all([
       api.get('/api/v1/table-enhancements/states').catch(() => ({ data: { states: [] } })),
       api.get('/api/v1/table-enhancements/maintenance').catch(() => ({ data: { maintenance: [] } })),
-    ]).then(([s, m]) => {
-      setStates(s.data.states || []);
-      setMaintenanceLog(m.data.maintenance || []);
+    ]).then(([s, m]: any[]) => {
+      setStates(s.states || s || []);
+      setMaintenanceLog(m.maintenance || m || []);
     }).finally(() => setLoading(false));
   }, []);
 
@@ -90,8 +90,9 @@ export default function TableEnhancementsPage() {
           <div className="bg-white border rounded-lg p-6">
             <h2 className="text-lg font-semibold mb-4">Turn Time Alert Configuration</h2>
             <div className="flex items-center gap-4 mb-4">
-              <label className="text-sm font-medium">Alert threshold (minutes):</label>
+              <label className="text-sm font-medium">Alert threshold (minutes):
               <input type="number" className="border rounded px-3 py-2 w-24" value={alertThreshold} onChange={e => setAlertThreshold(Number(e.target.value))} min={15} max={300} />
+              </label>
               <button className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700" onClick={() => toast.success(`Threshold set to ${alertThreshold} minutes`)}>Apply</button>
             </div>
             <div className="text-sm text-gray-500 mb-4">Tables exceeding this turn time will trigger alerts with severity levels and actionable suggestions.</div>

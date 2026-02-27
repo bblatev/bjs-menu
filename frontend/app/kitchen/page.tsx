@@ -197,12 +197,13 @@ export default function KitchenPage() {
     try {
       if (isInitialLoadRef.current) setIsLoadingStations(true);
       setStationsError(null);
-      const data = await api.get<any[]>('/kitchen/stations');
-      setStations(Array.isArray(data) ? data.map((s: any) => ({
+      const data = await api.get<any>('/kitchen/stations');
+      const stationsList = Array.isArray(data) ? data : (data.items || []);
+      setStations(stationsList.map((s: any) => ({
         ...s,
         station_id: s.station_id || s.id,
         avg_cook_time: s.avg_cook_time || s.avg_time || 10,
-      })) : []);
+      })));
     } catch (error) {
       console.error('Error fetching stations:', error);
       setStationsError(error instanceof Error ? error.message : 'Failed to load stations');
@@ -216,7 +217,7 @@ export default function KitchenPage() {
       if (isInitialLoadRef.current) setIsLoadingTickets(true);
       setTicketsError(null);
       const data = await api.get<any>('/kitchen/tickets');
-      const ticketsList: KitchenTicket[] = Array.isArray(data) ? data : (data.tickets || []);
+      const ticketsList: KitchenTicket[] = Array.isArray(data) ? data : (data.items || data.tickets || []);
 
       // Fetch 86'd items
       try {
@@ -978,9 +979,9 @@ export default function KitchenPage() {
               <div>
                 <p className="font-medium mb-2">Timer Thresholds (minutes)</p>
                 <div className="grid grid-cols-3 gap-2">
-                  <div><label className="text-xs text-success-600">Green</label><input type="number" value={settings.greenTime} onChange={e => setSettings(s => ({ ...s, greenTime: +e.target.value }))} className="w-full px-2 py-1 border rounded text-center" /></div>
-                  <div><label className="text-xs text-warning-600">Yellow</label><input type="number" value={settings.yellowTime} onChange={e => setSettings(s => ({ ...s, yellowTime: +e.target.value }))} className="w-full px-2 py-1 border rounded text-center" /></div>
-                  <div><label className="text-xs text-error-600">Red</label><input type="number" value={settings.redTime} onChange={e => setSettings(s => ({ ...s, redTime: +e.target.value }))} className="w-full px-2 py-1 border rounded text-center" /></div>
+                  <div><label className="text-xs text-success-600">Green <input type="number" value={settings.greenTime} onChange={e => setSettings(s => ({ ...s, greenTime: +e.target.value }))} className="w-full px-2 py-1 border rounded text-center" /></label></div>
+                  <div><label className="text-xs text-warning-600">Yellow <input type="number" value={settings.yellowTime} onChange={e => setSettings(s => ({ ...s, yellowTime: +e.target.value }))} className="w-full px-2 py-1 border rounded text-center" /></label></div>
+                  <div><label className="text-xs text-error-600">Red <input type="number" value={settings.redTime} onChange={e => setSettings(s => ({ ...s, redTime: +e.target.value }))} className="w-full px-2 py-1 border rounded text-center" /></label></div>
                 </div>
               </div>
             </div>
@@ -1162,7 +1163,7 @@ export default function KitchenPage() {
               <h3 className="text-sm font-semibold text-surface-700">{editingStation ? 'Edit Station Details' : 'New Station Details'}</h3>
               {/* Name */}
               <div>
-                <label className="block text-sm font-medium text-surface-700 mb-1">Station Name</label>
+                <label className="block text-sm font-medium text-surface-700 mb-1">Station Name
                 <input
                   type="text"
                   value={stationFormData.name}
@@ -1170,11 +1171,12 @@ export default function KitchenPage() {
                   className="w-full px-3 py-2 border border-surface-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
                   placeholder="e.g., Main Kitchen"
                 />
+                </label>
               </div>
 
               {/* Type */}
               <div>
-                <label className="block text-sm font-medium text-surface-700 mb-1">Station Type</label>
+                <span className="block text-sm font-medium text-surface-700 mb-1">Station Type</span>
                 <div className="grid grid-cols-4 gap-2">
                   {STATION_TYPES.map(type => (
                     <button
@@ -1196,7 +1198,7 @@ export default function KitchenPage() {
               {/* Cook Time & Capacity */}
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-surface-700 mb-1">Target Cook Time (min)</label>
+                  <label className="block text-sm font-medium text-surface-700 mb-1">Target Cook Time (min)
                   <input
                     type="number"
                     value={stationFormData.avg_cook_time}
@@ -1204,9 +1206,10 @@ export default function KitchenPage() {
                     className="w-full px-3 py-2 border border-surface-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
                     min="1"
                   />
+                  </label>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-surface-700 mb-1">Max Capacity</label>
+                  <label className="block text-sm font-medium text-surface-700 mb-1">Max Capacity
                   <input
                     type="number"
                     value={stationFormData.max_capacity}
@@ -1214,12 +1217,13 @@ export default function KitchenPage() {
                     className="w-full px-3 py-2 border border-surface-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
                     min="1"
                   />
+                  </label>
                 </div>
               </div>
 
               {/* Categories */}
               <div>
-                <label className="block text-sm font-medium text-surface-700 mb-1">Menu Categories</label>
+                <span className="block text-sm font-medium text-surface-700 mb-1">Menu Categories</span>
                 <p className="text-xs text-surface-500 mb-2">Select which menu categories route to this station</p>
                 <div className="flex flex-wrap gap-2 max-h-32 overflow-y-auto p-2 border border-surface-200 rounded-lg">
                   {MENU_CATEGORIES.map(category => (
@@ -1240,7 +1244,7 @@ export default function KitchenPage() {
 
               {/* Printer ID */}
               <div>
-                <label className="block text-sm font-medium text-surface-700 mb-1">Printer ID (Optional)</label>
+                <label className="block text-sm font-medium text-surface-700 mb-1">Printer ID (Optional)
                 <input
                   type="text"
                   value={stationFormData.printer_id}
@@ -1248,6 +1252,7 @@ export default function KitchenPage() {
                   className="w-full px-3 py-2 border border-surface-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
                   placeholder="e.g., KITCHEN-PRINTER-01"
                 />
+                </label>
               </div>
 
               {/* Active Toggle */}

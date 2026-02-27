@@ -156,7 +156,7 @@ export default function SettingsPage() {
             <h2 className="text-xl font-bold text-gray-900 mb-4">General</h2>
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-300 mb-1">Currency</label>
+                <label className="block text-sm font-medium text-gray-300 mb-1">Currency
                 <select
                   value={settings?.currency || "BGN"}
                   onChange={(e) => updateSetting("currency", e.target.value)}
@@ -166,10 +166,11 @@ export default function SettingsPage() {
                   <option value="EUR">EUR</option>
                   <option value="USD">USD ($)</option>
                 </select>
+                </label>
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-300 mb-1">Timezone</label>
+                <label className="block text-sm font-medium text-gray-300 mb-1">Timezone
                 <select
                   value={settings?.timezone || "Europe/Sofia"}
                   onChange={(e) => updateSetting("timezone", e.target.value)}
@@ -180,10 +181,11 @@ export default function SettingsPage() {
                   <option value="Europe/Berlin">Europe/Berlin</option>
                   <option value="Europe/Moscow">Europe/Moscow</option>
                 </select>
+                </label>
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-300 mb-1">Default Language</label>
+                <label className="block text-sm font-medium text-gray-300 mb-1">Default Language
                 <select
                   value={settings?.default_language || "bg"}
                   onChange={(e) => updateSetting("default_language", e.target.value)}
@@ -194,6 +196,7 @@ export default function SettingsPage() {
                   <option value="de">German</option>
                   <option value="ru">Russian</option>
                 </select>
+                </label>
               </div>
             </div>
           </div>
@@ -227,7 +230,7 @@ export default function SettingsPage() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-300 mb-1">Default Tip Percentages</label>
+                <label className="block text-sm font-medium text-gray-300 mb-1">Default Tip Percentages
                 <div className="flex gap-4">
                   {[5, 10, 15, 20].map((percent) => (
                     <label key={percent} className="flex items-center gap-1 text-gray-300">
@@ -247,6 +250,7 @@ export default function SettingsPage() {
                     </label>
                   ))}
                 </div>
+                </label>
               </div>
 
               <div>
@@ -358,7 +362,7 @@ export default function SettingsPage() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-300 mb-1">Connection Type</label>
+                <label className="block text-sm font-medium text-gray-300 mb-1">Connection Type
                 <select
                   value={settings?.fiscal_printer?.connection || "serial"}
                   onChange={(e) => updateSetting("fiscal_printer.connection", e.target.value)}
@@ -368,10 +372,11 @@ export default function SettingsPage() {
                   <option value="serial">Serial Port</option>
                   <option value="network">Network</option>
                 </select>
+                </label>
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-300 mb-1">Port</label>
+                <label className="block text-sm font-medium text-gray-300 mb-1">Port
                 <input
                   type="text"
                   value={settings?.fiscal_printer?.port || "/dev/ttyUSB0"}
@@ -379,6 +384,7 @@ export default function SettingsPage() {
                   className="w-full px-4 py-2 bg-white border border-gray-300 rounded-lg text-gray-900 focus:border-primary outline-none disabled:opacity-50"
                   disabled={!settings?.fiscal_printer?.enabled}
                 />
+                </label>
               </div>
 
               <div>
@@ -414,7 +420,7 @@ export default function SettingsPage() {
             <h2 className="text-xl font-bold text-gray-900 mb-4">Appearance</h2>
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-300 mb-1">Theme</label>
+                <label className="block text-sm font-medium text-gray-300 mb-1">Theme
                 <select
                   value={settings?.appearance?.theme || "winter-apres-ski"}
                   onChange={(e) => updateSetting("appearance.theme", e.target.value)}
@@ -425,10 +431,11 @@ export default function SettingsPage() {
                   <option value="modern">Modern</option>
                   <option value="dark">Dark</option>
                 </select>
+                </label>
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-300 mb-1">Primary Color</label>
+                <label className="block text-sm font-medium text-gray-300 mb-1">Primary Color
                 <div className="flex items-center gap-4">
                   <input
                     type="color"
@@ -438,6 +445,7 @@ export default function SettingsPage() {
                   />
                   <span className="text-gray-400">{settings?.appearance?.primary_color || "#FF6B35"}</span>
                 </div>
+                </label>
               </div>
             </div>
           </div>
@@ -447,7 +455,7 @@ export default function SettingsPage() {
             <h2 className="text-xl font-bold text-gray-900 mb-4">Order Settings</h2>
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-300 mb-1">Order Rate Limit (per minute)</label>
+                <label className="block text-sm font-medium text-gray-300 mb-1">Order Rate Limit (per minute)
                 <input
                   type="number"
                   min="1"
@@ -456,10 +464,11 @@ export default function SettingsPage() {
                   onChange={(e) => updateSetting("order_rate_limit", parseInt(e.target.value))}
                   className="w-full px-4 py-2 bg-white border border-gray-300 rounded-lg text-gray-900 focus:border-primary outline-none"
                 />
+                </label>
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-300 mb-1">Table Session Duration (hours)</label>
+                <label className="block text-sm font-medium text-gray-300 mb-1">Table Session Duration (hours)
                 <input
                   type="number"
                   min="1"
@@ -468,6 +477,7 @@ export default function SettingsPage() {
                   onChange={(e) => updateSetting("table_session_duration_hours", parseInt(e.target.value))}
                   className="w-full px-4 py-2 bg-white border border-gray-300 rounded-lg text-gray-900 focus:border-primary outline-none"
                 />
+                </label>
               </div>
             </div>
           </div>

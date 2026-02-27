@@ -1,10 +1,9 @@
 'use client';
-
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import Link from 'next/link';
-import { API_URL, getAuthHeaders } from '@/lib/api';
 
+import { api } from '@/lib/api';
 interface Language {
   code: string;
   name: string;
@@ -12,7 +11,6 @@ interface Language {
   flag: string;
   rtl: boolean;
 }
-
 interface StationSetting {
   station_id: string;
   station_name: string;
@@ -21,13 +19,11 @@ interface StationSetting {
   primary_font_size: number;
   secondary_font_size: number;
 }
-
 interface Translation {
   key: string;
   en: string;
   [lang: string]: string;
 }
-
 const LANGUAGES: Language[] = [
   { code: 'en', name: 'English', native_name: 'English', flag: '🇺🇸', rtl: false },
   { code: 'es', name: 'Spanish', native_name: 'Español', flag: '🇪🇸', rtl: false },
@@ -45,7 +41,6 @@ const LANGUAGES: Language[] = [
   { code: 'hi', name: 'Hindi', native_name: 'हिन्दी', flag: '🇮🇳', rtl: false },
   { code: 'bg', name: 'Bulgarian', native_name: 'Български', flag: '🇧🇬', rtl: false },
 ];
-
 export default function KDSLocalizationPage() {
   const [stations, setStations] = useState<StationSetting[]>([]);
   const [translations, setTranslations] = useState<Translation[]>([]);
@@ -56,23 +51,20 @@ export default function KDSLocalizationPage() {
   useEffect(() => {
     loadData();
   }, []);
-
   const loadData = async () => {
     setLoading(true);
     try {
-      const headers = getAuthHeaders();
-      const [stationsRes, translationsRes] = await Promise.all([
-        fetch(`${API_URL}/kds-localization/stations`, { credentials: 'include', headers }),
-        fetch(`${API_URL}/kds-localization/translations`, { credentials: 'include', headers }),
-      ]);
-
-      if (stationsRes.ok) {
-        const data = await stationsRes.json();
+      const [stationsRes, translationsRes] = await Promise.allSettled([
+  api.get('/kds-localization/stations'),
+  api.get('/kds-localization/translations')
+]);
+      if (stationsRes.status === 'fulfilled') {
+        const data: any = stationsRes.value;
         setStations(data);
       }
-      if (translationsRes.ok) {
-        const data = await translationsRes.json();
-        setTranslations(data);
+      if (translationsRes.status === 'fulfilled') {
+        const data_translations: any = translationsRes.value;
+        setTranslations(data_translations);
       }
     } catch (err) {
       console.error('Error loading data:', err);
@@ -81,43 +73,25 @@ export default function KDSLocalizationPage() {
       setLoading(false);
     }
   };
-
   const updateStation = async (stationId: string, updates: Partial<StationSetting>) => {
     try {
-      const res = await fetch(`${API_URL}/kds-localization/stations/${stationId}`, {
-        credentials: 'include',
-        method: 'PUT',
-        headers: { ...getAuthHeaders() },
-        body: JSON.stringify(updates),
-      });
-      if (res.ok) {
-        loadData();
-      }
+      await api.put(`/kds-localization/stations/${stationId}`, updates);
+      loadData();
     } catch (error) {
       console.error('Error updating station:', error);
     }
   };
-
   const updateTranslation = async (key: string, langCode: string, value: string) => {
     try {
-      const res = await fetch(`${API_URL}/kds-localization/translations/${key}`, {
-        credentials: 'include',
-        method: 'PUT',
-        headers: { ...getAuthHeaders() },
-        body: JSON.stringify({ language_code: langCode, value }),
-      });
-      if (res.ok) {
-        setTranslations(prev =>
-          prev.map(t => t.key === key ? { ...t, [langCode]: value } : t)
-        );
-      }
+      await api.put(`/kds-localization/translations/${key}`, { language_code: langCode, value });
+      setTranslations(prev =>
+        prev.map(t => t.key === key ? { ...t, [langCode]: value } : t)
+      );
     } catch (error) {
       console.error('Error updating translation:', error);
     }
   };
-
   const getLanguage = (code: string) => LANGUAGES.find(l => l.code === code);
-
   return (
     <div className="min-h-screen bg-surface-50">
       {/* Header */}
@@ -141,7 +115,6 @@ export default function KDSLocalizationPage() {
           </div>
         </div>
       </div>
-
       <div className="max-w-7xl mx-auto px-6 py-6">
         {/* Language Overview */}
         <div className="bg-white rounded-xl border border-surface-200 p-4 mb-6">
@@ -161,7 +134,6 @@ export default function KDSLocalizationPage() {
             ))}
           </div>
         </div>
-
         {/* Tabs */}
         <div className="flex gap-2 mb-6">
           {[
@@ -183,7 +155,6 @@ export default function KDSLocalizationPage() {
             </button>
           ))}
         </div>
-
         {/* Stations Tab */}
         {activeTab === 'stations' && (
           <div className="space-y-4">
@@ -218,12 +189,10 @@ export default function KDSLocalizationPage() {
                         <span className="text-surface-700">{lang?.name}</span>
                       </div>
                     </div>
-
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                       <div>
                         <label className="block text-sm font-medium text-surface-700 mb-2">
                           Display Language
-                        </label>
                         <select
                           value={station.language_code}
                           onChange={(e) => updateStation(station.station_id, { language_code: e.target.value })}
@@ -235,12 +204,11 @@ export default function KDSLocalizationPage() {
                             </option>
                           ))}
                         </select>
+                        </label>
                       </div>
-
                       <div>
                         <label className="block text-sm font-medium text-surface-700 mb-2">
                           Primary Font Size
-                        </label>
                         <div className="flex items-center gap-2">
                           <input
                             type="range"
@@ -252,12 +220,11 @@ export default function KDSLocalizationPage() {
                           />
                           <span className="text-sm text-surface-600 w-12">{station.primary_font_size}px</span>
                         </div>
+                        </label>
                       </div>
-
                       <div>
                         <label className="block text-sm font-medium text-surface-700 mb-2">
                           Secondary Font Size
-                        </label>
                         <div className="flex items-center gap-2">
                           <input
                             type="range"
@@ -269,9 +236,9 @@ export default function KDSLocalizationPage() {
                           />
                           <span className="text-sm text-surface-600 w-12">{station.secondary_font_size}px</span>
                         </div>
+                        </label>
                       </div>
                     </div>
-
                     <div className="mt-4 pt-4 border-t border-surface-100">
                       <label className="flex items-center gap-2 cursor-pointer">
                         <input
@@ -291,7 +258,6 @@ export default function KDSLocalizationPage() {
             )}
           </div>
         )}
-
         {/* Translations Tab */}
         {activeTab === 'translations' && (
           <div className="bg-white rounded-xl border border-surface-200 overflow-hidden">
@@ -368,7 +334,6 @@ export default function KDSLocalizationPage() {
             </table>
           </div>
         )}
-
         {/* Preview Tab */}
         {activeTab === 'preview' && (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -393,7 +358,6 @@ export default function KDSLocalizationPage() {
                 </div>
               </div>
             </div>
-
             {/* Translated Preview */}
             <div className="bg-gray-900 rounded-xl p-4 text-white">
               <div className="flex items-center justify-between mb-4">

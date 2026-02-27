@@ -1,10 +1,7 @@
 'use client';
-
 import { useState, useEffect, memo } from 'react';
 import Link from 'next/link';
-
-import { API_URL, getAuthHeaders, clearAuth } from '@/lib/api';
-
+import { API_URL, clearAuth, api } from '@/lib/api';
 /** Isolated clock component to prevent full dashboard re-render every second */
 const LiveClock = memo(function LiveClock() {
   const [currentTime, setCurrentTime] = useState(new Date());
@@ -18,7 +15,6 @@ const LiveClock = memo(function LiveClock() {
     </span>
   );
 });
-
 interface DashboardStats {
   total_orders_today: number;
   total_revenue_today: number;
@@ -28,7 +24,6 @@ interface DashboardStats {
   top_items: Array<{ name: string; count: number }>;
   orders_by_hour: Array<{ hour: number; count: number }>;
 }
-
 interface KitchenStats {
   active_alerts: number;
   orders_by_status: Record<string, number>;
@@ -38,7 +33,6 @@ interface KitchenStats {
   avg_prep_time_minutes: number | null;
   orders_completed_today: number;
 }
-
 interface Order {
   id: number;
   order_number: string;
@@ -48,14 +42,12 @@ interface Order {
   created_at: string;
   items?: Array<{ id: number }>;
 }
-
 interface Table {
   id: number;
   number: string;
   capacity: number;
   status: string;
 }
-
 interface Reservation {
   id: number;
   customer_name: string;
@@ -63,17 +55,14 @@ interface Reservation {
   reservation_time: string;
   status: string;
 }
-
 interface SystemHealth {
   database: boolean;
   redis: boolean;
   api: boolean;
 }
-
 function DashboardContent() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-
   // Data states
   const [dashboardStats, setDashboardStats] = useState<DashboardStats | null>(null);
   const [kitchenStats, setKitchenStats] = useState<KitchenStats | null>(null);
@@ -81,79 +70,63 @@ function DashboardContent() {
   const [tables, setTables] = useState<Table[]>([]);
   const [reservations, setReservations] = useState<Reservation[]>([]);
   const [systemHealth, setSystemHealth] = useState<SystemHealth>({ database: true, redis: true, api: true });
-
   // Fetch all dashboard data
   const fetchDashboardData = async () => {
-    const headers = getAuthHeaders();
-
     try {
       // Fetch all data in parallel with timeout
-      const fetchWithTimeout = (url: string, opts: RequestInit, timeout = 5000) => {
+      const apiWithTimeout = <T,>(promise: Promise<T>, timeout = 5000): Promise<T> => {
         return Promise.race([
-          fetch(url, { ...opts, credentials: 'include' }),
-          new Promise<Response>((_, reject) =>
+          promise,
+          new Promise<T>((_, reject) =>
             setTimeout(() => reject(new Error('Timeout')), timeout)
           )
         ]);
       };
-
       const [statsRes, kitchenRes, ordersRes, tablesRes, reservationsRes] = await Promise.allSettled([
-        fetchWithTimeout(`${API_URL}/analytics/dashboard`, { headers }),
-        fetchWithTimeout(`${API_URL}/kitchen/stats`, { headers }),
-        fetchWithTimeout(`${API_URL}/orders`, { headers }),
-        fetchWithTimeout(`${API_URL}/tables`, { headers }),
-        fetchWithTimeout(`${API_URL}/reservations`, { headers }),
+        apiWithTimeout(api.get('/analytics/dashboard')),
+        apiWithTimeout(api.get('/kitchen/stats')),
+        apiWithTimeout(api.get('/orders')),
+        apiWithTimeout(api.get('/tables')),
+        apiWithTimeout(api.get('/reservations')),
       ]);
-
       // Process dashboard stats
-      if (statsRes.status === 'fulfilled' && statsRes.value.ok) {
-        const data = await statsRes.value.json();
-        setDashboardStats(data);
+      if (statsRes.status === 'fulfilled') {
+        setDashboardStats(statsRes.value as DashboardStats);
       }
-
       // Process kitchen stats
-      if (kitchenRes.status === 'fulfilled' && kitchenRes.value.ok) {
-        const data = await kitchenRes.value.json();
-        setKitchenStats(data);
+      if (kitchenRes.status === 'fulfilled') {
+        setKitchenStats(kitchenRes.value as KitchenStats);
       }
-
       // Process orders (may return 401 if not authenticated - that's OK)
-      if (ordersRes.status === 'fulfilled' && ordersRes.value.ok) {
-        const data = await ordersRes.value.json();
-        const ordersList = Array.isArray(data) ? data : (data.orders || []);
+      if (ordersRes.status === 'fulfilled') {
+        const data_orders: any = ordersRes.value;
+        const ordersList = Array.isArray(data_orders) ? data_orders : (data_orders.items || data_orders.orders || []);
         setOrders(ordersList);
       }
-
       // Process tables
-      if (tablesRes.status === 'fulfilled' && tablesRes.value.ok) {
-        const data = await tablesRes.value.json();
-        const tablesList = Array.isArray(data) ? data : (data.tables || []);
+      if (tablesRes.status === 'fulfilled') {
+        const data_tables: any = tablesRes.value;
+        const tablesList = Array.isArray(data_tables) ? data_tables : (data_tables.items || data_tables.tables || []);
         setTables(tablesList);
       }
-
       // Process reservations
-      if (reservationsRes.status === 'fulfilled' && reservationsRes.value.ok) {
-        const data = await reservationsRes.value.json();
-        const reservationsList = Array.isArray(data) ? data : (data.reservations || data.items || []);
+      if (reservationsRes.status === 'fulfilled') {
+        const data_reservations: any = reservationsRes.value;
+        const reservationsList = Array.isArray(data_reservations) ? data_reservations : (data_reservations.items || data_reservations.reservations || []);
         setReservations(reservationsList);
       }
-
       // Check real system health via /health/ready endpoint
       try {
-        const healthRes = await fetchWithTimeout(
-          `${API_URL.replace('/api/v1', '')}/health/ready`, { headers }, 5000
+        const health: any = await apiWithTimeout(
+          fetch(`${API_URL.replace('/api/v1', '')}/health/ready`, { credentials: 'include' }).then(r => r.json()),
+          5000
         );
-        if (healthRes.ok) {
-          const health = await healthRes.json();
-          setSystemHealth({
-            database: health.checks?.database === 'healthy',
-            redis: true,
-            api: true,
-          });
-          setError(null);
-        } else {
-          setSystemHealth({ database: false, redis: false, api: true });
-        }
+        setSystemHealth({
+          database: health.checks?.database === 'healthy',
+          redis: true,
+          api: true,
+        });
+        setError(null);
       } catch {
         // API responded to data requests above, so it's up
         const anyResponse = [statsRes, kitchenRes, tablesRes].some(
@@ -173,7 +146,6 @@ function DashboardContent() {
       setLoading(false);
     }
   };
-
   useEffect(() => {
     fetchDashboardData();
     // Refresh data every 30 seconds, but only when tab is visible
@@ -195,14 +167,12 @@ function DashboardContent() {
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-
   const getGreeting = () => {
     const hour = new Date().getHours();
     if (hour < 12) return 'Добро утро';
     if (hour < 18) return 'Добър ден';
     return 'Добър вечер';
   };
-
   // Calculate stats from real data
   const activeTables = tables.filter(t => t.status === 'occupied').length;
   const totalTables = tables.length || 20;
@@ -211,7 +181,6 @@ function DashboardContent() {
   const totalOrdersToday = dashboardStats?.total_orders_today || orders.length;
   const avgTicket = totalOrdersToday > 0 ? todayRevenue / totalOrdersToday : 0;
   const upcomingReservations = reservations.filter(r => r.status === 'confirmed' || r.status === 'pending');
-
   const colorClasses: Record<string, { text600: string; text700: string; from50: string; bg50: string; bg100: string }> = {
     primary: { text600: 'text-primary-600', text700: 'text-primary-700', from50: 'from-primary-50', bg50: 'bg-primary-50', bg100: 'bg-primary-100' },
     accent: { text600: 'text-accent-600', text700: 'text-accent-700', from50: 'from-accent-50', bg50: 'bg-accent-50', bg100: 'bg-accent-100' },
@@ -219,7 +188,6 @@ function DashboardContent() {
     warning: { text600: 'text-warning-600', text700: 'text-warning-700', from50: 'from-warning-50', bg50: 'bg-warning-50', bg100: 'bg-warning-100' },
     error: { text600: 'text-error-600', text700: 'text-error-700', from50: 'from-error-50', bg50: 'bg-error-50', bg100: 'bg-error-100' },
   };
-
   const stats = [
     {
       label: "Приходи днес",
@@ -258,7 +226,6 @@ function DashboardContent() {
       color: 'warning'
     },
   ];
-
   const quickActions = [
     { icon: '➕', label: 'Нова поръчка', href: '/orders/new', color: 'primary' },
     { icon: '🍽️', label: 'Дневно меню', href: '/daily-menu', color: 'warning' },
@@ -268,7 +235,6 @@ function DashboardContent() {
     { icon: '📦', label: 'Склад', href: '/stock', color: 'success' },
     { icon: '📊', label: 'Отчети', href: '/reports', color: 'primary' },
   ];
-
   // Get recent active orders for display
   const liveOrders = activeOrders.slice(0, 5).map(order => ({
     table: order.table_id ? `T${order.table_id}` : 'Takeaway',
@@ -278,22 +244,18 @@ function DashboardContent() {
     total: `${(order.total || 0).toFixed(0)} лв`,
     orderNumber: order.order_number,
   }));
-
   function getTimeAgo(dateString: string): string {
     const date = new Date(dateString);
     const now = new Date();
     const diffMs = now.getTime() - date.getTime();
     const diffMins = Math.floor(diffMs / 60000);
-
     if (diffMins < 1) return 'Сега';
     if (diffMins === 1) return 'Преди 1 мин';
     if (diffMins < 60) return `Преди ${diffMins} мин`;
-
     const diffHours = Math.floor(diffMins / 60);
     if (diffHours === 1) return 'Преди 1 час';
     return `Преди ${diffHours} часа`;
   }
-
   const navSections = [
     {
       title: 'Основни операции',
@@ -358,7 +320,6 @@ function DashboardContent() {
       ]
     },
   ];
-
   const systemServices = [
     { name: 'База данни', status: systemHealth.database ? 'online' : 'offline' },
     { name: 'Redis Cache', status: systemHealth.redis ? 'online' : 'offline' },
@@ -369,9 +330,7 @@ function DashboardContent() {
     { name: 'Платежен портал', status: 'online' },
     { name: 'SMS услуга', status: 'online' },
   ];
-
   // Don't block rendering - show UI immediately with placeholder data
-
   return (
     <div className="space-y-8 animate-fade-in">
       {/* Header */}
@@ -417,7 +376,6 @@ function DashboardContent() {
           </button>
         </div>
       </div>
-
       {/* Stats Grid */}
       <div className="grid grid-cols-5 gap-4">
         {stats.map((stat, i) => (
@@ -441,7 +399,6 @@ function DashboardContent() {
           </div>
         ))}
       </div>
-
       {/* Quick Actions */}
       <div className="bg-white rounded-2xl p-6 shadow-sm border border-surface-100">
         <h2 className="text-lg font-semibold text-surface-900 mb-4">Бързи действия</h2>
@@ -458,7 +415,6 @@ function DashboardContent() {
           ))}
         </div>
       </div>
-
       {/* Main Content Grid */}
       <div className="grid grid-cols-3 gap-6">
         {/* Live Orders */}
@@ -503,7 +459,6 @@ function DashboardContent() {
             </Link>
           </div>
         </div>
-
         {/* Navigation Sections */}
         <div className="col-span-2 grid grid-cols-2 gap-4">
           {navSections.map((section, i) => (
@@ -533,7 +488,6 @@ function DashboardContent() {
           ))}
         </div>
       </div>
-
       {/* Kitchen Stats Bar */}
       {kitchenStats && (
         <div className="bg-white rounded-2xl p-6 shadow-sm border border-surface-100">
@@ -568,7 +522,6 @@ function DashboardContent() {
           </div>
         </div>
       )}
-
       {/* System Status */}
       <div className="bg-white rounded-2xl p-6 shadow-sm border border-surface-100">
         <h2 className="text-lg font-semibold text-surface-900 mb-4">Системен статус</h2>
@@ -581,7 +534,6 @@ function DashboardContent() {
           ))}
         </div>
       </div>
-
       {/* Refresh indicator */}
       <div className="text-center text-xs text-surface-400">
         Данните се обновяват автоматично на всеки 30 секунди
@@ -589,7 +541,6 @@ function DashboardContent() {
     </div>
   );
 }
-
 export default function DashboardPage() {
   return <DashboardContent />;
 }

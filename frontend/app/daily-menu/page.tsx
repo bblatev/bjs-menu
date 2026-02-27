@@ -1,19 +1,17 @@
 "use client";
-
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
-import { API_URL, getAuthHeaders } from "@/lib/api";
 import { useConfirm } from "@/hooks/useConfirm";
-
 import { toast } from '@/lib/toast';
+
+import { api } from '@/lib/api';
 interface DailyMenuItem {
   product_id: number;
   special_price: number;
   portion_size?: string;
   note?: string;
 }
-
 interface DailyMenu {
   id: number;
   date: string;
@@ -28,13 +26,11 @@ interface DailyMenu {
   is_active: boolean;
   is_available: boolean;
 }
-
 interface Product {
   id: number;
   name: { bg: string; en: string };
   price: number;
 }
-
 export default function DailyMenuPage() {
   const confirm = useConfirm();
   const [menus, setMenus] = useState<DailyMenu[]>([]);
@@ -46,7 +42,6 @@ export default function DailyMenuPage() {
   const [selectedDate, setSelectedDate] = useState<string>(
     new Date().toISOString().split("T")[0]
   );
-
   // Form state
   const [form, setForm] = useState({
     date: new Date().toISOString().split("T")[0],
@@ -58,7 +53,6 @@ export default function DailyMenuPage() {
     max_orders: "",
     items: [] as DailyMenuItem[],
   });
-
   // Item selection state
   const [showItemPicker, setShowItemPicker] = useState(false);
   const [itemForm, setItemForm] = useState({
@@ -67,38 +61,28 @@ export default function DailyMenuPage() {
     portion_size: "regular",
     note: "",
   });
-
   useEffect(() => {
     loadData();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-
   const loadData = async () => {
     try {
-      const headers = getAuthHeaders();
-
       // Load daily menus for the past week and future 2 weeks
       const startDate = new Date();
       startDate.setDate(startDate.getDate() - 7);
       const endDate = new Date();
       endDate.setDate(endDate.getDate() + 14);
-
-      const [menusRes, productsRes] = await Promise.all([
-        fetch(
-          `${API_URL}/daily-menu?start_date=${startDate.toISOString().split("T")[0]}&end_date=${endDate.toISOString().split("T")[0]}`,
-          { credentials: 'include', headers }
-        ),
-        fetch(`${API_URL}/menu-admin/items`, { credentials: 'include', headers }),
-      ]);
-
-      if (menusRes.ok) {
-        const data = await menusRes.json();
+      const [menusRes, productsRes] = await Promise.allSettled([
+  api.get(`/daily-menu?start_date=${startDate.toISOString().split("T")[0]}&end_date=${endDate.toISOString().split("T")[0]}`),
+  api.get('/menu-admin/items')
+]);
+      if (menusRes.status === 'fulfilled') {
+        const data: any = menusRes.value;
         setMenus(Array.isArray(data) ? data : []);
       }
-
-      if (productsRes.ok) {
-        const data = await productsRes.json();
-        setProducts(Array.isArray(data) ? data : data.items || []);
+      if (productsRes.status === 'fulfilled') {
+        const data_products: any = productsRes.value;
+        setProducts(Array.isArray(data_products) ? data_products : data_products.items || []);
       }
     } catch (error) {
       console.error("Error loading data:", error);
@@ -106,10 +90,8 @@ export default function DailyMenuPage() {
       setLoading(false);
     }
   };
-
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
-
     try {
       const payload = {
         date: form.date,
@@ -121,34 +103,17 @@ export default function DailyMenuPage() {
         max_orders: form.max_orders ? parseInt(form.max_orders) : null,
         items: form.items,
       };
-
-      const response = await fetch(
-        `${API_URL}/daily-menu`,
-        {
-          credentials: 'include',
-          method: "POST",
-          headers: getAuthHeaders(),
-          body: JSON.stringify(payload),
-        }
-      );
-
-      if (response.ok) {
-        setShowModal(false);
-        resetForm();
-        loadData();
-      } else {
-        const err = await response.json();
-        toast.error(err.detail || "Error creating daily menu");
-      }
+      await api.post('/daily-menu', payload);
+      setShowModal(false);
+      resetForm();
+      loadData();
     } catch (error) {
       toast.error("Error creating daily menu");
     }
   };
-
   const handleUpdate = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingMenu) return;
-
     try {
       const payload = {
         date: form.date,
@@ -160,74 +125,32 @@ export default function DailyMenuPage() {
         max_orders: form.max_orders ? parseInt(form.max_orders) : null,
         items: form.items,
       };
-
-      const response = await fetch(
-        `${API_URL}/daily-menu/${editingMenu.id}`,
-        {
-          credentials: 'include',
-          method: "PUT",
-          headers: getAuthHeaders(),
-          body: JSON.stringify(payload),
-        }
-      );
-
-      if (response.ok) {
-        setShowModal(false);
-        setEditingMenu(null);
-        resetForm();
-        loadData();
-      } else {
-        const err = await response.json();
-        toast.error(err.detail || "Error updating daily menu");
-      }
+      await api.put(`/daily-menu/${editingMenu.id}`, payload);
+      setShowModal(false);
+      setEditingMenu(null);
+      resetForm();
+      loadData();
     } catch (error) {
       toast.error("Error updating daily menu");
     }
   };
-
   const handleDelete = async (menuId: number) => {
     if (!(await confirm({ message: "Are you sure you want to delete this daily menu?", variant: 'danger' }))) return;
-
     try {
-      const response = await fetch(
-        `${API_URL}/daily-menu/${menuId}`,
-        {
-          credentials: 'include',
-          method: "DELETE",
-          headers: getAuthHeaders(),
-        }
-      );
-
-      if (response.ok) {
-        loadData();
-      } else {
-        toast.error("Error deleting daily menu");
-      }
+      await api.del(`/daily-menu/${menuId}`);
+      loadData();
     } catch (error) {
       toast.error("Error deleting daily menu");
     }
   };
-
   const toggleActive = async (menu: DailyMenu) => {
     try {
-      const response = await fetch(
-        `${API_URL}/daily-menu/${menu.id}`,
-        {
-          credentials: 'include',
-          method: "PUT",
-          headers: getAuthHeaders(),
-          body: JSON.stringify({ is_active: !menu.is_active }),
-        }
-      );
-
-      if (response.ok) {
-        loadData();
-      }
+      await api.put(`/daily-menu/${menu.id}`, { is_active: !menu.is_active });
+      loadData();
     } catch (error) {
       console.error("Error toggling status:", error);
     }
   };
-
   const openEditModal = (menu: DailyMenu) => {
     setEditingMenu(menu);
     setForm({
@@ -242,7 +165,6 @@ export default function DailyMenuPage() {
     });
     setShowModal(true);
   };
-
   const openCreateModal = (date?: string) => {
     setEditingMenu(null);
     resetForm();
@@ -251,7 +173,6 @@ export default function DailyMenuPage() {
     }
     setShowModal(true);
   };
-
   const resetForm = () => {
     setForm({
       date: new Date().toISOString().split("T")[0],
@@ -264,13 +185,10 @@ export default function DailyMenuPage() {
       items: [],
     });
   };
-
   const addItemToMenu = () => {
     if (!itemForm.product_id) return;
-
     const product = products.find((p) => p.id === itemForm.product_id);
     if (!product) return;
-
     setForm((prev) => ({
       ...prev,
       items: [
@@ -283,7 +201,6 @@ export default function DailyMenuPage() {
         },
       ],
     }));
-
     setItemForm({
       product_id: 0,
       special_price: 0,
@@ -292,24 +209,20 @@ export default function DailyMenuPage() {
     });
     setShowItemPicker(false);
   };
-
   const removeItemFromMenu = (index: number) => {
     setForm((prev) => ({
       ...prev,
       items: prev.items.filter((_, i) => i !== index),
     }));
   };
-
   const getProductName = (productId: number) => {
     const product = products.find((p) => p.id === productId);
     return product?.name.en || product?.name.bg || `Product #${productId}`;
   };
-
   const getProductPrice = (productId: number) => {
     const product = products.find((p) => p.id === productId);
     return product?.price || 0;
   };
-
   // Group menus by date for calendar view
   const menusByDate = menus.reduce(
     (acc, menu) => {
@@ -320,18 +233,15 @@ export default function DailyMenuPage() {
     },
     {} as Record<string, DailyMenu[]>
   );
-
   // Get today's menus
   const today = new Date().toISOString().split("T")[0];
   const todaysMenus = menus.filter((m) => m.date === today);
-
   // Get upcoming menus (next 7 days)
   const upcomingMenus = menus.filter((m) => {
     const menuDate = new Date(m.date);
     const todayDate = new Date(today);
     return menuDate > todayDate;
   });
-
   if (loading) {
     return (
       <div className="min-h-screen bg-white flex items-center justify-center">
@@ -339,7 +249,6 @@ export default function DailyMenuPage() {
       </div>
     );
   }
-
   return (
     <div className="min-h-screen bg-white p-6">
       <div className="max-w-7xl mx-auto">
@@ -382,7 +291,6 @@ export default function DailyMenuPage() {
             </button>
           </div>
         </div>
-
         {/* Quick Navigation */}
         <div className="grid grid-cols-4 gap-3 mb-6">
           <Link
@@ -414,7 +322,6 @@ export default function DailyMenuPage() {
             <p className="text-gray-900 text-sm mt-1">Kitchen</p>
           </Link>
         </div>
-
         {/* Today's Special Banner */}
         {todaysMenus.length > 0 && (
           <div className="bg-gradient-to-r from-orange-500 to-amber-500 rounded-2xl p-6 mb-6">
@@ -456,7 +363,6 @@ export default function DailyMenuPage() {
             </div>
           </div>
         )}
-
         {/* List View */}
         {viewMode === "list" && (
           <div className="space-y-6">
@@ -498,13 +404,11 @@ export default function DailyMenuPage() {
                           </span>
                         )}
                       </div>
-
                       {menu.description && (
                         <p className="text-gray-600 text-sm mb-3">
                           {menu.description}
                         </p>
                       )}
-
                       <div className="flex flex-wrap gap-2 mb-4">
                         {menu.available_from && menu.available_until && (
                           <span className="px-2 py-1 bg-blue-100 text-blue-700 text-xs rounded">
@@ -526,7 +430,6 @@ export default function DailyMenuPage() {
                           {menu.is_active ? "Active" : "Inactive"}
                         </span>
                       </div>
-
                       {menu.items && menu.items.length > 0 && (
                         <div className="mb-4">
                           <p className="text-gray-500 text-xs mb-2">
@@ -549,7 +452,6 @@ export default function DailyMenuPage() {
                           </div>
                         </div>
                       )}
-
                       <div className="flex gap-2">
                         <button
                           onClick={() => toggleActive(menu)}
@@ -579,7 +481,6 @@ export default function DailyMenuPage() {
                 </div>
               </div>
             )}
-
             {/* All Menus */}
             <div>
               <h3 className="text-lg font-semibold text-gray-900 mb-4">
@@ -724,7 +625,6 @@ export default function DailyMenuPage() {
             </div>
           </div>
         )}
-
         {/* Calendar View */}
         {viewMode === "calendar" && (
           <div className="bg-white rounded-2xl border border-gray-200 p-6">
@@ -758,7 +658,6 @@ export default function DailyMenuPage() {
                 Next Week →
               </button>
             </div>
-
             <div className="grid grid-cols-7 gap-2">
               {Array.from({ length: 7 }).map((_, i) => {
                 const date = new Date(selectedDate);
@@ -766,7 +665,6 @@ export default function DailyMenuPage() {
                 const dateStr = date.toISOString().split("T")[0];
                 const dayMenus = menusByDate[dateStr] || [];
                 const isToday = dateStr === today;
-
                 return (
                   <div
                     key={i}
@@ -794,7 +692,6 @@ export default function DailyMenuPage() {
                         {date.getDate()}
                       </span>
                     </div>
-
                     {dayMenus.length > 0 ? (
                       <div className="space-y-2">
                         {dayMenus.map((menu) => (
@@ -831,7 +728,6 @@ export default function DailyMenuPage() {
           </div>
         )}
       </div>
-
       {/* Create/Edit Modal */}
       <AnimatePresence>
         {showModal && (
@@ -845,7 +741,6 @@ export default function DailyMenuPage() {
               <h2 className="text-2xl font-bold text-gray-900 mb-6">
                 {editingMenu ? "Edit Daily Menu" : "Create Daily Menu"}
               </h2>
-
               <form
                 onSubmit={editingMenu ? handleUpdate : handleCreate}
                 className="space-y-6"
@@ -855,7 +750,6 @@ export default function DailyMenuPage() {
                   <div>
                     <label className="text-gray-700 text-sm font-medium">
                       Date
-                    </label>
                     <input
                       type="date"
                       value={form.date}
@@ -865,11 +759,11 @@ export default function DailyMenuPage() {
                       required
                       className="w-full px-4 py-3 bg-gray-50 text-gray-900 rounded-xl mt-1 border border-gray-200"
                     />
+                    </label>
                   </div>
                   <div>
                     <label className="text-gray-700 text-sm font-medium">
                       Menu Name
-                    </label>
                     <input
                       type="text"
                       value={form.name}
@@ -880,13 +774,12 @@ export default function DailyMenuPage() {
                       placeholder="e.g. Lunch Special, Chef's Choice"
                       className="w-full px-4 py-3 bg-gray-50 text-gray-900 rounded-xl mt-1 border border-gray-200"
                     />
+                    </label>
                   </div>
                 </div>
-
                 <div>
                   <label className="text-gray-700 text-sm font-medium">
                     Description
-                  </label>
                   <textarea
                     value={form.description}
                     onChange={(e) =>
@@ -895,14 +788,13 @@ export default function DailyMenuPage() {
                     placeholder="Optional description..."
                     className="w-full px-4 py-3 bg-gray-50 text-gray-900 rounded-xl mt-1 border border-gray-200 h-20"
                   />
+                  </label>
                 </div>
-
                 {/* Time & Limits */}
                 <div className="grid grid-cols-4 gap-4">
                   <div>
                     <label className="text-gray-700 text-sm font-medium">
                       Available From
-                    </label>
                     <input
                       type="time"
                       value={form.available_from}
@@ -911,11 +803,11 @@ export default function DailyMenuPage() {
                       }
                       className="w-full px-4 py-3 bg-gray-50 text-gray-900 rounded-xl mt-1 border border-gray-200"
                     />
+                    </label>
                   </div>
                   <div>
                     <label className="text-gray-700 text-sm font-medium">
                       Available Until
-                    </label>
                     <input
                       type="time"
                       value={form.available_until}
@@ -924,11 +816,11 @@ export default function DailyMenuPage() {
                       }
                       className="w-full px-4 py-3 bg-gray-50 text-gray-900 rounded-xl mt-1 border border-gray-200"
                     />
+                    </label>
                   </div>
                   <div>
                     <label className="text-gray-700 text-sm font-medium">
                       Set Price (lv)
-                    </label>
                     <input
                       type="number"
                       step="0.01"
@@ -939,11 +831,11 @@ export default function DailyMenuPage() {
                       placeholder="Optional"
                       className="w-full px-4 py-3 bg-gray-50 text-gray-900 rounded-xl mt-1 border border-gray-200"
                     />
+                    </label>
                   </div>
                   <div>
                     <label className="text-gray-700 text-sm font-medium">
                       Max Orders
-                    </label>
                     <input
                       type="number"
                       value={form.max_orders}
@@ -953,15 +845,15 @@ export default function DailyMenuPage() {
                       placeholder="Unlimited"
                       className="w-full px-4 py-3 bg-gray-50 text-gray-900 rounded-xl mt-1 border border-gray-200"
                     />
+                    </label>
                   </div>
                 </div>
-
                 {/* Menu Items */}
                 <div>
                   <div className="flex items-center justify-between mb-3">
-                    <label className="text-gray-700 text-sm font-medium">
+                    <span className="text-gray-700 text-sm font-medium">
                       Menu Items
-                    </label>
+                    </span>
                     <button
                       type="button"
                       onClick={() => setShowItemPicker(true)}
@@ -970,7 +862,6 @@ export default function DailyMenuPage() {
                       + Add Item
                     </button>
                   </div>
-
                   {form.items.length === 0 ? (
                     <div className="text-center py-8 bg-gray-50 rounded-xl border-2 border-dashed border-gray-200">
                       <p className="text-gray-500">No items added yet</p>
@@ -1025,7 +916,6 @@ export default function DailyMenuPage() {
                     </div>
                   )}
                 </div>
-
                 {/* Actions */}
                 <div className="flex gap-3 pt-4 border-t">
                   <button
@@ -1050,7 +940,6 @@ export default function DailyMenuPage() {
           </div>
         )}
       </AnimatePresence>
-
       {/* Item Picker Modal */}
       <AnimatePresence>
         {showItemPicker && (
@@ -1064,12 +953,10 @@ export default function DailyMenuPage() {
               <h3 className="text-xl font-bold text-gray-900 mb-4">
                 Add Item to Menu
               </h3>
-
               <div className="space-y-4">
                 <div>
                   <label className="text-gray-700 text-sm font-medium">
                     Select Item
-                  </label>
                   <select
                     value={itemForm.product_id}
                     onChange={(e) => {
@@ -1091,12 +978,11 @@ export default function DailyMenuPage() {
                       </option>
                     ))}
                   </select>
+                  </label>
                 </div>
-
                 <div>
                   <label className="text-gray-700 text-sm font-medium">
                     Special Price (lv)
-                  </label>
                   <input
                     type="number"
                     step="0.01"
@@ -1109,12 +995,11 @@ export default function DailyMenuPage() {
                     }
                     className="w-full px-4 py-3 bg-gray-50 text-gray-900 rounded-xl mt-1 border border-gray-200"
                   />
+                  </label>
                 </div>
-
                 <div>
                   <label className="text-gray-700 text-sm font-medium">
                     Portion Size
-                  </label>
                   <select
                     value={itemForm.portion_size}
                     onChange={(e) =>
@@ -1126,12 +1011,11 @@ export default function DailyMenuPage() {
                     <option value="regular">Regular</option>
                     <option value="large">Large</option>
                   </select>
+                  </label>
                 </div>
-
                 <div>
                   <label className="text-gray-700 text-sm font-medium">
                     Note (optional)
-                  </label>
                   <input
                     type="text"
                     value={itemForm.note}
@@ -1141,8 +1025,8 @@ export default function DailyMenuPage() {
                     placeholder="e.g. Includes salad, Served with bread"
                     className="w-full px-4 py-3 bg-gray-50 text-gray-900 rounded-xl mt-1 border border-gray-200"
                   />
+                  </label>
                 </div>
-
                 <div className="flex gap-3 pt-4">
                   <button
                     type="button"

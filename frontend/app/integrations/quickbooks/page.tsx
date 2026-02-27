@@ -237,7 +237,7 @@ export default function QuickBooksIntegrationPage() {
             </div>
             <div className="p-6 space-y-4">
               <div className="grid grid-cols-2 gap-4">
-                <label className="flex items-center gap-3 p-3 bg-surface-50 rounded-lg">
+                <label aria-label="Sales & Invoices" className="flex items-center gap-3 p-3 bg-surface-50 rounded-lg">
                   <input
                     type="checkbox"
                     checked={settings.sync_sales}
@@ -249,7 +249,7 @@ export default function QuickBooksIntegrationPage() {
                     <div className="text-xs text-surface-500">Sync sales data to QuickBooks</div>
                   </div>
                 </label>
-                <label className="flex items-center gap-3 p-3 bg-surface-50 rounded-lg">
+                <label aria-label="Purchases & Bills" className="flex items-center gap-3 p-3 bg-surface-50 rounded-lg">
                   <input
                     type="checkbox"
                     checked={settings.sync_purchases}
@@ -261,7 +261,7 @@ export default function QuickBooksIntegrationPage() {
                     <div className="text-xs text-surface-500">Sync purchase orders and expenses</div>
                   </div>
                 </label>
-                <label className="flex items-center gap-3 p-3 bg-surface-50 rounded-lg">
+                <label aria-label="Inventory" className="flex items-center gap-3 p-3 bg-surface-50 rounded-lg">
                   <input
                     type="checkbox"
                     checked={settings.sync_inventory}
@@ -273,7 +273,7 @@ export default function QuickBooksIntegrationPage() {
                     <div className="text-xs text-surface-500">Sync inventory levels</div>
                   </div>
                 </label>
-                <label className="flex items-center gap-3 p-3 bg-surface-50 rounded-lg">
+                <label aria-label="Vendors" className="flex items-center gap-3 p-3 bg-surface-50 rounded-lg">
                   <input
                     type="checkbox"
                     checked={settings.sync_vendors}
@@ -288,7 +288,7 @@ export default function QuickBooksIntegrationPage() {
               </div>
 
               <div className="pt-4 border-t border-surface-100">
-                <label className="flex items-center justify-between p-3 bg-surface-50 rounded-lg">
+                <label aria-label="Automatic Sync" className="flex items-center justify-between p-3 bg-surface-50 rounded-lg">
                   <div>
                     <div className="font-medium text-surface-900">Automatic Sync</div>
                     <div className="text-xs text-surface-500">Automatically sync data on schedule</div>

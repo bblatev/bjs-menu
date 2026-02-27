@@ -1,9 +1,8 @@
 'use client';
-
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { API_URL, getAuthHeaders } from '@/lib/api';
 
+import { api } from '@/lib/api';
 interface SpillageRecord {
   id: number;
   date: string;
@@ -18,7 +17,6 @@ interface SpillageRecord {
   notes?: string;
   approved_by?: string;
 }
-
 interface VarianceItem {
   id: number;
   item_name: string;
@@ -30,7 +28,6 @@ interface VarianceItem {
   variance_cost: number;
   status: 'ok' | 'warning' | 'critical';
 }
-
 interface SpillageStats {
   total_spillage_cost: number;
   total_breakage_cost: number;
@@ -40,7 +37,6 @@ interface SpillageStats {
   worst_bartender?: string;
   improvement_vs_last: number;
 }
-
 const REASONS = {
   spillage: { label: 'Spillage', color: 'bg-blue-500' },
   breakage: { label: 'Breakage', color: 'bg-red-500' },
@@ -49,7 +45,6 @@ const REASONS = {
   expired: { label: 'Expired', color: 'bg-orange-500' },
   other: { label: 'Other', color: 'bg-gray-500' },
 };
-
 export default function SpillagePage() {
   const [records, setRecords] = useState<SpillageRecord[]>([]);
   const [variances, setVariances] = useState<VarianceItem[]>([]);
@@ -60,7 +55,6 @@ export default function SpillagePage() {
   const [reasonFilter, setReasonFilter] = useState<string>('all');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-
   const [formData, setFormData] = useState({
     item_name: '',
     item_category: 'spirits',
@@ -69,27 +63,22 @@ export default function SpillagePage() {
     reason: 'spillage' as SpillageRecord['reason'],
     notes: '',
   });
-
   useEffect(() => {
     loadData();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [period, reasonFilter]);
-
   const loadData = async () => {
     setLoading(true);
-    const headers = getAuthHeaders();
-
     try {
       // Fetch all data in parallel
       const [recordsRes, variancesRes, statsRes] = await Promise.allSettled([
-        fetch(`${API_URL}/bar/spillage/records?period=${period}&reason_filter=${reasonFilter}`, { credentials: 'include', headers }),
-        fetch(`${API_URL}/bar/spillage/variance`, { credentials: 'include', headers }),
-        fetch(`${API_URL}/bar/spillage/stats?period=${period}`, { credentials: 'include', headers })
-      ]);
-
+  api.get(`/bar/spillage/records?period=${period}&reason_filter=${reasonFilter}`),
+  api.get('/bar/spillage/variance'),
+  api.get(`/bar/spillage/stats?period=${period}`)
+]);
       // Process records
-      if (recordsRes.status === 'fulfilled' && recordsRes.value.ok) {
-        const data = await recordsRes.value.json();
+      if (recordsRes.status === 'fulfilled') {
+        const data: any = recordsRes.value;
         if (Array.isArray(data)) {
           // Normalize API response to match component interface
           const reasonMap: Record<string, SpillageRecord['reason']> = {
@@ -124,12 +113,11 @@ export default function SpillagePage() {
         }
         setRecords(filtered);
       }
-
       // Process variances
-      if (variancesRes.status === 'fulfilled' && variancesRes.value.ok) {
-        const data = await variancesRes.value.json();
-        if (Array.isArray(data)) {
-          setVariances(data);
+      if (variancesRes.status === 'fulfilled') {
+        const data_variances: any = variancesRes.value;
+        if (Array.isArray(data_variances)) {
+          setVariances(data_variances);
         }
       } else {
         setVariances([
@@ -137,11 +125,10 @@ export default function SpillagePage() {
           { id: 2, item_name: 'Jack Daniels', category: 'Spirits', expected_usage: 95, actual_usage: 102, variance: -7, variance_percentage: -7.4, variance_cost: -10.50, status: 'warning' },
         ]);
       }
-
       // Process stats
-      if (statsRes.status === 'fulfilled' && statsRes.value.ok) {
-        const data = await statsRes.value.json();
-        setStats(data);
+      if (statsRes.status === 'fulfilled') {
+        const data_stats: any = statsRes.value;
+        setStats(data_stats);
       } else {
         setStats({
           total_spillage_cost: 15.75,
@@ -153,7 +140,6 @@ export default function SpillagePage() {
           improvement_vs_last: 12,
         });
       }
-
       setError(null);
     } catch (err) {
       console.error('Failed to fetch spillage data:', err);
@@ -172,7 +158,6 @@ export default function SpillagePage() {
       setLoading(false);
     }
   };
-
   const addSpillage = () => {
     // In real app, would call API
     setShowAddModal(false);
@@ -186,7 +171,6 @@ export default function SpillagePage() {
     });
     loadData();
   };
-
   const getStatusColor = (status: VarianceItem['status']) => {
     switch (status) {
       case 'ok': return 'text-green-400';
@@ -195,7 +179,6 @@ export default function SpillagePage() {
       default: return 'text-gray-400';
     }
   };
-
   const groupByReason = () => {
     const groups: Record<string, number> = {};
     records.forEach(r => {
@@ -203,7 +186,6 @@ export default function SpillagePage() {
     });
     return groups;
   };
-
   const groupByBartender = () => {
     const groups: Record<string, number> = {};
     records.forEach(r => {
@@ -211,9 +193,7 @@ export default function SpillagePage() {
     });
     return Object.entries(groups).sort((a, b) => b[1] - a[1]);
   };
-
   const totalSpillage = records.reduce((sum, r) => sum + r.cost, 0);
-
   // Loading state
   if (loading) {
     return (
@@ -225,7 +205,6 @@ export default function SpillagePage() {
       </div>
     );
   }
-
   return (
     <div className="min-h-screen bg-white p-6">
       {/* Error Banner */}
@@ -234,7 +213,6 @@ export default function SpillagePage() {
           {error}
         </div>
       )}
-
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-4">
@@ -266,7 +244,6 @@ export default function SpillagePage() {
           </button>
         </div>
       </div>
-
       {/* Stats */}
       {stats && (
         <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-4 mb-6">
@@ -302,7 +279,6 @@ export default function SpillagePage() {
           </div>
         </div>
       )}
-
       {/* Tabs */}
       <div className="flex gap-2 mb-6">
         <button
@@ -322,7 +298,6 @@ export default function SpillagePage() {
           Inventory Variance
         </button>
       </div>
-
       {activeTab === 'spillage' && (
         <>
           {/* Reason Filter */}
@@ -348,7 +323,6 @@ export default function SpillagePage() {
               </button>
             ))}
           </div>
-
           <div className="grid lg:grid-cols-3 gap-6">
             {/* Spillage Records */}
             <div className="lg:col-span-2 bg-secondary rounded-lg">
@@ -382,7 +356,6 @@ export default function SpillagePage() {
                 ))}
               </div>
             </div>
-
             {/* Analytics Sidebar */}
             <div className="space-y-6">
               {/* By Reason */}
@@ -408,7 +381,6 @@ export default function SpillagePage() {
                   ))}
                 </div>
               </div>
-
               {/* By Bartender */}
               <div className="bg-secondary rounded-lg p-4">
                 <h3 className="text-gray-900 font-semibold mb-4">Cost by Bartender</h3>
@@ -425,7 +397,6 @@ export default function SpillagePage() {
           </div>
         </>
       )}
-
       {activeTab === 'variance' && (
         <div className="bg-secondary rounded-lg overflow-hidden">
           <div className="p-4 border-b border-gray-300 flex items-center justify-between">
@@ -487,7 +458,6 @@ export default function SpillagePage() {
           </div>
         </div>
       )}
-
       {/* Add Spillage Modal */}
       {showAddModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
@@ -502,10 +472,9 @@ export default function SpillagePage() {
                   &times;
                 </button>
               </div>
-
               <div className="space-y-4">
                 <div>
-                  <label className="block text-gray-300 mb-1">Item Name</label>
+                  <label className="block text-gray-300 mb-1">Item Name
                   <input
                     type="text"
                     value={formData.item_name}
@@ -513,11 +482,11 @@ export default function SpillagePage() {
                     className="w-full px-4 py-2 bg-white border border-gray-300 rounded-lg text-gray-900"
                     placeholder="e.g., Grey Goose Vodka"
                   />
+                  </label>
                 </div>
-
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-gray-300 mb-1">Category</label>
+                    <label className="block text-gray-300 mb-1">Category
                     <select
                       value={formData.item_category}
                       onChange={(e) => setFormData({ ...formData, item_category: e.target.value })}
@@ -530,9 +499,10 @@ export default function SpillagePage() {
                       <option value="glassware">Glassware</option>
                       <option value="other">Other</option>
                     </select>
+                    </label>
                   </div>
                   <div>
-                    <label className="block text-gray-300 mb-1">Reason</label>
+                    <label className="block text-gray-300 mb-1">Reason
                     <select
                       value={formData.reason}
                       onChange={(e) => setFormData({ ...formData, reason: e.target.value as SpillageRecord['reason'] })}
@@ -542,12 +512,12 @@ export default function SpillagePage() {
                         <option key={key} value={key}>{value.label}</option>
                       ))}
                     </select>
+                    </label>
                   </div>
                 </div>
-
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-gray-300 mb-1">Quantity</label>
+                    <label className="block text-gray-300 mb-1">Quantity
                     <input
                       type="number"
                       step="0.5"
@@ -555,9 +525,10 @@ export default function SpillagePage() {
                       onChange={(e) => setFormData({ ...formData, quantity: parseFloat(e.target.value) })}
                       className="w-full px-4 py-2 bg-white border border-gray-300 rounded-lg text-gray-900"
                     />
+                    </label>
                   </div>
                   <div>
-                    <label className="block text-gray-300 mb-1">Unit</label>
+                    <label className="block text-gray-300 mb-1">Unit
                     <select
                       value={formData.unit}
                       onChange={(e) => setFormData({ ...formData, unit: e.target.value })}
@@ -569,11 +540,11 @@ export default function SpillagePage() {
                       <option value="pc">Pieces</option>
                       <option value="drink">Drinks</option>
                     </select>
+                    </label>
                   </div>
                 </div>
-
                 <div>
-                  <label className="block text-gray-300 mb-1">Notes</label>
+                  <label className="block text-gray-300 mb-1">Notes
                   <textarea
                     value={formData.notes}
                     onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
@@ -581,9 +552,9 @@ export default function SpillagePage() {
                     rows={2}
                     placeholder="What happened?"
                   />
+                  </label>
                 </div>
               </div>
-
               <div className="flex gap-3 mt-6">
                 <button
                   onClick={() => setShowAddModal(false)}

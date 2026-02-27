@@ -2,9 +2,11 @@
 
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { API_URL, getAuthHeaders } from '@/lib/api';
+
 
 import { toast } from '@/lib/toast';
+
+import { api } from '@/lib/api';
 interface Integration {
   id: string;
   name: string;
@@ -60,27 +62,12 @@ export default function IntegrationMarketplacePage() {
   const loadData = async () => {
     try {
       // Load all integrations
-      const integrationsRes = await fetch(`${API_URL}/enterprise/integrations/marketplace`, {
-        credentials: 'include',
-        headers: getAuthHeaders()
-      });
-      if (integrationsRes.ok) {
-        const data = await integrationsRes.json();
-        setIntegrations(data);
-      } else {
-        // Mock data for demo
-        setIntegrations(getMockIntegrations());
-      }
+      const data: any = await api.get('/enterprise/integrations/marketplace');
+            setIntegrations(data);
 
       // Load connected integrations
-      const connectedRes = await fetch(`${API_URL}/enterprise/integrations/connected`, {
-        credentials: 'include',
-        headers: getAuthHeaders()
-      });
-      if (connectedRes.ok) {
-        const data = await connectedRes.json();
-        setConnectedIntegrations(data);
-      }
+      const data_connectedIntegrations: any = await api.get('/enterprise/integrations/connected');
+            setConnectedIntegrations(data_connectedIntegrations);
     } catch (error) {
       console.error('Error loading integrations:', error);
       setIntegrations(getMockIntegrations());
@@ -107,28 +94,10 @@ export default function IntegrationMarketplacePage() {
   const handleConnect = async (integration: Integration) => {
     setConnecting(true);
     try {
-      const response = await fetch(`${API_URL}/enterprise/integrations/${integration.id}/connect`, {
-        credentials: 'include',
-        method: 'POST',
-        headers: getAuthHeaders(),
-        body: JSON.stringify({ config: {} })
-      });
-
-      if (response.ok) {
-        toast.success(`Successfully connected to ${integration.name}!`);
-        loadData();
-        setSelectedIntegration(null);
-      } else {
-        // Demo mode - simulate success
-        setConnectedIntegrations(prev => [...prev, {
-          id: Date.now(),
-          integration_id: integration.id,
-          integration_name: integration.name,
-          status: 'active',
-          connected_at: new Date().toISOString()
-        }]);
-        setSelectedIntegration(null);
-      }
+      await api.post(`/enterprise/integrations/${integration.id}/connect`, { config: {} });
+      toast.success(`Successfully connected to ${integration.name}!`);
+      loadData();
+      setSelectedIntegration(null);
     } catch (error) {
       console.error('Error connecting:', error);
     } finally {
@@ -140,11 +109,7 @@ export default function IntegrationMarketplacePage() {
     if (!confirm('Are you sure you want to disconnect this integration?')) return;
 
     try {
-      await fetch(`${API_URL}/enterprise/integrations/connections/${connectionId}`, {
-        credentials: 'include',
-        method: 'DELETE',
-        headers: getAuthHeaders()
-      });
+      await api.del(`/enterprise/integrations/connections/${connectionId}`);
       setConnectedIntegrations(prev => prev.filter(c => c.id !== connectionId));
     } catch (error) {
       console.error('Error disconnecting:', error);

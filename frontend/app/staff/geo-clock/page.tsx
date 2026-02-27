@@ -569,7 +569,7 @@ export default function GeoClockPage() {
             </div>
             <div className="p-6 space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Fence Name *</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Fence Name *
                 <input
                   type="text"
                   value={newFence.name}
@@ -577,10 +577,11 @@ export default function GeoClockPage() {
                   className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
                   placeholder="e.g., Main Restaurant"
                 />
+                </label>
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Latitude *</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Latitude *
                   <input
                     type="number"
                     step="any"
@@ -589,9 +590,10 @@ export default function GeoClockPage() {
                     className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
                     placeholder="40.7128"
                   />
+                  </label>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Longitude *</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Longitude *
                   <input
                     type="number"
                     step="any"
@@ -600,12 +602,12 @@ export default function GeoClockPage() {
                     className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
                     placeholder="-74.0060"
                   />
+                  </label>
                 </div>
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Radius: <span className="font-bold text-blue-600">{newFence.radius}m</span>
-                </label>
                 <input
                   type="range"
                   min="25"
@@ -614,6 +616,7 @@ export default function GeoClockPage() {
                   onChange={(e) => setNewFence({ ...newFence, radius: e.target.value })}
                   className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-600"
                 />
+                </label>
                 <div className="flex justify-between text-xs text-gray-400 mt-1">
                   <span>25m</span>
                   <span>250m</span>

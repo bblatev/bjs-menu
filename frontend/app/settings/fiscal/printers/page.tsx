@@ -4,9 +4,11 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { Button, Card, CardBody, Badge } from '@/components/ui';
 
-import { API_URL, getAuthHeaders } from '@/lib/api';
+
 
 import { toast } from '@/lib/toast';
+
+import { api } from '@/lib/api';
 
 interface Manufacturer {
   id: string;
@@ -88,20 +90,20 @@ export default function FiscalPrintersPage() {
 
   const loadData = async () => {
     try {
-      const [mfrsRes, printersRes, connRes] = await Promise.all([
-        fetch(`${API_URL}/fiscal-printers/manufacturers`, { credentials: 'include', headers: getAuthHeaders() }),
-        fetch(`${API_URL}/fiscal-printers/models`, { credentials: 'include', headers: getAuthHeaders() }),
-        fetch(`${API_URL}/fiscal-printers/connection-types`, { credentials: 'include', headers: getAuthHeaders() }),
-      ]);
+      const [mfrsRes, printersRes, connRes] = await Promise.allSettled([
+  api.get('/fiscal-printers/manufacturers'),
+  api.get('/fiscal-printers/models'),
+  api.get('/fiscal-printers/connection-types')
+]);
 
-      if (mfrsRes.ok) {
-        setManufacturers(await mfrsRes.json());
+      if (mfrsRes.status === 'fulfilled') {
+        setManufacturers(mfrsRes.value as any);
       }
-      if (printersRes.ok) {
-        setPrinters(await printersRes.json());
+      if (printersRes.status === 'fulfilled') {
+        setPrinters(printersRes.value as any);
       }
-      if (connRes.ok) {
-        setConnectionTypes(await connRes.json());
+      if (connRes.status === 'fulfilled') {
+        setConnectionTypes(connRes.value as any);
       }
     } catch (err) {
       console.error('Error loading fiscal printers:', err);
@@ -124,22 +126,12 @@ export default function FiscalPrintersPage() {
     setDetecting(true);
     setShowDetectResults(true);
     try {
-      const response = await fetch(`${API_URL}/fiscal-printers/detect`, {
-        credentials: 'include',
-        method: 'POST',
-        headers: getAuthHeaders(),
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        setDetectedDevices(data.devices || []);
-        if (data.total_detected > 0) {
-          toast.success(`Found ${data.total_detected} device(s)`);
-        } else {
-          toast.info('No fiscal printers detected. Make sure the device is connected.');
-        }
+      const data: any = await api.post('/fiscal-printers/detect');
+            setDetectedDevices(data.devices || []);
+      if (data.total_detected > 0) {
+      toast.success(`Found ${data.total_detected} device(s)`);
       } else {
-        toast.error('Auto-detection failed');
+      toast.info('No fiscal printers detected. Make sure the device is connected.');
       }
     } catch (err) {
       console.error('Detection error:', err);
@@ -170,23 +162,12 @@ export default function FiscalPrintersPage() {
     if (!selectedPrinter) return;
     setConfiguring(true);
     try {
-      const response = await fetch(`${API_URL}/fiscal-printers/configure`, {
-        credentials: 'include',
-        method: 'POST',
-        headers: getAuthHeaders(),
-        body: JSON.stringify({
+      await api.post('/fiscal-printers/configure', {
           ...configForm,
           model_id: selectedPrinter.id,
-        }),
-      });
-
-      if (response.ok) {
-        toast.success(`Printer ${selectedPrinter.name} configured successfully!`);
-        setSelectedPrinter(null);
-      } else {
-        const error = await response.json();
-        toast.error(`Failed to configure printer: ${error.detail || 'Unknown error'}`);
-      }
+        });
+      toast.success(`Printer ${selectedPrinter.name} configured successfully!`);
+      setSelectedPrinter(null);
     } catch (err) {
       console.error('Error configuring printer:', err);
       toast.error('Failed to configure printer');
@@ -563,7 +544,7 @@ export default function FiscalPrintersPage() {
                 <h3 className="font-semibold text-surface-900 mb-4">Configure Printer</h3>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-surface-600 mb-2">Connection Type</label>
+                    <label className="block text-sm font-medium text-surface-600 mb-2">Connection Type
                     <select
                       value={configForm.connection_type}
                       onChange={(e) => setConfigForm({...configForm, connection_type: e.target.value})}
@@ -575,9 +556,10 @@ export default function FiscalPrintersPage() {
                       <option value="fpgate">FPGate REST API</option>
                       <option value="erpnet_fp">ErpNet.FP REST API</option>
                     </select>
+                    </label>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-surface-600 mb-2">Config ID</label>
+                    <label className="block text-sm font-medium text-surface-600 mb-2">Config ID
                     <input
                       type="text"
                       value={configForm.config_id}
@@ -585,11 +567,12 @@ export default function FiscalPrintersPage() {
                       className="w-full px-3 py-2 rounded-lg border border-surface-200 focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500"
                       placeholder="default"
                     />
+                    </label>
                   </div>
                   {(configForm.connection_type === 'ethernet' || configForm.connection_type === 'fpgate' || configForm.connection_type === 'erpnet_fp' || configForm.connection_type === 'wifi') && (
                     <>
                       <div>
-                        <label className="block text-sm font-medium text-surface-600 mb-2">Host/IP</label>
+                        <label className="block text-sm font-medium text-surface-600 mb-2">Host/IP
                         <input
                           type="text"
                           value={configForm.host}
@@ -597,9 +580,10 @@ export default function FiscalPrintersPage() {
                           className="w-full px-3 py-2 rounded-lg border border-surface-200 focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500"
                           placeholder="localhost"
                         />
+                        </label>
                       </div>
                       <div>
-                        <label className="block text-sm font-medium text-surface-600 mb-2">Port</label>
+                        <label className="block text-sm font-medium text-surface-600 mb-2">Port
                         <input
                           type="number"
                           value={configForm.port}
@@ -607,11 +591,12 @@ export default function FiscalPrintersPage() {
                           className="w-full px-3 py-2 rounded-lg border border-surface-200 focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500"
                           placeholder="4444"
                         />
+                        </label>
                       </div>
                     </>
                   )}
                   <div>
-                    <label className="block text-sm font-medium text-surface-600 mb-2">Operator ID</label>
+                    <label className="block text-sm font-medium text-surface-600 mb-2">Operator ID
                     <input
                       type="text"
                       value={configForm.operator_id}
@@ -619,9 +604,10 @@ export default function FiscalPrintersPage() {
                       className="w-full px-3 py-2 rounded-lg border border-surface-200 focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500"
                       placeholder="1"
                     />
+                    </label>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-surface-600 mb-2">Operator Password</label>
+                    <label className="block text-sm font-medium text-surface-600 mb-2">Operator Password
                     <input
                       type="password"
                       value={configForm.operator_password}
@@ -629,6 +615,7 @@ export default function FiscalPrintersPage() {
                       className="w-full px-3 py-2 rounded-lg border border-surface-200 focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500"
                       placeholder="••••••"
                     />
+                    </label>
                   </div>
                 </div>
 

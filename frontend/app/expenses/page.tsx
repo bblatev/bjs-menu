@@ -440,7 +440,7 @@ export default function ExpensesPage() {
               <div className="p-6 space-y-4">
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-surface-700 mb-1">Category</label>
+                    <label className="block text-sm font-medium text-surface-700 mb-1">Category
                     <select
                       value={formData.category_id}
                       onChange={(e) => setFormData({ ...formData, category_id: e.target.value })}
@@ -451,19 +451,21 @@ export default function ExpensesPage() {
                         <option key={cat.id} value={cat.id}>{cat.name}</option>
                       ))}
                     </select>
+                    </label>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-surface-700 mb-1">Date</label>
+                    <label className="block text-sm font-medium text-surface-700 mb-1">Date
                     <input
                       type="date"
                       value={formData.expense_date}
                       onChange={(e) => setFormData({ ...formData, expense_date: e.target.value })}
                       className="w-full px-4 py-2 border border-surface-200 rounded-lg focus:ring-2 focus:ring-amber-500"
                     />
+                    </label>
                   </div>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-surface-700 mb-1">Vendor Name</label>
+                  <label className="block text-sm font-medium text-surface-700 mb-1">Vendor Name
                   <input
                     type="text"
                     value={formData.vendor_name}
@@ -471,10 +473,11 @@ export default function ExpensesPage() {
                     className="w-full px-4 py-2 border border-surface-200 rounded-lg focus:ring-2 focus:ring-amber-500"
                     placeholder="e.g., Metro Cash & Carry"
                   />
+                  </label>
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-surface-700 mb-1">Amount</label>
+                    <label className="block text-sm font-medium text-surface-700 mb-1">Amount
                     <input
                       type="number"
                       step="0.01"
@@ -483,9 +486,10 @@ export default function ExpensesPage() {
                       className="w-full px-4 py-2 border border-surface-200 rounded-lg focus:ring-2 focus:ring-amber-500"
                       placeholder="0.00"
                     />
+                    </label>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-surface-700 mb-1">Payment Method</label>
+                    <label className="block text-sm font-medium text-surface-700 mb-1">Payment Method
                     <select
                       value={formData.payment_method}
                       onChange={(e) => setFormData({ ...formData, payment_method: e.target.value })}
@@ -496,10 +500,11 @@ export default function ExpensesPage() {
                       <option value="bank_transfer">Bank Transfer</option>
                       <option value="check">Check</option>
                     </select>
+                    </label>
                   </div>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-surface-700 mb-1">Description</label>
+                  <label className="block text-sm font-medium text-surface-700 mb-1">Description
                   <textarea
                     value={formData.description}
                     onChange={(e) => setFormData({ ...formData, description: e.target.value })}
@@ -507,16 +512,18 @@ export default function ExpensesPage() {
                     rows={2}
                     placeholder="Brief description of the expense..."
                   />
+                  </label>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-surface-700 mb-1">Receipt (optional)</label>
+                  <label className="block text-sm font-medium text-surface-700 mb-1">Receipt (optional)
                   <div className="border-2 border-dashed border-surface-200 rounded-lg p-4 text-center">
                     <input type="file" className="hidden" id="receipt" accept="image/*,.pdf" />
-                    <label htmlFor="receipt" className="cursor-pointer">
+                    <label aria-label="Click to upload receipt" htmlFor="receipt" className="cursor-pointer">
                       <div className="text-3xl mb-2">📎</div>
                       <div className="text-sm text-surface-500">Click to upload receipt</div>
                     </label>
                   </div>
+                  </label>
                 </div>
               </div>
               <div className="p-6 border-t border-surface-100 flex gap-3">

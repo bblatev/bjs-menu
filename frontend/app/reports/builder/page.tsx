@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Link from 'next/link';
-import { API_URL, getAuthHeaders } from '@/lib/api';
+import { api } from '@/lib/api';
 
 interface DataSource {
   id: string;
@@ -99,16 +99,10 @@ export default function ReportBuilderPage() {
       setInitialLoading(true);
       setError(null);
       try {
-        const res = await fetch(`${API_URL}/custom-reports/data-sources`, {
-          credentials: 'include',
-          headers: getAuthHeaders(),
-        });
-        if (res.ok) {
-          const data = await res.json();
-          setDataSources(data);
-          if (data.length > 0 && !report.data_source_id) {
-            setReport({ ...report, data_source_id: data[0].id });
-          }
+        const data: any = await api.get('/custom-reports/data-sources');
+                setDataSources(data);
+        if (data.length > 0 && !report.data_source_id) {
+        setReport({ ...report, data_source_id: data[0].id });
         }
       } catch (err) {
         console.error('Error loading data sources:', err);
@@ -124,14 +118,8 @@ export default function ReportBuilderPage() {
 
   const loadSavedReports = async () => {
     try {
-      const res = await fetch(`${API_URL}/custom-reports/reports`, {
-        credentials: 'include',
-        headers: getAuthHeaders(),
-      });
-      if (res.ok) {
-        const data = await res.json();
-        setSavedReports(data);
-      }
+      const data: any = await api.get('/custom-reports/reports');
+            setSavedReports(data);
     } catch (error) {
       console.error('Error loading saved reports:', error);
     }
@@ -213,24 +201,15 @@ export default function ReportBuilderPage() {
 
     setLoading(true);
     try {
-      const res = await fetch(`${API_URL}/custom-reports/reports/execute`, {
-        credentials: 'include',
-        method: 'POST',
-        headers: getAuthHeaders(),
-        body: JSON.stringify({
+      const data: any = await api.post('/custom-reports/reports/execute', {
           data_source_id: report.data_source_id,
           columns: report.columns,
           filters: report.filters.filter(f => f.value || f.operator === 'is_null' || f.operator === 'is_not_null'),
           groupings: report.groupings,
           sort_by: report.sort_by,
           sort_direction: report.sort_direction,
-        }),
-      });
-
-      if (res.ok) {
-        const data = await res.json();
-        setReportResults(data.rows || []);
-      }
+        });
+            setReportResults(data.rows || []);
     } catch (error) {
       console.error('Error running report:', error);
     } finally {
@@ -241,23 +220,14 @@ export default function ReportBuilderPage() {
   const saveReport = async () => {
     setSaving(true);
     try {
-      const method = report.report_id ? 'PUT' : 'POST';
-      const url = report.report_id
-        ? `${API_URL}/custom-reports/reports/${report.report_id}`
-        : `${API_URL}/custom-reports/reports`;
-
-      const res = await fetch(url, {
-        credentials: 'include',
-        method,
-        headers: getAuthHeaders(),
-        body: JSON.stringify(report),
-      });
-
-      if (res.ok) {
-        const saved = await res.json();
-        setReport({ ...report, report_id: saved.report_id });
-        loadSavedReports();
+      let saved: any;
+      if (report.report_id) {
+        saved = await api.put(`/custom-reports/reports/${report.report_id}`, report);
+      } else {
+        saved = await api.post('/custom-reports/reports', report);
       }
+      setReport({ ...report, report_id: saved.report_id });
+      loadSavedReports();
     } catch (error) {
       console.error('Error saving report:', error);
     } finally {
@@ -364,7 +334,7 @@ export default function ReportBuilderPage() {
         <div className="w-96 bg-white border-r border-surface-200 flex flex-col">
           {/* Data Source Selector */}
           <div className="p-4 border-b border-surface-200">
-            <label className="block text-sm font-medium text-surface-700 mb-2">Data Source</label>
+            <label className="block text-sm font-medium text-surface-700 mb-2">Data Source
             <select
               value={report.data_source_id}
               onChange={(e) => setReport({ ...report, data_source_id: e.target.value, columns: [], filters: [], groupings: [] })}
@@ -374,6 +344,7 @@ export default function ReportBuilderPage() {
                 <option key={ds.id} value={ds.id}>{ds.name}</option>
               ))}
             </select>
+            </label>
             {currentDataSource && (
               <p className="text-xs text-surface-500 mt-1">{currentDataSource.description}</p>
             )}

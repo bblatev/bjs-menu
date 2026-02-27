@@ -1,31 +1,27 @@
 'use client';
-
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { API_URL, getAuthHeaders } from '@/lib/api';
-
 import { toast } from '@/lib/toast';
+
+import { api } from '@/lib/api';
 interface MenuItem {
   id: number;
   name: string;
   price: number;
   category: string;
 }
-
 interface OrderItem {
   menuItem: MenuItem;
   quantity: number;
   notes?: string;
 }
-
 interface Table {
   id: number;
   number: string;
   capacity: number;
   status: string;
 }
-
 export default function NewOrderPage() {
   const router = useRouter();
   const [tables, setTables] = useState<Table[]>([]);
@@ -37,22 +33,17 @@ export default function NewOrderPage() {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
-
   useEffect(() => {
     const fetchData = async () => {
-      const headers = getAuthHeaders();
-
       try {
         // Fetch real data from API
         const [tablesRes, menuRes] = await Promise.allSettled([
-          fetch(`${API_URL}/tables/`, { credentials: 'include', headers }),
-          fetch(`${API_URL}/menu-admin/items`, { credentials: 'include', headers }),
-        ]);
-
+  api.get('/tables/'),
+  api.get('/menu-admin/items')
+]);
         // Process tables
-        if (tablesRes.status === 'fulfilled' && tablesRes.value.ok) {
-          const data = await tablesRes.value.json();
+        if (tablesRes.status === 'fulfilled') {
+          const data: any = tablesRes.value;
           const tablesArray = Array.isArray(data) ? data : (data.tables || []);
           const transformedTables: Table[] = tablesArray.map((t: any) => ({
             id: t.id,
@@ -65,11 +56,10 @@ export default function NewOrderPage() {
           setTables([]);
           console.warn('Failed to fetch tables');
         }
-
         // Process menu items
-        if (menuRes.status === 'fulfilled' && menuRes.value.ok) {
-          const data = await menuRes.value.json();
-          const menuArray = Array.isArray(data) ? data : (data.items || data.menu_items || []);
+        if (menuRes.status === 'fulfilled') {
+          const data_2: any = menuRes.value;
+          const menuArray = Array.isArray(data_2) ? data_2 : (data_2.items || data_2.menu_items || []);
           const transformedMenu: MenuItem[] = menuArray.map((item: any) => ({
             id: item.id,
             name: typeof item.name === 'object' ? (item.name.bg || item.name.en || 'Unknown') : (item.name || 'Unknown'),
@@ -90,18 +80,14 @@ export default function NewOrderPage() {
         setLoading(false);
       }
     };
-
     fetchData();
   }, []);
-
   const categories = ['all', ...Array.from(new Set(menuItems.map(item => item.category)))];
-
   const filteredMenu = menuItems.filter(item => {
     const matchesCategory = selectedCategory === 'all' || item.category === selectedCategory;
     const matchesSearch = item.name.toLowerCase().includes(searchQuery.toLowerCase());
     return matchesCategory && matchesSearch;
   });
-
   const addToOrder = (item: MenuItem) => {
     const existing = orderItems.find(oi => oi.menuItem.id === item.id);
     if (existing) {
@@ -112,29 +98,19 @@ export default function NewOrderPage() {
       setOrderItems([...orderItems, { menuItem: item, quantity: 1 }]);
     }
   };
-
   const updateQuantity = (itemId: number, delta: number) => {
     setOrderItems(orderItems
       .map(oi => oi.menuItem.id === itemId ? { ...oi, quantity: oi.quantity + delta } : oi)
       .filter(oi => oi.quantity > 0)
     );
   };
-
   const total = orderItems.reduce((sum, oi) => sum + oi.menuItem.price * oi.quantity, 0);
-
   const handleSubmit = async () => {
     if (!selectedTable || orderItems.length === 0) return;
-
     setSubmitting(true);
-    const headers = getAuthHeaders();
-
     try {
       // Create order via API
-      const response = await fetch(`${API_URL}/orders`, {
-        credentials: 'include',
-        method: 'POST',
-        headers,
-        body: JSON.stringify({
+      await api.post('/orders', {
           table_id: selectedTable.id,
           table_token: String(selectedTable.id),
           items: orderItems.map(oi => ({
@@ -142,15 +118,8 @@ export default function NewOrderPage() {
             quantity: oi.quantity,
             notes: oi.notes || '',
           })),
-        }),
-      });
-
-      if (response.ok) {
-        router.push('/orders');
-      } else {
-        const errorData = await response.json().catch(() => ({}));
-        toast.error(errorData.message || 'Failed to create order. Please try again.');
-      }
+        });
+      router.push('/orders');
     } catch (err) {
       console.error('Error creating order:', err);
       toast.error('Failed to create order. Please check your connection and try again.');
@@ -158,7 +127,6 @@ export default function NewOrderPage() {
       setSubmitting(false);
     }
   };
-
   if (loading) {
     return (
       <div className="flex items-center justify-center h-96">
@@ -166,7 +134,6 @@ export default function NewOrderPage() {
       </div>
     );
   }
-
   if (error) {
     return (
       <div className="flex flex-col items-center justify-center h-96 space-y-4">
@@ -180,7 +147,6 @@ export default function NewOrderPage() {
       </div>
     );
   }
-
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -197,7 +163,6 @@ export default function NewOrderPage() {
           </div>
         </div>
       </div>
-
       <div className="grid grid-cols-3 gap-6">
         {/* Left - Table Selection & Menu */}
         <div className="col-span-2 space-y-6">
@@ -245,7 +210,6 @@ export default function NewOrderPage() {
                   Смени маса
                 </button>
               </div>
-
               {/* Menu */}
               <div className="bg-white rounded-2xl shadow-sm border border-surface-100 overflow-hidden">
                 <div className="p-4 border-b border-surface-100">
@@ -303,7 +267,6 @@ export default function NewOrderPage() {
             </>
           )}
         </div>
-
         {/* Right - Order Summary */}
         <div className="col-span-1">
           <div className="bg-white rounded-2xl shadow-sm border border-surface-100 sticky top-6">

@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { API_URL, getAuthHeaders } from '@/lib/api';
+import { api } from '@/lib/api';
 
 interface Transaction {
   id: number;
@@ -61,7 +61,7 @@ interface TransactionReport {
   waiter_breakdown: WaiterSales[];
 }
 
-// Using API_URL and getAuthHeaders from @/lib/api
+// Using api from @/lib/api
 
 export default function TransactionsReportPage() {
   const [loading, setLoading] = useState(true);
@@ -98,10 +98,8 @@ export default function TransactionsReportPage() {
           status: statusFilter
         });
 
-        const res = await fetch(`${API_URL}/reports/transactions?${params}`, { credentials: 'include', headers: getAuthHeaders() });
-        if (res.ok) {
-          setData(await res.json());
-        }
+        const result: any = await api.get(`/reports/transactions?${params}`);
+        setData(result);
       } catch (err) {
         console.error('Error loading transactions:', err);
       }
@@ -177,53 +175,59 @@ export default function TransactionsReportPage() {
         <div className="bg-white rounded-xl p-4 shadow-sm border">
           <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-4">
             <div>
-              <label className="block text-xs font-medium text-gray-500 mb-1">From Date</label>
+              <label className="block text-xs font-medium text-gray-500 mb-1">From Date
               <input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)}
                 className="w-full px-3 py-2 border rounded-lg text-sm" />
+              </label>
             </div>
             <div>
-              <label className="block text-xs font-medium text-gray-500 mb-1">To Date</label>
+              <label className="block text-xs font-medium text-gray-500 mb-1">To Date
               <input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)}
                 className="w-full px-3 py-2 border rounded-lg text-sm" />
+              </label>
             </div>
             <div>
-              <label className="block text-xs font-medium text-gray-500 mb-1">From Hour</label>
+              <label className="block text-xs font-medium text-gray-500 mb-1">From Hour
               <select value={hourFrom} onChange={e => setHourFrom(e.target.value)}
                 className="w-full px-3 py-2 border rounded-lg text-sm">
                 {Array.from({length: 24}, (_, i) => (
                   <option key={i} value={String(i).padStart(2,'0')}>{String(i).padStart(2,'0')}:00</option>
                 ))}
               </select>
+              </label>
             </div>
             <div>
-              <label className="block text-xs font-medium text-gray-500 mb-1">To Hour</label>
+              <label className="block text-xs font-medium text-gray-500 mb-1">To Hour
               <select value={hourTo} onChange={e => setHourTo(e.target.value)}
                 className="w-full px-3 py-2 border rounded-lg text-sm">
                 {Array.from({length: 24}, (_, i) => (
                   <option key={i} value={String(i).padStart(2,'0')}>{String(i).padStart(2,'0')}:59</option>
                 ))}
               </select>
+              </label>
             </div>
             <div>
-              <label className="block text-xs font-medium text-gray-500 mb-1">Payment</label>
+              <label className="block text-xs font-medium text-gray-500 mb-1">Payment
               <select value={paymentFilter} onChange={e => setPaymentFilter(e.target.value)}
                 className="w-full px-3 py-2 border rounded-lg text-sm">
                 <option value="all">All Methods</option>
                 <option value="cash">Cash</option>
                 <option value="card">Card</option>
               </select>
+              </label>
             </div>
             <div>
-              <label className="block text-xs font-medium text-gray-500 mb-1">Status</label>
+              <label className="block text-xs font-medium text-gray-500 mb-1">Status
               <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)}
                 className="w-full px-3 py-2 border rounded-lg text-sm">
                 <option value="all">All</option>
                 <option value="paid">Paid</option>
                 <option value="voided">Voided</option>
               </select>
+              </label>
             </div>
             <div>
-              <label className="block text-xs font-medium text-gray-500 mb-1">Quick</label>
+              <span className="block text-xs font-medium text-gray-500 mb-1">Quick</span>
               <div className="flex gap-1">
                 <button onClick={() => { const d = new Date(); setDateFrom(d.toISOString().split('T')[0]); setDateTo(d.toISOString().split('T')[0]); }}
                   className="px-2 py-2 bg-gray-100 rounded text-xs hover:bg-gray-200">Today</button>

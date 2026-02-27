@@ -470,7 +470,7 @@ export default function Items86Page() {
 
               {/* Reason */}
               <div>
-                <label className="block text-sm font-medium text-surface-700 mb-1">Reason *</label>
+                <label className="block text-sm font-medium text-surface-700 mb-1">Reason *
                 <select
                   value={newItem.reason}
                   onChange={e => setNewItem(prev => ({ ...prev, reason: e.target.value }))}
@@ -485,22 +485,24 @@ export default function Items86Page() {
                   <option value="Prep time exceeded">Prep time exceeded</option>
                   <option value="Other">Other</option>
                 </select>
+                </label>
               </div>
 
               {/* Estimated Return */}
               <div>
-                <label className="block text-sm font-medium text-surface-700 mb-1">Estimated Return (optional)</label>
+                <label className="block text-sm font-medium text-surface-700 mb-1">Estimated Return (optional)
                 <input
                   type="time"
                   value={newItem.estimated_return}
                   onChange={e => setNewItem(prev => ({ ...prev, estimated_return: e.target.value }))}
                   className="w-full px-3 py-2 border border-surface-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
                 />
+                </label>
               </div>
 
               {/* Notes */}
               <div>
-                <label className="block text-sm font-medium text-surface-700 mb-1">Notes (optional)</label>
+                <label className="block text-sm font-medium text-surface-700 mb-1">Notes (optional)
                 <textarea
                   value={newItem.notes}
                   onChange={e => setNewItem(prev => ({ ...prev, notes: e.target.value }))}
@@ -508,6 +510,7 @@ export default function Items86Page() {
                   rows={2}
                   className="w-full px-3 py-2 border border-surface-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 resize-none"
                 />
+                </label>
               </div>
             </div>
             <div className="px-6 py-4 border-t border-surface-100 flex justify-end gap-3">

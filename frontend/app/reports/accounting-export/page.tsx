@@ -230,7 +230,6 @@ export default function AccountingExportPage() {
               <div>
                 <label className="block text-sm font-medium text-surface-600 mb-2">
                   Месец / Month
-                </label>
                 <select
                   value={vatMonth}
                   onChange={(e) => setVatMonth(parseInt(e.target.value))}
@@ -242,11 +241,11 @@ export default function AccountingExportPage() {
                     </option>
                   ))}
                 </select>
+                </label>
               </div>
               <div>
                 <label className="block text-sm font-medium text-surface-600 mb-2">
                   Година / Year
-                </label>
                 <select
                   value={vatYear}
                   onChange={(e) => setVatYear(parseInt(e.target.value))}
@@ -258,6 +257,7 @@ export default function AccountingExportPage() {
                     </option>
                   ))}
                 </select>
+                </label>
               </div>
             </div>
           ) : (
@@ -265,29 +265,28 @@ export default function AccountingExportPage() {
               <div>
                 <label className="block text-sm font-medium text-surface-600 mb-2">
                   От дата / Start Date
-                </label>
                 <input
                   type="date"
                   value={startDate}
                   onChange={(e) => setStartDate(e.target.value)}
                   className="w-full px-4 py-3 rounded-xl border border-surface-200 bg-white text-surface-900"
                 />
+                </label>
               </div>
               <div>
                 <label className="block text-sm font-medium text-surface-600 mb-2">
                   До дата / End Date
-                </label>
                 <input
                   type="date"
                   value={endDate}
                   onChange={(e) => setEndDate(e.target.value)}
                   className="w-full px-4 py-3 rounded-xl border border-surface-200 bg-white text-surface-900"
                 />
+                </label>
               </div>
               <div>
                 <label className="block text-sm font-medium text-surface-600 mb-2">
                   Формат / Format
-                </label>
                 <select
                   value={format}
                   onChange={(e) => setFormat(e.target.value)}
@@ -297,6 +296,7 @@ export default function AccountingExportPage() {
                   <option value="xml">XML</option>
                   <option value="json">JSON</option>
                 </select>
+                </label>
               </div>
             </div>
           )}

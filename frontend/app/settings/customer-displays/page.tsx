@@ -9,7 +9,7 @@ export default function CustomerDisplaysPage() {
   const [displays, setDisplays] = useState<any[]>([]);
 
   useEffect(() => {
-    api.get('/api/v1/customer-displays/displays').then(r => setDisplays(r.data.displays || [])).catch(() => {}).finally(() => setLoading(false));
+    api.get('/api/v1/customer-displays/displays').then((r: any) => setDisplays(r.displays || r || [])).catch(() => {}).finally(() => setLoading(false));
   }, []);
 
   if (loading) return <div className="p-6"><div className="animate-pulse h-8 bg-gray-200 rounded w-1/3 mb-4" /><div className="animate-pulse h-64 bg-gray-200 rounded" /></div>;

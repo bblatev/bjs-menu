@@ -84,37 +84,42 @@ class DeliveryAggregatorService:
             raw_payload=payload
         )
 
-        self.db.add(order)
-        self.db.flush()
+        try:
+            with self.db.begin_nested():
+                self.db.add(order)
+                self.db.flush()
 
-        # Process order items
-        for item_data in payload.get("items", []):
-            # Try to map to local product
-            product_id = self._map_platform_item(
-                integration.id,
-                item_data.get("id"),
-                item_data.get("name")
-            )
+                # Process order items
+                for item_data in payload.get("items", []):
+                    # Try to map to local product
+                    product_id = self._map_platform_item(
+                        integration.id,
+                        item_data.get("id"),
+                        item_data.get("name")
+                    )
 
-            item = DeliveryOrderItem(
-                order_id=order.id,
-                platform_item_id=item_data.get("id"),
-                item_name=item_data.get("name", "Unknown"),
-                quantity=item_data.get("quantity", 1),
-                unit_price=item_data.get("unit_price", 0),
-                total_price=item_data.get("total_price", 0),
-                modifiers=item_data.get("modifiers"),
-                special_instructions=item_data.get("special_instructions"),
-                product_id=product_id
-            )
-            self.db.add(item)
+                    item = DeliveryOrderItem(
+                        order_id=order.id,
+                        platform_item_id=item_data.get("id"),
+                        item_name=item_data.get("name", "Unknown"),
+                        quantity=item_data.get("quantity", 1),
+                        unit_price=item_data.get("unit_price", 0),
+                        total_price=item_data.get("total_price", 0),
+                        modifiers=item_data.get("modifiers"),
+                        special_instructions=item_data.get("special_instructions"),
+                        product_id=product_id
+                    )
+                    self.db.add(item)
 
-        # Auto-accept if configured
-        if integration.auto_accept_orders:
-            order.status = DeliveryOrderStatus.CONFIRMED
-            order.confirmed_at = datetime.now(timezone.utc)
+                # Auto-accept if configured
+                if integration.auto_accept_orders:
+                    order.status = DeliveryOrderStatus.CONFIRMED
+                    order.confirmed_at = datetime.now(timezone.utc)
 
-        self.db.commit()
+            self.db.commit()
+        except Exception as e:
+            self.db.rollback()
+            raise ValueError(f"Failed to process incoming delivery order: {str(e)}")
 
         # Send to KDS if configured
         if integration.auto_accept_orders:
@@ -152,7 +157,12 @@ class DeliveryAggregatorService:
         # This would integrate with KDS
         # For now, just mark as sent
         order.sent_to_kds = True
-        self.db.commit()
+        try:
+            self.db.commit()
+        except Exception as e:
+            self.db.rollback()
+            import logging
+            logging.getLogger(__name__).warning(f"Failed to mark order as sent to KDS: {e}")
 
     async def update_order_status(
         self,
@@ -180,7 +190,11 @@ class DeliveryAggregatorService:
         elif new_status == DeliveryOrderStatus.DELIVERED:
             order.delivered_at = datetime.now(timezone.utc)
 
-        self.db.commit()
+        try:
+            self.db.commit()
+        except Exception as e:
+            self.db.rollback()
+            raise ValueError(f"Failed to update delivery order status: {str(e)}")
 
         # Notify platform
         await self._notify_platform_status(order)
@@ -295,7 +309,11 @@ class MenuSyncService:
             sync_record.error_message = str(e)
             sync_record.completed_at = datetime.now(timezone.utc)
 
-        self.db.commit()
+        try:
+            self.db.commit()
+        except Exception as e:
+            self.db.rollback()
+            raise ValueError(f"Failed to save menu sync record: {str(e)}")
         return sync_record
 
     async def _sync_product(
@@ -368,7 +386,11 @@ class MenuSyncService:
         availability.platforms_synced = results
         availability.last_sync_at = datetime.now(timezone.utc)
 
-        self.db.commit()
+        try:
+            self.db.commit()
+        except Exception as e:
+            self.db.rollback()
+            raise ValueError(f"Failed to update item availability: {str(e)}")
 
         return {
             "product_id": product_id,

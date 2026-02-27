@@ -532,7 +532,7 @@ export default function FeedbackPage() {
               </div>
 
               <div className="mb-4">
-                <label className="block text-gray-300 mb-2">Your Response</label>
+                <label className="block text-gray-300 mb-2">Your Response
                 <textarea
                   value={responseText}
                   onChange={(e) => setResponseText(e.target.value)}
@@ -540,10 +540,11 @@ export default function FeedbackPage() {
                   rows={4}
                   placeholder="Thank you for your feedback..."
                 />
+                </label>
               </div>
 
               <div className="mb-4">
-                <label className="block text-gray-300 mb-2">Quick Responses</label>
+                <span className="block text-gray-300 mb-2">Quick Responses</span>
                 <div className="flex flex-wrap gap-2">
                   {[
                     'Thank you for your kind feedback!',

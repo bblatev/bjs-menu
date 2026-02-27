@@ -4,7 +4,7 @@ import React, { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 
-import { API_URL, getAuthHeaders } from '@/lib/api';
+import { api } from '@/lib/api';
 
 // Types
 interface Warehouse {
@@ -161,14 +161,7 @@ export default function WarehousesPage() {
     setLoading((prev) => ({ ...prev, warehouses: true }));
     setError((prev) => ({ ...prev, warehouses: null }));
     try {
-      const response = await fetch(`${API_URL}/warehouses/`, {
-        credentials: 'include',
-        headers: getAuthHeaders(),
-      });
-      if (!response.ok) {
-        throw new Error(`Failed to fetch warehouses: ${response.status}`);
-      }
-      const data = await response.json();
+      const data: any = await api.get('/warehouses/');
       setWarehouses(data);
     } catch (err) {
       console.error("Error fetching warehouses:", err);
@@ -189,15 +182,8 @@ export default function WarehousesPage() {
       if (warehouseId && warehouseId !== "all") {
         params.append("warehouse_id", warehouseId);
       }
-      const url = `${API_URL}/warehouses/stock-levels/${params.toString() ? `?${params.toString()}` : ""}`;
-      const response = await fetch(url, {
-        credentials: 'include',
-        headers: getAuthHeaders(),
-      });
-      if (!response.ok) {
-        throw new Error(`Failed to fetch stock levels: ${response.status}`);
-      }
-      const data = await response.json();
+      const path = `/warehouses/stock-levels/${params.toString() ? `?${params.toString()}` : ""}`;
+      const data: any = await api.get(path);
       setStockLevels(data);
     } catch (err) {
       console.error("Error fetching stock levels:", err);
@@ -214,14 +200,7 @@ export default function WarehousesPage() {
     setLoading((prev) => ({ ...prev, transfers: true }));
     setError((prev) => ({ ...prev, transfers: null }));
     try {
-      const response = await fetch(`${API_URL}/warehouses/transfers/`, {
-        credentials: 'include',
-        headers: getAuthHeaders(),
-      });
-      if (!response.ok) {
-        throw new Error(`Failed to fetch transfers: ${response.status}`);
-      }
-      const data = await response.json();
+      const data: any = await api.get('/warehouses/transfers/');
       setTransfers(data);
     } catch (err) {
       console.error("Error fetching transfers:", err);
@@ -238,14 +217,7 @@ export default function WarehousesPage() {
     setLoading((prev) => ({ ...prev, activities: true }));
     setError((prev) => ({ ...prev, activities: null }));
     try {
-      const response = await fetch(`${API_URL}/warehouses/activities/`, {
-        credentials: 'include',
-        headers: getAuthHeaders(),
-      });
-      if (!response.ok) {
-        throw new Error(`Failed to fetch activities: ${response.status}`);
-      }
-      const data = await response.json();
+      const data: any = await api.get('/warehouses/activities/');
       setActivities(data);
     } catch (err) {
       console.error("Error fetching activities:", err);
@@ -1078,24 +1050,26 @@ export default function WarehousesPage() {
                 </div>
                 <div className="p-6 space-y-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Location Name</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Location Name
                     <input
                       type="text"
                       className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
                       placeholder="e.g., Main Kitchen Storage"
                     />
+                    </label>
                   </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Code</label>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Code
                       <input
                         type="text"
                         className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
                         placeholder="e.g., MKS-01"
                       />
+                      </label>
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Type</label>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Type
                       <select className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500">
                         <option value="kitchen">Kitchen</option>
                         <option value="bar">Bar</option>
@@ -1104,32 +1078,36 @@ export default function WarehousesPage() {
                         <option value="satellite">Satellite</option>
                         <option value="main">Main Warehouse</option>
                       </select>
+                      </label>
                     </div>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Address / Location</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Address / Location
                     <input
                       type="text"
                       className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
                       placeholder="e.g., Main Building, Floor 1"
                     />
+                    </label>
                   </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Manager</label>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Manager
                       <input
                         type="text"
                         className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
                         placeholder="Name"
                       />
+                      </label>
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Capacity (m²)</label>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Capacity (m²)
                       <input
                         type="number"
                         className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
                         placeholder="e.g., 50"
                       />
+                      </label>
                     </div>
                   </div>
                   <div className="flex items-center gap-4">
@@ -1181,30 +1159,33 @@ export default function WarehousesPage() {
                 </div>
                 <div className="p-6 space-y-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">From Location</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">From Location
                     <select className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500">
                       <option value="">Select source...</option>
                       {warehouses.filter(w => w.is_active).map((w) => (
                         <option key={w.id} value={w.id}>{w.name}</option>
                       ))}
                     </select>
+                    </label>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">To Location</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">To Location
                     <select className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500">
                       <option value="">Select destination...</option>
                       {warehouses.filter(w => w.is_active).map((w) => (
                         <option key={w.id} value={w.id}>{w.name}</option>
                       ))}
                     </select>
+                    </label>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Notes</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Notes
                     <textarea
                       rows={2}
                       className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
                       placeholder="Optional notes..."
                     />
+                    </label>
                   </div>
                   <div className="border-t pt-4">
                     <div className="text-sm font-medium text-gray-700 mb-2">Add Items</div>

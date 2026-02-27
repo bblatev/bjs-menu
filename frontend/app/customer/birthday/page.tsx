@@ -45,26 +45,29 @@ export default function BirthdayPage() {
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
                   <span className="text-gray-700 dark:text-gray-300">Enable Birthday Rewards</span>
-                  <label className="relative inline-flex items-center cursor-pointer">
+                  <label aria-label="Enable Birthday Rewards" className="relative inline-flex items-center cursor-pointer">
                     <input type="checkbox" checked={config.enabled} onChange={e => setConfig({ ...config, enabled: e.target.checked })} className="sr-only peer" />
                     <div className="w-11 h-6 bg-gray-200 rounded-full peer dark:bg-gray-600 peer-checked:bg-blue-600 after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:after:translate-x-full" />
                   </label>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Days Before Birthday</label>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Days Before Birthday
                   <input type="number" value={config.days_before} onChange={e => setConfig({ ...config, days_before: Number(e.target.value) })} className="w-full px-3 py-2 border rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-white" />
+                  </label>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Reward Type</label>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Reward Type
                   <select value={config.reward_type} onChange={e => setConfig({ ...config, reward_type: e.target.value })} className="w-full px-3 py-2 border rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-white">
                     <option value="discount">Percentage Discount</option>
                     <option value="free_item">Free Item</option>
                     <option value="points">Bonus Points</option>
                   </select>
+                  </label>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Reward Value</label>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Reward Value
                   <input type="number" value={config.reward_value} onChange={e => setConfig({ ...config, reward_value: Number(e.target.value) })} className="w-full px-3 py-2 border rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-white" />
+                  </label>
                 </div>
                 <button onClick={saveConfig} disabled={saving} className="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50">{saving ? 'Saving...' : 'Save Configuration'}</button>
               </div>

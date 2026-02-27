@@ -608,17 +608,18 @@ export default function MultiLocationPage() {
 
                 {/* Select Source */}
                 <div className="mb-6">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Source Location (Master)</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Source Location (Master)
                   <select className="w-full md:w-64 px-4 py-2 border border-gray-300 rounded-lg">
                     {locations.filter((l) => l.status === 'active').map((loc) => (
                       <option key={loc.id} value={loc.id}>{loc.name}</option>
                     ))}
                   </select>
+                  </label>
                 </div>
 
                 {/* Target Locations */}
                 <div className="mb-6">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Target Locations</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Target Locations
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                     {locations.filter((l) => l.status === 'active').map((loc) => (
                       <label
@@ -639,11 +640,12 @@ export default function MultiLocationPage() {
                       </label>
                     ))}
                   </div>
+                  </label>
                 </div>
 
                 {/* Sync Options */}
                 <div className="mb-6">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">What to Sync</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">What to Sync
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                     {Object.entries(syncOptions).map(([key, value]) => (
                       <label
@@ -662,6 +664,7 @@ export default function MultiLocationPage() {
                       </label>
                     ))}
                   </div>
+                  </label>
                 </div>
 
                 <button
@@ -803,7 +806,7 @@ export default function MultiLocationPage() {
                         <div className="font-medium text-gray-900">Centralized Menu</div>
                         <div className="text-sm text-gray-500">Sync menu from master location</div>
                       </div>
-                      <label className="relative inline-flex items-center cursor-pointer">
+                      <label aria-label="Sync menu from master location" className="relative inline-flex items-center cursor-pointer">
                         <input type="checkbox" defaultChecked className="sr-only peer" />
                         <div className="w-11 h-6 bg-gray-200 peer-checked:bg-green-500 rounded-full"></div>
                       </label>
@@ -813,7 +816,7 @@ export default function MultiLocationPage() {
                         <div className="font-medium text-gray-900">Unified Pricing</div>
                         <div className="text-sm text-gray-500">Same prices across all locations</div>
                       </div>
-                      <label className="relative inline-flex items-center cursor-pointer">
+                      <label aria-label="Same prices across all locations" className="relative inline-flex items-center cursor-pointer">
                         <input type="checkbox" className="sr-only peer" />
                         <div className="w-11 h-6 bg-gray-200 peer-checked:bg-green-500 rounded-full"></div>
                       </label>
@@ -823,7 +826,7 @@ export default function MultiLocationPage() {
                         <div className="font-medium text-gray-900">Shared Loyalty Program</div>
                         <div className="text-sm text-gray-500">Points work across all locations</div>
                       </div>
-                      <label className="relative inline-flex items-center cursor-pointer">
+                      <label aria-label="Points work across all locations" className="relative inline-flex items-center cursor-pointer">
                         <input type="checkbox" defaultChecked className="sr-only peer" />
                         <div className="w-11 h-6 bg-gray-200 peer-checked:bg-green-500 rounded-full"></div>
                       </label>
@@ -833,7 +836,7 @@ export default function MultiLocationPage() {
                         <div className="font-medium text-gray-900">Consolidated Reports</div>
                         <div className="text-sm text-gray-500">Aggregate data from all locations</div>
                       </div>
-                      <label className="relative inline-flex items-center cursor-pointer">
+                      <label aria-label="Aggregate data from all locations" className="relative inline-flex items-center cursor-pointer">
                         <input type="checkbox" defaultChecked className="sr-only peer" />
                         <div className="w-11 h-6 bg-gray-200 peer-checked:bg-green-500 rounded-full"></div>
                       </label>
@@ -850,7 +853,7 @@ export default function MultiLocationPage() {
                         <div className="font-medium text-gray-900">Local Menu Changes</div>
                         <div className="text-sm text-gray-500">Allow managers to edit menu</div>
                       </div>
-                      <label className="relative inline-flex items-center cursor-pointer">
+                      <label aria-label="Allow managers to edit menu" className="relative inline-flex items-center cursor-pointer">
                         <input type="checkbox" className="sr-only peer" />
                         <div className="w-11 h-6 bg-gray-200 peer-checked:bg-green-500 rounded-full"></div>
                       </label>
@@ -860,7 +863,7 @@ export default function MultiLocationPage() {
                         <div className="font-medium text-gray-900">Price Adjustments</div>
                         <div className="text-sm text-gray-500">Allow local price changes</div>
                       </div>
-                      <label className="relative inline-flex items-center cursor-pointer">
+                      <label aria-label="Allow local price changes" className="relative inline-flex items-center cursor-pointer">
                         <input type="checkbox" className="sr-only peer" />
                         <div className="w-11 h-6 bg-gray-200 peer-checked:bg-green-500 rounded-full"></div>
                       </label>
@@ -870,7 +873,7 @@ export default function MultiLocationPage() {
                         <div className="font-medium text-gray-900">Staff Management</div>
                         <div className="text-sm text-gray-500">Managers can hire/schedule</div>
                       </div>
-                      <label className="relative inline-flex items-center cursor-pointer">
+                      <label aria-label="Managers can hire/schedule" className="relative inline-flex items-center cursor-pointer">
                         <input type="checkbox" defaultChecked className="sr-only peer" />
                         <div className="w-11 h-6 bg-gray-200 peer-checked:bg-green-500 rounded-full"></div>
                       </label>
@@ -880,7 +883,7 @@ export default function MultiLocationPage() {
                         <div className="font-medium text-gray-900">Promotions</div>
                         <div className="text-sm text-gray-500">Create local promotions</div>
                       </div>
-                      <label className="relative inline-flex items-center cursor-pointer">
+                      <label aria-label="Create local promotions" className="relative inline-flex items-center cursor-pointer">
                         <input type="checkbox" defaultChecked className="sr-only peer" />
                         <div className="w-11 h-6 bg-gray-200 peer-checked:bg-green-500 rounded-full"></div>
                       </label>
@@ -909,7 +912,7 @@ export default function MultiLocationPage() {
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Location Name *</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Location Name *
                   <input
                     type="text"
                     value={newLocation.name}
@@ -917,9 +920,10 @@ export default function MultiLocationPage() {
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg"
                     placeholder="Downtown Central"
                   />
+                  </label>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Location Code *</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Location Code *
                   <input
                     type="text"
                     value={newLocation.code}
@@ -927,9 +931,10 @@ export default function MultiLocationPage() {
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg"
                     placeholder="DTC-001"
                   />
+                  </label>
                 </div>
                 <div className="col-span-2">
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Address *</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Address *
                   <input
                     type="text"
                     value={newLocation.address}
@@ -937,9 +942,10 @@ export default function MultiLocationPage() {
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg"
                     placeholder="бул. Витоша 89"
                   />
+                  </label>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">City *</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">City *
                   <input
                     type="text"
                     value={newLocation.city}
@@ -947,9 +953,10 @@ export default function MultiLocationPage() {
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg"
                     placeholder="София"
                   />
+                  </label>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Phone</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Phone
                   <input
                     type="tel"
                     value={newLocation.phone}
@@ -957,9 +964,10 @@ export default function MultiLocationPage() {
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg"
                     placeholder="+359 2 123 4567"
                   />
+                  </label>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Email
                   <input
                     type="email"
                     value={newLocation.email}
@@ -967,9 +975,10 @@ export default function MultiLocationPage() {
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg"
                     placeholder="location@restaurant.bg"
                   />
+                  </label>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Currency</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Currency
                   <select
                     value={newLocation.currency}
                     onChange={(e) => setNewLocation({ ...newLocation, currency: e.target.value })}
@@ -979,9 +988,10 @@ export default function MultiLocationPage() {
                     <option value="EUR">EUR (€)</option>
                     <option value="USD">USD ($)</option>
                   </select>
+                  </label>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Manager Name</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Manager Name
                   <input
                     type="text"
                     value={newLocation.manager_name}
@@ -989,9 +999,10 @@ export default function MultiLocationPage() {
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg"
                     placeholder="Мария Иванова"
                   />
+                  </label>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Manager Email</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Manager Email
                   <input
                     type="email"
                     value={newLocation.manager_email}
@@ -999,6 +1010,7 @@ export default function MultiLocationPage() {
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg"
                     placeholder="manager@restaurant.bg"
                   />
+                  </label>
                 </div>
               </div>
 

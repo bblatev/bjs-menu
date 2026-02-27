@@ -145,7 +145,7 @@ export default function ReportsSalesPage() {
       <div className="bg-white rounded-2xl p-5 shadow-sm border border-surface-100">
         <div className="flex flex-wrap items-end gap-4">
           <div className="flex-1 min-w-[200px]">
-            <label className="block text-sm font-medium text-surface-700 mb-2">Date Range</label>
+            <span className="block text-sm font-medium text-surface-700 mb-2">Date Range</span>
             <div className="flex gap-2">
               {['today', 'week', 'month', 'quarter'].map((range) => (
                 <button
@@ -163,22 +163,24 @@ export default function ReportsSalesPage() {
             </div>
           </div>
           <div>
-            <label className="block text-sm font-medium text-surface-700 mb-2">Start Date</label>
+            <label className="block text-sm font-medium text-surface-700 mb-2">Start Date
             <input
               type="date"
               value={startDate}
               onChange={(e) => setStartDate(e.target.value)}
               className="px-4 py-2 border border-surface-200 rounded-lg text-surface-900 focus:ring-2 focus:ring-primary-500 focus:border-transparent"
             />
+            </label>
           </div>
           <div>
-            <label className="block text-sm font-medium text-surface-700 mb-2">End Date</label>
+            <label className="block text-sm font-medium text-surface-700 mb-2">End Date
             <input
               type="date"
               value={endDate}
               onChange={(e) => setEndDate(e.target.value)}
               className="px-4 py-2 border border-surface-200 rounded-lg text-surface-900 focus:ring-2 focus:ring-primary-500 focus:border-transparent"
             />
+            </label>
           </div>
           <button className="px-6 py-2 bg-accent-500 text-gray-900 rounded-lg hover:bg-accent-600 transition-colors font-medium">
             Export PDF

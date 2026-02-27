@@ -1,9 +1,7 @@
 'use client';
-
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { API_URL, getAuthHeaders, clearAuth } from '@/lib/api';
-
+import { clearAuth, api } from '@/lib/api';
 import { toast } from '@/lib/toast';
 interface BarStats {
   totalSales: number;
@@ -15,7 +13,6 @@ interface BarStats {
   lowStockItems: number;
   activeRecipes: number;
 }
-
 interface TopDrink {
   id: number;
   name: string;
@@ -25,7 +22,6 @@ interface TopDrink {
   pourCost: number;
   margin: number;
 }
-
 interface InventoryAlert {
   id: number;
   item_name: string;
@@ -34,7 +30,6 @@ interface InventoryAlert {
   unit: string;
   status: 'critical' | 'low' | 'reorder';
 }
-
 interface RecentPour {
   id: number;
   drink_name: string;
@@ -44,7 +39,6 @@ interface RecentPour {
   amount: string;
   cost: number;
 }
-
 export default function BarManagementPage() {
   const [stats, setStats] = useState<BarStats | null>(null);
   const [topDrinks, setTopDrinks] = useState<TopDrink[]>([]);
@@ -55,23 +49,19 @@ export default function BarManagementPage() {
   const [error, setError] = useState<string | null>(null);
   const [isQuickPourOpen, setIsQuickPourOpen] = useState(false);
   const [quickPour, setQuickPour] = useState({ drink_name: '', type: 'sale' as 'sale' | 'comp' | 'spillage', quantity: 1, notes: '' });
-
   useEffect(() => {
     const fetchBarData = async () => {
       setLoading(true);
-      const headers = getAuthHeaders();
-
       try {
         const [statsRes, drinksRes, alertsRes, activityRes] = await Promise.allSettled([
-          fetch(`${API_URL}/bar/stats?period=${selectedPeriod}`, { credentials: 'include', headers }),
-          fetch(`${API_URL}/bar/top-drinks?period=${selectedPeriod}`, { credentials: 'include', headers }),
-          fetch(`${API_URL}/bar/inventory-alerts`, { credentials: 'include', headers }),
-          fetch(`${API_URL}/bar/recent-activity`, { credentials: 'include', headers })
-        ]);
-
+  api.get(`/bar/stats?period=${selectedPeriod}`),
+  api.get(`/bar/top-drinks?period=${selectedPeriod}`),
+  api.get('/bar/inventory-alerts'),
+  api.get('/bar/recent-activity')
+]);
         // Process stats
-        if (statsRes.status === 'fulfilled' && statsRes.value.ok) {
-          const data = await statsRes.value.json();
+        if (statsRes.status === 'fulfilled') {
+          const data: any = statsRes.value;
           setStats({
             totalSales: data.total_sales || 0,
             totalCost: data.total_cost || 0,
@@ -85,11 +75,10 @@ export default function BarManagementPage() {
         } else {
           setStats(null);
         }
-
         // Process top drinks
-        if (drinksRes.status === 'fulfilled' && drinksRes.value.ok) {
-          const data = await drinksRes.value.json();
-          const items = Array.isArray(data) ? data : [];
+        if (drinksRes.status === 'fulfilled') {
+          const data_topDrinks: any = drinksRes.value;
+          const items = Array.isArray(data_topDrinks) ? data_topDrinks : (data_topDrinks.items || []);
           setTopDrinks(items.map((d: any) => ({
             id: d.id,
             name: d.name,
@@ -102,11 +91,11 @@ export default function BarManagementPage() {
         } else {
           setTopDrinks([]);
         }
-
         // Process alerts
-        if (alertsRes.status === 'fulfilled' && alertsRes.value.ok) {
-          const data = await alertsRes.value.json();
-          setAlerts((Array.isArray(data) ? data : []).map((a: any) => ({
+        if (alertsRes.status === 'fulfilled') {
+          const data_alerts: any = alertsRes.value;
+          const alertsList = Array.isArray(data_alerts) ? data_alerts : (data_alerts.items || []);
+          setAlerts(alertsList.map((a: any) => ({
             id: a.id,
             item_name: a.item_name,
             current_stock: a.current_stock,
@@ -117,11 +106,11 @@ export default function BarManagementPage() {
         } else {
           setAlerts([]);
         }
-
         // Process recent activity
-        if (activityRes.status === 'fulfilled' && activityRes.value.ok) {
-          const data = await activityRes.value.json();
-          setRecentPours((Array.isArray(data) ? data : []).map((p: any) => ({
+        if (activityRes.status === 'fulfilled') {
+          const data_recentPours: any = activityRes.value;
+          const poursList = Array.isArray(data_recentPours) ? data_recentPours : (data_recentPours.items || []);
+          setRecentPours(poursList.map((p: any) => ({
             id: p.id,
             drink_name: p.drink_name,
             bartender: p.bartender,
@@ -133,7 +122,6 @@ export default function BarManagementPage() {
         } else {
           setRecentPours([]);
         }
-
         setError(null);
       } catch (err) {
         console.error('Failed to fetch bar data:', err);
@@ -142,10 +130,8 @@ export default function BarManagementPage() {
         setLoading(false);
       }
     };
-
     fetchBarData();
   }, [selectedPeriod]);
-
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'critical': return 'bg-error-100 text-error-700 border-error-300';
@@ -154,7 +140,6 @@ export default function BarManagementPage() {
       default: return 'bg-surface-100 text-surface-700';
     }
   };
-
   const getTypeColor = (type: string) => {
     switch (type) {
       case 'sale': return 'text-success-600';
@@ -164,32 +149,20 @@ export default function BarManagementPage() {
       default: return 'text-surface-600';
     }
   };
-
   const getPourCostColor = (cost: number) => {
     if (cost <= 20) return 'text-success-600';
     if (cost <= 25) return 'text-primary-600';
     if (cost <= 30) return 'text-warning-600';
     return 'text-error-600';
   };
-
   const handleQuickPour = async () => {
     try {
-      const response = await fetch(`${API_URL}/bar/spillage/records`, {
-        credentials: 'include',
-        method: 'POST',
-        headers: getAuthHeaders(),
-        body: JSON.stringify({
+      await api.post('/bar/spillage/records', {
           item_name: quickPour.drink_name,
           quantity: quickPour.quantity,
           reason: quickPour.type === 'spillage' ? 'spillage' : quickPour.type === 'comp' ? 'comp' : 'sale',
           notes: quickPour.notes,
-        }),
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to record pour');
-      }
-
+        });
       // Add to recent pours
       const newPour: RecentPour = {
         id: Date.now(),
@@ -207,7 +180,6 @@ export default function BarManagementPage() {
       toast.error(err instanceof Error ? err.message : 'Failed to record pour');
     }
   };
-
   // Loading state
   if (loading) {
     return (
@@ -219,7 +191,6 @@ export default function BarManagementPage() {
       </div>
     );
   }
-
   return (
     <div className="p-6 max-w-7xl mx-auto">
       {/* Error Banner */}
@@ -228,7 +199,6 @@ export default function BarManagementPage() {
           {error}
         </div>
       )}
-
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div>
@@ -268,7 +238,6 @@ export default function BarManagementPage() {
           </button>
         </div>
       </div>
-
       {/* Quick Navigation */}
       <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-4 mb-6">
         <Link
@@ -356,7 +325,6 @@ export default function BarManagementPage() {
           </div>
         </Link>
       </div>
-
       {/* Stats Cards */}
       {stats && (
         <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-4 mb-6">
@@ -396,7 +364,6 @@ export default function BarManagementPage() {
           </div>
         </div>
       )}
-
       {/* Main Content Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Top Selling Drinks */}
@@ -454,7 +421,6 @@ export default function BarManagementPage() {
             </table>
           </div>
         </div>
-
         {/* Low Stock Alerts */}
         <div className="bg-white rounded-xl border border-surface-200 shadow-sm">
           <div className="p-4 border-b border-surface-200 flex items-center justify-between">
@@ -490,7 +456,6 @@ export default function BarManagementPage() {
           </div>
         </div>
       </div>
-
       {/* Recent Activity */}
       <div className="mt-6 bg-white rounded-xl border border-surface-200 shadow-sm">
         <div className="p-4 border-b border-surface-200 flex items-center justify-between">
@@ -535,7 +500,6 @@ export default function BarManagementPage() {
           ))}
         </div>
       </div>
-
       {/* Pour Cost Breakdown Chart Placeholder */}
       <div className="mt-6 grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div className="bg-white rounded-xl border border-surface-200 shadow-sm p-6">
@@ -569,7 +533,6 @@ export default function BarManagementPage() {
             ))}
           </div>
         </div>
-
         <div className="bg-white rounded-xl border border-surface-200 shadow-sm p-6">
           <h3 className="font-semibold text-surface-900 mb-4">Bartender Performance</h3>
           <div className="space-y-4">
@@ -612,7 +575,6 @@ export default function BarManagementPage() {
           </div>
         </div>
       </div>
-
       {/* Quick Pour Modal */}
       {isQuickPourOpen && (
         <>
@@ -630,7 +592,7 @@ export default function BarManagementPage() {
             </div>
             <div className="p-6 space-y-4">
               <div>
-                <label className="block text-sm font-medium text-surface-700 mb-1">Drink Name</label>
+                <label className="block text-sm font-medium text-surface-700 mb-1">Drink Name
                 <input
                   type="text"
                   value={quickPour.drink_name}
@@ -638,9 +600,10 @@ export default function BarManagementPage() {
                   className="w-full px-4 py-3 border border-surface-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500"
                   placeholder="e.g., Mojito, Margarita"
                 />
+                </label>
               </div>
               <div>
-                <label className="block text-sm font-medium text-surface-700 mb-1">Type</label>
+                <span className="block text-sm font-medium text-surface-700 mb-1">Type</span>
                 <div className="grid grid-cols-3 gap-2">
                   {(['sale', 'comp', 'spillage'] as const).map((type) => (
                     <button
@@ -660,7 +623,7 @@ export default function BarManagementPage() {
                 </div>
               </div>
               <div>
-                <label className="block text-sm font-medium text-surface-700 mb-1">Quantity</label>
+                <span className="block text-sm font-medium text-surface-700 mb-1">Quantity</span>
                 <div className="flex items-center gap-3">
                   <button
                     onClick={() => setQuickPour({ ...quickPour, quantity: Math.max(1, quickPour.quantity - 1) })}
@@ -678,7 +641,7 @@ export default function BarManagementPage() {
                 </div>
               </div>
               <div>
-                <label className="block text-sm font-medium text-surface-700 mb-1">Notes (optional)</label>
+                <label className="block text-sm font-medium text-surface-700 mb-1">Notes (optional)
                 <input
                   type="text"
                   value={quickPour.notes}
@@ -686,6 +649,7 @@ export default function BarManagementPage() {
                   className="w-full px-4 py-3 border border-surface-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500"
                   placeholder="Any additional notes..."
                 />
+                </label>
               </div>
             </div>
             <div className="p-6 border-t border-surface-100 flex gap-3">

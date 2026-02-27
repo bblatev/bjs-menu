@@ -285,7 +285,7 @@ export default function PourTrackingPage() {
           <div className="flex flex-wrap items-end gap-4">
             {/* Search */}
             <div className="flex-1 min-w-[200px]">
-              <label className="block text-sm font-medium text-gray-700 mb-1">Search</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Search
               <input
                 type="text"
                 value={searchQuery}
@@ -293,11 +293,12 @@ export default function PourTrackingPage() {
                 placeholder="Search bartender, drink, spirit..."
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg text-gray-900 bg-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
               />
+              </label>
             </div>
 
             {/* Bartender Filter */}
             <div className="min-w-[160px]">
-              <label className="block text-sm font-medium text-gray-700 mb-1">Bartender</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Bartender
               <select
                 value={filterBartender}
                 onChange={(e) => setFilterBartender(e.target.value)}
@@ -308,11 +309,12 @@ export default function PourTrackingPage() {
                   <option key={b.id} value={b.name}>{b.name}</option>
                 ))}
               </select>
+              </label>
             </div>
 
             {/* Spirit Type Filter */}
             <div className="min-w-[140px]">
-              <label className="block text-sm font-medium text-gray-700 mb-1">Spirit Type</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Spirit Type
               <select
                 value={filterSpirit}
                 onChange={(e) => setFilterSpirit(e.target.value)}
@@ -322,26 +324,29 @@ export default function PourTrackingPage() {
                   <option key={s} value={s}>{s}</option>
                 ))}
               </select>
+              </label>
             </div>
 
             {/* Date Range */}
             <div className="min-w-[140px]">
-              <label className="block text-sm font-medium text-gray-700 mb-1">From</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">From
               <input
                 type="date"
                 value={filterDateFrom}
                 onChange={(e) => setFilterDateFrom(e.target.value)}
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg text-gray-900 bg-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
               />
+              </label>
             </div>
             <div className="min-w-[140px]">
-              <label className="block text-sm font-medium text-gray-700 mb-1">To</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">To
               <input
                 type="date"
                 value={filterDateTo}
                 onChange={(e) => setFilterDateTo(e.target.value)}
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg text-gray-900 bg-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
               />
+              </label>
             </div>
 
             {/* Reset Button */}

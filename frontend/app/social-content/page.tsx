@@ -349,7 +349,7 @@ export default function SocialContentPage() {
 
                 {/* Content Type */}
                 <div className="mb-5">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Content Type</label>
+                  <span className="block text-sm font-medium text-gray-700 mb-2">Content Type</span>
                   <div className="grid grid-cols-2 gap-2">
                     {CONTENT_TYPES.map((ct) => (
                       <button
@@ -369,7 +369,7 @@ export default function SocialContentPage() {
 
                 {/* Platform */}
                 <div className="mb-6">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Platform</label>
+                  <span className="block text-sm font-medium text-gray-700 mb-2">Platform</span>
                   <div className="flex flex-wrap gap-2">
                     {PLATFORMS.map((p) => (
                       <button
@@ -559,22 +559,24 @@ export default function SocialContentPage() {
                       {post.status === 'draft' && (
                         <div className="mt-4 pt-4 border-t border-gray-100 flex items-end gap-3">
                           <div className="flex-1">
-                            <label className="block text-xs font-medium text-gray-700 mb-1">Schedule Date</label>
+                            <label className="block text-xs font-medium text-gray-700 mb-1">Schedule Date
                             <input
                               type="date"
                               value={scheduleDate}
                               onChange={(e) => setScheduleDate(e.target.value)}
                               className="w-full px-3 py-1.5 border border-gray-300 rounded-lg text-sm text-gray-900 bg-white"
                             />
+                            </label>
                           </div>
                           <div className="flex-1">
-                            <label className="block text-xs font-medium text-gray-700 mb-1">Time</label>
+                            <label className="block text-xs font-medium text-gray-700 mb-1">Time
                             <input
                               type="time"
                               value={scheduleTime}
                               onChange={(e) => setScheduleTime(e.target.value)}
                               className="w-full px-3 py-1.5 border border-gray-300 rounded-lg text-sm text-gray-900 bg-white"
                             />
+                            </label>
                           </div>
                           <button
                             onClick={() => schedulePost(post.id)}

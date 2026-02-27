@@ -7,7 +7,7 @@ Adds ``is_deleted BOOLEAN NOT NULL DEFAULT FALSE`` alongside the existing
 from alembic import op
 import sqlalchemy as sa
 
-revision = "028"
+revision = "028a"
 down_revision = "027"
 branch_labels = None
 depends_on = None

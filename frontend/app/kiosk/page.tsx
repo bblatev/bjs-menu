@@ -721,7 +721,7 @@ export default function KioskManagementPage() {
                         <h3 className="text-lg font-bold text-gray-900">{rule.name}</h3>
                         <p className="text-gray-500 text-sm">When: {rule.trigger_item}</p>
                       </div>
-                      <label className="relative inline-flex items-center cursor-pointer">
+                      <label aria-label={rule.name} className="relative inline-flex items-center cursor-pointer">
                         <input
                           type="checkbox"
                           checked={rule.is_active}
@@ -871,7 +871,7 @@ export default function KioskManagementPage() {
                     ].map(item => (
                       <div key={item.key} className="flex justify-between items-center">
                         <span className="text-gray-900">{item.icon} {item.label}</span>
-                        <label className="relative inline-flex items-center cursor-pointer">
+                        <label aria-label={item.label} className="relative inline-flex items-center cursor-pointer">
                           <input
                             type="checkbox"
                             checked={settings[item.key as keyof typeof settings] as boolean}
@@ -895,7 +895,7 @@ export default function KioskManagementPage() {
                     ].map(item => (
                       <div key={item.key} className="flex justify-between items-center">
                         <span className="text-gray-900">{item.icon} {item.label}</span>
-                        <label className="relative inline-flex items-center cursor-pointer">
+                        <label aria-label={item.label} className="relative inline-flex items-center cursor-pointer">
                           <input
                             type="checkbox"
                             checked={settings[item.key as keyof typeof settings] as boolean}
@@ -920,7 +920,7 @@ export default function KioskManagementPage() {
                     ].map(item => (
                       <div key={item.key} className="flex justify-between items-center">
                         <span className="text-gray-900">{item.icon} {item.label}</span>
-                        <label className="relative inline-flex items-center cursor-pointer">
+                        <label aria-label={item.label} className="relative inline-flex items-center cursor-pointer">
                           <input
                             type="checkbox"
                             checked={settings[item.key as keyof typeof settings] as boolean}
@@ -939,25 +939,27 @@ export default function KioskManagementPage() {
                   <h2 className="text-xl font-bold text-gray-900 mb-4">Session Settings</h2>
                   <div className="space-y-4">
                     <div>
-                      <label className="text-gray-600 text-sm">Session Timeout (minutes)</label>
+                      <label className="text-gray-600 text-sm">Session Timeout (minutes)
                       <input
                         type="number"
                         value={settings.session_timeout}
                         onChange={(e) => setSettings({ ...settings, session_timeout: parseInt(e.target.value) })}
                         className="w-full mt-1 px-4 py-2 bg-gray-100 text-gray-900 rounded-xl"
                       />
+                      </label>
                     </div>
                     <div>
-                      <label className="text-gray-600 text-sm">Idle Screen Timeout (seconds)</label>
+                      <label className="text-gray-600 text-sm">Idle Screen Timeout (seconds)
                       <input
                         type="number"
                         value={settings.idle_timeout}
                         onChange={(e) => setSettings({ ...settings, idle_timeout: parseInt(e.target.value) })}
                         className="w-full mt-1 px-4 py-2 bg-gray-100 text-gray-900 rounded-xl"
                       />
+                      </label>
                     </div>
                     <div>
-                      <label className="text-gray-600 text-sm">Default Language</label>
+                      <label className="text-gray-600 text-sm">Default Language
                       <select
                         value={settings.default_language}
                         onChange={(e) => setSettings({ ...settings, default_language: e.target.value })}
@@ -968,6 +970,7 @@ export default function KioskManagementPage() {
                         <option value="de">🇩🇪 German</option>
                         <option value="ru">🇷🇺 Russian</option>
                       </select>
+                      </label>
                     </div>
                   </div>
                 </div>
@@ -978,7 +981,7 @@ export default function KioskManagementPage() {
                   <div className="grid grid-cols-2 gap-4">
                     <div className="flex justify-between items-center">
                       <span className="text-gray-900">🔞 Age Verification for Alcohol</span>
-                      <label className="relative inline-flex items-center cursor-pointer">
+                      <label aria-label="Age Verification for Alcohol" className="relative inline-flex items-center cursor-pointer">
                         <input
                           type="checkbox"
                           checked={settings.age_verification}
@@ -990,7 +993,7 @@ export default function KioskManagementPage() {
                     </div>
                     <div className="flex justify-between items-center">
                       <span className="text-gray-900">📈 Enable Upselling</span>
-                      <label className="relative inline-flex items-center cursor-pointer">
+                      <label aria-label="Enable Upselling" className="relative inline-flex items-center cursor-pointer">
                         <input
                           type="checkbox"
                           checked={settings.enable_upselling}
@@ -1002,7 +1005,7 @@ export default function KioskManagementPage() {
                     </div>
                     <div className="flex justify-between items-center">
                       <span className="text-gray-900">🧾 Auto-Print Receipt</span>
-                      <label className="relative inline-flex items-center cursor-pointer">
+                      <label aria-label="Auto-Print Receipt" className="relative inline-flex items-center cursor-pointer">
                         <input
                           type="checkbox"
                           checked={settings.receipt_print_auto}

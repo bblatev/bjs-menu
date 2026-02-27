@@ -114,24 +114,30 @@ class PaymentLedgerService:
             business_date=datetime.now(timezone.utc),
         )
 
-        self.db.add(entry)
+        try:
+            with self.db.begin_nested():
+                self.db.add(entry)
+                self.db.flush()
 
-        # Update idempotency key if provided
-        if idempotency_key:
-            self._complete_idempotency(idempotency_key, entry)
+                # Update idempotency key if provided
+                if idempotency_key:
+                    self._complete_idempotency(idempotency_key, entry)
 
-        self.db.commit()
-        self.db.refresh(entry)
+                # Audit log
+                self._audit_log(
+                    venue_id=venue_id,
+                    action="payment_recorded",
+                    order_id=order_id,
+                    ledger_entry_id=entry.id,
+                    staff_user_id=staff_user_id,
+                    new_data={"amount": str(amount), "method": payment_method}
+                )
 
-        # Audit log
-        self._audit_log(
-            venue_id=venue_id,
-            action="payment_recorded",
-            order_id=order_id,
-            ledger_entry_id=entry.id,
-            staff_user_id=staff_user_id,
-            new_data={"amount": str(amount), "method": payment_method}
-        )
+            self.db.commit()
+            self.db.refresh(entry)
+        except Exception as e:
+            self.db.rollback()
+            raise ValueError(f"Failed to record payment: {str(e)}")
 
         return entry
 
@@ -178,21 +184,28 @@ class PaymentLedgerService:
             business_date=datetime.now(timezone.utc),
         )
 
-        self.db.add(entry)
-        if idempotency_key:
-            self._complete_idempotency(idempotency_key, entry)
+        try:
+            with self.db.begin_nested():
+                self.db.add(entry)
+                self.db.flush()
 
-        self.db.commit()
-        self.db.refresh(entry)
+                if idempotency_key:
+                    self._complete_idempotency(idempotency_key, entry)
 
-        self._audit_log(
-            venue_id=venue_id,
-            action="refund_recorded",
-            order_id=order_id,
-            ledger_entry_id=entry.id,
-            staff_user_id=staff_user_id,
-            new_data={"amount": str(amount), "reason": reason}
-        )
+                self._audit_log(
+                    venue_id=venue_id,
+                    action="refund_recorded",
+                    order_id=order_id,
+                    ledger_entry_id=entry.id,
+                    staff_user_id=staff_user_id,
+                    new_data={"amount": str(amount), "reason": reason}
+                )
+
+            self.db.commit()
+            self.db.refresh(entry)
+        except Exception as e:
+            self.db.rollback()
+            raise ValueError(f"Failed to record refund: {str(e)}")
 
         return entry
 
@@ -247,54 +260,62 @@ class PaymentLedgerService:
             staff_user_id=staff_user_id,
         )
 
-        self.db.add(alert)
-
-        # Record in ledger if ledger is active
         entry = None
-        if self.is_active():
-            entry_number = self._generate_entry_number(venue_id)
-            previous_entry = self.db.query(PaymentLedgerEntry).filter(
-                PaymentLedgerEntry.venue_id == venue_id
-            ).order_by(PaymentLedgerEntry.id.desc()).first()
 
-            entry = PaymentLedgerEntry(
-                venue_id=venue_id,
-                idempotency_key=str(uuid.uuid4()),
-                entry_type=LedgerEntryType.CASH_VARIANCE,
-                entry_number=entry_number,
-                staff_user_id=staff_user_id,
-                amount_cents=variance_cents,
-                currency="BGN",
-                payment_method="cash",
-                description=f"Cash variance: {severity}",
-                extra_data={
-                    "expected": expected_cents,
-                    "actual": actual_cents,
-                    "severity": severity,
-                    "shift_id": shift_id,
-                },
-                previous_entry_id=previous_entry.id if previous_entry else None,
-                business_date=datetime.now(timezone.utc),
-            )
-            self.db.add(entry)
+        try:
+            with self.db.begin_nested():
+                self.db.add(alert)
 
-        self.db.commit()
+                # Record in ledger if ledger is active
+                if self.is_active():
+                    entry_number = self._generate_entry_number(venue_id)
+                    previous_entry = self.db.query(PaymentLedgerEntry).filter(
+                        PaymentLedgerEntry.venue_id == venue_id
+                    ).order_by(PaymentLedgerEntry.id.desc()).first()
 
-        if entry:
-            self.db.refresh(entry)
-        self.db.refresh(alert)
+                    entry = PaymentLedgerEntry(
+                        venue_id=venue_id,
+                        idempotency_key=str(uuid.uuid4()),
+                        entry_type=LedgerEntryType.CASH_VARIANCE,
+                        entry_number=entry_number,
+                        staff_user_id=staff_user_id,
+                        amount_cents=variance_cents,
+                        currency="BGN",
+                        payment_method="cash",
+                        description=f"Cash variance: {severity}",
+                        extra_data={
+                            "expected": expected_cents,
+                            "actual": actual_cents,
+                            "severity": severity,
+                            "shift_id": shift_id,
+                        },
+                        previous_entry_id=previous_entry.id if previous_entry else None,
+                        business_date=datetime.now(timezone.utc),
+                    )
+                    self.db.add(entry)
 
-        self._audit_log(
-            venue_id=venue_id,
-            action="cash_variance_detected",
-            staff_user_id=staff_user_id,
-            new_data={
-                "expected": expected_cents,
-                "actual": actual_cents,
-                "variance": variance_cents,
-                "severity": severity,
-            }
-        )
+                self.db.flush()
+
+                self._audit_log(
+                    venue_id=venue_id,
+                    action="cash_variance_detected",
+                    staff_user_id=staff_user_id,
+                    new_data={
+                        "expected": expected_cents,
+                        "actual": actual_cents,
+                        "variance": variance_cents,
+                        "severity": severity,
+                    }
+                )
+
+            self.db.commit()
+
+            if entry:
+                self.db.refresh(entry)
+            self.db.refresh(alert)
+        except Exception as e:
+            self.db.rollback()
+            raise ValueError(f"Failed to record cash variance: {str(e)}")
 
         return (entry, alert)
 

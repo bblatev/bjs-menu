@@ -212,7 +212,7 @@ export default function SettingsSecurityPage() {
             <h2 className="text-lg font-semibold text-surface-900 mb-4">Authentication Policy</h2>
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-surface-600 mb-2">Minimum Password Length</label>
+                <label className="block text-sm font-medium text-surface-600 mb-2">Minimum Password Length
                 <input
                   type="number"
                   value={settings.authentication.minPasswordLength}
@@ -224,9 +224,10 @@ export default function SettingsSecurityPage() {
                   min="6"
                   max="32"
                 />
+                </label>
               </div>
               <div>
-                <label className="block text-sm font-medium text-surface-600 mb-2">Password Expiry (Days)</label>
+                <label className="block text-sm font-medium text-surface-600 mb-2">Password Expiry (Days)
                 <input
                   type="number"
                   value={settings.authentication.passwordExpiryDays}
@@ -238,9 +239,10 @@ export default function SettingsSecurityPage() {
                   min="0"
                   max="365"
                 />
+                </label>
               </div>
               <div>
-                <label className="block text-sm font-medium text-surface-600 mb-2">Session Timeout (Minutes)</label>
+                <label className="block text-sm font-medium text-surface-600 mb-2">Session Timeout (Minutes)
                 <input
                   type="number"
                   value={settings.authentication.sessionTimeout}
@@ -252,9 +254,10 @@ export default function SettingsSecurityPage() {
                   min="15"
                   max="1440"
                 />
+                </label>
               </div>
               <div>
-                <label className="block text-sm font-medium text-surface-600 mb-2">Max Login Attempts</label>
+                <label className="block text-sm font-medium text-surface-600 mb-2">Max Login Attempts
                 <input
                   type="number"
                   value={settings.authentication.maxLoginAttempts}
@@ -266,6 +269,7 @@ export default function SettingsSecurityPage() {
                   min="3"
                   max="10"
                 />
+                </label>
               </div>
               <div className="col-span-2 grid grid-cols-3 gap-4">
                 <label className="flex items-center gap-2 cursor-pointer">
@@ -330,7 +334,7 @@ export default function SettingsSecurityPage() {
 
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-surface-600 mb-2">2FA Method</label>
+                <label className="block text-sm font-medium text-surface-600 mb-2">2FA Method
                 <select
                   value={settings.twoFactor.method}
                   onChange={(e) => setSettings({
@@ -344,6 +348,7 @@ export default function SettingsSecurityPage() {
                   <option value="email">Email</option>
                   <option value="authenticator">Authenticator App</option>
                 </select>
+                </label>
               </div>
               <div className="flex items-end">
                 <label className="flex items-center gap-2 cursor-pointer">
@@ -439,7 +444,7 @@ export default function SettingsSecurityPage() {
 
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-surface-600 mb-2">Log Retention (Days)</label>
+                <label className="block text-sm font-medium text-surface-600 mb-2">Log Retention (Days)
                 <input
                   type="number"
                   value={settings.auditLog.retentionDays}
@@ -452,6 +457,7 @@ export default function SettingsSecurityPage() {
                   min="30"
                   max="3650"
                 />
+                </label>
               </div>
 
               <div className="grid grid-cols-2 gap-4">
@@ -607,7 +613,7 @@ export default function SettingsSecurityPage() {
                 <span className="text-sm text-surface-900">Auto-delete inactive users</span>
               </label>
               <div>
-                <label className="block text-sm font-medium text-surface-600 mb-2">Inactivity Period (Days)</label>
+                <label className="block text-sm font-medium text-surface-600 mb-2">Inactivity Period (Days)
                 <input
                   type="number"
                   value={settings.dataProtection.inactivityPeriodDays}
@@ -620,6 +626,7 @@ export default function SettingsSecurityPage() {
                   min="90"
                   max="3650"
                 />
+                </label>
               </div>
             </div>
           </CardBody>

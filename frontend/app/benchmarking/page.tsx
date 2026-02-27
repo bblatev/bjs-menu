@@ -1,11 +1,9 @@
 "use client";
-
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 
-import { API_URL, getAuthHeaders } from '@/lib/api';
-
+import { api } from '@/lib/api';
 interface BenchmarkMetric {
   id: string;
   category: string;
@@ -19,7 +17,6 @@ interface BenchmarkMetric {
   unit: string;
   description: string;
 }
-
 interface CompetitorData {
   name: string;
   type: string;
@@ -31,7 +28,6 @@ interface CompetitorData {
     price_level: number;
   };
 }
-
 interface Recommendation {
   id: string;
   priority: "high" | "medium" | "low";
@@ -42,7 +38,6 @@ interface Recommendation {
   effort: "low" | "medium" | "high";
   actions: string[];
 }
-
 // Default data (used as fallback if API fails)
 const defaultMetrics: BenchmarkMetric[] = [
   { id: "1", category: "Revenue", metric: "Average Ticket", venue_value: 48.50, industry_avg: 45.00, top_performer: 62.00, percentile: 65, trend: "up", trend_value: 5.2, unit: "BGN", description: "Average order value per transaction" },
@@ -60,14 +55,12 @@ const defaultMetrics: BenchmarkMetric[] = [
   { id: "13", category: "Staff", metric: "Staff Retention", venue_value: 78, industry_avg: 65, top_performer: 90, percentile: 72, trend: "up", trend_value: 5.0, unit: "%", description: "Staff retention rate (12 months)" },
   { id: "14", category: "Staff", metric: "Revenue per Employee", venue_value: 4200, industry_avg: 3800, top_performer: 5500, percentile: 64, trend: "up", trend_value: 3.2, unit: "BGN", description: "Monthly revenue per staff member" },
 ];
-
 const defaultCompetitors: CompetitorData[] = [
   { name: "Restaurant A", type: "Fine Dining", distance: "0.5 km", metrics: { avg_ticket: 65, rating: 4.7, reviews: 324, price_level: 3 } },
   { name: "Restaurant B", type: "Casual Dining", distance: "0.8 km", metrics: { avg_ticket: 42, rating: 4.3, reviews: 567, price_level: 2 } },
   { name: "Restaurant C", type: "Fast Casual", distance: "1.2 km", metrics: { avg_ticket: 28, rating: 4.1, reviews: 890, price_level: 1 } },
   { name: "Restaurant D", type: "Casual Dining", distance: "1.5 km", metrics: { avg_ticket: 52, rating: 4.5, reviews: 412, price_level: 2 } },
 ];
-
 const defaultRecommendations: Recommendation[] = [
   {
     id: "1",
@@ -120,7 +113,6 @@ const defaultRecommendations: Recommendation[] = [
     actions: ["Promote app downloads", "Offer online-only deals", "Improve delivery radius"]
   },
 ];
-
 const categoryColors: Record<string, string> = {
   Revenue: "bg-green-100 text-green-800",
   Operations: "bg-blue-100 text-blue-800",
@@ -129,13 +121,11 @@ const categoryColors: Record<string, string> = {
   Staff: "bg-cyan-100 text-cyan-800",
   Digital: "bg-pink-100 text-pink-800",
 };
-
 const priorityColors: Record<string, string> = {
   high: "bg-red-100 text-red-800 border-red-200",
   medium: "bg-yellow-100 text-yellow-800 border-yellow-200",
   low: "bg-gray-100 text-gray-800 border-gray-200",
 };
-
 export default function BenchmarkingPage() {
   const [activeTab, setActiveTab] = useState("overview");
   const [period, setPeriod] = useState("month");
@@ -145,24 +135,19 @@ export default function BenchmarkingPage() {
   const [recommendations, setRecommendations] = useState<Recommendation[]>(defaultRecommendations);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-
-
   useEffect(() => {
     const fetchBenchmarkData = async () => {
       setLoading(true);
-      const headers = getAuthHeaders();
-
       try {
         // Fetch all data in parallel
         const [summaryRes, _peersRes, recommendationsRes] = await Promise.allSettled([
-          fetch(`${API_URL}/benchmarking/summary?period=${period}`, { credentials: 'include', headers }),
-          fetch(`${API_URL}/benchmarking/peers`, { credentials: 'include', headers }),
-          fetch(`${API_URL}/benchmarking/recommendations`, { credentials: 'include', headers })
-        ]);
-
+  api.get(`/benchmarking/summary?period=${period}`),
+  api.get('/benchmarking/peers'),
+  api.get('/benchmarking/recommendations')
+]);
         // Process summary/metrics
-        if (summaryRes.status === 'fulfilled' && summaryRes.value.ok) {
-          const data = await summaryRes.value.json();
+        if (summaryRes.status === 'fulfilled') {
+          const data: any = summaryRes.value;
           if (data.metrics && Array.isArray(data.metrics)) {
             const mappedMetrics: BenchmarkMetric[] = data.metrics.map((m: any, idx: number) => ({
               id: String(idx + 1),
@@ -185,12 +170,11 @@ export default function BenchmarkingPage() {
             }
           }
         }
-
         // Process recommendations
-        if (recommendationsRes.status === 'fulfilled' && recommendationsRes.value.ok) {
-          const data = await recommendationsRes.value.json();
-          if (Array.isArray(data) && data.length > 0) {
-            const mappedRecs: Recommendation[] = data.map((r: any, idx: number) => ({
+        if (recommendationsRes.status === 'fulfilled') {
+          const data_2: any = recommendationsRes.value;
+          if (Array.isArray(data_2) && data_2.length > 0) {
+            const mappedRecs: Recommendation[] = data_2.map((r: any, idx: number) => ({
               id: String(idx + 1),
               priority: r.current_percentile < 40 ? 'high' : r.current_percentile < 60 ? 'medium' : 'low',
               category: r.metric?.includes('cost') ? 'Costs' :
@@ -204,7 +188,6 @@ export default function BenchmarkingPage() {
             setRecommendations(mappedRecs);
           }
         }
-
         setError(null);
       } catch (err) {
         console.error('Failed to fetch benchmark data:', err);
@@ -213,21 +196,17 @@ export default function BenchmarkingPage() {
         setLoading(false);
       }
     };
-
     fetchBenchmarkData();
   }, [period]);
-
   const categories = ["all", ...Array.from(new Set(metrics.map(m => m.category)))];
   const filteredMetrics = selectedCategory === "all"
     ? metrics
     : metrics.filter(m => m.category === selectedCategory);
-
   const overallScore = Math.round(metrics.reduce((sum, m) => sum + m.percentile, 0) / metrics.length);
   const categoryScores = categories.filter(c => c !== "all").map(category => ({
     category,
     score: Math.round(metrics.filter(m => m.category === category).reduce((sum, m) => sum + m.percentile, 0) / metrics.filter(m => m.category === category).length),
   }));
-
   const tabs = [
     { id: "overview", label: "Overview", icon: "📊" },
     { id: "metrics", label: "All Metrics", icon: "📈" },
@@ -235,7 +214,6 @@ export default function BenchmarkingPage() {
     { id: "recommendations", label: "Recommendations", icon: "💡" },
     { id: "trends", label: "Trends", icon: "📉" },
   ];
-
   // Loading state
   if (loading) {
     return (
@@ -247,7 +225,6 @@ export default function BenchmarkingPage() {
       </div>
     );
   }
-
   return (
     <div className="min-h-screen bg-gray-50 p-6">
       <div className="max-w-7xl mx-auto">
@@ -257,7 +234,6 @@ export default function BenchmarkingPage() {
             {error}
           </div>
         )}
-
         {/* Header */}
         <div className="flex items-center justify-between mb-8">
           <div className="flex items-center gap-4">
@@ -287,7 +263,6 @@ export default function BenchmarkingPage() {
             </button>
           </div>
         </div>
-
         {/* Overall Score Card */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -318,7 +293,6 @@ export default function BenchmarkingPage() {
             </div>
           </div>
         </motion.div>
-
         {/* Tabs */}
         <div className="bg-white rounded-xl shadow-sm border mb-6">
           <div className="flex overflow-x-auto border-b">
@@ -337,7 +311,6 @@ export default function BenchmarkingPage() {
               </button>
             ))}
           </div>
-
           <div className="p-6">
             <AnimatePresence mode="wait">
               {/* Overview Tab */}
@@ -369,7 +342,6 @@ export default function BenchmarkingPage() {
                         ))}
                       </div>
                     </div>
-
                     {/* Areas for Improvement */}
                     <div className="border rounded-lg">
                       <div className="p-4 border-b bg-yellow-50">
@@ -390,7 +362,6 @@ export default function BenchmarkingPage() {
                         ))}
                       </div>
                     </div>
-
                     {/* Quick Wins */}
                     <div className="border rounded-lg lg:col-span-2">
                       <div className="p-4 border-b">
@@ -409,7 +380,6 @@ export default function BenchmarkingPage() {
                   </div>
                 </motion.div>
               )}
-
               {/* All Metrics Tab */}
               {activeTab === "metrics" && (
                 <motion.div
@@ -433,7 +403,6 @@ export default function BenchmarkingPage() {
                       </button>
                     ))}
                   </div>
-
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     {filteredMetrics.map((m) => (
                       <div key={m.id} className="border rounded-lg p-4 hover:shadow-md transition-shadow">
@@ -454,7 +423,6 @@ export default function BenchmarkingPage() {
                             </div>
                           </div>
                         </div>
-
                         <div className="grid grid-cols-3 gap-4 text-center mb-3">
                           <div>
                             <div className="text-2xl font-bold text-blue-600">{m.venue_value}{m.unit}</div>
@@ -469,7 +437,6 @@ export default function BenchmarkingPage() {
                             <div className="text-xs text-gray-500">Top 10%</div>
                           </div>
                         </div>
-
                         <div className="relative pt-1">
                           <div className="flex items-center justify-between text-xs text-gray-500 mb-1">
                             <span>0</span>
@@ -492,7 +459,6 @@ export default function BenchmarkingPage() {
                   </div>
                 </motion.div>
               )}
-
               {/* Competitors Tab */}
               {activeTab === "competitors" && (
                 <motion.div
@@ -505,7 +471,6 @@ export default function BenchmarkingPage() {
                     <h3 className="font-semibold mb-2">Nearby Competitors</h3>
                     <p className="text-gray-600 text-sm">Based on location and cuisine type</p>
                   </div>
-
                   <div className="overflow-x-auto">
                     <table className="w-full">
                       <thead className="bg-gray-50">
@@ -553,7 +518,6 @@ export default function BenchmarkingPage() {
                       </tbody>
                     </table>
                   </div>
-
                   <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div className="border rounded-lg p-4">
                       <h4 className="font-semibold mb-4">Competitive Position</h4>
@@ -587,7 +551,6 @@ export default function BenchmarkingPage() {
                         </div>
                       </div>
                     </div>
-
                     <div className="border rounded-lg p-4">
                       <h4 className="font-semibold mb-4">Competitive Insights</h4>
                       <div className="space-y-3">
@@ -608,7 +571,6 @@ export default function BenchmarkingPage() {
                   </div>
                 </motion.div>
               )}
-
               {/* Recommendations Tab */}
               {activeTab === "recommendations" && (
                 <motion.div
@@ -644,16 +606,13 @@ export default function BenchmarkingPage() {
                               </span>
                             </div>
                           </div>
-
                           <h4 className="font-semibold text-lg mb-2">{rec.title}</h4>
                           <p className="text-gray-700 mb-4">{rec.description}</p>
-
                           <div className="flex items-center gap-4 mb-4">
                             <div className="px-3 py-2 bg-green-100 text-green-800 rounded-lg text-sm font-medium">
                               Potential Impact: {rec.potential_impact}
                             </div>
                           </div>
-
                           <div className="border-t pt-4">
                             <div className="font-medium text-sm mb-2">Action Items:</div>
                             <ul className="space-y-2">
@@ -671,7 +630,6 @@ export default function BenchmarkingPage() {
                   </div>
                 </motion.div>
               )}
-
               {/* Trends Tab */}
               {activeTab === "trends" && (
                 <motion.div
@@ -708,7 +666,6 @@ export default function BenchmarkingPage() {
                         <span className="text-gray-500 ml-2">over 6 months</span>
                       </div>
                     </div>
-
                     {/* Category Trends */}
                     <div className="border rounded-lg p-4">
                       <h4 className="font-semibold mb-4">Category Progress</h4>
@@ -741,7 +698,6 @@ export default function BenchmarkingPage() {
                         ))}
                       </div>
                     </div>
-
                     {/* Improvement Velocity */}
                     <div className="border rounded-lg p-4 lg:col-span-2">
                       <h4 className="font-semibold mb-4">Improvement Velocity by Metric</h4>

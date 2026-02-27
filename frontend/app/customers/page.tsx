@@ -1,10 +1,9 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 
-import { API_URL, getAuthHeaders } from '@/lib/api';
+import { api } from '@/lib/api';
 
 interface Customer {
   id: number;
@@ -59,7 +58,6 @@ interface UpcomingEvent {
 }
 
 export default function CustomersPage() {
-  const router = useRouter();
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -104,36 +102,13 @@ export default function CustomersPage() {
   const loadCustomers = async () => {
     try {
       setError(null);
-      const headers = getAuthHeaders();
-      if (!headers['Authorization']) {
-        router.push('/login');
-        return;
-      }
+      let path = '/customers/?';
+      if (search) path += `search=${encodeURIComponent(search)}&`;
+      if (filter !== 'all') path += `tag=${filter}&`;
+      if (segmentFilter !== 'all') path += `segment=${segmentFilter}`;
 
-      let url = `${API_URL}/customers/?`;
-      if (search) url += `search=${encodeURIComponent(search)}&`;
-      if (filter !== 'all') url += `tag=${filter}&`;
-      if (segmentFilter !== 'all') url += `segment=${segmentFilter}`;
-
-      const response = await fetch(url, {
-        credentials: 'include',
-        headers: getAuthHeaders(),
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        setCustomers(data.items || data.customers || (Array.isArray(data) ? data : []));
-      } else {
-        const errorMessage = response.status === 401
-          ? 'Unauthorized. Please log in again.'
-          : response.status === 403
-          ? 'You do not have permission to view customers.'
-          : response.status === 404
-          ? 'Customer API endpoint not found.'
-          : `Failed to load customers (Error ${response.status})`;
-        setError(errorMessage);
-        setCustomers([]);
-      }
+      const data: any = await api.get(path);
+      setCustomers(data.items || data.customers || (Array.isArray(data) ? data : []));
     } catch (err) {
       console.error('Error loading customers:', err);
       setError('Unable to connect to the server. Please check your connection and try again.');
@@ -145,34 +120,21 @@ export default function CustomersPage() {
 
   const loadUpcomingEvents = async () => {
     try {
-      const headers = getAuthHeaders();
-      if (!headers['Authorization']) return;
-
-      const response = await fetch(`${API_URL}/crm/customers/upcoming-events?days=30`, {
-        credentials: 'include',
-        headers: getAuthHeaders(),
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        const events: UpcomingEvent[] = data.map((event: {
-          customer_id: number;
-          customer_name: string;
-          event_type: 'birthday' | 'anniversary';
-          date: string;
-          days_until: number;
-        }) => ({
-          customer_id: event.customer_id,
-          customer_name: event.customer_name,
-          event_type: event.event_type,
-          date: event.date,
-          days_until: event.days_until,
-        }));
-        setUpcomingEvents(events);
-      } else {
-        console.error('Failed to load upcoming events');
-        setUpcomingEvents([]);
-      }
+      const data: any = await api.get('/crm/customers/upcoming-events?days=30');
+            const events: UpcomingEvent[] = data.map((event: {
+      customer_id: number;
+      customer_name: string;
+      event_type: 'birthday' | 'anniversary';
+      date: string;
+      days_until: number;
+      }) => ({
+      customer_id: event.customer_id,
+      customer_name: event.customer_name,
+      event_type: event.event_type,
+      date: event.date,
+      days_until: event.days_until,
+      }));
+      setUpcomingEvents(events);
     } catch (err) {
       console.error('Error loading upcoming events:', err);
       setUpcomingEvents([]);
@@ -181,39 +143,26 @@ export default function CustomersPage() {
 
   const loadSpendTrends = async () => {
     try {
-      const headers = getAuthHeaders();
-      if (!headers['Authorization']) return;
+      const data: any = await api.get('/reports/trends?period=year');
+            // Transform the revenue trend data to the expected format
+      const revenueData = data.revenue_trend?.data_points || [];
+      const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
-      const response = await fetch(`${API_URL}/reports/trends?period=year`, {
-        credentials: 'include',
-        headers: getAuthHeaders(),
+      // Get the last 6 data points and format them
+      const lastSixMonths = revenueData.slice(-6);
+      const trends: SpendTrend[] = lastSixMonths.map((point: { date: string; value: number }) => {
+      const date = new Date(point.date);
+      return {
+        month: monthNames[date.getMonth()],
+        amount: point.value,
+      };
       });
 
-      if (response.ok) {
-        const data = await response.json();
-        // Transform the revenue trend data to the expected format
-        const revenueData = data.revenue_trend?.data_points || [];
-        const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-
-        // Get the last 6 data points and format them
-        const lastSixMonths = revenueData.slice(-6);
-        const trends: SpendTrend[] = lastSixMonths.map((point: { date: string; value: number }) => {
-          const date = new Date(point.date);
-          return {
-            month: monthNames[date.getMonth()],
-            amount: point.value,
-          };
-        });
-
-        if (trends.length > 0) {
-          setSpendTrends(trends);
-        } else {
-          // Fallback to empty trends if no data
-          setSpendTrends([]);
-        }
+      if (trends.length > 0) {
+      setSpendTrends(trends);
       } else {
-        console.error('Failed to load spend trends');
-        setSpendTrends([]);
+      // Fallback to empty trends if no data
+      setSpendTrends([]);
       }
     } catch (err) {
       console.error('Error loading spend trends:', err);
@@ -223,15 +172,8 @@ export default function CustomersPage() {
 
   const loadOrderHistory = async (customerId: number) => {
     try {
-      const response = await fetch(`${API_URL}/customers/${customerId}/orders`, {
-        credentials: 'include',
-        headers: getAuthHeaders(),
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        setOrderHistory(data.orders || data || []);
-      }
+      const data: any = await api.get(`/customers/${customerId}/orders`);
+            setOrderHistory(data.orders || data || []);
     } catch (err) {
       console.error('Error loading order history:', err);
       setOrderHistory([]);
@@ -240,26 +182,19 @@ export default function CustomersPage() {
 
   const saveCustomer = async () => {
     try {
-      const url = editingCustomer
-        ? `${API_URL}/customers/${editingCustomer.id}`
-        : `${API_URL}/customers/`;
-
-      const response = await fetch(url, {
-        credentials: 'include',
-        method: editingCustomer ? 'PUT' : 'POST',
-        headers: getAuthHeaders(),
-        body: JSON.stringify({
-          ...formData,
-          allergies: formData.allergies.split(',').map(a => a.trim()).filter(Boolean),
-        }),
-      });
-
-      if (response.ok) {
-        setShowModal(false);
-        setEditingCustomer(null);
-        resetForm();
-        loadCustomers();
+      const body = {
+        ...formData,
+        allergies: formData.allergies.split(',').map(a => a.trim()).filter(Boolean),
+      };
+      if (editingCustomer) {
+        await api.put(`/customers/${editingCustomer.id}`, body);
+      } else {
+        await api.post('/customers/', body);
       }
+      setShowModal(false);
+      setEditingCustomer(null);
+      resetForm();
+      loadCustomers();
     } catch (err) {
       console.error('Error saving customer:', err);
     }
@@ -269,11 +204,7 @@ export default function CustomersPage() {
     if (!confirm('Are you sure you want to delete this customer? This cannot be undone.')) return;
 
     try {
-      await fetch(`${API_URL}/customers/${id}`, {
-        credentials: 'include',
-        method: 'DELETE',
-        headers: getAuthHeaders(),
-      });
+      await api.del(`/customers/${id}`);
       loadCustomers();
       setSelectedCustomer(null);
     } catch (err) {
@@ -1026,7 +957,7 @@ export default function CustomersPage() {
 
               <div className="space-y-4">
                 <div>
-                  <label className="block text-gray-300 mb-1">Name *</label>
+                  <label className="block text-gray-300 mb-1">Name *
                   <input
                     type="text"
                     value={formData.name}
@@ -1034,10 +965,11 @@ export default function CustomersPage() {
                     className="w-full px-4 py-2 bg-white border border-gray-300 rounded-lg text-gray-900"
                     required
                   />
+                  </label>
                 </div>
 
                 <div>
-                  <label className="block text-gray-300 mb-1">Phone *</label>
+                  <label className="block text-gray-300 mb-1">Phone *
                   <input
                     type="tel"
                     value={formData.phone}
@@ -1045,20 +977,22 @@ export default function CustomersPage() {
                     className="w-full px-4 py-2 bg-white border border-gray-300 rounded-lg text-gray-900"
                     required
                   />
+                  </label>
                 </div>
 
                 <div>
-                  <label className="block text-gray-300 mb-1">Email</label>
+                  <label className="block text-gray-300 mb-1">Email
                   <input
                     type="email"
                     value={formData.email}
                     onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                     className="w-full px-4 py-2 bg-white border border-gray-300 rounded-lg text-gray-900"
                   />
+                  </label>
                 </div>
 
                 <div>
-                  <label className="block text-gray-300 mb-1">Tags</label>
+                  <span className="block text-gray-300 mb-1">Tags</span>
                   <div className="flex flex-wrap gap-2">
                     {tagOptions.map((tag) => (
                       <button
@@ -1083,7 +1017,7 @@ export default function CustomersPage() {
                 </div>
 
                 <div>
-                  <label className="block text-gray-300 mb-1">Allergies (comma-separated)</label>
+                  <label className="block text-gray-300 mb-1">Allergies (comma-separated)
                   <input
                     type="text"
                     value={formData.allergies}
@@ -1091,10 +1025,11 @@ export default function CustomersPage() {
                     className="w-full px-4 py-2 bg-white border border-gray-300 rounded-lg text-gray-900"
                     placeholder="e.g., Gluten, Dairy, Nuts"
                   />
+                  </label>
                 </div>
 
                 <div>
-                  <label className="block text-gray-300 mb-1">Preferences</label>
+                  <label className="block text-gray-300 mb-1">Preferences
                   <input
                     type="text"
                     value={formData.preferences}
@@ -1102,32 +1037,35 @@ export default function CustomersPage() {
                     className="w-full px-4 py-2 bg-white border border-gray-300 rounded-lg text-gray-900"
                     placeholder="e.g., Quiet table, Window seat"
                   />
+                  </label>
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-gray-300 mb-1">Birthday</label>
+                    <label className="block text-gray-300 mb-1">Birthday
                     <input
                       type="date"
                       value={formData.birthday}
                       onChange={(e) => setFormData({ ...formData, birthday: e.target.value })}
                       className="w-full px-4 py-2 bg-white border border-gray-300 rounded-lg text-gray-900"
                     />
+                    </label>
                   </div>
                   <div>
-                    <label className="block text-gray-300 mb-1">Anniversary</label>
+                    <label className="block text-gray-300 mb-1">Anniversary
                     <input
                       type="date"
                       value={formData.anniversary}
                       onChange={(e) => setFormData({ ...formData, anniversary: e.target.value })}
                       className="w-full px-4 py-2 bg-white border border-gray-300 rounded-lg text-gray-900"
                     />
+                    </label>
                   </div>
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-gray-300 mb-1">Acquisition Source</label>
+                    <label className="block text-gray-300 mb-1">Acquisition Source
                     <select
                       value={formData.acquisition_source}
                       onChange={(e) => setFormData({ ...formData, acquisition_source: e.target.value })}
@@ -1137,9 +1075,10 @@ export default function CustomersPage() {
                         <option key={source} value={source} className="capitalize">{source}</option>
                       ))}
                     </select>
+                    </label>
                   </div>
                   <div>
-                    <label className="block text-gray-300 mb-1">Contact Preference</label>
+                    <label className="block text-gray-300 mb-1">Contact Preference
                     <select
                       value={formData.communication_preference}
                       onChange={(e) => setFormData({ ...formData, communication_preference: e.target.value as 'sms' | 'email' | 'none' })}
@@ -1149,17 +1088,19 @@ export default function CustomersPage() {
                       <option value="sms">SMS</option>
                       <option value="none">No Contact</option>
                     </select>
+                    </label>
                   </div>
                 </div>
 
                 <div>
-                  <label className="block text-gray-300 mb-1">Notes</label>
+                  <label className="block text-gray-300 mb-1">Notes
                   <textarea
                     value={formData.notes}
                     onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
                     className="w-full px-4 py-2 bg-white border border-gray-300 rounded-lg text-gray-900"
                     rows={3}
                   />
+                  </label>
                 </div>
 
                 <div>

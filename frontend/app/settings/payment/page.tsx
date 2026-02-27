@@ -216,7 +216,7 @@ export default function SettingsPaymentPage() {
                 placeholder="whsec_..."
               />
               <div>
-                <label className="block text-sm font-medium text-surface-600 mb-2">Currency</label>
+                <label className="block text-sm font-medium text-surface-600 mb-2">Currency
                 <select
                   value={settings.stripe.currency}
                   onChange={(e) => setSettings({
@@ -231,9 +231,10 @@ export default function SettingsPaymentPage() {
                   <option value="usd">USD</option>
                   <option value="gbp">GBP</option>
                 </select>
+                </label>
               </div>
               <div>
-                <label className="block text-sm font-medium text-surface-600 mb-2">Capture Method</label>
+                <label className="block text-sm font-medium text-surface-600 mb-2">Capture Method
                 <select
                   value={settings.stripe.captureMethod}
                   onChange={(e) => setSettings({
@@ -246,6 +247,7 @@ export default function SettingsPaymentPage() {
                   <option value="automatic">Automatic</option>
                   <option value="manual">Manual</option>
                 </select>
+                </label>
               </div>
               <Input
                 label="Statement Descriptor"
@@ -283,7 +285,7 @@ export default function SettingsPaymentPage() {
 
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-surface-600 mb-2">Default Tip Percentages</label>
+                <span className="block text-sm font-medium text-surface-600 mb-2">Default Tip Percentages</span>
                 <div className="flex gap-3">
                   {[5, 10, 15, 20, 25].map((percent) => (
                     <button
@@ -343,7 +345,7 @@ export default function SettingsPaymentPage() {
                   <span className="text-sm text-surface-900">Enable tip pooling</span>
                 </label>
                 <div>
-                  <label className="block text-sm font-medium text-surface-600 mb-2">Distribution Method</label>
+                  <label className="block text-sm font-medium text-surface-600 mb-2">Distribution Method
                   <select
                     value={settings.tips.distributionMethod}
                     onChange={(e) => setSettings({
@@ -358,6 +360,7 @@ export default function SettingsPaymentPage() {
                     <option value="sales">By Sales Amount</option>
                     <option value="points">By Point System</option>
                   </select>
+                  </label>
                 </div>
               </div>
             </div>
@@ -370,7 +373,7 @@ export default function SettingsPaymentPage() {
             <h2 className="text-lg font-semibold text-surface-900 mb-4">Card Terminal</h2>
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-surface-600 mb-2">Terminal Provider</label>
+                <label className="block text-sm font-medium text-surface-600 mb-2">Terminal Provider
                 <select
                   value={settings.terminal.provider}
                   onChange={(e) => setSettings({
@@ -386,6 +389,7 @@ export default function SettingsPaymentPage() {
                   <option value="pax">PAX</option>
                   <option value="ingenico">Ingenico</option>
                 </select>
+                </label>
               </div>
               <Input
                 label="Device ID"
@@ -466,7 +470,7 @@ export default function SettingsPaymentPage() {
                 <span className="text-sm text-surface-900">Allow partial refunds</span>
               </label>
               <div>
-                <label className="block text-sm font-medium text-surface-600 mb-2">Max Refund Period (Days)</label>
+                <label className="block text-sm font-medium text-surface-600 mb-2">Max Refund Period (Days)
                 <input
                   type="number"
                   value={settings.refunds.maxRefundDays}
@@ -480,6 +484,7 @@ export default function SettingsPaymentPage() {
                   min="1"
                   max="365"
                 />
+                </label>
               </div>
             </div>
           </CardBody>

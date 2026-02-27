@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Link from 'next/link';
-import { API_URL, getAuthHeaders } from '@/lib/api';
+import { api } from '@/lib/api';
 
 import { toast } from '@/lib/toast';
 interface ScheduledReport {
@@ -83,14 +83,8 @@ export default function ScheduledReportsPage() {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch(`${API_URL}/scheduled-reports/schedules`, {
-        credentials: 'include',
-        headers: getAuthHeaders(),
-      });
-      if (res.ok) {
-        const data = await res.json();
-        setSchedules(data);
-      }
+      const data: any = await api.get('/scheduled-reports/schedules');
+            setSchedules(data);
     } catch (err) {
       console.error('Error loading data:', err);
       setError('Failed to load scheduled reports. Please try again.');
@@ -122,22 +116,13 @@ export default function ScheduledReportsPage() {
 
   const saveSchedule = async () => {
     try {
-      const method = editingSchedule ? 'PUT' : 'POST';
-      const url = editingSchedule
-        ? `${API_URL}/scheduled-reports/schedules/${editingSchedule.schedule_id}`
-        : `${API_URL}/scheduled-reports/schedules`;
-
-      const res = await fetch(url, {
-        credentials: 'include',
-        method,
-        headers: getAuthHeaders(),
-        body: JSON.stringify(form),
-      });
-
-      if (res.ok) {
-        loadData();
-        setShowModal(false);
+      if (editingSchedule) {
+        await api.put(`/scheduled-reports/schedules/${editingSchedule.schedule_id}`, form);
+      } else {
+        await api.post('/scheduled-reports/schedules', form);
       }
+      loadData();
+      setShowModal(false);
     } catch (error) {
       console.error('Error saving schedule:', error);
     }
@@ -146,14 +131,8 @@ export default function ScheduledReportsPage() {
   const deleteSchedule = async (scheduleId: string) => {
     if (!confirm('Are you sure you want to delete this scheduled report?')) return;
     try {
-      const res = await fetch(`${API_URL}/scheduled-reports/schedules/${scheduleId}`, {
-        credentials: 'include',
-        method: 'DELETE',
-        headers: getAuthHeaders(),
-      });
-      if (res.ok) {
-        loadData();
-      }
+      await api.del(`/scheduled-reports/schedules/${scheduleId}`);
+      loadData();
     } catch (error) {
       console.error('Error deleting schedule:', error);
     }
@@ -161,15 +140,8 @@ export default function ScheduledReportsPage() {
 
   const toggleActive = async (schedule: ScheduledReport) => {
     try {
-      const res = await fetch(`${API_URL}/scheduled-reports/schedules/${schedule.schedule_id}`, {
-        credentials: 'include',
-        method: 'PUT',
-        headers: getAuthHeaders(),
-        body: JSON.stringify({ ...schedule, is_active: !schedule.is_active }),
-      });
-      if (res.ok) {
-        loadData();
-      }
+      await api.put(`/scheduled-reports/schedules/${schedule.schedule_id}`, { ...schedule, is_active: !schedule.is_active });
+      loadData();
     } catch (error) {
       console.error('Error updating schedule:', error);
     }
@@ -177,15 +149,9 @@ export default function ScheduledReportsPage() {
 
   const runNow = async (scheduleId: string) => {
     try {
-      const res = await fetch(`${API_URL}/scheduled-reports/schedules/${scheduleId}/run`, {
-        credentials: 'include',
-        method: 'POST',
-        headers: getAuthHeaders(),
-      });
-      if (res.ok) {
-        toast.success('Report sent successfully!');
-        loadData();
-      }
+      await api.post(`/scheduled-reports/schedules/${scheduleId}/run`);
+      toast.success('Report sent successfully!');
+      loadData();
     } catch (error) {
       console.error('Error running report:', error);
     }
@@ -392,7 +358,7 @@ export default function ScheduledReportsPage() {
               </div>
               <div className="p-6 space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-surface-700 mb-1">Schedule Name</label>
+                  <label className="block text-sm font-medium text-surface-700 mb-1">Schedule Name
                   <input
                     type="text"
                     value={form.name || ''}
@@ -400,10 +366,11 @@ export default function ScheduledReportsPage() {
                     className="w-full px-3 py-2 border border-surface-200 rounded-lg"
                     placeholder="e.g., Daily Sales to Management"
                   />
+                  </label>
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-surface-700 mb-2">Report Type</label>
+                  <span className="block text-sm font-medium text-surface-700 mb-2">Report Type</span>
                   <div className="grid grid-cols-2 gap-2">
                     {REPORT_TYPES.map((type) => (
                       <button
@@ -424,7 +391,7 @@ export default function ScheduledReportsPage() {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-surface-700 mb-2">Frequency</label>
+                  <span className="block text-sm font-medium text-surface-700 mb-2">Frequency</span>
                   <div className="space-y-2">
                     {FREQUENCIES.map((freq) => (
                       <button
@@ -446,7 +413,7 @@ export default function ScheduledReportsPage() {
 
                 {form.frequency === 'weekly' && (
                   <div>
-                    <label className="block text-sm font-medium text-surface-700 mb-1">Day of Week</label>
+                    <label className="block text-sm font-medium text-surface-700 mb-1">Day of Week
                     <select
                       value={form.day_of_week}
                       onChange={(e) => setForm({ ...form, day_of_week: parseInt(e.target.value) })}
@@ -456,12 +423,13 @@ export default function ScheduledReportsPage() {
                         <option key={day.id} value={day.id}>{day.name}</option>
                       ))}
                     </select>
+                    </label>
                   </div>
                 )}
 
                 {form.frequency === 'monthly' && (
                   <div>
-                    <label className="block text-sm font-medium text-surface-700 mb-1">Day of Month</label>
+                    <label className="block text-sm font-medium text-surface-700 mb-1">Day of Month
                     <select
                       value={form.day_of_month}
                       onChange={(e) => setForm({ ...form, day_of_month: parseInt(e.target.value) })}
@@ -471,21 +439,23 @@ export default function ScheduledReportsPage() {
                         <option key={day} value={day}>{day}</option>
                       ))}
                     </select>
+                    </label>
                   </div>
                 )}
 
                 <div>
-                  <label className="block text-sm font-medium text-surface-700 mb-1">Time of Day</label>
+                  <label className="block text-sm font-medium text-surface-700 mb-1">Time of Day
                   <input
                     type="time"
                     value={form.time_of_day || '06:00'}
                     onChange={(e) => setForm({ ...form, time_of_day: e.target.value })}
                     className="w-full px-3 py-2 border border-surface-200 rounded-lg"
                   />
+                  </label>
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-surface-700 mb-1">Recipients</label>
+                  <label className="block text-sm font-medium text-surface-700 mb-1">Recipients
                   <div className="flex gap-2 mb-2">
                     <input
                       type="email"
@@ -503,6 +473,7 @@ export default function ScheduledReportsPage() {
                       Add
                     </button>
                   </div>
+                  </label>
                   <div className="flex flex-wrap gap-2">
                     {(form.recipients || []).map((email) => (
                       <span
@@ -523,7 +494,7 @@ export default function ScheduledReportsPage() {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-surface-700 mb-2">Format</label>
+                  <span className="block text-sm font-medium text-surface-700 mb-2">Format</span>
                   <div className="flex gap-2">
                     {FORMATS.map((fmt) => (
                       <button

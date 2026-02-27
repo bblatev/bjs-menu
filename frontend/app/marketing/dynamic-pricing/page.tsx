@@ -221,7 +221,7 @@ export default function DynamicPricingPage() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Rule Name</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Rule Name
                   <input
                     type="text"
                     value={form.name}
@@ -229,18 +229,20 @@ export default function DynamicPricingPage() {
                     placeholder="e.g., Lunch Rush Surge"
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg text-gray-900 bg-white"
                   />
+                  </label>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Description
                   <textarea
                     value={form.description}
                     onChange={e => setForm({ ...form, description: e.target.value })}
                     rows={2}
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg text-gray-900 bg-white resize-none"
                   />
+                  </label>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Trigger Type</label>
+                  <span className="block text-sm font-medium text-gray-700 mb-1">Trigger Type</span>
                   <div className="flex gap-2">
                     {(['time_based', 'demand_based', 'weather_based'] as const).map(tt => (
                       <button
@@ -261,7 +263,7 @@ export default function DynamicPricingPage() {
 
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Adjustment Type</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Adjustment Type
                     <select
                       value={form.adjustment_type}
                       onChange={e => setForm({ ...form, adjustment_type: e.target.value as 'percentage' | 'fixed' })}
@@ -270,11 +272,11 @@ export default function DynamicPricingPage() {
                       <option value="percentage">Percentage</option>
                       <option value="fixed">Fixed Amount</option>
                     </select>
+                    </label>
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
                       Value ({form.adjustment_type === 'percentage' ? '%' : '$'})
-                    </label>
                     <input
                       type="number"
                       step={form.adjustment_type === 'percentage' ? '1' : '0.01'}
@@ -282,11 +284,12 @@ export default function DynamicPricingPage() {
                       onChange={e => setForm({ ...form, adjustment_value: parseFloat(e.target.value) || 0 })}
                       className="w-full px-4 py-2 border border-gray-300 rounded-lg text-gray-900 bg-white"
                     />
+                    </label>
                   </div>
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Applies To (comma separated)</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Applies To (comma separated)
                   <input
                     type="text"
                     value={form.applies_to}
@@ -294,6 +297,7 @@ export default function DynamicPricingPage() {
                     placeholder="e.g., Pizza, Salads, Drinks"
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg text-gray-900 bg-white"
                   />
+                  </label>
                 </div>
               </div>
 
@@ -304,7 +308,7 @@ export default function DynamicPricingPage() {
                 {form.trigger_type === 'time_based' && (
                   <>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Days</label>
+                      <span className="block text-sm font-medium text-gray-700 mb-1">Days</span>
                       <div className="flex flex-wrap gap-2">
                         {DAYS.map(day => (
                           <button
@@ -324,22 +328,24 @@ export default function DynamicPricingPage() {
                     </div>
                     <div className="grid grid-cols-2 gap-4">
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Start Time</label>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Start Time
                         <input
                           type="time"
                           value={form.conditions.start_time || ''}
                           onChange={e => setForm({ ...form, conditions: { ...form.conditions, start_time: e.target.value } })}
                           className="w-full px-4 py-2 border border-gray-300 rounded-lg text-gray-900 bg-white"
                         />
+                        </label>
                       </div>
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">End Time</label>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">End Time
                         <input
                           type="time"
                           value={form.conditions.end_time || ''}
                           onChange={e => setForm({ ...form, conditions: { ...form.conditions, end_time: e.target.value } })}
                           className="w-full px-4 py-2 border border-gray-300 rounded-lg text-gray-900 bg-white"
                         />
+                        </label>
                       </div>
                     </div>
                   </>
@@ -349,32 +355,35 @@ export default function DynamicPricingPage() {
                   <>
                     <div className="grid grid-cols-2 gap-4">
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Min Occupancy %</label>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Min Occupancy %
                         <input
                           type="number"
                           value={form.conditions.occupancy_min || ''}
                           onChange={e => setForm({ ...form, conditions: { ...form.conditions, occupancy_min: parseInt(e.target.value) || 0 } })}
                           className="w-full px-4 py-2 border border-gray-300 rounded-lg text-gray-900 bg-white"
                         />
+                        </label>
                       </div>
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Max Occupancy %</label>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Max Occupancy %
                         <input
                           type="number"
                           value={form.conditions.occupancy_max || ''}
                           onChange={e => setForm({ ...form, conditions: { ...form.conditions, occupancy_max: parseInt(e.target.value) || 0 } })}
                           className="w-full px-4 py-2 border border-gray-300 rounded-lg text-gray-900 bg-white"
                         />
+                        </label>
                       </div>
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Order Volume Threshold</label>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Order Volume Threshold
                       <input
                         type="number"
                         value={form.conditions.order_volume_threshold || ''}
                         onChange={e => setForm({ ...form, conditions: { ...form.conditions, order_volume_threshold: parseInt(e.target.value) || 0 } })}
                         className="w-full px-4 py-2 border border-gray-300 rounded-lg text-gray-900 bg-white"
                       />
+                      </label>
                     </div>
                   </>
                 )}
@@ -382,7 +391,7 @@ export default function DynamicPricingPage() {
                 {form.trigger_type === 'weather_based' && (
                   <>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Weather Condition</label>
+                      <span className="block text-sm font-medium text-gray-700 mb-1">Weather Condition</span>
                       <div className="flex flex-wrap gap-2">
                         {WEATHER.map(w => (
                           <button
@@ -402,22 +411,24 @@ export default function DynamicPricingPage() {
                     </div>
                     <div className="grid grid-cols-2 gap-4">
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Min Temp (F)</label>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Min Temp (F)
                         <input
                           type="number"
                           value={form.conditions.temp_min ?? ''}
                           onChange={e => setForm({ ...form, conditions: { ...form.conditions, temp_min: parseInt(e.target.value) } })}
                           className="w-full px-4 py-2 border border-gray-300 rounded-lg text-gray-900 bg-white"
                         />
+                        </label>
                       </div>
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Max Temp (F)</label>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Max Temp (F)
                         <input
                           type="number"
                           value={form.conditions.temp_max ?? ''}
                           onChange={e => setForm({ ...form, conditions: { ...form.conditions, temp_max: parseInt(e.target.value) } })}
                           className="w-full px-4 py-2 border border-gray-300 rounded-lg text-gray-900 bg-white"
                         />
+                        </label>
                       </div>
                     </div>
                   </>

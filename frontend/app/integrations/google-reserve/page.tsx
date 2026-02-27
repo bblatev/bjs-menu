@@ -3,7 +3,9 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Link from 'next/link';
-import { API_URL } from '@/lib/api';
+
+import { api } from '@/lib/api';
+
 
 interface GoogleReserveConfig {
   merchant_id: string;
@@ -69,23 +71,23 @@ export default function GoogleReservePage() {
     setLoading(true);
     setError(null);
     try {
-      const [configRes, bookingsRes, statsRes] = await Promise.all([
-        fetch(`${API_URL}/google-reserve/config`, { credentials: 'include' }),
-        fetch(`${API_URL}/google-reserve/bookings?limit=20`, { credentials: 'include' }),
-        fetch(`${API_URL}/google-reserve/stats`, { credentials: 'include' }),
-      ]);
+      const [configRes, bookingsRes, statsRes] = await Promise.allSettled([
+  api.get('/google-reserve/config'),
+  api.get('/google-reserve/bookings?limit=20'),
+  api.get('/google-reserve/stats')
+]);
 
-      if (configRes.ok) {
-        const data = await configRes.json();
+      if (configRes.status === 'fulfilled') {
+        const data: any = configRes.value;
         setConfig(prev => ({ ...prev, ...data }));
       }
-      if (bookingsRes.ok) {
-        const data = await bookingsRes.json();
-        setBookings(data);
+      if (bookingsRes.status === 'fulfilled') {
+        const data_bookings: any = bookingsRes.value;
+        setBookings(data_bookings);
       }
-      if (statsRes.ok) {
-        const data = await statsRes.json();
-        setStats(data);
+      if (statsRes.status === 'fulfilled') {
+        const data_stats: any = statsRes.value;
+        setStats(data_stats);
       }
     } catch (err) {
       console.error('Error loading data:', err);
@@ -98,16 +100,9 @@ export default function GoogleReservePage() {
   const saveConfig = async () => {
     setSaving(true);
     try {
-      const res = await fetch(`${API_URL}/google-reserve/config`, {
-        credentials: 'include',
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(config),
-      });
-      if (res.ok) {
-        loadData();
-        setShowConfigModal(false);
-      }
+      await api.put('/google-reserve/config', config);
+      loadData();
+      setShowConfigModal(false);
     } catch (error) {
       console.error('Error saving config:', error);
     } finally {
@@ -118,10 +113,8 @@ export default function GoogleReservePage() {
   const syncAvailability = async () => {
     setSyncing(true);
     try {
-      const res = await fetch(`${API_URL}/google-reserve/sync`, { credentials: 'include', method: 'POST' });
-      if (res.ok) {
-        loadData();
-      }
+      await api.post('/google-reserve/sync');
+      loadData();
     } catch (error) {
       console.error('Error syncing:', error);
     } finally {
@@ -131,15 +124,8 @@ export default function GoogleReservePage() {
 
   const updateBookingStatus = async (bookingId: string, status: string) => {
     try {
-      const res = await fetch(`${API_URL}/google-reserve/bookings/${bookingId}/status`, {
-        credentials: 'include',
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status }),
-      });
-      if (res.ok) {
-        loadData();
-      }
+      await api.put(`/google-reserve/bookings/${bookingId}/status`, { status });
+      loadData();
     } catch (error) {
       console.error('Error updating status:', error);
     }
@@ -372,7 +358,7 @@ export default function GoogleReservePage() {
               <h3 className="font-semibold text-surface-900 mb-4">Booking Rules</h3>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-surface-700 mb-1">Max Party Size</label>
+                  <label className="block text-sm font-medium text-surface-700 mb-1">Max Party Size
                   <input
                     type="number"
                     value={config.max_party_size}
@@ -381,9 +367,10 @@ export default function GoogleReservePage() {
                     min={1}
                     max={50}
                   />
+                  </label>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-surface-700 mb-1">Min Lead Time (hours)</label>
+                  <label className="block text-sm font-medium text-surface-700 mb-1">Min Lead Time (hours)
                   <input
                     type="number"
                     value={config.min_lead_time_hours}
@@ -392,10 +379,11 @@ export default function GoogleReservePage() {
                     min={0}
                     max={72}
                   />
+                  </label>
                   <p className="text-xs text-surface-500 mt-1">Minimum hours before reservation</p>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-surface-700 mb-1">Max Lead Time (days)</label>
+                  <label className="block text-sm font-medium text-surface-700 mb-1">Max Lead Time (days)
                   <input
                     type="number"
                     value={config.max_lead_time_days}
@@ -404,6 +392,7 @@ export default function GoogleReservePage() {
                     min={1}
                     max={365}
                   />
+                  </label>
                   <p className="text-xs text-surface-500 mt-1">How far ahead customers can book</p>
                 </div>
               </div>
@@ -417,7 +406,7 @@ export default function GoogleReservePage() {
                     <div className="font-medium text-surface-900">Auto-confirm bookings</div>
                     <div className="text-sm text-surface-500">Automatically confirm incoming reservations</div>
                   </div>
-                  <label className="relative inline-flex items-center cursor-pointer">
+                  <label aria-label="Auto-confirm bookings" className="relative inline-flex items-center cursor-pointer">
                     <input
                       type="checkbox"
                       checked={config.auto_confirm}
@@ -432,7 +421,7 @@ export default function GoogleReservePage() {
                     <div className="font-medium text-surface-900">Sync availability</div>
                     <div className="text-sm text-surface-500">Push table availability to Google every 15 minutes</div>
                   </div>
-                  <label className="relative inline-flex items-center cursor-pointer">
+                  <label aria-label="Sync availability" className="relative inline-flex items-center cursor-pointer">
                     <input
                       type="checkbox"
                       checked={config.sync_availability}
@@ -478,7 +467,7 @@ export default function GoogleReservePage() {
               </div>
               <div className="p-6 space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-surface-700 mb-1">Merchant ID</label>
+                  <label className="block text-sm font-medium text-surface-700 mb-1">Merchant ID
                   <input
                     type="text"
                     value={config.merchant_id}
@@ -486,9 +475,10 @@ export default function GoogleReservePage() {
                     className="w-full px-3 py-2 border border-surface-200 rounded-lg"
                     placeholder="Your Google Merchant ID"
                   />
+                  </label>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-surface-700 mb-1">Service ID</label>
+                  <label className="block text-sm font-medium text-surface-700 mb-1">Service ID
                   <input
                     type="text"
                     value={config.service_id}
@@ -496,9 +486,10 @@ export default function GoogleReservePage() {
                     className="w-full px-3 py-2 border border-surface-200 rounded-lg"
                     placeholder="Reservation service ID"
                   />
+                  </label>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-surface-700 mb-1">API Key</label>
+                  <label className="block text-sm font-medium text-surface-700 mb-1">API Key
                   <input
                     type="password"
                     value={config.api_key}
@@ -506,6 +497,7 @@ export default function GoogleReservePage() {
                     className="w-full px-3 py-2 border border-surface-200 rounded-lg"
                     placeholder="Your API Key"
                   />
+                  </label>
                 </div>
                 <div className="flex items-center gap-2">
                   <input
@@ -515,7 +507,7 @@ export default function GoogleReservePage() {
                     onChange={(e) => setConfig({ ...config, is_enabled: e.target.checked })}
                     className="rounded border-surface-300 text-amber-500 focus:ring-amber-500"
                   />
-                  <label htmlFor="is_enabled" className="text-sm text-surface-700">Enable Google Reserve integration</label>
+                  <span className="text-sm text-surface-700">Enable Google Reserve integration</span>
                 </div>
               </div>
               <div className="p-6 border-t border-surface-100 flex justify-end gap-3">

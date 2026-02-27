@@ -563,7 +563,7 @@ export default function MenuModifiersPage() {
               <div className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="text-gray-700 text-sm">Name (EN)</label>
+                    <label className="text-gray-700 text-sm">Name (EN)
                     <input
                       type="text"
                       value={groupForm.name_en}
@@ -571,9 +571,10 @@ export default function MenuModifiersPage() {
                       className="w-full px-4 py-3 bg-gray-100 text-gray-900 rounded-xl mt-1"
                       placeholder="e.g. Size"
                     />
+                    </label>
                   </div>
                   <div>
-                    <label className="text-gray-700 text-sm">Name (BG)</label>
+                    <label className="text-gray-700 text-sm">Name (BG)
                     <input
                       type="text"
                       value={groupForm.name_bg}
@@ -582,11 +583,12 @@ export default function MenuModifiersPage() {
                       className="w-full px-4 py-3 bg-gray-100 text-gray-900 rounded-xl mt-1"
                       placeholder="напр. Размер"
                     />
+                    </label>
                   </div>
                 </div>
 
                 <div>
-                  <label className="text-gray-700 text-sm">Type</label>
+                  <span className="text-gray-700 text-sm">Type</span>
                   <div className="flex gap-2 mt-2">
                     {(['single', 'multiple', 'quantity'] as const).map(t => (
                       <button
@@ -611,7 +613,7 @@ export default function MenuModifiersPage() {
                 </div>
 
                 <div>
-                  <label className="text-gray-700 text-sm">Display Type</label>
+                  <span className="text-gray-700 text-sm">Display Type</span>
                   <div className="flex gap-2 mt-2 flex-wrap">
                     {(['buttons', 'dropdown', 'checkboxes', 'stepper'] as const).map(d => (
                       <button
@@ -632,7 +634,7 @@ export default function MenuModifiersPage() {
 
                 <div className="grid grid-cols-3 gap-4">
                   <div>
-                    <label className="text-gray-700 text-sm">Min Select</label>
+                    <label className="text-gray-700 text-sm">Min Select
                     <input
                       type="number"
                       min="0"
@@ -640,9 +642,10 @@ export default function MenuModifiersPage() {
                       onChange={(e) => setGroupForm({ ...groupForm, min_selections: parseInt(e.target.value) || 0 })}
                       className="w-full px-4 py-3 bg-gray-100 text-gray-900 rounded-xl mt-1"
                     />
+                    </label>
                   </div>
                   <div>
-                    <label className="text-gray-700 text-sm">Max Select</label>
+                    <label className="text-gray-700 text-sm">Max Select
                     <input
                       type="number"
                       min="1"
@@ -650,9 +653,10 @@ export default function MenuModifiersPage() {
                       onChange={(e) => setGroupForm({ ...groupForm, max_selections: parseInt(e.target.value) || 1 })}
                       className="w-full px-4 py-3 bg-gray-100 text-gray-900 rounded-xl mt-1"
                     />
+                    </label>
                   </div>
                   <div>
-                    <label className="text-gray-700 text-sm">Free Selections</label>
+                    <label className="text-gray-700 text-sm">Free Selections
                     <input
                       type="number"
                       min="0"
@@ -660,11 +664,12 @@ export default function MenuModifiersPage() {
                       onChange={(e) => setGroupForm({ ...groupForm, free_selections: parseInt(e.target.value) || 0 })}
                       className="w-full px-4 py-3 bg-gray-100 text-gray-900 rounded-xl mt-1"
                     />
+                    </label>
                   </div>
                 </div>
 
                 <div>
-                  <label className="text-gray-700 text-sm">Applies To</label>
+                  <span className="text-gray-700 text-sm">Applies To</span>
                   <div className="flex gap-2 mt-2">
                     {(['all', 'categories', 'items'] as const).map(a => (
                       <button
@@ -741,7 +746,7 @@ export default function MenuModifiersPage() {
               <div className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="text-gray-700 text-sm">Name (EN)</label>
+                    <label className="text-gray-700 text-sm">Name (EN)
                     <input
                       type="text"
                       value={optionForm.name_en}
@@ -749,9 +754,10 @@ export default function MenuModifiersPage() {
                       className="w-full px-4 py-3 bg-gray-100 text-gray-900 rounded-xl mt-1"
                       placeholder="e.g. Large"
                     />
+                    </label>
                   </div>
                   <div>
-                    <label className="text-gray-700 text-sm">Name (BG)</label>
+                    <label className="text-gray-700 text-sm">Name (BG)
                     <input
                       type="text"
                       value={optionForm.name_bg}
@@ -760,12 +766,13 @@ export default function MenuModifiersPage() {
                       className="w-full px-4 py-3 bg-gray-100 text-gray-900 rounded-xl mt-1"
                       placeholder="напр. Голям"
                     />
+                    </label>
                   </div>
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="text-gray-700 text-sm">Price Adjustment (lv)</label>
+                    <label className="text-gray-700 text-sm">Price Adjustment (lv)
                     <input
                       type="number"
                       step="0.01"
@@ -774,20 +781,22 @@ export default function MenuModifiersPage() {
                       className="w-full px-4 py-3 bg-gray-100 text-gray-900 rounded-xl mt-1"
                       placeholder="0 for free"
                     />
+                    </label>
                   </div>
                   <div>
-                    <label className="text-gray-700 text-sm">Calories (kcal)</label>
+                    <label className="text-gray-700 text-sm">Calories (kcal)
                     <input
                       type="number"
                       value={optionForm.calories}
                       onChange={(e) => setOptionForm({ ...optionForm, calories: parseInt(e.target.value) || 0 })}
                       className="w-full px-4 py-3 bg-gray-100 text-gray-900 rounded-xl mt-1"
                     />
+                    </label>
                   </div>
                 </div>
 
                 <div>
-                  <label className="text-gray-700 text-sm mb-2 block">Allergens</label>
+                  <span className="text-gray-700 text-sm mb-2 block">Allergens</span>
                   <div className="flex flex-wrap gap-2">
                     {ALLERGENS.map(allergen => (
                       <button

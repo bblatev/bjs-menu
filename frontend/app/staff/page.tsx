@@ -91,8 +91,8 @@ export default function StaffManagementPage() {
 
   const loadTables = async () => {
     try {
-      const data = await api.get<Table[]>('/tables/');
-      setTables(data);
+      const data = await api.get<any>('/tables/');
+      const tablesList = Array.isArray(data) ? data : (data.items || data.tables || []); setTables(tablesList);
     } catch (error) {
       console.error("Error loading tables:", error);
     }
@@ -102,7 +102,7 @@ export default function StaffManagementPage() {
     try {
       // Try the areas endpoint, fall back to extracting from tables
       const data = await api.get<any>('/tables/areas');
-      setAreas(Array.isArray(data) ? data : (data.areas || []));
+      setAreas(Array.isArray(data) ? data : (data.items || data.areas || []));
     } catch {
       try {
         // Fallback: extract unique areas from tables data
@@ -549,7 +549,7 @@ export default function StaffManagementPage() {
 
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
-                <label className="text-gray-900 block mb-2">Full Name</label>
+                <label className="text-gray-900 block mb-2">Full Name
                 <input
                   type="text"
                   value={formData.full_name}
@@ -560,10 +560,11 @@ export default function StaffManagementPage() {
                   placeholder="e.g., John Smith"
                   className="w-full px-4 py-3 bg-gray-100 text-gray-900 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500"
                 />
+                </label>
               </div>
 
               <div>
-                <label className="text-gray-900 block mb-2">Role</label>
+                <label className="text-gray-900 block mb-2">Role
                 <select
                   value={formData.role}
                   onChange={(e) =>
@@ -580,11 +581,12 @@ export default function StaffManagementPage() {
                   <option value="manager">Manager</option>
                   <option value="admin">Admin</option>
                 </select>
+                </label>
               </div>
 
               {!editingStaff && (
                 <div>
-                  <label className="text-gray-900 block mb-2">PIN Code (Optional)</label>
+                  <label className="text-gray-900 block mb-2">PIN Code (Optional)
                   <input
                     type="password"
                     inputMode="numeric"
@@ -598,6 +600,7 @@ export default function StaffManagementPage() {
                     placeholder="4-6 digits (optional)"
                     className="w-full px-4 py-3 bg-gray-100 text-gray-900 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500 text-center text-2xl tracking-widest"
                   />
+                  </label>
                   <p className="text-gray-500 text-sm mt-1 text-center">
                     Staff will use this PIN to clock in (can be set later)
                   </p>

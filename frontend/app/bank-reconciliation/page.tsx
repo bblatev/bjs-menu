@@ -362,7 +362,7 @@ export default function BankReconciliationPage() {
               </div>
               <div className="p-6 space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-surface-700 mb-1">Bank Account</label>
+                  <label className="block text-sm font-medium text-surface-700 mb-1">Bank Account
                   <select
                     value={selectedAccount?.id || ''}
                     onChange={(e) => setSelectedAccount(bankAccounts.find(a => a.id === parseInt(e.target.value)) || null)}
@@ -374,18 +374,20 @@ export default function BankReconciliationPage() {
                       </option>
                     ))}
                   </select>
+                  </label>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-surface-700 mb-1">Statement Date</label>
+                  <label className="block text-sm font-medium text-surface-700 mb-1">Statement Date
                   <input
                     type="date"
                     value={formData.statement_date}
                     onChange={(e) => setFormData({ ...formData, statement_date: e.target.value })}
                     className="w-full px-4 py-2 border border-surface-200 rounded-lg"
                   />
+                  </label>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-surface-700 mb-1">Statement Ending Balance</label>
+                  <label className="block text-sm font-medium text-surface-700 mb-1">Statement Ending Balance
                   <input
                     type="number"
                     step="0.01"
@@ -394,6 +396,7 @@ export default function BankReconciliationPage() {
                     className="w-full px-4 py-2 border border-surface-200 rounded-lg"
                     placeholder="0.00"
                   />
+                  </label>
                 </div>
               </div>
               <div className="p-6 border-t border-surface-100 flex gap-3">

@@ -3,7 +3,9 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Link from 'next/link';
-import { API_URL, getAuthHeaders } from '@/lib/api';
+
+import { api } from '@/lib/api';
+
 
 interface TrainingSession {
   session_id: string;
@@ -66,28 +68,28 @@ export default function TrainingModePage() {
     setLoading(true);
     setError(null);
     try {
-      const [configRes, sessionsRes, activeRes, statsRes] = await Promise.all([
-        fetch(`${API_URL}/training/config`, { credentials: 'include', headers: getAuthHeaders() }),
-        fetch(`${API_URL}/training/sessions?limit=20`, { credentials: 'include', headers: getAuthHeaders() }),
-        fetch(`${API_URL}/training/sessions/active`, { credentials: 'include', headers: getAuthHeaders() }),
-        fetch(`${API_URL}/training/stats`, { credentials: 'include', headers: getAuthHeaders() }),
-      ]);
+      const [configRes, sessionsRes, activeRes, statsRes] = await Promise.allSettled([
+  api.get('/training/config'),
+  api.get('/training/sessions?limit=20'),
+  api.get('/training/sessions/active'),
+  api.get('/training/stats')
+]);
 
-      if (configRes.ok) {
-        const data = await configRes.json();
+      if (configRes.status === 'fulfilled') {
+        const data: any = configRes.value;
         setConfig(prev => ({ ...prev, ...data }));
       }
-      if (sessionsRes.ok) {
-        const data = await sessionsRes.json();
-        setSessions(data);
+      if (sessionsRes.status === 'fulfilled') {
+        const data_sessions: any = sessionsRes.value;
+        setSessions(data_sessions);
       }
-      if (activeRes.ok) {
-        const data = await activeRes.json();
-        setActiveSessions(data);
+      if (activeRes.status === 'fulfilled') {
+        const data_activeSessions: any = activeRes.value;
+        setActiveSessions(data_activeSessions);
       }
-      if (statsRes.ok) {
-        const data = await statsRes.json();
-        setStats(data);
+      if (statsRes.status === 'fulfilled') {
+        const data_stats: any = statsRes.value;
+        setStats(data_stats);
       }
     } catch (err) {
       console.error('Error loading data:', err);
@@ -100,15 +102,8 @@ export default function TrainingModePage() {
   const saveConfig = async () => {
     setSaving(true);
     try {
-      const res = await fetch(`${API_URL}/training/config`, {
-        credentials: 'include',
-        method: 'PUT',
-        headers: getAuthHeaders(),
-        body: JSON.stringify(config),
-      });
-      if (res.ok) {
-        loadData();
-      }
+      await api.put('/training/config', config);
+      loadData();
     } catch (error) {
       console.error('Error saving config:', error);
     } finally {
@@ -118,17 +113,10 @@ export default function TrainingModePage() {
 
   const startSession = async () => {
     try {
-      const res = await fetch(`${API_URL}/training/sessions`, {
-        credentials: 'include',
-        method: 'POST',
-        headers: getAuthHeaders(),
-        body: JSON.stringify({ staff_id: parseInt(newSessionStaffId) }),
-      });
-      if (res.ok) {
-        loadData();
-        setShowStartModal(false);
-        setNewSessionStaffId('');
-      }
+      await api.post('/training/sessions', { staff_id: parseInt(newSessionStaffId) });
+      loadData();
+      setShowStartModal(false);
+      setNewSessionStaffId('');
     } catch (error) {
       console.error('Error starting session:', error);
     }
@@ -136,14 +124,8 @@ export default function TrainingModePage() {
 
   const endSession = async (sessionId: string) => {
     try {
-      const res = await fetch(`${API_URL}/training/sessions/${sessionId}/end`, {
-        credentials: 'include',
-        method: 'POST',
-        headers: getAuthHeaders(),
-      });
-      if (res.ok) {
-        loadData();
-      }
+      await api.post(`/training/sessions/${sessionId}/end`);
+      loadData();
     } catch (error) {
       console.error('Error ending session:', error);
     }
@@ -387,7 +369,7 @@ export default function TrainingModePage() {
                   <h3 className="font-semibold text-surface-900">Enable Training Mode</h3>
                   <p className="text-sm text-surface-500">Allow staff to practice in a sandbox environment</p>
                 </div>
-                <label className="relative inline-flex items-center cursor-pointer">
+                <label aria-label="Enable Training Mode" className="relative inline-flex items-center cursor-pointer">
                   <input
                     type="checkbox"
                     checked={config.enabled}
@@ -414,7 +396,7 @@ export default function TrainingModePage() {
 
                 {config.require_pin && (
                   <div>
-                    <label className="block text-sm font-medium text-surface-700 mb-1">Training PIN</label>
+                    <label className="block text-sm font-medium text-surface-700 mb-1">Training PIN
                     <input
                       type="text"
                       value={config.training_pin}
@@ -422,11 +404,12 @@ export default function TrainingModePage() {
                       className="w-32 px-3 py-2 border border-surface-200 rounded-lg font-mono text-center tracking-widest"
                       maxLength={6}
                     />
+                    </label>
                   </div>
                 )}
 
                 <div>
-                  <label className="block text-sm font-medium text-surface-700 mb-1">Auto-end after (minutes)</label>
+                  <label className="block text-sm font-medium text-surface-700 mb-1">Auto-end after (minutes)
                   <input
                     type="number"
                     value={config.auto_end_minutes}
@@ -435,6 +418,7 @@ export default function TrainingModePage() {
                     min={15}
                     max={480}
                   />
+                  </label>
                 </div>
 
                 <div className="flex items-center justify-between">
@@ -522,7 +506,7 @@ export default function TrainingModePage() {
               </div>
               <div className="p-6">
                 <div>
-                  <label className="block text-sm font-medium text-surface-700 mb-1">Staff ID</label>
+                  <label className="block text-sm font-medium text-surface-700 mb-1">Staff ID
                   <input
                     type="number"
                     value={newSessionStaffId}
@@ -530,6 +514,7 @@ export default function TrainingModePage() {
                     className="w-full px-3 py-2 border border-surface-200 rounded-lg"
                     placeholder="Enter staff ID"
                   />
+                  </label>
                 </div>
                 <div className="mt-4 p-4 bg-purple-50 rounded-lg">
                   <p className="text-sm text-purple-800">

@@ -557,7 +557,7 @@ export default function MenuCategoriesPage() {
                 {/* Icon & Color Selection */}
                 <div className="grid grid-cols-2 gap-6">
                   <div>
-                    <label className="text-gray-700 text-sm mb-2 block">Icon</label>
+                    <span className="text-gray-700 text-sm mb-2 block">Icon</span>
                     <div className="grid grid-cols-6 gap-2 max-h-32 overflow-y-auto bg-gray-50 p-3 rounded-xl">
                       {CATEGORY_ICONS.map(({ icon }) => (
                         <button
@@ -574,7 +574,7 @@ export default function MenuCategoriesPage() {
                     </div>
                   </div>
                   <div>
-                    <label className="text-gray-700 text-sm mb-2 block">Color</label>
+                    <span className="text-gray-700 text-sm mb-2 block">Color</span>
                     <div className="grid grid-cols-8 gap-2 max-h-32 overflow-y-auto bg-gray-50 p-3 rounded-xl">
                       {CATEGORY_COLORS.map(({ color }) => (
                         <button
@@ -608,7 +608,7 @@ export default function MenuCategoriesPage() {
                 {/* Names */}
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="text-gray-700 text-sm">Name (EN)</label>
+                    <label className="text-gray-700 text-sm">Name (EN)
                     <input
                       type="text"
                       value={form.name_en}
@@ -616,9 +616,10 @@ export default function MenuCategoriesPage() {
                       className="w-full px-4 py-3 bg-gray-100 text-gray-900 rounded-xl mt-1"
                       placeholder="e.g. Appetizers"
                     />
+                    </label>
                   </div>
                   <div>
-                    <label className="text-gray-700 text-sm">Name (BG)</label>
+                    <label className="text-gray-700 text-sm">Name (BG)
                     <input
                       type="text"
                       value={form.name_bg}
@@ -627,35 +628,38 @@ export default function MenuCategoriesPage() {
                       className="w-full px-4 py-3 bg-gray-100 text-gray-900 rounded-xl mt-1"
                       placeholder="напр. Предястия"
                     />
+                    </label>
                   </div>
                 </div>
 
                 {/* Descriptions */}
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="text-gray-700 text-sm">Description (EN)</label>
+                    <label className="text-gray-700 text-sm">Description (EN)
                     <textarea
                       value={form.description_en}
                       onChange={(e) => setForm({ ...form, description_en: e.target.value })}
                       className="w-full px-4 py-3 bg-gray-100 text-gray-900 rounded-xl mt-1 h-20"
                       placeholder="Optional description"
                     />
+                    </label>
                   </div>
                   <div>
-                    <label className="text-gray-700 text-sm">Description (BG)</label>
+                    <label className="text-gray-700 text-sm">Description (BG)
                     <textarea
                       value={form.description_bg}
                       onChange={(e) => setForm({ ...form, description_bg: e.target.value })}
                       className="w-full px-4 py-3 bg-gray-100 text-gray-900 rounded-xl mt-1 h-20"
                       placeholder="Опционално описание"
                     />
+                    </label>
                   </div>
                 </div>
 
                 {/* Parent Category & Order */}
                 <div className="grid grid-cols-3 gap-4">
                   <div>
-                    <label className="text-gray-700 text-sm">Parent Category</label>
+                    <label className="text-gray-700 text-sm">Parent Category
                     <select
                       value={form.parent_id || ''}
                       onChange={(e) => setForm({ ...form, parent_id: e.target.value ? parseInt(e.target.value) : undefined })}
@@ -668,30 +672,33 @@ export default function MenuCategoriesPage() {
                         </option>
                       ))}
                     </select>
+                    </label>
                   </div>
                   <div>
-                    <label className="text-gray-700 text-sm">Sort Order</label>
+                    <label className="text-gray-700 text-sm">Sort Order
                     <input
                       type="number"
                       value={form.sort_order}
                       onChange={(e) => setForm({ ...form, sort_order: parseInt(e.target.value) || 0 })}
                       className="w-full px-4 py-3 bg-gray-100 text-gray-900 rounded-xl mt-1"
                     />
+                    </label>
                   </div>
                   <div>
-                    <label className="text-gray-700 text-sm">Tax Rate (%)</label>
+                    <label className="text-gray-700 text-sm">Tax Rate (%)
                     <input
                       type="number"
                       value={form.tax_rate}
                       onChange={(e) => setForm({ ...form, tax_rate: parseInt(e.target.value) || 0 })}
                       className="w-full px-4 py-3 bg-gray-100 text-gray-900 rounded-xl mt-1"
                     />
+                    </label>
                   </div>
                 </div>
 
                 {/* Visibility */}
                 <div>
-                  <label className="text-gray-700 text-sm mb-2 block">Visibility</label>
+                  <span className="text-gray-700 text-sm mb-2 block">Visibility</span>
                   <div className="flex gap-2 flex-wrap">
                     {(['all', 'dine_in', 'takeaway', 'delivery', 'hidden'] as const).map(vis => (
                       <button
@@ -712,7 +719,7 @@ export default function MenuCategoriesPage() {
 
                 {/* Display Channels */}
                 <div>
-                  <label className="text-gray-700 text-sm mb-2 block">Display On</label>
+                  <span className="text-gray-700 text-sm mb-2 block">Display On</span>
                   <div className="flex gap-4">
                     <label className="flex items-center gap-2 text-gray-900 cursor-pointer">
                       <input
@@ -759,7 +766,7 @@ export default function MenuCategoriesPage() {
                   {form.schedule_enabled && (
                     <div className="space-y-4">
                       <div>
-                        <label className="text-gray-700 text-sm mb-2 block">Available Days</label>
+                        <span className="text-gray-700 text-sm mb-2 block">Available Days</span>
                         <div className="flex gap-2">
                           {DAYS.map(day => (
                             <button
@@ -784,22 +791,24 @@ export default function MenuCategoriesPage() {
                       </div>
                       <div className="grid grid-cols-2 gap-4">
                         <div>
-                          <label className="text-gray-700 text-sm">Start Time</label>
+                          <label className="text-gray-700 text-sm">Start Time
                           <input
                             type="time"
                             value={form.schedule_start}
                             onChange={(e) => setForm({ ...form, schedule_start: e.target.value })}
                             className="w-full px-4 py-3 bg-gray-100 text-gray-900 rounded-xl mt-1"
                           />
+                          </label>
                         </div>
                         <div>
-                          <label className="text-gray-700 text-sm">End Time</label>
+                          <label className="text-gray-700 text-sm">End Time
                           <input
                             type="time"
                             value={form.schedule_end}
                             onChange={(e) => setForm({ ...form, schedule_end: e.target.value })}
                             className="w-full px-4 py-3 bg-gray-100 text-gray-900 rounded-xl mt-1"
                           />
+                          </label>
                         </div>
                       </div>
                     </div>

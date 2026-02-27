@@ -1182,7 +1182,7 @@ export default function ConversationalOrderingPage() {
 
               <div className="space-y-4">
                 <div>
-                  <label className="text-gray-600 text-sm">Intent Name</label>
+                  <label className="text-gray-600 text-sm">Intent Name
                   <input
                     type="text"
                     value={newIntent.name}
@@ -1190,10 +1190,11 @@ export default function ConversationalOrderingPage() {
                     placeholder="e.g., ask_allergy"
                     className="w-full px-4 py-3 bg-gray-100 text-gray-900 rounded-xl mt-1"
                   />
+                  </label>
                 </div>
 
                 <div>
-                  <label className="text-gray-600 text-sm">Description</label>
+                  <label className="text-gray-600 text-sm">Description
                   <input
                     type="text"
                     value={newIntent.description}
@@ -1201,10 +1202,11 @@ export default function ConversationalOrderingPage() {
                     placeholder="What does this intent represent?"
                     className="w-full px-4 py-3 bg-gray-100 text-gray-900 rounded-xl mt-1"
                   />
+                  </label>
                 </div>
 
                 <div>
-                  <label className="text-gray-600 text-sm">Example Phrases</label>
+                  <span className="text-gray-600 text-sm">Example Phrases</span>
                   {newIntent.examples.map((ex, i) => (
                     <div key={i} className="flex gap-2 mt-1">
                       <input
@@ -1231,7 +1233,7 @@ export default function ConversationalOrderingPage() {
                 </div>
 
                 <div>
-                  <label className="text-gray-600 text-sm">Required Slots</label>
+                  <span className="text-gray-600 text-sm">Required Slots</span>
                   {newIntent.slots.map((slot, i) => (
                     <div key={i} className="flex gap-2 mt-1">
                       <input
@@ -1295,7 +1297,7 @@ export default function ConversationalOrderingPage() {
 
               <div className="space-y-4">
                 <div>
-                  <label className="text-gray-600 text-sm">Example Text</label>
+                  <label className="text-gray-600 text-sm">Example Text
                   <input
                     type="text"
                     value={newExample.text}
@@ -1303,10 +1305,11 @@ export default function ConversationalOrderingPage() {
                     placeholder="Enter a sample user phrase..."
                     className="w-full px-4 py-3 bg-gray-100 text-gray-900 rounded-xl mt-1"
                   />
+                  </label>
                 </div>
 
                 <div>
-                  <label className="text-gray-600 text-sm">Intent</label>
+                  <label className="text-gray-600 text-sm">Intent
                   <select
                     value={newExample.intent}
                     onChange={(e) => setNewExample({ ...newExample, intent: e.target.value })}
@@ -1317,6 +1320,7 @@ export default function ConversationalOrderingPage() {
                       <option key={intent.name} value={intent.name}>{intent.name}</option>
                     ))}
                   </select>
+                  </label>
                 </div>
 
                 <div className="flex gap-3 pt-4">

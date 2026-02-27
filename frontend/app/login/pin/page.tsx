@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { API_URL, setAuthToken } from '@/lib/api'
+import { setAuthToken, api } from '@/lib/api';
 
 export default function PinLoginPage() {
   const router = useRouter()
@@ -35,21 +35,7 @@ export default function PinLoginPage() {
     setError('')
 
     try {
-      const response = await fetch(`${API_URL}/auth/login/pin`, {
-        credentials: 'include',
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ pin }),
-      })
-
-      if (!response.ok) {
-        throw new Error('Invalid PIN code')
-      }
-
-      const data = await response.json()
-      
+      const data: any = await api.post('/auth/login/pin', { pin });
       // Store tokens
       setAuthToken(data.access_token)
       localStorage.setItem('refresh_token', data.refresh_token)

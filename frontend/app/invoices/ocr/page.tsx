@@ -2,9 +2,11 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
-import { API_URL, getAuthHeaders } from '@/lib/api';
+
 
 import { toast } from '@/lib/toast';
+
+import { api } from '@/lib/api';
 interface OCRJob {
   id: number;
   original_filename: string;
@@ -53,18 +55,8 @@ export default function InvoiceOCRPage() {
 
   const loadJobs = async () => {
     try {
-      const response = await fetch(`${API_URL}/enterprise/invoice-ocr/jobs`, {
-        credentials: 'include',
-        headers: getAuthHeaders()
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        setJobs(data);
-      } else {
-        // Mock data for demo
-        setJobs(getMockJobs());
-      }
+      const data: any = await api.get('/enterprise/invoice-ocr/jobs');
+            setJobs(data);
     } catch (error) {
       console.error('Error loading OCR jobs:', error);
       setJobs(getMockJobs());
@@ -161,25 +153,8 @@ export default function InvoiceOCRPage() {
         const formData = new FormData();
         formData.append('file', file);
 
-        const response = await fetch(`${API_URL}/enterprise/invoice-ocr/upload`, {
-          credentials: 'include',
-          method: 'POST',
-          headers: { 'Authorization': getAuthHeaders()['Authorization'] },
-          body: formData
-        });
-
-        if (!response.ok) {
-          // Demo mode - add to queue
-          setJobs(prev => [{
-            id: Date.now(),
-            original_filename: file.name,
-            status: 'pending',
-            created_at: new Date().toISOString(),
-          }, ...prev]);
-        } else {
-          const job = await response.json();
-          setJobs(prev => [job, ...prev]);
-        }
+        const job: any = await api.post('/enterprise/invoice-ocr/upload', formData);
+        setJobs(prev => [job, ...prev]);
       } catch (error) {
         console.error('Error uploading file:', error);
         setJobs(prev => [{
@@ -196,21 +171,10 @@ export default function InvoiceOCRPage() {
 
   const handleApprove = async (job: OCRJob) => {
     try {
-      const response = await fetch(`${API_URL}/enterprise/invoice-ocr/jobs/${job.id}/approve`, {
-        credentials: 'include',
-        method: 'POST',
-        headers: getAuthHeaders()
-      });
-
-      if (response.ok) {
-        toast.success('Invoice approved and created!');
-        loadJobs();
-        setSelectedJob(null);
-      } else {
-        // Demo mode
-        setJobs(prev => prev.map(j => j.id === job.id ? { ...j, status: 'approved' } : j));
-        setSelectedJob(null);
-      }
+      await api.post(`/enterprise/invoice-ocr/jobs/${job.id}/approve`);
+      toast.success('Invoice approved and created!');
+      loadJobs();
+      setSelectedJob(null);
     } catch (error) {
       console.error('Error approving:', error);
       setJobs(prev => prev.map(j => j.id === job.id ? { ...j, status: 'approved' } : j));
@@ -220,11 +184,7 @@ export default function InvoiceOCRPage() {
 
   const handleReject = async (job: OCRJob) => {
     try {
-      await fetch(`${API_URL}/enterprise/invoice-ocr/jobs/${job.id}/reject`, {
-        credentials: 'include',
-        method: 'POST',
-        headers: getAuthHeaders()
-      });
+      await api.post(`/enterprise/invoice-ocr/jobs/${job.id}/reject`);
       setJobs(prev => prev.map(j => j.id === job.id ? { ...j, status: 'rejected' } : j));
       setSelectedJob(null);
     } catch (error) {
@@ -510,12 +470,13 @@ export default function InvoiceOCRPage() {
               <div className="grid grid-cols-2 gap-4 mb-6">
                 <div className="space-y-3">
                   <div>
-                    <label className="text-xs text-surface-500 uppercase">Supplier</label>
+                    <label className="text-xs text-surface-500 uppercase">Supplier
                     <input
                       type="text"
                       defaultValue={selectedJob.extracted_data.supplier_name}
                       className="w-full px-3 py-2 border border-surface-200 rounded-lg mt-1"
                     />
+                    </label>
                     {selectedJob.matched_supplier && (
                       <div className="text-xs text-green-600 mt-1">
                         ✓ Matched: {selectedJob.matched_supplier.name} ({Math.round(selectedJob.matched_supplier.match_confidence * 100)}%)
@@ -523,30 +484,33 @@ export default function InvoiceOCRPage() {
                     )}
                   </div>
                   <div>
-                    <label className="text-xs text-surface-500 uppercase">Invoice Number</label>
+                    <label className="text-xs text-surface-500 uppercase">Invoice Number
                     <input
                       type="text"
                       defaultValue={selectedJob.extracted_data.invoice_number}
                       className="w-full px-3 py-2 border border-surface-200 rounded-lg mt-1"
                     />
+                    </label>
                   </div>
                 </div>
                 <div className="space-y-3">
                   <div>
-                    <label className="text-xs text-surface-500 uppercase">Invoice Date</label>
+                    <label className="text-xs text-surface-500 uppercase">Invoice Date
                     <input
                       type="date"
                       defaultValue={selectedJob.extracted_data.invoice_date}
                       className="w-full px-3 py-2 border border-surface-200 rounded-lg mt-1"
                     />
+                    </label>
                   </div>
                   <div>
-                    <label className="text-xs text-surface-500 uppercase">Due Date</label>
+                    <label className="text-xs text-surface-500 uppercase">Due Date
                     <input
                       type="date"
                       defaultValue={selectedJob.extracted_data.due_date}
                       className="w-full px-3 py-2 border border-surface-200 rounded-lg mt-1"
                     />
+                    </label>
                   </div>
                 </div>
               </div>

@@ -106,36 +106,41 @@ class DeliveryAggregatorService:
             DeliveryPlatformCredentials.platform == platform
         ).first()
 
-        if existing:
-            # Update existing
-            existing.api_key = api_key
-            existing.api_secret = api_secret
-            existing.store_id = store_id
-            existing.connected = True
-            existing.last_sync = datetime.now(timezone.utc)
-            for key, value in settings.items():
-                if hasattr(existing, key):
-                    setattr(existing, key, value)
-            self.db.commit()
-            self.db.refresh(existing)
-            creds = existing
-        else:
-            creds = DeliveryPlatformCredentials(
-                venue_id=venue_id,
-                platform=platform,
-                api_key=api_key,
-                api_secret=api_secret,
-                store_id=store_id,
-                connected=True,
-                last_sync=datetime.now(timezone.utc),
-                auto_accept=settings.get('auto_accept', False),
-                auto_accept_delay_seconds=settings.get('auto_accept_delay_seconds', 30),
-                prep_time_minutes=settings.get('prep_time_minutes', 20),
-                commission_percent=settings.get('commission_percent', 30.0)
-            )
-            self.db.add(creds)
-            self.db.commit()
-            self.db.refresh(creds)
+        try:
+            if existing:
+                # Update existing
+                existing.api_key = api_key
+                existing.api_secret = api_secret
+                existing.store_id = store_id
+                existing.connected = True
+                existing.last_sync = datetime.now(timezone.utc)
+                for key, value in settings.items():
+                    if hasattr(existing, key):
+                        setattr(existing, key, value)
+                self.db.commit()
+                self.db.refresh(existing)
+                creds = existing
+            else:
+                creds = DeliveryPlatformCredentials(
+                    venue_id=venue_id,
+                    platform=platform,
+                    api_key=api_key,
+                    api_secret=api_secret,
+                    store_id=store_id,
+                    connected=True,
+                    last_sync=datetime.now(timezone.utc),
+                    auto_accept=settings.get('auto_accept', False),
+                    auto_accept_delay_seconds=settings.get('auto_accept_delay_seconds', 30),
+                    prep_time_minutes=settings.get('prep_time_minutes', 20),
+                    commission_percent=settings.get('commission_percent', 30.0)
+                )
+                self.db.add(creds)
+                self.db.commit()
+                self.db.refresh(creds)
+        except Exception as e:
+            self.db.rollback()
+            logger.error(f"Failed to connect platform {platform} for venue {venue_id}: {e}")
+            return {"success": False, "error": f"Failed to connect platform: {str(e)}"}
 
         logger.info(f"Connected platform {platform} for venue {venue_id}")
 
@@ -166,7 +171,11 @@ class DeliveryAggregatorService:
         if creds:
             creds.connected = False
             creds.enabled = False
-            self.db.commit()
+            try:
+                self.db.commit()
+            except Exception as e:
+                self.db.rollback()
+                return {"success": False, "error": f"Failed to disconnect platform: {str(e)}"}
             return {"success": True, "platform": platform}
 
         return {"success": False, "error": "Platform not found"}
@@ -223,7 +232,11 @@ class DeliveryAggregatorService:
             if key in allowed:
                 setattr(creds, key, value)
 
-        self.db.commit()
+        try:
+            self.db.commit()
+        except Exception as e:
+            self.db.rollback()
+            return {"success": False, "error": f"Failed to update platform settings: {str(e)}"}
 
         return {"success": True, "platform": platform}
 
@@ -272,9 +285,14 @@ class DeliveryAggregatorService:
             ordered_at=datetime.now(timezone.utc)
         )
 
-        self.db.add(order)
-        self.db.commit()
-        self.db.refresh(order)
+        try:
+            self.db.add(order)
+            self.db.commit()
+            self.db.refresh(order)
+        except Exception as e:
+            self.db.rollback()
+            logger.error(f"Failed to save delivery order from {platform} for venue {venue_id}: {e}")
+            return {"success": False, "error": f"Failed to save order: {str(e)}"}
 
         logger.info(f"Received order {order.id} from {platform} for venue {venue_id}")
 
@@ -307,7 +325,12 @@ class DeliveryAggregatorService:
 
         order.status = AggregatorOrderStatus.ACCEPTED.value
         order.accepted_at = datetime.now(timezone.utc)
-        self.db.commit()
+        try:
+            self.db.commit()
+        except Exception as e:
+            self.db.rollback()
+            logger.error(f"Failed to accept order {order_id}: {e}")
+            return {"success": False, "error": f"Failed to accept order: {str(e)}"}
 
         logger.info(f"Accepted order {order_id}")
         return {"success": True, "order_id": order_id, "status": order.status}
@@ -327,7 +350,12 @@ class DeliveryAggregatorService:
             return {"success": False, "error": "Order not found"}
 
         order.status = AggregatorOrderStatus.REJECTED.value
-        self.db.commit()
+        try:
+            self.db.commit()
+        except Exception as e:
+            self.db.rollback()
+            logger.error(f"Failed to reject order {order_id}: {e}")
+            return {"success": False, "error": f"Failed to reject order: {str(e)}"}
 
         logger.info(f"Rejected order {order_id}: {reason}")
         return {"success": True, "order_id": order_id, "status": order.status}
@@ -356,7 +384,11 @@ class DeliveryAggregatorService:
         elif status == AggregatorOrderStatus.DELIVERED.value:
             order.delivered_at = datetime.now(timezone.utc)
 
-        self.db.commit()
+        try:
+            self.db.commit()
+        except Exception as e:
+            self.db.rollback()
+            return {"success": False, "error": f"Failed to update order status: {str(e)}"}
 
         return {"success": True, "order_id": order_id, "status": order.status}
 
@@ -536,9 +568,14 @@ class DeliveryAggregatorService:
             status=DriverStatus.OFFLINE.value
         )
 
-        self.db.add(driver)
-        self.db.commit()
-        self.db.refresh(driver)
+        try:
+            self.db.add(driver)
+            self.db.commit()
+            self.db.refresh(driver)
+        except Exception as e:
+            self.db.rollback()
+            logger.error(f"Failed to add driver {name}: {e}")
+            return {"success": False, "error": f"Failed to add driver: {str(e)}"}
 
         logger.info(f"Added driver {driver.id}: {name}")
 
@@ -568,7 +605,11 @@ class DeliveryAggregatorService:
             status = status.value
 
         driver.status = status
-        self.db.commit()
+        try:
+            self.db.commit()
+        except Exception as e:
+            self.db.rollback()
+            return {"success": False, "error": f"Failed to update driver status: {str(e)}"}
 
         return {"success": True, "driver_id": driver_id, "status": driver.status}
 
@@ -589,7 +630,11 @@ class DeliveryAggregatorService:
 
         driver.current_lat = lat
         driver.current_lng = lng
-        self.db.commit()
+        try:
+            self.db.commit()
+        except Exception as e:
+            self.db.rollback()
+            return {"success": False, "error": f"Failed to update driver location: {str(e)}"}
 
         return {"success": True, "driver_id": driver_id, "lat": lat, "lng": lng}
 
@@ -614,12 +659,17 @@ class DeliveryAggregatorService:
         if driver.status != DriverStatus.AVAILABLE.value:
             return {"success": False, "error": "Driver not available"}
 
-        driver.status = DriverStatus.ASSIGNED.value
-        driver.current_order_id = order_id
-        order.driver_name = driver.name
-        order.driver_phone = driver.phone
-
-        self.db.commit()
+        try:
+            with self.db.begin_nested():
+                driver.status = DriverStatus.ASSIGNED.value
+                driver.current_order_id = order_id
+                order.driver_name = driver.name
+                order.driver_phone = driver.phone
+            self.db.commit()
+        except Exception as e:
+            self.db.rollback()
+            logger.error(f"Failed to assign driver {driver_id} to order {order_id}: {e}")
+            return {"success": False, "error": f"Failed to assign driver: {str(e)}"}
 
         return {"success": True, "order_id": order_id, "driver_id": driver_id}
 
@@ -685,9 +735,14 @@ class DeliveryAggregatorService:
             estimated_minutes=kwargs.get('estimated_minutes', 30)
         )
 
-        self.db.add(zone)
-        self.db.commit()
-        self.db.refresh(zone)
+        try:
+            self.db.add(zone)
+            self.db.commit()
+            self.db.refresh(zone)
+        except Exception as e:
+            self.db.rollback()
+            logger.error(f"Failed to create delivery zone {name}: {e}")
+            return {"success": False, "error": f"Failed to create zone: {str(e)}"}
 
         return {
             "success": True,

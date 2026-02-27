@@ -314,7 +314,7 @@ export default function ChartOfAccountsPage() {
               <div className="p-6 space-y-4">
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-surface-700 mb-1">Account Code</label>
+                    <label className="block text-sm font-medium text-surface-700 mb-1">Account Code
                     <input
                       type="text"
                       value={formData.account_code}
@@ -322,9 +322,10 @@ export default function ChartOfAccountsPage() {
                       className="w-full px-4 py-2 border border-surface-200 rounded-lg focus:ring-2 focus:ring-amber-500"
                       placeholder="e.g., 1000"
                     />
+                    </label>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-surface-700 mb-1">Account Type</label>
+                    <label className="block text-sm font-medium text-surface-700 mb-1">Account Type
                     <select
                       value={formData.account_type}
                       onChange={(e) => setFormData({ ...formData, account_type: e.target.value as any })}
@@ -336,10 +337,11 @@ export default function ChartOfAccountsPage() {
                       <option value="revenue">Revenue</option>
                       <option value="expense">Expense</option>
                     </select>
+                    </label>
                   </div>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-surface-700 mb-1">Account Name</label>
+                  <label className="block text-sm font-medium text-surface-700 mb-1">Account Name
                   <input
                     type="text"
                     value={formData.account_name}
@@ -347,9 +349,10 @@ export default function ChartOfAccountsPage() {
                     className="w-full px-4 py-2 border border-surface-200 rounded-lg focus:ring-2 focus:ring-amber-500"
                     placeholder="e.g., Cash on Hand"
                   />
+                  </label>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-surface-700 mb-1">Parent Account (optional)</label>
+                  <label className="block text-sm font-medium text-surface-700 mb-1">Parent Account (optional)
                   <select
                     value={formData.parent_id || ''}
                     onChange={(e) => setFormData({ ...formData, parent_id: e.target.value ? parseInt(e.target.value) : null })}
@@ -362,9 +365,10 @@ export default function ChartOfAccountsPage() {
                       </option>
                     ))}
                   </select>
+                  </label>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-surface-700 mb-1">Description</label>
+                  <label className="block text-sm font-medium text-surface-700 mb-1">Description
                   <textarea
                     value={formData.description}
                     onChange={(e) => setFormData({ ...formData, description: e.target.value })}
@@ -372,6 +376,7 @@ export default function ChartOfAccountsPage() {
                     rows={2}
                     placeholder="Optional description..."
                   />
+                  </label>
                 </div>
               </div>
               <div className="p-6 border-t border-surface-100 flex gap-3">

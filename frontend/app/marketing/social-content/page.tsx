@@ -129,7 +129,7 @@ export default function SocialContentPage() {
 
               {/* Platform Selector */}
               <div className="mb-5">
-                <label className="block text-sm font-medium text-gray-700 mb-2">Platform</label>
+                <span className="block text-sm font-medium text-gray-700 mb-2">Platform</span>
                 <div className="flex flex-wrap gap-2">
                   {PLATFORMS.map(p => (
                     <button
@@ -149,7 +149,7 @@ export default function SocialContentPage() {
 
               {/* Content Type */}
               <div className="mb-5">
-                <label className="block text-sm font-medium text-gray-700 mb-2">Content Type</label>
+                <span className="block text-sm font-medium text-gray-700 mb-2">Content Type</span>
                 <div className="grid grid-cols-2 gap-2">
                   {CONTENT_TYPES.map(ct => (
                     <button
@@ -169,7 +169,7 @@ export default function SocialContentPage() {
 
               {/* Tone */}
               <div className="mb-6">
-                <label className="block text-sm font-medium text-gray-700 mb-2">Tone</label>
+                <span className="block text-sm font-medium text-gray-700 mb-2">Tone</span>
                 <div className="flex flex-wrap gap-2">
                   {TONES.map(t => (
                     <button
@@ -258,22 +258,24 @@ export default function SocialContentPage() {
                   <h3 className="font-semibold text-gray-900 mb-3">Schedule This Post</h3>
                   <div className="grid grid-cols-2 gap-4 mb-4">
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Date</label>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Date
                       <input
                         type="date"
                         value={scheduleDate}
                         onChange={e => setScheduleDate(e.target.value)}
                         className="w-full px-4 py-2 border border-gray-300 rounded-lg text-gray-900 bg-white"
                       />
+                      </label>
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Time</label>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Time
                       <input
                         type="time"
                         value={scheduleTime}
                         onChange={e => setScheduleTime(e.target.value)}
                         className="w-full px-4 py-2 border border-gray-300 rounded-lg text-gray-900 bg-white"
                       />
+                      </label>
                     </div>
                   </div>
                   <label className="flex items-center gap-2 mb-4 cursor-pointer">

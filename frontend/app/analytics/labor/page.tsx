@@ -149,7 +149,7 @@ export default function LaborAnalyticsPage() {
             <p className="text-gray-500 mt-1">{data.venue_name} -- {data.period}</p>
           </div>
           <div className="flex items-center gap-3">
-            <label className="text-sm text-gray-600">Venue:</label>
+            <label className="text-sm text-gray-600">Venue:
             <select
               value={venueId}
               onChange={e => setVenueId(parseInt(e.target.value))}
@@ -159,6 +159,7 @@ export default function LaborAnalyticsPage() {
               <option value={2}>Branch 2</option>
               <option value={3}>Branch 3</option>
             </select>
+            </label>
           </div>
         </div>
 

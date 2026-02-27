@@ -4,6 +4,7 @@ from typing import List, Optional
 from datetime import datetime, timezone
 from fastapi import APIRouter, HTTPException, Request
 from app.core.rate_limit import limiter
+from app.core.responses import list_response
 from pydantic import BaseModel
 
 from app.db.session import DbSession
@@ -112,7 +113,7 @@ def list_tables(
         query = query.filter(TableModel.status == status)
 
     tables = query.order_by(TableModel.number).limit(500).all()
-    return [Table.from_db(t) for t in tables]
+    return list_response([Table.from_db(t) for t in tables])
 
 
 @router.get("/sections")

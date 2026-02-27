@@ -608,76 +608,84 @@ export default function AllergensNutritionPage() {
                   <h3 className="text-gray-900 font-semibold mb-3">Nutritional Information (per serving)</h3>
                   <div className="grid grid-cols-4 gap-4">
                     <div>
-                      <label className="text-gray-700 text-sm">Calories</label>
+                      <label className="text-gray-700 text-sm">Calories
                       <input
                         type="number"
                         value={form.calories}
                         onChange={(e) => setForm({ ...form, calories: parseInt(e.target.value) || 0 })}
                         className="w-full px-3 py-2 bg-gray-100 text-gray-900 rounded-lg mt-1"
                       />
+                      </label>
                     </div>
                     <div>
-                      <label className="text-gray-700 text-sm">Protein (g)</label>
+                      <label className="text-gray-700 text-sm">Protein (g)
                       <input
                         type="number"
                         value={form.protein}
                         onChange={(e) => setForm({ ...form, protein: parseInt(e.target.value) || 0 })}
                         className="w-full px-3 py-2 bg-gray-100 text-gray-900 rounded-lg mt-1"
                       />
+                      </label>
                     </div>
                     <div>
-                      <label className="text-gray-700 text-sm">Carbs (g)</label>
+                      <label className="text-gray-700 text-sm">Carbs (g)
                       <input
                         type="number"
                         value={form.carbs}
                         onChange={(e) => setForm({ ...form, carbs: parseInt(e.target.value) || 0 })}
                         className="w-full px-3 py-2 bg-gray-100 text-gray-900 rounded-lg mt-1"
                       />
+                      </label>
                     </div>
                     <div>
-                      <label className="text-gray-700 text-sm">Fat (g)</label>
+                      <label className="text-gray-700 text-sm">Fat (g)
                       <input
                         type="number"
                         value={form.fat}
                         onChange={(e) => setForm({ ...form, fat: parseInt(e.target.value) || 0 })}
                         className="w-full px-3 py-2 bg-gray-100 text-gray-900 rounded-lg mt-1"
                       />
+                      </label>
                     </div>
                     <div>
-                      <label className="text-gray-700 text-sm">Fiber (g)</label>
+                      <label className="text-gray-700 text-sm">Fiber (g)
                       <input
                         type="number"
                         value={form.fiber}
                         onChange={(e) => setForm({ ...form, fiber: parseInt(e.target.value) || 0 })}
                         className="w-full px-3 py-2 bg-gray-100 text-gray-900 rounded-lg mt-1"
                       />
+                      </label>
                     </div>
                     <div>
-                      <label className="text-gray-700 text-sm">Sugar (g)</label>
+                      <label className="text-gray-700 text-sm">Sugar (g)
                       <input
                         type="number"
                         value={form.sugar}
                         onChange={(e) => setForm({ ...form, sugar: parseInt(e.target.value) || 0 })}
                         className="w-full px-3 py-2 bg-gray-100 text-gray-900 rounded-lg mt-1"
                       />
+                      </label>
                     </div>
                     <div>
-                      <label className="text-gray-700 text-sm">Sodium (mg)</label>
+                      <label className="text-gray-700 text-sm">Sodium (mg)
                       <input
                         type="number"
                         value={form.sodium}
                         onChange={(e) => setForm({ ...form, sodium: parseInt(e.target.value) || 0 })}
                         className="w-full px-3 py-2 bg-gray-100 text-gray-900 rounded-lg mt-1"
                       />
+                      </label>
                     </div>
                     <div>
-                      <label className="text-gray-700 text-sm">Sat. Fat (g)</label>
+                      <label className="text-gray-700 text-sm">Sat. Fat (g)
                       <input
                         type="number"
                         value={form.saturated_fat}
                         onChange={(e) => setForm({ ...form, saturated_fat: parseInt(e.target.value) || 0 })}
                         className="w-full px-3 py-2 bg-gray-100 text-gray-900 rounded-lg mt-1"
                       />
+                      </label>
                     </div>
                   </div>
                 </div>

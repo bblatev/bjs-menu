@@ -1,10 +1,9 @@
 'use client';
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-
-import { API_URL, getAuthHeaders } from '@/lib/api';
-
 import { toast } from '@/lib/toast';
+
+import { api } from '@/lib/api';
 interface Referral {
   id: number;
   referrerName: string;
@@ -21,7 +20,6 @@ interface Referral {
   orderAmount?: number;
   channel: 'email' | 'sms' | 'social' | 'qr' | 'direct';
 }
-
 interface Campaign {
   id: number;
   name: string;
@@ -38,7 +36,6 @@ interface Campaign {
   conversionRate: number;
   totalRevenue: number;
 }
-
 interface Referrer {
   id: number;
   name: string;
@@ -55,7 +52,6 @@ interface Referrer {
   referralCode: string;
   conversionRate: number;
 }
-
 interface RewardTier {
   id: number;
   name: string;
@@ -64,7 +60,6 @@ interface RewardTier {
   perks: string[];
   color: string;
 }
-
 interface ReferralSettings {
   referrerReward: number;
   referredReward: number;
@@ -77,7 +72,6 @@ interface ReferralSettings {
   allowSelfReferral: boolean;
   doubleRewardWeekends: boolean;
 }
-
 export default function ReferralsPage() {
   const [activeTab, setActiveTab] = useState('dashboard');
   const [referrals, setReferrals] = useState<Referral[]>([]);
@@ -91,7 +85,6 @@ export default function ReferralsPage() {
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [searchTerm, setSearchTerm] = useState('');
   const [dateRange, setDateRange] = useState({ start: '', end: '' });
-
   const [settings, setSettings] = useState<ReferralSettings>({
     referrerReward: 20,
     referredReward: 15,
@@ -104,7 +97,6 @@ export default function ReferralsPage() {
     allowSelfReferral: false,
     doubleRewardWeekends: true
   });
-
   const [campaignForm, setCampaignForm] = useState({
     name: '',
     description: '',
@@ -116,59 +108,38 @@ export default function ReferralsPage() {
     minOrderAmount: 30,
     maxRedemptions: 0
   });
-
   const [bulkSendForm, setBulkSendForm] = useState({
     channel: 'email' as 'email' | 'sms',
     subject: 'Invite your friends and earn rewards!',
     message: '',
     targetAudience: 'all' as 'all' | 'active' | 'inactive' | 'top_referrers'
   });
-
   const rewardTiers: RewardTier[] = [
     { id: 1, name: 'Bronze', minReferrals: 0, bonusMultiplier: 1.0, perks: ['Standard rewards'], color: 'amber-600' },
     { id: 2, name: 'Silver', minReferrals: 5, bonusMultiplier: 1.25, perks: ['25% bonus rewards', 'Early access to promotions'], color: 'gray-400' },
     { id: 3, name: 'Gold', minReferrals: 15, bonusMultiplier: 1.5, perks: ['50% bonus rewards', 'Priority support', 'Exclusive events'], color: 'yellow-500' },
     { id: 4, name: 'Platinum', minReferrals: 30, bonusMultiplier: 2.0, perks: ['Double rewards', 'VIP access', 'Personal account manager', 'Free delivery'], color: 'purple-500' }
   ];
-
   useEffect(() => {
     loadData();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-
   const loadData = async () => {
     setLoading(true);
     try {
-      const headers = getAuthHeaders();
-
       // Fetch referrals
-      const referralsRes = await fetch(`${API_URL}/referrals/`, { credentials: 'include', headers });
-      if (referralsRes.ok) {
-        const data = await referralsRes.json();
-        setReferrals(data.referrals || data || []);
-      }
-
+      const data: any = await api.get('/referrals/');
+            setReferrals(data.referrals || data || []);
       // Fetch campaigns
-      const campaignsRes = await fetch(`${API_URL}/referrals/campaigns`, { credentials: 'include', headers });
-      if (campaignsRes.ok) {
-        const data = await campaignsRes.json();
-        setCampaigns(data.campaigns || data || []);
-      }
-
+      const data_campaigns: any = await api.get('/referrals/campaigns');
+            setCampaigns(data_campaigns.campaigns || data_campaigns || []);
       // Fetch referrers (top performers)
-      const referrersRes = await fetch(`${API_URL}/referrals/referrers`, { credentials: 'include', headers });
-      if (referrersRes.ok) {
-        const data = await referrersRes.json();
-        setReferrers(data.referrers || data || []);
-      }
-
+      const data_referrers: any = await api.get('/referrals/referrers');
+            setReferrers(data_referrers.referrers || data_referrers || []);
       // Fetch settings
-      const settingsRes = await fetch(`${API_URL}/referrals/settings`, { credentials: 'include', headers });
-      if (settingsRes.ok) {
-        const data = await settingsRes.json();
-        if (data) {
-          setSettings(prev => ({ ...prev, ...data }));
-        }
+      const data_settings: any = await api.get('/referrals/settings');
+            if (data_settings) {
+      setSettings(prev => ({ ...prev, ...data_settings }));
       }
     } catch (err) {
       console.error('Error loading referral data:', err);
@@ -176,7 +147,6 @@ export default function ReferralsPage() {
       setLoading(false);
     }
   };
-
   const stats = {
     totalReferrals: referrals.length,
     converted: referrals.filter(r => r.status === 'converted' || r.status === 'rewarded').length,
@@ -188,7 +158,6 @@ export default function ReferralsPage() {
     activeCampaigns: campaigns.filter(c => c.status === 'active').length,
     topReferrers: referrers.filter(r => r.tier === 'gold' || r.tier === 'platinum').length
   };
-
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'converted': return 'bg-blue-500';
@@ -202,7 +171,6 @@ export default function ReferralsPage() {
       default: return 'bg-gray-500';
     }
   };
-
   const getTierColor = (tier: string) => {
     switch (tier) {
       case 'bronze': return 'text-amber-600 bg-amber-100';
@@ -212,7 +180,6 @@ export default function ReferralsPage() {
       default: return 'text-gray-600 bg-gray-100';
     }
   };
-
   const getChannelIcon = (channel: string) => {
     switch (channel) {
       case 'email': return '📧';
@@ -223,77 +190,48 @@ export default function ReferralsPage() {
       default: return '📨';
     }
   };
-
   const handleCreateCampaign = async () => {
     try {
-      const res = await fetch(`${API_URL}/referrals/campaigns`, {
-        credentials: 'include',
-        method: 'POST',
-        headers: getAuthHeaders(),
-        body: JSON.stringify(campaignForm),
+      await api.post('/referrals/campaigns', campaignForm);
+      setShowCampaignModal(false);
+      setCampaignForm({
+        name: '',
+        description: '',
+        type: 'standard',
+        startDate: '',
+        endDate: '',
+        referrerReward: 20,
+        referredReward: 15,
+        minOrderAmount: 30,
+        maxRedemptions: 0
       });
-
-      if (res.ok) {
-        setShowCampaignModal(false);
-        setCampaignForm({
-          name: '',
-          description: '',
-          type: 'standard',
-          startDate: '',
-          endDate: '',
-          referrerReward: 20,
-          referredReward: 15,
-          minOrderAmount: 30,
-          maxRedemptions: 0
-        });
-        loadData();
-      } else {
-        const error = await res.json();
-        toast.error(error.detail || 'Failed to create campaign');
-      }
+      loadData();
     } catch (err) {
       console.error('Error creating campaign:', err);
     }
   };
-
   const handleBulkSend = async () => {
     try {
-      const res = await fetch(`${API_URL}/referrals/bulk-send`, {
-        credentials: 'include',
-        method: 'POST',
-        headers: getAuthHeaders(),
-        body: JSON.stringify(bulkSendForm),
-      });
-
-      if (res.ok) {
-        const data = await res.json();
-        toast.error(data.message || `Successfully sent ${bulkSendForm.channel === 'email' ? 'emails' : 'SMS messages'} to customers`);
-        setShowBulkSendModal(false);
-      } else {
-        const error = await res.json();
-        toast.error(error.detail || 'Failed to send invites');
-      }
+      const data: any = await api.post('/referrals/bulk-send', bulkSendForm);
+            toast.error(data.message || `Successfully sent ${bulkSendForm.channel === 'email' ? 'emails' : 'SMS messages'} to customers`);
+      setShowBulkSendModal(false);
     } catch (err) {
       console.error('Error sending bulk invites:', err);
       toast.error('Failed to send invites');
     }
   };
-
   const generateReferralLink = (code: string) => {
     return `https://bjsbar.bg/ref/${code}`;
   };
-
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text);
     toast.success('Copied to clipboard!');
   };
-
   const filteredReferrals = referrals.filter(r => {
     if (filterStatus !== 'all' && r.status !== filterStatus) return false;
     if (searchTerm && !r.referrerName.toLowerCase().includes(searchTerm.toLowerCase()) && !r.referredName.toLowerCase().includes(searchTerm.toLowerCase())) return false;
     return true;
   });
-
   const tabs = [
     { id: 'dashboard', label: 'Dashboard', icon: '📊' },
     { id: 'referrals', label: 'Referrals', icon: '🎁' },
@@ -302,7 +240,6 @@ export default function ReferralsPage() {
     { id: 'rewards', label: 'Reward Tiers', icon: '⭐' },
     { id: 'settings', label: 'Settings', icon: '⚙️' }
   ];
-
   if (loading) {
     return (
       <div className="min-h-screen bg-white flex items-center justify-center">
@@ -310,7 +247,6 @@ export default function ReferralsPage() {
       </div>
     );
   }
-
   return (
     <div className="min-h-screen bg-white p-6">
       <div className="max-w-7xl mx-auto">
@@ -335,7 +271,6 @@ export default function ReferralsPage() {
             </button>
           </div>
         </div>
-
         {/* Tabs */}
         <div className="flex gap-2 mb-6 overflow-x-auto pb-2">
           {tabs.map(tab => (
@@ -352,7 +287,6 @@ export default function ReferralsPage() {
             </button>
           ))}
         </div>
-
         {/* Dashboard Tab */}
         {activeTab === 'dashboard' && (
           <div className="space-y-6">
@@ -379,7 +313,6 @@ export default function ReferralsPage() {
                 <div className="text-green-400 text-sm mt-1">ROI: {stats.totalRevenue > 0 ? Math.round((stats.totalRevenue / stats.totalRewardsGiven) * 100) / 100 : 0}x</div>
               </motion.div>
             </div>
-
             {/* Quick Stats */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               <div className="bg-yellow-500/20 border border-yellow-500/30 rounded-xl p-4">
@@ -407,7 +340,6 @@ export default function ReferralsPage() {
                 </div>
               </div>
             </div>
-
             {/* Charts Row */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {/* Referral Trend */}
@@ -425,7 +357,6 @@ export default function ReferralsPage() {
                   ))}
                 </div>
               </div>
-
               {/* Channel Distribution */}
               <div className="bg-gray-100 rounded-2xl p-6">
                 <h3 className="text-lg font-semibold text-gray-900 mb-4">Referral Channels</h3>
@@ -450,7 +381,6 @@ export default function ReferralsPage() {
                 </div>
               </div>
             </div>
-
             {/* Recent Activity & Top Performers */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {/* Recent Referrals */}
@@ -473,7 +403,6 @@ export default function ReferralsPage() {
                   ))}
                 </div>
               </div>
-
               {/* Top Performers */}
               <div className="bg-gray-100 rounded-2xl p-6">
                 <h3 className="text-lg font-semibold text-gray-900 mb-4">Top Referrers This Month</h3>
@@ -500,7 +429,6 @@ export default function ReferralsPage() {
             </div>
           </div>
         )}
-
         {/* Referrals Tab */}
         {activeTab === 'referrals' && (
           <div className="space-y-6">
@@ -539,7 +467,6 @@ export default function ReferralsPage() {
                 />
               </div>
             </div>
-
             {/* Referrals Table */}
             <div className="bg-gray-100 rounded-2xl overflow-hidden">
               <table className="w-full">
@@ -587,7 +514,6 @@ export default function ReferralsPage() {
             </div>
           </div>
         )}
-
         {/* Campaigns Tab */}
         {activeTab === 'campaigns' && (
           <div className="space-y-6">
@@ -608,7 +534,6 @@ export default function ReferralsPage() {
                       {campaign.status}
                     </span>
                   </div>
-
                   <div className="grid grid-cols-2 gap-4 mb-4">
                     <div className="bg-gray-50 rounded-xl p-3">
                       <div className="text-gray-600 text-sm">Referrer Reward</div>
@@ -619,7 +544,6 @@ export default function ReferralsPage() {
                       <div className="text-xl font-bold text-blue-400">{campaign.referredReward} лв</div>
                     </div>
                   </div>
-
                   <div className="space-y-2 mb-4">
                     <div className="flex justify-between text-sm">
                       <span className="text-gray-600">Period</span>
@@ -644,7 +568,6 @@ export default function ReferralsPage() {
                       <span className="text-purple-400">{campaign.totalRevenue} лв</span>
                     </div>
                   </div>
-
                   {campaign.maxRedemptions && (
                     <div className="mb-4">
                       <div className="flex justify-between text-xs text-gray-600 mb-1">
@@ -659,7 +582,6 @@ export default function ReferralsPage() {
                       </div>
                     </div>
                   )}
-
                   <div className="flex gap-2">
                     {campaign.status === 'active' && (
                       <button className="flex-1 py-2 bg-yellow-500/20 text-yellow-400 rounded-xl hover:bg-yellow-500/30">
@@ -683,7 +605,6 @@ export default function ReferralsPage() {
             </div>
           </div>
         )}
-
         {/* Referrers Tab */}
         {activeTab === 'referrers' && (
           <div className="space-y-6">
@@ -745,7 +666,6 @@ export default function ReferralsPage() {
             </div>
           </div>
         )}
-
         {/* Rewards Tiers Tab */}
         {activeTab === 'rewards' && (
           <div className="space-y-6">
@@ -774,7 +694,6 @@ export default function ReferralsPage() {
                       'text-amber-500'
                     }`}>{tier.name}</h3>
                   </div>
-
                   <div className="space-y-3 mb-4">
                     <div className="bg-gray-50 rounded-xl p-3 text-center">
                       <div className="text-gray-600 text-sm">Required Referrals</div>
@@ -785,7 +704,6 @@ export default function ReferralsPage() {
                       <div className="text-xl font-bold text-green-400">{tier.bonusMultiplier}x</div>
                     </div>
                   </div>
-
                   <div className="space-y-2">
                     <div className="text-gray-600 text-sm font-medium">Perks:</div>
                     {tier.perks.map((perk, perkIdx) => (
@@ -795,7 +713,6 @@ export default function ReferralsPage() {
                       </div>
                     ))}
                   </div>
-
                   <div className="mt-4 pt-4 border-t border-gray-200">
                     <div className="text-gray-600 text-sm">Members at this tier</div>
                     <div className="text-2xl font-bold text-gray-900">
@@ -805,7 +722,6 @@ export default function ReferralsPage() {
                 </motion.div>
               ))}
             </div>
-
             {/* Tier Configuration */}
             <div className="bg-gray-100 rounded-2xl p-6">
               <h3 className="text-xl font-bold text-gray-900 mb-4">Tier Progression Rules</h3>
@@ -837,7 +753,6 @@ export default function ReferralsPage() {
             </div>
           </div>
         )}
-
         {/* Settings Tab */}
         {activeTab === 'settings' && (
           <div className="space-y-6">
@@ -847,7 +762,7 @@ export default function ReferralsPage() {
                 <h3 className="text-xl font-bold text-gray-900 mb-4">Reward Settings</h3>
                 <div className="space-y-4">
                   <div>
-                    <label className="text-gray-600 text-sm block mb-2">Referrer Reward</label>
+                    <label className="text-gray-600 text-sm block mb-2">Referrer Reward
                     <div className="flex gap-2">
                       <input
                         type="number"
@@ -857,9 +772,10 @@ export default function ReferralsPage() {
                       />
                       <span className="px-4 py-2 bg-gray-50 text-gray-600 rounded-xl">лв</span>
                     </div>
+                    </label>
                   </div>
                   <div>
-                    <label className="text-gray-600 text-sm block mb-2">Referred Customer Reward</label>
+                    <label className="text-gray-600 text-sm block mb-2">Referred Customer Reward
                     <div className="flex gap-2">
                       <input
                         type="number"
@@ -869,9 +785,10 @@ export default function ReferralsPage() {
                       />
                       <span className="px-4 py-2 bg-gray-50 text-gray-600 rounded-xl">лв</span>
                     </div>
+                    </label>
                   </div>
                   <div>
-                    <label className="text-gray-600 text-sm block mb-2">Minimum Order Amount</label>
+                    <label className="text-gray-600 text-sm block mb-2">Minimum Order Amount
                     <div className="flex gap-2">
                       <input
                         type="number"
@@ -881,9 +798,10 @@ export default function ReferralsPage() {
                       />
                       <span className="px-4 py-2 bg-gray-50 text-gray-600 rounded-xl">лв</span>
                     </div>
+                    </label>
                   </div>
                   <div>
-                    <label className="text-gray-600 text-sm block mb-2">Reward Type</label>
+                    <label className="text-gray-600 text-sm block mb-2">Reward Type
                     <select
                       value={settings.rewardType}
                       onChange={(e) => setSettings({ ...settings, rewardType: e.target.value as any })}
@@ -893,31 +811,33 @@ export default function ReferralsPage() {
                       <option value="discount">Discount</option>
                       <option value="points">Loyalty Points</option>
                     </select>
+                    </label>
                   </div>
                 </div>
               </div>
-
               {/* Program Rules */}
               <div className="bg-gray-100 rounded-2xl p-6">
                 <h3 className="text-xl font-bold text-gray-900 mb-4">Program Rules</h3>
                 <div className="space-y-4">
                   <div>
-                    <label className="text-gray-600 text-sm block mb-2">Referral Expiration (days)</label>
+                    <label className="text-gray-600 text-sm block mb-2">Referral Expiration (days)
                     <input
                       type="number"
                       value={settings.expirationDays}
                       onChange={(e) => setSettings({ ...settings, expirationDays: Number(e.target.value) })}
                       className="w-full px-4 py-2 bg-gray-100 text-gray-900 rounded-xl"
                     />
+                    </label>
                   </div>
                   <div>
-                    <label className="text-gray-600 text-sm block mb-2">Max Referrals per User</label>
+                    <label className="text-gray-600 text-sm block mb-2">Max Referrals per User
                     <input
                       type="number"
                       value={settings.maxReferralsPerUser}
                       onChange={(e) => setSettings({ ...settings, maxReferralsPerUser: Number(e.target.value) })}
                       className="w-full px-4 py-2 bg-gray-100 text-gray-900 rounded-xl"
                     />
+                    </label>
                   </div>
                   <div className="space-y-3 pt-2">
                     <label className="flex items-center gap-3 cursor-pointer">
@@ -960,28 +880,28 @@ export default function ReferralsPage() {
                 </div>
               </div>
             </div>
-
             {/* Share Templates */}
             <div className="bg-gray-100 rounded-2xl p-6">
               <h3 className="text-xl font-bold text-gray-900 mb-4">Share Templates</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
-                  <label className="text-gray-600 text-sm block mb-2">Email Template</label>
+                  <label className="text-gray-600 text-sm block mb-2">Email Template
                   <textarea
                     className="w-full h-32 px-4 py-3 bg-gray-100 text-gray-900 rounded-xl"
                     defaultValue={`Hey {friend_name}!\n\nI thought you'd love BJ's Bar & Diner! Use my code {referral_code} and get {referred_reward} лв off your first order.\n\nCheers,\n{referrer_name}`}
                   />
+                  </label>
                 </div>
                 <div>
-                  <label className="text-gray-600 text-sm block mb-2">SMS Template</label>
+                  <label className="text-gray-600 text-sm block mb-2">SMS Template
                   <textarea
                     className="w-full h-32 px-4 py-3 bg-gray-100 text-gray-900 rounded-xl"
                     defaultValue={`{referrer_name} invited you to BJ's Bar! Get {referred_reward} лв off with code {referral_code}. Order now: bjsbar.bg/ref/{referral_code}`}
                   />
+                  </label>
                 </div>
               </div>
             </div>
-
             {/* Referral Link Generator */}
             <div className="bg-gray-100 rounded-2xl p-6">
               <h3 className="text-xl font-bold text-gray-900 mb-4">Referral Link Generator</h3>
@@ -1001,23 +921,13 @@ export default function ReferralsPage() {
                 </button>
               </div>
             </div>
-
             {/* Save Button */}
             <div className="flex justify-end">
               <button
                 onClick={async () => {
                   try {
-                    const res = await fetch(`${API_URL}/referrals/settings`, {
-                      credentials: 'include',
-                      method: 'PUT',
-                      headers: getAuthHeaders(),
-                      body: JSON.stringify(settings),
-                    });
-                    if (res.ok) {
-                      toast.success('Settings saved successfully');
-                    } else {
-                      toast.error('Failed to save settings');
-                    }
+                    await api.put('/referrals/settings', settings);
+                    toast.success('Settings saved successfully');
                   } catch (err) {
                     console.error('Error saving settings:', err);
                     toast.error('Failed to save settings');
@@ -1031,7 +941,6 @@ export default function ReferralsPage() {
           </div>
         )}
       </div>
-
       {/* Campaign Modal */}
       <AnimatePresence>
         {showCampaignModal && (
@@ -1045,7 +954,7 @@ export default function ReferralsPage() {
               <h2 className="text-2xl font-bold text-gray-900 mb-6">Create Campaign</h2>
               <div className="space-y-4">
                 <div>
-                  <label className="text-gray-600 text-sm block mb-2">Campaign Name</label>
+                  <label className="text-gray-600 text-sm block mb-2">Campaign Name
                   <input
                     type="text"
                     value={campaignForm.name}
@@ -1053,18 +962,20 @@ export default function ReferralsPage() {
                     className="w-full px-4 py-3 bg-gray-100 text-gray-900 rounded-xl"
                     placeholder="e.g., Summer Friends Special"
                   />
+                  </label>
                 </div>
                 <div>
-                  <label className="text-gray-600 text-sm block mb-2">Description</label>
+                  <label className="text-gray-600 text-sm block mb-2">Description
                   <textarea
                     value={campaignForm.description}
                     onChange={(e) => setCampaignForm({ ...campaignForm, description: e.target.value })}
                     className="w-full px-4 py-3 bg-gray-100 text-gray-900 rounded-xl h-24"
                     placeholder="Campaign description..."
                   />
+                  </label>
                 </div>
                 <div>
-                  <label className="text-gray-600 text-sm block mb-2">Campaign Type</label>
+                  <label className="text-gray-600 text-sm block mb-2">Campaign Type
                   <select
                     value={campaignForm.type}
                     onChange={(e) => setCampaignForm({ ...campaignForm, type: e.target.value as any })}
@@ -1075,65 +986,72 @@ export default function ReferralsPage() {
                     <option value="limited_time">Limited Time</option>
                     <option value="vip_only">VIP Only</option>
                   </select>
+                  </label>
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="text-gray-600 text-sm block mb-2">Start Date</label>
+                    <label className="text-gray-600 text-sm block mb-2">Start Date
                     <input
                       type="date"
                       value={campaignForm.startDate}
                       onChange={(e) => setCampaignForm({ ...campaignForm, startDate: e.target.value })}
                       className="w-full px-4 py-3 bg-gray-100 text-gray-900 rounded-xl"
                     />
+                    </label>
                   </div>
                   <div>
-                    <label className="text-gray-600 text-sm block mb-2">End Date</label>
+                    <label className="text-gray-600 text-sm block mb-2">End Date
                     <input
                       type="date"
                       value={campaignForm.endDate}
                       onChange={(e) => setCampaignForm({ ...campaignForm, endDate: e.target.value })}
                       className="w-full px-4 py-3 bg-gray-100 text-gray-900 rounded-xl"
                     />
+                    </label>
                   </div>
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="text-gray-600 text-sm block mb-2">Referrer Reward (лв)</label>
+                    <label className="text-gray-600 text-sm block mb-2">Referrer Reward (лв)
                     <input
                       type="number"
                       value={campaignForm.referrerReward}
                       onChange={(e) => setCampaignForm({ ...campaignForm, referrerReward: Number(e.target.value) })}
                       className="w-full px-4 py-3 bg-gray-100 text-gray-900 rounded-xl"
                     />
+                    </label>
                   </div>
                   <div>
-                    <label className="text-gray-600 text-sm block mb-2">Referred Reward (лв)</label>
+                    <label className="text-gray-600 text-sm block mb-2">Referred Reward (лв)
                     <input
                       type="number"
                       value={campaignForm.referredReward}
                       onChange={(e) => setCampaignForm({ ...campaignForm, referredReward: Number(e.target.value) })}
                       className="w-full px-4 py-3 bg-gray-100 text-gray-900 rounded-xl"
                     />
+                    </label>
                   </div>
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="text-gray-600 text-sm block mb-2">Min. Order (лв)</label>
+                    <label className="text-gray-600 text-sm block mb-2">Min. Order (лв)
                     <input
                       type="number"
                       value={campaignForm.minOrderAmount}
                       onChange={(e) => setCampaignForm({ ...campaignForm, minOrderAmount: Number(e.target.value) })}
                       className="w-full px-4 py-3 bg-gray-100 text-gray-900 rounded-xl"
                     />
+                    </label>
                   </div>
                   <div>
-                    <label className="text-gray-600 text-sm block mb-2">Max Redemptions (0 = unlimited)</label>
+                    <label className="text-gray-600 text-sm block mb-2">Max Redemptions (0 = unlimited)
                     <input
                       type="number"
                       value={campaignForm.maxRedemptions}
                       onChange={(e) => setCampaignForm({ ...campaignForm, maxRedemptions: Number(e.target.value) })}
                       className="w-full px-4 py-3 bg-gray-100 text-gray-900 rounded-xl"
                     />
+                    </label>
                   </div>
                 </div>
               </div>
@@ -1155,7 +1073,6 @@ export default function ReferralsPage() {
           </div>
         )}
       </AnimatePresence>
-
       {/* Referrer Details Modal */}
       <AnimatePresence>
         {showReferrerModal && selectedReferrer && (
@@ -1177,7 +1094,6 @@ export default function ReferralsPage() {
                   &times;
                 </button>
               </div>
-
               <div className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
                   <div className="bg-gray-50 rounded-xl p-4">
@@ -1189,7 +1105,6 @@ export default function ReferralsPage() {
                     <div className="text-gray-900">{selectedReferrer.phone}</div>
                   </div>
                 </div>
-
                 <div className="bg-gray-50 rounded-xl p-4">
                   <div className="text-gray-600 text-sm mb-2">Referral Code</div>
                   <div className="flex items-center gap-2">
@@ -1202,7 +1117,6 @@ export default function ReferralsPage() {
                     </button>
                   </div>
                 </div>
-
                 <div className="grid grid-cols-3 gap-4">
                   <div className="bg-gray-50 rounded-xl p-4 text-center">
                     <div className="text-2xl font-bold text-gray-900">{selectedReferrer.totalReferrals}</div>
@@ -1217,7 +1131,6 @@ export default function ReferralsPage() {
                     <div className="text-gray-600 text-sm">Pending</div>
                   </div>
                 </div>
-
                 <div className="grid grid-cols-2 gap-4">
                   <div className="bg-green-500/20 border border-green-500/30 rounded-xl p-4">
                     <div className="text-green-300 text-sm">Total Earned</div>
@@ -1228,14 +1141,12 @@ export default function ReferralsPage() {
                     <div className="text-2xl font-bold text-yellow-400">{selectedReferrer.pendingRewards} лв</div>
                   </div>
                 </div>
-
                 <div className="flex gap-2 text-sm text-gray-600">
                   <span>Joined: {selectedReferrer.joinedAt}</span>
                   <span>|</span>
                   <span>Last referral: {selectedReferrer.lastReferralAt}</span>
                 </div>
               </div>
-
               <div className="flex gap-3 mt-6">
                 <button className="flex-1 py-3 bg-purple-500 text-gray-900 rounded-xl hover:bg-purple-600">
                   Upgrade Tier
@@ -1248,7 +1159,6 @@ export default function ReferralsPage() {
           </div>
         )}
       </AnimatePresence>
-
       {/* Bulk Send Modal */}
       <AnimatePresence>
         {showBulkSendModal && (
@@ -1262,7 +1172,7 @@ export default function ReferralsPage() {
               <h2 className="text-2xl font-bold text-gray-900 mb-6">Bulk Send Referral Invites</h2>
               <div className="space-y-4">
                 <div>
-                  <label className="text-gray-600 text-sm block mb-2">Channel</label>
+                  <span className="text-gray-600 text-sm block mb-2">Channel</span>
                   <div className="flex gap-3">
                     <button
                       onClick={() => setBulkSendForm({ ...bulkSendForm, channel: 'email' })}
@@ -1279,7 +1189,7 @@ export default function ReferralsPage() {
                   </div>
                 </div>
                 <div>
-                  <label className="text-gray-600 text-sm block mb-2">Target Audience</label>
+                  <label className="text-gray-600 text-sm block mb-2">Target Audience
                   <select
                     value={bulkSendForm.targetAudience}
                     onChange={(e) => setBulkSendForm({ ...bulkSendForm, targetAudience: e.target.value as any })}
@@ -1290,26 +1200,29 @@ export default function ReferralsPage() {
                     <option value="inactive">Inactive Customers (no orders in 60+ days)</option>
                     <option value="top_referrers">Top Referrers Only</option>
                   </select>
+                  </label>
                 </div>
                 {bulkSendForm.channel === 'email' && (
                   <div>
-                    <label className="text-gray-600 text-sm block mb-2">Subject</label>
+                    <label className="text-gray-600 text-sm block mb-2">Subject
                     <input
                       type="text"
                       value={bulkSendForm.subject}
                       onChange={(e) => setBulkSendForm({ ...bulkSendForm, subject: e.target.value })}
                       className="w-full px-4 py-3 bg-gray-100 text-gray-900 rounded-xl"
                     />
+                    </label>
                   </div>
                 )}
                 <div>
-                  <label className="text-gray-600 text-sm block mb-2">Message (optional override)</label>
+                  <label className="text-gray-600 text-sm block mb-2">Message (optional override)
                   <textarea
                     value={bulkSendForm.message}
                     onChange={(e) => setBulkSendForm({ ...bulkSendForm, message: e.target.value })}
                     placeholder="Leave empty to use default template..."
                     className="w-full h-32 px-4 py-3 bg-gray-100 text-gray-900 rounded-xl"
                   />
+                  </label>
                 </div>
                 <div className="bg-blue-500/20 border border-blue-500/30 rounded-xl p-4">
                   <p className="text-blue-300 text-sm">

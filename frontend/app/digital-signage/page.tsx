@@ -482,7 +482,7 @@ export default function DigitalSignagePage() {
 
               <div className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Content Name</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Content Name
                   <input
                     type="text"
                     value={contentForm.name}
@@ -490,10 +490,11 @@ export default function DigitalSignagePage() {
                     placeholder="e.g., Weekend Brunch Menu"
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg text-gray-900 bg-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                   />
+                  </label>
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Type</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Type
                   <select
                     value={contentForm.type}
                     onChange={(e) => setContentForm({ ...contentForm, type: e.target.value, template: e.target.value })}
@@ -504,10 +505,11 @@ export default function DigitalSignagePage() {
                     ))}
                     <option value="custom">Custom</option>
                   </select>
+                  </label>
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Template</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Template
                   <input
                     type="text"
                     value={contentForm.template}
@@ -515,10 +517,11 @@ export default function DigitalSignagePage() {
                     placeholder="Template identifier"
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg text-gray-900 bg-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                   />
+                  </label>
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Content Data (JSON)</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Content Data (JSON)
                   <textarea
                     value={contentForm.content_data}
                     onChange={(e) => setContentForm({ ...contentForm, content_data: e.target.value })}
@@ -526,6 +529,7 @@ export default function DigitalSignagePage() {
                     rows={4}
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg text-gray-900 bg-white font-mono text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                   />
+                  </label>
                 </div>
               </div>
 
@@ -565,14 +569,14 @@ export default function DigitalSignagePage() {
 
               <div className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Display</label>
+                  <span className="block text-sm font-medium text-gray-700 mb-1">Display</span>
                   <p className="px-4 py-2 bg-gray-50 rounded-lg text-gray-900">
                     {displays.find((d) => d.id === assignDisplayId)?.name || 'Unknown'}
                   </p>
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Content</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Content
                   <select
                     value={assignContentId ?? ''}
                     onChange={(e) => setAssignContentId(parseInt(e.target.value))}
@@ -584,6 +588,7 @@ export default function DigitalSignagePage() {
                       </option>
                     ))}
                   </select>
+                  </label>
                 </div>
               </div>
 

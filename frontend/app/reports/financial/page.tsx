@@ -123,7 +123,7 @@ export default function ReportsFinancialPage() {
       <div className="bg-white rounded-2xl p-5 shadow-sm border border-surface-100">
         <div className="flex flex-wrap items-end gap-4">
           <div className="flex-1 min-w-[200px]">
-            <label className="block text-sm font-medium text-surface-700 mb-2">Period</label>
+            <span className="block text-sm font-medium text-surface-700 mb-2">Period</span>
             <div className="flex gap-2">
               {['month', 'quarter', 'year'].map((range) => (
                 <button
@@ -141,7 +141,7 @@ export default function ReportsFinancialPage() {
             </div>
           </div>
           <div>
-            <label className="block text-sm font-medium text-surface-700 mb-2">View</label>
+            <span className="block text-sm font-medium text-surface-700 mb-2">View</span>
             <div className="flex gap-2">
               {['summary', 'detailed'].map((view) => (
                 <button

@@ -1,10 +1,9 @@
 'use client';
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-
-import { API_URL, getAuthHeaders } from '@/lib/api';
-
 import { toast } from '@/lib/toast';
+
+import { api } from '@/lib/api';
 interface VIPCustomer {
   id: number;
   name: string;
@@ -26,7 +25,6 @@ interface VIPCustomer {
   pointsBalance: number;
   status: 'active' | 'at_risk' | 'churned';
 }
-
 interface VIPTier {
   id: number;
   name: string;
@@ -41,7 +39,6 @@ interface VIPTier {
   discountPercent: number;
   memberCount: number;
 }
-
 interface Occasion {
   id: number;
   customerId: number;
@@ -55,7 +52,6 @@ interface Occasion {
   status: 'pending' | 'planned' | 'completed';
   notes?: string;
 }
-
 interface TierChange {
   id: number;
   customerId: number;
@@ -66,7 +62,6 @@ interface TierChange {
   date: string;
   direction: 'upgrade' | 'downgrade';
 }
-
 export default function VIPManagementPage() {
   const [activeTab, setActiveTab] = useState('dashboard');
   const [customers, setCustomers] = useState<VIPCustomer[]>([]);
@@ -82,14 +77,12 @@ export default function VIPManagementPage() {
   const [selectedOccasion, setSelectedOccasion] = useState<Occasion | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
-
   const [surpriseForm, setSurpriseForm] = useState({
     type: 'complimentary_dessert',
     description: '',
     budget: 0,
     notes: ''
   });
-
   const [vipSettings, setVipSettings] = useState({
     evaluationPeriod: 'lifetime',
     upgradeTrigger: 'spend_or_visits',
@@ -105,52 +98,29 @@ export default function VIPManagementPage() {
     dailyVipAlerts: true,
     weeklyVipReport: false
   });
-
   useEffect(() => {
     loadData();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-
   const loadData = async () => {
     setLoading(true);
     try {
-      const headers = getAuthHeaders();
-
       // Fetch VIP customers
-      const customersRes = await fetch(`${API_URL}/vip/customers`, { credentials: 'include', headers });
-      if (customersRes.ok) {
-        const data = await customersRes.json();
-        setCustomers(data.customers || data || []);
-      }
-
+      const data: any = await api.get('/vip/customers');
+            setCustomers(data.customers || data || []);
       // Fetch tiers configuration
-      const tiersRes = await fetch(`${API_URL}/vip/tiers`, { credentials: 'include', headers });
-      if (tiersRes.ok) {
-        const data = await tiersRes.json();
-        setTiers(data.tiers || data || []);
-      }
-
+      const data_tiers: any = await api.get('/vip/tiers');
+            setTiers(data_tiers.tiers || data_tiers || []);
       // Fetch upcoming occasions
-      const occasionsRes = await fetch(`${API_URL}/vip/occasions`, { credentials: 'include', headers });
-      if (occasionsRes.ok) {
-        const data = await occasionsRes.json();
-        setOccasions(data.occasions || data || []);
-      }
-
+      const data_occasions: any = await api.get('/vip/occasions');
+            setOccasions(data_occasions.occasions || data_occasions || []);
       // Fetch tier changes history
-      const changesRes = await fetch(`${API_URL}/vip/tier-changes`, { credentials: 'include', headers });
-      if (changesRes.ok) {
-        const data = await changesRes.json();
-        setTierChanges(data.changes || data || []);
-      }
-
+      const data_tierChanges: any = await api.get('/vip/tier-changes');
+            setTierChanges(data_tierChanges.changes || data_tierChanges || []);
       // Fetch VIP settings
-      const settingsRes = await fetch(`${API_URL}/vip/settings`, { credentials: 'include', headers });
-      if (settingsRes.ok) {
-        const data = await settingsRes.json();
-        if (data) {
-          setVipSettings(prev => ({ ...prev, ...data }));
-        }
+      const data_vipSettings: any = await api.get('/vip/settings');
+            if (data_vipSettings) {
+      setVipSettings(prev => ({ ...prev, ...data_vipSettings }));
       }
     } catch (err) {
       console.error('Error loading VIP data:', err);
@@ -158,26 +128,15 @@ export default function VIPManagementPage() {
       setLoading(false);
     }
   };
-
   const saveVipSettings = async () => {
     try {
-      const res = await fetch(`${API_URL}/vip/settings`, {
-        credentials: 'include',
-        method: 'PUT',
-        headers: getAuthHeaders(),
-        body: JSON.stringify(vipSettings),
-      });
-      if (res.ok) {
-        toast.success('Settings saved successfully');
-      } else {
-        toast.error('Failed to save settings');
-      }
+      await api.put('/vip/settings', vipSettings);
+      toast.success('Settings saved successfully');
     } catch (err) {
       console.error('Error saving VIP settings:', err);
       toast.error('Failed to save settings');
     }
   };
-
   const stats = {
     totalVIPs: customers.length,
     diamondCount: customers.filter(c => c.tier === 'diamond').length,
@@ -191,7 +150,6 @@ export default function VIPManagementPage() {
     upcomingOccasions: occasions.filter(o => o.daysUntil <= 14).length,
     totalPoints: customers.reduce((sum, c) => sum + c.pointsBalance, 0)
   };
-
   const tierColors: Record<string, string> = {
     diamond: 'bg-purple-500',
     platinum: 'bg-gray-400',
@@ -199,7 +157,6 @@ export default function VIPManagementPage() {
     silver: 'bg-gray-300',
     bronze: 'bg-amber-600'
   };
-
   const tierIcons: Record<string, string> = {
     diamond: '💎',
     platinum: '🏆',
@@ -207,7 +164,6 @@ export default function VIPManagementPage() {
     silver: '🥈',
     bronze: '🥉'
   };
-
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'active': return 'bg-green-100 text-green-800';
@@ -216,19 +172,16 @@ export default function VIPManagementPage() {
       default: return 'bg-gray-100 text-gray-800';
     }
   };
-
   const filteredCustomers = customers.filter(c => {
     if (selectedTier !== 'all' && c.tier !== selectedTier) return false;
     if (filterStatus !== 'all' && c.status !== filterStatus) return false;
     if (searchTerm && !c.name.toLowerCase().includes(searchTerm.toLowerCase()) && !c.email.toLowerCase().includes(searchTerm.toLowerCase())) return false;
     return true;
   });
-
   const handlePlanSurprise = (occasion: Occasion) => {
     setSelectedOccasion(occasion);
     setShowSurpriseModal(true);
   };
-
   const handleSaveSurprise = async () => {
     if (selectedOccasion) {
       try {
@@ -238,29 +191,16 @@ export default function VIPManagementPage() {
           status: 'planned',
           notes: surpriseForm.notes
         };
-
-        const res = await fetch(`${API_URL}/vip/occasions/${selectedOccasion.id}/surprise`, {
-          credentials: 'include',
-          method: 'PUT',
-          headers: getAuthHeaders(),
-          body: JSON.stringify(surpriseData),
-        });
-
-        if (res.ok) {
-          setShowSurpriseModal(false);
-          setSurpriseForm({ type: 'complimentary_dessert', description: '', budget: 0, notes: '' });
-          loadData();
-        } else {
-          const error = await res.json();
-          toast.error(error.detail || 'Failed to save surprise');
-        }
+        await api.put(`/vip/occasions/${selectedOccasion.id}/surprise`, surpriseData);
+        setShowSurpriseModal(false);
+        setSurpriseForm({ type: 'complimentary_dessert', description: '', budget: 0, notes: '' });
+        loadData();
       } catch (err) {
         console.error('Error saving surprise:', err);
         toast.error('Failed to save surprise');
       }
     }
   };
-
   const getSurpriseDescription = (type: string) => {
     switch (type) {
       case 'complimentary_dessert': return 'Complimentary birthday dessert';
@@ -271,7 +211,6 @@ export default function VIPManagementPage() {
       default: return '';
     }
   };
-
   const tabs = [
     { id: 'dashboard', label: 'Dashboard', icon: '📊' },
     { id: 'customers', label: 'VIP Customers', icon: '👑' },
@@ -280,7 +219,6 @@ export default function VIPManagementPage() {
     { id: 'changes', label: 'Tier Changes', icon: '📈' },
     { id: 'settings', label: 'Settings', icon: '⚙️' }
   ];
-
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -288,7 +226,6 @@ export default function VIPManagementPage() {
       </div>
     );
   }
-
   return (
     <div className="min-h-screen bg-gray-50 p-6">
       <div className="max-w-7xl mx-auto">
@@ -307,7 +244,6 @@ export default function VIPManagementPage() {
             </button>
           </div>
         </div>
-
         {/* Tabs */}
         <div className="flex gap-2 mb-6 overflow-x-auto pb-2">
           {tabs.map(tab => (
@@ -324,7 +260,6 @@ export default function VIPManagementPage() {
             </button>
           ))}
         </div>
-
         {/* Dashboard Tab */}
         {activeTab === 'dashboard' && (
           <div className="space-y-6">
@@ -352,7 +287,6 @@ export default function VIPManagementPage() {
                 );
               })}
             </div>
-
             {/* Stats Row */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               <div className="bg-white shadow-sm border border-gray-100 rounded-2xl p-4">
@@ -372,7 +306,6 @@ export default function VIPManagementPage() {
                 <div className="text-3xl font-bold text-purple-600">{stats.totalPoints.toLocaleString()}</div>
               </div>
             </div>
-
             {/* Upcoming Occasions & Recent Changes */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {/* Upcoming Occasions */}
@@ -419,7 +352,6 @@ export default function VIPManagementPage() {
                   ))}
                 </div>
               </div>
-
               {/* Recent Tier Changes */}
               <div className="bg-white shadow-sm border border-gray-100 rounded-2xl p-6">
                 <h3 className="text-lg font-semibold text-gray-900 mb-4">Recent Tier Changes</h3>
@@ -450,7 +382,6 @@ export default function VIPManagementPage() {
                 </div>
               </div>
             </div>
-
             {/* Top VIPs */}
             <div className="bg-white shadow-sm border border-gray-100 rounded-2xl p-6">
               <h3 className="text-lg font-semibold text-gray-900 mb-4">Top VIP Customers</h3>
@@ -500,7 +431,6 @@ export default function VIPManagementPage() {
             </div>
           </div>
         )}
-
         {/* Customers Tab */}
         {activeTab === 'customers' && (
           <div className="space-y-6">
@@ -538,7 +468,6 @@ export default function VIPManagementPage() {
                 </select>
               </div>
             </div>
-
             {/* Customers Table */}
             <div className="bg-white shadow-sm border border-gray-100 rounded-2xl overflow-hidden">
               <table className="w-full">
@@ -592,7 +521,6 @@ export default function VIPManagementPage() {
             </div>
           </div>
         )}
-
         {/* Tiers Tab */}
         {activeTab === 'tiers' && (
           <div className="space-y-6">
@@ -605,7 +533,6 @@ export default function VIPManagementPage() {
                 + Add Tier
               </button>
             </div>
-
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {tiers.map((tier, idx) => (
                 <motion.div
@@ -622,7 +549,6 @@ export default function VIPManagementPage() {
                     </h3>
                     <div className="text-gray-500 text-sm mt-1">{tier.memberCount} members</div>
                   </div>
-
                   <div className="space-y-3 mb-4">
                     <div className="bg-gray-50 rounded-xl p-3">
                       <div className="flex justify-between text-sm">
@@ -649,7 +575,6 @@ export default function VIPManagementPage() {
                       </div>
                     </div>
                   </div>
-
                   <div className="space-y-2 mb-4">
                     <div className="text-gray-500 text-sm font-medium">Benefits:</div>
                     {tier.benefits.map((benefit, bIdx) => (
@@ -659,7 +584,6 @@ export default function VIPManagementPage() {
                       </div>
                     ))}
                   </div>
-
                   {tier.complimentaryItems.length > 0 && (
                     <div className="space-y-2 mb-4">
                       <div className="text-gray-500 text-sm font-medium">Complimentary:</div>
@@ -671,7 +595,6 @@ export default function VIPManagementPage() {
                       ))}
                     </div>
                   )}
-
                   <div className="flex gap-2 mt-4 pt-4 border-t border-gray-200">
                     <button className="flex-1 py-2 bg-gray-100 text-gray-900 rounded-xl hover:bg-gray-200 text-sm">
                       Edit
@@ -682,7 +605,6 @@ export default function VIPManagementPage() {
             </div>
           </div>
         )}
-
         {/* Occasions Tab */}
         {activeTab === 'occasions' && (
           <div className="space-y-6">
@@ -692,7 +614,6 @@ export default function VIPManagementPage() {
                 + Add Occasion
               </button>
             </div>
-
             {/* Upcoming Soon */}
             <div className="bg-red-100 border border-red-200 rounded-2xl p-6">
               <h4 className="text-lg font-semibold text-red-800 mb-4">Coming Up This Week</h4>
@@ -735,7 +656,6 @@ export default function VIPManagementPage() {
                 ))}
               </div>
             </div>
-
             {/* All Occasions */}
             <div className="bg-white shadow-sm border border-gray-100 rounded-2xl overflow-hidden">
               <table className="w-full">
@@ -796,12 +716,10 @@ export default function VIPManagementPage() {
             </div>
           </div>
         )}
-
         {/* Tier Changes Tab */}
         {activeTab === 'changes' && (
           <div className="space-y-6">
             <h3 className="text-xl font-bold text-gray-900">Tier Change History</h3>
-
             <div className="grid grid-cols-2 gap-4 mb-6">
               <div className="bg-green-100 border border-green-200 rounded-xl p-4">
                 <div className="flex items-center justify-between">
@@ -816,7 +734,6 @@ export default function VIPManagementPage() {
                 </div>
               </div>
             </div>
-
             <div className="bg-white shadow-sm border border-gray-100 rounded-2xl overflow-hidden">
               <table className="w-full">
                 <thead className="bg-gray-50">
@@ -857,7 +774,6 @@ export default function VIPManagementPage() {
             </div>
           </div>
         )}
-
         {/* Settings Tab */}
         {activeTab === 'settings' && (
           <div className="space-y-6">
@@ -867,7 +783,7 @@ export default function VIPManagementPage() {
                 <h3 className="text-xl font-bold text-gray-900 mb-4">Tier Upgrade Rules</h3>
                 <div className="space-y-4">
                   <div>
-                    <label className="text-gray-500 text-sm block mb-2">Evaluation Period</label>
+                    <label className="text-gray-500 text-sm block mb-2">Evaluation Period
                     <select
                       value={vipSettings.evaluationPeriod}
                       onChange={(e) => setVipSettings({ ...vipSettings, evaluationPeriod: e.target.value })}
@@ -877,9 +793,10 @@ export default function VIPManagementPage() {
                       <option value="yearly">Yearly</option>
                       <option value="rolling_12m">Rolling 12 Months</option>
                     </select>
+                    </label>
                   </div>
                   <div>
-                    <label className="text-gray-500 text-sm block mb-2">Upgrade Trigger</label>
+                    <label className="text-gray-500 text-sm block mb-2">Upgrade Trigger
                     <select
                       value={vipSettings.upgradeTrigger}
                       onChange={(e) => setVipSettings({ ...vipSettings, upgradeTrigger: e.target.value })}
@@ -889,9 +806,10 @@ export default function VIPManagementPage() {
                       <option value="spend_and_visits">Spend AND Visits</option>
                       <option value="spend_only">Spend Only</option>
                     </select>
+                    </label>
                   </div>
                   <div>
-                    <label className="text-gray-500 text-sm block mb-2">Auto-upgrade on Threshold</label>
+                    <label className="text-gray-500 text-sm block mb-2">Auto-upgrade on Threshold
                     <div className="flex items-center gap-3">
                       <input
                         type="checkbox"
@@ -901,16 +819,16 @@ export default function VIPManagementPage() {
                       />
                       <span className="text-gray-900">Automatically upgrade when thresholds met</span>
                     </div>
+                    </label>
                   </div>
                 </div>
               </div>
-
               {/* Downgrade Rules */}
               <div className="bg-white shadow-sm border border-gray-100 rounded-2xl p-6">
                 <h3 className="text-xl font-bold text-gray-900 mb-4">Tier Downgrade Rules</h3>
                 <div className="space-y-4">
                   <div>
-                    <label className="text-gray-500 text-sm block mb-2">Inactivity Period for Downgrade</label>
+                    <label className="text-gray-500 text-sm block mb-2">Inactivity Period for Downgrade
                     <select
                       value={vipSettings.inactivityPeriod}
                       onChange={(e) => setVipSettings({ ...vipSettings, inactivityPeriod: e.target.value })}
@@ -920,9 +838,10 @@ export default function VIPManagementPage() {
                       <option value="6_months">6 months without visit</option>
                       <option value="12_months">12 months without visit</option>
                     </select>
+                    </label>
                   </div>
                   <div>
-                    <label className="text-gray-500 text-sm block mb-2">At-Risk Warning Period</label>
+                    <label className="text-gray-500 text-sm block mb-2">At-Risk Warning Period
                     <select
                       value={vipSettings.atRiskWarningPeriod}
                       onChange={(e) => setVipSettings({ ...vipSettings, atRiskWarningPeriod: e.target.value })}
@@ -932,9 +851,10 @@ export default function VIPManagementPage() {
                       <option value="60_days">60 days before</option>
                       <option value="90_days">90 days before</option>
                     </select>
+                    </label>
                   </div>
                   <div>
-                    <label className="text-gray-500 text-sm block mb-2">Send Re-engagement Email</label>
+                    <label className="text-gray-500 text-sm block mb-2">Send Re-engagement Email
                     <div className="flex items-center gap-3">
                       <input
                         type="checkbox"
@@ -944,25 +864,26 @@ export default function VIPManagementPage() {
                       />
                       <span className="text-gray-900">Send email when customer marked at-risk</span>
                     </div>
+                    </label>
                   </div>
                 </div>
               </div>
-
               {/* Points Settings */}
               <div className="bg-white shadow-sm border border-gray-100 rounded-2xl p-6">
                 <h3 className="text-xl font-bold text-gray-900 mb-4">Points System</h3>
                 <div className="space-y-4">
                   <div>
-                    <label className="text-gray-500 text-sm block mb-2">Points per 1 лв spent</label>
+                    <label className="text-gray-500 text-sm block mb-2">Points per 1 лв spent
                     <input
                       type="number"
                       value={vipSettings.pointsPerCurrency}
                       onChange={(e) => setVipSettings({ ...vipSettings, pointsPerCurrency: Number(e.target.value) })}
                       className="w-full px-4 py-2 border border-gray-200 text-gray-900 rounded-xl"
                     />
+                    </label>
                   </div>
                   <div>
-                    <label className="text-gray-500 text-sm block mb-2">Points Redemption Value</label>
+                    <label className="text-gray-500 text-sm block mb-2">Points Redemption Value
                     <div className="flex items-center gap-2">
                       <input
                         type="number"
@@ -972,19 +893,20 @@ export default function VIPManagementPage() {
                       />
                       <span className="text-gray-500">points = 1 лв</span>
                     </div>
+                    </label>
                   </div>
                   <div>
-                    <label className="text-gray-500 text-sm block mb-2">Birthday Points Bonus</label>
+                    <label className="text-gray-500 text-sm block mb-2">Birthday Points Bonus
                     <input
                       type="number"
                       value={vipSettings.birthdayPointsBonus}
                       onChange={(e) => setVipSettings({ ...vipSettings, birthdayPointsBonus: Number(e.target.value) })}
                       className="w-full px-4 py-2 border border-gray-200 text-gray-900 rounded-xl"
                     />
+                    </label>
                   </div>
                 </div>
               </div>
-
               {/* Notification Settings */}
               <div className="bg-white shadow-sm border border-gray-100 rounded-2xl p-6">
                 <h3 className="text-xl font-bold text-gray-900 mb-4">Notifications</h3>
@@ -1028,7 +950,6 @@ export default function VIPManagementPage() {
                 </div>
               </div>
             </div>
-
             <div className="flex justify-end">
               <button
                 onClick={saveVipSettings}
@@ -1040,7 +961,6 @@ export default function VIPManagementPage() {
           </div>
         )}
       </div>
-
       {/* Customer Detail Modal */}
       <AnimatePresence>
         {showCustomerModal && selectedCustomer && (
@@ -1062,7 +982,6 @@ export default function VIPManagementPage() {
                   &times;
                 </button>
               </div>
-
               <div className="grid grid-cols-2 gap-4 mb-6">
                 <div className="bg-gray-50 rounded-xl p-4">
                   <div className="text-gray-500 text-sm">Email</div>
@@ -1081,7 +1000,6 @@ export default function VIPManagementPage() {
                   <div className="text-gray-900">{selectedCustomer.joinDate}</div>
                 </div>
               </div>
-
               <div className="grid grid-cols-4 gap-4 mb-6">
                 <div className="bg-green-100 rounded-xl p-4 text-center">
                   <div className="text-green-800 text-sm">Lifetime Spend</div>
@@ -1100,14 +1018,12 @@ export default function VIPManagementPage() {
                   <div className="text-xl font-bold text-orange-600">{selectedCustomer.totalVisits}</div>
                 </div>
               </div>
-
               {selectedCustomer.preferredTable && (
                 <div className="bg-gray-50 rounded-xl p-4 mb-4">
                   <div className="text-gray-500 text-sm">Preferred Table</div>
                   <div className="text-gray-900 font-medium">{selectedCustomer.preferredTable}</div>
                 </div>
               )}
-
               {selectedCustomer.favoriteItems.length > 0 && (
                 <div className="bg-gray-50 rounded-xl p-4 mb-4">
                   <div className="text-gray-500 text-sm mb-2">Favorite Items</div>
@@ -1118,7 +1034,6 @@ export default function VIPManagementPage() {
                   </div>
                 </div>
               )}
-
               {selectedCustomer.dietaryRestrictions.length > 0 && (
                 <div className="bg-red-100 rounded-xl p-4 mb-4">
                   <div className="text-red-800 text-sm mb-2">Dietary Restrictions</div>
@@ -1129,14 +1044,12 @@ export default function VIPManagementPage() {
                   </div>
                 </div>
               )}
-
               {selectedCustomer.notes && (
                 <div className="bg-gray-50 rounded-xl p-4 mb-4">
                   <div className="text-gray-500 text-sm">Notes</div>
                   <div className="text-gray-900">{selectedCustomer.notes}</div>
                 </div>
               )}
-
               <div className="flex gap-3">
                 <button className="flex-1 py-3 bg-blue-500 text-white rounded-xl hover:bg-blue-600">
                   Send Message
@@ -1152,7 +1065,6 @@ export default function VIPManagementPage() {
           </div>
         )}
       </AnimatePresence>
-
       {/* Plan Surprise Modal */}
       <AnimatePresence>
         {showSurpriseModal && selectedOccasion && (
@@ -1167,10 +1079,9 @@ export default function VIPManagementPage() {
               <p className="text-gray-500 mb-6">
                 {selectedOccasion.type.replace('_', ' ')} for {selectedOccasion.customerName} on {selectedOccasion.date}
               </p>
-
               <div className="space-y-4">
                 <div>
-                  <label className="text-gray-500 text-sm block mb-2">Surprise Type</label>
+                  <label className="text-gray-500 text-sm block mb-2">Surprise Type
                   <select
                     value={surpriseForm.type}
                     onChange={(e) => setSurpriseForm({ ...surpriseForm, type: e.target.value })}
@@ -1182,11 +1093,11 @@ export default function VIPManagementPage() {
                     <option value="chef_special">Chef&apos;s Special Menu</option>
                     <option value="custom">Custom Surprise</option>
                   </select>
+                  </label>
                 </div>
-
                 {surpriseForm.type === 'custom' && (
                   <div>
-                    <label className="text-gray-500 text-sm block mb-2">Description</label>
+                    <label className="text-gray-500 text-sm block mb-2">Description
                     <input
                       type="text"
                       value={surpriseForm.description}
@@ -1194,30 +1105,30 @@ export default function VIPManagementPage() {
                       className="w-full px-4 py-3 border border-gray-200 text-gray-900 rounded-xl"
                       placeholder="Describe the surprise..."
                     />
+                    </label>
                   </div>
                 )}
-
                 <div>
-                  <label className="text-gray-500 text-sm block mb-2">Budget (лв)</label>
+                  <label className="text-gray-500 text-sm block mb-2">Budget (лв)
                   <input
                     type="number"
                     value={surpriseForm.budget}
                     onChange={(e) => setSurpriseForm({ ...surpriseForm, budget: Number(e.target.value) })}
                     className="w-full px-4 py-3 border border-gray-200 text-gray-900 rounded-xl"
                   />
+                  </label>
                 </div>
-
                 <div>
-                  <label className="text-gray-500 text-sm block mb-2">Notes</label>
+                  <label className="text-gray-500 text-sm block mb-2">Notes
                   <textarea
                     value={surpriseForm.notes}
                     onChange={(e) => setSurpriseForm({ ...surpriseForm, notes: e.target.value })}
                     className="w-full px-4 py-3 border border-gray-200 text-gray-900 rounded-xl h-24"
                     placeholder="Additional notes for staff..."
                   />
+                  </label>
                 </div>
               </div>
-
               <div className="flex gap-3 mt-6">
                 <button
                   onClick={() => setShowSurpriseModal(false)}

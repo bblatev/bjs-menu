@@ -3,7 +3,9 @@
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 
-import { API_URL, getAuthHeaders } from '@/lib/api';
+import { api } from '@/lib/api';
+
+
 
 interface AgingItem {
   id: number;
@@ -57,22 +59,13 @@ export default function StockAgingPage() {
   const fetchData = useCallback(async () => {
     setLoading(true);
     try {
-      const response = await fetch(`${API_URL}/stock/aging`, {
-        credentials: 'include',
-        headers: getAuthHeaders(),
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        setItems(data.items || []);
-        setBuckets(data.buckets || []);
-        if (data.stats) {
-          setStats(data.stats);
-        } else {
-          calculateStats(data.items || []);
-        }
+      const data: any = await api.get('/stock/aging');
+            setItems(data.items || []);
+      setBuckets(data.buckets || []);
+      if (data.stats) {
+      setStats(data.stats);
       } else {
-        console.error('Failed to load aging data:', response.status);
+      calculateStats(data.items || []);
       }
     } catch (err) {
       console.error('Failed to fetch aging data:', err);

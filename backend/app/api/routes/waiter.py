@@ -10,6 +10,7 @@ from pydantic import BaseModel
 
 from app.db.session import DbSession
 from app.core.rate_limit import limiter
+from app.core.responses import paginated_response
 from app.models.restaurant import Table, MenuItem, Check, CheckItem, CheckPayment, KitchenOrder
 from app.models.hardware import WaiterCall as WaiterCallModel
 from app.services.stock_deduction_service import StockDeductionService
@@ -265,7 +266,7 @@ def get_tables(
     query = db.query(Table).order_by(Table.number)
     tables, total = paginate_query(query, skip, limit)
     table_list = [table_to_response(t, db) for t in tables]
-    return {"tables": table_list, "total": total, "skip": skip, "limit": limit, "has_more": (skip + len(table_list)) < total}
+    return paginated_response(items=table_list, total=total, skip=skip, limit=limit)
 
 
 @router.get("/menu")

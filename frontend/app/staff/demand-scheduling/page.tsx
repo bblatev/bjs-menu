@@ -211,7 +211,6 @@ export default function DemandSchedulingPage() {
               <span className={`text-lg font-bold ${getLaborPctColor(targetLaborPct)}`}>
                 {targetLaborPct}%
               </span>
-            </label>
             <input
               type="range"
               min={15}
@@ -220,6 +219,7 @@ export default function DemandSchedulingPage() {
               onChange={(e) => setTargetLaborPct(Number(e.target.value))}
               className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-600"
             />
+            </label>
             <div className="flex justify-between text-xs text-gray-400 mt-1">
               <span>15%</span>
               <span className="text-green-600 font-semibold px-2 py-0.5 bg-green-50 rounded">25-35% optimal range</span>

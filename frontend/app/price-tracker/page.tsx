@@ -1,11 +1,9 @@
 'use client';
 import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
-
-import { API_URL, getAuthHeaders } from '@/lib/api';
-
 import { toast } from '@/lib/toast';
+
+import { api } from '@/lib/api';
 interface PriceAlert {
   id: number;
   itemName: string;
@@ -25,7 +23,6 @@ interface PriceAlert {
   trend: 'up' | 'down';
   impactOnCost: number;
 }
-
 interface PriceHistory {
   id: number;
   itemName: string;
@@ -38,7 +35,6 @@ interface PriceHistory {
   maxPrice: number;
   volatility: number;
 }
-
 interface SupplierComparison {
   itemName: string;
   category: string;
@@ -53,7 +49,6 @@ interface SupplierComparison {
   currentSupplier: string;
   potentialSavings: number;
 }
-
 interface AlertRule {
   id: number;
   name: string;
@@ -66,7 +61,6 @@ interface AlertRule {
   isActive: boolean;
   triggeredCount: number;
 }
-
 interface CategoryTrend {
   category: string;
   currentAvg: number;
@@ -76,7 +70,6 @@ interface CategoryTrend {
   topMover: string;
   topMoverChange: number;
 }
-
 interface BudgetImpact {
   category: string;
   budgeted: number;
@@ -84,9 +77,7 @@ interface BudgetImpact {
   variance: number;
   variancePercent: number;
 }
-
 export default function PriceTrackerPage() {
-  const router = useRouter();
   const [activeTab, setActiveTab] = useState('dashboard');
   const [alerts, setAlerts] = useState<PriceAlert[]>([]);
   const [priceHistory, setPriceHistory] = useState<PriceHistory[]>([]);
@@ -102,7 +93,6 @@ export default function PriceTrackerPage() {
   const [filterSeverity, setFilterSeverity] = useState('all');
   const [dateRange, setDateRange] = useState('30d');
   const [searchTerm, setSearchTerm] = useState('');
-
   const [ruleForm, setRuleForm] = useState({
     name: '',
     category: 'all',
@@ -112,80 +102,35 @@ export default function PriceTrackerPage() {
     notifySms: false,
     notifyPush: true
   });
-
   useEffect(() => {
-    const headers = getAuthHeaders();
-    if (!headers['Authorization']) {
-      router.push('/login');
-      return;
-    }
     loadData();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dateRange]);
-
   const loadData = async () => {
     setLoading(true);
     setError(null);
-
     try {
       // Fetch all data in parallel for better performance
-      const [
-        alertsRes,
-        historyRes,
-        comparisonsRes,
-        rulesRes,
-        trendsRes,
-        budgetRes
-      ] = await Promise.all([
-        fetch(`${API_URL}/price-tracker/alerts?date_range=${dateRange}`, {
-          credentials: 'include',
-          headers: getAuthHeaders(),
-        }),
-        fetch(`${API_URL}/price-tracker/history?date_range=${dateRange}`, {
-          credentials: 'include',
-          headers: getAuthHeaders(),
-        }),
-        fetch(`${API_URL}/price-tracker/supplier-comparisons`, {
-          credentials: 'include',
-          headers: getAuthHeaders(),
-        }),
-        fetch(`${API_URL}/price-tracker/alert-rules`, {
-          credentials: 'include',
-          headers: getAuthHeaders(),
-        }),
-        fetch(`${API_URL}/price-tracker/category-trends?date_range=${dateRange}`, {
-          credentials: 'include',
-          headers: getAuthHeaders(),
-        }),
-        fetch(`${API_URL}/price-tracker/budget-impacts?date_range=${dateRange}`, {
-          credentials: 'include',
-          headers: getAuthHeaders(),
-        }),
+      const [alertsRes, historyRes, comparisonsRes, rulesRes, trendsRes, budgetRes] = await Promise.allSettled([
+        api.get(`/price-tracker/alerts?date_range=${dateRange}`),
+        api.get(`/price-tracker/history?date_range=${dateRange}`),
+        api.get('/price-tracker/supplier-comparisons'),
+        api.get('/price-tracker/alert-rules'),
+        api.get(`/price-tracker/category-trends?date_range=${dateRange}`),
+        api.get(`/price-tracker/budget-impacts?date_range=${dateRange}`)
       ]);
-
-      // Check for errors
-      if (!alertsRes.ok || !historyRes.ok || !comparisonsRes.ok ||
-          !rulesRes.ok || !trendsRes.ok || !budgetRes.ok) {
+      // Check if any critical requests failed
+      const allFulfilled = [alertsRes, historyRes, comparisonsRes, rulesRes, trendsRes, budgetRes].every(r => r.status === 'fulfilled');
+      if (!allFulfilled) {
         throw new Error('Failed to fetch price tracker data');
       }
-
-      // Parse all responses
-      const [
-        alertsData,
-        historyData,
-        comparisonsData,
-        rulesData,
-        trendsData,
-        budgetData
-      ] = await Promise.all([
-        alertsRes.json(),
-        historyRes.json(),
-        comparisonsRes.json(),
-        rulesRes.json(),
-        trendsRes.json(),
-        budgetRes.json(),
-      ]);
-
+      // Extract values from fulfilled results
+      const alertsData: any = alertsRes.status === 'fulfilled' ? alertsRes.value : [];
+      const historyData: any = historyRes.status === 'fulfilled' ? historyRes.value : [];
+      const comparisonsData: any = comparisonsRes.status === 'fulfilled' ? comparisonsRes.value : [];
+      const rulesData: any = rulesRes.status === 'fulfilled' ? rulesRes.value : [];
+      const trendsData: any = trendsRes.status === 'fulfilled' ? trendsRes.value : [];
+      const budgetData: any = budgetRes.status === 'fulfilled' ? budgetRes.value : [];
       setAlerts(alertsData);
       setPriceHistory(historyData);
       setSupplierComparisons(comparisonsData);
@@ -199,7 +144,6 @@ export default function PriceTrackerPage() {
       setLoading(false);
     }
   };
-
   const stats = {
     totalAlerts: alerts.length,
     unacknowledged: alerts.filter(a => !a.acknowledged).length,
@@ -210,7 +154,6 @@ export default function PriceTrackerPage() {
     avgChange: alerts.length > 0 ? alerts.reduce((sum, a) => sum + Math.abs(a.changePercent), 0) / alerts.length : 0,
     potentialSavings: supplierComparisons.reduce((sum, c) => sum + c.potentialSavings, 0)
   };
-
   const getSeverityColor = (severity: string) => {
     switch (severity) {
       case 'critical': return 'bg-red-500';
@@ -220,111 +163,67 @@ export default function PriceTrackerPage() {
       default: return 'bg-gray-500';
     }
   };
-
   const acknowledgeAlert = async (id: number) => {
     try {
-      const res = await fetch(`${API_URL}/price-tracker/alerts/${id}/acknowledge`, {
-        credentials: 'include',
-        method: 'POST',
-        headers: getAuthHeaders(),
-      });
-      if (res.ok) {
-        const updatedAlert = await res.json();
-        setAlerts(alerts.map(a => a.id === id ? updatedAlert : a));
-      } else {
-        throw new Error('Failed to acknowledge alert');
-      }
+      const updatedAlert: any = await api.post(`/price-tracker/alerts/${id}/acknowledge`);
+            setAlerts(alerts.map(a => a.id === id ? updatedAlert : a));
     } catch (err) {
       console.error('Error acknowledging alert:', err);
       // Optimistic update fallback
       setAlerts(alerts.map(a => a.id === id ? { ...a, acknowledged: true, acknowledgedBy: 'Manager', acknowledgedAt: new Date().toISOString() } : a));
     }
   };
-
   const acknowledgeAll = async () => {
     try {
-      const res = await fetch(`${API_URL}/price-tracker/alerts/acknowledge-all`, {
-        credentials: 'include',
-        method: 'POST',
-        headers: getAuthHeaders(),
-      });
-      if (res.ok) {
-        await loadData();
-      } else {
-        throw new Error('Failed to acknowledge all alerts');
-      }
+      await api.post('/price-tracker/alerts/acknowledge-all');
+      await loadData();
     } catch (err) {
       console.error('Error acknowledging all alerts:', err);
       // Optimistic update fallback
       setAlerts(alerts.map(a => ({ ...a, acknowledged: true, acknowledgedBy: 'Manager', acknowledgedAt: new Date().toISOString() })));
     }
   };
-
   const handleCreateRule = async () => {
     try {
-      const res = await fetch(`${API_URL}/price-tracker/alert-rules`, {
-        credentials: 'include',
-        method: 'POST',
-        headers: getAuthHeaders(),
-        body: JSON.stringify({
+      const newRule: any = await api.post('/price-tracker/alert-rules', {
           ...ruleForm,
           isActive: true,
-        }),
-      });
-      if (res.ok) {
-        const newRule = await res.json();
-        setAlertRules([...alertRules, newRule]);
-        setShowRuleModal(false);
-        setRuleForm({
-          name: '',
-          category: 'all',
-          threshold: 5,
-          direction: 'increase',
-          notifyEmail: true,
-          notifySms: false,
-          notifyPush: true
         });
-      } else {
-        throw new Error('Failed to create alert rule');
-      }
+            setAlertRules([...alertRules, newRule]);
+      setShowRuleModal(false);
+      setRuleForm({
+      name: '',
+      category: 'all',
+      threshold: 5,
+      direction: 'increase',
+      notifyEmail: true,
+      notifySms: false,
+      notifyPush: true
+      });
     } catch (err) {
       console.error('Error creating alert rule:', err);
       // Show error to user but still close modal
       toast.error('Failed to create alert rule. Please try again.');
     }
   };
-
   const toggleRuleActive = async (id: number) => {
     const rule = alertRules.find(r => r.id === id);
     if (!rule) return;
-
     try {
-      const res = await fetch(`${API_URL}/price-tracker/alert-rules/${id}`, {
-        credentials: 'include',
-        method: 'PATCH',
-        headers: getAuthHeaders(),
-        body: JSON.stringify({ isActive: !rule.isActive }),
-      });
-      if (res.ok) {
-        const updatedRule = await res.json();
-        setAlertRules(alertRules.map(r => r.id === id ? updatedRule : r));
-      } else {
-        throw new Error('Failed to toggle rule status');
-      }
+      const updatedRule: any = await api.patch(`/price-tracker/alert-rules/${id}`, { isActive: !rule.isActive });
+            setAlertRules(alertRules.map(r => r.id === id ? updatedRule : r));
     } catch (err) {
       console.error('Error toggling rule status:', err);
       // Optimistic update fallback
       setAlertRules(alertRules.map(r => r.id === id ? { ...r, isActive: !r.isActive } : r));
     }
   };
-
   const filteredAlerts = alerts.filter(a => {
     if (filterCategory !== 'all' && a.category !== filterCategory) return false;
     if (filterSeverity !== 'all' && a.severity !== filterSeverity) return false;
     if (searchTerm && !a.itemName.toLowerCase().includes(searchTerm.toLowerCase())) return false;
     return true;
   });
-
   const tabs = [
     { id: 'dashboard', label: 'Dashboard', icon: '📊' },
     { id: 'alerts', label: 'Price Alerts', icon: '⚠️' },
@@ -333,9 +232,7 @@ export default function PriceTrackerPage() {
     { id: 'budget', label: 'Budget Impact', icon: '💰' },
     { id: 'settings', label: 'Alert Rules', icon: '⚙️' }
   ];
-
   const categories = ['all', 'Meat', 'Seafood', 'Dairy', 'Beverages', 'Produce', 'Oils'];
-
   if (loading) {
     return (
       <div className="min-h-screen bg-white flex items-center justify-center">
@@ -346,7 +243,6 @@ export default function PriceTrackerPage() {
       </div>
     );
   }
-
   if (error) {
     return (
       <div className="min-h-screen bg-white flex items-center justify-center">
@@ -364,7 +260,6 @@ export default function PriceTrackerPage() {
       </div>
     );
   }
-
   return (
     <div className="min-h-screen bg-white p-6">
       <div className="max-w-7xl mx-auto">
@@ -393,7 +288,6 @@ export default function PriceTrackerPage() {
             </button>
           </div>
         </div>
-
         {/* Tabs */}
         <div className="flex gap-2 mb-6 overflow-x-auto pb-2">
           {tabs.map(tab => (
@@ -410,7 +304,6 @@ export default function PriceTrackerPage() {
             </button>
           ))}
         </div>
-
         {/* Dashboard Tab */}
         {activeTab === 'dashboard' && (
           <div className="space-y-6">
@@ -436,7 +329,6 @@ export default function PriceTrackerPage() {
                 </button>
               </motion.div>
             )}
-
             {/* Stats Grid */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="bg-gray-100 rounded-2xl p-4">
@@ -464,7 +356,6 @@ export default function PriceTrackerPage() {
                 <div className="text-white/40 text-sm mt-1">by switching suppliers</div>
               </motion.div>
             </div>
-
             {/* Direction Stats */}
             <div className="grid grid-cols-2 gap-4">
               <div className="bg-red-500/20 border border-red-500/30 rounded-xl p-4">
@@ -486,7 +377,6 @@ export default function PriceTrackerPage() {
                 </div>
               </div>
             </div>
-
             {/* Category Trends */}
             <div className="bg-gray-100 rounded-2xl p-6">
               <h3 className="text-lg font-semibold text-gray-900 mb-4">Category Price Trends</h3>
@@ -515,7 +405,6 @@ export default function PriceTrackerPage() {
                 ))}
               </div>
             </div>
-
             {/* Recent Alerts */}
             <div className="bg-gray-100 rounded-2xl p-6">
               <div className="flex justify-between items-center mb-4">
@@ -556,7 +445,6 @@ export default function PriceTrackerPage() {
             </div>
           </div>
         )}
-
         {/* Alerts Tab */}
         {activeTab === 'alerts' && (
           <div className="space-y-6">
@@ -598,7 +486,6 @@ export default function PriceTrackerPage() {
                 </button>
               </div>
             </div>
-
             {/* Alerts Table */}
             <div className="bg-gray-100 rounded-2xl overflow-hidden">
               <table className="w-full">
@@ -667,7 +554,6 @@ export default function PriceTrackerPage() {
             </div>
           </div>
         )}
-
         {/* Price History Tab */}
         {activeTab === 'history' && (
           <div className="space-y-6">
@@ -687,7 +573,6 @@ export default function PriceTrackerPage() {
                     </div>
                     <span className="px-2 py-1 bg-gray-100 text-gray-700 rounded text-xs">{item.category}</span>
                   </div>
-
                   {/* Mini Chart */}
                   <div className="flex items-end justify-between h-20 gap-1 mb-4">
                     {item.prices.map((p, idx) => {
@@ -706,7 +591,6 @@ export default function PriceTrackerPage() {
                       );
                     })}
                   </div>
-
                   <div className="grid grid-cols-2 gap-4 text-sm">
                     <div>
                       <span className="text-gray-600">Current</span>
@@ -725,7 +609,6 @@ export default function PriceTrackerPage() {
                       <div className="text-red-400">{(item.maxPrice || 0).toFixed(2)} лв</div>
                     </div>
                   </div>
-
                   <div className="mt-4 pt-4 border-t border-gray-200">
                     <div className="flex justify-between text-sm">
                       <span className="text-gray-600">Volatility</span>
@@ -739,7 +622,6 @@ export default function PriceTrackerPage() {
             </div>
           </div>
         )}
-
         {/* Supplier Compare Tab */}
         {activeTab === 'suppliers' && (
           <div className="space-y-6">
@@ -763,7 +645,6 @@ export default function PriceTrackerPage() {
                     </div>
                   )}
                 </div>
-
                 <div className="overflow-x-auto">
                   <table className="w-full">
                     <thead>
@@ -822,7 +703,6 @@ export default function PriceTrackerPage() {
             ))}
           </div>
         )}
-
         {/* Budget Impact Tab */}
         {activeTab === 'budget' && (
           <div className="space-y-6">
@@ -847,7 +727,6 @@ export default function PriceTrackerPage() {
                 </div>
               </div>
             </div>
-
             {/* Category Breakdown */}
             <div className="bg-gray-100 rounded-2xl p-6">
               <h3 className="text-lg font-semibold text-gray-900 mb-4">Budget Impact by Category</h3>
@@ -883,7 +762,6 @@ export default function PriceTrackerPage() {
                 ))}
               </div>
             </div>
-
             {/* Recommendations */}
             <div className="bg-gray-100 rounded-2xl p-6">
               <h3 className="text-lg font-semibold text-gray-900 mb-4">Cost Reduction Recommendations</h3>
@@ -916,7 +794,6 @@ export default function PriceTrackerPage() {
             </div>
           </div>
         )}
-
         {/* Alert Rules Tab */}
         {activeTab === 'settings' && (
           <div className="space-y-6">
@@ -929,7 +806,6 @@ export default function PriceTrackerPage() {
                 + New Rule
               </button>
             </div>
-
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {alertRules.map(rule => (
                 <motion.div
@@ -945,7 +821,7 @@ export default function PriceTrackerPage() {
                         {rule.category === 'all' ? 'All categories' : rule.category} • {rule.direction === 'both' ? 'Any change' : rule.direction === 'increase' ? 'Price increase' : 'Price decrease'}
                       </p>
                     </div>
-                    <label className="relative inline-flex items-center cursor-pointer">
+                    <label aria-label={rule.name} className="relative inline-flex items-center cursor-pointer">
                       <input
                         type="checkbox"
                         checked={rule.isActive}
@@ -955,7 +831,6 @@ export default function PriceTrackerPage() {
                       <div className="w-11 h-6 bg-gray-200 peer-focus:ring-2 peer-focus:ring-orange-500 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-green-500"></div>
                     </label>
                   </div>
-
                   <div className="grid grid-cols-2 gap-4 mb-4">
                     <div className="bg-gray-50 rounded-xl p-3">
                       <div className="text-gray-600 text-sm">Threshold</div>
@@ -966,13 +841,11 @@ export default function PriceTrackerPage() {
                       <div className="text-xl font-bold text-orange-400">{rule.triggeredCount}</div>
                     </div>
                   </div>
-
                   <div className="flex gap-2">
                     {rule.notifyEmail && <span className="px-2 py-1 bg-blue-500/20 text-blue-400 rounded text-xs">📧 Email</span>}
                     {rule.notifySms && <span className="px-2 py-1 bg-green-500/20 text-green-400 rounded text-xs">📱 SMS</span>}
                     {rule.notifyPush && <span className="px-2 py-1 bg-purple-500/20 text-purple-400 rounded text-xs">🔔 Push</span>}
                   </div>
-
                   <div className="flex gap-2 mt-4 pt-4 border-t border-gray-200">
                     <button className="flex-1 py-2 bg-gray-100 text-gray-900 rounded-xl hover:bg-gray-200 text-sm">
                       Edit
@@ -984,7 +857,6 @@ export default function PriceTrackerPage() {
                 </motion.div>
               ))}
             </div>
-
             {/* Notification Settings */}
             <div className="bg-gray-100 rounded-2xl p-6">
               <h3 className="text-lg font-semibold text-gray-900 mb-4">Global Notification Settings</h3>
@@ -1027,7 +899,6 @@ export default function PriceTrackerPage() {
           </div>
         )}
       </div>
-
       {/* Create Rule Modal */}
       <AnimatePresence>
         {showRuleModal && (
@@ -1041,7 +912,7 @@ export default function PriceTrackerPage() {
               <h2 className="text-2xl font-bold text-gray-900 mb-6">Create Alert Rule</h2>
               <div className="space-y-4">
                 <div>
-                  <label className="text-gray-600 text-sm block mb-2">Rule Name</label>
+                  <label className="text-gray-600 text-sm block mb-2">Rule Name
                   <input
                     type="text"
                     value={ruleForm.name}
@@ -1049,9 +920,10 @@ export default function PriceTrackerPage() {
                     className="w-full px-4 py-3 bg-gray-100 text-gray-900 rounded-xl"
                     placeholder="e.g., Critical Meat Price Alert"
                   />
+                  </label>
                 </div>
                 <div>
-                  <label className="text-gray-600 text-sm block mb-2">Category</label>
+                  <label className="text-gray-600 text-sm block mb-2">Category
                   <select
                     value={ruleForm.category}
                     onChange={(e) => setRuleForm({ ...ruleForm, category: e.target.value })}
@@ -1061,19 +933,21 @@ export default function PriceTrackerPage() {
                       <option key={cat} value={cat}>{cat === 'all' ? 'All Categories' : cat}</option>
                     ))}
                   </select>
+                  </label>
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="text-gray-600 text-sm block mb-2">Threshold (%)</label>
+                    <label className="text-gray-600 text-sm block mb-2">Threshold (%)
                     <input
                       type="number"
                       value={ruleForm.threshold}
                       onChange={(e) => setRuleForm({ ...ruleForm, threshold: Number(e.target.value) })}
                       className="w-full px-4 py-3 bg-gray-100 text-gray-900 rounded-xl"
                     />
+                    </label>
                   </div>
                   <div>
-                    <label className="text-gray-600 text-sm block mb-2">Direction</label>
+                    <label className="text-gray-600 text-sm block mb-2">Direction
                     <select
                       value={ruleForm.direction}
                       onChange={(e) => setRuleForm({ ...ruleForm, direction: e.target.value as any })}
@@ -1083,10 +957,11 @@ export default function PriceTrackerPage() {
                       <option value="decrease">Price Decrease</option>
                       <option value="both">Any Change</option>
                     </select>
+                    </label>
                   </div>
                 </div>
                 <div>
-                  <label className="text-gray-600 text-sm block mb-2">Notifications</label>
+                  <span className="text-gray-600 text-sm block mb-2">Notifications</span>
                   <div className="flex gap-4">
                     <label className="flex items-center gap-2 cursor-pointer">
                       <input
@@ -1136,7 +1011,6 @@ export default function PriceTrackerPage() {
           </div>
         )}
       </AnimatePresence>
-
       {/* Item Price Detail Modal */}
       <AnimatePresence>
         {selectedItem && (
@@ -1156,7 +1030,6 @@ export default function PriceTrackerPage() {
                   &times;
                 </button>
               </div>
-
               {/* Large Chart */}
               <div className="bg-gray-50 rounded-xl p-4 mb-6">
                 <div className="flex items-end justify-between h-48 gap-2">
@@ -1179,7 +1052,6 @@ export default function PriceTrackerPage() {
                   })}
                 </div>
               </div>
-
               <div className="grid grid-cols-4 gap-4 mb-6">
                 <div className="bg-gray-50 rounded-xl p-4 text-center">
                   <div className="text-gray-600 text-sm">Current</div>
@@ -1198,7 +1070,6 @@ export default function PriceTrackerPage() {
                   <div className="text-xl font-bold text-red-400">{(selectedItem.maxPrice || 0).toFixed(2)} лв</div>
                 </div>
               </div>
-
               <div className="flex gap-3">
                 <button className="flex-1 py-3 bg-blue-500 text-gray-900 rounded-xl hover:bg-blue-600">
                   Compare Suppliers

@@ -1,9 +1,8 @@
 'use client';
-
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
-import { API_URL, getAuthHeaders } from '@/lib/api';
 
+import { api } from '@/lib/api';
 interface ABCItem {
   product_id: number;
   product_name: string;
@@ -14,7 +13,6 @@ interface ABCItem {
   annual_usage: number;
   unit_cost: number;
 }
-
 interface ABCAnalysis {
   location_id: number;
   period_days: number;
@@ -27,7 +25,6 @@ interface ABCAnalysis {
   c_value_pct: number;
   items: ABCItem[];
 }
-
 interface TurnoverItem {
   product_id: number;
   product_name: string;
@@ -38,14 +35,12 @@ interface TurnoverItem {
   total_usage: number;
   status: string;
 }
-
 interface TurnoverData {
   location_id: number;
   period_days: number;
   avg_turnover: number;
   items: TurnoverItem[];
 }
-
 interface DeadStockItem {
   product_id: number;
   product_name: string;
@@ -54,7 +49,6 @@ interface DeadStockItem {
   days_since_movement: number;
   last_movement_date: string | null;
 }
-
 interface COGSData {
   cogs: number;
   opening_stock_value: number;
@@ -64,7 +58,6 @@ interface COGSData {
   revenue: number | null;
   by_category: { category: string; opening: number; purchases: number; closing: number; cogs: number }[];
 }
-
 interface FoodCostVarianceItem {
   product_id: number;
   product_name: string;
@@ -74,7 +67,6 @@ interface FoodCostVarianceItem {
   variance_pct: number;
   variance_value: number;
 }
-
 interface EOQData {
   product_id: number;
   product_name: string;
@@ -86,7 +78,6 @@ interface EOQData {
   total_annual_cost: number;
   unit_cost: number;
 }
-
 interface CycleCountItem {
   product_id: number;
   product_name: string;
@@ -95,9 +86,7 @@ interface CycleCountItem {
   next_count_date: string;
   last_counted: string | null;
 }
-
 type Tab = 'abc' | 'turnover' | 'dead-stock' | 'cogs' | 'variance' | 'eoq' | 'snapshots' | 'cycle-count';
-
 const TABS: { key: Tab; label: string; icon: string }[] = [
   { key: 'abc', label: 'ABC Analysis', icon: 'A' },
   { key: 'turnover', label: 'Turnover', icon: 'T' },
@@ -108,12 +97,10 @@ const TABS: { key: Tab; label: string; icon: string }[] = [
   { key: 'snapshots', label: 'Snapshots', icon: 'S' },
   { key: 'cycle-count', label: 'Cycle Count', icon: 'C' },
 ];
-
 export default function InventoryIntelligencePage() {
   const [activeTab, setActiveTab] = useState<Tab>('abc');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-
   // Data states
   const [abcData, setAbcData] = useState<ABCAnalysis | null>(null);
   const [turnoverData, setTurnoverData] = useState<TurnoverData | null>(null);
@@ -126,63 +113,53 @@ export default function InventoryIntelligencePage() {
   const [eoqData, setEoqData] = useState<EOQData | null>(null);
   const [snapshots, setSnapshots] = useState<any[]>([]);
   const [cycleCount, setCycleCount] = useState<{ total_items: number; weekly_count: number; biweekly_count: number; monthly_count: number; quarterly_count: number; schedule: CycleCountItem[] } | null>(null);
-
   const fetchData = useCallback(async (tab: Tab) => {
     setLoading(true);
     setError(null);
     try {
-      const headers = getAuthHeaders();
       switch (tab) {
         case 'abc': {
-          const res = await fetch(`${API_URL}/inventory-intelligence/abc-analysis`, { credentials: 'include', headers });
-          const data = await res.json();
+          const data: any = await api.get('/inventory-intelligence/abc-analysis');
           setAbcData(data);
           break;
         }
         case 'turnover': {
-          const res = await fetch(`${API_URL}/inventory-intelligence/turnover`, { credentials: 'include', headers });
-          const data = await res.json();
-          setTurnoverData(data);
+          const data_turnoverData: any = await api.get('/inventory-intelligence/turnover');
+          setTurnoverData(data_turnoverData);
           break;
         }
         case 'dead-stock': {
-          const res = await fetch(`${API_URL}/inventory-intelligence/dead-stock`, { credentials: 'include', headers });
-          const data = await res.json();
-          setDeadStock(data.items || []);
-          setDeadStockValue(data.total_dead_value || 0);
+          const data_deadStock: any = await api.get('/inventory-intelligence/dead-stock');
+          setDeadStock(data_deadStock.items || []);
+          setDeadStockValue(data_deadStock.total_dead_value || 0);
           break;
         }
         case 'cogs': {
-          const res = await fetch(`${API_URL}/inventory-intelligence/cogs`, { credentials: 'include', headers });
-          const data = await res.json();
-          setCogsData(data);
+          const data_cogsData: any = await api.get('/inventory-intelligence/cogs');
+          setCogsData(data_cogsData);
           break;
         }
         case 'variance': {
-          const res = await fetch(`${API_URL}/inventory-intelligence/food-cost-variance`, { credentials: 'include', headers });
-          const data = await res.json();
-          setVarianceItems(data.items || []);
-          setVarianceTotals({ theoretical: data.total_theoretical_cost, actual: data.total_actual_cost, variance: data.total_variance, pct: data.total_variance_pct });
+          const data_varianceItems: any = await api.get('/inventory-intelligence/food-cost-variance');
+          setVarianceItems(data_varianceItems.items || []);
+          setVarianceTotals({ theoretical: data_varianceItems.total_theoretical_cost, actual: data_varianceItems.total_actual_cost, variance: data_varianceItems.total_variance, pct: data_varianceItems.total_variance_pct });
           break;
         }
         case 'eoq': {
           if (eoqProductId) {
-            const res = await fetch(`${API_URL}/inventory-intelligence/eoq/${eoqProductId}`, { credentials: 'include', headers });
-            const data = await res.json();
-            setEoqData(data);
+            const data_eoqData: any = await api.get(`/inventory-intelligence/eoq/${eoqProductId}`);
+            setEoqData(data_eoqData);
           }
           break;
         }
         case 'snapshots': {
-          const res = await fetch(`${API_URL}/inventory-intelligence/snapshots`, { credentials: 'include', headers });
-          const data = await res.json();
-          setSnapshots(data);
+          const data_snapshots: any = await api.get('/inventory-intelligence/snapshots');
+          setSnapshots(data_snapshots);
           break;
         }
         case 'cycle-count': {
-          const res = await fetch(`${API_URL}/inventory-intelligence/cycle-count-schedule`, { credentials: 'include', headers });
-          const data = await res.json();
-          setCycleCount(data);
+          const data_cycleCount: any = await api.get('/inventory-intelligence/cycle-count-schedule');
+          setCycleCount(data_cycleCount);
           break;
         }
       }
@@ -193,14 +170,11 @@ export default function InventoryIntelligencePage() {
       setLoading(false);
     }
   }, [eoqProductId]);
-
   useEffect(() => {
     fetchData(activeTab);
   }, [activeTab, fetchData]);
-
   const fmt = (n: number) => n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   const fmtPct = (n: number) => `${(n || 0).toFixed(1)}%`;
-
   const categoryColor = (cat: string) => {
     switch (cat) {
       case 'A': return 'bg-red-100 text-red-800';
@@ -210,7 +184,6 @@ export default function InventoryIntelligencePage() {
       default: return 'bg-gray-100 text-gray-600';
     }
   };
-
   const statusColor = (status: string) => {
     switch (status) {
       case 'fast': return 'bg-green-100 text-green-800';
@@ -220,23 +193,15 @@ export default function InventoryIntelligencePage() {
       default: return 'bg-gray-100 text-gray-600';
     }
   };
-
   const createSnapshot = async () => {
     try {
-      const headers = getAuthHeaders();
-      await fetch(`${API_URL}/inventory-intelligence/snapshots`, {
-        credentials: 'include',
-        method: 'POST',
-        headers,
-        body: JSON.stringify({ location_id: 1, name: `Snapshot ${new Date().toLocaleString()}` }),
-      });
+      await api.post('/inventory-intelligence/snapshots', { location_id: 1, name: `Snapshot ${new Date().toLocaleString()}` });
       fetchData('snapshots');
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'An error occurred';
       setError(message);
     }
   };
-
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -253,7 +218,6 @@ export default function InventoryIntelligencePage() {
           </div>
         </div>
       </div>
-
       {/* Tab Navigation */}
       <div className="border-b border-surface-200 overflow-x-auto">
         <div className="flex gap-1 min-w-max">
@@ -275,7 +239,6 @@ export default function InventoryIntelligencePage() {
           ))}
         </div>
       </div>
-
       {/* Error */}
       {error && (
         <div className="p-4 bg-red-50 border border-red-200 rounded-xl text-red-600 text-sm">
@@ -283,14 +246,12 @@ export default function InventoryIntelligencePage() {
           <button onClick={() => fetchData(activeTab)} className="ml-2 underline">Retry</button>
         </div>
       )}
-
       {/* Loading */}
       {loading && (
         <div className="flex items-center justify-center py-16">
           <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-amber-500"></div>
         </div>
       )}
-
       {/* ========== ABC Analysis ========== */}
       {!loading && activeTab === 'abc' && abcData && (
         <div className="space-y-6">
@@ -316,7 +277,6 @@ export default function InventoryIntelligencePage() {
               <div className="text-xs text-green-500">{fmtPct(abcData.c_value_pct)} of value</div>
             </div>
           </div>
-
           {/* Items Table */}
           <div className="bg-white rounded-xl border border-surface-200 overflow-hidden">
             <div className="p-4 border-b border-surface-100">
@@ -362,7 +322,6 @@ export default function InventoryIntelligencePage() {
           </div>
         </div>
       )}
-
       {/* ========== Turnover ========== */}
       {!loading && activeTab === 'turnover' && turnoverData && (
         <div className="space-y-6">
@@ -380,7 +339,6 @@ export default function InventoryIntelligencePage() {
               <div className="text-2xl font-bold text-surface-900 mt-1">{turnoverData.period_days} days</div>
             </div>
           </div>
-
           <div className="bg-white rounded-xl border border-surface-200 overflow-hidden">
             <div className="p-4 border-b border-surface-100">
               <h3 className="font-semibold text-surface-900">Turnover by Product</h3>
@@ -416,7 +374,6 @@ export default function InventoryIntelligencePage() {
           </div>
         </div>
       )}
-
       {/* ========== Dead Stock ========== */}
       {!loading && activeTab === 'dead-stock' && (
         <div className="space-y-6">
@@ -430,7 +387,6 @@ export default function InventoryIntelligencePage() {
               <div className="text-2xl font-bold text-red-800 mt-1">${fmt(deadStockValue)}</div>
             </div>
           </div>
-
           {deadStock.length === 0 ? (
             <div className="bg-white rounded-xl border border-surface-200 p-12 text-center">
               <div className="text-4xl mb-3">&#10003;</div>
@@ -465,7 +421,6 @@ export default function InventoryIntelligencePage() {
           )}
         </div>
       )}
-
       {/* ========== COGS ========== */}
       {!loading && activeTab === 'cogs' && cogsData && (
         <div className="space-y-6">
@@ -490,14 +445,12 @@ export default function InventoryIntelligencePage() {
               )}
             </div>
           </div>
-
           {cogsData.revenue !== null && (
             <div className="bg-white rounded-xl border border-surface-200 p-4">
               <div className="text-sm text-surface-500">Revenue (Period)</div>
               <div className="text-2xl font-bold text-surface-900 mt-1">${fmt(cogsData.revenue)}</div>
             </div>
           )}
-
           {cogsData.by_category.length > 0 && (
             <div className="bg-white rounded-xl border border-surface-200 overflow-hidden">
               <div className="p-4 border-b border-surface-100">
@@ -529,7 +482,6 @@ export default function InventoryIntelligencePage() {
           )}
         </div>
       )}
-
       {/* ========== Food Cost Variance ========== */}
       {!loading && activeTab === 'variance' && (
         <div className="space-y-6">
@@ -551,7 +503,6 @@ export default function InventoryIntelligencePage() {
               <div className="text-2xl font-bold text-surface-900 mt-1">{fmtPct(varianceTotals.pct)}</div>
             </div>
           </div>
-
           <div className="bg-white rounded-xl border border-surface-200 overflow-hidden">
             <div className="p-4 border-b border-surface-100">
               <h3 className="font-semibold text-surface-900">Variance by Product ({varianceItems.length} items)</h3>
@@ -589,7 +540,6 @@ export default function InventoryIntelligencePage() {
           </div>
         </div>
       )}
-
       {/* ========== EOQ Calculator ========== */}
       {!loading && activeTab === 'eoq' && (
         <div className="space-y-6">
@@ -597,7 +547,7 @@ export default function InventoryIntelligencePage() {
             <h3 className="font-semibold text-surface-900 mb-4">Economic Order Quantity (Wilson Formula)</h3>
             <div className="flex items-end gap-4">
               <div className="flex-1">
-                <label className="text-sm text-surface-600 mb-1 block">Product ID</label>
+                <label className="text-sm text-surface-600 mb-1 block">Product ID
                 <input
                   type="number"
                   value={eoqProductId}
@@ -605,6 +555,7 @@ export default function InventoryIntelligencePage() {
                   className="w-full px-3 py-2 border border-surface-200 rounded-lg"
                   min={1}
                 />
+                </label>
               </div>
               <button
                 onClick={() => fetchData('eoq')}
@@ -614,7 +565,6 @@ export default function InventoryIntelligencePage() {
               </button>
             </div>
           </div>
-
           {eoqData && (
             <div className="space-y-4">
               <div className="bg-amber-50 rounded-xl border border-amber-200 p-6 text-center">
@@ -622,7 +572,6 @@ export default function InventoryIntelligencePage() {
                 <div className="text-4xl font-bold text-amber-800">{fmt(eoqData.eoq)} units</div>
                 <div className="text-sm text-amber-600 mt-1">{eoqData.product_name}</div>
               </div>
-
               <div className="grid grid-cols-3 gap-4">
                 <div className="bg-white rounded-xl border border-surface-200 p-4">
                   <div className="text-sm text-surface-500">Annual Demand</div>
@@ -653,7 +602,6 @@ export default function InventoryIntelligencePage() {
           )}
         </div>
       )}
-
       {/* ========== Snapshots ========== */}
       {!loading && activeTab === 'snapshots' && (
         <div className="space-y-6">
@@ -666,7 +614,6 @@ export default function InventoryIntelligencePage() {
               + Take Snapshot
             </button>
           </div>
-
           {snapshots.length === 0 ? (
             <div className="bg-white rounded-xl border border-surface-200 p-12 text-center">
               <div className="text-4xl mb-3">&#128247;</div>
@@ -701,7 +648,6 @@ export default function InventoryIntelligencePage() {
           )}
         </div>
       )}
-
       {/* ========== Cycle Count Schedule ========== */}
       {!loading && activeTab === 'cycle-count' && cycleCount && (
         <div className="space-y-6">
@@ -723,7 +669,6 @@ export default function InventoryIntelligencePage() {
               <div className="text-2xl font-bold text-green-800 mt-1">{cycleCount.monthly_count}</div>
             </div>
           </div>
-
           <div className="bg-white rounded-xl border border-surface-200 overflow-hidden">
             <div className="p-4 border-b border-surface-100">
               <h3 className="font-semibold text-surface-900">Count Schedule</h3>

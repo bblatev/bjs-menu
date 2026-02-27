@@ -4,9 +4,11 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 
-import { API_URL, getAuthHeaders } from '@/lib/api';
+
 
 import { toast } from '@/lib/toast';
+
+import { api } from '@/lib/api';
 interface ManagerAlert {
   id: number;
   name: string;
@@ -70,15 +72,8 @@ export default function ManagerAlertsPage() {
 
   const loadAlerts = async () => {
     try {
-      const response = await fetch(`${API_URL}/manager-alerts?active_only=false`, {
-        credentials: 'include',
-        headers: getAuthHeaders(),
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        setAlerts(Array.isArray(data) ? data : []);
-      }
+      const data: any = await api.get('/manager-alerts?active_only=false');
+            setAlerts(Array.isArray(data) ? data : []);
     } catch (error) {
       console.error("Error loading alerts:", error);
     } finally {
@@ -109,21 +104,10 @@ export default function ManagerAlertsPage() {
         cooldown_minutes: form.cooldown_minutes,
       };
 
-      const response = await fetch(`${API_URL}/manager-alerts`, {
-        credentials: 'include',
-        method: "POST",
-        headers: getAuthHeaders(),
-        body: JSON.stringify(payload),
-      });
-
-      if (response.ok) {
-        setShowModal(false);
-        resetForm();
-        loadAlerts();
-      } else {
-        const err = await response.json();
-        toast.error(err.detail || "Error creating alert");
-      }
+      await api.post('/manager-alerts', payload);
+      setShowModal(false);
+      resetForm();
+      loadAlerts();
     } catch (error) {
       toast.error("Error creating alert");
     }
@@ -153,22 +137,11 @@ export default function ManagerAlertsPage() {
         cooldown_minutes: form.cooldown_minutes,
       };
 
-      const response = await fetch(`${API_URL}/manager-alerts/${editingAlert.id}`, {
-        credentials: 'include',
-        method: "PUT",
-        headers: getAuthHeaders(),
-        body: JSON.stringify(payload),
-      });
-
-      if (response.ok) {
-        setShowModal(false);
-        setEditingAlert(null);
-        resetForm();
-        loadAlerts();
-      } else {
-        const err = await response.json();
-        toast.error(err.detail || "Error updating alert");
-      }
+      await api.put(`/manager-alerts/${editingAlert.id}`, payload);
+      setShowModal(false);
+      setEditingAlert(null);
+      resetForm();
+      loadAlerts();
     } catch (error) {
       toast.error("Error updating alert");
     }
@@ -178,17 +151,8 @@ export default function ManagerAlertsPage() {
     if (!confirm("Are you sure you want to delete this alert?")) return;
 
     try {
-      const response = await fetch(`${API_URL}/manager-alerts/${alertId}`, {
-        credentials: 'include',
-        method: "DELETE",
-        headers: getAuthHeaders(),
-      });
-
-      if (response.ok) {
-        loadAlerts();
-      } else {
-        toast.error("Error deleting alert");
-      }
+      await api.del(`/manager-alerts/${alertId}`);
+      loadAlerts();
     } catch (error) {
       toast.error("Error deleting alert");
     }
@@ -197,16 +161,8 @@ export default function ManagerAlertsPage() {
   const toggleActive = async (alert: ManagerAlert) => {
 
     try {
-      const response = await fetch(`${API_URL}/manager-alerts/${alert.id}`, {
-        credentials: 'include',
-        method: "PUT",
-        headers: getAuthHeaders(),
-        body: JSON.stringify({ is_active: !alert.is_active }),
-      });
-
-      if (response.ok) {
-        loadAlerts();
-      }
+      await api.put(`/manager-alerts/${alert.id}`, { is_active: !alert.is_active });
+      loadAlerts();
     } catch (error) {
       console.error("Error toggling alert:", error);
     }
@@ -216,26 +172,17 @@ export default function ManagerAlertsPage() {
     setTestingAlert(alertItem.id);
 
     try {
-      const response = await fetch(`${API_URL}/manager-alerts/trigger`, {
-        credentials: 'include',
-        method: "POST",
-        headers: getAuthHeaders(),
-        body: JSON.stringify({
+      const result: any = await api.post('/manager-alerts/trigger', {
           alert_type: alertItem.alert_type,
           value: alertItem.threshold_value ? alertItem.threshold_value + 1 : 100,
           message: `Test alert: ${alertItem.name}`,
-        }),
-      });
-
-      if (response.ok) {
-        const result = await response.json();
-        if (result.triggered_count > 0) {
-          toast.info(`Test sent! Would notify:\n${result.alerts.map((a: { phones: string[]; emails: string[] }) =>
-            `- ${a.phones.join(", ")} ${a.emails.join(", ")}`
-          ).join("\n")}`);
-        } else {
-          toast.success("Alert not triggered (may be on cooldown or threshold not met)");
-        }
+        });
+            if (result.triggered_count > 0) {
+      toast.info(`Test sent! Would notify:\n${result.alerts.map((a: { phones: string[]; emails: string[] }) =>
+        `- ${a.phones.join(", ")} ${a.emails.join(", ")}`
+      ).join("\n")}`);
+      } else {
+      toast.success("Alert not triggered (may be on cooldown or threshold not met)");
       }
     } catch (error) {
       toast.error("Error testing alert");
@@ -499,7 +446,6 @@ export default function ManagerAlertsPage() {
                 <div>
                   <label className="text-gray-700 text-sm font-medium">
                     Alert Name
-                  </label>
                   <input
                     type="text"
                     value={form.name}
@@ -508,13 +454,13 @@ export default function ManagerAlertsPage() {
                     placeholder="e.g. Large Discount Alert"
                     className="w-full px-4 py-3 bg-gray-50 text-gray-900 rounded-xl mt-1 border border-gray-200"
                   />
+                  </label>
                 </div>
 
                 {/* Alert Type */}
                 <div>
                   <label className="text-gray-700 text-sm font-medium">
                     Alert Type
-                  </label>
                   <select
                     value={form.alert_type}
                     onChange={(e) =>
@@ -528,6 +474,7 @@ export default function ManagerAlertsPage() {
                       </option>
                     ))}
                   </select>
+                  </label>
                 </div>
 
                 {/* Threshold (conditional) */}
@@ -536,7 +483,6 @@ export default function ManagerAlertsPage() {
                     <div>
                       <label className="text-gray-700 text-sm font-medium">
                         Operator
-                      </label>
                       <select
                         value={form.threshold_operator}
                         onChange={(e) =>
@@ -550,11 +496,11 @@ export default function ManagerAlertsPage() {
                           </option>
                         ))}
                       </select>
+                      </label>
                     </div>
                     <div>
                       <label className="text-gray-700 text-sm font-medium">
                         Threshold Value
-                      </label>
                       <input
                         type="number"
                         step="0.01"
@@ -571,6 +517,7 @@ export default function ManagerAlertsPage() {
                         }
                         className="w-full px-4 py-3 bg-gray-50 text-gray-900 rounded-xl mt-1 border border-gray-200"
                       />
+                      </label>
                     </div>
                   </div>
                 )}
@@ -579,7 +526,6 @@ export default function ManagerAlertsPage() {
                 <div>
                   <label className="text-gray-700 text-sm font-medium">
                     Phone Numbers (comma separated)
-                  </label>
                   <input
                     type="text"
                     value={form.recipient_phones}
@@ -589,12 +535,12 @@ export default function ManagerAlertsPage() {
                     placeholder="+359888123456, +359877654321"
                     className="w-full px-4 py-3 bg-gray-50 text-gray-900 rounded-xl mt-1 border border-gray-200"
                   />
+                  </label>
                 </div>
 
                 <div>
                   <label className="text-gray-700 text-sm font-medium">
                     Email Addresses (comma separated)
-                  </label>
                   <input
                     type="text"
                     value={form.recipient_emails}
@@ -604,13 +550,14 @@ export default function ManagerAlertsPage() {
                     placeholder="manager@restaurant.com, owner@restaurant.com"
                     className="w-full px-4 py-3 bg-gray-50 text-gray-900 rounded-xl mt-1 border border-gray-200"
                   />
+                  </label>
                 </div>
 
                 {/* Notification Methods */}
                 <div>
-                  <label className="text-gray-700 text-sm font-medium mb-3 block">
+                  <span className="text-gray-700 text-sm font-medium mb-3 block">
                     Notification Methods
-                  </label>
+                  </span>
                   <div className="flex gap-4">
                     <label className="flex items-center gap-2 cursor-pointer">
                       <input
@@ -652,7 +599,6 @@ export default function ManagerAlertsPage() {
                 <div>
                   <label className="text-gray-700 text-sm font-medium">
                     Cooldown (minutes)
-                  </label>
                   <input
                     type="number"
                     min="1"
@@ -666,6 +612,7 @@ export default function ManagerAlertsPage() {
                     }
                     className="w-full px-4 py-3 bg-gray-50 text-gray-900 rounded-xl mt-1 border border-gray-200"
                   />
+                  </label>
                   <p className="text-gray-500 text-xs mt-1">
                     Minimum time between alerts of the same type (prevents spam)
                   </p>

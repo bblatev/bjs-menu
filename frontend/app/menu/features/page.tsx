@@ -1,10 +1,9 @@
 "use client";
-
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { API_URL, getAuthHeaders } from "@/lib/api";
-
 import { toast } from '@/lib/toast';
+
+import { api } from '@/lib/api';
 // Types
 interface MultiLang {
   bg: string;
@@ -12,7 +11,6 @@ interface MultiLang {
   de?: string;
   ru?: string;
 }
-
 interface MenuItem {
   id: number;
   name: MultiLang;
@@ -20,7 +18,6 @@ interface MenuItem {
   category_id: number;
   available: boolean;
 }
-
 interface MenuVariant {
   id: number;
   menu_item_id: number;
@@ -32,7 +29,6 @@ interface MenuVariant {
   is_default: boolean;
   is_active: boolean;
 }
-
 interface MenuTag {
   id: number;
   name: MultiLang;
@@ -40,7 +36,6 @@ interface MenuTag {
   icon?: string;
   is_active: boolean;
 }
-
 interface UpsellRule {
   id: number;
   trigger_item_id: number;
@@ -51,7 +46,6 @@ interface UpsellRule {
   is_active: boolean;
   priority: number;
 }
-
 interface LimitedTimeOffer {
   id: number;
   name: MultiLang;
@@ -64,7 +58,6 @@ interface LimitedTimeOffer {
   end_date: string;
   is_active: boolean;
 }
-
 interface Item86 {
   id: number;
   menu_item_id: number;
@@ -74,7 +67,6 @@ interface Item86 {
   notes?: string;
   is_active: boolean;
 }
-
 interface Combo {
   id: number;
   name: MultiLang;
@@ -85,14 +77,12 @@ interface Combo {
   is_active: boolean;
   combo_items: ComboItem[];
 }
-
 interface ComboItem {
   id: number;
   menu_item_id: number;
   quantity: number;
   is_required: boolean;
 }
-
 interface DigitalBoard {
   id: number;
   name: string;
@@ -100,16 +90,12 @@ interface DigitalBoard {
   layout: string;
   is_active: boolean;
 }
-
 type TabType = "variants" | "tags" | "combos" | "upsells" | "offers" | "86items" | "boards";
-
-
 export default function MenuFeaturesPage() {
   const [activeTab, setActiveTab] = useState<TabType>("variants");
   const [loading, setLoading] = useState(true);
   const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
   const [selectedItem, setSelectedItem] = useState<MenuItem | null>(null);
-
   // Data states
   const [variants, setVariants] = useState<MenuVariant[]>([]);
   const [tags, setTags] = useState<MenuTag[]>([]);
@@ -118,7 +104,6 @@ export default function MenuFeaturesPage() {
   const [offers, setOffers] = useState<LimitedTimeOffer[]>([]);
   const [items86, setItems86] = useState<Item86[]>([]);
   const [boards, setBoards] = useState<DigitalBoard[]>([]);
-
   // Modal states
   const [showVariantModal, setShowVariantModal] = useState(false);
   const [showBoardModal, setShowBoardModal] = useState(false);
@@ -128,223 +113,164 @@ export default function MenuFeaturesPage() {
   const [showUpsellModal, setShowUpsellModal] = useState(false);
   const [showOfferModal, setShowOfferModal] = useState(false);
   const [show86Modal, setShow86Modal] = useState(false);
-
   // Form states
   const [variantForm, setVariantForm] = useState({
     name_bg: "", name_en: "", variant_type: "size", price: 0, sku: "", is_default: false
   });
-
   const [tagForm, setTagForm] = useState({
     name_bg: "", name_en: "", color: "#FF6B00", icon: ""
   });
-
   const [comboForm, setComboForm] = useState({
     name_bg: "", name_en: "", description_bg: "", description_en: "",
     pricing_type: "fixed", fixed_price: 0, discount_percent: 0, item_ids: [] as number[]
   });
-
   const [upsellForm, setUpsellForm] = useState({
     trigger_item_id: 0, upsell_item_id: 0, upsell_type: "suggestion",
     discount_percent: 0, message_bg: "", message_en: "", priority: 1
   });
-
   const [offerForm, setOfferForm] = useState({
     name_bg: "", name_en: "", description_bg: "", description_en: "",
     offer_type: "discount", menu_item_id: 0, discount_percent: 0,
     fixed_price: 0, start_date: "", end_date: ""
   });
-
   const [item86Form, setItem86Form] = useState({
     menu_item_id: 0, reason: "out_of_stock", expected_return: "", notes: ""
   });
-
   useEffect(() => {
     loadMenuItems();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-
   useEffect(() => {
     loadTabData();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTab, selectedItem]);
-
   const loadMenuItems = async () => {
     try {
-      const res = await fetch(`${API_URL}/menu-admin/items`, {
-        credentials: 'include',
-        headers: getAuthHeaders()
-      });
-      if (res.ok) {
-        const data = await res.json();
-        // Handle both array and {items: [...]} response formats
-        const items = Array.isArray(data) ? data : (data.items || []);
-        // Normalize items to have MultiLang name format
-        const normalizedItems = items.map((item: Record<string, unknown>) => ({
-          ...item,
-          name: typeof item.name === 'string'
-            ? { bg: item.name as string, en: item.name as string }
-            : (item.name || { bg: '', en: '' })
-        }));
-        setMenuItems(normalizedItems);
-        if (normalizedItems.length > 0) setSelectedItem(normalizedItems[0]);
-      }
+      const data: any = await api.get('/menu-admin/items');
+            // Handle both array and {items: [...]} response formats
+      const items = Array.isArray(data) ? data : (data.items || []);
+      // Normalize items to have MultiLang name format
+      const normalizedItems = items.map((item: Record<string, unknown>) => ({
+      ...item,
+      name: typeof item.name === 'string'
+        ? { bg: item.name as string, en: item.name as string }
+        : (item.name || { bg: '', en: '' })
+      }));
+      setMenuItems(normalizedItems);
+      if (normalizedItems.length > 0) setSelectedItem(normalizedItems[0]);
     } catch (error) {
       console.error("Error loading menu items:", error);
     } finally {
       setLoading(false);
     }
   };
-
   const loadTabData = async () => {
-    const headers = getAuthHeaders();
-
     try {
       switch (activeTab) {
         case "variants":
           if (selectedItem) {
-            const res = await fetch(`${API_URL}/menu-complete/items/${selectedItem.id}/variants`, { credentials: 'include', headers });
-            if (res.ok) {
-              const data = await res.json();
-              setVariants(Array.isArray(data) ? data : []);
-            }
+            const data: any = await api.get(`/menu-complete/items/${selectedItem.id}/variants`);
+                        setVariants(Array.isArray(data) ? data : []);
           }
           break;
         case "tags":
-          const tagsRes = await fetch(`${API_URL}/menu-complete/tags`, { credentials: 'include', headers });
-          if (tagsRes.ok) { const d = await tagsRes.json(); setTags(Array.isArray(d) ? d : []); }
+          const d_tags: any = await api.get('/menu-complete/tags');
+  setTags(Array.isArray(d_tags) ? d_tags : []); 
           break;
         case "combos":
-          const combosRes = await fetch(`${API_URL}/menu-complete/combos`, { credentials: 'include', headers });
-          if (combosRes.ok) { const d = await combosRes.json(); setCombos(Array.isArray(d) ? d : []); }
+          const d_combos: any = await api.get('/menu-complete/combos');
+  setCombos(Array.isArray(d_combos) ? d_combos : []); 
           break;
         case "upsells":
-          const upsellsRes = await fetch(`${API_URL}/menu-complete/upsell-rules`, { credentials: 'include', headers });
-          if (upsellsRes.ok) { const d = await upsellsRes.json(); setUpsells(Array.isArray(d) ? d : []); }
+          const d_upsells: any = await api.get('/menu-complete/upsell-rules');
+  setUpsells(Array.isArray(d_upsells) ? d_upsells : []); 
           break;
         case "offers":
-          const offersRes = await fetch(`${API_URL}/menu-complete/limited-offers`, { credentials: 'include', headers });
-          if (offersRes.ok) { const d = await offersRes.json(); setOffers(Array.isArray(d) ? d : []); }
+          const d_offers: any = await api.get('/menu-complete/limited-offers');
+  setOffers(Array.isArray(d_offers) ? d_offers : []); 
           break;
         case "86items":
-          const items86Res = await fetch(`${API_URL}/menu-complete/86`, { credentials: 'include', headers });
-          if (items86Res.ok) { const d = await items86Res.json(); setItems86(Array.isArray(d) ? d : []); }
+          const d_items86: any = await api.get('/menu-complete/86');
+  setItems86(Array.isArray(d_items86) ? d_items86 : []); 
           break;
         case "boards":
-          const boardsRes = await fetch(`${API_URL}/menu-complete/digital-boards`, { credentials: 'include', headers });
-          if (boardsRes.ok) { const d = await boardsRes.json(); setBoards(Array.isArray(d) ? d : []); }
+          const d_boards: any = await api.get('/menu-complete/digital-boards');
+  setBoards(Array.isArray(d_boards) ? d_boards : []); 
           break;
       }
     } catch (error) {
       console.error("Error loading tab data:", error);
     }
   };
-
   // CRUD Handlers
   const handleCreateVariant = async () => {
     if (!selectedItem) return;
-
     try {
-      const res = await fetch(`${API_URL}/menu-complete/items/${selectedItem.id}/variants`, {
-        credentials: 'include',
-        method: "POST",
-        headers: getAuthHeaders(),
-        body: JSON.stringify({
+      await api.post(`/menu-complete/items/${selectedItem.id}/variants`, {
           name: { bg: variantForm.name_bg, en: variantForm.name_en },
           variant_type: variantForm.variant_type,
           price: variantForm.price,
           sku: variantForm.sku || null,
           is_default: variantForm.is_default
-        })
-      });
-      if (res.ok) {
-        setShowVariantModal(false);
-        setVariantForm({ name_bg: "", name_en: "", variant_type: "size", price: 0, sku: "", is_default: false });
-        loadTabData();
-      }
+        });
+      setShowVariantModal(false);
+      setVariantForm({ name_bg: "", name_en: "", variant_type: "size", price: 0, sku: "", is_default: false });
+      loadTabData();
     } catch (error) {
       toast.error("Error creating variant");
     }
   };
-
   const handleCreateTag = async () => {
     try {
-      const res = await fetch(`${API_URL}/menu-complete/tags`, {
-        credentials: 'include',
-        method: "POST",
-        headers: getAuthHeaders(),
-        body: JSON.stringify({
+      await api.post('/menu-complete/tags', {
           name: { bg: tagForm.name_bg, en: tagForm.name_en },
           color: tagForm.color,
           icon: tagForm.icon || null
-        })
-      });
-      if (res.ok) {
-        setShowTagModal(false);
-        setTagForm({ name_bg: "", name_en: "", color: "#FF6B00", icon: "" });
-        loadTabData();
-      }
+        });
+      setShowTagModal(false);
+      setTagForm({ name_bg: "", name_en: "", color: "#FF6B00", icon: "" });
+      loadTabData();
     } catch (error) {
       toast.error("Error creating tag");
     }
   };
-
   const handleCreateCombo = async () => {
     try {
-      const res = await fetch(`${API_URL}/menu-complete/combos`, {
-        credentials: 'include',
-        method: "POST",
-        headers: getAuthHeaders(),
-        body: JSON.stringify({
+      await api.post('/menu-complete/combos', {
           name: { bg: comboForm.name_bg, en: comboForm.name_en },
           description: { bg: comboForm.description_bg, en: comboForm.description_en },
           pricing_type: comboForm.pricing_type,
           fixed_price: comboForm.pricing_type === "fixed" ? comboForm.fixed_price : null,
           discount_percent: comboForm.pricing_type === "percentage_discount" ? comboForm.discount_percent : null,
           item_ids: comboForm.item_ids
-        })
-      });
-      if (res.ok) {
-        setShowComboModal(false);
-        setComboForm({ name_bg: "", name_en: "", description_bg: "", description_en: "", pricing_type: "fixed", fixed_price: 0, discount_percent: 0, item_ids: [] });
-        loadTabData();
-      }
+        });
+      setShowComboModal(false);
+      setComboForm({ name_bg: "", name_en: "", description_bg: "", description_en: "", pricing_type: "fixed", fixed_price: 0, discount_percent: 0, item_ids: [] });
+      loadTabData();
     } catch (error) {
       toast.error("Error creating combo");
     }
   };
-
   const handleCreateUpsell = async () => {
     try {
-      const res = await fetch(`${API_URL}/menu-complete/upsell-rules`, {
-        credentials: 'include',
-        method: "POST",
-        headers: getAuthHeaders(),
-        body: JSON.stringify({
+      await api.post('/menu-complete/upsell-rules', {
           trigger_item_id: upsellForm.trigger_item_id,
           upsell_item_id: upsellForm.upsell_item_id,
           upsell_type: upsellForm.upsell_type,
           discount_percent: upsellForm.discount_percent || null,
           message: { bg: upsellForm.message_bg, en: upsellForm.message_en },
           priority: upsellForm.priority
-        })
-      });
-      if (res.ok) {
-        setShowUpsellModal(false);
-        setUpsellForm({ trigger_item_id: 0, upsell_item_id: 0, upsell_type: "suggestion", discount_percent: 0, message_bg: "", message_en: "", priority: 1 });
-        loadTabData();
-      }
+        });
+      setShowUpsellModal(false);
+      setUpsellForm({ trigger_item_id: 0, upsell_item_id: 0, upsell_type: "suggestion", discount_percent: 0, message_bg: "", message_en: "", priority: 1 });
+      loadTabData();
     } catch (error) {
       toast.error("Error creating upsell");
     }
   };
-
   const handleCreateOffer = async () => {
     try {
-      const res = await fetch(`${API_URL}/menu-complete/limited-offers`, {
-        credentials: 'include',
-        method: "POST",
-        headers: getAuthHeaders(),
-        body: JSON.stringify({
+      await api.post('/menu-complete/limited-offers', {
           name: { bg: offerForm.name_bg, en: offerForm.name_en },
           description: { bg: offerForm.description_bg, en: offerForm.description_en },
           offer_type: offerForm.offer_type,
@@ -353,88 +279,58 @@ export default function MenuFeaturesPage() {
           fixed_price: offerForm.fixed_price || null,
           start_date: offerForm.start_date,
           end_date: offerForm.end_date
-        })
-      });
-      if (res.ok) {
-        setShowOfferModal(false);
-        setOfferForm({ name_bg: "", name_en: "", description_bg: "", description_en: "", offer_type: "discount", menu_item_id: 0, discount_percent: 0, fixed_price: 0, start_date: "", end_date: "" });
-        loadTabData();
-      }
+        });
+      setShowOfferModal(false);
+      setOfferForm({ name_bg: "", name_en: "", description_bg: "", description_en: "", offer_type: "discount", menu_item_id: 0, discount_percent: 0, fixed_price: 0, start_date: "", end_date: "" });
+      loadTabData();
     } catch (error) {
       toast.error("Error creating offer");
     }
   };
-
   const handleCreate86Item = async () => {
     try {
-      const res = await fetch(`${API_URL}/menu-complete/86`, {
-        credentials: 'include',
-        method: "POST",
-        headers: getAuthHeaders(),
-        body: JSON.stringify({
+      await api.post('/menu-complete/86', {
           menu_item_id: item86Form.menu_item_id,
           reason: item86Form.reason,
           expected_return: item86Form.expected_return || null,
           notes: item86Form.notes || null
-        })
-      });
-      if (res.ok) {
-        setShow86Modal(false);
-        setItem86Form({ menu_item_id: 0, reason: "out_of_stock", expected_return: "", notes: "" });
-        loadTabData();
-      }
+        });
+      setShow86Modal(false);
+      setItem86Form({ menu_item_id: 0, reason: "out_of_stock", expected_return: "", notes: "" });
+      loadTabData();
     } catch (error) {
       toast.error("Error creating 86 record");
     }
   };
-
   const handleRemove86 = async (id: number) => {
     if (!confirm("Remove this item from 86'd list?")) return;
-
     try {
-      await fetch(`${API_URL}/menu-complete/86/${id}`, {
-        credentials: 'include',
-        method: "DELETE",
-        headers: getAuthHeaders()
-      });
+      await api.del(`/menu-complete/86/${id}`);
       loadTabData();
     } catch (error) {
       toast.error("Error removing 86 record");
     }
   };
-
   const handleAddBoard = async () => {
     try {
-      const res = await fetch(`${API_URL}/menu-complete/digital-boards`, {
-        credentials: 'include',
-        method: "POST",
-        headers: getAuthHeaders(),
-        body: JSON.stringify({
+      await api.post('/menu-complete/digital-boards', {
           name: newBoard.name,
           display_type: newBoard.display_type,
           layout: newBoard.layout,
           location: newBoard.location || null,
           is_active: true
-        })
-      });
-      if (res.ok) {
-        setShowBoardModal(false);
-        setNewBoard({ name: '', display_type: 'menu', layout: 'grid', location: '' });
-        loadTabData();
-      } else {
-        const err = await res.json();
-        toast.error(err.detail || "Error creating board");
-      }
+        });
+      setShowBoardModal(false);
+      setNewBoard({ name: '', display_type: 'menu', layout: 'grid', location: '' });
+      loadTabData();
     } catch (error) {
       toast.error("Error creating digital board");
     }
   };
-
   const getItemName = (id: number) => {
     const item = menuItems.find(i => i.id === id);
     return item?.name?.en || item?.name?.bg || `Item #${id}`;
   };
-
   const tabs = [
     { id: "variants", label: "Variants", icon: "📏", desc: "Size/portion options" },
     { id: "tags", label: "Tags", icon: "🏷️", desc: "Labels & categories" },
@@ -444,7 +340,6 @@ export default function MenuFeaturesPage() {
     { id: "86items", label: "86'd Items", icon: "🚫", desc: "Unavailable items" },
     { id: "boards", label: "Digital Boards", icon: "📺", desc: "Display screens" },
   ];
-
   if (loading) {
     return (
       <div className="min-h-screen bg-white flex items-center justify-center">
@@ -452,7 +347,6 @@ export default function MenuFeaturesPage() {
       </div>
     );
   }
-
   return (
     <div className="min-h-screen bg-gray-50 p-6">
       <div className="max-w-7xl mx-auto">
@@ -461,7 +355,6 @@ export default function MenuFeaturesPage() {
           <h1 className="text-3xl font-bold text-gray-900">Menu Features</h1>
           <p className="text-gray-500 mt-1">Manage variants, tags, combos, upsells, and more</p>
         </div>
-
         {/* Tabs */}
         <div className="grid grid-cols-7 gap-2 mb-6">
           {tabs.map(tab => (
@@ -480,7 +373,6 @@ export default function MenuFeaturesPage() {
             </button>
           ))}
         </div>
-
         {/* Content Area */}
         <div className="bg-white rounded-xl shadow-sm p-6">
           {/* Variants Tab */}
@@ -508,7 +400,6 @@ export default function MenuFeaturesPage() {
                   + Add Variant
                 </button>
               </div>
-
               {variants.length === 0 ? (
                 <div className="text-center py-12 text-gray-500">
                   <div className="text-4xl mb-3">📏</div>
@@ -535,7 +426,6 @@ export default function MenuFeaturesPage() {
               )}
             </div>
           )}
-
           {/* Tags Tab */}
           {activeTab === "tags" && (
             <div>
@@ -548,7 +438,6 @@ export default function MenuFeaturesPage() {
                   + Add Tag
                 </button>
               </div>
-
               {tags.length === 0 ? (
                 <div className="text-center py-12 text-gray-500">
                   <div className="text-4xl mb-3">🏷️</div>
@@ -570,7 +459,6 @@ export default function MenuFeaturesPage() {
               )}
             </div>
           )}
-
           {/* Combos Tab */}
           {activeTab === "combos" && (
             <div>
@@ -583,7 +471,6 @@ export default function MenuFeaturesPage() {
                   + Create Combo
                 </button>
               </div>
-
               {combos.length === 0 ? (
                 <div className="text-center py-12 text-gray-500">
                   <div className="text-4xl mb-3">🍱</div>
@@ -615,7 +502,6 @@ export default function MenuFeaturesPage() {
               )}
             </div>
           )}
-
           {/* Upsells Tab */}
           {activeTab === "upsells" && (
             <div>
@@ -628,7 +514,6 @@ export default function MenuFeaturesPage() {
                   + Create Rule
                 </button>
               </div>
-
               {upsells.length === 0 ? (
                 <div className="text-center py-12 text-gray-500">
                   <div className="text-4xl mb-3">💡</div>
@@ -662,7 +547,6 @@ export default function MenuFeaturesPage() {
               )}
             </div>
           )}
-
           {/* LTOs Tab */}
           {activeTab === "offers" && (
             <div>
@@ -675,7 +559,6 @@ export default function MenuFeaturesPage() {
                   + Create Offer
                 </button>
               </div>
-
               {offers.length === 0 ? (
                 <div className="text-center py-12 text-gray-500">
                   <div className="text-4xl mb-3">⏰</div>
@@ -706,7 +589,6 @@ export default function MenuFeaturesPage() {
               )}
             </div>
           )}
-
           {/* 86'd Items Tab */}
           {activeTab === "86items" && (
             <div>
@@ -719,7 +601,6 @@ export default function MenuFeaturesPage() {
                   + 86 an Item
                 </button>
               </div>
-
               {items86.length === 0 ? (
                 <div className="text-center py-12 text-gray-500">
                   <div className="text-4xl mb-3">✅</div>
@@ -756,7 +637,6 @@ export default function MenuFeaturesPage() {
               )}
             </div>
           )}
-
           {/* Digital Boards Tab */}
           {activeTab === "boards" && (
             <div>
@@ -769,7 +649,6 @@ export default function MenuFeaturesPage() {
                   + Add Board
                 </button>
               </div>
-
               {boards.length === 0 ? (
                 <div className="text-center py-12 text-gray-500">
                   <div className="text-4xl mb-3">📺</div>
@@ -797,7 +676,6 @@ export default function MenuFeaturesPage() {
           )}
         </div>
       </div>
-
       {/* Variant Modal */}
       <AnimatePresence>
         {showVariantModal && (
@@ -864,7 +742,6 @@ export default function MenuFeaturesPage() {
           </div>
         )}
       </AnimatePresence>
-
       {/* Tag Modal */}
       <AnimatePresence>
         {showTagModal && (
@@ -914,7 +791,6 @@ export default function MenuFeaturesPage() {
           </div>
         )}
       </AnimatePresence>
-
       {/* Combo Modal */}
       <AnimatePresence>
         {showComboModal && (
@@ -974,7 +850,6 @@ export default function MenuFeaturesPage() {
           </div>
         )}
       </AnimatePresence>
-
       {/* Upsell Modal */}
       <AnimatePresence>
         {showUpsellModal && (
@@ -988,18 +863,20 @@ export default function MenuFeaturesPage() {
               <h3 className="text-xl font-bold mb-4">Create Upsell Rule</h3>
               <div className="space-y-4">
                 <div>
-                  <label className="text-sm text-gray-500">When customer orders:</label>
+                  <label className="text-sm text-gray-500">When customer orders:
                   <select value={upsellForm.trigger_item_id} onChange={e => setUpsellForm({...upsellForm, trigger_item_id: Number(e.target.value)})} className="w-full px-4 py-2 border rounded-lg mt-1">
                     <option value={0}>Select trigger item...</option>
                     {menuItems.map(item => <option key={item.id} value={item.id}>{item.name.en || item.name.bg}</option>)}
                   </select>
+                  </label>
                 </div>
                 <div>
-                  <label className="text-sm text-gray-500">Suggest this item:</label>
+                  <label className="text-sm text-gray-500">Suggest this item:
                   <select value={upsellForm.upsell_item_id} onChange={e => setUpsellForm({...upsellForm, upsell_item_id: Number(e.target.value)})} className="w-full px-4 py-2 border rounded-lg mt-1">
                     <option value={0}>Select upsell item...</option>
                     {menuItems.map(item => <option key={item.id} value={item.id}>{item.name.en || item.name.bg}</option>)}
                   </select>
+                  </label>
                 </div>
                 <select value={upsellForm.upsell_type} onChange={e => setUpsellForm({...upsellForm, upsell_type: e.target.value})} className="w-full px-4 py-2 border rounded-lg">
                   <option value="suggestion">Suggestion</option>
@@ -1017,7 +894,6 @@ export default function MenuFeaturesPage() {
           </div>
         )}
       </AnimatePresence>
-
       {/* Offer Modal */}
       <AnimatePresence>
         {showOfferModal && (
@@ -1047,12 +923,14 @@ export default function MenuFeaturesPage() {
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="text-sm text-gray-500">Start Date</label>
+                    <label className="text-sm text-gray-500">Start Date
                     <input type="date" value={offerForm.start_date} onChange={e => setOfferForm({...offerForm, start_date: e.target.value})} className="w-full px-4 py-2 border rounded-lg mt-1" />
+                    </label>
                   </div>
                   <div>
-                    <label className="text-sm text-gray-500">End Date</label>
+                    <label className="text-sm text-gray-500">End Date
                     <input type="date" value={offerForm.end_date} onChange={e => setOfferForm({...offerForm, end_date: e.target.value})} className="w-full px-4 py-2 border rounded-lg mt-1" />
+                    </label>
                   </div>
                 </div>
               </div>
@@ -1064,7 +942,6 @@ export default function MenuFeaturesPage() {
           </div>
         )}
       </AnimatePresence>
-
       {/* 86 Modal */}
       <AnimatePresence>
         {show86Modal && (
@@ -1089,8 +966,9 @@ export default function MenuFeaturesPage() {
                   <option value="discontinued">Discontinued</option>
                 </select>
                 <div>
-                  <label className="text-sm text-gray-500">Expected Return (optional)</label>
+                  <label className="text-sm text-gray-500">Expected Return (optional)
                   <input type="datetime-local" value={item86Form.expected_return} onChange={e => setItem86Form({...item86Form, expected_return: e.target.value})} className="w-full px-4 py-2 border rounded-lg mt-1" />
+                  </label>
                 </div>
                 <textarea placeholder="Notes (optional)" value={item86Form.notes} onChange={e => setItem86Form({...item86Form, notes: e.target.value})} className="w-full px-4 py-2 border rounded-lg" rows={2} />
               </div>
@@ -1102,7 +980,6 @@ export default function MenuFeaturesPage() {
           </div>
         )}
       </AnimatePresence>
-
       {/* Digital Board Modal */}
       <AnimatePresence>
         {showBoardModal && (
@@ -1122,7 +999,7 @@ export default function MenuFeaturesPage() {
                   className="w-full px-4 py-2 border rounded-lg"
                 />
                 <div>
-                  <label className="text-sm text-gray-500">Display Type</label>
+                  <label className="text-sm text-gray-500">Display Type
                   <select
                     value={newBoard.display_type}
                     onChange={e => setNewBoard({...newBoard, display_type: e.target.value})}
@@ -1134,9 +1011,10 @@ export default function MenuFeaturesPage() {
                     <option value="kds">Kitchen Display</option>
                     <option value="queue">Queue Display</option>
                   </select>
+                  </label>
                 </div>
                 <div>
-                  <label className="text-sm text-gray-500">Layout</label>
+                  <label className="text-sm text-gray-500">Layout
                   <select
                     value={newBoard.layout}
                     onChange={e => setNewBoard({...newBoard, layout: e.target.value})}
@@ -1147,6 +1025,7 @@ export default function MenuFeaturesPage() {
                     <option value="carousel">Carousel</option>
                     <option value="split">Split Screen</option>
                   </select>
+                  </label>
                 </div>
                 <input
                   placeholder="Location (e.g., Main Entrance, Bar Area)"

@@ -6,9 +6,9 @@ import Link from 'next/link';
 import { PageLoading } from '@/components/ui/LoadingSpinner';
 import { ErrorAlert } from '@/components/ui/ErrorAlert';
 
-import { API_URL, getAuthHeaders } from '@/lib/api';
 
-import { toast } from '@/lib/toast';
+
+import { api } from '@/lib/api';
 interface Terminal {
   terminal_id: string;
   stripe_terminal_id?: string;
@@ -104,28 +104,28 @@ export default function CardTerminalsPage() {
     setLoading(true);
     setError(null);
     try {
-      const [terminalsRes, typesRes, paymentsRes, statsRes] = await Promise.all([
-        fetch(`${API_URL}/card-terminals/terminals`, { credentials: 'include', headers: getAuthHeaders() }),
-        fetch(`${API_URL}/card-terminals/terminal-types`, { credentials: 'include', headers: getAuthHeaders() }),
-        fetch(`${API_URL}/card-terminals/payments?limit=20`, { credentials: 'include', headers: getAuthHeaders() }),
-        fetch(`${API_URL}/card-terminals/stats`, { credentials: 'include', headers: getAuthHeaders() }),
-      ]);
+      const [terminalsRes, typesRes, paymentsRes, statsRes] = await Promise.allSettled([
+  api.get('/card-terminals/terminals'),
+  api.get('/card-terminals/terminal-types'),
+  api.get('/card-terminals/payments?limit=20'),
+  api.get('/card-terminals/stats')
+]);
 
-      if (terminalsRes.ok) {
-        const data = await terminalsRes.json();
+      if (terminalsRes.status === 'fulfilled') {
+        const data: any = terminalsRes.value;
         setTerminals(data);
       }
-      if (typesRes.ok) {
-        const data = await typesRes.json();
-        setTerminalTypes(data.types || []);
+      if (typesRes.status === 'fulfilled') {
+        const data_terminalTypes: any = typesRes.value;
+        setTerminalTypes(data_terminalTypes.types || []);
       }
-      if (paymentsRes.ok) {
-        const data = await paymentsRes.json();
-        setPayments(data);
+      if (paymentsRes.status === 'fulfilled') {
+        const data_payments: any = paymentsRes.value;
+        setPayments(data_payments);
       }
-      if (statsRes.ok) {
-        const data = await statsRes.json();
-        setStats(data);
+      if (statsRes.status === 'fulfilled') {
+        const data_stats: any = statsRes.value;
+        setStats(data_stats);
       }
     } catch (err) {
       console.error('Error loading data:', err);
@@ -137,18 +137,10 @@ export default function CardTerminalsPage() {
 
   const registerTerminal = async () => {
     try {
-      const res = await fetch(`${API_URL}/card-terminals/terminals`, {
-        credentials: 'include',
-        method: 'POST',
-        headers: getAuthHeaders(),
-        body: JSON.stringify(newTerminal),
-      });
-
-      if (res.ok) {
-        loadData();
-        setShowAddModal(false);
-        setNewTerminal({ name: '', terminal_type: 'stripe_s700', registration_code: '' });
-      }
+      await api.post('/card-terminals/terminals', newTerminal);
+      loadData();
+      setShowAddModal(false);
+      setNewTerminal({ name: '', terminal_type: 'stripe_s700', registration_code: '' });
     } catch (error) {
       console.error('Error registering terminal:', error);
     }
@@ -157,14 +149,8 @@ export default function CardTerminalsPage() {
   const deleteTerminal = async (terminalId: string) => {
     if (!confirm('Are you sure you want to delete this terminal?')) return;
     try {
-      const res = await fetch(`${API_URL}/card-terminals/terminals/${terminalId}`, {
-        credentials: 'include',
-        method: 'DELETE',
-        headers: getAuthHeaders(),
-      });
-      if (res.ok) {
-        loadData();
-      }
+      await api.del(`/card-terminals/terminals/${terminalId}`);
+      loadData();
     } catch (error) {
       console.error('Error deleting terminal:', error);
     }
@@ -172,18 +158,9 @@ export default function CardTerminalsPage() {
 
   const createTestPayment = async () => {
     try {
-      const res = await fetch(`${API_URL}/card-terminals/payments`, {
-        credentials: 'include',
-        method: 'POST',
-        headers: getAuthHeaders(),
-        body: JSON.stringify(testPayment),
-      });
-
-      if (res.ok) {
-        loadData();
-        setShowPaymentModal(false);
-        toast.success('Payment created! Present card to terminal.');
-      }
+      await api.post('/card-terminals/payments', testPayment);
+      loadData();
+      setShowPaymentModal(false);
     } catch (error) {
       console.error('Error creating payment:', error);
     }
@@ -191,12 +168,7 @@ export default function CardTerminalsPage() {
 
   const displayMessage = async (terminalId: string, message: string) => {
     try {
-      await fetch(`${API_URL}/card-terminals/terminals/${terminalId}/display`, {
-        credentials: 'include',
-        method: 'POST',
-        headers: getAuthHeaders(),
-        body: JSON.stringify({ message }),
-      });
+      await api.post(`/card-terminals/terminals/${terminalId}/display`, { message });
     } catch (error) {
       console.error('Error displaying message:', error);
     }
@@ -204,11 +176,7 @@ export default function CardTerminalsPage() {
 
   const clearDisplay = async (terminalId: string) => {
     try {
-      await fetch(`${API_URL}/card-terminals/terminals/${terminalId}/clear`, {
-        credentials: 'include',
-        method: 'POST',
-        headers: getAuthHeaders(),
-      });
+      await api.post(`/card-terminals/terminals/${terminalId}/clear`);
     } catch (error) {
       console.error('Error clearing display:', error);
     }
@@ -541,7 +509,7 @@ export default function CardTerminalsPage() {
               </div>
               <div className="p-6 space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-surface-700 mb-1">Terminal Name</label>
+                  <label className="block text-sm font-medium text-surface-700 mb-1">Terminal Name
                   <input
                     type="text"
                     value={newTerminal.name}
@@ -549,10 +517,11 @@ export default function CardTerminalsPage() {
                     className="w-full px-3 py-2 border border-surface-200 rounded-lg focus:ring-2 focus:ring-amber-500"
                     placeholder="e.g., Front Counter #1"
                   />
+                  </label>
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-surface-700 mb-2">Terminal Type</label>
+                  <span className="block text-sm font-medium text-surface-700 mb-2">Terminal Type</span>
                   <div className="space-y-2">
                     {terminalTypes.map((type) => (
                       <button
@@ -583,7 +552,7 @@ export default function CardTerminalsPage() {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-surface-700 mb-1">Registration Code</label>
+                  <label className="block text-sm font-medium text-surface-700 mb-1">Registration Code
                   <input
                     type="text"
                     value={newTerminal.registration_code}
@@ -591,6 +560,7 @@ export default function CardTerminalsPage() {
                     className="w-full px-3 py-2 border border-surface-200 rounded-lg focus:ring-2 focus:ring-amber-500 font-mono"
                     placeholder="Enter code from terminal screen"
                   />
+                  </label>
                   <p className="text-xs text-surface-500 mt-1">
                     The registration code is displayed on the terminal during setup
                   </p>
@@ -631,7 +601,7 @@ export default function CardTerminalsPage() {
               </div>
               <div className="p-6 space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-surface-700 mb-1">Terminal</label>
+                  <label className="block text-sm font-medium text-surface-700 mb-1">Terminal
                   <select
                     value={testPayment.terminal_id}
                     onChange={(e) => setTestPayment({ ...testPayment, terminal_id: e.target.value })}
@@ -641,10 +611,11 @@ export default function CardTerminalsPage() {
                       <option key={t.terminal_id} value={t.terminal_id}>{t.name}</option>
                     ))}
                   </select>
+                  </label>
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-surface-700 mb-1">Amount</label>
+                  <label className="block text-sm font-medium text-surface-700 mb-1">Amount
                   <div className="relative">
                     <span className="absolute left-3 top-2 text-surface-500">$</span>
                     <input
@@ -656,16 +627,18 @@ export default function CardTerminalsPage() {
                       min="0.01"
                     />
                   </div>
+                  </label>
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-surface-700 mb-1">Order ID</label>
+                  <label className="block text-sm font-medium text-surface-700 mb-1">Order ID
                   <input
                     type="text"
                     value={testPayment.order_id}
                     onChange={(e) => setTestPayment({ ...testPayment, order_id: e.target.value })}
                     className="w-full px-3 py-2 border border-surface-200 rounded-lg font-mono"
                   />
+                  </label>
                 </div>
               </div>
               <div className="p-6 border-t border-surface-100 flex justify-end gap-3">

@@ -363,7 +363,7 @@ export default function PriceListsPage() {
           <div className="space-y-6">
             {/* Price List Selector */}
             <div className="bg-white rounded-xl p-4 shadow-sm">
-              <label className="block text-sm font-medium text-gray-700 mb-2">Select Price List</label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Select Price List
               <select
                 value={selectedPriceList?.id || ""}
                 onChange={(e) => setSelectedPriceList(priceLists.find(p => p.id === parseInt(e.target.value)) || null)}
@@ -374,6 +374,7 @@ export default function PriceListsPage() {
                   <option key={list.id} value={list.id}>{list.name}</option>
                 ))}
               </select>
+              </label>
             </div>
 
             {selectedPriceList && (
@@ -446,7 +447,7 @@ export default function PriceListsPage() {
             <form onSubmit={handleSubmit} className="p-6 space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Name *</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Name *
                   <input
                     type="text"
                     value={form.name}
@@ -455,9 +456,10 @@ export default function PriceListsPage() {
                     className="w-full border border-gray-300 rounded-lg px-3 py-2"
                     placeholder="Happy Hour"
                   />
+                  </label>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Code *</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Code *
                   <input
                     type="text"
                     value={form.code}
@@ -466,11 +468,12 @@ export default function PriceListsPage() {
                     className="w-full border border-gray-300 rounded-lg px-3 py-2 font-mono"
                     placeholder="happy_hour"
                   />
+                  </label>
                 </div>
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Description
                 <textarea
                   value={form.description}
                   onChange={e => setForm({ ...form, description: e.target.value })}
@@ -478,31 +481,34 @@ export default function PriceListsPage() {
                   className="w-full border border-gray-300 rounded-lg px-3 py-2"
                   placeholder="Optional description..."
                 />
+                </label>
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Start Time</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Start Time
                   <input
                     type="time"
                     value={form.start_time}
                     onChange={e => setForm({ ...form, start_time: e.target.value })}
                     className="w-full border border-gray-300 rounded-lg px-3 py-2"
                   />
+                  </label>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">End Time</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">End Time
                   <input
                     type="time"
                     value={form.end_time}
                     onChange={e => setForm({ ...form, end_time: e.target.value })}
                     className="w-full border border-gray-300 rounded-lg px-3 py-2"
                   />
+                  </label>
                 </div>
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Active Days</label>
+                <span className="block text-sm font-medium text-gray-700 mb-2">Active Days</span>
                 <div className="flex flex-wrap gap-2">
                   {DAYS.map((day, idx) => (
                     <button
@@ -523,17 +529,18 @@ export default function PriceListsPage() {
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Priority</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Priority
                   <input
                     type="number"
                     value={form.priority}
                     onChange={e => setForm({ ...form, priority: parseInt(e.target.value) || 0 })}
                     className="w-full border border-gray-300 rounded-lg px-3 py-2"
                   />
+                  </label>
                   <p className="text-xs text-gray-500 mt-1">Higher = more priority</p>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Min Order Amount</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Min Order Amount
                   <input
                     type="number"
                     step="0.01"
@@ -542,6 +549,7 @@ export default function PriceListsPage() {
                     className="w-full border border-gray-300 rounded-lg px-3 py-2"
                     placeholder="0.00"
                   />
+                  </label>
                 </div>
               </div>
 
@@ -597,7 +605,7 @@ export default function PriceListsPage() {
             </div>
             <form onSubmit={handleAddProductPrice} className="p-6 space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Product *</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Product *
                 <select
                   value={priceForm.product_id}
                   onChange={e => setPriceForm({ ...priceForm, product_id: e.target.value })}
@@ -609,10 +617,11 @@ export default function PriceListsPage() {
                     <option key={p.id} value={p.id}>{p.name} (${p.price})</option>
                   ))}
                 </select>
+                </label>
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Price *</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Price *
                 <input
                   type="number"
                   step="0.01"
@@ -622,10 +631,11 @@ export default function PriceListsPage() {
                   className="w-full border border-gray-300 rounded-lg px-3 py-2"
                   placeholder="0.00"
                 />
+                </label>
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Adjustment Type</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Adjustment Type
                 <select
                   value={priceForm.adjustment_type}
                   onChange={e => setPriceForm({ ...priceForm, adjustment_type: e.target.value })}
@@ -635,11 +645,12 @@ export default function PriceListsPage() {
                   <option value="percent_markup">Percent Markup</option>
                   <option value="percent_discount">Percent Discount</option>
                 </select>
+                </label>
               </div>
 
               {priceForm.adjustment_type !== "fixed" && (
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Adjustment Value (%)</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Adjustment Value (%)
                   <input
                     type="number"
                     step="0.1"
@@ -648,6 +659,7 @@ export default function PriceListsPage() {
                     className="w-full border border-gray-300 rounded-lg px-3 py-2"
                     placeholder="10"
                   />
+                  </label>
                 </div>
               )}
 

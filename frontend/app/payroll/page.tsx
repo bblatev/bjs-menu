@@ -361,7 +361,7 @@ export default function PayrollPage() {
       <div className="flex flex-wrap gap-4 items-center bg-white p-4 rounded-lg shadow">
         {/* Period Selection */}
         <div>
-          <label className="block text-sm text-gray-600 mb-1">Pay Period</label>
+          <label className="block text-sm text-gray-600 mb-1">Pay Period
           <select
             value={selectedPeriod?.label || ""}
             onChange={(e) => {
@@ -376,11 +376,12 @@ export default function PayrollPage() {
               </option>
             ))}
           </select>
+          </label>
         </div>
 
         {/* Status Filter */}
         <div>
-          <label className="block text-sm text-gray-600 mb-1">Status</label>
+          <label className="block text-sm text-gray-600 mb-1">Status
           <select
             value={filterStatus}
             onChange={(e) => setFilterStatus(e.target.value)}
@@ -392,6 +393,7 @@ export default function PayrollPage() {
             <option value="approved">Approved</option>
             <option value="paid">Paid</option>
           </select>
+          </label>
         </div>
 
         {/* View Mode */}
@@ -651,7 +653,7 @@ export default function PayrollPage() {
             <div className="p-6 space-y-4">
               {/* Staff Selection */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Staff Member *</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Staff Member *
                 <select
                   value={formData.staff_id}
                   onChange={(e) => setFormData({ ...formData, staff_id: Number(e.target.value) })}
@@ -665,12 +667,13 @@ export default function PayrollPage() {
                     </option>
                   ))}
                 </select>
+                </label>
               </div>
 
               {/* Hours */}
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Regular Hours</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Regular Hours
                   <input
                     type="number"
                     value={formData.regular_hours}
@@ -678,9 +681,10 @@ export default function PayrollPage() {
                     className="w-full border rounded-lg px-3 py-2"
                     min={0}
                   />
+                  </label>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Overtime Hours</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Overtime Hours
                   <input
                     type="number"
                     value={formData.overtime_hours}
@@ -688,13 +692,14 @@ export default function PayrollPage() {
                     className="w-full border rounded-lg px-3 py-2"
                     min={0}
                   />
+                  </label>
                 </div>
               </div>
 
               {/* Tips & Bonuses */}
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Tips (BGN)</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Tips (BGN)
                   <input
                     type="number"
                     value={formData.tips}
@@ -703,9 +708,10 @@ export default function PayrollPage() {
                     min={0}
                     step={0.01}
                   />
+                  </label>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Bonuses (BGN)</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Bonuses (BGN)
                   <input
                     type="number"
                     value={formData.bonuses}
@@ -714,12 +720,13 @@ export default function PayrollPage() {
                     min={0}
                     step={0.01}
                   />
+                  </label>
                 </div>
               </div>
 
               {/* Deductions */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Deductions (BGN)</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Deductions (BGN)
                 <input
                   type="number"
                   value={formData.deductions}
@@ -728,6 +735,7 @@ export default function PayrollPage() {
                   min={0}
                   step={0.01}
                 />
+                </label>
                 <p className="text-xs text-gray-500 mt-1">Leave at 0 to auto-calculate 15% tax</p>
               </div>
 

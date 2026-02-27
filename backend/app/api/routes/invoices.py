@@ -6,6 +6,7 @@ from fastapi import APIRouter, HTTPException, UploadFile, File, Query, Request
 
 from app.db.session import DbSession
 from app.core.rate_limit import limiter
+from app.core.responses import list_response, paginated_response
 from app.models.invoice import Invoice, InvoiceLine, GLCode, PriceAlert, PriceHistory
 from app.services.invoice_service import InvoiceOCRService, APAutomationService, PriceTrackingService
 from app.schemas.invoice import (
@@ -107,7 +108,7 @@ def get_invoice_suppliers(request: Request, db: DbSession):
 
 # ==================== Invoice CRUD ====================
 
-@router.get("/", response_model=List[InvoiceResponse])
+@router.get("/")
 @limiter.limit("60/minute")
 def list_invoices(
     request: Request,
@@ -131,7 +132,14 @@ def list_invoices(
     if end_date:
         query = query.filter(Invoice.invoice_date <= end_date)
 
-    return query.offset(skip).limit(limit).all()
+    total = query.count()
+    items = query.offset(skip).limit(limit).all()
+    return paginated_response(
+        items=[InvoiceResponse.model_validate(i) for i in items],
+        total=total,
+        skip=skip,
+        limit=limit,
+    )
 
 
 @router.get("/pending", response_model=List[InvoiceResponse])

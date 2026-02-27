@@ -526,7 +526,7 @@ export default function StaffSchedulesPage() {
 
               <div className="space-y-4">
                 <div>
-                  <label className="block text-gray-300 mb-1">Staff Member</label>
+                  <label className="block text-gray-300 mb-1">Staff Member
                   <select
                     value={shiftForm.staff_id}
                     onChange={(e) => setShiftForm({ ...shiftForm, staff_id: parseInt(e.target.value) })}
@@ -536,20 +536,22 @@ export default function StaffSchedulesPage() {
                       <option key={s.id} value={s.id}>{s.name} ({s.role})</option>
                     ))}
                   </select>
+                  </label>
                 </div>
 
                 <div>
-                  <label className="block text-gray-300 mb-1">Date</label>
+                  <label className="block text-gray-300 mb-1">Date
                   <input
                     type="date"
                     value={shiftForm.date}
                     onChange={(e) => setShiftForm({ ...shiftForm, date: e.target.value })}
                     className="w-full px-4 py-2 bg-white border border-gray-300 rounded-lg text-gray-900"
                   />
+                  </label>
                 </div>
 
                 <div>
-                  <label className="block text-gray-300 mb-1">Shift Type</label>
+                  <span className="block text-gray-300 mb-1">Shift Type</span>
                   <div className="grid grid-cols-3 gap-2">
                     {Object.entries(SHIFT_TYPES).map(([key, type]) => (
                       <button
@@ -574,28 +576,30 @@ export default function StaffSchedulesPage() {
 
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-gray-300 mb-1">Start Time</label>
+                    <label className="block text-gray-300 mb-1">Start Time
                     <input
                       type="time"
                       value={shiftForm.start_time}
                       onChange={(e) => setShiftForm({ ...shiftForm, start_time: e.target.value })}
                       className="w-full px-4 py-2 bg-white border border-gray-300 rounded-lg text-gray-900"
                     />
+                    </label>
                   </div>
                   <div>
-                    <label className="block text-gray-300 mb-1">End Time</label>
+                    <label className="block text-gray-300 mb-1">End Time
                     <input
                       type="time"
                       value={shiftForm.end_time}
                       onChange={(e) => setShiftForm({ ...shiftForm, end_time: e.target.value })}
                       className="w-full px-4 py-2 bg-white border border-gray-300 rounded-lg text-gray-900"
                     />
+                    </label>
                   </div>
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-gray-300 mb-1">Position</label>
+                    <label className="block text-gray-300 mb-1">Position
                     <select
                       value={shiftForm.position}
                       onChange={(e) => setShiftForm({ ...shiftForm, position: e.target.value })}
@@ -605,9 +609,10 @@ export default function StaffSchedulesPage() {
                         <option key={pos} value={pos}>{pos}</option>
                       ))}
                     </select>
+                    </label>
                   </div>
                   <div>
-                    <label className="block text-gray-300 mb-1">Break (min)</label>
+                    <label className="block text-gray-300 mb-1">Break (min)
                     <input
                       type="number"
                       min="0"
@@ -616,17 +621,19 @@ export default function StaffSchedulesPage() {
                       onChange={(e) => setShiftForm({ ...shiftForm, break_minutes: parseInt(e.target.value) })}
                       className="w-full px-4 py-2 bg-white border border-gray-300 rounded-lg text-gray-900"
                     />
+                    </label>
                   </div>
                 </div>
 
                 <div>
-                  <label className="block text-gray-300 mb-1">Notes</label>
+                  <label className="block text-gray-300 mb-1">Notes
                   <textarea
                     value={shiftForm.notes}
                     onChange={(e) => setShiftForm({ ...shiftForm, notes: e.target.value })}
                     className="w-full px-4 py-2 bg-white border border-gray-300 rounded-lg text-gray-900"
                     rows={2}
                   />
+                  </label>
                 </div>
               </div>
 

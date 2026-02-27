@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
-import { api, API_URL, getAuthHeaders } from '@/lib/api';
+import { api } from '@/lib/api';
 
 import { toast } from '@/lib/toast';
 interface StockItem {
@@ -144,7 +144,7 @@ export default function StockPage() {
   const loadMovements = async () => {
     try {
       const data = await api.get<any>('/stock/movements/');
-      const movementList = Array.isArray(data) ? data : (data.movements || []);
+      const movementList = Array.isArray(data) ? data : (data.items || data.movements || []);
       setMovements(movementList.map((m: any) => ({
         id: String(m.id),
         item_id: m.product_id || m.stock_item_id || m.item_id,
@@ -162,8 +162,9 @@ export default function StockPage() {
 
   const loadSuppliers = async () => {
     try {
-      const data = await api.get<any[]>('/suppliers/');
-      setSuppliers(data.map((s: { id: number; name?: string; company_name?: string; contact_name?: string; contact_person?: string; email?: string; phone?: string; phone_number?: string; lead_time_days?: number; delivery_days?: number; min_order?: number; minimum_order?: number }) => ({
+      const rawData = await api.get<any>('/suppliers/');
+      const suppliersList = Array.isArray(rawData) ? rawData : (rawData.items || rawData.suppliers || []);
+      setSuppliers(suppliersList.map((s: { id: number; name?: string; company_name?: string; contact_name?: string; contact_person?: string; email?: string; phone?: string; phone_number?: string; lead_time_days?: number; delivery_days?: number; min_order?: number; minimum_order?: number }) => ({
         id: String(s.id),
         name: s.name || s.company_name || '',
         contact: s.contact_name || s.contact_person || '',
@@ -180,7 +181,7 @@ export default function StockPage() {
   const loadAlerts = async () => {
     try {
       const data = await api.get<any>('/stock/alerts/');
-      const alertList = Array.isArray(data) ? data : (data.alerts || []);
+      const alertList = Array.isArray(data) ? data : (data.items || data.alerts || []);
       setAlerts(alertList.map((a: any, idx: number) => ({
         id: String(a.id || idx),
         item_id: a.product_id || a.stock_item_id || a.item_id,
@@ -278,28 +279,15 @@ export default function StockPage() {
 
   const handleExport = async () => {
     try {
-      const response = await fetch(
-        `${API_URL}/stock/export`,
-        {
-          credentials: 'include',
-          headers: getAuthHeaders(),
-        }
-      );
-
-      if (response.ok) {
-        // Backend returns CSV text directly with text/csv content type
-        const csvText = await response.text();
-
-        const blob = new Blob([csvText], { type: "text/csv" });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = `stock_export_${new Date().toISOString().split("T")[0]}.csv`;
-        a.click();
-        URL.revokeObjectURL(url);
-      } else {
-        toast.error("Export failed");
-      }
+      const csvText: any = await api.get('/stock/export');
+      // Backend returns CSV text directly with text/csv content type
+      const blob = new Blob([csvText], { type: "text/csv" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `stock_export_${new Date().toISOString().split("T")[0]}.csv`;
+      a.click();
+      URL.revokeObjectURL(url);
     } catch {
       toast.error("Error exporting data");
     }
@@ -808,7 +796,7 @@ export default function StockPage() {
               <h2 className="text-2xl font-bold text-gray-900 mb-6">Add Stock Item</h2>
               <form onSubmit={handleSubmit} className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Name</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Name
                   <input
                     type="text"
                     placeholder="Item name"
@@ -817,10 +805,11 @@ export default function StockPage() {
                     required
                     className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-transparent"
                   />
+                  </label>
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">SKU</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">SKU
                     <input
                       type="text"
                       placeholder="SKU code"
@@ -828,9 +817,10 @@ export default function StockPage() {
                       onChange={(e) => setForm({ ...form, sku: e.target.value })}
                       className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-transparent"
                     />
+                    </label>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Category</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Category
                     <select
                       value={form.category}
                       onChange={(e) => setForm({ ...form, category: e.target.value })}
@@ -840,11 +830,12 @@ export default function StockPage() {
                         <option key={cat} value={cat}>{cat.charAt(0).toUpperCase() + cat.slice(1)}</option>
                       ))}
                     </select>
+                    </label>
                   </div>
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Quantity</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Quantity
                     <input
                       type="number"
                       placeholder="0"
@@ -853,9 +844,10 @@ export default function StockPage() {
                       required
                       className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-transparent"
                     />
+                    </label>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Unit</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Unit
                     <select
                       value={form.unit}
                       onChange={(e) => setForm({ ...form, unit: e.target.value })}
@@ -869,11 +861,12 @@ export default function StockPage() {
                       <option value="bottles">bottles</option>
                       <option value="boxes">boxes</option>
                     </select>
+                    </label>
                   </div>
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Cost per Unit (EUR)</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Cost per Unit (EUR)
                     <input
                       type="number"
                       step="0.01"
@@ -882,9 +875,10 @@ export default function StockPage() {
                       onChange={(e) => setForm({ ...form, cost_per_unit: Number(e.target.value) })}
                       className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-transparent"
                     />
+                    </label>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Low Stock Threshold</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Low Stock Threshold
                     <input
                       type="number"
                       placeholder="10"
@@ -893,10 +887,11 @@ export default function StockPage() {
                       required
                       className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-transparent"
                     />
+                    </label>
                   </div>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Location</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Location
                   <input
                     type="text"
                     placeholder="Storage location"
@@ -904,6 +899,7 @@ export default function StockPage() {
                     onChange={(e) => setForm({ ...form, location: e.target.value })}
                     className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-transparent"
                   />
+                  </label>
                 </div>
                 <div className="flex gap-3 pt-4">
                   <button
@@ -939,7 +935,7 @@ export default function StockPage() {
               <h2 className="text-2xl font-bold text-gray-900 mb-6">Record Stock Movement</h2>
               <form onSubmit={handleMovementSubmit} className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Item</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Item
                   <select
                     value={movementForm.item_id}
                     onChange={(e) => setMovementForm({ ...movementForm, item_id: Number(e.target.value) })}
@@ -951,9 +947,10 @@ export default function StockPage() {
                       <option key={item.id} value={(item as any).product_id || item.id}>{getItemName(item)}</option>
                     ))}
                   </select>
+                  </label>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Movement Type</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Movement Type
                   <select
                     value={movementForm.type}
                     onChange={(e) => setMovementForm({ ...movementForm, type: e.target.value as any })}
@@ -964,9 +961,10 @@ export default function StockPage() {
                     <option value="adjustment">Adjustment</option>
                     <option value="waste">Waste / Spoilage</option>
                   </select>
+                  </label>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Quantity</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Quantity
                   <input
                     type="number"
                     placeholder="0"
@@ -975,9 +973,10 @@ export default function StockPage() {
                     required
                     className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-transparent"
                   />
+                  </label>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Reason / Notes</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Reason / Notes
                   <textarea
                     placeholder="Reason for this movement..."
                     value={movementForm.reason}
@@ -985,6 +984,7 @@ export default function StockPage() {
                     rows={3}
                     className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-transparent resize-none"
                   />
+                  </label>
                 </div>
                 <div className="flex gap-3 pt-4">
                   <button

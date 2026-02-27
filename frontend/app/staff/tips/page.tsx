@@ -348,7 +348,7 @@ export default function TipCompliancePage() {
 
             <div className="p-6 space-y-5">
               <div>
-                <label className="block text-sm font-medium text-surface-700 mb-1">Rule Name</label>
+                <label className="block text-sm font-medium text-surface-700 mb-1">Rule Name
                 <input
                   type="text"
                   value={ruleForm.name}
@@ -356,10 +356,11 @@ export default function TipCompliancePage() {
                   className="w-full px-4 py-2 border border-surface-300 rounded-lg focus:ring-2 focus:ring-primary-500"
                   placeholder="e.g., Evening Shift Pool"
                 />
+                </label>
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-surface-700 mb-1">Distribution Method</label>
+                <label className="block text-sm font-medium text-surface-700 mb-1">Distribution Method
                 <select
                   value={ruleForm.distribution_method}
                   onChange={(e) => setRuleForm({ ...ruleForm, distribution_method: e.target.value as TipPoolRule['distribution_method'] })}
@@ -370,10 +371,11 @@ export default function TipCompliancePage() {
                   <option value="points">Point System (by role)</option>
                   <option value="percentage">Fixed Percentage (by role)</option>
                 </select>
+                </label>
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-surface-700 mb-1">Eligible Roles</label>
+                <label className="block text-sm font-medium text-surface-700 mb-1">Eligible Roles
                 <div className="flex flex-wrap gap-2">
                   {['server', 'bartender', 'busser', 'host', 'runner', 'barback'].map((role) => (
                     <label key={role} className="flex items-center gap-1.5 text-sm">
@@ -392,10 +394,11 @@ export default function TipCompliancePage() {
                     </label>
                   ))}
                 </div>
+                </label>
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-surface-700 mb-1">Excluded Roles</label>
+                <label className="block text-sm font-medium text-surface-700 mb-1">Excluded Roles
                 <div className="flex flex-wrap gap-2">
                   {['manager', 'owner', 'chef', 'dishwasher'].map((role) => (
                     <label key={role} className="flex items-center gap-1.5 text-sm">
@@ -414,11 +417,12 @@ export default function TipCompliancePage() {
                     </label>
                   ))}
                 </div>
+                </label>
               </div>
 
               {ruleForm.distribution_method === 'points' && (
                 <div>
-                  <label className="block text-sm font-medium text-surface-700 mb-1">Points per Role</label>
+                  <label className="block text-sm font-medium text-surface-700 mb-1">Points per Role
                   <div className="space-y-2">
                     {ruleForm.eligible_roles.map((role) => (
                       <div key={role} className="flex items-center gap-3">
@@ -437,12 +441,13 @@ export default function TipCompliancePage() {
                       </div>
                     ))}
                   </div>
+                  </label>
                 </div>
               )}
 
               {ruleForm.distribution_method === 'percentage' && (
                 <div>
-                  <label className="block text-sm font-medium text-surface-700 mb-1">Percentage per Role</label>
+                  <label className="block text-sm font-medium text-surface-700 mb-1">Percentage per Role
                   <div className="space-y-2">
                     {ruleForm.eligible_roles.map((role) => (
                       <div key={role} className="flex items-center gap-3">
@@ -462,6 +467,7 @@ export default function TipCompliancePage() {
                       </div>
                     ))}
                   </div>
+                  </label>
                 </div>
               )}
 

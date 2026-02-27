@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import AdminLayout from '@/components/AdminLayout';
-import { api, API_URL, getAuthHeaders } from '@/lib/api';
+import { api } from '@/lib/api';
 
 import { toast } from '@/lib/toast';
 interface Ingredient {
@@ -329,21 +329,15 @@ export default function RecipeCostsPage() {
   const exportReport = async () => {
     try {
       // CSV export returns text, not JSON - use raw fetch with cookie auth headers
-      const response = await fetch(`${API_URL}/recipes/export`, { credentials: 'include', headers: getAuthHeaders() });
-
-      if (response.ok) {
-        const csvText = await response.text();
-        const blob = new Blob([csvText], { type: 'text/csv' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `recipes_export_${new Date().toISOString().split('T')[0]}.csv`;
-        a.click();
-        URL.revokeObjectURL(url);
-        toast.success('Рецептите са експортирани успешно');
-      } else {
-        toast.error('Грешка при експортиране');
-      }
+      const csvText: any = await api.get('/recipes/export');
+      const blob = new Blob([csvText], { type: 'text/csv' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `recipes_export_${new Date().toISOString().split('T')[0]}.csv`;
+      a.click();
+      URL.revokeObjectURL(url);
+      toast.success('Рецептите са експортирани успешно');
     } catch {
       toast.error('Грешка при експортиране');
     }

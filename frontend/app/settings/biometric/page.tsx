@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { API_URL, getAuthHeaders } from "@/lib/api";
+import { api } from '@/lib/api';
 
 interface DeviceStatus {
   device_type: string;
@@ -58,7 +58,7 @@ interface AccessStats {
   by_auth_method: Record<string, number>;
 }
 
-// Using API_URL and getAuthHeaders from @/lib/api
+// Using api from @/lib/api
 
 export default function BiometricSettingsPage() {
   const [activeTab, setActiveTab] = useState<"device" | "enroll" | "logs" | "schedule">("device");
@@ -77,11 +77,8 @@ export default function BiometricSettingsPage() {
   // Fetch device status
   const fetchDeviceStatus = async () => {
     try {
-      const res = await fetch(`${API_URL}/biometric/device/status`, { credentials: 'include', headers: getAuthHeaders() });
-      if (res.ok) {
-        const data = await res.json();
-        setDeviceStatus(data);
-      }
+      const data: any = await api.get('/biometric/device/status');
+            setDeviceStatus(data);
     } catch (error) {
       console.error("Failed to fetch device status:", error);
     }
@@ -90,11 +87,8 @@ export default function BiometricSettingsPage() {
   // Fetch device types
   const fetchDeviceTypes = async () => {
     try {
-      const res = await fetch(`${API_URL}/biometric/device/types`, { credentials: 'include', headers: getAuthHeaders() });
-      if (res.ok) {
-        const data = await res.json();
-        setDeviceTypes(data.device_types || []);
-      }
+      const data: any = await api.get('/biometric/device/types');
+            setDeviceTypes(data.device_types || []);
     } catch (error) {
       console.error("Failed to fetch device types:", error);
     }
@@ -103,11 +97,8 @@ export default function BiometricSettingsPage() {
   // Fetch access log
   const fetchAccessLog = async () => {
     try {
-      const res = await fetch(`${API_URL}/biometric/access-log?limit=50`, { credentials: 'include', headers: getAuthHeaders() });
-      if (res.ok) {
-        const data = await res.json();
-        setAccessLog(data.entries || []);
-      }
+      const data: any = await api.get('/biometric/access-log?limit=50');
+            setAccessLog(data.entries || []);
     } catch (error) {
       console.error("Failed to fetch access log:", error);
     }
@@ -116,11 +107,8 @@ export default function BiometricSettingsPage() {
   // Fetch access stats
   const fetchAccessStats = async () => {
     try {
-      const res = await fetch(`${API_URL}/biometric/access-log/stats?days=7`, { credentials: 'include', headers: getAuthHeaders() });
-      if (res.ok) {
-        const data = await res.json();
-        setAccessStats(data);
-      }
+      const data: any = await api.get('/biometric/access-log/stats?days=7');
+            setAccessStats(data);
     } catch (error) {
       console.error("Failed to fetch access stats:", error);
     }
@@ -130,19 +118,9 @@ export default function BiometricSettingsPage() {
   const configureDevice = async () => {
     setLoading(true);
     try {
-      const res = await fetch(`${API_URL}/biometric/device/configure`, {
-        credentials: 'include',
-        method: "POST",
-        headers: getAuthHeaders(),
-        body: JSON.stringify({ device_type: selectedDeviceType }),
-      });
-      if (res.ok) {
-        setMessage({ type: "success", text: "Устройството е конфигурирано / Device configured" });
-        fetchDeviceStatus();
-      } else {
-        const data = await res.json();
-        setMessage({ type: "error", text: data.detail || "Configuration failed" });
-      }
+      await api.post('/biometric/device/configure', { device_type: selectedDeviceType });
+      setMessage({ type: "success", text: "Устройството е конфигурирано / Device configured" });
+      fetchDeviceStatus();
     } catch (error) {
       setMessage({ type: "error", text: "Connection error" });
     }
@@ -154,14 +132,8 @@ export default function BiometricSettingsPage() {
     if (!staffId) return;
     setLoading(true);
     try {
-      const res = await fetch(`${API_URL}/biometric/staff/${staffId}/credentials`, { credentials: 'include', headers: getAuthHeaders() });
-      if (res.ok) {
-        const data = await res.json();
-        setStaffCredentials(data);
-      } else {
-        setMessage({ type: "error", text: "Staff not found" });
-        setStaffCredentials(null);
-      }
+      const data: any = await api.get(`/biometric/staff/${staffId}/credentials`);
+            setStaffCredentials(data);
     } catch (error) {
       setMessage({ type: "error", text: "Connection error" });
     }
@@ -173,22 +145,12 @@ export default function BiometricSettingsPage() {
     if (!staffId) return;
     setLoading(true);
     try {
-      const res = await fetch(`${API_URL}/biometric/fingerprint/enroll`, {
-        credentials: 'include',
-        method: "POST",
-        headers: getAuthHeaders(),
-        body: JSON.stringify({
+      await api.post('/biometric/fingerprint/enroll', {
           staff_id: parseInt(staffId),
           quality_score: 0.85,
-        }),
-      });
-      if (res.ok) {
-        setMessage({ type: "success", text: "Отпечатъкът е записан / Fingerprint enrolled" });
-        fetchStaffCredentials();
-      } else {
-        const data = await res.json();
-        setMessage({ type: "error", text: data.detail || "Enrollment failed" });
-      }
+        });
+      setMessage({ type: "success", text: "Отпечатъкът е записан / Fingerprint enrolled" });
+      fetchStaffCredentials();
     } catch (error) {
       setMessage({ type: "error", text: "Connection error" });
     }
@@ -200,25 +162,15 @@ export default function BiometricSettingsPage() {
     if (!staffId || !cardNumber) return;
     setLoading(true);
     try {
-      const res = await fetch(`${API_URL}/biometric/card/register`, {
-        credentials: 'include',
-        method: "POST",
-        headers: getAuthHeaders(),
-        body: JSON.stringify({
+      await api.post('/biometric/card/register', {
           staff_id: parseInt(staffId),
           card_number: cardNumber,
           card_type: cardType,
           valid_days: 365,
-        }),
-      });
-      if (res.ok) {
-        setMessage({ type: "success", text: "Картата е регистрирана / Card registered" });
-        setCardNumber("");
-        fetchStaffCredentials();
-      } else {
-        const data = await res.json();
-        setMessage({ type: "error", text: data.detail || "Registration failed" });
-      }
+        });
+      setMessage({ type: "success", text: "Картата е регистрирана / Card registered" });
+      setCardNumber("");
+      fetchStaffCredentials();
     } catch (error) {
       setMessage({ type: "error", text: "Connection error" });
     }
@@ -230,16 +182,11 @@ export default function BiometricSettingsPage() {
     setLoading(true);
     try {
       const endpoint = type === "fingerprint"
-        ? `${API_URL}/biometric/fingerprint/${credentialId}`
-        : `${API_URL}/biometric/card/${credentialId}`;
-      const res = await fetch(endpoint, { credentials: 'include', method: "DELETE", headers: getAuthHeaders() });
-      if (res.ok) {
-        setMessage({ type: "success", text: "Идентификаторът е деактивиран / Credential revoked" });
-        fetchStaffCredentials();
-      } else {
-        const data = await res.json();
-        setMessage({ type: "error", text: data.detail || "Revocation failed" });
-      }
+        ? `/biometric/fingerprint/${credentialId}`
+        : `/biometric/card/${credentialId}`;
+      await api.del(endpoint);
+      setMessage({ type: "success", text: "Идентификаторът е деактивиран / Credential revoked" });
+      fetchStaffCredentials();
     } catch (error) {
       setMessage({ type: "error", text: "Connection error" });
     }
@@ -382,7 +329,6 @@ export default function BiometricSettingsPage() {
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Тип устройство / Device Type
-                  </label>
                   <select
                     value={selectedDeviceType}
                     onChange={(e) => setSelectedDeviceType(e.target.value)}
@@ -394,6 +340,7 @@ export default function BiometricSettingsPage() {
                       </option>
                     ))}
                   </select>
+                  </label>
                   {deviceTypes.find((dt) => dt.type === selectedDeviceType) && (
                     <p className="mt-2 text-sm text-gray-500">
                       {deviceTypes.find((dt) => dt.type === selectedDeviceType)?.description}
@@ -584,7 +531,6 @@ export default function BiometricSettingsPage() {
                     <div className="flex-1">
                       <label className="block text-sm font-medium text-gray-700 mb-1">
                         Номер на карта / Card Number
-                      </label>
                       <input
                         type="text"
                         value={cardNumber}
@@ -592,11 +538,11 @@ export default function BiometricSettingsPage() {
                         placeholder="e.g., 1234567890"
                         className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
                       />
+                      </label>
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">
                         Тип / Type
-                      </label>
                       <select
                         value={cardType}
                         onChange={(e) => setCardType(e.target.value)}
@@ -606,6 +552,7 @@ export default function BiometricSettingsPage() {
                         <option value="nfc">NFC</option>
                         <option value="magnetic">Magnetic</option>
                       </select>
+                      </label>
                     </div>
                     <button
                       onClick={registerCard}

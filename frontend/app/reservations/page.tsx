@@ -108,7 +108,7 @@ export default function ReservationsPage() {
       }
 
       const data = await api.get<any>(`/reservations/?date=${selectedDate}`);
-      setReservations(data.reservations || data || []);
+      setReservations(data.items || data.reservations || []);
     } catch (err: any) {
       console.error('Error loading reservations:', err);
       if (err?.status === 401) {
@@ -135,7 +135,7 @@ export default function ReservationsPage() {
   const loadTables = async () => {
     try {
       const data = await api.get<any>('/tables/');
-      setTables(data || []);
+      setTables(Array.isArray(data) ? data : (data.items || data.tables || []));
     } catch (err) {
       console.error('Error loading tables:', err);
     }
@@ -795,7 +795,7 @@ export default function ReservationsPage() {
               <div className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-gray-300 mb-1">Guest Name *</label>
+                    <label className="block text-gray-300 mb-1">Guest Name *
                     <input
                       type="text"
                       value={formData.guest_name}
@@ -803,9 +803,10 @@ export default function ReservationsPage() {
                       className="w-full px-4 py-2 bg-white border border-gray-300 rounded-lg text-gray-900"
                       required
                     />
+                    </label>
                   </div>
                   <div>
-                    <label className="block text-gray-300 mb-1">Phone *</label>
+                    <label className="block text-gray-300 mb-1">Phone *
                     <input
                       type="tel"
                       value={formData.guest_phone}
@@ -813,22 +814,24 @@ export default function ReservationsPage() {
                       className="w-full px-4 py-2 bg-white border border-gray-300 rounded-lg text-gray-900"
                       required
                     />
+                    </label>
                   </div>
                 </div>
 
                 <div>
-                  <label className="block text-gray-300 mb-1">Email</label>
+                  <label className="block text-gray-300 mb-1">Email
                   <input
                     type="email"
                     value={formData.guest_email}
                     onChange={(e) => setFormData({ ...formData, guest_email: e.target.value })}
                     className="w-full px-4 py-2 bg-white border border-gray-300 rounded-lg text-gray-900"
                   />
+                  </label>
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-gray-300 mb-1">Date *</label>
+                    <label className="block text-gray-300 mb-1">Date *
                     <input
                       type="date"
                       value={formData.reservation_date}
@@ -836,9 +839,10 @@ export default function ReservationsPage() {
                       className="w-full px-4 py-2 bg-white border border-gray-300 rounded-lg text-gray-900"
                       required
                     />
+                    </label>
                   </div>
                   <div>
-                    <label className="block text-gray-300 mb-1">Time *</label>
+                    <label className="block text-gray-300 mb-1">Time *
                     <input
                       type="time"
                       value={formData.reservation_time}
@@ -846,12 +850,13 @@ export default function ReservationsPage() {
                       className="w-full px-4 py-2 bg-white border border-gray-300 rounded-lg text-gray-900"
                       required
                     />
+                    </label>
                   </div>
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-gray-300 mb-1">Party Size *</label>
+                    <label className="block text-gray-300 mb-1">Party Size *
                     <input
                       type="number"
                       min="1"
@@ -861,9 +866,10 @@ export default function ReservationsPage() {
                       className="w-full px-4 py-2 bg-white border border-gray-300 rounded-lg text-gray-900"
                       required
                     />
+                    </label>
                   </div>
                   <div>
-                    <label className="block text-gray-300 mb-1">Duration (min)</label>
+                    <label className="block text-gray-300 mb-1">Duration (min)
                     <select
                       value={formData.duration_minutes}
                       onChange={(e) => setFormData({ ...formData, duration_minutes: parseInt(e.target.value) })}
@@ -874,11 +880,12 @@ export default function ReservationsPage() {
                       <option value={120}>2 hours</option>
                       <option value={180}>3 hours</option>
                     </select>
+                    </label>
                   </div>
                 </div>
 
                 <div>
-                  <label className="block text-gray-300 mb-1">Assign Table</label>
+                  <label className="block text-gray-300 mb-1">Assign Table
                   <select
                     value={formData.table_id}
                     onChange={(e) => setFormData({ ...formData, table_id: e.target.value })}
@@ -891,10 +898,11 @@ export default function ReservationsPage() {
                       </option>
                     ))}
                   </select>
+                  </label>
                 </div>
 
                 <div>
-                  <label className="block text-gray-300 mb-1">Special Requests</label>
+                  <label className="block text-gray-300 mb-1">Special Requests
                   <textarea
                     value={formData.special_requests}
                     onChange={(e) => setFormData({ ...formData, special_requests: e.target.value })}
@@ -902,10 +910,11 @@ export default function ReservationsPage() {
                     rows={3}
                     placeholder="Allergies, celebrations, preferences..."
                   />
+                  </label>
                 </div>
 
                 <div>
-                  <label className="block text-gray-300 mb-1">Notes</label>
+                  <label className="block text-gray-300 mb-1">Notes
                   <input
                     type="text"
                     value={formData.notes}
@@ -913,6 +922,7 @@ export default function ReservationsPage() {
                     className="w-full px-4 py-2 bg-white border border-gray-300 rounded-lg text-gray-900"
                     placeholder="Internal notes..."
                   />
+                  </label>
                 </div>
 
                 {/* Availability Check */}
@@ -1068,7 +1078,7 @@ export default function ReservationsPage() {
               </div>
 
               <div className="mb-4">
-                <label className="block text-gray-700 mb-2 font-medium">Deposit Amount (лв)</label>
+                <label className="block text-gray-700 mb-2 font-medium">Deposit Amount (лв)
                 <input
                   type="number"
                   min="0"
@@ -1077,10 +1087,11 @@ export default function ReservationsPage() {
                   onChange={(e) => setDepositAmount(parseFloat(e.target.value) || 0)}
                   className="w-full px-4 py-3 border border-gray-300 rounded-lg text-gray-900 text-lg"
                 />
+                </label>
               </div>
 
               <div className="mb-4">
-                <label className="block text-gray-700 mb-2 font-medium">Payment Method</label>
+                <span className="block text-gray-700 mb-2 font-medium">Payment Method</span>
                 <div className="grid grid-cols-3 gap-2">
                   <button className="px-4 py-3 border-2 border-blue-500 bg-blue-50 text-blue-700 rounded-lg font-medium">
                     💳 Card
@@ -1308,7 +1319,7 @@ export default function ReservationsPage() {
               </div>
 
               <div className="mb-4">
-                <label className="block text-gray-700 mb-2 font-medium">Refund Amount (лв)</label>
+                <label className="block text-gray-700 mb-2 font-medium">Refund Amount (лв)
                 <input
                   type="number"
                   min="0"
@@ -1318,6 +1329,7 @@ export default function ReservationsPage() {
                   onChange={(e) => setRefundAmount(parseFloat(e.target.value) || 0)}
                   className="w-full px-4 py-3 border border-gray-300 rounded-lg text-gray-900 text-lg"
                 />
+                </label>
                 <div className="flex gap-2 mt-2">
                   <button
                     onClick={() => setRefundAmount(selectedReservationForRefund.deposit_amount || 0)}

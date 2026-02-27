@@ -2,7 +2,9 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { getVenueId } from '@/lib/auth';
 
-import { API_URL, getAuthHeaders } from '@/lib/api';
+import { api } from '@/lib/api';
+
+
 
 interface VirtualBrand {
   id: string;
@@ -71,28 +73,22 @@ export default function CloudKitchenPage() {
   // Fetch virtual brands
   const fetchBrands = useCallback(async () => {
     try {
-      const response = await fetch(`${API_URL}/v6/${getVenueId()}/cloud-kitchen/brands`, {
-        credentials: 'include',
-        headers: getAuthHeaders(),
-      });
-      if (response.ok) {
-        const data = await response.json();
-        const brandsData = (data.brands || []).map((b: any) => ({
-          id: b.id || b.brand_id,
-          name: b.name,
-          logo: b.logo || '🍽️',
-          cuisineType: b.cuisine_type || 'Друго',
-          description: b.description || '',
-          platforms: b.platforms || [],
-          status: b.status || 'draft',
-          menuItems: b.menu_items_count || 0,
-          ordersToday: b.orders_today || 0,
-          revenueToday: b.revenue_today || 0,
-          rating: b.rating || 0,
-          color: CUISINE_COLORS[b.cuisine_type] || CUISINE_COLORS.default,
-        }));
-        setBrands(brandsData);
-      }
+      const data: any = await api.get(`/v6/${getVenueId()}/cloud-kitchen/brands`);
+            const brandsData = (data.brands || []).map((b: any) => ({
+      id: b.id || b.brand_id,
+      name: b.name,
+      logo: b.logo || '🍽️',
+      cuisineType: b.cuisine_type || 'Друго',
+      description: b.description || '',
+      platforms: b.platforms || [],
+      status: b.status || 'draft',
+      menuItems: b.menu_items_count || 0,
+      ordersToday: b.orders_today || 0,
+      revenueToday: b.revenue_today || 0,
+      rating: b.rating || 0,
+      color: CUISINE_COLORS[b.cuisine_type] || CUISINE_COLORS.default,
+      }));
+      setBrands(brandsData);
     } catch (err) {
       console.error('Error fetching brands:', err);
       setBrands([]);
@@ -102,23 +98,17 @@ export default function CloudKitchenPage() {
   // Fetch kitchen stations
   const fetchStations = useCallback(async () => {
     try {
-      const response = await fetch(`${API_URL}/v6/${getVenueId()}/cloud-kitchen/stations`, {
-        credentials: 'include',
-        headers: getAuthHeaders(),
-      });
-      if (response.ok) {
-        const data = await response.json();
-        const stationsData = (data.stations || []).map((s: any) => ({
-          id: s.id || s.station_id,
-          name: s.name,
-          type: s.station_type || 'prep',
-          maxConcurrent: s.max_concurrent_orders || 5,
-          currentOrders: s.current_orders || 0,
-          assignedBrands: s.assigned_brands || [],
-          status: s.current_orders > s.max_concurrent_orders * 0.8 ? 'busy' : 'active',
-        }));
-        setStations(stationsData);
-      }
+      const data: any = await api.get(`/v6/${getVenueId()}/cloud-kitchen/stations`);
+            const stationsData = (data.stations || []).map((s: any) => ({
+      id: s.id || s.station_id,
+      name: s.name,
+      type: s.station_type || 'prep',
+      maxConcurrent: s.max_concurrent_orders || 5,
+      currentOrders: s.current_orders || 0,
+      assignedBrands: s.assigned_brands || [],
+      status: s.current_orders > s.max_concurrent_orders * 0.8 ? 'busy' : 'active',
+      }));
+      setStations(stationsData);
     } catch (err) {
       console.error('Error fetching stations:', err);
       setStations([]);
@@ -130,21 +120,16 @@ export default function CloudKitchenPage() {
     try {
       const now = new Date();
       const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-      const response = await fetch(
-        `${API_URL}/v6/${getVenueId()}/cloud-kitchen/performance?start=${startOfDay.toISOString()}&end=${now.toISOString()}`
-      , { credentials: 'include' });
-      if (response.ok) {
-        const data = await response.json();
-        // Calculate average rating and prep time from brands data
-        const activeBrands = brands.filter(b => b.status === 'active' && b.rating > 0);
-        const avgRating = activeBrands.length > 0
-          ? activeBrands.reduce((sum, b) => sum + b.rating, 0) / activeBrands.length
-          : 0;
-        setStats({
-          avgPrepTime: data.avg_prep_time || 14,
-          avgRating: avgRating,
-        });
-      }
+      const data: any = await api.get(`/v6/${getVenueId()}/cloud-kitchen/performance?start=${startOfDay.toISOString()}&end=${now.toISOString()}`);
+            // Calculate average rating and prep time from brands data
+      const activeBrands = brands.filter(b => b.status === 'active' && b.rating > 0);
+      const avgRating = activeBrands.length > 0
+      ? activeBrands.reduce((sum, b) => sum + b.rating, 0) / activeBrands.length
+      : 0;
+      setStats({
+      avgPrepTime: data.avg_prep_time || 14,
+      avgRating: avgRating,
+      });
     } catch (err) {
       console.error('Error fetching stats:', err);
     }
@@ -615,16 +600,18 @@ export default function CloudKitchenPage() {
               <div className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Име на бранда</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Име на бранда
                     <input type="text" className="w-full border rounded-lg px-3 py-2" defaultValue={editingBrand?.name} placeholder="напр. Вкусна Пица" />
+                    </label>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Емоджи/Лого</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Емоджи/Лого
                     <input type="text" className="w-full border rounded-lg px-3 py-2" defaultValue={editingBrand?.logo} placeholder="🍕" />
+                    </label>
                   </div>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Тип кухня</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Тип кухня
                   <select className="w-full border rounded-lg px-3 py-2" defaultValue={editingBrand?.cuisineType}>
                     <option>Бургери</option>
                     <option>Пица</option>
@@ -633,13 +620,15 @@ export default function CloudKitchenPage() {
                     <option>Десерти</option>
                     <option>Друго</option>
                   </select>
+                  </label>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Описание</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Описание
                   <textarea className="w-full border rounded-lg px-3 py-2" rows={2} defaultValue={editingBrand?.description} placeholder="Кратко описание на бранда"></textarea>
+                  </label>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Платформи</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Платформи
                   <div className="flex flex-wrap gap-2">
                     {['glovo', 'wolt', 'bolt_food', 'foodpanda', 'uber_eats'].map(p => (
                       <label key={p} className="flex items-center gap-2 bg-gray-100 px-3 py-1 rounded cursor-pointer">
@@ -648,6 +637,7 @@ export default function CloudKitchenPage() {
                       </label>
                     ))}
                   </div>
+                  </label>
                 </div>
               </div>
               <div className="flex gap-3 mt-6">

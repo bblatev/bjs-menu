@@ -135,7 +135,7 @@ export default function SettingsVenuePage() {
                 placeholder="Enter venue name"
               />
               <div>
-                <label className="block text-sm font-medium text-surface-600 mb-2">Venue Type</label>
+                <label className="block text-sm font-medium text-surface-600 mb-2">Venue Type
                 <select
                   value={settings.venueType}
                   onChange={(e) => setSettings({ ...settings, venueType: e.target.value })}
@@ -148,9 +148,10 @@ export default function SettingsVenuePage() {
                   <option value="bistro">Bistro</option>
                   <option value="fine-dining">Fine Dining</option>
                 </select>
+                </label>
               </div>
               <div className="col-span-2">
-                <label className="block text-sm font-medium text-surface-600 mb-2">Description</label>
+                <label className="block text-sm font-medium text-surface-600 mb-2">Description
                 <textarea
                   value={settings.description}
                   onChange={(e) => setSettings({ ...settings, description: e.target.value })}
@@ -158,6 +159,7 @@ export default function SettingsVenuePage() {
                   className="w-full px-4 py-3 rounded-xl border border-surface-200 bg-white text-surface-900 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 hover:border-surface-300"
                   placeholder="Brief description of your venue"
                 />
+                </label>
               </div>
               <Input
                 label="Logo URL"
@@ -195,7 +197,7 @@ export default function SettingsVenuePage() {
                 placeholder="20"
               />
               <div>
-                <label className="block text-sm font-medium text-surface-600 mb-2">Active Table Range</label>
+                <label className="block text-sm font-medium text-surface-600 mb-2">Active Table Range
                 <div className="flex gap-2 items-center">
                   <input
                     type="number"
@@ -219,6 +221,7 @@ export default function SettingsVenuePage() {
                     placeholder="20"
                   />
                 </div>
+                </label>
               </div>
             </div>
           </CardBody>

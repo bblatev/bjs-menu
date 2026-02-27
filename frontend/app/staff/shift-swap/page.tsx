@@ -301,16 +301,17 @@ export default function ShiftSwapPage() {
               <h2 className="text-xl font-bold text-gray-900 mb-4">Request a Shift Swap</h2>
               <div className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Your Shift Date</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Your Shift Date
                   <input
                     type="date"
                     value={form.original_shift_date}
                     onChange={e => setForm({ ...form, original_shift_date: e.target.value })}
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg text-gray-900 bg-white"
                   />
+                  </label>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Your Shift Time</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Your Shift Time
                   <input
                     type="text"
                     value={form.original_shift_time}
@@ -318,9 +319,10 @@ export default function ShiftSwapPage() {
                     placeholder="e.g., 9:00 AM - 5:00 PM"
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg text-gray-900 bg-white"
                   />
+                  </label>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Role / Position</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Role / Position
                   <input
                     type="text"
                     value={form.original_role}
@@ -328,19 +330,21 @@ export default function ShiftSwapPage() {
                     placeholder="e.g., Server, Cook, Host"
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg text-gray-900 bg-white"
                   />
+                  </label>
                 </div>
                 <hr className="border-gray-200" />
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Preferred Swap Date (optional)</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Preferred Swap Date (optional)
                   <input
                     type="date"
                     value={form.target_shift_date}
                     onChange={e => setForm({ ...form, target_shift_date: e.target.value })}
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg text-gray-900 bg-white"
                   />
+                  </label>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Preferred Swap Time (optional)</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Preferred Swap Time (optional)
                   <input
                     type="text"
                     value={form.target_shift_time}
@@ -348,9 +352,10 @@ export default function ShiftSwapPage() {
                     placeholder="e.g., Any, Morning, Evening"
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg text-gray-900 bg-white"
                   />
+                  </label>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Reason</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Reason
                   <textarea
                     value={form.reason}
                     onChange={e => setForm({ ...form, reason: e.target.value })}
@@ -358,6 +363,7 @@ export default function ShiftSwapPage() {
                     placeholder="Why do you need this swap?"
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg text-gray-900 bg-white resize-none"
                   />
+                  </label>
                 </div>
                 <button
                   onClick={createSwapRequest}

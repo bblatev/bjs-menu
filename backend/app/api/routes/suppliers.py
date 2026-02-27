@@ -16,6 +16,7 @@ from app.db.session import DbSession
 from app.models.supplier import Supplier, SupplierDocument
 from app.schemas.supplier import SupplierCreate, SupplierUpdate, SupplierResponse
 from app.core.rate_limit import limiter
+from app.core.responses import list_response
 
 _supplier_logger = logging.getLogger(__name__)
 
@@ -24,11 +25,12 @@ router = APIRouter()
 
 # ==================== CORE CRUD ====================
 
-@router.get("/", response_model=list[SupplierResponse])
+@router.get("/")
 @limiter.limit("60/minute")
 def list_suppliers(request: Request, db: DbSession, current_user: OptionalCurrentUser = None):
     """List all suppliers."""
-    return db.query(Supplier).order_by(Supplier.name).limit(500).all()
+    suppliers = db.query(Supplier).order_by(Supplier.name).limit(500).all()
+    return list_response([SupplierResponse.model_validate(s) for s in suppliers])
 
 
 @router.get("/performance")

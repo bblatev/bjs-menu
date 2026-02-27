@@ -9,6 +9,7 @@ from pydantic import BaseModel, Field
 from app.db.session import DbSession
 from app.core.rbac import CurrentUser, OptionalCurrentUser
 from app.core.rate_limit import limiter
+from app.core.responses import list_response
 from app.models.restaurant import MenuItem, MenuCategory, ModifierGroup, ModifierOption
 
 router = APIRouter()
@@ -114,7 +115,7 @@ def get_menu_admin_root(request: Request, db: DbSession):
     return list_categories(request=request, db=db)
 
 
-@router.get("/categories", response_model=List[CategoryResponse])
+@router.get("/categories")
 @limiter.limit("60/minute")
 def list_categories(request: Request, db: DbSession, current_user: OptionalCurrentUser = None):
     """List all menu categories."""
@@ -122,7 +123,7 @@ def list_categories(request: Request, db: DbSession, current_user: OptionalCurre
         MenuCategory.active == True,
     ).order_by(MenuCategory.sort_order).all()
 
-    return [
+    return list_response([
         CategoryResponse(
             id=c.id,
             name_bg=c.name_bg,
@@ -132,7 +133,7 @@ def list_categories(request: Request, db: DbSession, current_user: OptionalCurre
             active=c.active,
         )
         for c in categories
-    ]
+    ])
 
 
 @router.post("/categories", response_model=CategoryResponse, status_code=201)
@@ -198,7 +199,7 @@ def delete_category(request: Request, category_id: int, db: DbSession, current_u
 
 # ==================== MENU ITEMS ====================
 
-@router.get("/items", response_model=List[MenuItemResponse])
+@router.get("/items")
 @limiter.limit("60/minute")
 def list_items(request: Request, db: DbSession, current_user: OptionalCurrentUser = None, category: Optional[str] = None):
     """List all menu items, optionally filtered by category."""
@@ -208,7 +209,7 @@ def list_items(request: Request, db: DbSession, current_user: OptionalCurrentUse
         query = query.filter(MenuItem.category == category)
 
     items = query.order_by(MenuItem.category, MenuItem.name).all()
-    return [
+    return list_response([
         MenuItemResponse(
             id=item.id, category=item.category, name=item.name,
             description=item.description, price=float(item.price),
@@ -217,7 +218,7 @@ def list_items(request: Request, db: DbSession, current_user: OptionalCurrentUse
             station=item.station, prep_time_minutes=item.prep_time_minutes,
         )
         for item in items
-    ]
+    ])
 
 
 @router.get("/items/{item_id}", response_model=MenuItemResponse)

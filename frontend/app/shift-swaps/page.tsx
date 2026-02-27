@@ -539,7 +539,7 @@ export default function ShiftSwapsPage() {
 
               <div className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Shift ID</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Shift ID
                   <input
                     type="number"
                     value={swapForm.shift_id}
@@ -547,11 +547,12 @@ export default function ShiftSwapsPage() {
                     placeholder="Enter shift ID to swap"
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg text-gray-900 bg-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                   />
+                  </label>
                   <p className="text-xs text-gray-400 mt-1">Find your shift ID from the Shifts page</p>
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Reason</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Reason
                   <textarea
                     value={swapForm.reason}
                     onChange={(e) => setSwapForm({ ...swapForm, reason: e.target.value })}
@@ -559,6 +560,7 @@ export default function ShiftSwapsPage() {
                     rows={3}
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg text-gray-900 bg-white resize-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                   />
+                  </label>
                 </div>
               </div>
 

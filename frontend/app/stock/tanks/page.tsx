@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { API_URL, getAuthHeaders } from "@/lib/api";
+import { api } from '@/lib/api';
 
 interface Tank {
   tank_id: string;
@@ -50,11 +50,9 @@ export default function TanksPage() {
 
   const loadTanks = useCallback(async () => {
     try {
-      let url = `${API_URL}/inventory-hardware/tanks`;
-      if (filterStatus !== "all") url += `?status=${filterStatus}`;
-
-      const res = await fetch(url, { credentials: 'include', headers: getAuthHeaders() });
-      const data = await res.json();
+      let path = '/inventory-hardware/tanks';
+      if (filterStatus !== "all") path += `?status=${filterStatus}`;
+      const data: any = await api.get(path);
       setTanks(data.tanks || []);
       setAlerts(data.alerts || []);
     } catch (err) {
@@ -71,25 +69,17 @@ export default function TanksPage() {
   const handleRegisterTank = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const res = await fetch(`${API_URL}/inventory-hardware/tanks`, {
-        credentials: 'include',
-        method: "POST",
-        headers: getAuthHeaders(),
-        body: JSON.stringify(form),
+      await api.post('/inventory-hardware/tanks', form);
+      setShowModal(false);
+      loadTanks();
+      setForm({
+        tank_id: "",
+        tank_name: "",
+        capacity_liters: 100,
+        product_type: "oil",
+        min_level_liters: 20,
+        initial_level_liters: 100,
       });
-
-      if (res.ok) {
-        setShowModal(false);
-        loadTanks();
-        setForm({
-          tank_id: "",
-          tank_name: "",
-          capacity_liters: 100,
-          product_type: "oil",
-          min_level_liters: 20,
-          initial_level_liters: 100,
-        });
-      }
     } catch (err) {
       console.error("Failed to register tank:", err);
     }
@@ -98,17 +88,9 @@ export default function TanksPage() {
   const handleUpdateLevel = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const res = await fetch(`${API_URL}/inventory-hardware/tanks/level`, {
-        credentials: 'include',
-        method: "PUT",
-        headers: getAuthHeaders(),
-        body: JSON.stringify(updateForm),
-      });
-
-      if (res.ok) {
-        setShowUpdateModal(false);
-        loadTanks();
-      }
+      await api.put('/inventory-hardware/tanks/level', updateForm);
+      setShowUpdateModal(false);
+      loadTanks();
     } catch (err) {
       console.error("Failed to update level:", err);
     }
@@ -339,7 +321,7 @@ export default function TanksPage() {
                 <h2 className="text-xl font-bold mb-4">🛢️ Register New Tank</h2>
                 <form onSubmit={handleRegisterTank} className="space-y-4">
                   <div>
-                    <label className="block text-sm text-gray-400 mb-1">Tank ID *</label>
+                    <label className="block text-sm text-gray-400 mb-1">Tank ID *
                     <input
                       type="text"
                       value={form.tank_id}
@@ -348,9 +330,10 @@ export default function TanksPage() {
                       className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg"
                       required
                     />
+                    </label>
                   </div>
                   <div>
-                    <label className="block text-sm text-gray-400 mb-1">Tank Name *</label>
+                    <label className="block text-sm text-gray-400 mb-1">Tank Name *
                     <input
                       type="text"
                       value={form.tank_name}
@@ -359,9 +342,10 @@ export default function TanksPage() {
                       className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg"
                       required
                     />
+                    </label>
                   </div>
                   <div>
-                    <label className="block text-sm text-gray-400 mb-1">Product Type</label>
+                    <label className="block text-sm text-gray-400 mb-1">Product Type
                     <select
                       value={form.product_type}
                       onChange={e => setForm({...form, product_type: e.target.value})}
@@ -371,35 +355,39 @@ export default function TanksPage() {
                         <option key={t} value={t}>{getProductIcon(t)} {t}</option>
                       ))}
                     </select>
+                    </label>
                   </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-sm text-gray-400 mb-1">Capacity (L)</label>
+                      <label className="block text-sm text-gray-400 mb-1">Capacity (L)
                       <input
                         type="number"
                         value={form.capacity_liters}
                         onChange={e => setForm({...form, capacity_liters: parseFloat(e.target.value)})}
                         className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg"
                       />
+                      </label>
                     </div>
                     <div>
-                      <label className="block text-sm text-gray-400 mb-1">Initial Level (L)</label>
+                      <label className="block text-sm text-gray-400 mb-1">Initial Level (L)
                       <input
                         type="number"
                         value={form.initial_level_liters}
                         onChange={e => setForm({...form, initial_level_liters: parseFloat(e.target.value)})}
                         className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg"
                       />
+                      </label>
                     </div>
                   </div>
                   <div>
-                    <label className="block text-sm text-gray-400 mb-1">Min Level Alert (L)</label>
+                    <label className="block text-sm text-gray-400 mb-1">Min Level Alert (L)
                     <input
                       type="number"
                       value={form.min_level_liters}
                       onChange={e => setForm({...form, min_level_liters: parseFloat(e.target.value)})}
                       className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg"
                     />
+                    </label>
                   </div>
                   <div className="flex gap-3 pt-4">
                     <button
@@ -445,7 +433,6 @@ export default function TanksPage() {
                   <div>
                     <label className="block text-sm text-gray-400 mb-1">
                       Current Level (0 - {selectedTank.capacity_liters}L)
-                    </label>
                     <input
                       type="range"
                       min="0"
@@ -454,6 +441,7 @@ export default function TanksPage() {
                       onChange={e => setUpdateForm({...updateForm, current_level_liters: parseFloat(e.target.value)})}
                       className="w-full"
                     />
+                    </label>
                     <div className="flex justify-between">
                       <input
                         type="number"

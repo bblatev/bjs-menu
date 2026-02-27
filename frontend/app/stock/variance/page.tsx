@@ -3,9 +3,11 @@
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 
-import { API_URL, getAuthHeaders } from '@/lib/api';
+
 
 import { toast } from '@/lib/toast';
+
+import { api } from '@/lib/api';
 interface VarianceRecord {
   id: number;
   item_name: string;
@@ -68,22 +70,13 @@ export default function VarianceAnalysisPage() {
   const fetchData = useCallback(async () => {
     setLoading(true);
     try {
-      const response = await fetch(`${API_URL}/stock/variance/analysis?period=${period}`, {
-        credentials: 'include',
-        headers: getAuthHeaders(),
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        setRecords(data.records || []);
-        setTrends(data.trends || []);
-        if (data.stats) {
-          setStats(data.stats);
-        } else {
-          calculateStats(data.records || []);
-        }
+      const data: any = await api.get(`/stock/variance/analysis?period=${period}`);
+            setRecords(data.records || []);
+      setTrends(data.trends || []);
+      if (data.stats) {
+      setStats(data.stats);
       } else {
-        console.error('Failed to load variance data:', response.status);
+      calculateStats(data.records || []);
       }
     } catch (err) {
       console.error('Failed to fetch variance data:', err);
@@ -393,7 +386,7 @@ export default function VarianceAnalysisPage() {
 
               {/* Root Cause Selection */}
               <div>
-                <label className="block text-sm font-medium text-surface-700 mb-2">Root Cause Category</label>
+                <span className="block text-sm font-medium text-surface-700 mb-2">Root Cause Category</span>
                 <div className="grid grid-cols-3 gap-2">
                   {Object.entries(ROOT_CAUSES).map(([key, value]) => (
                     <button
@@ -413,24 +406,26 @@ export default function VarianceAnalysisPage() {
 
               {/* Root Cause Details */}
               <div>
-                <label className="block text-sm font-medium text-surface-700 mb-1">Root Cause Details</label>
+                <label className="block text-sm font-medium text-surface-700 mb-1">Root Cause Details
                 <textarea
                   rows={3}
                   defaultValue={selectedRecord.root_cause}
                   placeholder="Describe the root cause of this variance..."
                   className="w-full px-4 py-2 border border-surface-300 rounded-lg focus:ring-2 focus:ring-primary-500"
                 />
+                </label>
               </div>
 
               {/* Resolution */}
               <div>
-                <label className="block text-sm font-medium text-surface-700 mb-1">Resolution / Corrective Action</label>
+                <label className="block text-sm font-medium text-surface-700 mb-1">Resolution / Corrective Action
                 <textarea
                   rows={3}
                   defaultValue={selectedRecord.resolution}
                   placeholder="What actions were taken to resolve this and prevent recurrence..."
                   className="w-full px-4 py-2 border border-surface-300 rounded-lg focus:ring-2 focus:ring-primary-500"
                 />
+                </label>
               </div>
 
               {selectedRecord.investigated && (

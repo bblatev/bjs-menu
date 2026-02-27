@@ -3,7 +3,9 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Link from 'next/link';
-import { API_URL } from '@/lib/api';
+
+import { api } from '@/lib/api';
+
 
 interface Reservation {
   reservation_id: string;
@@ -78,28 +80,28 @@ export default function OpenTableIntegrationPage() {
     setLoading(true);
     setError(null);
     try {
-      const [reservationsRes, guestsRes, statsRes, configRes] = await Promise.all([
-        fetch(`${API_URL}/opentable/reservations`, { credentials: 'include' }),
-        fetch(`${API_URL}/opentable/guests`, { credentials: 'include' }),
-        fetch(`${API_URL}/opentable/stats`, { credentials: 'include' }),
-        fetch(`${API_URL}/opentable/config`, { credentials: 'include' }),
-      ]);
+      const [reservationsRes, guestsRes, statsRes, configRes] = await Promise.allSettled([
+  api.get('/opentable/reservations'),
+  api.get('/opentable/guests'),
+  api.get('/opentable/stats'),
+  api.get('/opentable/config')
+]);
 
-      if (reservationsRes.ok) {
-        const data = await reservationsRes.json();
+      if (reservationsRes.status === 'fulfilled') {
+        const data: any = reservationsRes.value;
         setReservations(data);
       }
-      if (guestsRes.ok) {
-        const data = await guestsRes.json();
-        setGuests(data);
+      if (guestsRes.status === 'fulfilled') {
+        const data_guests: any = guestsRes.value;
+        setGuests(data_guests);
       }
-      if (statsRes.ok) {
-        const data = await statsRes.json();
-        setStats(data);
+      if (statsRes.status === 'fulfilled') {
+        const data_stats: any = statsRes.value;
+        setStats(data_stats);
       }
-      if (configRes.ok) {
-        const data = await configRes.json();
-        setConfig(prev => ({ ...prev, ...data }));
+      if (configRes.status === 'fulfilled') {
+        const data_config: any = configRes.value;
+        setConfig(prev => ({ ...prev, ...data_config }));
       }
     } catch (err) {
       console.error('Error loading data:', err);
@@ -112,10 +114,8 @@ export default function OpenTableIntegrationPage() {
   const syncNow = async () => {
     setSyncing(true);
     try {
-      const res = await fetch(`${API_URL}/opentable/sync`, { credentials: 'include', method: 'POST' });
-      if (res.ok) {
-        loadData();
-      }
+      await api.post('/opentable/sync');
+      loadData();
     } catch (error) {
       console.error('Error syncing:', error);
     } finally {
@@ -125,15 +125,8 @@ export default function OpenTableIntegrationPage() {
 
   const updateReservationStatus = async (reservationId: string, status: string) => {
     try {
-      const res = await fetch(`${API_URL}/opentable/reservations/${reservationId}/status`, {
-        credentials: 'include',
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status }),
-      });
-      if (res.ok) {
-        loadData();
-      }
+      await api.put(`/opentable/reservations/${reservationId}/status`, { status });
+      loadData();
     } catch (error) {
       console.error('Error updating status:', error);
     }
@@ -141,16 +134,9 @@ export default function OpenTableIntegrationPage() {
 
   const saveConfig = async () => {
     try {
-      const res = await fetch(`${API_URL}/opentable/config`, {
-        credentials: 'include',
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(config),
-      });
-      if (res.ok) {
-        setShowConfigModal(false);
-        loadData();
-      }
+      await api.put('/opentable/config', config);
+      setShowConfigModal(false);
+      loadData();
     } catch (error) {
       console.error('Error saving config:', error);
     }
@@ -430,7 +416,7 @@ export default function OpenTableIntegrationPage() {
                     Automatically push availability updates every 15 minutes
                   </div>
                 </div>
-                <label className="relative inline-flex items-center cursor-pointer">
+                <label aria-label="Sync availability" className="relative inline-flex items-center cursor-pointer">
                   <input
                     type="checkbox"
                     checked={config.sync_enabled}
@@ -465,7 +451,7 @@ export default function OpenTableIntegrationPage() {
               </div>
               <div className="p-6 space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-surface-700 mb-1">Restaurant ID</label>
+                  <label className="block text-sm font-medium text-surface-700 mb-1">Restaurant ID
                   <input
                     type="text"
                     value={config.restaurant_id}
@@ -473,9 +459,10 @@ export default function OpenTableIntegrationPage() {
                     className="w-full px-3 py-2 border border-surface-200 rounded-lg"
                     placeholder="Your OpenTable Restaurant ID"
                   />
+                  </label>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-surface-700 mb-1">API Key</label>
+                  <label className="block text-sm font-medium text-surface-700 mb-1">API Key
                   <input
                     type="password"
                     value={config.api_key}
@@ -483,9 +470,10 @@ export default function OpenTableIntegrationPage() {
                     className="w-full px-3 py-2 border border-surface-200 rounded-lg"
                     placeholder="Your OpenTable API Key"
                   />
+                  </label>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-surface-700 mb-1">Webhook Secret</label>
+                  <label className="block text-sm font-medium text-surface-700 mb-1">Webhook Secret
                   <input
                     type="password"
                     value={config.webhook_secret}
@@ -493,9 +481,10 @@ export default function OpenTableIntegrationPage() {
                     className="w-full px-3 py-2 border border-surface-200 rounded-lg"
                     placeholder="For verifying webhook signatures"
                   />
+                  </label>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-surface-700 mb-1">Webhook URL</label>
+                  <label className="block text-sm font-medium text-surface-700 mb-1">Webhook URL
                   <div className="flex gap-2">
                     <input
                       type="text"
@@ -510,6 +499,7 @@ export default function OpenTableIntegrationPage() {
                       Copy
                     </button>
                   </div>
+                  </label>
                   <p className="text-xs text-surface-500 mt-1">
                     Add this URL to your OpenTable webhook settings
                   </p>
@@ -522,7 +512,7 @@ export default function OpenTableIntegrationPage() {
                     onChange={(e) => setConfig({ ...config, sync_enabled: e.target.checked })}
                     className="rounded border-surface-300 text-amber-500 focus:ring-amber-500"
                   />
-                  <label htmlFor="sync_enabled" className="text-sm text-surface-700">Enable sync</label>
+                  <span className="text-sm text-surface-700">Enable sync</span>
                 </div>
               </div>
               <div className="p-6 border-t border-surface-100 flex justify-end gap-3">

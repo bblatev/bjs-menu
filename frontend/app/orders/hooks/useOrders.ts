@@ -1,9 +1,7 @@
 'use client';
-
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { Order, OrderItem, Table, Staff, OrderStats } from '../types';
-import { API_URL, getAuthHeaders } from '@/lib/api';
-
+import { api } from '@/lib/api';
 interface UseOrdersReturn {
   orders: Order[];
   tables: Table[];
@@ -19,7 +17,6 @@ interface UseOrdersReturn {
   setPriority: (orderId: string, priority: Order['priority']) => Promise<void>;
   reprintOrder: (orderId: string, station: string) => Promise<void>;
 }
-
 export function useOrders(autoRefresh: boolean = true, refreshIntervalMs: number = 30000): UseOrdersReturn {
   const [orders, setOrders] = useState<Order[]>([]);
   const [tables, setTables] = useState<Table[]>([]);
@@ -28,7 +25,6 @@ export function useOrders(autoRefresh: boolean = true, refreshIntervalMs: number
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const refreshInterval = useRef<NodeJS.Timeout | null>(null);
-
   const transformOrders = (data: any[]): Order[] => {
     return data.map((order: any) => ({
       id: String(order.id),
@@ -66,33 +62,28 @@ export function useOrders(autoRefresh: boolean = true, refreshIntervalMs: number
       priority: order.priority || 'normal',
     }));
   };
-
   const refreshData = useCallback(async () => {
     setLoading(true);
     setError(null);
-    const headers = getAuthHeaders();
-
     try {
       const [ordersRes, tablesRes, staffRes, statsRes] = await Promise.allSettled([
-        fetch(`${API_URL}/orders`, { credentials: 'include', headers }),
-        fetch(`${API_URL}/admin/tables`, { credentials: 'include', headers }),
-        fetch(`${API_URL}/staff`, { credentials: 'include', headers }),
-        fetch(`${API_URL}/orders/stats`, { credentials: 'include', headers }),
-      ]);
-
+  api.get('/orders'),
+  api.get('/admin/tables'),
+  api.get('/staff'),
+  api.get('/orders/stats')
+]);
       // Process orders
-      if (ordersRes.status === 'fulfilled' && ordersRes.value.ok) {
-        const data = await ordersRes.value.json();
-        const ordersArray = Array.isArray(data) ? data : (data.orders || []);
+      if (ordersRes.status === 'fulfilled') {
+        const data: any = ordersRes.value;
+        const ordersArray = Array.isArray(data) ? data : (data.items || data.orders || []);
         setOrders(transformOrders(ordersArray));
       } else {
         setOrders([]);
       }
-
       // Process tables
-      if (tablesRes.status === 'fulfilled' && tablesRes.value.ok) {
-        const data = await tablesRes.value.json();
-        const tablesArray = Array.isArray(data) ? data : (data.tables || []);
+      if (tablesRes.status === 'fulfilled') {
+        const data_tables: any = tablesRes.value;
+        const tablesArray = Array.isArray(data_tables) ? data_tables : (data_tables.items || data_tables.tables || []);
         setTables(tablesArray.map((table: any) => ({
           id: String(table.id),
           number: table.number || `T${table.id}`,
@@ -101,11 +92,10 @@ export function useOrders(autoRefresh: boolean = true, refreshIntervalMs: number
           current_order_id: table.current_order_id ? String(table.current_order_id) : undefined,
         })));
       }
-
       // Process staff
-      if (staffRes.status === 'fulfilled' && staffRes.value.ok) {
-        const data = await staffRes.value.json();
-        const staffArray = Array.isArray(data) ? data : (data.staff || []);
+      if (staffRes.status === 'fulfilled') {
+        const data_staff: any = staffRes.value;
+        const staffArray = Array.isArray(data_staff) ? data_staff : (data_staff.items || data_staff.staff || []);
         setStaff(staffArray.map((s: any) => ({
           id: String(s.id),
           name: s.name || s.full_name || 'Unknown',
@@ -115,21 +105,20 @@ export function useOrders(autoRefresh: boolean = true, refreshIntervalMs: number
           avatar: s.avatar,
         })));
       }
-
       // Process stats
-      if (statsRes.status === 'fulfilled' && statsRes.value.ok) {
-        const data = await statsRes.value.json();
+      if (statsRes.status === 'fulfilled') {
+        const data_stats: any = statsRes.value;
         setStats({
-          total_orders: data.total_orders || 0,
-          new_orders: data.new_orders || data.new || 0,
-          preparing: data.preparing || 0,
-          ready: data.ready || 0,
-          served: data.served || 0,
-          paid: data.paid || data.completed || 0,
-          cancelled: data.cancelled || 0,
-          total_revenue: data.total_revenue || data.revenue || 0,
-          avg_order_value: data.avg_order_value || data.average_order_value || 0,
-          avg_prep_time: data.avg_prep_time || data.average_prep_time || 0,
+          total_orders: data_stats.total_orders || 0,
+          new_orders: data_stats.new_orders || data_stats.new || 0,
+          preparing: data_stats.preparing || 0,
+          ready: data_stats.ready || 0,
+          served: data_stats.served || 0,
+          paid: data_stats.paid || data_stats.completed || 0,
+          cancelled: data_stats.cancelled || 0,
+          total_revenue: data_stats.total_revenue || data_stats.revenue || 0,
+          avg_order_value: data_stats.avg_order_value || data_stats.average_order_value || 0,
+          avg_prep_time: data_stats.avg_prep_time || data_stats.average_prep_time || 0,
         });
       }
     } catch (err) {
@@ -139,30 +128,20 @@ export function useOrders(autoRefresh: boolean = true, refreshIntervalMs: number
       setLoading(false);
     }
   }, []);
-
   useEffect(() => {
     refreshData();
-
     if (autoRefresh) {
       refreshInterval.current = setInterval(refreshData, refreshIntervalMs);
     }
-
     return () => {
       if (refreshInterval.current) {
         clearInterval(refreshInterval.current);
       }
     };
   }, [autoRefresh, refreshIntervalMs, refreshData]);
-
   const updateOrderStatus = useCallback(async (orderId: string, newStatus: Order['status']) => {
-    const headers = getAuthHeaders();
     try {
-      await fetch(`${API_URL}/orders/${orderId}/status`, {
-        credentials: 'include',
-        method: 'PUT',
-        headers,
-        body: JSON.stringify({ status: newStatus }),
-      });
+      await api.put(`/orders/${orderId}/status`, { status: newStatus });
     } catch (err) {
       console.error('Error updating order status:', err);
     }
@@ -173,16 +152,9 @@ export function useOrders(autoRefresh: boolean = true, refreshIntervalMs: number
         : o
     ));
   }, []);
-
   const updateItemStatus = useCallback(async (orderId: string, itemId: string, newStatus: OrderItem['status']) => {
-    const headers = getAuthHeaders();
     try {
-      await fetch(`${API_URL}/orders/${orderId}/items/${itemId}/status`, {
-        credentials: 'include',
-        method: 'PATCH',
-        headers,
-        body: JSON.stringify({ status: newStatus }),
-      });
+      await api.patch(`/orders/${orderId}/items/${itemId}/status`, { status: newStatus });
     } catch (err) {
       console.error('Error updating item status:', err);
     }
@@ -203,77 +175,48 @@ export function useOrders(autoRefresh: boolean = true, refreshIntervalMs: number
       };
     }));
   }, []);
-
   const voidOrder = useCallback(async (orderId: string, reason: string): Promise<boolean> => {
-    const headers = getAuthHeaders();
     try {
-      const response = await fetch(`${API_URL}/orders/${orderId}/void`, {
-        credentials: 'include',
-        method: 'POST',
-        headers,
-        body: JSON.stringify({ reason }),
-      });
-      if (response.ok) {
-        setOrders(prev => prev.map(o => o.id === orderId ? { ...o, status: 'cancelled' } : o));
-        return true;
-      }
+      await api.post(`/orders/${orderId}/void`, { reason });
+      setOrders(prev => prev.map(o => o.id === orderId ? { ...o, status: 'cancelled' } : o));
+      return true;
     } catch (err) {
       console.error('Error voiding order:', err);
     }
     return false;
   }, []);
-
   const refundOrder = useCallback(async (orderId: string, amount: number, reason: string): Promise<boolean> => {
-    const headers = getAuthHeaders();
     try {
-      const response = await fetch(`${API_URL}/orders/${orderId}/refund`, {
-        credentials: 'include',
-        method: 'POST',
-        headers,
-        body: JSON.stringify({ amount, reason, refund_method: 'cash' }),
-      });
-      if (response.ok) {
-        await refreshData();
-        return true;
-      }
+      await api.post(`/orders/${orderId}/refund`, { amount, reason, refund_method: 'cash' });
+      await refreshData();
+      return true;
     } catch (err) {
       console.error('Error refunding order:', err);
     }
     return false;
   }, [refreshData]);
-
   const setPriority = useCallback(async (orderId: string, priority: Order['priority']) => {
-    const headers = getAuthHeaders();
-    const endpoint = priority === 'rush'
-      ? `${API_URL}/kitchen/rush/${orderId}`
+    const path = priority === 'rush'
+      ? `/kitchen/rush/${orderId}`
       : priority === 'high'
-      ? `${API_URL}/kitchen/vip/${orderId}`
+      ? `/kitchen/vip/${orderId}`
       : null;
-
-    if (endpoint) {
+    if (path) {
       try {
-        await fetch(endpoint, { credentials: 'include', method: 'POST', headers });
+        await api.post(path);
       } catch (err) {
         console.error('Error setting priority:', err);
       }
     }
     setOrders(prev => prev.map(o => o.id === orderId ? { ...o, priority } : o));
   }, []);
-
   const reprintOrder = useCallback(async (orderId: string, station: string) => {
-    const headers = getAuthHeaders();
     try {
-      await fetch(`${API_URL}/orders/${orderId}/reprint`, {
-        credentials: 'include',
-        method: 'POST',
-        headers,
-        body: JSON.stringify({ station }),
-      });
+      await api.post(`/orders/${orderId}/reprint`, { station });
     } catch (err) {
       console.error('Error reprinting order:', err);
     }
   }, []);
-
   return {
     orders,
     tables,

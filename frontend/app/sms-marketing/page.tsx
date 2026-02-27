@@ -1,8 +1,6 @@
 'use client';
 import { useState, useEffect, useCallback } from 'react';
-import axios from 'axios';
-
-import { API_URL, getAuthHeaders } from '@/lib/api';
+import { api } from '@/lib/api';
 
 interface Campaign {
   id: number;
@@ -35,8 +33,8 @@ export default function SMSMarketingPage() {
 
   const fetchCampaigns = useCallback(async () => {
     try {
-      const res = await axios.get(`${API_URL}/v5/sms/campaigns`, { headers: getAuthHeaders() });
-      setCampaigns(res.data.campaigns || []);
+      const data: any = await api.get('/v5/sms/campaigns');
+      setCampaigns(data.campaigns || []);
     } catch (e) {
       console.error('Error fetching campaigns:', e);
       setCampaigns([]);
@@ -45,12 +43,12 @@ export default function SMSMarketingPage() {
 
   const fetchStats = useCallback(async () => {
     try {
-      const res = await axios.get(`${API_URL}/v5/sms/stats`, { headers: getAuthHeaders() });
+      const data: any = await api.get('/v5/sms/stats');
       setStats({
-        total_campaigns: res.data.total_campaigns || 0,
-        total_sent: res.data.total_sent || 0,
-        delivery_rate: res.data.delivery_rate || 0,
-        revenue_attributed: res.data.revenue_attributed || 0,
+        total_campaigns: data.total_campaigns || 0,
+        total_sent: data.total_sent || 0,
+        delivery_rate: data.delivery_rate || 0,
+        revenue_attributed: data.revenue_attributed || 0,
       });
     } catch (e) {
       console.error('Error fetching stats:', e);
@@ -83,7 +81,7 @@ export default function SMSMarketingPage() {
 
   const createCampaign = async () => {
     try {
-      await axios.post(`${API_URL}/v5/sms/campaigns`, newCampaign, { headers: getAuthHeaders() });
+      await api.post('/v5/sms/campaigns', newCampaign);
       setShowCreate(false);
       setNewCampaign({ name: '', message: '', target_segment: 'all' });
       fetchCampaigns();
@@ -94,7 +92,7 @@ export default function SMSMarketingPage() {
 
   const sendCampaign = async (id: number) => {
     try {
-      await axios.post(`${API_URL}/v5/sms/campaigns/${id}/send`, {}, { headers: getAuthHeaders() });
+      await api.post(`/v5/sms/campaigns/${id}/send`);
       fetchCampaigns();
     } catch (e) {
       console.error(e);

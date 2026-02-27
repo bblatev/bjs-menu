@@ -1,9 +1,8 @@
 'use client';
-
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { API_URL, getAuthHeaders } from '@/lib/api';
 
+import { api } from '@/lib/api';
 interface PMSConnection {
   id: number;
   provider: string;
@@ -18,7 +17,6 @@ interface PMSConnection {
     sync_packages: boolean;
   };
 }
-
 interface HotelGuest {
   id: number;
   external_guest_id: string;
@@ -31,7 +29,6 @@ interface HotelGuest {
   fb_credit_balance: number;
   total_charges: number;
 }
-
 interface RoomCharge {
   id: number;
   guest_name: string;
@@ -41,7 +38,6 @@ interface RoomCharge {
   status: 'pending' | 'posted' | 'voided' | 'failed';
   created_at: string;
 }
-
 const PMS_PROVIDERS = [
   { id: 'opera', name: 'Oracle Opera', icon: '🏛️', description: 'Enterprise hotel management system' },
   { id: 'mews', name: 'Mews', icon: '🌟', description: 'Modern cloud-native PMS' },
@@ -54,7 +50,6 @@ const PMS_PROVIDERS = [
   { id: 'infor', name: 'Infor HMS', icon: '📊', description: 'Enterprise management' },
   { id: 'roommaster', name: 'RoomMaster', icon: '🔑', description: 'Flexible PMS solution' },
 ];
-
 export default function HotelPMSPage() {
   const [connection, setConnection] = useState<PMSConnection | null>(null);
   const [guests, setGuests] = useState<HotelGuest[]>([]);
@@ -66,96 +61,56 @@ export default function HotelPMSPage() {
   const [selectedProvider, setSelectedProvider] = useState<string | null>(null);
   const [showChargeModal, setShowChargeModal] = useState(false);
   const [newCharge, setNewCharge] = useState({ guest_id: '', amount: '', description: '' });
-
   useEffect(() => {
     loadData();
   }, []);
-
   const loadData = async () => {
     try {
-      const headers = getAuthHeaders();
-
       // Load connection
-      const connRes = await fetch(`${API_URL}/enterprise/hotel-pms/connection`, { credentials: 'include', headers });
-      if (connRes.ok) {
-        const data = await connRes.json();
-        setConnection(data);
-      }
-
+      const data: any = await api.get('/enterprise/hotel-pms/connection');
+            setConnection(data);
       // Load guests
-      const guestsRes = await fetch(`${API_URL}/enterprise/hotel-pms/guests`, { credentials: 'include', headers });
-      if (guestsRes.ok) {
-        const data = await guestsRes.json();
-        setGuests(data);
-      }
-
+      const data_guests: any = await api.get('/enterprise/hotel-pms/guests');
+            setGuests(data_guests);
       // Load charges
-      const chargesRes = await fetch(`${API_URL}/enterprise/hotel-pms/charges`, { credentials: 'include', headers });
-      if (chargesRes.ok) {
-        const data = await chargesRes.json();
-        setCharges(data);
-      }
+      const data_charges: any = await api.get('/enterprise/hotel-pms/charges');
+            setCharges(data_charges);
     } catch (error) {
       console.error('Error loading hotel PMS data:', error);
     } finally {
       setLoading(false);
     }
   };
-
   const handleConnect = async () => {
     if (!selectedProvider) return;
-
     try {
-      const response = await fetch(`${API_URL}/enterprise/hotel-pms/connect`, {
-        credentials: 'include',
-        method: 'POST',
-        headers: getAuthHeaders(),
-        body: JSON.stringify({
+      const data: any = await api.post('/enterprise/hotel-pms/connect', {
           provider: selectedProvider,
           config: {
             api_key: '',
             property_id: ''
           }
-        })
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        setConnection(data);
-      } else {
-        console.error('Failed to connect PMS:', response.status);
-      }
-
+        });
+            setConnection(data);
       setShowConnectModal(false);
       setSelectedProvider(null);
     } catch (error) {
       console.error('Error connecting:', error);
     }
   };
-
   const handleDisconnect = async () => {
     if (!confirm('Are you sure you want to disconnect from the PMS?')) return;
-
     try {
-      await fetch(`${API_URL}/enterprise/hotel-pms/disconnect`, {
-        credentials: 'include',
-        method: 'POST',
-        headers: getAuthHeaders(),
-      });
+      await api.post('/enterprise/hotel-pms/disconnect');
       setConnection(null);
     } catch (error) {
       console.error('Error disconnecting:', error);
     }
   };
-
   const handleSync = async () => {
     setSyncing(true);
     try {
-      await fetch(`${API_URL}/enterprise/hotel-pms/sync-guests`, {
-        credentials: 'include',
-        method: 'POST',
-        headers: getAuthHeaders(),
-      });
+      await api.post('/enterprise/hotel-pms/sync-guests');
       await loadData();
     } catch (error) {
       console.error('Error syncing:', error);
@@ -163,34 +118,21 @@ export default function HotelPMSPage() {
       setSyncing(false);
     }
   };
-
   const handlePostCharge = async () => {
     if (!newCharge.guest_id || !newCharge.amount) return;
-
     try {
-      const response = await fetch(`${API_URL}/enterprise/hotel-pms/charges`, {
-        credentials: 'include',
-        method: 'POST',
-        headers: getAuthHeaders(),
-        body: JSON.stringify({
+      const data: any = await api.post('/enterprise/hotel-pms/charges', {
           guest_id: parseInt(newCharge.guest_id),
           amount: parseFloat(newCharge.amount),
           description: newCharge.description
-        })
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        setCharges(prev => [data, ...prev]);
-      }
-
+        });
+            setCharges(prev => [data, ...prev]);
       setShowChargeModal(false);
       setNewCharge({ guest_id: '', amount: '', description: '' });
     } catch (error) {
       console.error('Error posting charge:', error);
     }
   };
-
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'connected': return 'bg-green-100 text-green-700';
@@ -202,7 +144,6 @@ export default function HotelPMSPage() {
       default: return 'bg-gray-100 text-gray-700';
     }
   };
-
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
@@ -210,7 +151,6 @@ export default function HotelPMSPage() {
       </div>
     );
   }
-
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -247,7 +187,6 @@ export default function HotelPMSPage() {
           </div>
         )}
       </div>
-
       {/* Connection Status */}
       {!connection ? (
         <motion.div
@@ -306,7 +245,6 @@ export default function HotelPMSPage() {
               </div>
             </div>
           </motion.div>
-
           {/* Stats */}
           <div className="grid grid-cols-4 gap-4">
             {[
@@ -332,7 +270,6 @@ export default function HotelPMSPage() {
               </motion.div>
             ))}
           </div>
-
           {/* Tabs */}
           <div className="border-b border-surface-200">
             <div className="flex gap-4">
@@ -357,7 +294,6 @@ export default function HotelPMSPage() {
               ))}
             </div>
           </div>
-
           {/* Overview Tab */}
           {activeTab === 'overview' && (
             <div className="grid grid-cols-2 gap-6">
@@ -382,7 +318,6 @@ export default function HotelPMSPage() {
                   ))}
                 </div>
               </div>
-
               <div className="bg-white rounded-xl border border-surface-200 overflow-hidden">
                 <div className="p-4 border-b border-surface-100">
                   <h3 className="font-semibold text-surface-900">VIP Guests</h3>
@@ -411,7 +346,6 @@ export default function HotelPMSPage() {
               </div>
             </div>
           )}
-
           {/* Guests Tab */}
           {activeTab === 'guests' && (
             <div className="bg-white rounded-xl border border-surface-200 overflow-hidden">
@@ -465,7 +399,6 @@ export default function HotelPMSPage() {
               </table>
             </div>
           )}
-
           {/* Charges Tab */}
           {activeTab === 'charges' && (
             <div className="bg-white rounded-xl border border-surface-200 overflow-hidden">
@@ -505,7 +438,6 @@ export default function HotelPMSPage() {
               </table>
             </div>
           )}
-
           {/* Settings Tab */}
           {activeTab === 'settings' && (
             <div className="bg-white rounded-xl border border-surface-200 p-6">
@@ -519,6 +451,7 @@ export default function HotelPMSPage() {
                 ].map((setting) => (
                   <label
                     key={setting.key}
+                    aria-label={setting.label}
                     className="flex items-center justify-between p-4 bg-surface-50 rounded-xl cursor-pointer"
                   >
                     <div>
@@ -546,7 +479,6 @@ export default function HotelPMSPage() {
           )}
         </>
       )}
-
       {/* Connect Modal */}
       {showConnectModal && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => setShowConnectModal(false)}>
@@ -601,7 +533,6 @@ export default function HotelPMSPage() {
           </motion.div>
         </div>
       )}
-
       {/* Post Charge Modal */}
       {showChargeModal && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => setShowChargeModal(false)}>
@@ -616,7 +547,7 @@ export default function HotelPMSPage() {
             </div>
             <div className="p-6 space-y-4">
               <div>
-                <label className="block text-sm text-surface-600 mb-1">Select Guest</label>
+                <label className="block text-sm text-surface-600 mb-1">Select Guest
                 <select
                   value={newCharge.guest_id}
                   onChange={(e) => setNewCharge({ ...newCharge, guest_id: e.target.value })}
@@ -629,9 +560,10 @@ export default function HotelPMSPage() {
                     </option>
                   ))}
                 </select>
+                </label>
               </div>
               <div>
-                <label className="block text-sm text-surface-600 mb-1">Amount</label>
+                <label className="block text-sm text-surface-600 mb-1">Amount
                 <div className="relative">
                   <span className="absolute left-3 top-1/2 -translate-y-1/2 text-surface-500">$</span>
                   <input
@@ -643,9 +575,10 @@ export default function HotelPMSPage() {
                     placeholder="0.00"
                   />
                 </div>
+                </label>
               </div>
               <div>
-                <label className="block text-sm text-surface-600 mb-1">Description</label>
+                <label className="block text-sm text-surface-600 mb-1">Description
                 <input
                   type="text"
                   value={newCharge.description}
@@ -653,6 +586,7 @@ export default function HotelPMSPage() {
                   className="w-full px-3 py-2 border border-surface-200 rounded-lg"
                   placeholder="e.g., Dinner - Restaurant"
                 />
+                </label>
               </div>
             </div>
             <div className="p-6 border-t border-surface-100 flex justify-end gap-3">

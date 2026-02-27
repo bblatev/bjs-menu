@@ -33,8 +33,12 @@ from app.api.routes import (
 
 api_router = APIRouter()
 
-# Guest/Customer Ordering - mounted BEFORE purchase orders to avoid route shadowing
-# (both define /orders/{id}/status but guest orders should take precedence)
+# Guest/Customer Ordering - mounted WITHOUT prefix and BEFORE orders.router.
+# IMPORTANT: guest_orders defines /orders/{id}/status (kitchen order status) which
+# shadows orders.router's /{id}/status (purchase order status). This is intentional:
+# - Kitchen/guest order status: handled here via /orders/{id}/status
+# - Purchase order status: handled via /purchase-orders/{id}/approve (no conflict)
+# DO NOT reorder or add a prefix without updating the frontend.
 api_router.include_router(guest_orders.router, tags=["guest-ordering", "menu"])
 
 # Core routes
@@ -49,9 +53,8 @@ api_router.include_router(recipes.router, prefix="/recipes", tags=["recipes"])
 api_router.include_router(ai.router, prefix="/ai", tags=["ai"])
 api_router.include_router(sync.router, prefix="/sync", tags=["sync"])
 api_router.include_router(reports.router, prefix="/reports", tags=["reports"])
-# Backward-compat: reports_enhanced was merged into reports.py
-api_router.include_router(reports.router, prefix="/reports-enhanced", tags=["reports", "enhanced"])
 api_router.include_router(reconciliation.router, prefix="/reconciliation", tags=["reconciliation"])
+# Note: /reports-enhanced backward-compat removed — no frontend usage found
 
 # New competitor-matching routes
 api_router.include_router(invoices.router, prefix="/invoices", tags=["invoices", "ap-automation"])
@@ -96,8 +99,7 @@ api_router.include_router(price_lists.router, tags=["price-lists", "daily-menu",
 # Menu Complete (variants, tags, combos, upsells, LTOs, 86'd items, digital boards)
 # menu_complete.py removed -- merged into menu_complete_features.py
 api_router.include_router(menu_complete_features.router, prefix="/menu-complete", tags=["menu-complete", "variants", "tags", "combos"])
-# Backward-compat: menu_complete_features was previously mounted at /menu-complete-features
-api_router.include_router(menu_complete_features.router, prefix="/menu-complete-features", tags=["menu", "complete"])
+# Note: /menu-complete-features backward-compat removed — no frontend usage found
 
 # Purchase Orders Management (PO, GRN, invoices, approvals, three-way matching)
 api_router.include_router(purchase_orders.router, prefix="/purchase-orders", tags=["purchase-orders", "procurement", "grn", "three-way-match"])
@@ -107,8 +109,7 @@ api_router.include_router(bar.router, prefix="/bar", tags=["bar", "drinks", "spi
 
 # Financial & Budgets
 api_router.include_router(financial.router, prefix="/financial", tags=["financial", "budgets"])
-# Backward-compat: financial_endpoints was merged into financial.py
-api_router.include_router(financial.router, prefix="/financial-endpoints", tags=["financial", "accounting"])
+# Note: /financial-endpoints backward-compat removed — no frontend usage found
 
 # Loyalty & Gift Cards
 api_router.include_router(loyalty.router, prefix="/loyalty", tags=["loyalty"])
@@ -176,8 +177,7 @@ api_router.include_router(printers.router, prefix="/printers", tags=["printers",
 
 # Google Reserve Integration
 api_router.include_router(google_reserve.router, prefix="/google-reserve", tags=["google-reserve", "maps-booking"])
-# Backward-compat: google_booking.py was merged into google_reserve.py
-api_router.include_router(google_reserve.router, prefix="/google-booking", tags=["google", "booking"])
+# Note: /google-booking backward-compat removed — no frontend usage found
 
 # Training/Sandbox Mode
 api_router.include_router(training.router, prefix="/training", tags=["training", "sandbox", "practice"])
@@ -206,19 +206,11 @@ api_router.include_router(custom_reports.router, prefix="/custom-reports", tags=
 # EMV Card Terminals
 api_router.include_router(card_terminals.router, prefix="/card-terminals", tags=["card-terminals", "emv", "stripe-terminal"])
 
-# Stock Management -- merged into stock.py; mount stock.router at legacy prefix
-# so any remaining /stock-management/* calls still resolve.
-api_router.include_router(stock.router, prefix="/stock-management", tags=["stock-management", "transfers", "shrinkage", "ai-scanner", "cost-tracking"])
-
-# Stock routes (frontend-facing /stock/* endpoints -- canonical prefix)
+# Stock routes (canonical prefix)
 api_router.include_router(stock.router, prefix="/stock", tags=["stock", "inventory"])
 
-# Inventory Complete - merged into stock.py; mount stock.router at legacy prefix
-# so frontend calls to /inventory-complete/* still resolve.
+# Inventory Complete - stock.router at legacy prefix used by frontend
 api_router.include_router(stock.router, prefix="/inventory-complete", tags=["inventory-complete", "stock"])
-
-# Inventory Complete Features - merged into stock.py; backward-compat mount
-api_router.include_router(stock.router, prefix="/inventory-complete-features", tags=["inventory", "complete"])
 
 # Inventory Intelligence (ABC Analysis, Turnover, Dead Stock, COGS, Food Cost Variance, EOQ, Snapshots, Cycle Counts)
 api_router.include_router(inventory_intelligence.router, prefix="/inventory-intelligence", tags=["inventory-intelligence", "abc-analysis", "turnover", "cogs", "eoq"])
@@ -371,38 +363,9 @@ for _module_name, _prefix, _tags in _ported_modules:
 
 logger.info(f"Ported modules: {_loaded} loaded, {_failed} skipped")
 
-# Backward-compat: v9_endpoints_part2 was merged into v9_endpoints.
-# Mount v9_endpoints.router at the old /v9-part2 prefix so existing
-# callers still resolve.
-try:
-    from app.api.routes import v9_endpoints as _v9_mod
-    api_router.include_router(_v9_mod.router, prefix="/v9-part2", tags=["v9", "advanced"])
-    logger.info("Backward-compat mount: /v9-part2 -> v9_endpoints.router")
-except Exception as _e:
-    logger.warning(f"Could not mount /v9-part2 backward-compat route: {_e}")
+# Note: /v9-part2, /ai-training, /enterprise-features backward-compat removed — no frontend usage found
 
-# Backward-compat: ai_training.py was merged into ai.py.
-# Mount ai.router at the old /ai-training prefix so existing callers still resolve.
-api_router.include_router(ai.router, prefix="/ai-training", tags=["ai", "training"])
-logger.info("Backward-compat mount: /ai-training -> ai.router")
-
-# Backward-compat: enterprise_features.py was merged into enterprise.py.
-# Mount enterprise.router at the old /enterprise-features prefix so existing callers still resolve.
-api_router.include_router(enterprise.router, prefix="/enterprise-features", tags=["enterprise"])
-logger.info("Backward-compat mount: /enterprise-features -> enterprise.router")
-
-# Backward-compat: enhanced_inventory_endpoints.py was merged into
-# menu.py, recipes.py, suppliers.py, purchase_orders.py, warehouses.py, stock.py.
-# Mount those routers under /enhanced-inventory/* so existing callers still resolve.
-_ei_compat = APIRouter()
-_ei_compat.include_router(menu.router, prefix="/menu", tags=["inventory", "enhanced"])
-_ei_compat.include_router(recipes.router, prefix="/recipes", tags=["inventory", "enhanced"])
-_ei_compat.include_router(warehouses.router, prefix="/warehouses", tags=["inventory", "enhanced"])
-_ei_compat.include_router(stock.router, prefix="/stock", tags=["inventory", "enhanced"])
-_ei_compat.include_router(suppliers.router, prefix="/suppliers", tags=["inventory", "enhanced"])
-_ei_compat.include_router(purchase_orders.router, prefix="/purchase-orders", tags=["inventory", "enhanced"])
-api_router.include_router(_ei_compat, prefix="/enhanced-inventory", tags=["inventory", "enhanced"])
-logger.info("Backward-compat mount: /enhanced-inventory -> composite router")
+# Note: /enhanced-inventory backward-compat removed — no frontend usage found
 
 # ============================================================================
 # V99 NEW FEATURE ROUTES

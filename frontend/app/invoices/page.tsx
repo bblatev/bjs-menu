@@ -3,7 +3,9 @@
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 
-import { API_URL, getAuthHeaders } from '@/lib/api';
+import { api } from '@/lib/api';
+
+
 
 interface Invoice {
   id: number;
@@ -82,14 +84,7 @@ export default function InvoicesPage() {
     setIsLoadingInvoices(true);
     setInvoicesError(null);
     try {
-      const response = await fetch(`${API_URL}/invoices/`, {
-        credentials: 'include',
-        headers: getAuthHeaders()
-      });
-      if (!response.ok) {
-        throw new Error(`Failed to fetch invoices: ${response.status} ${response.statusText}`);
-      }
-      const data = await response.json();
+      const data: any = await api.get('/invoices/');
       setInvoices(Array.isArray(data) ? data : data.items || data.invoices || []);
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Failed to fetch invoices';
@@ -104,14 +99,7 @@ export default function InvoicesPage() {
     setIsLoadingStats(true);
     setStatsError(null);
     try {
-      const response = await fetch(`${API_URL}/invoices/stats`, {
-        credentials: 'include',
-        headers: getAuthHeaders()
-      });
-      if (!response.ok) {
-        throw new Error(`Failed to fetch stats: ${response.status} ${response.statusText}`);
-      }
-      const data = await response.json();
+      const data: any = await api.get('/invoices/stats');
       setStats(data);
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Failed to fetch stats';
@@ -126,14 +114,7 @@ export default function InvoicesPage() {
     setIsLoadingSuppliers(true);
     setSuppliersError(null);
     try {
-      const response = await fetch(`${API_URL}/suppliers/`, {
-        credentials: 'include',
-        headers: getAuthHeaders()
-      });
-      if (!response.ok) {
-        throw new Error(`Failed to fetch suppliers: ${response.status} ${response.statusText}`);
-      }
-      const data = await response.json();
+      const data: any = await api.get('/suppliers/');
       setSuppliers(Array.isArray(data) ? data : data.items || data.suppliers || []);
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Failed to fetch suppliers';
@@ -563,29 +544,32 @@ export default function InvoicesPage() {
                 Mark {selectedInvoices.length} invoice(s) as paid?
               </p>
               <div>
-                <label className="block text-sm font-medium text-surface-700 mb-1">Payment Date</label>
+                <label className="block text-sm font-medium text-surface-700 mb-1">Payment Date
                 <input
                   type="date"
                   defaultValue={new Date().toISOString().split('T')[0]}
                   className="w-full px-4 py-2 border border-surface-300 rounded-lg focus:ring-2 focus:ring-primary-500"
                 />
+                </label>
               </div>
               <div>
-                <label className="block text-sm font-medium text-surface-700 mb-1">Payment Method</label>
+                <label className="block text-sm font-medium text-surface-700 mb-1">Payment Method
                 <select className="w-full px-4 py-2 border border-surface-300 rounded-lg focus:ring-2 focus:ring-primary-500">
                   <option value="bank_transfer">Bank Transfer</option>
                   <option value="check">Check</option>
                   <option value="credit_card">Credit Card</option>
                   <option value="cash">Cash</option>
                 </select>
+                </label>
               </div>
               <div>
-                <label className="block text-sm font-medium text-surface-700 mb-1">Reference Number</label>
+                <label className="block text-sm font-medium text-surface-700 mb-1">Reference Number
                 <input
                   type="text"
                   placeholder="e.g., Check #1234"
                   className="w-full px-4 py-2 border border-surface-300 rounded-lg focus:ring-2 focus:ring-primary-500"
                 />
+                </label>
               </div>
             </div>
             <div className="p-6 border-t border-surface-200 flex items-center justify-end gap-3">

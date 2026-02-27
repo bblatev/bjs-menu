@@ -2,9 +2,11 @@
 
 import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { API_URL, getAuthHeaders } from '@/lib/api';
+
 
 import { toast } from '@/lib/toast';
+
+import { api } from '@/lib/api';
 // Types
 interface PurchaseOrder {
   id: string;
@@ -223,12 +225,7 @@ export default function PurchaseOrdersManagementPage() {
     try {
       setLoading(prev => ({ ...prev, purchaseOrders: true }));
       setError(prev => ({ ...prev, purchaseOrders: "" }));
-      const res = await fetch(`${API_URL}/purchase-orders/`, {
-        credentials: 'include',
-        headers: getAuthHeaders(),
-      });
-      if (!res.ok) throw new Error('Failed to fetch purchase orders');
-      const data = await res.json();
+      const data: any = await api.get('/purchase-orders/');
       setPurchaseOrders(Array.isArray(data) ? data : (data.items || []));
     } catch (err) {
       console.error('Error fetching purchase orders:', err);
@@ -243,12 +240,7 @@ export default function PurchaseOrdersManagementPage() {
     try {
       setLoading(prev => ({ ...prev, grns: true }));
       setError(prev => ({ ...prev, grns: "" }));
-      const res = await fetch(`${API_URL}/purchase-orders/grns/`, {
-        credentials: 'include',
-        headers: getAuthHeaders(),
-      });
-      if (!res.ok) throw new Error('Failed to fetch goods received notes');
-      const data = await res.json();
+      const data: any = await api.get('/purchase-orders/grns/');
       setGRNs(Array.isArray(data) ? data : (data.items || []));
     } catch (err) {
       console.error('Error fetching GRNs:', err);
@@ -263,12 +255,7 @@ export default function PurchaseOrdersManagementPage() {
     try {
       setLoading(prev => ({ ...prev, invoices: true }));
       setError(prev => ({ ...prev, invoices: "" }));
-      const res = await fetch(`${API_URL}/purchase-orders/invoices/`, {
-        credentials: 'include',
-        headers: getAuthHeaders(),
-      });
-      if (!res.ok) throw new Error('Failed to fetch invoices');
-      const data = await res.json();
+      const data: any = await api.get('/purchase-orders/invoices/');
       setInvoices(Array.isArray(data) ? data : (data.items || []));
     } catch (err) {
       console.error('Error fetching invoices:', err);
@@ -283,12 +270,7 @@ export default function PurchaseOrdersManagementPage() {
     try {
       setLoading(prev => ({ ...prev, approvals: true }));
       setError(prev => ({ ...prev, approvals: "" }));
-      const res = await fetch(`${API_URL}/purchase-orders/approvals/`, {
-        credentials: 'include',
-        headers: getAuthHeaders(),
-      });
-      if (!res.ok) throw new Error('Failed to fetch approvals');
-      const data = await res.json();
+      const data: any = await api.get('/purchase-orders/approvals/');
       setApprovals(Array.isArray(data) ? data : (data.items || []));
     } catch (err) {
       console.error('Error fetching approvals:', err);
@@ -303,12 +285,7 @@ export default function PurchaseOrdersManagementPage() {
     try {
       setLoading(prev => ({ ...prev, matches: true }));
       setError(prev => ({ ...prev, matches: "" }));
-      const res = await fetch(`${API_URL}/purchase-orders/three-way-matches/`, {
-        credentials: 'include',
-        headers: getAuthHeaders(),
-      });
-      if (!res.ok) throw new Error('Failed to fetch three-way matches');
-      const data = await res.json();
+      const data: any = await api.get('/purchase-orders/three-way-matches/');
       setMatches(Array.isArray(data) ? data : (data.items || []));
     } catch (err) {
       console.error('Error fetching matches:', err);
@@ -374,12 +351,7 @@ export default function PurchaseOrdersManagementPage() {
 
   const handleApprovePO = async (poId: string) => {
     try {
-      const res = await fetch(`${API_URL}/purchase-orders/${poId}/approve`, {
-        credentials: 'include',
-        method: 'POST',
-        headers: getAuthHeaders(),
-      });
-      if (!res.ok) throw new Error('Failed to approve purchase order');
+      await api.post(`/purchase-orders/${poId}/approve`);
       // Refresh data after successful approval
       await Promise.all([fetchPurchaseOrders(), fetchApprovals()]);
     } catch (err) {
@@ -390,12 +362,7 @@ export default function PurchaseOrdersManagementPage() {
 
   const handleRejectPO = async (poId: string) => {
     try {
-      const res = await fetch(`${API_URL}/purchase-orders/${poId}/reject`, {
-        credentials: 'include',
-        method: 'POST',
-        headers: getAuthHeaders(),
-      });
-      if (!res.ok) throw new Error('Failed to reject purchase order');
+      await api.post(`/purchase-orders/${poId}/reject`);
       // Refresh data after successful rejection
       await Promise.all([fetchPurchaseOrders(), fetchApprovals()]);
     } catch (err) {
@@ -406,12 +373,7 @@ export default function PurchaseOrdersManagementPage() {
 
   const handleApproveVariance = async (approvalId: string) => {
     try {
-      const res = await fetch(`${API_URL}/purchase-orders/approvals/${approvalId}/approve`, {
-        credentials: 'include',
-        method: 'POST',
-        headers: getAuthHeaders(),
-      });
-      if (!res.ok) throw new Error('Failed to approve variance');
+      await api.post(`/purchase-orders/approvals/${approvalId}/approve`);
       // Refresh approvals after successful approval
       await fetchApprovals();
     } catch (err) {
@@ -1501,39 +1463,44 @@ export default function PurchaseOrdersManagementPage() {
                 <div className="p-6">
                   <div className="space-y-4">
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Supplier</label>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Supplier
                       <select className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500">
                         <option>Select supplier...</option>
                         <option>Fresh Farm Produce</option>
                         <option>Quality Meats Ltd</option>
                         <option>Beverage Distributors</option>
                       </select>
+                      </label>
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Warehouse</label>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Warehouse
                       <select className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500">
                         <option>Main Kitchen</option>
                         <option>Bar Storage</option>
                         <option>Cold Storage</option>
                       </select>
+                      </label>
                     </div>
                     <div className="grid grid-cols-2 gap-4">
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Order Date</label>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Order Date
                         <input type="date" className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500" />
+                        </label>
                       </div>
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Expected Delivery</label>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Expected Delivery
                         <input type="date" className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500" />
+                        </label>
                       </div>
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Notes</label>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Notes
                       <textarea
                         rows={3}
                         className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
                         placeholder="Add any notes..."
                       />
+                      </label>
                     </div>
 
                     <div className="border-t pt-4">

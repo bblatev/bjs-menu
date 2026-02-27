@@ -1027,11 +1027,9 @@ export default function FinancialManagementPage() {
             <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
               <h2 className="text-xl font-bold text-gray-900 mb-4">Валутни настройки</h2>
               <div className="space-y-4">
-                <div><label className="text-gray-500 text-sm">Основна валута</label>
-                  <select className="w-full mt-1 px-4 py-2 bg-gray-50 text-gray-900 rounded-lg border border-gray-200"><option>BGN (Български лев)</option><option>EUR (Евро)</option></select>
+                <div><label className="text-gray-500 text-sm">Основна валута <select className="w-full mt-1 px-4 py-2 bg-gray-50 text-gray-900 rounded-lg border border-gray-200"><option>BGN (Български лев)</option><option>EUR (Евро)</option></select></label>
                 </div>
-                <div><label className="text-gray-500 text-sm">Формат на числата</label>
-                  <select className="w-full mt-1 px-4 py-2 bg-gray-50 text-gray-900 rounded-lg border border-gray-200"><option>1 234,56 (Европейски)</option><option>1,234.56 (Американски)</option></select>
+                <div><label className="text-gray-500 text-sm">Формат на числата <select className="w-full mt-1 px-4 py-2 bg-gray-50 text-gray-900 rounded-lg border border-gray-200"><option>1 234,56 (Европейски)</option><option>1,234.56 (Американски)</option></select></label>
                 </div>
               </div>
             </div>
@@ -1060,7 +1058,7 @@ export default function FinancialManagementPage() {
             <motion.div initial={{ scale: 0.9, y: 20 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.9, y: 20 }} className="bg-white rounded-2xl p-6 max-w-lg w-full max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
               <h2 className="text-2xl font-bold text-gray-900 mb-6">Нова транзакция</h2>
               <form className="space-y-4">
-                <div><label className="text-gray-500 text-sm">Тип</label>
+                <div><span className="text-gray-500 text-sm">Тип</span>
                   <div className="flex gap-2 mt-1">
                     {['income', 'expense', 'transfer'].map(type => (
                       <button key={type} type="button" className={`flex-1 py-2 rounded-lg font-medium border ${type === 'income' ? 'bg-green-50 text-green-700 border-green-200' : type === 'expense' ? 'bg-red-50 text-red-700 border-red-200' : 'bg-blue-50 text-blue-700 border-blue-200'}`}>
@@ -1069,17 +1067,15 @@ export default function FinancialManagementPage() {
                     ))}
                   </div>
                 </div>
-                <div><label className="text-gray-500 text-sm">Описание</label><input type="text" className="w-full mt-1 px-4 py-2 bg-gray-50 text-gray-900 rounded-lg border border-gray-200" placeholder="Напр. Доставка" /></div>
+                <div><label className="text-gray-500 text-sm">Описание <input type="text" className="w-full mt-1 px-4 py-2 bg-gray-50 text-gray-900 rounded-lg border border-gray-200" placeholder="Напр. Доставка" /></label></div>
                 <div className="grid grid-cols-2 gap-4">
-                  <div><label className="text-gray-500 text-sm">Сума</label><input type="number" className="w-full mt-1 px-4 py-2 bg-gray-50 text-gray-900 rounded-lg border border-gray-200" placeholder="0.00" /></div>
-                  <div><label className="text-gray-500 text-sm">Дата</label><input type="date" defaultValue={new Date().toISOString().split('T')[0]} className="w-full mt-1 px-4 py-2 bg-gray-50 text-gray-900 rounded-lg border border-gray-200" /></div>
+                  <div><label className="text-gray-500 text-sm">Сума <input type="number" className="w-full mt-1 px-4 py-2 bg-gray-50 text-gray-900 rounded-lg border border-gray-200" placeholder="0.00" /></label></div>
+                  <div><label className="text-gray-500 text-sm">Дата <input type="date" defaultValue={new Date().toISOString().split('T')[0]} className="w-full mt-1 px-4 py-2 bg-gray-50 text-gray-900 rounded-lg border border-gray-200" /></label></div>
                 </div>
                 <div className="grid grid-cols-2 gap-4">
-                  <div><label className="text-gray-500 text-sm">Категория</label>
-                    <select className="w-full mt-1 px-4 py-2 bg-gray-50 text-gray-900 rounded-lg border border-gray-200">{budgets.map(b => <option key={b.id}>{b.icon} {b.category}</option>)}</select>
+                  <div><label className="text-gray-500 text-sm">Категория <select className="w-full mt-1 px-4 py-2 bg-gray-50 text-gray-900 rounded-lg border border-gray-200">{budgets.map(b => <option key={b.id}>{b.icon} {b.category}</option>)}</select></label>
                   </div>
-                  <div><label className="text-gray-500 text-sm">Сметка</label>
-                    <select className="w-full mt-1 px-4 py-2 bg-gray-50 text-gray-900 rounded-lg border border-gray-200">{accounts.map(a => <option key={a.id}>{a.name}</option>)}</select>
+                  <div><label className="text-gray-500 text-sm">Сметка <select className="w-full mt-1 px-4 py-2 bg-gray-50 text-gray-900 rounded-lg border border-gray-200">{accounts.map(a => <option key={a.id}>{a.name}</option>)}</select></label>
                   </div>
                 </div>
                 <div className="flex gap-3 pt-4">
@@ -1100,20 +1096,19 @@ export default function FinancialManagementPage() {
               <h2 className="text-2xl font-bold text-gray-900 mb-6">Нова фактура</h2>
               <form className="space-y-4">
                 <div className="flex gap-4">
-                  <div className="flex-1"><label className="text-gray-500 text-sm">Тип</label>
+                  <div className="flex-1"><span className="text-gray-500 text-sm">Тип</span>
                     <div className="flex gap-2 mt-1">
                       <button type="button" className="flex-1 py-2 bg-green-50 text-green-700 border border-green-200 rounded-lg">← Вземане</button>
                       <button type="button" className="flex-1 py-2 bg-gray-50 text-gray-500 border border-gray-200 rounded-lg">→ Задължение</button>
                     </div>
                   </div>
-                  <div className="w-40"><label className="text-gray-500 text-sm">Номер</label><input type="text" className="w-full mt-1 px-4 py-2 bg-gray-50 text-gray-900 rounded-lg border border-gray-200" placeholder="INV-2025-XXX" /></div>
+                  <div className="w-40"><label className="text-gray-500 text-sm">Номер <input type="text" className="w-full mt-1 px-4 py-2 bg-gray-50 text-gray-900 rounded-lg border border-gray-200" placeholder="INV-2025-XXX" /></label></div>
                 </div>
-                <div><label className="text-gray-500 text-sm">Клиент / Доставчик</label><input type="text" className="w-full mt-1 px-4 py-2 bg-gray-50 text-gray-900 rounded-lg border border-gray-200" placeholder="Име на фирма" /></div>
+                <div><label className="text-gray-500 text-sm">Клиент / Доставчик <input type="text" className="w-full mt-1 px-4 py-2 bg-gray-50 text-gray-900 rounded-lg border border-gray-200" placeholder="Име на фирма" /></label></div>
                 <div className="grid grid-cols-3 gap-4">
-                  <div><label className="text-gray-500 text-sm">Дата</label><input type="date" defaultValue={new Date().toISOString().split('T')[0]} className="w-full mt-1 px-4 py-2 bg-gray-50 text-gray-900 rounded-lg border border-gray-200" /></div>
-                  <div><label className="text-gray-500 text-sm">Падеж</label><input type="date" className="w-full mt-1 px-4 py-2 bg-gray-50 text-gray-900 rounded-lg border border-gray-200" /></div>
-                  <div><label className="text-gray-500 text-sm">Условия</label>
-                    <select className="w-full mt-1 px-4 py-2 bg-gray-50 text-gray-900 rounded-lg border border-gray-200"><option>Нето 7 дни</option><option>Нето 14 дни</option><option>Нето 30 дни</option></select>
+                  <div><label className="text-gray-500 text-sm">Дата <input type="date" defaultValue={new Date().toISOString().split('T')[0]} className="w-full mt-1 px-4 py-2 bg-gray-50 text-gray-900 rounded-lg border border-gray-200" /></label></div>
+                  <div><label className="text-gray-500 text-sm">Падеж <input type="date" className="w-full mt-1 px-4 py-2 bg-gray-50 text-gray-900 rounded-lg border border-gray-200" /></label></div>
+                  <div><label className="text-gray-500 text-sm">Условия <select className="w-full mt-1 px-4 py-2 bg-gray-50 text-gray-900 rounded-lg border border-gray-200"><option>Нето 7 дни</option><option>Нето 14 дни</option><option>Нето 30 дни</option></select></label>
                   </div>
                 </div>
                 <div className="bg-gray-50 rounded-lg p-4">

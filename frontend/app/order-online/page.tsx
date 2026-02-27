@@ -671,7 +671,7 @@ export default function OrderOnlinePage() {
 
               {/* Special Instructions */}
               <div className="mt-4">
-                <label className="block text-sm font-medium text-gray-700 mb-1">Special Instructions</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Special Instructions
                 <textarea
                   value={itemInstructions}
                   onChange={(e) => setItemInstructions(e.target.value)}
@@ -679,6 +679,7 @@ export default function OrderOnlinePage() {
                   rows={2}
                   placeholder="Any special requests..."
                 />
+                </label>
               </div>
 
               {/* Quantity + Add to Cart */}
@@ -865,7 +866,7 @@ export default function OrderOnlinePage() {
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="col-span-2">
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Full Name *</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Full Name *
                   <input
                     type="text"
                     value={checkoutForm.name}
@@ -873,9 +874,10 @@ export default function OrderOnlinePage() {
                     className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-400"
                     required
                   />
+                  </label>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Phone *</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Phone *
                   <input
                     type="tel"
                     value={checkoutForm.phone}
@@ -883,15 +885,17 @@ export default function OrderOnlinePage() {
                     className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-400"
                     required
                   />
+                  </label>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Email
                   <input
                     type="email"
                     value={checkoutForm.email}
                     onChange={(e) => setCheckoutForm({ ...checkoutForm, email: e.target.value })}
                     className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-400"
                   />
+                  </label>
                 </div>
               </div>
 
@@ -900,7 +904,7 @@ export default function OrderOnlinePage() {
                 <div className="space-y-4">
                   <div className="grid grid-cols-3 gap-4">
                     <div className="col-span-2">
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Delivery Address *</label>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Delivery Address *
                       <input
                         type="text"
                         value={checkoutForm.address}
@@ -909,15 +913,17 @@ export default function OrderOnlinePage() {
                         placeholder="123 Main Street"
                         required
                       />
+                      </label>
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Apt / Suite</label>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Apt / Suite
                       <input
                         type="text"
                         value={checkoutForm.apt}
                         onChange={(e) => setCheckoutForm({ ...checkoutForm, apt: e.target.value })}
                         className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-400"
                       />
+                      </label>
                     </div>
                   </div>
                   <div className="p-3 bg-blue-50 rounded-lg border border-blue-100 text-sm text-blue-700">
@@ -932,7 +938,7 @@ export default function OrderOnlinePage() {
               {/* Pickup-specific: Time Slot */}
               {orderType === 'pickup' && (
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Pickup Time Slot *</label>
+                  <span className="block text-sm font-medium text-gray-700 mb-2">Pickup Time Slot *</span>
                   {menu?.pickup_slots && menu.pickup_slots.length > 0 ? (
                     <div className="grid grid-cols-3 gap-2">
                       {menu.pickup_slots.map((slot) => (
@@ -962,7 +968,7 @@ export default function OrderOnlinePage() {
               )}
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Order Notes</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Order Notes
                 <textarea
                   value={checkoutForm.notes}
                   onChange={(e) => setCheckoutForm({ ...checkoutForm, notes: e.target.value })}
@@ -970,10 +976,11 @@ export default function OrderOnlinePage() {
                   rows={2}
                   placeholder="Any special requests for your order..."
                 />
+                </label>
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Payment Method</label>
+                <span className="block text-sm font-medium text-gray-700 mb-2">Payment Method</span>
                 <div className="flex gap-3">
                   {(['card', 'cash'] as const).map((method) => (
                     <button

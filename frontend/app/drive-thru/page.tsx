@@ -2,7 +2,9 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { getVenueId } from '@/lib/auth';
 
-import { API_URL, getAuthHeaders } from '@/lib/api';
+import { api } from '@/lib/api';
+
+
 
 interface Lane {
   id: string;
@@ -61,32 +63,26 @@ export default function DriveThruPage() {
   // Fetch lanes configuration
   const fetchLanes = useCallback(async () => {
     try {
-      const response = await fetch(`${API_URL}/v6/${getVenueId()}/drive-thru/lanes`, {
-        credentials: 'include',
-        headers: getAuthHeaders(),
-      });
-      if (response.ok) {
-        const data = await response.json();
-        const lanesData = (data.lanes || []).map((l: any) => ({
-          id: l.id || l.lane_id,
-          number: l.lane_number || l.number,
-          type: l.lane_type || 'standard',
-          status: l.is_open ? 'open' : 'closed',
-          queueLength: l.queue_length || 0,
-          avgServiceTime: l.avg_service_time_seconds || 0,
-          currentVehicle: l.current_vehicle ? {
-            id: l.current_vehicle.id,
-            laneId: l.id || l.lane_id,
-            licensePlate: l.current_vehicle.license_plate,
-            arrivalTime: l.current_vehicle.arrival_time,
-            status: l.current_vehicle.status,
-            customerType: l.current_vehicle.customer_type || 'new',
-            elapsedSeconds: Math.floor((Date.now() - new Date(l.current_vehicle.arrival_time).getTime()) / 1000),
-            order: l.current_vehicle.order,
-          } : undefined,
-        }));
-        setLanes(lanesData);
-      }
+      const data: any = await api.get(`/v6/${getVenueId()}/drive-thru/lanes`);
+            const lanesData = (data.lanes || []).map((l: any) => ({
+      id: l.id || l.lane_id,
+      number: l.lane_number || l.number,
+      type: l.lane_type || 'standard',
+      status: l.is_open ? 'open' : 'closed',
+      queueLength: l.queue_length || 0,
+      avgServiceTime: l.avg_service_time_seconds || 0,
+      currentVehicle: l.current_vehicle ? {
+        id: l.current_vehicle.id,
+        laneId: l.id || l.lane_id,
+        licensePlate: l.current_vehicle.license_plate,
+        arrivalTime: l.current_vehicle.arrival_time,
+        status: l.current_vehicle.status,
+        customerType: l.current_vehicle.customer_type || 'new',
+        elapsedSeconds: Math.floor((Date.now() - new Date(l.current_vehicle.arrival_time).getTime()) / 1000),
+        order: l.current_vehicle.order,
+      } : undefined,
+      }));
+      setLanes(lanesData);
     } catch (err) {
       console.error('Error fetching lanes:', err);
       setLanes([]);
@@ -96,27 +92,21 @@ export default function DriveThruPage() {
   // Fetch active vehicles in queue
   const fetchVehicles = useCallback(async () => {
     try {
-      const response = await fetch(`${API_URL}/v6/${getVenueId()}/drive-thru/vehicles`, {
-        credentials: 'include',
-        headers: getAuthHeaders(),
-      });
-      if (response.ok) {
-        const data = await response.json();
-        const vehiclesData = (data.vehicles || []).map((v: any) => ({
-          id: v.id || v.vehicle_id,
-          laneId: v.lane_id,
-          licensePlate: v.license_plate,
-          arrivalTime: v.arrival_time,
-          orderTakenTime: v.order_taken_time,
-          paymentTime: v.payment_time,
-          pickupTime: v.pickup_time,
-          status: v.status,
-          customerType: v.customer_type || 'new',
-          elapsedSeconds: Math.floor((Date.now() - new Date(v.arrival_time).getTime()) / 1000),
-          order: v.order,
-        }));
-        setVehicles(vehiclesData);
-      }
+      const data: any = await api.get(`/v6/${getVenueId()}/drive-thru/vehicles`);
+            const vehiclesData = (data.vehicles || []).map((v: any) => ({
+      id: v.id || v.vehicle_id,
+      laneId: v.lane_id,
+      licensePlate: v.license_plate,
+      arrivalTime: v.arrival_time,
+      orderTakenTime: v.order_taken_time,
+      paymentTime: v.payment_time,
+      pickupTime: v.pickup_time,
+      status: v.status,
+      customerType: v.customer_type || 'new',
+      elapsedSeconds: Math.floor((Date.now() - new Date(v.arrival_time).getTime()) / 1000),
+      order: v.order,
+      }));
+      setVehicles(vehiclesData);
     } catch (err) {
       console.error('Error fetching vehicles:', err);
       setVehicles([]);
@@ -128,22 +118,17 @@ export default function DriveThruPage() {
     try {
       const now = new Date();
       const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-      const response = await fetch(
-        `${API_URL}/v6/${getVenueId()}/drive-thru/stats?start=${startOfDay.toISOString()}&end=${now.toISOString()}`
-      , { credentials: 'include' });
-      if (response.ok) {
-        const data = await response.json();
-        setStats({
-          vehiclesToday: data.vehicles_today || data.total_vehicles || 0,
-          avgServiceTime: data.avg_service_time_seconds || data.avg_service_time || 0,
-          avgOrderTime: data.avg_order_time_seconds || data.avg_order_time || 0,
-          avgWaitTime: data.avg_wait_time_seconds || data.avg_wait_time || 0,
-          revenue: data.total_revenue || data.revenue || 0,
-          peakHour: data.peak_hour || '-',
-          carsPerHour: data.cars_per_hour || data.throughput || 0,
-          hourlyData: data.hourly_data || [],
-        });
-      }
+      const data: any = await api.get(`/v6/${getVenueId()}/drive-thru/stats?start=${startOfDay.toISOString()}&end=${now.toISOString()}`);
+            setStats({
+      vehiclesToday: data.vehicles_today || data.total_vehicles || 0,
+      avgServiceTime: data.avg_service_time_seconds || data.avg_service_time || 0,
+      avgOrderTime: data.avg_order_time_seconds || data.avg_order_time || 0,
+      avgWaitTime: data.avg_wait_time_seconds || data.avg_wait_time || 0,
+      revenue: data.total_revenue || data.revenue || 0,
+      peakHour: data.peak_hour || '-',
+      carsPerHour: data.cars_per_hour || data.throughput || 0,
+      hourlyData: data.hourly_data || [],
+      });
     } catch (err) {
       console.error('Error fetching stats:', err);
     }
@@ -578,25 +563,28 @@ export default function DriveThruPage() {
                 <h3 className="font-medium mb-3">Времеви прагове</h3>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div>
-                    <label className="block text-sm text-gray-400 mb-1">Зелено (OK)</label>
+                    <label className="block text-sm text-gray-400 mb-1">Зелено (OK)
                     <div className="flex items-center gap-2">
                       <input type="number" defaultValue="120" className="bg-gray-100 border border-gray-200 rounded px-3 py-2 w-20 text-gray-900" />
                       <span className="text-gray-400">секунди</span>
                     </div>
+                    </label>
                   </div>
                   <div>
-                    <label className="block text-sm text-gray-400 mb-1">Жълто (Внимание)</label>
+                    <label className="block text-sm text-gray-400 mb-1">Жълто (Внимание)
                     <div className="flex items-center gap-2">
                       <input type="number" defaultValue="180" className="bg-gray-100 border border-gray-200 rounded px-3 py-2 w-20 text-gray-900" />
                       <span className="text-gray-400">секунди</span>
                     </div>
+                    </label>
                   </div>
                   <div>
-                    <label className="block text-sm text-gray-400 mb-1">Червено (Закъснение)</label>
+                    <label className="block text-sm text-gray-400 mb-1">Червено (Закъснение)
                     <div className="flex items-center gap-2">
                       <input type="number" defaultValue="240" className="bg-gray-100 border border-gray-200 rounded px-3 py-2 w-20 text-gray-900" />
                       <span className="text-gray-400">секунди</span>
                     </div>
+                    </label>
                   </div>
                 </div>
               </div>

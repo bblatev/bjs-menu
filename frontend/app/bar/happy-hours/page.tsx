@@ -1,9 +1,8 @@
 'use client';
-
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { API_URL, getAuthHeaders } from '@/lib/api';
 
+import { api } from '@/lib/api';
 interface HappyHour {
   id: number;
   name: string;
@@ -24,7 +23,6 @@ interface HappyHour {
   min_purchase?: number;
   created_at: string;
 }
-
 interface HappyHourStats {
   active_promos: number;
   total_savings: number;
@@ -32,10 +30,8 @@ interface HappyHourStats {
   avg_check_increase: number;
   most_popular: string;
 }
-
 const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 const CATEGORIES = ['Beer', 'Wine', 'Cocktails', 'Spirits', 'Non-Alcoholic', 'Appetizers'];
-
 export default function HappyHoursPage() {
   const [happyHours, setHappyHours] = useState<HappyHour[]>([]);
   const [stats, setStats] = useState<HappyHourStats | null>(null);
@@ -43,7 +39,6 @@ export default function HappyHoursPage() {
   const [editingPromo, setEditingPromo] = useState<HappyHour | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-
   const [formData, setFormData] = useState({
     name: '',
     description: '',
@@ -58,26 +53,21 @@ export default function HappyHoursPage() {
     max_per_customer: 0,
     min_purchase: 0,
   });
-
   useEffect(() => {
     loadData();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-
   const loadData = async () => {
     setLoading(true);
-    const headers = getAuthHeaders();
-
     try {
       // Fetch all data in parallel
       const [happyHoursRes, statsRes] = await Promise.allSettled([
-        fetch(`${API_URL}/bar/happy-hours`, { credentials: 'include', headers }),
-        fetch(`${API_URL}/bar/happy-hours/stats`, { credentials: 'include', headers })
-      ]);
-
+  api.get('/bar/happy-hours'),
+  api.get('/bar/happy-hours/stats')
+]);
       // Process happy hours
-      if (happyHoursRes.status === 'fulfilled' && happyHoursRes.value.ok) {
-        const data = await happyHoursRes.value.json();
+      if (happyHoursRes.status === 'fulfilled') {
+        const data: any = happyHoursRes.value;
         if (Array.isArray(data)) {
           setHappyHours(data);
         }
@@ -104,11 +94,10 @@ export default function HappyHoursPage() {
           },
         ]);
       }
-
       // Process stats
-      if (statsRes.status === 'fulfilled' && statsRes.value.ok) {
-        const data = await statsRes.value.json();
-        setStats(data);
+      if (statsRes.status === 'fulfilled') {
+        const data_stats: any = statsRes.value;
+        setStats(data_stats);
       } else {
         setStats({
           active_promos: 4,
@@ -118,7 +107,6 @@ export default function HappyHoursPage() {
           most_popular: 'Classic Happy Hour',
         });
       }
-
       setError(null);
     } catch (err) {
       console.error('Failed to fetch happy hours data:', err);
@@ -135,7 +123,6 @@ export default function HappyHoursPage() {
       setLoading(false);
     }
   };
-
   const resetForm = () => {
     setFormData({
       name: '',
@@ -153,7 +140,6 @@ export default function HappyHoursPage() {
     });
     setEditingPromo(null);
   };
-
   const openEditModal = (promo: HappyHour) => {
     setEditingPromo(promo);
     setFormData({
@@ -172,14 +158,12 @@ export default function HappyHoursPage() {
     });
     setShowModal(true);
   };
-
   const savePromo = () => {
     // In real app, would call API
     setShowModal(false);
     resetForm();
     loadData();
   };
-
   const toggleDay = (day: string) => {
     if (formData.days.includes(day)) {
       setFormData({ ...formData, days: formData.days.filter(d => d !== day) });
@@ -187,29 +171,24 @@ export default function HappyHoursPage() {
       setFormData({ ...formData, days: [...formData.days, day] });
     }
   };
-
   const toggleStatus = (id: number) => {
     setHappyHours(happyHours.map(h =>
       h.id === id ? { ...h, status: h.status === 'active' ? 'inactive' : 'active' } : h
     ));
   };
-
   const isCurrentlyActive = (promo: HappyHour): boolean => {
     if (promo.status !== 'active') return false;
     const now = new Date();
     const dayName = DAYS[now.getDay() === 0 ? 6 : now.getDay() - 1];
     if (!promo.days.includes(dayName)) return false;
-
     const currentTime = now.getHours() * 60 + now.getMinutes();
     const [startH, startM] = promo.start_time.split(':').map(Number);
     const [endH, endM] = promo.end_time.split(':').map(Number);
     const startMins = startH * 60 + startM;
     let endMins = endH * 60 + endM;
     if (endMins < startMins) endMins += 24 * 60; // Crosses midnight
-
     return currentTime >= startMins && currentTime <= endMins;
   };
-
   const getDiscountDisplay = (promo: HappyHour) => {
     switch (promo.discount_type) {
       case 'percentage': return `${promo.discount_value}% OFF`;
@@ -218,7 +197,6 @@ export default function HappyHoursPage() {
       default: return '';
     }
   };
-
   // Loading state
   if (loading) {
     return (
@@ -230,7 +208,6 @@ export default function HappyHoursPage() {
       </div>
     );
   }
-
   return (
     <div className="min-h-screen bg-white p-6">
       {/* Error Banner */}
@@ -239,7 +216,6 @@ export default function HappyHoursPage() {
           {error}
         </div>
       )}
-
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-4">
@@ -263,7 +239,6 @@ export default function HappyHoursPage() {
           + New Happy Hour
         </button>
       </div>
-
       {/* Stats */}
       {stats && (
         <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
@@ -289,7 +264,6 @@ export default function HappyHoursPage() {
           </div>
         </div>
       )}
-
       {/* Current Active */}
       {happyHours.filter(isCurrentlyActive).length > 0 && (
         <div className="bg-gradient-to-r from-green-900/50 to-emerald-900/50 border border-green-500/30 rounded-lg p-4 mb-6">
@@ -307,12 +281,10 @@ export default function HappyHoursPage() {
           </div>
         </div>
       )}
-
       {/* Happy Hours Grid */}
       <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
         {happyHours.map((promo) => {
           const isActive = isCurrentlyActive(promo);
-
           return (
             <div
               key={promo.id}
@@ -334,7 +306,6 @@ export default function HappyHoursPage() {
                 </div>
                 <p className="text-gray-800 text-sm mt-1">{promo.description}</p>
               </div>
-
               {/* Details */}
               <div className="p-4 space-y-3">
                 {/* Discount Badge */}
@@ -343,7 +314,6 @@ export default function HappyHoursPage() {
                     {getDiscountDisplay(promo)}
                   </span>
                 </div>
-
                 {/* Time */}
                 <div className="flex items-center gap-2 text-gray-300">
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -351,7 +321,6 @@ export default function HappyHoursPage() {
                   </svg>
                   <span>{promo.start_time} - {promo.end_time}</span>
                 </div>
-
                 {/* Days */}
                 <div className="flex flex-wrap gap-1">
                   {DAYS.map((day) => (
@@ -367,14 +336,12 @@ export default function HappyHoursPage() {
                     </span>
                   ))}
                 </div>
-
                 {/* Applies To */}
                 {promo.item_names && promo.item_names.length > 0 && (
                   <div className="text-gray-400 text-sm">
                     Applies to: {promo.item_names.join(', ')}
                   </div>
                 )}
-
                 {/* Actions */}
                 <div className="flex gap-2 pt-2">
                   <button
@@ -399,7 +366,6 @@ export default function HappyHoursPage() {
           );
         })}
       </div>
-
       {/* Modal */}
       {showModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 overflow-y-auto">
@@ -419,10 +385,9 @@ export default function HappyHoursPage() {
                   &times;
                 </button>
               </div>
-
               <div className="space-y-4">
                 <div>
-                  <label className="block text-gray-300 mb-1">Name</label>
+                  <label className="block text-gray-300 mb-1">Name
                   <input
                     type="text"
                     value={formData.name}
@@ -430,10 +395,10 @@ export default function HappyHoursPage() {
                     className="w-full px-4 py-2 bg-white border border-gray-300 rounded-lg text-gray-900"
                     placeholder="e.g., Happy Hour Special"
                   />
+                  </label>
                 </div>
-
                 <div>
-                  <label className="block text-gray-300 mb-1">Description</label>
+                  <label className="block text-gray-300 mb-1">Description
                   <input
                     type="text"
                     value={formData.description}
@@ -441,10 +406,10 @@ export default function HappyHoursPage() {
                     className="w-full px-4 py-2 bg-white border border-gray-300 rounded-lg text-gray-900"
                     placeholder="e.g., 50% off all drinks"
                   />
+                  </label>
                 </div>
-
                 <div>
-                  <label className="block text-gray-300 mb-1">Days</label>
+                  <span className="block text-gray-300 mb-1">Days</span>
                   <div className="flex flex-wrap gap-2">
                     {DAYS.map((day) => (
                       <button
@@ -462,31 +427,31 @@ export default function HappyHoursPage() {
                     ))}
                   </div>
                 </div>
-
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-gray-300 mb-1">Start Time</label>
+                    <label className="block text-gray-300 mb-1">Start Time
                     <input
                       type="time"
                       value={formData.start_time}
                       onChange={(e) => setFormData({ ...formData, start_time: e.target.value })}
                       className="w-full px-4 py-2 bg-white border border-gray-300 rounded-lg text-gray-900"
                     />
+                    </label>
                   </div>
                   <div>
-                    <label className="block text-gray-300 mb-1">End Time</label>
+                    <label className="block text-gray-300 mb-1">End Time
                     <input
                       type="time"
                       value={formData.end_time}
                       onChange={(e) => setFormData({ ...formData, end_time: e.target.value })}
                       className="w-full px-4 py-2 bg-white border border-gray-300 rounded-lg text-gray-900"
                     />
+                    </label>
                   </div>
                 </div>
-
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-gray-300 mb-1">Discount Type</label>
+                    <label className="block text-gray-300 mb-1">Discount Type
                     <select
                       value={formData.discount_type}
                       onChange={(e) => setFormData({ ...formData, discount_type: e.target.value as HappyHour['discount_type'] })}
@@ -496,23 +461,23 @@ export default function HappyHoursPage() {
                       <option value="fixed">Fixed Amount Off</option>
                       <option value="bogo">Buy X Get 1 Free</option>
                     </select>
+                    </label>
                   </div>
                   <div>
                     <label className="block text-gray-300 mb-1">
                       {formData.discount_type === 'percentage' ? 'Percentage' :
                        formData.discount_type === 'fixed' ? 'Amount ($)' : 'Buy X'}
-                    </label>
                     <input
                       type="number"
                       value={formData.discount_value}
                       onChange={(e) => setFormData({ ...formData, discount_value: parseInt(e.target.value) })}
                       className="w-full px-4 py-2 bg-white border border-gray-300 rounded-lg text-gray-900"
                     />
+                    </label>
                   </div>
                 </div>
-
                 <div>
-                  <label className="block text-gray-300 mb-1">Applies To</label>
+                  <label className="block text-gray-300 mb-1">Applies To
                   <select
                     value={formData.applies_to}
                     onChange={(e) => setFormData({ ...formData, applies_to: e.target.value as HappyHour['applies_to'] })}
@@ -522,11 +487,11 @@ export default function HappyHoursPage() {
                     <option value="category">Specific Categories</option>
                     <option value="items">Specific Items</option>
                   </select>
+                  </label>
                 </div>
-
                 {formData.applies_to === 'category' && (
                   <div>
-                    <label className="block text-gray-300 mb-1">Categories</label>
+                    <span className="block text-gray-300 mb-1">Categories</span>
                     <div className="flex flex-wrap gap-2">
                       {CATEGORIES.map((cat, idx) => (
                         <button
@@ -552,7 +517,6 @@ export default function HappyHoursPage() {
                   </div>
                 )}
               </div>
-
               <div className="flex gap-3 mt-6">
                 <button
                   onClick={() => {

@@ -20,9 +20,9 @@ export default function PaymentGatewaysPage() {
     Promise.all([
       api.get('/api/v1/paypal/').catch(() => ({ data: { configured: false } })),
       api.get('/api/v1/square/').catch(() => ({ data: { configured: false } })),
-    ]).then(([pp, sq]) => {
-      setPaypalStatus(pp.data);
-      setSquareStatus(sq.data);
+    ]).then(([pp, sq]: any[]) => {
+      setPaypalStatus(pp);
+      setSquareStatus(sq);
     }).finally(() => setLoading(false));
   }, []);
 
@@ -52,10 +52,10 @@ export default function PaymentGatewaysPage() {
           <div className="bg-white border rounded-lg p-6">
             <h2 className="text-lg font-semibold mb-4">PayPal Configuration</h2>
             <div className="grid grid-cols-2 gap-4">
-              <div><label className="block text-sm font-medium mb-1">Client ID</label><input className="w-full border rounded px-3 py-2" type="text" value={paypalConfig.clientId} onChange={e => setPaypalConfig(p => ({...p, clientId: e.target.value}))} placeholder="PayPal Client ID" /></div>
-              <div><label className="block text-sm font-medium mb-1">Client Secret</label><input className="w-full border rounded px-3 py-2" type="password" value={paypalConfig.clientSecret} onChange={e => setPaypalConfig(p => ({...p, clientSecret: e.target.value}))} placeholder="PayPal Client Secret" /></div>
-              <div><label className="block text-sm font-medium mb-1">Webhook ID</label><input className="w-full border rounded px-3 py-2" type="text" value={paypalConfig.webhookId} onChange={e => setPaypalConfig(p => ({...p, webhookId: e.target.value}))} placeholder="For webhook verification" /></div>
-              <div><label className="block text-sm font-medium mb-1">Currency</label><select className="w-full border rounded px-3 py-2" value={paypalConfig.currency} onChange={e => setPaypalConfig(p => ({...p, currency: e.target.value}))}><option value="USD">USD</option><option value="EUR">EUR</option><option value="GBP">GBP</option><option value="BGN">BGN</option></select></div>
+              <div><label className="block text-sm font-medium mb-1">Client ID <input className="w-full border rounded px-3 py-2" type="text" value={paypalConfig.clientId} onChange={e => setPaypalConfig(p => ({...p, clientId: e.target.value}))} placeholder="PayPal Client ID" /></label></div>
+              <div><label className="block text-sm font-medium mb-1">Client Secret <input className="w-full border rounded px-3 py-2" type="password" value={paypalConfig.clientSecret} onChange={e => setPaypalConfig(p => ({...p, clientSecret: e.target.value}))} placeholder="PayPal Client Secret" /></label></div>
+              <div><label className="block text-sm font-medium mb-1">Webhook ID <input className="w-full border rounded px-3 py-2" type="text" value={paypalConfig.webhookId} onChange={e => setPaypalConfig(p => ({...p, webhookId: e.target.value}))} placeholder="For webhook verification" /></label></div>
+              <div><label className="block text-sm font-medium mb-1">Currency <select className="w-full border rounded px-3 py-2" value={paypalConfig.currency} onChange={e => setPaypalConfig(p => ({...p, currency: e.target.value}))}><option value="USD">USD</option><option value="EUR">EUR</option><option value="GBP">GBP</option><option value="BGN">BGN</option></select></label></div>
             </div>
             <label className="flex items-center gap-2 mt-4"><input type="checkbox" checked={paypalConfig.sandbox} onChange={e => setPaypalConfig(p => ({...p, sandbox: e.target.checked}))} /><span className="text-sm">Sandbox Mode</span></label>
             <div className="mt-4 flex gap-2"><button className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700" onClick={() => toast.success('PayPal configuration saved')}>Save Configuration</button></div>
@@ -76,9 +76,9 @@ export default function PaymentGatewaysPage() {
           <div className="bg-white border rounded-lg p-6">
             <h2 className="text-lg font-semibold mb-4">Square Configuration</h2>
             <div className="grid grid-cols-2 gap-4">
-              <div><label className="block text-sm font-medium mb-1">Access Token</label><input className="w-full border rounded px-3 py-2" type="password" value={squareConfig.accessToken} onChange={e => setSquareConfig(p => ({...p, accessToken: e.target.value}))} placeholder="Square Access Token" /></div>
-              <div><label className="block text-sm font-medium mb-1">Location ID</label><input className="w-full border rounded px-3 py-2" type="text" value={squareConfig.locationId} onChange={e => setSquareConfig(p => ({...p, locationId: e.target.value}))} placeholder="Square Location ID" /></div>
-              <div className="col-span-2"><label className="block text-sm font-medium mb-1">Webhook Signature Key</label><input className="w-full border rounded px-3 py-2" type="password" value={squareConfig.webhookSignatureKey} onChange={e => setSquareConfig(p => ({...p, webhookSignatureKey: e.target.value}))} placeholder="For webhook verification" /></div>
+              <div><label className="block text-sm font-medium mb-1">Access Token <input className="w-full border rounded px-3 py-2" type="password" value={squareConfig.accessToken} onChange={e => setSquareConfig(p => ({...p, accessToken: e.target.value}))} placeholder="Square Access Token" /></label></div>
+              <div><label className="block text-sm font-medium mb-1">Location ID <input className="w-full border rounded px-3 py-2" type="text" value={squareConfig.locationId} onChange={e => setSquareConfig(p => ({...p, locationId: e.target.value}))} placeholder="Square Location ID" /></label></div>
+              <div className="col-span-2"><label className="block text-sm font-medium mb-1">Webhook Signature Key <input className="w-full border rounded px-3 py-2" type="password" value={squareConfig.webhookSignatureKey} onChange={e => setSquareConfig(p => ({...p, webhookSignatureKey: e.target.value}))} placeholder="For webhook verification" /></label></div>
             </div>
             <label className="flex items-center gap-2 mt-4"><input type="checkbox" checked={squareConfig.sandbox} onChange={e => setSquareConfig(p => ({...p, sandbox: e.target.checked}))} /><span className="text-sm">Sandbox Mode</span></label>
             <div className="mt-4 flex gap-2"><button className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700" onClick={() => toast.success('Square configuration saved')}>Save Configuration</button></div>

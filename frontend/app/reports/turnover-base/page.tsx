@@ -151,29 +151,29 @@ export default function TurnoverBasePricesPage() {
             <div>
               <label className="block text-sm font-medium text-surface-600 mb-1">
                 От дата / Start Date
-              </label>
               <input
                 type="date"
                 value={startDate}
                 onChange={(e) => setStartDate(e.target.value)}
                 className="px-4 py-2 rounded-xl border border-surface-200 bg-white text-surface-900"
               />
+              </label>
             </div>
             <div>
               <label className="block text-sm font-medium text-surface-600 mb-1">
                 До дата / End Date
-              </label>
               <input
                 type="date"
                 value={endDate}
                 onChange={(e) => setEndDate(e.target.value)}
                 className="px-4 py-2 rounded-xl border border-surface-200 bg-white text-surface-900"
               />
+              </label>
             </div>
             <div>
-              <label className="block text-sm font-medium text-surface-600 mb-1">
+              <span className="block text-sm font-medium text-surface-600 mb-1">
                 Изглед / View
-              </label>
+              </span>
               <div className="flex rounded-xl border border-surface-200 overflow-hidden">
                 <button
                   onClick={() => setViewMode('category')}

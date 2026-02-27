@@ -664,7 +664,6 @@ export default function BiometricAuthPage() {
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                   Device Type
-                </label>
                 <select className="w-full px-4 py-2 border border-gray-300 dark:border-surface-600 rounded-lg bg-white dark:bg-surface-700 text-gray-900 dark:text-white">
                   <option value="virtual">Virtual (Testing)</option>
                   <option value="zkteco_fingerprint">ZKTeco Fingerprint Reader</option>
@@ -673,12 +672,13 @@ export default function BiometricAuthPage() {
                   <option value="usb_fingerprint">USB Fingerprint Scanner</option>
                   <option value="nfc_reader">NFC Reader</option>
                 </select>
+                </label>
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                <span className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                   Device Status
-                </label>
+                </span>
                 <div className="p-4 bg-gray-50 dark:bg-surface-700 rounded-lg space-y-2 text-sm">
                   <div className="flex justify-between">
                     <span className="text-gray-500 dark:text-gray-400">Type:</span>

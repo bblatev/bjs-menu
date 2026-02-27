@@ -535,7 +535,7 @@ export default function EmailMarketingPage() {
               <div className="p-6 space-y-4">
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-surface-700 mb-1">Template Name</label>
+                    <label className="block text-sm font-medium text-surface-700 mb-1">Template Name
                     <input
                       type="text"
                       value={templateForm.name}
@@ -543,9 +543,10 @@ export default function EmailMarketingPage() {
                       className="w-full px-4 py-2 border border-surface-200 rounded-lg focus:ring-2 focus:ring-amber-500"
                       placeholder="e.g., Welcome Email"
                     />
+                    </label>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-surface-700 mb-1">Type</label>
+                    <label className="block text-sm font-medium text-surface-700 mb-1">Type
                     <select
                       value={templateForm.template_type}
                       onChange={(e) => setTemplateForm({ ...templateForm, template_type: e.target.value as any })}
@@ -557,10 +558,11 @@ export default function EmailMarketingPage() {
                       <option value="newsletter">Newsletter</option>
                       <option value="custom">Custom</option>
                     </select>
+                    </label>
                   </div>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-surface-700 mb-1">Subject Line</label>
+                  <label className="block text-sm font-medium text-surface-700 mb-1">Subject Line
                   <input
                     type="text"
                     value={templateForm.subject}
@@ -568,10 +570,11 @@ export default function EmailMarketingPage() {
                     className="w-full px-4 py-2 border border-surface-200 rounded-lg focus:ring-2 focus:ring-amber-500"
                     placeholder="e.g., Welcome to {{restaurant_name}}!"
                   />
+                  </label>
                   <div className="text-xs text-surface-500 mt-1">Use {`{{variable}}`} for dynamic content</div>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-surface-700 mb-1">HTML Content</label>
+                  <label className="block text-sm font-medium text-surface-700 mb-1">HTML Content
                   <textarea
                     value={templateForm.html_content}
                     onChange={(e) => setTemplateForm({ ...templateForm, html_content: e.target.value })}
@@ -579,9 +582,10 @@ export default function EmailMarketingPage() {
                     className="w-full px-4 py-2 border border-surface-200 rounded-lg focus:ring-2 focus:ring-amber-500 font-mono text-sm"
                     placeholder="<h1>Hello {{customer_name}}</h1>..."
                   />
+                  </label>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-surface-700 mb-1">Plain Text Content</label>
+                  <label className="block text-sm font-medium text-surface-700 mb-1">Plain Text Content
                   <textarea
                     value={templateForm.text_content}
                     onChange={(e) => setTemplateForm({ ...templateForm, text_content: e.target.value })}
@@ -589,6 +593,7 @@ export default function EmailMarketingPage() {
                     className="w-full px-4 py-2 border border-surface-200 rounded-lg focus:ring-2 focus:ring-amber-500"
                     placeholder="Hello {{customer_name}}..."
                   />
+                  </label>
                 </div>
               </div>
               <div className="p-6 border-t border-surface-100 flex gap-3">
@@ -625,7 +630,7 @@ export default function EmailMarketingPage() {
               </div>
               <div className="p-6 space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-surface-700 mb-1">Campaign Name</label>
+                  <label className="block text-sm font-medium text-surface-700 mb-1">Campaign Name
                   <input
                     type="text"
                     value={campaignForm.name}
@@ -633,9 +638,10 @@ export default function EmailMarketingPage() {
                     className="w-full px-4 py-2 border border-surface-200 rounded-lg focus:ring-2 focus:ring-amber-500"
                     placeholder="e.g., Holiday Special"
                   />
+                  </label>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-surface-700 mb-1">Email Template</label>
+                  <label className="block text-sm font-medium text-surface-700 mb-1">Email Template
                   <select
                     value={campaignForm.template_id}
                     onChange={(e) => setCampaignForm({ ...campaignForm, template_id: e.target.value })}
@@ -646,9 +652,10 @@ export default function EmailMarketingPage() {
                       <option key={t.id} value={t.id}>{t.name}</option>
                     ))}
                   </select>
+                  </label>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-surface-700 mb-1">Target Segment</label>
+                  <label className="block text-sm font-medium text-surface-700 mb-1">Target Segment
                   <select
                     value={campaignForm.segment}
                     onChange={(e) => setCampaignForm({ ...campaignForm, segment: e.target.value })}
@@ -660,9 +667,10 @@ export default function EmailMarketingPage() {
                     <option value="vip_customers">VIP Customers</option>
                     <option value="at_risk">At Risk Customers</option>
                   </select>
+                  </label>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-surface-700 mb-2">Send Schedule</label>
+                  <label className="block text-sm font-medium text-surface-700 mb-2">Send Schedule
                   <div className="space-y-3">
                     <label className="flex items-center gap-2">
                       <input
@@ -691,6 +699,7 @@ export default function EmailMarketingPage() {
                       />
                     )}
                   </div>
+                  </label>
                 </div>
               </div>
               <div className="p-6 border-t border-surface-100 flex gap-3">

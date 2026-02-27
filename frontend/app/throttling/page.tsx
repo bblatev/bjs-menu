@@ -1,8 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import axios from 'axios';
-import { API_URL } from '@/lib/api';
+import { api } from '@/lib/api';
 
 interface ThrottleRule {
   id: number;
@@ -44,10 +43,8 @@ export default function ThrottlingPage() {
 
   const fetchRules = async () => {
     try {
-      const response = await axios.get(`${API_URL}/enterprise/throttling/rules`, {
-        params: { venue_id: 1 }
-      });
-      setRules(response.data.rules || []);
+      const data: any = await api.get('/enterprise/throttling/rules?venue_id=1');
+      setRules(data.rules || []);
     } catch (error) {
       console.error('Failed to fetch rules:', error);
     }
@@ -55,10 +52,8 @@ export default function ThrottlingPage() {
 
   const fetchStatus = async () => {
     try {
-      const response = await axios.get(`${API_URL}/enterprise/throttling/status`, {
-        params: { venue_id: 1 }
-      });
-      setChannelStatus(response.data.channels || []);
+      const data: any = await api.get('/enterprise/throttling/status?venue_id=1');
+      setChannelStatus(data.channels || []);
     } catch (error) {
       console.error('Failed to fetch status:', error);
     }
@@ -66,7 +61,7 @@ export default function ThrottlingPage() {
 
   const toggleRule = async (ruleId: number, isActive: boolean) => {
     try {
-      await axios.post(`${API_URL}/enterprise/throttling/rules/${ruleId}/toggle`, {
+      await api.post(`/enterprise/throttling/rules/${ruleId}/toggle`, {
         is_active: !isActive
       });
       fetchRules();
@@ -77,7 +72,7 @@ export default function ThrottlingPage() {
 
   const snoozeAll = async (minutes: number) => {
     try {
-      await axios.post(`${API_URL}/enterprise/throttling/snooze`, {
+      await api.post('/enterprise/throttling/snooze', {
         venue_id: 1,
         duration_minutes: minutes,
         reason: 'Manual snooze from admin panel'
@@ -90,7 +85,7 @@ export default function ThrottlingPage() {
 
   const resumeAll = async () => {
     try {
-      await axios.post(`${API_URL}/enterprise/throttling/resume`, { venue_id: 1 });
+      await api.post('/enterprise/throttling/resume', { venue_id: 1 });
       fetchStatus();
     } catch (error) {
       console.error('Failed to resume:', error);
@@ -99,7 +94,7 @@ export default function ThrottlingPage() {
 
   const addRule = async () => {
     try {
-      await axios.post(`${API_URL}/enterprise/throttling/rules`, {
+      await api.post('/enterprise/throttling/rules', {
         venue_id: 1,
         ...newRule
       });

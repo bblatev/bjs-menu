@@ -169,7 +169,7 @@ export default function SettingsFiscalPage() {
 
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-surface-600 mb-2">Printer Model</label>
+                <label className="block text-sm font-medium text-surface-600 mb-2">Printer Model
                 <select
                   value={settings.fiscalPrinter.model}
                   onChange={(e) => setSettings({
@@ -184,10 +184,11 @@ export default function SettingsFiscalPage() {
                   <option value="FP-700">Datecs FP-700</option>
                   <option value="EPSILON">Epsilon ESC/POS</option>
                 </select>
+                </label>
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-surface-600 mb-2">Connection Type</label>
+                <label className="block text-sm font-medium text-surface-600 mb-2">Connection Type
                 <select
                   value={settings.fiscalPrinter.connectionType}
                   onChange={(e) => setSettings({
@@ -201,6 +202,7 @@ export default function SettingsFiscalPage() {
                   <option value="network">Network (TCP/IP)</option>
                   <option value="usb">USB</option>
                 </select>
+                </label>
               </div>
 
               {settings.fiscalPrinter.connectionType === 'serial' && (
@@ -216,7 +218,7 @@ export default function SettingsFiscalPage() {
                     placeholder="/dev/ttyUSB0"
                   />
                   <div>
-                    <label className="block text-sm font-medium text-surface-600 mb-2">Baud Rate</label>
+                    <label className="block text-sm font-medium text-surface-600 mb-2">Baud Rate
                     <select
                       value={settings.fiscalPrinter.baudRate}
                       onChange={(e) => setSettings({
@@ -232,6 +234,7 @@ export default function SettingsFiscalPage() {
                       <option value="57600">57600</option>
                       <option value="115200">115200</option>
                     </select>
+                    </label>
                   </div>
                 </>
               )}
@@ -312,7 +315,7 @@ export default function SettingsFiscalPage() {
             <div className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-surface-600 mb-2">Default VAT Rate (%)</label>
+                  <label className="block text-sm font-medium text-surface-600 mb-2">Default VAT Rate (%)
                   <input
                     type="number"
                     value={settings.taxSettings.defaultVatRate}
@@ -324,6 +327,7 @@ export default function SettingsFiscalPage() {
                     placeholder="20"
                     step="0.01"
                   />
+                  </label>
                 </div>
                 <div className="flex items-end gap-4">
                   <label className="flex items-center gap-2 cursor-pointer">
@@ -424,7 +428,7 @@ export default function SettingsFiscalPage() {
                 disabled={!settings.nraCompliance.enabled}
               />
               <div>
-                <label className="block text-sm font-medium text-surface-600 mb-2">Retention Period (Years)</label>
+                <label className="block text-sm font-medium text-surface-600 mb-2">Retention Period (Years)
                 <input
                   type="number"
                   value={settings.nraCompliance.retentionPeriodYears}
@@ -438,6 +442,7 @@ export default function SettingsFiscalPage() {
                   min="1"
                   max="10"
                 />
+                </label>
               </div>
               <div className="col-span-2 flex gap-4">
                 <label className="flex items-center gap-2 cursor-pointer">
@@ -477,7 +482,7 @@ export default function SettingsFiscalPage() {
             <h2 className="text-lg font-semibold text-surface-900 mb-4">Receipt Settings</h2>
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-surface-600 mb-2">Header Text</label>
+                <label className="block text-sm font-medium text-surface-600 mb-2">Header Text
                 <textarea
                   value={settings.receiptSettings.headerText}
                   onChange={(e) => setSettings({
@@ -488,9 +493,10 @@ export default function SettingsFiscalPage() {
                   className="w-full px-4 py-3 rounded-xl border border-surface-200 bg-white text-surface-900 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500"
                   placeholder="Business name and address"
                 />
+                </label>
               </div>
               <div>
-                <label className="block text-sm font-medium text-surface-600 mb-2">Footer Text</label>
+                <label className="block text-sm font-medium text-surface-600 mb-2">Footer Text
                 <textarea
                   value={settings.receiptSettings.footerText}
                   onChange={(e) => setSettings({
@@ -501,9 +507,10 @@ export default function SettingsFiscalPage() {
                   className="w-full px-4 py-3 rounded-xl border border-surface-200 bg-white text-surface-900 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500"
                   placeholder="Thank you message"
                 />
+                </label>
               </div>
               <div>
-                <label className="block text-sm font-medium text-surface-600 mb-2">Receipt Width (characters)</label>
+                <label className="block text-sm font-medium text-surface-600 mb-2">Receipt Width (characters)
                 <input
                   type="number"
                   value={settings.receiptSettings.receiptWidth}
@@ -516,6 +523,7 @@ export default function SettingsFiscalPage() {
                   min="32"
                   max="80"
                 />
+                </label>
               </div>
               <div className="flex items-end gap-4">
                 <label className="flex items-center gap-2 cursor-pointer">

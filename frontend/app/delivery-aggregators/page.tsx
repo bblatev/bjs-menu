@@ -2,7 +2,9 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { getVenueId } from '@/lib/auth';
 
-import { API_URL, getAuthHeaders } from '@/lib/api';
+import { api } from '@/lib/api';
+
+
 
 interface Platform {
   id: string;
@@ -82,12 +84,7 @@ export default function DeliveryAggregatorsPage() {
   // Fetch connected platforms
   const fetchPlatforms = useCallback(async () => {
     try {
-      const response = await fetch(`${API_URL}/v6/${getVenueId()}/delivery/platforms`, {
-        credentials: 'include',
-        headers: getAuthHeaders(),
-      });
-      if (!response.ok) throw new Error('Failed to fetch platforms');
-      const data = await response.json();
+      const data: any = await api.get(`/v6/${getVenueId()}/delivery/platforms`);
 
       // Build platform list with both connected and available platforms
       const connectedPlatformIds = new Set(data.platforms?.map((p: any) => p.platform) || []);
@@ -127,12 +124,7 @@ export default function DeliveryAggregatorsPage() {
   // Fetch orders from aggregators
   const fetchOrders = useCallback(async () => {
     try {
-      const response = await fetch(`${API_URL}/v6/${getVenueId()}/delivery/orders`, {
-        credentials: 'include',
-        headers: getAuthHeaders(),
-      });
-      if (!response.ok) throw new Error('Failed to fetch orders');
-      const data = await response.json();
+      const data: any = await api.get(`/v6/${getVenueId()}/delivery/orders`);
 
       const mappedOrders: AggregatorOrder[] = (data.orders || []).map((o: any) => ({
         id: o.id,
@@ -158,12 +150,7 @@ export default function DeliveryAggregatorsPage() {
   // Fetch delivery zones
   const fetchZones = useCallback(async () => {
     try {
-      const response = await fetch(`${API_URL}/v6/${getVenueId()}/delivery/zones`, {
-        credentials: 'include',
-        headers: getAuthHeaders(),
-      });
-      if (!response.ok) throw new Error('Failed to fetch zones');
-      const data = await response.json();
+      const data: any = await api.get(`/v6/${getVenueId()}/delivery/zones`);
 
       const mappedZones: DeliveryZone[] = (data.zones || []).map((z: any) => ({
         id: z.zone_id || z.id,
@@ -184,12 +171,7 @@ export default function DeliveryAggregatorsPage() {
   // Fetch drivers
   const fetchDrivers = useCallback(async () => {
     try {
-      const response = await fetch(`${API_URL}/v6/${getVenueId()}/delivery/drivers`, {
-        credentials: 'include',
-        headers: getAuthHeaders(),
-      });
-      if (!response.ok) throw new Error('Failed to fetch drivers');
-      const data = await response.json();
+      const data: any = await api.get(`/v6/${getVenueId()}/delivery/drivers`);
 
       const mappedDrivers: Driver[] = (data.drivers || []).map((d: any) => ({
         id: String(d.id),
@@ -215,11 +197,7 @@ export default function DeliveryAggregatorsPage() {
       const startOfDay = new Date(today.setHours(0, 0, 0, 0)).toISOString();
       const endOfDay = new Date(today.setHours(23, 59, 59, 999)).toISOString();
 
-      const response = await fetch(
-        `${API_URL}/v6/${getVenueId()}/delivery/stats?start=${startOfDay}&end=${endOfDay}`
-      , { credentials: 'include' });
-      if (!response.ok) throw new Error('Failed to fetch stats');
-      const data = await response.json();
+      const data: any = await api.get(`/v6/${getVenueId()}/delivery/stats?start=${startOfDay}&end=${endOfDay}`);
 
       const statsData = data.stats || {};
       setStats({
@@ -284,12 +262,7 @@ export default function DeliveryAggregatorsPage() {
   // Accept order via API
   const acceptOrder = async (orderId: string, prepTime: number = 20) => {
     try {
-      const response = await fetch(
-        `${API_URL}/v6/${getVenueId()}/delivery/orders/${orderId}/accept?prep_time=${prepTime}`,
-        { credentials: 'include', method: 'POST' }
-      );
-      if (!response.ok) throw new Error('Failed to accept order');
-
+      await api.post(`/v6/${getVenueId()}/delivery/orders/${orderId}/accept?prep_time=${prepTime}`);
       setOrders(orders.map(o => o.id === orderId ? { ...o, status: 'accepted', prepTime } : o));
     } catch (err) {
       console.error('Error accepting order:', err);
@@ -301,17 +274,7 @@ export default function DeliveryAggregatorsPage() {
   // Reject order via API
   const rejectOrder = async (orderId: string) => {
     try {
-      const response = await fetch(
-        `${API_URL}/v6/${getVenueId()}/delivery/orders/${orderId}/reject`,
-        {
-          credentials: 'include',
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ reason: 'Restaurant busy' })
-        }
-      );
-      if (!response.ok) throw new Error('Failed to reject order');
-
+      await api.post(`/v6/${getVenueId()}/delivery/orders/${orderId}/reject`, { reason: 'Restaurant busy' });
       setOrders(orders.map(o => o.id === orderId ? { ...o, status: 'cancelled' } : o));
     } catch (err) {
       console.error('Error rejecting order:', err);
@@ -322,12 +285,7 @@ export default function DeliveryAggregatorsPage() {
   // Mark order as ready via API
   const markReady = async (orderId: string) => {
     try {
-      const response = await fetch(
-        `${API_URL}/v6/${getVenueId()}/delivery/orders/${orderId}/ready`,
-        { credentials: 'include', method: 'POST' }
-      );
-      if (!response.ok) throw new Error('Failed to mark order ready');
-
+      await api.post(`/v6/${getVenueId()}/delivery/orders/${orderId}/ready`);
       setOrders(orders.map(o => o.id === orderId ? { ...o, status: 'ready' } : o));
     } catch (err) {
       console.error('Error marking order ready:', err);
@@ -338,24 +296,14 @@ export default function DeliveryAggregatorsPage() {
   // Connect platform via API
   const connectPlatform = async (platformId: string) => {
     try {
-      const response = await fetch(
-        `${API_URL}/v6/${getVenueId()}/delivery/connect`,
-        {
-          credentials: 'include',
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
+      await api.post(`/v6/${getVenueId()}/delivery/connect`, {
             platform: platformId,
             api_key: connectForm.apiKey,
             api_secret: connectForm.apiSecret,
             store_id: connectForm.storeId,
             auto_accept: false,
             commission_percent: PLATFORM_DEFINITIONS[platformId]?.defaultCommission || 30,
-          }),
-        }
-      );
-      if (!response.ok) throw new Error('Failed to connect platform');
-
+          });
       setPlatforms(platforms.map(p =>
         p.id === platformId ? { ...p, connected: true, storeId: connectForm.storeId } : p
       ));
@@ -375,12 +323,7 @@ export default function DeliveryAggregatorsPage() {
   // Disconnect platform via API
   const disconnectPlatform = async (platformId: string) => {
     try {
-      const response = await fetch(
-        `${API_URL}/v6/${getVenueId()}/delivery/${platformId}/disconnect`,
-        { credentials: 'include', method: 'DELETE' }
-      );
-      if (!response.ok) throw new Error('Failed to disconnect platform');
-
+      await api.del(`/v6/${getVenueId()}/delivery/${platformId}/disconnect`);
       setPlatforms(platforms.map(p =>
         p.id === platformId ? { ...p, connected: false, ordersToday: 0, revenue: 0 } : p
       ));
@@ -848,7 +791,7 @@ export default function DeliveryAggregatorsPage() {
               <h2 className="text-xl font-semibold mb-4">Свързване с {selectedPlatform.name}</h2>
               <div className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">API Key</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">API Key
                   <input
                     type="text"
                     value={connectForm.apiKey}
@@ -856,9 +799,10 @@ export default function DeliveryAggregatorsPage() {
                     className="w-full border rounded-lg px-3 py-2"
                     placeholder="Въведете API ключ"
                   />
+                  </label>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">API Secret</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">API Secret
                   <input
                     type="password"
                     value={connectForm.apiSecret}
@@ -866,9 +810,10 @@ export default function DeliveryAggregatorsPage() {
                     className="w-full border rounded-lg px-3 py-2"
                     placeholder="Въведете API secret"
                   />
+                  </label>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Store ID</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Store ID
                   <input
                     type="text"
                     value={connectForm.storeId}
@@ -876,6 +821,7 @@ export default function DeliveryAggregatorsPage() {
                     className="w-full border rounded-lg px-3 py-2"
                     placeholder="ID на магазина в платформата"
                   />
+                  </label>
                 </div>
               </div>
               <div className="flex gap-3 mt-6">

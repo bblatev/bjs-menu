@@ -381,7 +381,7 @@ export default function BudgetsPage() {
               </div>
               <div className="p-6 space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-surface-700 mb-1">Budget Name</label>
+                  <label className="block text-sm font-medium text-surface-700 mb-1">Budget Name
                   <input
                     type="text"
                     value={formData.name}
@@ -389,11 +389,12 @@ export default function BudgetsPage() {
                     className="w-full px-4 py-2 border border-surface-200 rounded-lg focus:ring-2 focus:ring-amber-500"
                     placeholder="e.g., Q1 2025 Operating Budget"
                   />
+                  </label>
                 </div>
 
                 <div className="grid grid-cols-3 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-surface-700 mb-1">Budget Type</label>
+                    <label className="block text-sm font-medium text-surface-700 mb-1">Budget Type
                     <select
                       value={formData.budget_type}
                       onChange={(e) => setFormData({ ...formData, budget_type: e.target.value as any })}
@@ -404,30 +405,33 @@ export default function BudgetsPage() {
                       <option value="annual">Annual</option>
                       <option value="project">Project</option>
                     </select>
+                    </label>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-surface-700 mb-1">Start Date</label>
+                    <label className="block text-sm font-medium text-surface-700 mb-1">Start Date
                     <input
                       type="date"
                       value={formData.period_start}
                       onChange={(e) => setFormData({ ...formData, period_start: e.target.value })}
                       className="w-full px-4 py-2 border border-surface-200 rounded-lg focus:ring-2 focus:ring-amber-500"
                     />
+                    </label>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-surface-700 mb-1">End Date</label>
+                    <label className="block text-sm font-medium text-surface-700 mb-1">End Date
                     <input
                       type="date"
                       value={formData.period_end}
                       onChange={(e) => setFormData({ ...formData, period_end: e.target.value })}
                       className="w-full px-4 py-2 border border-surface-200 rounded-lg focus:ring-2 focus:ring-amber-500"
                     />
+                    </label>
                   </div>
                 </div>
 
                 <div>
                   <div className="flex justify-between items-center mb-2">
-                    <label className="text-sm font-medium text-surface-700">Budget Line Items</label>
+                    <span className="text-sm font-medium text-surface-700">Budget Line Items</span>
                     <button
                       type="button"
                       onClick={addLineItem}

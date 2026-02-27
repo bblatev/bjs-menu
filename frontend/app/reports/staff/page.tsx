@@ -130,7 +130,7 @@ export default function ReportsStaffPage() {
       <div className="bg-white rounded-2xl p-5 shadow-sm border border-surface-100">
         <div className="flex flex-wrap items-end gap-4">
           <div className="flex-1 min-w-[200px]">
-            <label className="block text-sm font-medium text-surface-700 mb-2">Date Range</label>
+            <span className="block text-sm font-medium text-surface-700 mb-2">Date Range</span>
             <div className="flex gap-2">
               {['week', 'month', 'quarter'].map((range) => (
                 <button
@@ -148,7 +148,7 @@ export default function ReportsStaffPage() {
             </div>
           </div>
           <div>
-            <label className="block text-sm font-medium text-surface-700 mb-2">Sort By</label>
+            <label className="block text-sm font-medium text-surface-700 mb-2">Sort By
             <select
               value={sortBy}
               onChange={(e) => setSortBy(e.target.value)}
@@ -159,6 +159,7 @@ export default function ReportsStaffPage() {
               <option value="tips">Tips</option>
               <option value="rating">Rating</option>
             </select>
+            </label>
           </div>
           <button className="px-6 py-2 bg-accent-500 text-gray-900 rounded-lg hover:bg-accent-600 transition-colors font-medium">
             Export Report

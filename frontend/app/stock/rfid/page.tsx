@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { API_URL, getAuthHeaders } from '@/lib/api';
+import { api } from '@/lib/api';
 
 import { toast } from '@/lib/toast';
 interface RFIDTag {
@@ -72,12 +72,10 @@ export default function RFIDPage() {
 
   const loadTags = useCallback(async () => {
     try {
-      let url = `${API_URL}/inventory-hardware/rfid/tags?`;
-      if (filterZone !== "all") url += `zone=${filterZone}&`;
-      if (filterType !== "all") url += `tag_type=${filterType}&`;
-
-      const res = await fetch(url, { credentials: 'include', headers: getAuthHeaders() });
-      const data = await res.json();
+      let path = '/inventory-hardware/rfid/tags?';
+      if (filterZone !== "all") path += `zone=${filterZone}&`;
+      if (filterType !== "all") path += `tag_type=${filterType}&`;
+      const data: any = await api.get(path);
       setTags(data.tags || []);
     } catch (err) {
       console.error("Failed to load tags:", err);
@@ -88,11 +86,7 @@ export default function RFIDPage() {
 
   const loadZoneSummary = useCallback(async () => {
     try {
-      const res = await fetch(`${API_URL}/inventory-hardware/rfid/zones/summary`, {
-        credentials: 'include',
-        headers: getAuthHeaders(),
-      });
-      const data = await res.json();
+      const data: any = await api.get('/inventory-hardware/rfid/zones/summary');
       setZoneSummary(data.zones || {});
     } catch (err) {
       console.error("Failed to load zone summary:", err);
@@ -107,28 +101,20 @@ export default function RFIDPage() {
   const handleRegisterTag = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const res = await fetch(`${API_URL}/inventory-hardware/rfid/tags`, {
-        credentials: 'include',
-        method: "POST",
-        headers: getAuthHeaders(),
-        body: JSON.stringify(form),
+      await api.post('/inventory-hardware/rfid/tags', form);
+      setShowModal(false);
+      loadTags();
+      loadZoneSummary();
+      setForm({
+        tag_id: "",
+        tag_type: "inventory",
+        tag_name: "",
+        quantity: 1,
+        unit: "pcs",
+        batch_number: "",
+        current_zone: "receiving",
+        expiry_date: "",
       });
-
-      if (res.ok) {
-        setShowModal(false);
-        loadTags();
-        loadZoneSummary();
-        setForm({
-          tag_id: "",
-          tag_type: "inventory",
-          tag_name: "",
-          quantity: 1,
-          unit: "pcs",
-          batch_number: "",
-          current_zone: "receiving",
-          expiry_date: "",
-        });
-      }
     } catch (err) {
       console.error("Failed to register tag:", err);
     }
@@ -137,26 +123,15 @@ export default function RFIDPage() {
   const handleScan = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const res = await fetch(`${API_URL}/inventory-hardware/rfid/scan`, {
-        credentials: 'include',
-        method: "POST",
-        headers: getAuthHeaders(),
-        body: JSON.stringify({
+      const data: any = await api.post('/inventory-hardware/rfid/scan', {
           reader_id: scanForm.reader_id,
           tag_id: scanForm.tag_id,
           read_type: "inventory_scan",
           location_zone: scanForm.location_zone,
-        }),
-      });
-
-      const data = await res.json();
-      if (res.ok) {
-        toast.success(`Scan recorded: ${data.tag_name || data.tag_id}`);
-        loadTags();
-        setScanForm({ ...scanForm, tag_id: "" });
-      } else {
-        toast.error(`Scan failed: ${data.message || data.detail}`);
-      }
+        });
+      toast.success(`Scan recorded: ${data.tag_name || data.tag_id}`);
+      loadTags();
+      setScanForm({ ...scanForm, tag_id: "" });
     } catch (err) {
       console.error("Failed to scan:", err);
     }
@@ -164,18 +139,9 @@ export default function RFIDPage() {
 
   const startInventoryCount = async (countType: string, zone?: string) => {
     try {
-      const res = await fetch(`${API_URL}/inventory-hardware/rfid/inventory-count/start`, {
-        credentials: 'include',
-        method: "POST",
-        headers: getAuthHeaders(),
-        body: JSON.stringify({ count_type: countType, zone }),
-      });
-
-      const data = await res.json();
-      if (res.ok) {
-        setActiveCount(data);
-        setActiveTab('scan');
-      }
+      const data: any = await api.post('/inventory-hardware/rfid/inventory-count/start', { count_type: countType, zone });
+      setActiveCount(data);
+      setActiveTab('scan');
     } catch (err) {
       console.error("Failed to start count:", err);
     }
@@ -183,12 +149,7 @@ export default function RFIDPage() {
 
   const updateTagStatus = async (tagId: string, status: string) => {
     try {
-      await fetch(`${API_URL}/inventory-hardware/rfid/tags/status`, {
-        credentials: 'include',
-        method: "PATCH",
-        headers: getAuthHeaders(),
-        body: JSON.stringify({ tag_id: tagId, new_status: status }),
-      });
+      await api.patch('/inventory-hardware/rfid/tags/status', { tag_id: tagId, new_status: status });
       loadTags();
     } catch (err) {
       console.error("Failed to update status:", err);
@@ -469,7 +430,7 @@ export default function RFIDPage() {
               <h3 className="text-lg font-semibold mb-4">📡 Manual Tag Scan</h3>
               <form onSubmit={handleScan} className="space-y-4">
                 <div>
-                  <label className="block text-sm text-gray-400 mb-1">Tag ID / EPC</label>
+                  <label className="block text-sm text-gray-400 mb-1">Tag ID / EPC
                   <input
                     type="text"
                     value={scanForm.tag_id}
@@ -478,9 +439,10 @@ export default function RFIDPage() {
                     className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg"
                     autoFocus
                   />
+                  </label>
                 </div>
                 <div>
-                  <label className="block text-sm text-gray-400 mb-1">Location Zone</label>
+                  <label className="block text-sm text-gray-400 mb-1">Location Zone
                   <select
                     value={scanForm.location_zone}
                     onChange={e => setScanForm({...scanForm, location_zone: e.target.value})}
@@ -488,6 +450,7 @@ export default function RFIDPage() {
                   >
                     {zones.map(z => <option key={z} value={z}>{z}</option>)}
                   </select>
+                  </label>
                 </div>
                 <button
                   type="submit"
@@ -520,7 +483,7 @@ export default function RFIDPage() {
                 <h2 className="text-xl font-bold mb-4">Register RFID Tag</h2>
                 <form onSubmit={handleRegisterTag} className="space-y-4">
                   <div>
-                    <label className="block text-sm text-gray-400 mb-1">Tag ID / EPC *</label>
+                    <label className="block text-sm text-gray-400 mb-1">Tag ID / EPC *
                     <input
                       type="text"
                       value={form.tag_id}
@@ -528,19 +491,21 @@ export default function RFIDPage() {
                       className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg"
                       required
                     />
+                    </label>
                   </div>
                   <div>
-                    <label className="block text-sm text-gray-400 mb-1">Tag Name</label>
+                    <label className="block text-sm text-gray-400 mb-1">Tag Name
                     <input
                       type="text"
                       value={form.tag_name}
                       onChange={e => setForm({...form, tag_name: e.target.value})}
                       className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg"
                     />
+                    </label>
                   </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-sm text-gray-400 mb-1">Type</label>
+                      <label className="block text-sm text-gray-400 mb-1">Type
                       <select
                         value={form.tag_type}
                         onChange={e => setForm({...form, tag_type: e.target.value})}
@@ -548,9 +513,10 @@ export default function RFIDPage() {
                       >
                         {tagTypes.map(t => <option key={t} value={t}>{t}</option>)}
                       </select>
+                      </label>
                     </div>
                     <div>
-                      <label className="block text-sm text-gray-400 mb-1">Zone</label>
+                      <label className="block text-sm text-gray-400 mb-1">Zone
                       <select
                         value={form.current_zone}
                         onChange={e => setForm({...form, current_zone: e.target.value})}
@@ -558,36 +524,40 @@ export default function RFIDPage() {
                       >
                         {zones.map(z => <option key={z} value={z}>{z}</option>)}
                       </select>
+                      </label>
                     </div>
                   </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-sm text-gray-400 mb-1">Quantity</label>
+                      <label className="block text-sm text-gray-400 mb-1">Quantity
                       <input
                         type="number"
                         value={form.quantity}
                         onChange={e => setForm({...form, quantity: parseInt(e.target.value)})}
                         className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg"
                       />
+                      </label>
                     </div>
                     <div>
-                      <label className="block text-sm text-gray-400 mb-1">Unit</label>
+                      <label className="block text-sm text-gray-400 mb-1">Unit
                       <input
                         type="text"
                         value={form.unit}
                         onChange={e => setForm({...form, unit: e.target.value})}
                         className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg"
                       />
+                      </label>
                     </div>
                   </div>
                   <div>
-                    <label className="block text-sm text-gray-400 mb-1">Batch Number</label>
+                    <label className="block text-sm text-gray-400 mb-1">Batch Number
                     <input
                       type="text"
                       value={form.batch_number}
                       onChange={e => setForm({...form, batch_number: e.target.value})}
                       className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg"
                     />
+                    </label>
                   </div>
                   <div className="flex gap-3 pt-4">
                     <button

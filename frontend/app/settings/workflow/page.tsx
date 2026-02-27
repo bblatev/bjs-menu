@@ -198,7 +198,6 @@ export default function WorkflowSettingsPage() {
               <div>
                 <label className="block text-sm font-medium text-surface-600 mb-2">
                   Таймаут за потвърждение (минути)
-                </label>
                 <input
                   type="number"
                   value={settings.confirmationTimeoutMinutes}
@@ -210,6 +209,7 @@ export default function WorkflowSettingsPage() {
                   max="30"
                   className="w-full px-4 py-3 rounded-xl border border-surface-200 bg-white text-surface-900"
                 />
+                </label>
               </div>
               <div className="flex items-end">
                 <label className="flex items-center gap-3 cursor-pointer">

@@ -1,9 +1,7 @@
 'use client';
-
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
-import { API_URL, getAuthHeaders } from '@/lib/api';
-
+import { api } from '@/lib/api';
 import { toast } from '@/lib/toast';
 interface BarTab {
   id: number;
@@ -25,7 +23,6 @@ interface BarTab {
   seat_number?: string;
   notes?: string;
 }
-
 interface TabItem {
   id: number;
   name: string;
@@ -35,7 +32,6 @@ interface TabItem {
   added_at: string;
   bartender_id: number;
 }
-
 interface TabStats {
   open_tabs: number;
   total_open_value: number;
@@ -44,7 +40,6 @@ interface TabStats {
   revenue_today: number;
   avg_tab_duration: number;
 }
-
 export default function BarTabsPage() {
   const [tabs, setTabs] = useState<BarTab[]>([]);
   const [stats, setStats] = useState<TabStats | null>(null);
@@ -52,7 +47,6 @@ export default function BarTabsPage() {
   const [filter, setFilter] = useState<'all' | 'open' | 'pending' | 'closed'>('open');
   const [showNewTabModal, setShowNewTabModal] = useState(false);
   const [showCloseModal, setShowCloseModal] = useState(false);
-
   const [newTabData, setNewTabData] = useState({
     customer_name: '',
     customer_phone: '',
@@ -61,18 +55,14 @@ export default function BarTabsPage() {
     seat_number: '',
     notes: '',
   });
-
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-
   const loadTabs = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      const headers = getAuthHeaders();
-
       // Build query params based on filter
-      let endpoint = `${API_URL}/pos/bar-tabs`;
+      let endpoint = '/pos/bar-tabs';
       if (filter !== 'all') {
         const statusMap: Record<string, string> = {
           'open': 'open',
@@ -81,13 +71,8 @@ export default function BarTabsPage() {
         };
         endpoint += `?status=${statusMap[filter] || ''}`;
       }
-
-      const response = await fetch(endpoint, { credentials: 'include', headers });
-      if (!response.ok) {
-        throw new Error(`Failed to fetch tabs: ${response.status}`);
-      }
-      const data = await response.json();
-      const rawTabs = Array.isArray(data) ? data : data.tabs || [];
+      const data: any = await api.get(endpoint);
+      const rawTabs = Array.isArray(data) ? data : (data.items || data.tabs || []);
       // Normalize API response to match component interface
       setTabs(rawTabs.map((tab: Record<string, unknown>) => ({
         ...tab,
@@ -109,44 +94,26 @@ export default function BarTabsPage() {
       setLoading(false);
     }
   }, [filter]);
-
   const loadStats = useCallback(async () => {
     try {
-      const headers = getAuthHeaders();
-
-      const response = await fetch(`${API_URL}/bar/stats`, { credentials: 'include', headers });
-      if (response.ok) {
-        const data = await response.json();
-        setStats(data);
-      }
+      const data: any = await api.get('/bar/stats');
+            setStats(data);
     } catch (err) {
       console.error('Error fetching tab stats:', err);
     }
   }, []);
-
   useEffect(() => {
     loadTabs();
     loadStats();
   }, [loadTabs, loadStats]);
-
   const createTab = async () => {
     try {
-      const response = await fetch(`${API_URL}/bar/tabs`, {
-        credentials: 'include',
-        method: 'POST',
-        headers: getAuthHeaders(),
-        body: JSON.stringify({
+      await api.post('/bar/tabs', {
           customer_name: newTabData.customer_name,
           customer_phone: newTabData.customer_phone || undefined,
           card_last_four: newTabData.card_on_file ? newTabData.card_last_four : undefined,
           notes: newTabData.notes || undefined,
-        }),
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to create tab');
-      }
-
+        });
       setShowNewTabModal(false);
       setNewTabData({
         customer_name: '',
@@ -163,25 +130,13 @@ export default function BarTabsPage() {
       toast.error('Failed to create tab');
     }
   };
-
   const closeTab = async (tip: number) => {
     if (!selectedTab) return;
-
     try {
-      const response = await fetch(`${API_URL}/bar/tabs/${selectedTab.id}/close`, {
-        credentials: 'include',
-        method: 'POST',
-        headers: getAuthHeaders(),
-        body: JSON.stringify({
+      await api.post(`/bar/tabs/${selectedTab.id}/close`, {
           payment_method: 'card',
           tip_amount: tip,
-        }),
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to close tab');
-      }
-
+        });
       setShowCloseModal(false);
       setSelectedTab(null);
       loadTabs();
@@ -191,7 +146,6 @@ export default function BarTabsPage() {
       toast.error('Failed to close tab');
     }
   };
-
   const getStatusColor = (status: BarTab['status']) => {
     switch (status) {
       case 'open': return 'bg-green-500/20 text-green-400';
@@ -201,7 +155,6 @@ export default function BarTabsPage() {
       default: return 'bg-gray-500/20 text-gray-400';
     }
   };
-
   const formatDuration = (openedAt: string) => {
     if (!openedAt) return '—';
     try {
@@ -219,7 +172,6 @@ export default function BarTabsPage() {
       return '—';
     }
   };
-
   if (loading) {
     return (
       <div className="min-h-screen bg-white p-6 flex items-center justify-center">
@@ -227,7 +179,6 @@ export default function BarTabsPage() {
       </div>
     );
   }
-
   if (error) {
     return (
       <div className="min-h-screen bg-white p-6">
@@ -244,7 +195,6 @@ export default function BarTabsPage() {
       </div>
     );
   }
-
   return (
     <div className="min-h-screen bg-white p-6">
       {/* Header */}
@@ -267,7 +217,6 @@ export default function BarTabsPage() {
           + Open New Tab
         </button>
       </div>
-
       {/* Stats */}
       {stats && (
         <div className="grid grid-cols-2 md:grid-cols-6 gap-4 mb-6">
@@ -297,7 +246,6 @@ export default function BarTabsPage() {
           </div>
         </div>
       )}
-
       {/* Filters */}
       <div className="flex gap-2 mb-6">
         {[
@@ -324,7 +272,6 @@ export default function BarTabsPage() {
           </button>
         ))}
       </div>
-
       {/* Tabs Grid */}
       <div className="grid lg:grid-cols-3 gap-6">
         {/* Tabs List */}
@@ -368,7 +315,6 @@ export default function BarTabsPage() {
                     </span>
                   </div>
                 </div>
-
                 {/* Items Preview */}
                 <div className="flex flex-wrap gap-2 mb-3">
                   {(tab.items || []).slice(0, 4).map((item) => (
@@ -382,7 +328,6 @@ export default function BarTabsPage() {
                     </span>
                   )}
                 </div>
-
                 {/* Actions */}
                 <div className="flex gap-2">
                   {tab.status === 'open' && (
@@ -425,13 +370,11 @@ export default function BarTabsPage() {
             ))
           )}
         </div>
-
         {/* Tab Detail */}
         <div className="bg-secondary rounded-lg">
           {selectedTab ? (
             <div className="p-4">
               <h3 className="text-gray-900 font-semibold mb-4">Tab Details - {selectedTab.tab_number}</h3>
-
               {/* Customer Info */}
               <div className="bg-white rounded-lg p-4 mb-4">
                 <h4 className="text-gray-400 text-sm mb-2">Customer</h4>
@@ -443,7 +386,6 @@ export default function BarTabsPage() {
                   <p className="text-gray-400 text-sm">Seat: {selectedTab.seat_number}</p>
                 )}
               </div>
-
               {/* Items */}
               <div className="bg-white rounded-lg p-4 mb-4">
                 <h4 className="text-gray-400 text-sm mb-3">Items</h4>
@@ -461,7 +403,6 @@ export default function BarTabsPage() {
                   ))}
                 </div>
               </div>
-
               {/* Totals */}
               <div className="bg-white rounded-lg p-4 mb-4">
                 <div className="space-y-2">
@@ -485,12 +426,10 @@ export default function BarTabsPage() {
                   </div>
                 </div>
               </div>
-
               {/* Bartender */}
               <div className="text-sm text-gray-400 mb-4">
                 Bartender: <span className="text-gray-900">{selectedTab.bartender_name}</span>
               </div>
-
               {/* Actions */}
               {selectedTab.status === 'open' && (
                 <div className="space-y-2">
@@ -516,7 +455,6 @@ export default function BarTabsPage() {
           )}
         </div>
       </div>
-
       {/* New Tab Modal */}
       {showNewTabModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
@@ -531,30 +469,29 @@ export default function BarTabsPage() {
                   &times;
                 </button>
               </div>
-
               <div className="space-y-4">
                 <div>
-                  <label className="block text-gray-300 mb-1">Customer Name *</label>
+                  <label className="block text-gray-300 mb-1">Customer Name *
                   <input
                     type="text"
                     value={newTabData.customer_name}
                     onChange={(e) => setNewTabData({ ...newTabData, customer_name: e.target.value })}
                     className="w-full px-4 py-2 bg-white border border-gray-300 rounded-lg text-gray-900"
                   />
+                  </label>
                 </div>
-
                 <div>
-                  <label className="block text-gray-300 mb-1">Phone (optional)</label>
+                  <label className="block text-gray-300 mb-1">Phone (optional)
                   <input
                     type="tel"
                     value={newTabData.customer_phone}
                     onChange={(e) => setNewTabData({ ...newTabData, customer_phone: e.target.value })}
                     className="w-full px-4 py-2 bg-white border border-gray-300 rounded-lg text-gray-900"
                   />
+                  </label>
                 </div>
-
                 <div>
-                  <label className="block text-gray-300 mb-1">Seat/Position</label>
+                  <label className="block text-gray-300 mb-1">Seat/Position
                   <input
                     type="text"
                     value={newTabData.seat_number}
@@ -562,8 +499,8 @@ export default function BarTabsPage() {
                     placeholder="e.g., Bar 5"
                     className="w-full px-4 py-2 bg-white border border-gray-300 rounded-lg text-gray-900"
                   />
+                  </label>
                 </div>
-
                 <div className="flex items-center gap-2">
                   <input
                     type="checkbox"
@@ -572,12 +509,11 @@ export default function BarTabsPage() {
                     onChange={(e) => setNewTabData({ ...newTabData, card_on_file: e.target.checked })}
                     className="w-4 h-4 accent-primary"
                   />
-                  <label htmlFor="card_on_file" className="text-gray-300">Keep card on file</label>
+                  <span className="text-gray-300">Keep card on file</span>
                 </div>
-
                 {newTabData.card_on_file && (
                   <div>
-                    <label className="block text-gray-300 mb-1">Card Last 4 Digits</label>
+                    <label className="block text-gray-300 mb-1">Card Last 4 Digits
                     <input
                       type="text"
                       maxLength={4}
@@ -585,20 +521,20 @@ export default function BarTabsPage() {
                       onChange={(e) => setNewTabData({ ...newTabData, card_last_four: e.target.value })}
                       className="w-full px-4 py-2 bg-white border border-gray-300 rounded-lg text-gray-900"
                     />
+                    </label>
                   </div>
                 )}
-
                 <div>
-                  <label className="block text-gray-300 mb-1">Notes</label>
+                  <label className="block text-gray-300 mb-1">Notes
                   <textarea
                     value={newTabData.notes}
                     onChange={(e) => setNewTabData({ ...newTabData, notes: e.target.value })}
                     className="w-full px-4 py-2 bg-white border border-gray-300 rounded-lg text-gray-900"
                     rows={2}
                   />
+                  </label>
                 </div>
               </div>
-
               <div className="flex gap-3 mt-6">
                 <button
                   onClick={() => setShowNewTabModal(false)}
@@ -618,7 +554,6 @@ export default function BarTabsPage() {
           </div>
         </div>
       )}
-
       {/* Close Tab Modal */}
       {showCloseModal && selectedTab && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
@@ -633,7 +568,6 @@ export default function BarTabsPage() {
                   &times;
                 </button>
               </div>
-
               <div className="bg-white rounded-lg p-4 mb-4">
                 <div className="space-y-2">
                   <div className="flex justify-between text-gray-300">
@@ -650,9 +584,8 @@ export default function BarTabsPage() {
                   </div>
                 </div>
               </div>
-
               <div className="mb-4">
-                <label className="block text-gray-300 mb-2">Add Tip</label>
+                <span className="block text-gray-300 mb-2">Add Tip</span>
                 <div className="grid grid-cols-4 gap-2 mb-2">
                   {[15, 18, 20, 25].map((pct) => (
                     <button
@@ -665,9 +598,8 @@ export default function BarTabsPage() {
                   ))}
                 </div>
               </div>
-
               <div className="mb-4">
-                <label className="block text-gray-300 mb-2">Payment Method</label>
+                <span className="block text-gray-300 mb-2">Payment Method</span>
                 <div className="grid grid-cols-3 gap-2">
                   {['Card', 'Cash', 'Tab Card'].map((method) => (
                     <button
@@ -679,7 +611,6 @@ export default function BarTabsPage() {
                   ))}
                 </div>
               </div>
-
               <div className="flex gap-3">
                 <button
                   onClick={() => setShowCloseModal(false)}

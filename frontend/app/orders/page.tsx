@@ -1,14 +1,10 @@
 'use client';
-
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Link from 'next/link';
-
-import { API_URL, getAuthHeaders } from '@/lib/api';
-
+import { api } from '@/lib/api';
 import { toast } from '@/lib/toast';
 // ============ INTERFACES ============
-
 interface OrderItem {
   id: string;
   name: string;
@@ -21,7 +17,6 @@ interface OrderItem {
   prepared_by?: string;
   prepared_at?: string;
 }
-
 interface Order {
   id: string;
   order_number: number;
@@ -57,14 +52,12 @@ interface Order {
   time_elapsed: number;
   priority: 'normal' | 'high' | 'rush';
 }
-
 interface SplitBill {
   id: string;
   amount: number;
   payment_method: 'cash' | 'card';
   paid: boolean;
 }
-
 interface Staff {
   id: string;
   name: string;
@@ -73,7 +66,6 @@ interface Staff {
   total_sales: number;
   avatar?: string;
 }
-
 interface Table {
   id: string;
   number: string;
@@ -81,7 +73,6 @@ interface Table {
   status: 'available' | 'occupied' | 'reserved' | 'cleaning';
   current_order_id?: string;
 }
-
 interface OrderStats {
   total_orders: number;
   new_orders: number;
@@ -94,9 +85,7 @@ interface OrderStats {
   avg_order_value: number;
   avg_prep_time: number;
 }
-
 // ============ COMPONENT ============
-
 export default function OrdersPage() {
   const [activeTab, setActiveTab] = useState<'active' | 'history' | 'floor' | 'analytics'>('active');
   const [orders, setOrders] = useState<Order[]>([]);
@@ -104,13 +93,11 @@ export default function OrdersPage() {
   const [staff, setStaff] = useState<Staff[]>([]);
   const [stats, setStats] = useState<OrderStats | null>(null);
   const [loading, setLoading] = useState(true);
-
   // Filters
   const [statusFilter, setStatusFilter] = useState<'all' | 'new' | 'preparing' | 'ready' | 'served'>('all');
   const [typeFilter, setTypeFilter] = useState<'all' | 'dine_in' | 'takeaway' | 'delivery' | 'drive_thru'>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [dateRange, setDateRange] = useState<'today' | 'week' | 'month'>('today');
-
   // Modal states
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [, setShowNewOrderModal] = useState(false);
@@ -122,17 +109,14 @@ export default function OrdersPage() {
   const [voidReason, setVoidReason] = useState('');
   const [refundAmount, setRefundAmount] = useState(0);
   const [refundReason, setRefundReason] = useState('');
-
   // Void item modal
   const [showVoidItemModal, setShowVoidItemModal] = useState(false);
   const [voidItemReason, setVoidItemReason] = useState('');
   const [voidItemId, setVoidItemId] = useState<string | null>(null);
-
   // Auto-refresh
   const refreshInterval = useRef<NodeJS.Timeout | null>(null);
   const [autoRefresh, setAutoRefresh] = useState(true);
   const [soundEnabled, setSoundEnabled] = useState(true);
-
   useEffect(() => {
     loadData();
     if (autoRefresh) {
@@ -143,24 +127,20 @@ export default function OrdersPage() {
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [autoRefresh]);
-
   const loadData = async () => {
     setLoading(true);
-    const headers = getAuthHeaders();
-
     try {
       // Fetch all data in parallel
       const [ordersRes, tablesRes, staffRes, statsRes] = await Promise.allSettled([
-        fetch(`${API_URL}/orders`, { credentials: 'include', headers }),
-        fetch(`${API_URL}/admin/tables`, { credentials: 'include', headers }),
-        fetch(`${API_URL}/staff`, { credentials: 'include', headers }),
-        fetch(`${API_URL}/orders/stats`, { credentials: 'include', headers }),
-      ]);
-
+  api.get('/orders'),
+  api.get('/admin/tables'),
+  api.get('/staff'),
+  api.get('/orders/stats')
+]);
       // Process orders
-      if (ordersRes.status === 'fulfilled' && ordersRes.value.ok) {
-        const data = await ordersRes.value.json();
-        const ordersArray = Array.isArray(data) ? data : (data.orders || []);
+      if (ordersRes.status === 'fulfilled') {
+        const data: any = ordersRes.value;
+        const ordersArray = Array.isArray(data) ? data : (data.items || data.orders || []);
         // Transform API response to match our Order interface
         const transformedOrders: Order[] = ordersArray.map((order: any) => ({
           id: String(order.id),
@@ -201,11 +181,10 @@ export default function OrdersPage() {
       } else {
         setOrders([]);
       }
-
       // Process tables
-      if (tablesRes.status === 'fulfilled' && tablesRes.value.ok) {
-        const data = await tablesRes.value.json();
-        const tablesArray = Array.isArray(data) ? data : (data.tables || []);
+      if (tablesRes.status === 'fulfilled') {
+        const data_2: any = tablesRes.value;
+        const tablesArray = Array.isArray(data_2) ? data_2 : (data_2.items || data_2.tables || []);
         const transformedTables: Table[] = tablesArray.map((table: any) => ({
           id: String(table.id),
           number: table.number || `T${table.id}`,
@@ -217,11 +196,10 @@ export default function OrdersPage() {
       } else {
         setTables([]);
       }
-
       // Process staff
-      if (staffRes.status === 'fulfilled' && staffRes.value.ok) {
-        const data = await staffRes.value.json();
-        const staffArray = Array.isArray(data) ? data : (data.staff || []);
+      if (staffRes.status === 'fulfilled') {
+        const data_3: any = staffRes.value;
+        const staffArray = Array.isArray(data_3) ? data_3 : (data_3.items || data_3.staff || []);
         const transformedStaff: Staff[] = staffArray.map((s: any) => ({
           id: String(s.id),
           name: s.name || s.full_name || 'Unknown',
@@ -234,21 +212,20 @@ export default function OrdersPage() {
       } else {
         setStaff([]);
       }
-
       // Process stats
-      if (statsRes.status === 'fulfilled' && statsRes.value.ok) {
-        const data = await statsRes.value.json();
+      if (statsRes.status === 'fulfilled') {
+        const data_4: any = statsRes.value;
         const transformedStats: OrderStats = {
-          total_orders: data.total_orders || 0,
-          new_orders: data.new_orders || data.new || 0,
-          preparing: data.preparing || 0,
-          ready: data.ready || 0,
-          served: data.served || 0,
-          paid: data.paid || data.completed || 0,
-          cancelled: data.cancelled || 0,
-          total_revenue: data.total_revenue || data.revenue || 0,
-          avg_order_value: data.avg_order_value || data.average_order_value || 0,
-          avg_prep_time: data.avg_prep_time || data.average_prep_time || 0,
+          total_orders: data_4.total_orders || 0,
+          new_orders: data_4.new_orders || data_4.new || 0,
+          preparing: data_4.preparing || 0,
+          ready: data_4.ready || 0,
+          served: data_4.served || 0,
+          paid: data_4.paid || data_4.completed || 0,
+          cancelled: data_4.cancelled || 0,
+          total_revenue: data_4.total_revenue || data_4.revenue || 0,
+          avg_order_value: data_4.avg_order_value || data_4.average_order_value || 0,
+          avg_prep_time: data_4.avg_prep_time || data_4.average_prep_time || 0,
         };
         setStats(transformedStats);
       } else {
@@ -277,124 +254,74 @@ export default function OrdersPage() {
       setLoading(false);
     }
   };
-
   // ============ HANDLERS ============
-
   const handleUpdateOrderStatus = async (orderId: string, newStatus: Order['status'], paymentMethod?: string) => {
-    const headers = getAuthHeaders();
-
     try {
       const bodyData: Record<string, string> = { status: newStatus };
       if (paymentMethod) bodyData.payment_method = paymentMethod;
-      const response = await fetch(`${API_URL}/orders/${orderId}/status`, {
-        credentials: 'include',
-        method: 'PUT',
-        headers,
-        body: JSON.stringify(bodyData),
-      });
-
-      if (response.ok) {
-        // Update local state
-        setOrders(orders.map(o => o.id === orderId ? { ...o, status: newStatus, updated_at: new Date().toISOString() } : o));
-        if (selectedOrder?.id === orderId) {
-          setSelectedOrder({ ...selectedOrder, status: newStatus });
-        }
-      } else {
-        console.error('Failed to update order status');
-        toast.error('Failed to update order status. Please try again.');
+      await api.put(`/orders/${orderId}/status`, bodyData);
+      // Update local state
+      setOrders(orders.map(o => o.id === orderId ? { ...o, status: newStatus, updated_at: new Date().toISOString() } : o));
+      if (selectedOrder?.id === orderId) {
+        setSelectedOrder({ ...selectedOrder, status: newStatus });
       }
     } catch (error) {
       console.error('Error updating order status:', error);
       toast.error('Error updating order status. Please try again.');
     }
   };
-
   const handleUpdateItemStatus = async (orderId: string, itemId: string, newStatus: OrderItem['status']) => {
-    const headers = getAuthHeaders();
-
     try {
-      const response = await fetch(`${API_URL}/orders/${orderId}/items/${itemId}/status`, {
-        credentials: 'include',
-        method: 'PATCH',
-        headers,
-        body: JSON.stringify({ status: newStatus }),
-      });
-
-      if (response.ok) {
-        // Update local state only on success
-        setOrders(orders.map(o => {
-          if (o.id === orderId) {
-            const updatedItems = o.items.map(item =>
-              item.id === itemId ? { ...item, status: newStatus, prepared_at: newStatus === 'ready' ? new Date().toLocaleTimeString('bg-BG', { hour: '2-digit', minute: '2-digit' }) : item.prepared_at } : item
-            );
-            // Check if all items are ready
-            const allReady = updatedItems.filter(i => i.sent_to_kitchen).every(i => i.status === 'ready' || i.status === 'served');
-            const allServed = updatedItems.every(i => i.status === 'served');
-            return {
-              ...o,
-              items: updatedItems,
-              status: allServed ? 'served' : allReady && o.status === 'preparing' ? 'ready' : o.status
-            };
-          }
-          return o;
-        }));
-      } else {
-        console.error('Failed to update item status');
-        toast.error('Failed to update item status. Please try again.');
-      }
+      await api.patch(`/orders/${orderId}/items/${itemId}/status`, { status: newStatus });
+      // Update local state only on success
+      setOrders(orders.map(o => {
+        if (o.id === orderId) {
+          const updatedItems = o.items.map(item =>
+            item.id === itemId ? { ...item, status: newStatus, prepared_at: newStatus === 'ready' ? new Date().toLocaleTimeString('bg-BG', { hour: '2-digit', minute: '2-digit' }) : item.prepared_at } : item
+          );
+          // Check if all items are ready
+          const allReady = updatedItems.filter(i => i.sent_to_kitchen).every(i => i.status === 'ready' || i.status === 'served');
+          const allServed = updatedItems.every(i => i.status === 'served');
+          return {
+            ...o,
+            items: updatedItems,
+            status: allServed ? 'served' : allReady && o.status === 'preparing' ? 'ready' : o.status
+          };
+        }
+        return o;
+      }));
     } catch (error) {
       console.error('Error updating item status:', error);
       toast.error('Error updating item status. Please try again.');
     }
   };
-
   const handleVoidOrder = async () => {
     if (!selectedOrder || !voidReason) return;
-    const headers = getAuthHeaders();
-
     try {
-      const response = await fetch(`${API_URL}/orders/${selectedOrder.id}/void`, {
-        credentials: 'include',
-        method: 'POST',
-        headers,
-        body: JSON.stringify({ reason: voidReason }),
-      });
-      if (response.ok) {
-        setOrders(orders.map(o => o.id === selectedOrder.id ? { ...o, status: 'cancelled' } : o));
-        setShowVoidModal(false);
-        setSelectedOrder(null);
-        setVoidReason('');
-      }
+      await api.post(`/orders/${selectedOrder.id}/void`, { reason: voidReason });
+      setOrders(orders.map(o => o.id === selectedOrder.id ? { ...o, status: 'cancelled' } : o));
+      setShowVoidModal(false);
+      setSelectedOrder(null);
+      setVoidReason('');
     } catch (error) {
       console.error('Error voiding order:', error);
     }
   };
-
   const handleConfirmVoidItem = async () => {
     if (!selectedOrder || !voidItemId || !voidItemReason) return;
-    const headers = getAuthHeaders();
     const itemId = voidItemId;
-
     try {
-      const response = await fetch(`${API_URL}/orders/${selectedOrder.id}/items/${itemId}/void`, {
-        credentials: 'include',
-        method: 'POST',
-        headers,
-        body: JSON.stringify({ reason: voidItemReason }),
-      });
-      if (response.ok) {
-        const data = await response.json();
-        setOrders(orders.map(o => {
-          if (o.id === selectedOrder.id) {
-            return {
-              ...o,
-              items: o.items.map(i => i.id === itemId ? { ...i, status: 'cancelled' as const } : i),
-              total: data.new_order_total || o.total
-            };
-          }
-          return o;
-        }));
+      const data: any = await api.post(`/orders/${selectedOrder.id}/items/${itemId}/void`, { reason: voidItemReason });
+            setOrders(orders.map(o => {
+      if (o.id === selectedOrder.id) {
+        return {
+          ...o,
+          items: o.items.map(i => i.id === itemId ? { ...i, status: 'cancelled' as const } : i),
+          total: data.new_order_total || o.total
+        };
       }
+      return o;
+      }));
     } catch (error) {
       console.error('Error voiding item:', error);
     } finally {
@@ -403,63 +330,41 @@ export default function OrdersPage() {
       setVoidItemReason('');
     }
   };
-
   const handleRefundOrder = async () => {
     if (!selectedOrder || !refundAmount || !refundReason) return;
-    const headers = getAuthHeaders();
-
     try {
-      const response = await fetch(`${API_URL}/orders/${selectedOrder.id}/refund`, {
-        credentials: 'include',
-        method: 'POST',
-        headers,
-        body: JSON.stringify({
+      await api.post(`/orders/${selectedOrder.id}/refund`, {
           amount: refundAmount,
           reason: refundReason,
           refund_method: 'cash'
-        }),
-      });
-      if (response.ok) {
-        setShowRefundModal(false);
-        setRefundAmount(0);
-        setRefundReason('');
-        loadData();
-      }
+        });
+      setShowRefundModal(false);
+      setRefundAmount(0);
+      setRefundReason('');
+      loadData();
     } catch (error) {
       console.error('Error refunding order:', error);
     }
   };
-
   const handleReprintOrder = async (station: string = 'kitchen') => {
     if (!selectedOrder) return;
-    const headers = getAuthHeaders();
-
     try {
-      await fetch(`${API_URL}/orders/${selectedOrder.id}/reprint`, {
-        credentials: 'include',
-        method: 'POST',
-        headers,
-        body: JSON.stringify({ station }),
-      });
+      await api.post(`/orders/${selectedOrder.id}/reprint`, { station });
       toast.success('Поръчката е изпратена за повторен печат!');
     } catch (error) {
       console.error('Error reprinting order:', error);
     }
   };
-
   const handleSetPriority = async (priority: 'rush' | 'high' | 'normal') => {
     if (!selectedOrder) return;
-    const headers = getAuthHeaders();
-
-    const endpoint = priority === 'rush'
-      ? `${API_URL}/kitchen/rush/${selectedOrder.id}`
+    const path = priority === 'rush'
+      ? `/kitchen/rush/${selectedOrder.id}`
       : priority === 'high'
-      ? `${API_URL}/kitchen/vip/${selectedOrder.id}`
+      ? `/kitchen/vip/${selectedOrder.id}`
       : null;
-
-    if (endpoint) {
+    if (path) {
       try {
-        await fetch(endpoint, { credentials: 'include', method: 'POST', headers });
+        await api.post(path);
         setOrders(orders.map(o => o.id === selectedOrder.id ? { ...o, priority } : o));
         if (selectedOrder) setSelectedOrder({ ...selectedOrder, priority });
       } catch (error) {
@@ -467,7 +372,6 @@ export default function OrdersPage() {
       }
     }
   };
-
   const getStatusConfig = (status: string) => {
     const config: Record<string, { label: string; color: string; bg: string }> = {
       new: { label: 'Нова', color: 'text-blue-700', bg: 'bg-blue-100' },
@@ -480,7 +384,6 @@ export default function OrdersPage() {
     };
     return config[status] || { label: status, color: 'text-gray-700', bg: 'bg-gray-100' };
   };
-
   const getTypeLabel = (type: string) => {
     const labels: Record<string, string> = {
       dine_in: '🍽️ На място',
@@ -490,7 +393,6 @@ export default function OrdersPage() {
     };
     return labels[type] || type;
   };
-
   const getPriorityColor = (priority: string) => {
     const colors: Record<string, string> = {
       normal: '',
@@ -499,7 +401,6 @@ export default function OrdersPage() {
     };
     return colors[priority] || '';
   };
-
   const filteredOrders = orders.filter(o => {
     if (statusFilter !== 'all' && o.status !== statusFilter) return false;
     if (typeFilter !== 'all' && o.type !== typeFilter) return false;
@@ -514,16 +415,13 @@ export default function OrdersPage() {
     }
     return true;
   });
-
   const activeOrders = orders.filter(o => !['paid', 'cancelled'].includes(o.status));
-
   const tabs = [
     { id: 'active', label: 'Активни поръчки', icon: '📋', count: activeOrders.length },
     { id: 'history', label: 'История', icon: '📚' },
     { id: 'floor', label: 'План на залата', icon: '🗺️' },
     { id: 'analytics', label: 'Анализ', icon: '📊' },
   ];
-
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -534,7 +432,6 @@ export default function OrdersPage() {
       </div>
     );
   }
-
   return (
     <div className="min-h-screen bg-gray-50 p-6">
       <div className="max-w-7xl mx-auto">
@@ -579,7 +476,6 @@ export default function OrdersPage() {
             </button>
           </div>
         </div>
-
         {/* Quick Stats */}
         {stats && (
           <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3 mb-6">
@@ -648,7 +544,6 @@ export default function OrdersPage() {
             </div>
           </div>
         )}
-
         {/* Tabs */}
         <div className="flex gap-2 mb-6">
           {tabs.map((tab) => (
@@ -669,7 +564,6 @@ export default function OrdersPage() {
             </button>
           ))}
         </div>
-
         {/* Active Orders Tab */}
         {activeTab === 'active' && (
           <div className="space-y-6">
@@ -726,7 +620,6 @@ export default function OrdersPage() {
                 </div>
               </div>
             </div>
-
             {/* Orders Grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               <AnimatePresence>
@@ -766,7 +659,6 @@ export default function OrdersPage() {
                           <span className="text-gray-500 text-sm">{order.waiter}</span>
                         </div>
                       </div>
-
                       {/* Order Items */}
                       <div className="p-4">
                         <div className="space-y-2 max-h-32 overflow-y-auto">
@@ -791,7 +683,6 @@ export default function OrdersPage() {
                           </div>
                         )}
                       </div>
-
                       {/* Order Footer */}
                       <div className="px-4 py-3 bg-gray-50 border-t border-gray-100 flex items-center justify-between">
                         <span className="text-xl font-bold text-gray-900">{(order.total || 0).toFixed(2)} лв</span>
@@ -827,7 +718,6 @@ export default function OrdersPage() {
                 })}
               </AnimatePresence>
             </div>
-
             {filteredOrders.filter(o => !['paid', 'cancelled'].includes(o.status)).length === 0 && (
               <div className="text-center py-12 bg-white rounded-xl border border-gray-100">
                 <span className="text-5xl">📋</span>
@@ -836,7 +726,6 @@ export default function OrdersPage() {
             )}
           </div>
         )}
-
         {/* History Tab */}
         {activeTab === 'history' && (
           <div className="bg-white rounded-xl shadow-sm border border-gray-100">
@@ -889,7 +778,6 @@ export default function OrdersPage() {
             </table>
           </div>
         )}
-
         {/* Floor Plan Tab */}
         {activeTab === 'floor' && (
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -928,7 +816,6 @@ export default function OrdersPage() {
                 <div className="flex items-center gap-2"><span className="w-4 h-4 bg-gray-100 border border-gray-300 rounded" /><span className="text-sm text-gray-600">Почиства се</span></div>
               </div>
             </div>
-
             <div className="space-y-6">
               <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
                 <h3 className="text-lg font-bold text-gray-900 mb-4">Сервитьори</h3>
@@ -952,7 +839,6 @@ export default function OrdersPage() {
                   ))}
                 </div>
               </div>
-
               <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
                 <h3 className="text-lg font-bold text-gray-900 mb-4">Бърз преглед</h3>
                 <div className="space-y-3">
@@ -973,7 +859,6 @@ export default function OrdersPage() {
             </div>
           </div>
         )}
-
         {/* Analytics Tab */}
         {activeTab === 'analytics' && stats && (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -998,7 +883,6 @@ export default function OrdersPage() {
                 </div>
               </div>
             </div>
-
             <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
               <h3 className="text-lg font-bold text-gray-900 mb-4">Разпределение по статус</h3>
               <div className="space-y-3">
@@ -1023,7 +907,6 @@ export default function OrdersPage() {
                 ))}
               </div>
             </div>
-
             <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
               <h3 className="text-lg font-bold text-gray-900 mb-4">Топ сервитьори</h3>
               <div className="space-y-3">
@@ -1043,7 +926,6 @@ export default function OrdersPage() {
                 ))}
               </div>
             </div>
-
             <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
               <h3 className="text-lg font-bold text-gray-900 mb-4">По тип поръчка</h3>
               <div className="grid grid-cols-4 gap-4">
@@ -1072,7 +954,6 @@ export default function OrdersPage() {
           </div>
         )}
       </div>
-
       {/* Order Detail Modal */}
       <AnimatePresence>
         {selectedOrder && !showPaymentModal && (
@@ -1107,7 +988,6 @@ export default function OrdersPage() {
                   <button onClick={() => setSelectedOrder(null)} className="text-gray-400 hover:text-gray-600 text-xl">✕</button>
                 </div>
               </div>
-
               {/* Order Items */}
               <div className="p-6 max-h-80 overflow-y-auto">
                 <h3 className="font-medium text-gray-900 mb-3">Артикули</h3>
@@ -1147,14 +1027,12 @@ export default function OrdersPage() {
                     );
                   })}
                 </div>
-
                 {selectedOrder.notes && (
                   <div className="mt-4 p-3 bg-yellow-50 rounded-lg">
                     <div className="text-sm font-medium text-yellow-800">Бележки</div>
                     <div className="text-sm text-yellow-700">{selectedOrder.notes}</div>
                   </div>
                 )}
-
                 {selectedOrder.delivery_info && (
                   <div className="mt-4 p-3 bg-blue-50 rounded-lg">
                     <div className="text-sm font-medium text-blue-800">Информация за доставка</div>
@@ -1166,7 +1044,6 @@ export default function OrdersPage() {
                   </div>
                 )}
               </div>
-
               {/* Order Summary */}
               <div className="p-6 bg-gray-50 border-t border-gray-100">
                 <div className="space-y-2 mb-4">
@@ -1179,7 +1056,6 @@ export default function OrdersPage() {
                     <span>Общо</span><span>{(selectedOrder.total || 0).toFixed(2)} лв</span>
                   </div>
                 </div>
-
                 {/* Priority Controls */}
                 {!['paid', 'cancelled'].includes(selectedOrder.status) && (
                   <div className="flex gap-2 mb-4">
@@ -1204,7 +1080,6 @@ export default function OrdersPage() {
                     </button>
                   </div>
                 )}
-
                 <div className="flex gap-3">
                   {selectedOrder.status === 'new' && (
                     <button onClick={() => handleUpdateOrderStatus(selectedOrder.id, 'preparing')} className="flex-1 py-3 bg-orange-500 text-gray-900 rounded-xl hover:bg-orange-600 font-medium">
@@ -1237,7 +1112,6 @@ export default function OrdersPage() {
                     </button>
                   )}
                 </div>
-
                 {/* Secondary Actions */}
                 {!['paid', 'cancelled'].includes(selectedOrder.status) && (
                   <div className="flex gap-2 mt-3">
@@ -1266,7 +1140,6 @@ export default function OrdersPage() {
           </motion.div>
         )}
       </AnimatePresence>
-
       {/* Void Order Modal */}
       <AnimatePresence>
         {showVoidModal && selectedOrder && (
@@ -1286,7 +1159,6 @@ export default function OrdersPage() {
             >
               <h2 className="text-2xl font-bold text-gray-900 mb-4">Анулиране на поръчка #{selectedOrder.order_number}</h2>
               <p className="text-gray-500 mb-4">Въведете причина за анулиране на поръчката. Това действие е необратимо.</p>
-
               <textarea
                 value={voidReason}
                 onChange={(e) => setVoidReason(e.target.value)}
@@ -1294,7 +1166,6 @@ export default function OrdersPage() {
                 className="w-full p-3 bg-gray-50 rounded-lg border border-gray-200 focus:border-red-500 focus:outline-none mb-4"
                 rows={3}
               />
-
               <div className="flex gap-3">
                 <button
                   onClick={() => { setShowVoidModal(false); setVoidReason(''); }}
@@ -1314,7 +1185,6 @@ export default function OrdersPage() {
           </motion.div>
         )}
       </AnimatePresence>
-
       {/* Refund Order Modal */}
       <AnimatePresence>
         {showRefundModal && selectedOrder && (
@@ -1334,9 +1204,8 @@ export default function OrdersPage() {
             >
               <h2 className="text-2xl font-bold text-gray-900 mb-4">Възстановяване на сума</h2>
               <p className="text-gray-500 mb-4">Поръчка #{selectedOrder.order_number} - Обща сума: {(selectedOrder.total || 0).toFixed(2)} лв</p>
-
               <div className="mb-4">
-                <label className="block text-sm text-gray-600 mb-1">Сума за възстановяване</label>
+                <label className="block text-sm text-gray-600 mb-1">Сума за възстановяване
                 <input
                   type="number"
                   value={refundAmount}
@@ -1344,10 +1213,10 @@ export default function OrdersPage() {
                   max={selectedOrder.total}
                   className="w-full p-3 bg-gray-50 rounded-lg border border-gray-200 focus:border-blue-500 focus:outline-none"
                 />
+                </label>
               </div>
-
               <div className="mb-4">
-                <label className="block text-sm text-gray-600 mb-1">Причина</label>
+                <label className="block text-sm text-gray-600 mb-1">Причина
                 <textarea
                   value={refundReason}
                   onChange={(e) => setRefundReason(e.target.value)}
@@ -1355,8 +1224,8 @@ export default function OrdersPage() {
                   className="w-full p-3 bg-gray-50 rounded-lg border border-gray-200 focus:border-blue-500 focus:outline-none"
                   rows={2}
                 />
+                </label>
               </div>
-
               <div className="flex gap-3">
                 <button
                   onClick={() => { setShowRefundModal(false); setRefundAmount(0); setRefundReason(''); }}
@@ -1376,7 +1245,6 @@ export default function OrdersPage() {
           </motion.div>
         )}
       </AnimatePresence>
-
       {/* Payment Modal */}
       <AnimatePresence>
         {showPaymentModal && selectedOrder && (
@@ -1395,12 +1263,10 @@ export default function OrdersPage() {
               onClick={e => e.stopPropagation()}
             >
               <h2 className="text-2xl font-bold text-gray-900 mb-6">Плащане на поръчка #{selectedOrder.order_number}</h2>
-
               <div className="text-center mb-6">
                 <div className="text-4xl font-bold text-gray-900">{(selectedOrder.total || 0).toFixed(2)} лв</div>
                 <div className="text-gray-500">Общо за плащане</div>
               </div>
-
               <div className="grid grid-cols-2 gap-4 mb-6">
                 <button
                   onClick={() => { handleUpdateOrderStatus(selectedOrder.id, 'paid', 'cash'); setShowPaymentModal(false); setSelectedOrder(null); }}
@@ -1417,7 +1283,6 @@ export default function OrdersPage() {
                   <span className="font-medium text-blue-700">С карта</span>
                 </button>
               </div>
-
               <button
                 onClick={() => setShowPaymentModal(false)}
                 className="w-full py-3 bg-gray-100 text-gray-700 rounded-xl hover:bg-gray-200"
@@ -1428,7 +1293,6 @@ export default function OrdersPage() {
           </motion.div>
         )}
       </AnimatePresence>
-
       {/* Split Bill Modal */}
       <AnimatePresence>
         {showSplitBillModal && selectedOrder && (
@@ -1447,14 +1311,12 @@ export default function OrdersPage() {
               onClick={e => e.stopPropagation()}
             >
               <h2 className="text-2xl font-bold text-gray-900 mb-6">Раздели сметка #{selectedOrder.order_number}</h2>
-
               <div className="text-center mb-6">
                 <div className="text-3xl font-bold text-gray-900">{(selectedOrder.total || 0).toFixed(2)} лв</div>
                 <div className="text-gray-500">Общо</div>
               </div>
-
               <div className="mb-6">
-                <label className="block text-sm font-medium text-gray-700 mb-2">На колко части?</label>
+                <span className="block text-sm font-medium text-gray-700 mb-2">На колко части?</span>
                 <div className="flex gap-2">
                   {[2, 3, 4, 5, 6].map(n => (
                     <button
@@ -1471,7 +1333,6 @@ export default function OrdersPage() {
                   ))}
                 </div>
               </div>
-
               <div className="bg-blue-50 rounded-xl p-4 mb-6">
                 <div className="text-center">
                   <div className="text-sm text-blue-600 mb-1">Всеки плаща</div>
@@ -1483,7 +1344,6 @@ export default function OrdersPage() {
                   </div>
                 </div>
               </div>
-
               <div className="grid grid-cols-2 gap-3 mb-4">
                 <button
                   onClick={() => {
@@ -1508,7 +1368,6 @@ export default function OrdersPage() {
                   <span className="font-medium text-blue-700 text-sm">Всички с карта</span>
                 </button>
               </div>
-
               <button
                 onClick={() => setShowSplitBillModal(false)}
                 className="w-full py-3 bg-gray-100 text-gray-700 rounded-xl hover:bg-gray-200"
@@ -1519,7 +1378,6 @@ export default function OrdersPage() {
           </motion.div>
         )}
       </AnimatePresence>
-
       {/* Void Item Modal */}
       <AnimatePresence>
         {showVoidItemModal && (

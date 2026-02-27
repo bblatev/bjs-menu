@@ -2,7 +2,9 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { API_URL, getAuthHeaders } from '@/lib/api';
+
+import { api } from '@/lib/api';
+
 
 interface WalletConfig {
   apple_pay_enabled: boolean;
@@ -78,23 +80,23 @@ export default function MobileWalletPage() {
     setLoading(true);
     setError(null);
     try {
-      const [configRes, sessionsRes, statsRes] = await Promise.all([
-        fetch(`${API_URL}/mobile-wallet/config`, { credentials: 'include', headers: getAuthHeaders() }),
-        fetch(`${API_URL}/mobile-wallet/payments?limit=20`, { credentials: 'include', headers: getAuthHeaders() }),
-        fetch(`${API_URL}/mobile-wallet/stats`, { credentials: 'include', headers: getAuthHeaders() }),
-      ]);
+      const [configRes, sessionsRes, statsRes] = await Promise.allSettled([
+  api.get('/mobile-wallet/config'),
+  api.get('/mobile-wallet/payments?limit=20'),
+  api.get('/mobile-wallet/stats')
+]);
 
-      if (configRes.ok) {
-        const data = await configRes.json();
+      if (configRes.status === 'fulfilled') {
+        const data: any = configRes.value;
         setConfig(prev => ({ ...prev, ...data }));
       }
-      if (sessionsRes.ok) {
-        const data = await sessionsRes.json();
-        setSessions(data);
+      if (sessionsRes.status === 'fulfilled') {
+        const data_sessions: any = sessionsRes.value;
+        setSessions(data_sessions);
       }
-      if (statsRes.ok) {
-        const data = await statsRes.json();
-        setStats(data);
+      if (statsRes.status === 'fulfilled') {
+        const data_stats: any = statsRes.value;
+        setStats(data_stats);
       }
     } catch (err) {
       console.error('Error loading data:', err);
@@ -107,15 +109,8 @@ export default function MobileWalletPage() {
   const saveConfig = async () => {
     setSaving(true);
     try {
-      const res = await fetch(`${API_URL}/mobile-wallet/config`, {
-        credentials: 'include',
-        method: 'PUT',
-        headers: getAuthHeaders(),
-        body: JSON.stringify(config),
-      });
-      if (res.ok) {
-        loadData();
-      }
+      await api.put('/mobile-wallet/config', config);
+      loadData();
     } catch (error) {
       console.error('Error saving config:', error);
     } finally {
@@ -308,7 +303,7 @@ export default function MobileWalletPage() {
               <h3 className="font-semibold text-surface-900 mb-4">Merchant Settings</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-surface-700 mb-1">Merchant Name</label>
+                  <label className="block text-sm font-medium text-surface-700 mb-1">Merchant Name
                   <input
                     type="text"
                     value={config.merchant_name}
@@ -316,10 +311,11 @@ export default function MobileWalletPage() {
                     className="w-full px-3 py-2 border border-surface-200 rounded-lg"
                     placeholder="Your Restaurant Name"
                   />
+                  </label>
                   <p className="text-xs text-surface-500 mt-1">Shown on payment sheets</p>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-surface-700 mb-1">Country</label>
+                  <label className="block text-sm font-medium text-surface-700 mb-1">Country
                   <select
                     value={config.merchant_country}
                     onChange={(e) => setConfig({ ...config, merchant_country: e.target.value })}
@@ -329,6 +325,7 @@ export default function MobileWalletPage() {
                       <option key={c.code} value={c.code}>{c.name}</option>
                     ))}
                   </select>
+                  </label>
                 </div>
               </div>
             </div>
@@ -363,7 +360,7 @@ export default function MobileWalletPage() {
             <div className="bg-white rounded-xl border border-surface-200 p-6">
               <h3 className="font-semibold text-surface-900 mb-4">Additional Options</h3>
               <div className="space-y-3">
-                <label className="flex items-center gap-3 cursor-pointer">
+                <label aria-label="Require Billing Address" className="flex items-center gap-3 cursor-pointer">
                   <input
                     type="checkbox"
                     checked={config.require_billing_address}
@@ -375,7 +372,7 @@ export default function MobileWalletPage() {
                     <div className="text-sm text-surface-500">Request billing address during checkout</div>
                   </div>
                 </label>
-                <label className="flex items-center gap-3 cursor-pointer">
+                <label aria-label="Require Shipping Address" className="flex items-center gap-3 cursor-pointer">
                   <input
                     type="checkbox"
                     checked={config.require_shipping_address}

@@ -7,6 +7,7 @@ from fastapi import APIRouter, HTTPException, Query, Body, Request
 from pydantic import BaseModel, Field, field_validator
 
 from app.core.sanitize import sanitize_text
+from app.core.responses import list_response, paginated_response
 
 from app.db.session import DbSession
 from app.models.restaurant import (
@@ -525,20 +526,17 @@ def delete_category(request: Request, db: DbSession, name: str, delete_items: bo
 def list_tables(request: Request, db: DbSession):
     """List all tables."""
     tables = db.query(Table).order_by(Table.number).all()
-    return {
-        "tables": [
-            {
-                "id": t.id,
-                "number": t.number,
-                "capacity": t.capacity,
-                "status": t.status,
-                "area": t.area,
-                "token": t.token,
-            }
-            for t in tables
-        ],
-        "total": len(tables),
-    }
+    return list_response([
+        {
+            "id": t.id,
+            "number": t.number,
+            "capacity": t.capacity,
+            "status": t.status,
+            "area": t.area,
+            "token": t.token,
+        }
+        for t in tables
+    ])
 
 
 @router.post("/tables")
@@ -1258,8 +1256,8 @@ def list_guest_orders(
     total = query.count()
     orders = query.order_by(GuestOrderModel.created_at.desc()).offset(offset).limit(limit).all()
 
-    return {
-        "orders": [
+    return paginated_response(
+        items=[
             {
                 "id": o.id,
                 "table_id": o.table_id,
@@ -1277,10 +1275,10 @@ def list_guest_orders(
             }
             for o in orders
         ],
-        "total": total,
-        "limit": limit,
-        "offset": offset,
-    }
+        total=total,
+        skip=offset,
+        limit=limit,
+    )
 
 
 # ==================== ADMIN ENDPOINTS (for frontend compatibility) ====================

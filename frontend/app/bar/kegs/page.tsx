@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { API_URL, getAuthHeaders } from '@/lib/api';
+import { api } from '@/lib/api';
 
 interface Keg {
   keg_id: string;
@@ -55,11 +55,9 @@ export default function KegsPage() {
 
   const loadKegs = async () => {
     try {
-      let url = `${API_URL}/inventory-hardware/kegs`;
-      if (filterStatus !== "all") url += `?status=${filterStatus}`;
-
-      const res = await fetch(url, { credentials: 'include', headers: getAuthHeaders() });
-      const data = await res.json();
+      let path = '/inventory-hardware/kegs';
+      if (filterStatus !== "all") path += `?status=${filterStatus}`;
+      const data: any = await api.get(path);
       setKegs(data.kegs || []);
       setSummary(data.summary || { full: 0, tapped: 0, low: 0, empty: 0 });
     } catch (err) {
@@ -72,18 +70,10 @@ export default function KegsPage() {
   const handleRegisterKeg = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const res = await fetch(`${API_URL}/inventory-hardware/kegs`, {
-        credentials: 'include',
-        method: "POST",
-        headers: getAuthHeaders(),
-        body: JSON.stringify(form),
-      });
-
-      if (res.ok) {
-        setShowModal(false);
-        loadKegs();
-        setForm({ keg_id: "", product_name: "", keg_size_liters: 50, purchase_price: 0 });
-      }
+      await api.post('/inventory-hardware/kegs', form);
+      setShowModal(false);
+      loadKegs();
+      setForm({ keg_id: "", product_name: "", keg_size_liters: 50, purchase_price: 0 });
     } catch (err) {
       console.error("Failed to register keg:", err);
     }
@@ -92,17 +82,9 @@ export default function KegsPage() {
   const handleTapKeg = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const res = await fetch(`${API_URL}/inventory-hardware/kegs/tap`, {
-        credentials: 'include',
-        method: "POST",
-        headers: getAuthHeaders(),
-        body: JSON.stringify(tapForm),
-      });
-
-      if (res.ok) {
-        setShowTapModal(false);
-        loadKegs();
-      }
+      await api.post('/inventory-hardware/kegs/tap', tapForm);
+      setShowTapModal(false);
+      loadKegs();
     } catch (err) {
       console.error("Failed to tap keg:", err);
     }
@@ -311,7 +293,7 @@ export default function KegsPage() {
                 <h2 className="text-xl font-bold mb-4">🍺 Register New Keg</h2>
                 <form onSubmit={handleRegisterKeg} className="space-y-4">
                   <div>
-                    <label className="block text-sm text-gray-400 mb-1">Keg ID *</label>
+                    <label className="block text-sm text-gray-400 mb-1">Keg ID *
                     <input
                       type="text"
                       value={form.keg_id}
@@ -320,9 +302,10 @@ export default function KegsPage() {
                       className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg"
                       required
                     />
+                    </label>
                   </div>
                   <div>
-                    <label className="block text-sm text-gray-400 mb-1">Product Name *</label>
+                    <label className="block text-sm text-gray-400 mb-1">Product Name *
                     <input
                       type="text"
                       value={form.product_name}
@@ -331,10 +314,11 @@ export default function KegsPage() {
                       className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg"
                       required
                     />
+                    </label>
                   </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-sm text-gray-400 mb-1">Size (Liters)</label>
+                      <label className="block text-sm text-gray-400 mb-1">Size (Liters)
                       <select
                         value={form.keg_size_liters}
                         onChange={e => setForm({...form, keg_size_liters: parseInt(e.target.value)})}
@@ -344,15 +328,17 @@ export default function KegsPage() {
                         <option value={30}>30L (Quarter)</option>
                         <option value={50}>50L (Half Barrel)</option>
                       </select>
+                      </label>
                     </div>
                     <div>
-                      <label className="block text-sm text-gray-400 mb-1">Purchase Price</label>
+                      <label className="block text-sm text-gray-400 mb-1">Purchase Price
                       <input
                         type="number"
                         value={form.purchase_price}
                         onChange={e => setForm({...form, purchase_price: parseFloat(e.target.value)})}
                         className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg"
                       />
+                      </label>
                     </div>
                   </div>
                   <div className="flex gap-3 pt-4">
@@ -396,16 +382,17 @@ export default function KegsPage() {
                 <h2 className="text-xl font-bold mb-4">🍺 Tap Keg</h2>
                 <form onSubmit={handleTapKeg} className="space-y-4">
                   <div>
-                    <label className="block text-sm text-gray-400 mb-1">Keg ID</label>
+                    <label className="block text-sm text-gray-400 mb-1">Keg ID
                     <input
                       type="text"
                       value={tapForm.keg_id}
                       readOnly
                       className="w-full px-4 py-2 bg-gray-600 border border-gray-600 rounded-lg"
                     />
+                    </label>
                   </div>
                   <div>
-                    <label className="block text-sm text-gray-400 mb-1">Tap Number</label>
+                    <label className="block text-sm text-gray-400 mb-1">Tap Number
                     <select
                       value={tapForm.tap_number}
                       onChange={e => setTapForm({...tapForm, tap_number: parseInt(e.target.value)})}
@@ -415,9 +402,10 @@ export default function KegsPage() {
                         <option key={n} value={n}>Tap #{n}</option>
                       ))}
                     </select>
+                    </label>
                   </div>
                   <div>
-                    <label className="block text-sm text-gray-400 mb-1">Location</label>
+                    <label className="block text-sm text-gray-400 mb-1">Location
                     <select
                       value={tapForm.location}
                       onChange={e => setTapForm({...tapForm, location: e.target.value})}
@@ -428,6 +416,7 @@ export default function KegsPage() {
                       <option value="pool_bar">Pool Bar</option>
                       <option value="vip_bar">VIP Bar</option>
                     </select>
+                    </label>
                   </div>
                   <div className="flex gap-3 pt-4">
                     <button

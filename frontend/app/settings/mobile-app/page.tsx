@@ -164,7 +164,7 @@ export default function MobileAppPage() {
                     <div className="font-medium text-gray-900 dark:text-white">{label}</div>
                     <div className="text-sm text-gray-500">{desc}</div>
                   </div>
-                  <label className="relative inline-flex items-center cursor-pointer">
+                  <label aria-label={label} className="relative inline-flex items-center cursor-pointer">
                     <input
                       type="checkbox"
                       checked={settings[key]}
@@ -177,7 +177,7 @@ export default function MobileAppPage() {
               ))}
 
               <div>
-                <label className="block font-medium text-gray-900 dark:text-white mb-1">Sync Interval</label>
+                <label className="block font-medium text-gray-900 dark:text-white mb-1">Sync Interval
                 <select
                   value={settings.sync_interval_minutes}
                   onChange={(e) => setSettings({ ...settings, sync_interval_minutes: Number(e.target.value) })}
@@ -188,6 +188,7 @@ export default function MobileAppPage() {
                   <option value={15}>Every 15 minutes</option>
                   <option value={30}>Every 30 minutes</option>
                 </select>
+                </label>
               </div>
 
               <button

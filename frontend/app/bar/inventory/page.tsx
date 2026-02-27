@@ -1,8 +1,7 @@
 'use client';
-
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
-import { API_URL, getAuthHeaders } from '@/lib/api';
+import { api } from '@/lib/api';
 
 interface LiquorItem {
   id: number;
@@ -25,7 +24,6 @@ interface LiquorItem {
   location: string;
   supplier: string;
 }
-
 const CATEGORIES = [
   { value: 'vodka', label: 'Vodka', icon: '🍸' },
   { value: 'gin', label: 'Gin', icon: '🫒' },
@@ -37,9 +35,7 @@ const CATEGORIES = [
   { value: 'liqueur', label: 'Liqueurs', icon: '🍹' },
   { value: 'mixers', label: 'Mixers', icon: '🧊' },
 ];
-
 const LOCATIONS = ['Main Bar', 'Back Bar', 'Service Bar', 'Storage Room', 'Wine Cellar'];
-
 export default function BarInventoryPage() {
   const [items, setItems] = useState<LiquorItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -58,45 +54,34 @@ export default function BarInventoryPage() {
     name: '', brand: '', category: 'vodka', size: '750ml',
     cost_per_bottle: 20, par_level: 6, location: 'Main Bar', supplier: ''
   });
-
   const fetchInventory = useCallback(async () => {
     setIsLoading(true);
     setError(null);
     try {
-      const headers = getAuthHeaders();
-      const response = await fetch(`${API_URL}/bar/inventory`, {
-        credentials: 'include',
-        headers,
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        // Transform API data to match component interface if needed
-        if (data && data.length > 0) {
-          setItems(data.map((item: Record<string, unknown>) => ({
-            id: item.id,
-            name: item.item_name || item.name,
-            brand: item.brand || 'Unknown',
-            category: item.category || 'spirits',
-            sku: item.sku || `SKU-${item.id}`,
-            size: item.size || '750ml',
-            full_bottles: Math.floor(Number(item.current_stock) || 0),
-            partial_bottles: (Number(item.current_stock) || 0) % 1 > 0 ? 1 : 0,
-            partial_percentage: Math.round(((Number(item.current_stock) || 0) % 1) * 100),
-            total_volume_ml: (Number(item.current_stock) || 0) * 750,
-            par_level: Number(item.par_level) || 6,
-            reorder_point: Math.floor((Number(item.par_level) || 6) / 2),
-            cost_per_bottle: Number(item.cost_per_unit) || Number(item.cost) || 20,
-            total_value: (Number(item.current_stock) || 0) * (Number(item.cost_per_unit) || Number(item.cost) || 20),
-            last_count_date: new Date().toISOString().split('T')[0],
-            counted_by: 'System',
-            variance_from_expected: 0,
-            location: item.location || 'Main Bar',
-            supplier: item.supplier || 'Unknown',
-          })));
-        }
-      } else {
-        console.error('Failed to load bar inventory:', response.status);
+      const data: any = await api.get('/bar/inventory');
+            // Transform API data to match component interface if needed
+      if (data && data.length > 0) {
+      setItems(data.map((item: Record<string, unknown>) => ({
+        id: item.id,
+        name: item.item_name || item.name,
+        brand: item.brand || 'Unknown',
+        category: item.category || 'spirits',
+        sku: item.sku || `SKU-${item.id}`,
+        size: item.size || '750ml',
+        full_bottles: Math.floor(Number(item.current_stock) || 0),
+        partial_bottles: (Number(item.current_stock) || 0) % 1 > 0 ? 1 : 0,
+        partial_percentage: Math.round(((Number(item.current_stock) || 0) % 1) * 100),
+        total_volume_ml: (Number(item.current_stock) || 0) * 750,
+        par_level: Number(item.par_level) || 6,
+        reorder_point: Math.floor((Number(item.par_level) || 6) / 2),
+        cost_per_bottle: Number(item.cost_per_unit) || Number(item.cost) || 20,
+        total_value: (Number(item.current_stock) || 0) * (Number(item.cost_per_unit) || Number(item.cost) || 20),
+        last_count_date: new Date().toISOString().split('T')[0],
+        counted_by: 'System',
+        variance_from_expected: 0,
+        location: item.location || 'Main Bar',
+        supplier: item.supplier || 'Unknown',
+      })));
       }
     } catch (err) {
       console.error('Failed to fetch bar inventory:', err);
@@ -104,12 +89,10 @@ export default function BarInventoryPage() {
       setIsLoading(false);
     }
   }, []);
-
   useEffect(() => {
     fetchInventory();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-
   const getStockStatus = (item: LiquorItem) => {
     const totalBottles = item.full_bottles + (item.partial_percentage / 100);
     if (totalBottles <= item.reorder_point * 0.5) return { status: 'critical', color: 'bg-error-100 text-error-700 border-error-300' };
@@ -117,13 +100,11 @@ export default function BarInventoryPage() {
     if (totalBottles <= item.par_level * 0.7) return { status: 'reorder', color: 'bg-primary-100 text-primary-700 border-primary-300' };
     return { status: 'ok', color: 'bg-success-100 text-success-700 border-success-300' };
   };
-
   const getVarianceColor = (variance: number) => {
     if (Math.abs(variance) < 0.2) return 'text-success-600';
     if (Math.abs(variance) < 0.5) return 'text-warning-600';
     return 'text-error-600';
   };
-
   const filteredItems = items
     .filter(item => selectedCategory === 'all' || item.category === selectedCategory)
     .filter(item => selectedLocation === 'all' || item.location === selectedLocation)
@@ -132,7 +113,6 @@ export default function BarInventoryPage() {
       item.brand.toLowerCase().includes(searchQuery.toLowerCase()) ||
       item.sku.toLowerCase().includes(searchQuery.toLowerCase())
     );
-
   const totalInventoryValue = items.reduce((sum, item) => sum + item.total_value, 0);
   const lowStockItems = items.filter(item => getStockStatus(item).status !== 'ok');
   const itemsNeedingCount = items.filter(item => {
@@ -140,7 +120,6 @@ export default function BarInventoryPage() {
     const daysSinceCount = Math.floor((Date.now() - lastCount.getTime()) / (1000 * 60 * 60 * 24));
     return daysSinceCount > 7;
   });
-
   const handleCount = (item: LiquorItem) => {
     setSelectedItem(item);
     setCountData({
@@ -149,10 +128,8 @@ export default function BarInventoryPage() {
     });
     setShowCountModal(true);
   };
-
   const submitCount = () => {
     if (!selectedItem) return;
-
     const updatedItems = items.map(item => {
       if (item.id === selectedItem.id) {
         const newTotalVolume = (countData.full_bottles * parseInt(item.size)) +
@@ -170,77 +147,42 @@ export default function BarInventoryPage() {
       }
       return item;
     });
-
     setItems(updatedItems);
     setShowCountModal(false);
     setSelectedItem(null);
   };
-
   const handleAddItem = async () => {
     try {
-      const response = await fetch(`${API_URL}/stock/`, {
-        credentials: 'include',
-        method: 'POST',
-        headers: getAuthHeaders(),
-        body: JSON.stringify({
+      const created: any = await api.post('/stock/', {
           name: newItem.name,
           sku: `BAR-${Date.now()}`,
           quantity: 0,
           unit: 'bottles',
           low_stock_threshold: newItem.par_level / 2,
           cost_per_unit: newItem.cost_per_bottle,
-        }),
-      });
-
-      if (response.ok) {
-        const created = await response.json();
-        const newLiquorItem: LiquorItem = {
-          id: created.id || Date.now(),
-          name: newItem.name,
-          brand: newItem.brand,
-          category: newItem.category,
-          sku: `BAR-${created.id || Date.now()}`,
-          size: newItem.size,
-          full_bottles: 0,
-          partial_bottles: 0,
-          partial_percentage: 0,
-          total_volume_ml: 0,
-          par_level: newItem.par_level,
-          reorder_point: Math.floor(newItem.par_level / 2),
-          cost_per_bottle: newItem.cost_per_bottle,
-          total_value: 0,
-          last_count_date: new Date().toISOString().split('T')[0],
-          counted_by: 'New',
-          variance_from_expected: 0,
-          location: newItem.location,
-          supplier: newItem.supplier,
-        };
-        setItems([...items, newLiquorItem]);
-      } else {
-        // Add locally if API fails
-        const newLiquorItem: LiquorItem = {
-          id: Date.now(),
-          name: newItem.name,
-          brand: newItem.brand,
-          category: newItem.category,
-          sku: `BAR-${Date.now()}`,
-          size: newItem.size,
-          full_bottles: 0,
-          partial_bottles: 0,
-          partial_percentage: 0,
-          total_volume_ml: 0,
-          par_level: newItem.par_level,
-          reorder_point: Math.floor(newItem.par_level / 2),
-          cost_per_bottle: newItem.cost_per_bottle,
-          total_value: 0,
-          last_count_date: new Date().toISOString().split('T')[0],
-          counted_by: 'New',
-          variance_from_expected: 0,
-          location: newItem.location,
-          supplier: newItem.supplier,
-        };
-        setItems([...items, newLiquorItem]);
-      }
+        });
+            const newLiquorItem: LiquorItem = {
+      id: created.id || Date.now(),
+      name: newItem.name,
+      brand: newItem.brand,
+      category: newItem.category,
+      sku: `BAR-${created.id || Date.now()}`,
+      size: newItem.size,
+      full_bottles: 0,
+      partial_bottles: 0,
+      partial_percentage: 0,
+      total_volume_ml: 0,
+      par_level: newItem.par_level,
+      reorder_point: Math.floor(newItem.par_level / 2),
+      cost_per_bottle: newItem.cost_per_bottle,
+      total_value: 0,
+      last_count_date: new Date().toISOString().split('T')[0],
+      counted_by: 'New',
+      variance_from_expected: 0,
+      location: newItem.location,
+      supplier: newItem.supplier,
+      };
+      setItems([...items, newLiquorItem]);
     } catch {
       // Add locally on error
       const newLiquorItem: LiquorItem = {
@@ -269,7 +211,6 @@ export default function BarInventoryPage() {
     setShowAddModal(false);
     setNewItem({ name: '', brand: '', category: 'vodka', size: '750ml', cost_per_bottle: 20, par_level: 6, location: 'Main Bar', supplier: '' });
   };
-
   const startFullCount = () => {
     const initialCounts: {[key: number]: {full: number, partial: number}} = {};
     items.forEach(item => {
@@ -278,7 +219,6 @@ export default function BarInventoryPage() {
     setFullCountItems(initialCounts);
     setIsFullCountMode(true);
   };
-
   const saveFullCount = () => {
     const updatedItems = items.map(item => {
       const countData = fullCountItems[item.id];
@@ -301,7 +241,6 @@ export default function BarInventoryPage() {
     setIsFullCountMode(false);
     setFullCountItems({});
   };
-
   if (isLoading) {
     return (
       <div className="p-6 max-w-7xl mx-auto">
@@ -314,7 +253,6 @@ export default function BarInventoryPage() {
       </div>
     );
   }
-
   return (
     <div className="p-6 max-w-7xl mx-auto">
       {/* Header */}
@@ -362,7 +300,6 @@ export default function BarInventoryPage() {
           </button>
         </div>
       </div>
-
       {/* Stats Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
         <div className="bg-white p-4 rounded-xl border border-surface-200 shadow-sm">
@@ -394,7 +331,6 @@ export default function BarInventoryPage() {
           <p className="text-2xl font-bold text-primary-600">{itemsNeedingCount.length}</p>
         </div>
       </div>
-
       {/* Filters */}
       <div className="bg-white rounded-xl border border-surface-200 shadow-sm p-4 mb-6">
         <div className="flex flex-wrap items-center gap-4">
@@ -462,7 +398,6 @@ export default function BarInventoryPage() {
           </div>
         </div>
       </div>
-
       {/* Inventory Table */}
       {viewMode === 'list' ? (
         <div className="bg-white rounded-xl border border-surface-200 shadow-sm overflow-hidden">
@@ -486,7 +421,6 @@ export default function BarInventoryPage() {
                 {filteredItems.map((item) => {
                   const stockStatus = getStockStatus(item);
                   const totalBottles = item.full_bottles + (item.partial_percentage / 100);
-
                   return (
                     <tr key={item.id} className="hover:bg-surface-50">
                       <td className="px-4 py-3">
@@ -577,7 +511,6 @@ export default function BarInventoryPage() {
           {filteredItems.map((item) => {
             const stockStatus = getStockStatus(item);
             const totalBottles = item.full_bottles + (item.partial_percentage / 100);
-
             return (
               <div key={item.id} className="bg-white rounded-xl border border-surface-200 shadow-sm p-4">
                 <div className="flex items-start justify-between mb-3">
@@ -594,7 +527,6 @@ export default function BarInventoryPage() {
                     {stockStatus.status}
                   </span>
                 </div>
-
                 <div className="flex items-center gap-4 mb-4">
                   {/* Full bottles visualization */}
                   <div className="flex items-end gap-1">
@@ -621,7 +553,6 @@ export default function BarInventoryPage() {
                     <p className="text-sm text-surface-500">of {item.par_level} par</p>
                   </div>
                 </div>
-
                 <div className="grid grid-cols-2 gap-2 text-sm mb-4">
                   <div className="bg-surface-50 rounded-lg p-2">
                     <p className="text-surface-500">Location</p>
@@ -632,7 +563,6 @@ export default function BarInventoryPage() {
                     <p className="font-medium text-success-600">${(item.total_value || 0).toFixed(2)}</p>
                   </div>
                 </div>
-
                 <button
                   onClick={() => handleCount(item)}
                   className="w-full py-2 bg-primary-600 text-gray-900 rounded-lg hover:bg-primary-700 font-medium"
@@ -644,7 +574,6 @@ export default function BarInventoryPage() {
           })}
         </div>
       )}
-
       {/* Count Modal */}
       {showCountModal && selectedItem && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
@@ -655,7 +584,7 @@ export default function BarInventoryPage() {
             </div>
             <div className="p-6 space-y-6">
               <div>
-                <label className="block text-sm font-medium text-surface-700 mb-2">Full Bottles</label>
+                <label className="block text-sm font-medium text-surface-700 mb-2" htmlFor="full-bottles">Full Bottles</label>
                 <div className="flex items-center gap-4">
                   <button
                     onClick={() => setCountData({ ...countData, full_bottles: Math.max(0, countData.full_bottles - 1) })}
@@ -663,7 +592,7 @@ export default function BarInventoryPage() {
                   >
                     -
                   </button>
-                  <input
+                  <input id="full-bottles"
                     type="number"
                     value={countData.full_bottles}
                     onChange={(e) => setCountData({ ...countData, full_bottles: parseInt(e.target.value) || 0 })}
@@ -677,7 +606,6 @@ export default function BarInventoryPage() {
                   </button>
                 </div>
               </div>
-
               <div>
                 <label className="block text-sm font-medium text-surface-700 mb-2">
                   Partial Bottle ({countData.partial_percentage}%)
@@ -724,7 +652,6 @@ export default function BarInventoryPage() {
                   </div>
                 </div>
               </div>
-
               <div className="bg-surface-50 rounded-lg p-4">
                 <h4 className="font-medium text-surface-900 mb-2">Summary</h4>
                 <div className="grid grid-cols-2 gap-2 text-sm">
@@ -761,7 +688,6 @@ export default function BarInventoryPage() {
           </div>
         </div>
       )}
-
       {/* Add Item Modal */}
       {showAddModal && (
         <div className="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center z-50">
@@ -778,7 +704,7 @@ export default function BarInventoryPage() {
             </div>
             <div className="p-6 space-y-4">
               <div>
-                <label className="block text-sm font-medium text-surface-700 mb-1">Name *</label>
+                <label className="block text-sm font-medium text-surface-700 mb-1">Name *
                 <input
                   type="text"
                   value={newItem.name}
@@ -786,10 +712,11 @@ export default function BarInventoryPage() {
                   className="w-full px-4 py-2 border border-surface-300 rounded-lg focus:ring-2 focus:ring-primary-500"
                   placeholder="e.g., Grey Goose Vodka"
                 />
+                </label>
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-surface-700 mb-1">Brand</label>
+                  <label className="block text-sm font-medium text-surface-700 mb-1">Brand
                   <input
                     type="text"
                     value={newItem.brand}
@@ -797,9 +724,10 @@ export default function BarInventoryPage() {
                     className="w-full px-4 py-2 border border-surface-300 rounded-lg focus:ring-2 focus:ring-primary-500"
                     placeholder="e.g., Grey Goose"
                   />
+                  </label>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-surface-700 mb-1">Category</label>
+                  <label className="block text-sm font-medium text-surface-700 mb-1">Category
                   <select
                     value={newItem.category}
                     onChange={(e) => setNewItem({ ...newItem, category: e.target.value })}
@@ -808,12 +736,12 @@ export default function BarInventoryPage() {
                     {CATEGORIES.map(cat => (
                       <option key={cat.value} value={cat.value}>{cat.icon} {cat.label}</option>
                     ))}
-                  </select>
+                  </select></label>
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-surface-700 mb-1">Size</label>
+                  <label className="block text-sm font-medium text-surface-700 mb-1">Size
                   <select
                     value={newItem.size}
                     onChange={(e) => setNewItem({ ...newItem, size: e.target.value })}
@@ -823,30 +751,32 @@ export default function BarInventoryPage() {
                     <option value="750ml">750ml</option>
                     <option value="1L">1L</option>
                     <option value="1.5L">1.5L</option>
-                  </select>
+                  </select></label>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-surface-700 mb-1">Cost/Bottle ($)</label>
+                  <label className="block text-sm font-medium text-surface-700 mb-1">Cost/Bottle ($)
                   <input
                     type="number"
                     value={newItem.cost_per_bottle}
                     onChange={(e) => setNewItem({ ...newItem, cost_per_bottle: parseFloat(e.target.value) || 0 })}
                     className="w-full px-4 py-2 border border-surface-300 rounded-lg focus:ring-2 focus:ring-primary-500"
                   />
+                  </label>
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-surface-700 mb-1">Par Level</label>
+                  <label className="block text-sm font-medium text-surface-700 mb-1">Par Level
                   <input
                     type="number"
                     value={newItem.par_level}
                     onChange={(e) => setNewItem({ ...newItem, par_level: parseInt(e.target.value) || 1 })}
                     className="w-full px-4 py-2 border border-surface-300 rounded-lg focus:ring-2 focus:ring-primary-500"
                   />
+                  </label>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-surface-700 mb-1">Location</label>
+                  <label className="block text-sm font-medium text-surface-700 mb-1">Location
                   <select
                     value={newItem.location}
                     onChange={(e) => setNewItem({ ...newItem, location: e.target.value })}
@@ -855,11 +785,11 @@ export default function BarInventoryPage() {
                     {LOCATIONS.map(loc => (
                       <option key={loc} value={loc}>{loc}</option>
                     ))}
-                  </select>
+                  </select></label>
                 </div>
               </div>
               <div>
-                <label className="block text-sm font-medium text-surface-700 mb-1">Supplier</label>
+                <label className="block text-sm font-medium text-surface-700 mb-1">Supplier
                 <input
                   type="text"
                   value={newItem.supplier}
@@ -867,6 +797,7 @@ export default function BarInventoryPage() {
                   className="w-full px-4 py-2 border border-surface-300 rounded-lg focus:ring-2 focus:ring-primary-500"
                   placeholder="e.g., Premium Spirits Co"
                 />
+                </label>
               </div>
             </div>
             <div className="p-6 border-t border-surface-200 flex gap-3">
@@ -887,7 +818,6 @@ export default function BarInventoryPage() {
           </div>
         </div>
       )}
-
       {/* Full Count Mode Banner */}
       {isFullCountMode && (
         <div className="fixed bottom-0 left-0 right-0 bg-accent-600 text-gray-900 p-4 z-40 shadow-lg">

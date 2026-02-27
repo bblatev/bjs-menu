@@ -13,9 +13,9 @@ export default function LabelPrintersPage() {
     Promise.all([
       api.get('/api/v1/label-printers/printers').catch(() => ({ data: { printers: [] } })),
       api.get('/api/v1/label-printers/templates').catch(() => ({ data: { templates: {} } })),
-    ]).then(([p, t]) => {
-      setPrinters(p.data.printers || []);
-      setTemplates(t.data.templates || {});
+    ]).then(([p, t]: any[]) => {
+      setPrinters(p.printers || p || []);
+      setTemplates(t.templates || t || {});
     }).finally(() => setLoading(false));
   }, []);
 

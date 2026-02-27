@@ -135,7 +135,7 @@ export default function NotificationSettingsPage() {
                         ))}
                       </div>
                     </div>
-                    <label className="relative inline-flex items-center cursor-pointer">
+                    <label aria-label={alert.type.replace(/_/g, ' ')} className="relative inline-flex items-center cursor-pointer">
                       <input
                         type="checkbox"
                         checked={alert.enabled}
@@ -177,7 +177,7 @@ export default function NotificationSettingsPage() {
                         </div>
                       </div>
                     </div>
-                    <label className="relative inline-flex items-center cursor-pointer">
+                    <label aria-label="Choose how you receive notifications" className="relative inline-flex items-center cursor-pointer">
                       <input type="checkbox" checked={enabled} className="sr-only peer" readOnly />
                       <div className="w-11 h-6 bg-surface-200 peer-focus:ring-4 peer-focus:ring-primary-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-surface-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary-600"></div>
                     </label>
@@ -193,7 +193,7 @@ export default function NotificationSettingsPage() {
                       <div className="font-medium">Quiet Hours</div>
                       <div className="text-sm text-surface-500">Pause non-critical notifications</div>
                     </div>
-                    <label className="relative inline-flex items-center cursor-pointer">
+                    <label aria-label="Pause non-critical notifications" className="relative inline-flex items-center cursor-pointer">
                       <input type="checkbox" checked={preferences.quiet_hours.enabled} className="sr-only peer" readOnly />
                       <div className="w-11 h-6 bg-surface-200 peer-focus:ring-4 peer-focus:ring-primary-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-surface-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary-600"></div>
                     </label>
@@ -201,12 +201,14 @@ export default function NotificationSettingsPage() {
                   {preferences.quiet_hours.enabled && (
                     <div className="flex items-center gap-4">
                       <div>
-                        <label className="text-sm text-surface-500">From</label>
+                        <label className="text-sm text-surface-500">From
                         <input type="time" value={preferences.quiet_hours.start} className="block mt-1 px-3 py-2 border rounded-lg" readOnly />
+                        </label>
                       </div>
                       <div>
-                        <label className="text-sm text-surface-500">To</label>
+                        <label className="text-sm text-surface-500">To
                         <input type="time" value={preferences.quiet_hours.end} className="block mt-1 px-3 py-2 border rounded-lg" readOnly />
+                        </label>
                       </div>
                     </div>
                   )}

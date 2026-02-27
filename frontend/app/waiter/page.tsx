@@ -216,8 +216,9 @@ export default function WaiterTerminal() {
   // API calls
   const loadTables = useCallback(async () => {
     try {
-      const data = await api.get<Table[]>('/waiter/floor-plan');
-      setTables(data);
+      const data = await api.get<any>('/waiter/floor-plan');
+      const tablesList = Array.isArray(data) ? data : (data.items || data.tables || []);
+      setTables(tablesList);
     } catch (err) {
       console.error('loadTables failed:', err);
     }
@@ -225,8 +226,9 @@ export default function WaiterTerminal() {
 
   const loadMenu = useCallback(async () => {
     try {
-      const data = await api.get<MenuItem[]>('/waiter/menu/quick');
-      setMenu(data);
+      const data = await api.get<any>('/waiter/menu/quick');
+      const menuList = Array.isArray(data) ? data : (data.items || []);
+      setMenu(menuList);
     } catch (err) {
       console.error('loadMenu failed:', err);
     }
@@ -245,7 +247,7 @@ export default function WaiterTerminal() {
     try {
       const today = new Date().toISOString().split("T")[0];
       const data = await api.get<any>(`/reservations/?date=${today}`);
-      setReservations(Array.isArray(data) ? data : data.reservations || []);
+      setReservations(Array.isArray(data) ? data : (data.items || data.reservations || []));
     } catch { /* ignore */ }
   }, []);
 
@@ -253,7 +255,7 @@ export default function WaiterTerminal() {
   const loadTabs = useCallback(async () => {
     try {
       const data = await api.get<any>('/tabs/?status=open');
-      setTabs(data.tabs || (Array.isArray(data) ? data : []));
+      setTabs(data.items || data.tabs || (Array.isArray(data) ? data : []));
     } catch { /* ignore */ }
   }, []);
 
@@ -261,7 +263,7 @@ export default function WaiterTerminal() {
   const loadHeldOrders = useCallback(async () => {
     try {
       const data = await api.get<any>('/held-orders/?status=held');
-      setHeldOrders(Array.isArray(data) ? data : data.orders || []);
+      setHeldOrders(Array.isArray(data) ? data : (data.items || data.orders || []));
     } catch { /* ignore */ }
   }, []);
 
@@ -269,7 +271,7 @@ export default function WaiterTerminal() {
   const loadMerges = useCallback(async () => {
     try {
       const data = await api.get<any>('/table-merges/?active_only=true');
-      setActiveMerges(Array.isArray(data) ? data : []);
+      setActiveMerges(Array.isArray(data) ? data : (data.items || []));
     } catch { /* ignore */ }
   }, []);
 
@@ -1788,23 +1790,26 @@ export default function WaiterTerminal() {
             <h2 className="text-lg font-bold mb-4 text-gray-900">New Reservation</h2>
             <div className="space-y-3">
               <div>
-                <label className="text-gray-500 text-xs">Guest Name *</label>
+                <label className="text-gray-500 text-xs">Guest Name *
                 <input value={bookingForm.guest_name} onChange={e => setBookingForm({ ...bookingForm, guest_name: e.target.value })}
                   className="w-full bg-gray-100 rounded-lg p-3 text-sm text-gray-900 border border-gray-200" placeholder="Name" />
+                </label>
               </div>
               <div>
-                <label className="text-gray-500 text-xs">Phone</label>
+                <label className="text-gray-500 text-xs">Phone
                 <input value={bookingForm.guest_phone} onChange={e => setBookingForm({ ...bookingForm, guest_phone: e.target.value })}
                   className="w-full bg-gray-100 rounded-lg p-3 text-sm text-gray-900 border border-gray-200" placeholder="Phone" type="tel" />
+                </label>
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="text-gray-500 text-xs">Date</label>
+                  <label className="text-gray-500 text-xs">Date
                   <input value={bookingForm.date} onChange={e => setBookingForm({ ...bookingForm, date: e.target.value })}
                     className="w-full bg-gray-100 rounded-lg p-3 text-sm text-gray-900 border border-gray-200" type="date" />
+                  </label>
                 </div>
                 <div>
-                  <label className="text-gray-500 text-xs">Time</label>
+                  <label className="text-gray-500 text-xs">Time
                   <select value={bookingForm.time} onChange={e => setBookingForm({ ...bookingForm, time: e.target.value })}
                     className="w-full bg-gray-100 rounded-lg p-3 text-sm text-gray-900 border border-gray-200">
                     {Array.from({ length: 40 }, (_, i) => {
@@ -1814,10 +1819,11 @@ export default function WaiterTerminal() {
                       return <option key={t} value={t}>{t}</option>;
                     })}
                   </select>
+                  </label>
                 </div>
               </div>
               <div>
-                <label className="text-gray-500 text-xs">Party Size</label>
+                <span className="text-gray-500 text-xs">Party Size</span>
                 <div className="flex items-center gap-4 mt-1">
                   <button onClick={() => setBookingForm({ ...bookingForm, party_size: Math.max(1, bookingForm.party_size - 1) })}
                     className="w-10 h-10 bg-gray-100 rounded-lg font-bold text-gray-700">-</button>
@@ -1827,9 +1833,10 @@ export default function WaiterTerminal() {
                 </div>
               </div>
               <div>
-                <label className="text-gray-500 text-xs">Special Requests</label>
+                <label className="text-gray-500 text-xs">Special Requests
                 <textarea value={bookingForm.special_requests} onChange={e => setBookingForm({ ...bookingForm, special_requests: e.target.value })}
                   className="w-full bg-gray-100 rounded-lg p-3 text-sm text-gray-900 border border-gray-200" rows={2} placeholder="Notes..." />
+                </label>
               </div>
             </div>
             <div className="flex gap-2 mt-4">
@@ -1950,17 +1957,19 @@ export default function WaiterTerminal() {
             <h2 className="text-lg font-bold mb-4 text-gray-900">Open New Tab</h2>
             <div className="space-y-3">
               <div>
-                <label className="text-gray-500 text-xs">Customer Name *</label>
+                <label className="text-gray-500 text-xs">Customer Name *
                 <input value={tabForm.customer_name} onChange={e => setTabForm({ ...tabForm, customer_name: e.target.value })}
                   className="w-full bg-gray-100 rounded-lg p-3 text-sm text-gray-900 border border-gray-200" placeholder="Name" />
+                </label>
               </div>
               <div>
-                <label className="text-gray-500 text-xs">Card Last 4 Digits</label>
+                <label className="text-gray-500 text-xs">Card Last 4 Digits
                 <input value={tabForm.card_last_four} onChange={e => setTabForm({ ...tabForm, card_last_four: e.target.value.slice(0, 4) })}
                   className="w-full bg-gray-100 rounded-lg p-3 text-sm text-gray-900 border border-gray-200" placeholder="1234" maxLength={4} />
+                </label>
               </div>
               <div>
-                <label className="text-gray-500 text-xs">Pre-Auth Amount</label>
+                <span className="text-gray-500 text-xs">Pre-Auth Amount</span>
                 <div className="flex gap-2 mt-1">
                   {[25, 50, 100, 200].map(v => (
                     <button key={v} onClick={() => setTabForm({ ...tabForm, pre_auth_amount: v })}

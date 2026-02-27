@@ -1298,7 +1298,7 @@ export default function RFMAnalyticsPage() {
 
               <div className="space-y-4">
                 <div>
-                  <label className="text-gray-500 text-sm block mb-1">Campaign Name</label>
+                  <label className="text-gray-500 text-sm block mb-1">Campaign Name
                   <input
                     type="text"
                     value={campaignForm.name}
@@ -1306,10 +1306,11 @@ export default function RFMAnalyticsPage() {
                     placeholder="e.g., VIP Exclusive Offer"
                     className="w-full px-4 py-3 border border-gray-200 text-gray-900 rounded-xl focus:ring-2 focus:ring-orange-500"
                   />
+                  </label>
                 </div>
 
                 <div>
-                  <label className="text-gray-500 text-sm block mb-1">Target Segment</label>
+                  <label className="text-gray-500 text-sm block mb-1">Target Segment
                   <select
                     value={campaignForm.segment}
                     onChange={(e) => setCampaignForm({ ...campaignForm, segment: e.target.value })}
@@ -1320,10 +1321,11 @@ export default function RFMAnalyticsPage() {
                       <option key={s.id} value={s.name}>{s.name} ({s.count} customers)</option>
                     ))}
                   </select>
+                  </label>
                 </div>
 
                 <div>
-                  <label className="text-gray-500 text-sm block mb-1">Campaign Type</label>
+                  <span className="text-gray-500 text-sm block mb-1">Campaign Type</span>
                   <div className="flex gap-2">
                     {['email', 'sms', 'push', 'in-app'].map((type) => (
                       <button
@@ -1342,7 +1344,7 @@ export default function RFMAnalyticsPage() {
                 </div>
 
                 <div>
-                  <label className="text-gray-500 text-sm block mb-1">Message</label>
+                  <label className="text-gray-500 text-sm block mb-1">Message
                   <textarea
                     value={campaignForm.message}
                     onChange={(e) => setCampaignForm({ ...campaignForm, message: e.target.value })}
@@ -1350,10 +1352,11 @@ export default function RFMAnalyticsPage() {
                     rows={3}
                     className="w-full px-4 py-3 border border-gray-200 text-gray-900 rounded-xl resize-none"
                   />
+                  </label>
                 </div>
 
                 <div>
-                  <label className="text-gray-500 text-sm block mb-1">Special Offer (optional)</label>
+                  <label className="text-gray-500 text-sm block mb-1">Special Offer (optional)
                   <input
                     type="text"
                     value={campaignForm.offer}
@@ -1361,6 +1364,7 @@ export default function RFMAnalyticsPage() {
                     placeholder="e.g., 20% off next visit"
                     className="w-full px-4 py-3 border border-gray-200 text-gray-900 rounded-xl"
                   />
+                  </label>
                 </div>
               </div>
 

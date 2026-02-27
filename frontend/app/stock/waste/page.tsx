@@ -398,7 +398,7 @@ export default function WasteManagementPage() {
             </div>
             <div className="p-6 space-y-4">
               <div>
-                <label className="block text-sm font-medium text-surface-700 mb-1">Stock Item *</label>
+                <label className="block text-sm font-medium text-surface-700 mb-1">Stock Item *
                 <select
                   value={selectedStockItemId}
                   onChange={e => {
@@ -424,9 +424,10 @@ export default function WasteManagementPage() {
                     </option>
                   ))}
                 </select>
+                </label>
               </div>
               <div>
-                <label className="block text-sm font-medium text-surface-700 mb-1">Batch # (optional)</label>
+                <label className="block text-sm font-medium text-surface-700 mb-1">Batch # (optional)
                 <input
                   type="text"
                   value={newRecord.batch_number}
@@ -434,10 +435,11 @@ export default function WasteManagementPage() {
                   className="w-full px-3 py-2 border border-surface-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
                   placeholder="Enter batch number if known"
                 />
+                </label>
               </div>
               <div className="grid grid-cols-3 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-surface-700 mb-1">Quantity *</label>
+                  <label className="block text-sm font-medium text-surface-700 mb-1">Quantity *
                   <input
                     type="number"
                     value={newRecord.quantity}
@@ -446,18 +448,20 @@ export default function WasteManagementPage() {
                     step={0.1}
                     className="w-full px-3 py-2 border border-surface-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
                   />
+                  </label>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-surface-700 mb-1">Unit</label>
+                  <label className="block text-sm font-medium text-surface-700 mb-1">Unit
                   <input
                     type="text"
                     value={newRecord.unit}
                     readOnly
                     className="w-full px-3 py-2 border border-surface-200 rounded-lg bg-surface-50 text-surface-600"
                   />
+                  </label>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-surface-700 mb-1">Cost/Unit</label>
+                  <label className="block text-sm font-medium text-surface-700 mb-1">Cost/Unit
                   <input
                     type="number"
                     value={newRecord.cost_per_unit}
@@ -466,10 +470,11 @@ export default function WasteManagementPage() {
                     step={0.01}
                     className="w-full px-3 py-2 border border-surface-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
                   />
+                  </label>
                 </div>
               </div>
               <div>
-                <label className="block text-sm font-medium text-surface-700 mb-2">Reason *</label>
+                <span className="block text-sm font-medium text-surface-700 mb-2">Reason *</span>
                 <div className="grid grid-cols-4 gap-2">
                   {WASTE_REASONS.map(reason => (
                     <button
@@ -488,7 +493,7 @@ export default function WasteManagementPage() {
                 </div>
               </div>
               <div>
-                <label className="block text-sm font-medium text-surface-700 mb-1">Notes</label>
+                <label className="block text-sm font-medium text-surface-700 mb-1">Notes
                 <textarea
                   value={newRecord.notes}
                   onChange={e => setNewRecord(prev => ({ ...prev, notes: e.target.value }))}
@@ -496,6 +501,7 @@ export default function WasteManagementPage() {
                   className="w-full px-3 py-2 border border-surface-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 resize-none"
                   placeholder="Optional notes..."
                 />
+                </label>
               </div>
               {newRecord.quantity > 0 && newRecord.cost_per_unit > 0 && (
                 <div className="p-3 bg-error-50 rounded-lg">

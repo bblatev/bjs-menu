@@ -1,9 +1,11 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { API_URL, getAuthHeaders } from '@/lib/api';
+
 
 import { toast } from '@/lib/toast';
+
+import { api } from '@/lib/api';
 interface MobileApp {
   id: number;
   app_name: string;
@@ -63,20 +65,9 @@ export default function MobileAppBuilderPage() {
   useEffect(() => {
     const loadApp = async () => {
       try {
-        const response = await fetch(`${API_URL}/enterprise/mobile-app`, {
-          credentials: 'include',
-          headers: getAuthHeaders()
-        });
-
-        if (response.ok) {
-          const data = await response.json();
-          setApp(data.app);
-          setBuilds(data.builds || []);
-        } else {
-          // Mock data
-          setApp(getMockApp());
-          setBuilds(getMockBuilds());
-        }
+        const data: any = await api.get('/enterprise/mobile-app');
+                setApp(data.app);
+        setBuilds(data.builds || []);
       } catch (error) {
         console.error('Error loading app:', error);
         setApp(getMockApp());
@@ -126,12 +117,7 @@ export default function MobileAppBuilderPage() {
     setSaving(true);
 
     try {
-      await fetch(`${API_URL}/enterprise/mobile-app`, {
-        credentials: 'include',
-        method: 'PUT',
-        headers: getAuthHeaders(),
-        body: JSON.stringify(app)
-      });
+      await api.put('/enterprise/mobile-app', app);
       toast.success('App configuration saved!');
     } catch (error) {
       console.error('Error saving:', error);
@@ -145,41 +131,8 @@ export default function MobileAppBuilderPage() {
     setBuilding(true);
 
     try {
-      const response = await fetch(`${API_URL}/enterprise/mobile-app/build`, {
-        credentials: 'include',
-        method: 'POST',
-        headers: getAuthHeaders(),
-        body: JSON.stringify({ platform })
-      });
-
-      if (response.ok) {
-        const build = await response.json();
-        setBuilds(prev => [build, ...prev]);
-      } else {
-        // Demo mode
-        const newBuild: Build = {
-          id: Date.now(),
-          version: '1.0.0',
-          platform,
-          status: 'queued',
-          started_at: new Date().toISOString(),
-        };
-        setBuilds(prev => [newBuild, ...prev]);
-
-        // Simulate build progress
-        setTimeout(() => {
-          setBuilds(prev => prev.map(b => b.id === newBuild.id ? { ...b, status: 'building' } : b));
-        }, 2000);
-
-        setTimeout(() => {
-          setBuilds(prev => prev.map(b => b.id === newBuild.id ? {
-            ...b,
-            status: 'completed',
-            completed_at: new Date().toISOString(),
-            download_url: '#'
-          } : b));
-        }, 8000);
-      }
+      const build: any = await api.post('/enterprise/mobile-app/build', { platform });
+            setBuilds(prev => [build, ...prev]);
 
       toast.success('Build started! This usually takes 5-10 minutes.');
     } catch (error) {
@@ -294,22 +247,24 @@ export default function MobileAppBuilderPage() {
                 <h3 className="font-semibold text-surface-900 mb-4">App Identity</h3>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm text-surface-600 mb-1">App Name</label>
+                    <label className="block text-sm text-surface-600 mb-1">App Name
                     <input
                       type="text"
                       value={app.app_name}
                       onChange={(e) => setApp({ ...app, app_name: e.target.value })}
                       className="w-full px-3 py-2 border border-surface-200 rounded-lg"
                     />
+                    </label>
                   </div>
                   <div>
-                    <label className="block text-sm text-surface-600 mb-1">Bundle ID</label>
+                    <label className="block text-sm text-surface-600 mb-1">Bundle ID
                     <input
                       type="text"
                       value={app.bundle_id}
                       onChange={(e) => setApp({ ...app, bundle_id: e.target.value })}
                       className="w-full px-3 py-2 border border-surface-200 rounded-lg font-mono text-sm"
                     />
+                    </label>
                   </div>
                 </div>
               </div>
@@ -318,7 +273,7 @@ export default function MobileAppBuilderPage() {
                 <h3 className="font-semibold text-surface-900 mb-4">Colors</h3>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm text-surface-600 mb-1">Primary Color</label>
+                    <label className="block text-sm text-surface-600 mb-1">Primary Color
                     <div className="flex items-center gap-3">
                       <input
                         type="color"
@@ -339,9 +294,10 @@ export default function MobileAppBuilderPage() {
                         className="flex-1 px-3 py-2 border border-surface-200 rounded-lg font-mono text-sm"
                       />
                     </div>
+                    </label>
                   </div>
                   <div>
-                    <label className="block text-sm text-surface-600 mb-1">Secondary Color</label>
+                    <label className="block text-sm text-surface-600 mb-1">Secondary Color
                     <div className="flex items-center gap-3">
                       <input
                         type="color"
@@ -362,6 +318,7 @@ export default function MobileAppBuilderPage() {
                         className="flex-1 px-3 py-2 border border-surface-200 rounded-lg font-mono text-sm"
                       />
                     </div>
+                    </label>
                   </div>
                 </div>
               </div>

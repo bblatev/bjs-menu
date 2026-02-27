@@ -185,7 +185,7 @@ export default function SettingsGeneralPage() {
             <h2 className="text-lg font-semibold text-surface-900 mb-4">Regional Settings</h2>
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-surface-600 mb-2">Timezone</label>
+                <label className="block text-sm font-medium text-surface-600 mb-2">Timezone
                 <select
                   value={settings.timezone}
                   onChange={(e) => setSettings({ ...settings, timezone: e.target.value })}
@@ -198,9 +198,10 @@ export default function SettingsGeneralPage() {
                   <option value="Europe/Athens">Europe/Athens (GMT+2)</option>
                   <option value="Europe/Paris">Europe/Paris (GMT+1)</option>
                 </select>
+                </label>
               </div>
               <div>
-                <label className="block text-sm font-medium text-surface-600 mb-2">Default Language</label>
+                <label className="block text-sm font-medium text-surface-600 mb-2">Default Language
                 <select
                   value={settings.language}
                   onChange={(e) => setSettings({ ...settings, language: e.target.value })}
@@ -213,9 +214,10 @@ export default function SettingsGeneralPage() {
                   <option value="fr">French</option>
                   <option value="it">Italian</option>
                 </select>
+                </label>
               </div>
               <div>
-                <label className="block text-sm font-medium text-surface-600 mb-2">Currency</label>
+                <label className="block text-sm font-medium text-surface-600 mb-2">Currency
                 <select
                   value={settings.currency}
                   onChange={(e) => setSettings({ ...settings, currency: e.target.value })}
@@ -227,9 +229,10 @@ export default function SettingsGeneralPage() {
                   <option value="GBP">GBP (£)</option>
                   <option value="CHF">CHF (Fr)</option>
                 </select>
+                </label>
               </div>
               <div>
-                <label className="block text-sm font-medium text-surface-600 mb-2">Date Format</label>
+                <label className="block text-sm font-medium text-surface-600 mb-2">Date Format
                 <select
                   value={settings.dateFormat}
                   onChange={(e) => setSettings({ ...settings, dateFormat: e.target.value })}
@@ -240,9 +243,10 @@ export default function SettingsGeneralPage() {
                   <option value="yyyy-MM-dd">YYYY-MM-DD</option>
                   <option value="dd/MM/yyyy">DD/MM/YYYY</option>
                 </select>
+                </label>
               </div>
               <div>
-                <label className="block text-sm font-medium text-surface-600 mb-2">Time Format</label>
+                <label className="block text-sm font-medium text-surface-600 mb-2">Time Format
                 <select
                   value={settings.timeFormat}
                   onChange={(e) => setSettings({ ...settings, timeFormat: e.target.value })}
@@ -251,6 +255,7 @@ export default function SettingsGeneralPage() {
                   <option value="24h">24-hour (14:30)</option>
                   <option value="12h">12-hour (2:30 PM)</option>
                 </select>
+                </label>
               </div>
             </div>
           </CardBody>

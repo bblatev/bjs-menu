@@ -277,7 +277,6 @@ export default function KitchenRequestsPage() {
               <div className="mb-4">
                 <label className="block text-sm font-medium text-surface-600 mb-2">
                   Причина (незадължително) / Reason (optional)
-                </label>
                 <textarea
                   value={rejectReason}
                   onChange={(e) => setRejectReason(e.target.value)}
@@ -285,6 +284,7 @@ export default function KitchenRequestsPage() {
                   className="w-full px-4 py-3 rounded-xl border border-surface-200 bg-white text-surface-900 focus:outline-none focus:ring-2 focus:ring-primary-500/20"
                   placeholder="Напр. Липсва продукт, Затворена кухня..."
                 />
+                </label>
               </div>
               <div className="flex gap-3">
                 <Button variant="secondary" className="flex-1" onClick={() => setRejectModalId(null)}>

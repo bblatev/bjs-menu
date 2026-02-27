@@ -1,12 +1,10 @@
 "use client";
-
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
-
-import { API_URL, getAuthHeaders } from '@/lib/api';
-
 import { toast } from '@/lib/toast';
+
+import { api } from '@/lib/api';
 interface Customer {
   id: number;
   name: string;
@@ -15,7 +13,6 @@ interface Customer {
   total_orders: number;
   total_spent: number;
 }
-
 interface CustomerCredit {
   customer_id: number;
   credit_limit: number;
@@ -26,204 +23,120 @@ interface CustomerCredit {
   last_payment_date?: string;
   last_payment_amount?: number;
 }
-
 interface CreditWithCustomer extends CustomerCredit {
   customer?: Customer;
 }
-
 export default function CustomerCreditsPage() {
   const [credits, setCredits] = useState<CreditWithCustomer[]>([]);
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<"all" | "with_balance" | "blocked">("all");
-
   // Modal states
   const [showSetLimitModal, setShowSetLimitModal] = useState(false);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [showChargeModal, setShowChargeModal] = useState(false);
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
   const [selectedCredit, setSelectedCredit] = useState<CreditWithCustomer | null>(null);
-
   // Form states
   const [creditLimit, setCreditLimit] = useState("");
   const [paymentAmount, setPaymentAmount] = useState("");
   const [chargeAmount, setChargeAmount] = useState("");
-
   useEffect(() => {
     loadData();
   }, []);
-
-
   const loadData = async () => {
     try {
-      const headers = getAuthHeaders();
-
       // Load customers
-      const customersRes = await fetch(`${API_URL}/customers/`, { credentials: 'include', headers });
-      if (customersRes.ok) {
-        const data = await customersRes.json();
-        const customerList = Array.isArray(data) ? data : data.customers || [];
-        setCustomers(customerList);
-
-        // Load credit info for each customer
-        const creditPromises = customerList.map(async (customer: Customer) => {
-          try {
-            const creditRes = await fetch(
-              `${API_URL}/customers/${customer.id}/credit`,
-              { credentials: 'include', headers }
-            );
-            if (creditRes.ok) {
-              const creditData = await creditRes.json();
-              return { ...creditData, customer };
-            }
-          } catch {
-            // Customer has no credit account
-          }
-          return null;
-        });
-
-        const creditResults = await Promise.all(creditPromises);
-        const validCredits = creditResults.filter(
-          (c): c is CreditWithCustomer => c !== null && (c.credit_limit > 0 || c.current_balance > 0)
-        );
-        setCredits(validCredits);
+      const data: any = await api.get('/customers/');
+            const customerList = Array.isArray(data) ? data : data.customers || [];
+      setCustomers(customerList);
+      // Load credit info for each customer
+      const creditPromises = customerList.map(async (customer: Customer) => {
+      try {
+        const creditData: any = await api.get(`/customers/${customer.id}/credit`);
+                return { ...creditData, customer };
+      } catch {
+        // Customer has no credit account
       }
+      return null;
+      });
+      const creditResults = await Promise.all(creditPromises);
+      const validCredits = creditResults.filter(
+      (c): c is CreditWithCustomer => c !== null && (c.credit_limit > 0 || c.current_balance > 0)
+      );
+      setCredits(validCredits);
     } catch (error) {
       console.error("Error loading data:", error);
     } finally {
       setLoading(false);
     }
   };
-
   const setCreditLimitForCustomer = async (customerId: number, limit: number) => {
-
     try {
-      const response = await fetch(`${API_URL}/customers/${customerId}/credit`, {
-        credentials: 'include',
-        method: "POST",
-        headers: getAuthHeaders(),
-        body: JSON.stringify({ credit_limit: limit }),
-      });
-
-      if (response.ok) {
-        setShowSetLimitModal(false);
-        setSelectedCustomer(null);
-        setCreditLimit("");
-        loadData();
-      } else {
-        const err = await response.json();
-        toast.error(err.detail || "Error setting credit limit");
-      }
+      await api.post(`/customers/${customerId}/credit`, { credit_limit: limit });
+      setShowSetLimitModal(false);
+      setSelectedCustomer(null);
+      setCreditLimit("");
+      loadData();
     } catch (error) {
       toast.error("Error setting credit limit");
     }
   };
-
   const recordPayment = async (customerId: number, amount: number) => {
-
     try {
-      const response = await fetch(
-        `${API_URL}/customers/${customerId}/credit/payment`,
-        {
-          credentials: 'include',
-          method: "POST",
-          headers: getAuthHeaders(),
-          body: JSON.stringify({ amount }),
-        }
-      );
-
-      if (response.ok) {
-        setShowPaymentModal(false);
-        setSelectedCredit(null);
-        setPaymentAmount("");
-        loadData();
-      } else {
-        const err = await response.json();
-        toast.error(err.detail || "Error recording payment");
-      }
+      await api.post(`/customers/${customerId}/credit/payment`, { amount });
+      setShowPaymentModal(false);
+      setSelectedCredit(null);
+      setPaymentAmount("");
+      loadData();
     } catch (error) {
       toast.error("Error recording payment");
     }
   };
-
   const chargeCredit = async (customerId: number, amount: number) => {
-
     try {
-      const response = await fetch(
-        `${API_URL}/customers/${customerId}/credit/charge`,
-        {
-          credentials: 'include',
-          method: "POST",
-          headers: getAuthHeaders(),
-          body: JSON.stringify({ amount }),
-        }
-      );
-
-      if (response.ok) {
-        setShowChargeModal(false);
-        setSelectedCredit(null);
-        setChargeAmount("");
-        loadData();
-      } else {
-        const err = await response.json();
-        toast.error(err.detail || "Error charging credit");
-      }
+      await api.post(`/customers/${customerId}/credit/charge`, { amount });
+      setShowChargeModal(false);
+      setSelectedCredit(null);
+      setChargeAmount("");
+      loadData();
     } catch (error) {
       toast.error("Error charging credit");
     }
   };
-
   const toggleBlock = async (credit: CreditWithCustomer) => {
-
     try {
-      const response = await fetch(
-        `${API_URL}/customers/${credit.customer_id}/credit`,
-        {
-          credentials: 'include',
-          method: "POST",
-          headers: getAuthHeaders(),
-          body: JSON.stringify({
+      await api.post(`/customers/${credit.customer_id}/credit`, {
             is_blocked: !credit.is_blocked,
             block_reason: !credit.is_blocked ? "Manually blocked by manager" : null,
-          }),
-        }
-      );
-
-      if (response.ok) {
-        loadData();
-      }
+          });
+      loadData();
     } catch (error) {
       console.error("Error toggling block:", error);
     }
   };
-
   // Filter customers without credit for "Add Credit" dropdown
   const customersWithoutCredit = customers.filter(
     (c) => !credits.find((cr) => cr.customer_id === c.id)
   );
-
   // Filter credits based on search and filter
   const filteredCredits = credits.filter((credit) => {
     const matchesSearch =
       !search ||
       credit.customer?.name.toLowerCase().includes(search.toLowerCase()) ||
       credit.customer?.phone.includes(search);
-
     const matchesFilter =
       filter === "all" ||
       (filter === "with_balance" && credit.current_balance > 0) ||
       (filter === "blocked" && credit.is_blocked);
-
     return matchesSearch && matchesFilter;
   });
-
   // Calculate totals
   const totalCreditExtended = credits.reduce((sum, c) => sum + c.credit_limit, 0);
   const totalOutstanding = credits.reduce((sum, c) => sum + c.current_balance, 0);
   const totalAvailable = credits.reduce((sum, c) => sum + c.available_credit, 0);
   const blockedAccounts = credits.filter((c) => c.is_blocked).length;
-
   if (loading) {
     return (
       <div className="min-h-screen bg-white flex items-center justify-center">
@@ -231,7 +144,6 @@ export default function CustomerCreditsPage() {
       </div>
     );
   }
-
   return (
     <div className="min-h-screen bg-white p-6">
       <div className="max-w-7xl mx-auto">
@@ -257,7 +169,6 @@ export default function CustomerCreditsPage() {
             + Add Credit Account
           </button>
         </div>
-
         {/* Summary Cards */}
         <div className="grid grid-cols-4 gap-4 mb-6">
           <div className="bg-blue-50 rounded-2xl p-5 border border-blue-100">
@@ -293,7 +204,6 @@ export default function CustomerCreditsPage() {
             </p>
           </div>
         </div>
-
         {/* Filters */}
         <div className="flex items-center gap-4 mb-6">
           <input
@@ -323,7 +233,6 @@ export default function CustomerCreditsPage() {
             ))}
           </div>
         </div>
-
         {/* Credits List */}
         {filteredCredits.length === 0 ? (
           <div className="text-center py-16 bg-gray-50 rounded-2xl">
@@ -381,7 +290,6 @@ export default function CustomerCreditsPage() {
                     credit.credit_limit > 0
                       ? (credit.current_balance / credit.credit_limit) * 100
                       : 0;
-
                   return (
                     <motion.tr
                       key={credit.customer_id}
@@ -526,7 +434,6 @@ export default function CustomerCreditsPage() {
           </div>
         )}
       </div>
-
       {/* Set Credit Limit Modal */}
       <AnimatePresence>
         {showSetLimitModal && (
@@ -540,13 +447,11 @@ export default function CustomerCreditsPage() {
               <h2 className="text-2xl font-bold text-gray-900 mb-6">
                 {selectedCustomer ? "Update Credit Limit" : "Add Credit Account"}
               </h2>
-
               <div className="space-y-4">
                 {!selectedCustomer && (
                   <div>
                     <label className="text-gray-700 text-sm font-medium">
                       Select Customer
-                    </label>
                     <select
                       value=""
                       onChange={(e) => {
@@ -564,9 +469,9 @@ export default function CustomerCreditsPage() {
                         </option>
                       ))}
                     </select>
+                    </label>
                   </div>
                 )}
-
                 {selectedCustomer && (
                   <div className="bg-gray-50 rounded-xl p-4">
                     <p className="text-gray-900 font-medium">
@@ -578,11 +483,9 @@ export default function CustomerCreditsPage() {
                     </p>
                   </div>
                 )}
-
                 <div>
                   <label className="text-gray-700 text-sm font-medium">
                     Credit Limit (lv)
-                  </label>
                   <input
                     type="number"
                     step="0.01"
@@ -592,8 +495,8 @@ export default function CustomerCreditsPage() {
                     placeholder="e.g. 500"
                     className="w-full px-4 py-3 bg-gray-50 text-gray-900 rounded-xl mt-1 border border-gray-200"
                   />
+                  </label>
                 </div>
-
                 <div className="flex gap-3 pt-4">
                   <button
                     type="button"
@@ -627,7 +530,6 @@ export default function CustomerCreditsPage() {
           </div>
         )}
       </AnimatePresence>
-
       {/* Record Payment Modal */}
       <AnimatePresence>
         {showPaymentModal && selectedCredit && (
@@ -641,7 +543,6 @@ export default function CustomerCreditsPage() {
               <h2 className="text-2xl font-bold text-gray-900 mb-6">
                 Record Payment
               </h2>
-
               <div className="space-y-4">
                 <div className="bg-gray-50 rounded-xl p-4">
                   <p className="text-gray-900 font-medium">
@@ -651,11 +552,9 @@ export default function CustomerCreditsPage() {
                     Outstanding: {(selectedCredit.current_balance || 0).toFixed(2)} lv
                   </p>
                 </div>
-
                 <div>
                   <label className="text-gray-700 text-sm font-medium">
                     Payment Amount (lv)
-                  </label>
                   <input
                     type="number"
                     step="0.01"
@@ -666,6 +565,7 @@ export default function CustomerCreditsPage() {
                     placeholder={`Max: ${(selectedCredit.current_balance || 0).toFixed(2)}`}
                     className="w-full px-4 py-3 bg-gray-50 text-gray-900 rounded-xl mt-1 border border-gray-200"
                   />
+                  </label>
                   <button
                     type="button"
                     onClick={() =>
@@ -676,7 +576,6 @@ export default function CustomerCreditsPage() {
                     Pay full balance
                   </button>
                 </div>
-
                 <div className="flex gap-3 pt-4">
                   <button
                     type="button"
@@ -709,7 +608,6 @@ export default function CustomerCreditsPage() {
           </div>
         )}
       </AnimatePresence>
-
       {/* Charge Credit Modal */}
       <AnimatePresence>
         {showChargeModal && selectedCredit && (
@@ -723,7 +621,6 @@ export default function CustomerCreditsPage() {
               <h2 className="text-2xl font-bold text-gray-900 mb-6">
                 Charge to Credit
               </h2>
-
               <div className="space-y-4">
                 <div className="bg-gray-50 rounded-xl p-4">
                   <p className="text-gray-900 font-medium">
@@ -736,11 +633,9 @@ export default function CustomerCreditsPage() {
                     </span>
                   </div>
                 </div>
-
                 <div>
                   <label className="text-gray-700 text-sm font-medium">
                     Charge Amount (lv)
-                  </label>
                   <input
                     type="number"
                     step="0.01"
@@ -750,13 +645,13 @@ export default function CustomerCreditsPage() {
                     placeholder="Amount to charge"
                     className="w-full px-4 py-3 bg-gray-50 text-gray-900 rounded-xl mt-1 border border-gray-200"
                   />
+                  </label>
                   {parseFloat(chargeAmount) > selectedCredit.available_credit && (
                     <p className="text-red-500 text-sm mt-1">
                       Warning: This exceeds available credit
                     </p>
                   )}
                 </div>
-
                 <div className="flex gap-3 pt-4">
                   <button
                     type="button"

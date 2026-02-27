@@ -9,6 +9,7 @@ from pydantic import BaseModel
 from sqlalchemy import func
 
 from app.core.rate_limit import limiter
+from app.core.responses import list_response
 from app.schemas.pagination import paginate_query, PaginatedResponse
 from app.db.session import DbSession
 from app.models.restaurant import KitchenOrder, GuestOrder, MenuItem, Table, Check
@@ -705,7 +706,7 @@ def get_all_alerts(
     except Exception as e:
         logger.debug(f"Optional: query HACCP temperature alerts: {e}")
 
-    return alerts
+    return list_response(alerts)
 
 
 @router.get("/alerts/cook-time")
@@ -781,10 +782,10 @@ def get_kitchen_stations(
         station_query = station_query.filter(KitchenStation.location_id == location_id)
     stations = station_query.order_by(KitchenStation.id).limit(200).all()
 
-    return [
+    return list_response([
         _station_to_dict(s, station_loads.get(f"{s.station_type.upper()}-{s.id}", 0))
         for s in stations
-    ]
+    ])
 
 
 class StationCreate(BaseModel):

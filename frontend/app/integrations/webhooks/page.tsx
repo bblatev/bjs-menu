@@ -377,7 +377,7 @@ export default function WebhooksPage() {
               </div>
               <div className="p-6 space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-surface-700 mb-1">Webhook Name</label>
+                  <label className="block text-sm font-medium text-surface-700 mb-1">Webhook Name
                   <input
                     type="text"
                     value={formData.name}
@@ -385,9 +385,10 @@ export default function WebhooksPage() {
                     className="w-full px-4 py-2 border border-surface-200 rounded-lg focus:ring-2 focus:ring-amber-500"
                     placeholder="e.g., Order Notifications"
                   />
+                  </label>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-surface-700 mb-1">Endpoint URL</label>
+                  <label className="block text-sm font-medium text-surface-700 mb-1">Endpoint URL
                   <input
                     type="url"
                     value={formData.url}
@@ -395,9 +396,10 @@ export default function WebhooksPage() {
                     className="w-full px-4 py-2 border border-surface-200 rounded-lg focus:ring-2 focus:ring-amber-500"
                     placeholder="https://your-server.com/webhooks"
                   />
+                  </label>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-surface-700 mb-2">Events to Listen</label>
+                  <span className="block text-sm font-medium text-surface-700 mb-2">Events to Listen</span>
                   <div className="space-y-3">
                     {['Orders', 'Payments', 'Inventory', 'Customers', 'Reservations'].map((category) => (
                       <div key={category}>

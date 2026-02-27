@@ -457,7 +457,7 @@ export default function MarketingCampaignsPage() {
               <div className="p-6 space-y-4">
                 {/* Name */}
                 <div>
-                  <label className="block text-sm font-medium text-surface-700 mb-1">Campaign Name</label>
+                  <label className="block text-sm font-medium text-surface-700 mb-1">Campaign Name
                   <input
                     type="text"
                     value={formData.name}
@@ -465,12 +465,13 @@ export default function MarketingCampaignsPage() {
                     className="w-full px-4 py-2 border border-surface-200 rounded-lg focus:ring-2 focus:ring-amber-500"
                     placeholder="e.g., Weekend Special Offer"
                   />
+                  </label>
                 </div>
 
                 {/* Type and Segment */}
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-surface-700 mb-1">Campaign Type</label>
+                    <label className="block text-sm font-medium text-surface-700 mb-1">Campaign Type
                     <select
                       value={formData.type}
                       onChange={(e) => setFormData({ ...formData, type: e.target.value as any })}
@@ -481,9 +482,10 @@ export default function MarketingCampaignsPage() {
                       <option value="push">🔔 Push Notification</option>
                       <option value="in_app">📲 In-App Message</option>
                     </select>
+                    </label>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-surface-700 mb-1">Target Segment</label>
+                    <label className="block text-sm font-medium text-surface-700 mb-1">Target Segment
                     <select
                       value={formData.target_segment}
                       onChange={(e) => setFormData({ ...formData, target_segment: e.target.value })}
@@ -493,6 +495,7 @@ export default function MarketingCampaignsPage() {
                         <option key={segment.id} value={segment.name}>{segment.name}</option>
                       ))}
                     </select>
+                    </label>
                   </div>
                 </div>
 
@@ -501,7 +504,6 @@ export default function MarketingCampaignsPage() {
                   <div>
                     <label className="block text-sm font-medium text-surface-700 mb-1">
                       {formData.type === 'email' ? 'Email Subject' : 'Notification Title'}
-                    </label>
                     <input
                       type="text"
                       value={formData.subject}
@@ -509,12 +511,13 @@ export default function MarketingCampaignsPage() {
                       className="w-full px-4 py-2 border border-surface-200 rounded-lg focus:ring-2 focus:ring-amber-500"
                       placeholder="Enter subject..."
                     />
+                    </label>
                   </div>
                 )}
 
                 {/* Message */}
                 <div>
-                  <label className="block text-sm font-medium text-surface-700 mb-1">Message Content</label>
+                  <label className="block text-sm font-medium text-surface-700 mb-1">Message Content
                   <textarea
                     value={formData.message}
                     onChange={(e) => setFormData({ ...formData, message: e.target.value })}
@@ -522,6 +525,7 @@ export default function MarketingCampaignsPage() {
                     className="w-full px-4 py-2 border border-surface-200 rounded-lg focus:ring-2 focus:ring-amber-500"
                     placeholder="Write your campaign message..."
                   />
+                  </label>
                   <div className="text-xs text-surface-500 mt-1">
                     {formData.type === 'sms' && 'SMS limited to 160 characters'}
                     {formData.type === 'push' && 'Push notifications work best under 100 characters'}
@@ -530,7 +534,7 @@ export default function MarketingCampaignsPage() {
 
                 {/* Schedule */}
                 <div>
-                  <label className="block text-sm font-medium text-surface-700 mb-2">Schedule</label>
+                  <label className="block text-sm font-medium text-surface-700 mb-2">Schedule
                   <div className="space-y-3">
                     <label className="flex items-center gap-2">
                       <input
@@ -559,6 +563,7 @@ export default function MarketingCampaignsPage() {
                       />
                     )}
                   </div>
+                  </label>
                 </div>
               </div>
 

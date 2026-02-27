@@ -1,12 +1,10 @@
 "use client";
-
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
-
-import { API_URL, getAuthHeaders } from '@/lib/api';
-
 import { toast } from '@/lib/toast';
+
+import { api } from '@/lib/api';
 interface Table {
   id: number;
   number: string;
@@ -14,7 +12,6 @@ interface Table {
   status: string;
   area?: string;
 }
-
 interface SubTable {
   id: number;
   parent_table_id: number;
@@ -25,58 +22,44 @@ interface SubTable {
   current_order_id?: number;
   waiter_id?: number;
 }
-
 interface Staff {
   id: number;
   name: string;
 }
-
 export default function SubtablesPage() {
   const [tables, setTables] = useState<Table[]>([]);
   const [subtablesByTable, setSubtablesByTable] = useState<Record<number, SubTable[]>>({});
   const [, setStaff] = useState<Staff[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedTable, setSelectedTable] = useState<Table | null>(null);
-
   // Modals
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showAutoCreateModal, setShowAutoCreateModal] = useState(false);
-
   // Form state
   const [newSubtableName, setNewSubtableName] = useState("");
   const [newSubtableSeats, setNewSubtableSeats] = useState(2);
   const [autoCreateCount, setAutoCreateCount] = useState(2);
   const [autoCreateNaming, setAutoCreateNaming] = useState<"letter" | "number">("letter");
   const [autoCreateSeats, setAutoCreateSeats] = useState(2);
-
   useEffect(() => {
     loadData();
   }, []);
-
-
   const loadData = async () => {
     try {
-      const headers = getAuthHeaders();
-
-      const [tablesRes, staffRes] = await Promise.all([
-        fetch(`${API_URL}/tables/`, { credentials: 'include', headers }),
-        fetch(`${API_URL}/staff/`, { credentials: 'include', headers }),
-      ]);
-
-      if (tablesRes.ok) {
-        const data = await tablesRes.json();
+      const [tablesRes, staffRes] = await Promise.allSettled([
+  api.get('/tables/'),
+  api.get('/staff/')
+]);
+      if (tablesRes.status === 'fulfilled') {
+        const data: any = tablesRes.value;
         const tableList = Array.isArray(data) ? data : data.tables || [];
         setTables(tableList);
-
         // Load subtables for each table
         const subtablesMap: Record<number, SubTable[]> = {};
         await Promise.all(
           tableList.map(async (table: Table) => {
             try {
-              const res = await fetch(`${API_URL}/tables/${table.id}/subtables`, { credentials: 'include', headers });
-              if (res.ok) {
-                subtablesMap[table.id] = await res.json();
-              }
+              await api.get(`/tables/${table.id}/subtables`);
             } catch {
               subtablesMap[table.id] = [];
             }
@@ -84,9 +67,8 @@ export default function SubtablesPage() {
         );
         setSubtablesByTable(subtablesMap);
       }
-
-      if (staffRes.ok) {
-        const data = await staffRes.json();
+      if (staffRes.status === 'fulfilled') {
+        const data: any = staffRes.value;
         setStaff(Array.isArray(data) ? data : data.staff || []);
       }
     } catch (error) {
@@ -95,138 +77,78 @@ export default function SubtablesPage() {
       setLoading(false);
     }
   };
-
   const createSubtable = async () => {
     if (!selectedTable || !newSubtableName) return;
-
     try {
-      const response = await fetch(`${API_URL}/tables/${selectedTable.id}/subtables`, {
-        credentials: 'include',
-        method: "POST",
-        headers: getAuthHeaders(),
-        body: JSON.stringify({
+      await api.post(`/tables/${selectedTable.id}/subtables`, {
           name: newSubtableName,
           seats: newSubtableSeats,
-        }),
-      });
-
-      if (response.ok) {
-        setShowCreateModal(false);
-        setNewSubtableName("");
-        setNewSubtableSeats(2);
-        loadData();
-      } else {
-        const err = await response.json();
-        toast.error(err.detail || "Error creating subtable");
-      }
+        });
+      setShowCreateModal(false);
+      setNewSubtableName("");
+      setNewSubtableSeats(2);
+      loadData();
     } catch (error) {
       toast.error("Error creating subtable");
     }
   };
-
   const autoCreateSubtables = async () => {
     if (!selectedTable) return;
-
     try {
-      const response = await fetch(`${API_URL}/tables/${selectedTable.id}/subtables/auto-create`, {
-        credentials: 'include',
-        method: "POST",
-        headers: getAuthHeaders(),
-        body: JSON.stringify({
+      await api.post(`/tables/${selectedTable.id}/subtables/auto-create`, {
           count: autoCreateCount,
           naming: autoCreateNaming,
           seats_each: autoCreateSeats,
-        }),
-      });
-
-      if (response.ok) {
-        setShowAutoCreateModal(false);
-        loadData();
-      } else {
-        const err = await response.json();
-        toast.error(err.detail || "Error creating subtables");
-      }
+        });
+      setShowAutoCreateModal(false);
+      loadData();
     } catch (error) {
       toast.error("Error creating subtables");
     }
   };
-
   const occupySubtable = async (subtableId: number, guests: number) => {
-
     try {
-      await fetch(`${API_URL}/subtables/${subtableId}/occupy`, {
-        credentials: 'include',
-        method: "POST",
-        headers: getAuthHeaders(),
-        body: JSON.stringify({ guests }),
-      });
+      await api.post(`/subtables/${subtableId}/occupy`, { guests });
       loadData();
     } catch (error) {
       console.error("Error occupying subtable:", error);
     }
   };
-
   const clearSubtable = async (subtableId: number) => {
-
     try {
-      await fetch(`${API_URL}/subtables/${subtableId}/clear`, {
-        credentials: 'include',
-        method: "POST",
-        headers: getAuthHeaders(),
-      });
+      await api.post(`/subtables/${subtableId}/clear`);
       loadData();
     } catch (error) {
       console.error("Error clearing subtable:", error);
     }
   };
-
   const deleteSubtable = async (subtableId: number) => {
     if (!confirm("Delete this subtable?")) return;
-
     try {
-      await fetch(`${API_URL}/subtables/${subtableId}`, {
-        credentials: 'include',
-        method: "DELETE",
-        headers: getAuthHeaders(),
-      });
+      await api.del(`/subtables/${subtableId}`);
       loadData();
     } catch (error) {
       toast.error("Cannot delete occupied subtable");
     }
   };
-
   const mergeSubtables = async (tableId: number) => {
     if (!confirm("Merge all subtables back into the main table? This will delete all subtables.")) return;
-
     try {
-      const response = await fetch(`${API_URL}/tables/${tableId}/subtables/merge`, {
-        credentials: 'include',
-        method: "POST",
-        headers: getAuthHeaders(),
-      });
-
-      if (response.ok) {
-        loadData();
-      } else {
-        const err = await response.json();
-        toast.error(err.detail || "Error merging subtables");
-      }
+      await api.post(`/tables/${tableId}/subtables/merge`);
+      loadData();
     } catch (error) {
       toast.error("Error merging subtables");
     }
   };
-
   // Filter tables with subtables or large capacity
   const tablesWithSubtables = tables.filter(
     (t) => (subtablesByTable[t.id]?.length || 0) > 0 || t.capacity >= 6
   );
-
   const statusColors: Record<string, string> = {
     available: "bg-green-100 border-green-300 text-green-700",
     occupied: "bg-orange-100 border-orange-300 text-orange-700",
     reserved: "bg-blue-100 border-blue-300 text-blue-700",
   };
-
   if (loading) {
     return (
       <div className="min-h-screen bg-white flex items-center justify-center">
@@ -234,7 +156,6 @@ export default function SubtablesPage() {
       </div>
     );
   }
-
   return (
     <div className="min-h-screen bg-white p-6">
       <div className="max-w-7xl mx-auto">
@@ -254,7 +175,6 @@ export default function SubtablesPage() {
             </p>
           </div>
         </div>
-
         {/* Instructions */}
         <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 mb-6">
           <h3 className="text-blue-800 font-medium mb-2">How Subtables Work</h3>
@@ -265,7 +185,6 @@ export default function SubtablesPage() {
             <li>• Merge subtables back when the party leaves</li>
           </ul>
         </div>
-
         {/* Tables Grid */}
         {tablesWithSubtables.length === 0 ? (
           <div className="text-center py-16 bg-gray-50 rounded-2xl">
@@ -280,7 +199,6 @@ export default function SubtablesPage() {
             {tablesWithSubtables.map((table) => {
               const subtables = subtablesByTable[table.id] || [];
               const hasSubtables = subtables.length > 0;
-
               return (
                 <motion.div
                   key={table.id}
@@ -308,7 +226,6 @@ export default function SubtablesPage() {
                       </span>
                     </div>
                   </div>
-
                   {/* Subtables */}
                   <div className="p-4">
                     {hasSubtables ? (
@@ -324,7 +241,6 @@ export default function SubtablesPage() {
                             Merge All
                           </button>
                         </div>
-
                         <div className="grid grid-cols-2 gap-2">
                           {subtables.map((st) => (
                             <div
@@ -368,7 +284,6 @@ export default function SubtablesPage() {
                             </div>
                           ))}
                         </div>
-
                         <button
                           onClick={() => {
                             setSelectedTable(table);
@@ -413,7 +328,6 @@ export default function SubtablesPage() {
           </div>
         )}
       </div>
-
       {/* Create Subtable Modal */}
       <AnimatePresence>
         {showCreateModal && selectedTable && (
@@ -427,12 +341,10 @@ export default function SubtablesPage() {
               <h2 className="text-2xl font-bold text-gray-900 mb-4">
                 Add Subtable to Table {selectedTable.number}
               </h2>
-
               <div className="space-y-4">
                 <div>
                   <label className="text-gray-700 text-sm font-medium">
                     Subtable Name/Letter
-                  </label>
                   <input
                     type="text"
                     value={newSubtableName}
@@ -441,15 +353,14 @@ export default function SubtablesPage() {
                     maxLength={3}
                     className="w-full px-4 py-3 bg-gray-50 text-gray-900 rounded-xl mt-1 border border-gray-200"
                   />
+                  </label>
                   <p className="text-gray-500 text-xs mt-1">
                     Will display as: {selectedTable.number}{newSubtableName || "?"}
                   </p>
                 </div>
-
                 <div>
                   <label className="text-gray-700 text-sm font-medium">
                     Seats
-                  </label>
                   <input
                     type="number"
                     min="1"
@@ -458,8 +369,8 @@ export default function SubtablesPage() {
                     onChange={(e) => setNewSubtableSeats(parseInt(e.target.value) || 2)}
                     className="w-full px-4 py-3 bg-gray-50 text-gray-900 rounded-xl mt-1 border border-gray-200"
                   />
+                  </label>
                 </div>
-
                 <div className="flex gap-3 pt-4">
                   <button
                     onClick={() => setShowCreateModal(false)}
@@ -480,7 +391,6 @@ export default function SubtablesPage() {
           </div>
         )}
       </AnimatePresence>
-
       {/* Auto Create Modal */}
       <AnimatePresence>
         {showAutoCreateModal && selectedTable && (
@@ -494,12 +404,11 @@ export default function SubtablesPage() {
               <h2 className="text-2xl font-bold text-gray-900 mb-4">
                 Quick Split Table {selectedTable.number}
               </h2>
-
               <div className="space-y-4">
                 <div>
-                  <label className="text-gray-700 text-sm font-medium">
+                  <span className="text-gray-700 text-sm font-medium">
                     Number of Subtables
-                  </label>
+                  </span>
                   <div className="flex gap-2 mt-2">
                     {[2, 3, 4, 5, 6].map((n) => (
                       <button
@@ -516,11 +425,10 @@ export default function SubtablesPage() {
                     ))}
                   </div>
                 </div>
-
                 <div>
-                  <label className="text-gray-700 text-sm font-medium">
+                  <span className="text-gray-700 text-sm font-medium">
                     Naming Style
-                  </label>
+                  </span>
                   <div className="flex gap-2 mt-2">
                     <button
                       onClick={() => setAutoCreateNaming("letter")}
@@ -544,11 +452,9 @@ export default function SubtablesPage() {
                     </button>
                   </div>
                 </div>
-
                 <div>
                   <label className="text-gray-700 text-sm font-medium">
                     Seats per Subtable
-                  </label>
                   <input
                     type="number"
                     min="1"
@@ -557,8 +463,8 @@ export default function SubtablesPage() {
                     onChange={(e) => setAutoCreateSeats(parseInt(e.target.value) || 2)}
                     className="w-full px-4 py-3 bg-gray-50 text-gray-900 rounded-xl mt-1 border border-gray-200"
                   />
+                  </label>
                 </div>
-
                 {/* Preview */}
                 <div className="bg-gray-50 rounded-xl p-4">
                   <p className="text-gray-500 text-sm mb-2">Preview:</p>
@@ -574,7 +480,6 @@ export default function SubtablesPage() {
                     ))}
                   </div>
                 </div>
-
                 <div className="flex gap-3 pt-4">
                   <button
                     onClick={() => setShowAutoCreateModal(false)}

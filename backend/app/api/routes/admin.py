@@ -10,6 +10,7 @@ from app.models import VenueStation, StaffUser
 from app.core.rbac import RequireOwner, get_current_user
 from app.core.config import settings
 from app.core.rate_limit import limiter
+from app.core.responses import list_response
 
 # Alias: admin endpoints require owner-level access
 get_admin_user = get_current_user
@@ -22,7 +23,7 @@ TableModel = next(cls for cls in Base.registry._class_registry.values()
 router = APIRouter()
 
 
-@router.get("/tables", response_model=List[TableResponse])
+@router.get("/tables")
 @limiter.limit("60/minute")
 def get_tables(
     request: Request,
@@ -33,8 +34,8 @@ def get_tables(
     tables = db.query(TableModel).filter(
         TableModel.venue_id == current_user.venue_id
     ).order_by(TableModel.number).all()
-    
-    return [TableResponse(
+
+    return list_response([TableResponse(
         id=table.id,
         number=table.number,
         seats=table.capacity,
@@ -42,7 +43,7 @@ def get_tables(
         venue_id=table.location_id,
         active=table.status != "closed",
         created_at=table.created_at
-    ) for table in tables]
+    ) for table in tables])
 
 
 @router.post("/tables/qr", response_model=QRCodeResponse)

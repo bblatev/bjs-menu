@@ -3,9 +3,11 @@
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 
-import { API_URL, getAuthHeaders } from '@/lib/api';
+
 
 import { toast } from '@/lib/toast';
+
+import { api } from '@/lib/api';
 interface ParLevelItem {
   id: number;
   name: string;
@@ -51,21 +53,12 @@ export default function ParLevelsPage() {
   const fetchData = useCallback(async () => {
     setLoading(true);
     try {
-      const response = await fetch(`${API_URL}/stock/par-levels`, {
-        credentials: 'include',
-        headers: getAuthHeaders(),
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        setItems(data.items || []);
-        if (data.stats) {
-          setStats(data.stats);
-        } else {
-          calculateStats(data.items || []);
-        }
+      const data: any = await api.get('/stock/par-levels');
+            setItems(data.items || []);
+      if (data.stats) {
+      setStats(data.stats);
       } else {
-        console.error('Failed to load par levels:', response.status);
+      calculateStats(data.items || []);
       }
     } catch (err) {
       console.error('Failed to fetch par levels:', err);
@@ -367,59 +360,65 @@ export default function ParLevelsPage() {
             <div className="p-6 space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-surface-700 mb-1">Par Level ({selectedItem.unit})</label>
+                  <label className="block text-sm font-medium text-surface-700 mb-1">Par Level ({selectedItem.unit})
                   <input
                     type="number"
                     defaultValue={selectedItem.par_level}
                     className="w-full px-4 py-2 border border-surface-300 rounded-lg focus:ring-2 focus:ring-primary-500"
                   />
+                  </label>
                   <p className="text-xs text-surface-500 mt-1">Optimal stock level to maintain</p>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-surface-700 mb-1">Reorder Point ({selectedItem.unit})</label>
+                  <label className="block text-sm font-medium text-surface-700 mb-1">Reorder Point ({selectedItem.unit})
                   <input
                     type="number"
                     defaultValue={selectedItem.reorder_point}
                     className="w-full px-4 py-2 border border-surface-300 rounded-lg focus:ring-2 focus:ring-primary-500"
                   />
+                  </label>
                   <p className="text-xs text-surface-500 mt-1">Trigger point for reordering</p>
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-surface-700 mb-1">Reorder Quantity ({selectedItem.unit})</label>
+                  <label className="block text-sm font-medium text-surface-700 mb-1">Reorder Quantity ({selectedItem.unit})
                   <input
                     type="number"
                     defaultValue={selectedItem.reorder_quantity}
                     className="w-full px-4 py-2 border border-surface-300 rounded-lg focus:ring-2 focus:ring-primary-500"
                   />
+                  </label>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-surface-700 mb-1">Safety Stock ({selectedItem.unit})</label>
+                  <label className="block text-sm font-medium text-surface-700 mb-1">Safety Stock ({selectedItem.unit})
                   <input
                     type="number"
                     defaultValue={selectedItem.safety_stock}
                     className="w-full px-4 py-2 border border-surface-300 rounded-lg focus:ring-2 focus:ring-primary-500"
                   />
+                  </label>
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-surface-700 mb-1">Lead Time (days)</label>
+                  <label className="block text-sm font-medium text-surface-700 mb-1">Lead Time (days)
                   <input
                     type="number"
                     defaultValue={selectedItem.lead_time_days}
                     className="w-full px-4 py-2 border border-surface-300 rounded-lg focus:ring-2 focus:ring-primary-500"
                   />
+                  </label>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-surface-700 mb-1">Avg Daily Usage</label>
+                  <label className="block text-sm font-medium text-surface-700 mb-1">Avg Daily Usage
                   <input
                     type="number"
                     step="0.1"
                     defaultValue={selectedItem.avg_daily_usage}
                     className="w-full px-4 py-2 border border-surface-300 rounded-lg focus:ring-2 focus:ring-primary-500"
                   />
+                  </label>
                 </div>
               </div>
               <div className="flex items-center gap-3 p-3 bg-surface-50 rounded-lg">
@@ -429,9 +428,9 @@ export default function ParLevelsPage() {
                   defaultChecked={selectedItem.auto_reorder}
                   className="w-4 h-4 text-primary-600 rounded focus:ring-primary-500"
                 />
-                <label htmlFor="auto_reorder" className="text-sm text-surface-700">
+                <span className="text-sm text-surface-700">
                   Enable automatic reorder when stock falls below reorder point
-                </label>
+                </span>
               </div>
               <div className="bg-primary-50 p-4 rounded-lg">
                 <h4 className="font-medium text-primary-900 mb-2">Calculated Values</h4>
@@ -501,12 +500,14 @@ export default function ParLevelsPage() {
                 <h4 className="font-medium text-surface-900 mb-3">Order Schedule</h4>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm text-surface-700 mb-1">Check inventory at</label>
+                    <label className="block text-sm text-surface-700 mb-1">Check inventory at
                     <input type="time" defaultValue="06:00" className="w-full px-3 py-2 border border-surface-300 rounded-lg" />
+                    </label>
                   </div>
                   <div>
-                    <label className="block text-sm text-surface-700 mb-1">Generate POs at</label>
+                    <label className="block text-sm text-surface-700 mb-1">Generate POs at
                     <input type="time" defaultValue="07:00" className="w-full px-3 py-2 border border-surface-300 rounded-lg" />
+                    </label>
                   </div>
                 </div>
               </div>

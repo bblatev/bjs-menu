@@ -450,7 +450,7 @@ export default function AutoReorderPage() {
               <div className="p-6 space-y-4">
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-surface-700 mb-1">Stock Item</label>
+                    <label className="block text-sm font-medium text-surface-700 mb-1">Stock Item
                     <select
                       value={formData.stock_item_id}
                       onChange={(e) => setFormData({ ...formData, stock_item_id: e.target.value })}
@@ -459,9 +459,10 @@ export default function AutoReorderPage() {
                       <option value="">Select item...</option>
                       {/* Would be populated from API */}
                     </select>
+                    </label>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-surface-700 mb-1">Preferred Supplier</label>
+                    <label className="block text-sm font-medium text-surface-700 mb-1">Preferred Supplier
                     <select
                       value={formData.preferred_supplier_id}
                       onChange={(e) => setFormData({ ...formData, preferred_supplier_id: e.target.value })}
@@ -470,11 +471,12 @@ export default function AutoReorderPage() {
                       <option value="">Select supplier...</option>
                       {/* Would be populated from API */}
                     </select>
+                    </label>
                   </div>
                 </div>
                 <div className="grid grid-cols-3 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-surface-700 mb-1">Reorder Point</label>
+                    <label className="block text-sm font-medium text-surface-700 mb-1">Reorder Point
                     <input
                       type="number"
                       value={formData.reorder_point}
@@ -482,9 +484,10 @@ export default function AutoReorderPage() {
                       className="w-full px-4 py-2 border border-surface-200 rounded-lg focus:ring-2 focus:ring-amber-500"
                       placeholder="Trigger level"
                     />
+                    </label>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-surface-700 mb-1">Par Level</label>
+                    <label className="block text-sm font-medium text-surface-700 mb-1">Par Level
                     <input
                       type="number"
                       value={formData.par_level}
@@ -492,19 +495,21 @@ export default function AutoReorderPage() {
                       className="w-full px-4 py-2 border border-surface-200 rounded-lg focus:ring-2 focus:ring-amber-500"
                       placeholder="Target level"
                     />
+                    </label>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-surface-700 mb-1">Lead Time (days)</label>
+                    <label className="block text-sm font-medium text-surface-700 mb-1">Lead Time (days)
                     <input
                       type="number"
                       value={formData.lead_time_days}
                       onChange={(e) => setFormData({ ...formData, lead_time_days: e.target.value })}
                       className="w-full px-4 py-2 border border-surface-200 rounded-lg focus:ring-2 focus:ring-amber-500"
                     />
+                    </label>
                   </div>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-surface-700 mb-1">Trigger Type</label>
+                  <label className="block text-sm font-medium text-surface-700 mb-1">Trigger Type
                   <select
                     value={formData.trigger_type}
                     onChange={(e) => setFormData({ ...formData, trigger_type: e.target.value })}
@@ -514,10 +519,11 @@ export default function AutoReorderPage() {
                     <option value="below_par_level">Below Par Level</option>
                     <option value="scheduled">Scheduled</option>
                   </select>
+                  </label>
                 </div>
                 <div className="grid grid-cols-3 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-surface-700 mb-1">Min Order Qty</label>
+                    <label className="block text-sm font-medium text-surface-700 mb-1">Min Order Qty
                     <input
                       type="number"
                       value={formData.min_order_quantity}
@@ -525,9 +531,10 @@ export default function AutoReorderPage() {
                       className="w-full px-4 py-2 border border-surface-200 rounded-lg focus:ring-2 focus:ring-amber-500"
                       placeholder="Optional"
                     />
+                    </label>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-surface-700 mb-1">Max Order Qty</label>
+                    <label className="block text-sm font-medium text-surface-700 mb-1">Max Order Qty
                     <input
                       type="number"
                       value={formData.max_order_quantity}
@@ -535,9 +542,10 @@ export default function AutoReorderPage() {
                       className="w-full px-4 py-2 border border-surface-200 rounded-lg focus:ring-2 focus:ring-amber-500"
                       placeholder="Optional"
                     />
+                    </label>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-surface-700 mb-1">Order Multiple</label>
+                    <label className="block text-sm font-medium text-surface-700 mb-1">Order Multiple
                     <input
                       type="number"
                       value={formData.order_multiple}
@@ -545,6 +553,7 @@ export default function AutoReorderPage() {
                       className="w-full px-4 py-2 border border-surface-200 rounded-lg focus:ring-2 focus:ring-amber-500"
                       placeholder="e.g., 12 for cases"
                     />
+                    </label>
                   </div>
                 </div>
                 <div className="space-y-3">

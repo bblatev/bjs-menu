@@ -1,9 +1,8 @@
 'use client';
-
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { API_URL, getAuthHeaders } from '@/lib/api';
 
+import { api } from '@/lib/api';
 interface PaymentTransaction {
   id: string;
   orderId: string;
@@ -17,14 +16,12 @@ interface PaymentTransaction {
   createdAt: string;
   receiptUrl?: string;
 }
-
 interface WalletConfig {
   applePay: { enabled: boolean; merchantId?: string };
   googlePay: { enabled: boolean; merchantName: string };
   link: { enabled: boolean };
   supportedNetworks: string[];
 }
-
 interface PaymentStats {
   totalPayments: number;
   succeeded: number;
@@ -37,7 +34,6 @@ interface PaymentStats {
     link: number;
   };
 }
-
 export default function PaymentsPage() {
   const [activeTab, setActiveTab] = useState<'transactions' | 'terminal' | 'wallets' | 'settings'>('transactions');
   const [transactions, setTransactions] = useState<PaymentTransaction[]>([]);
@@ -47,25 +43,21 @@ export default function PaymentsPage() {
   const [selectedTransaction, setSelectedTransaction] = useState<PaymentTransaction | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [terminalStatus, setTerminalStatus] = useState<'disconnected' | 'connected' | 'processing'>('disconnected');
-
   useEffect(() => {
     loadData();
   }, []);
-
   const loadData = async () => {
     setIsLoading(true);
     try {
-      const headers = getAuthHeaders();
       const [txRes, _statusRes, walletRes, walletStatsRes] = await Promise.allSettled([
-        fetch(`${API_URL}/payments/transactions`, { credentials: 'include', headers }),
-        fetch(`${API_URL}/payments/status`, { credentials: 'include', headers }),
-        fetch(`${API_URL}/mobile-wallet/config`, { credentials: 'include', headers }),
-        fetch(`${API_URL}/mobile-wallet/stats`, { credentials: 'include', headers }),
-      ]);
-
+  api.get('/payments/transactions'),
+  api.get('/payments/status'),
+  api.get('/mobile-wallet/config'),
+  api.get('/mobile-wallet/stats')
+]);
       // Load transactions from API or use defaults
-      if (txRes.status === 'fulfilled' && txRes.value.ok) {
-        const data = await txRes.value.json();
+      if (txRes.status === 'fulfilled') {
+        const data: any = txRes.value;
         if (Array.isArray(data) && data.length > 0) {
           setTransactions(data.map((t: any) => ({
             id: t.payment_intent_id || t.id,
@@ -86,15 +78,14 @@ export default function PaymentsPage() {
       } else {
         setTransactions([]);
       }
-
       // Wallet config
-      if (walletRes.status === 'fulfilled' && walletRes.value.ok) {
-        const data = await walletRes.value.json();
+      if (walletRes.status === 'fulfilled') {
+        const data_walletConfig: any = walletRes.value;
         setWalletConfig({
-          applePay: { enabled: data.apple_pay_enabled ?? true, merchantId: data.apple_pay_merchant_id || 'merchant.com.bjs.pos' },
-          googlePay: { enabled: data.google_pay_enabled ?? true, merchantName: data.merchant_name || "BJ's Bar" },
-          link: { enabled: data.link_enabled ?? false },
-          supportedNetworks: data.supported_networks || ['visa', 'mastercard'],
+          applePay: { enabled: data_walletConfig.apple_pay_enabled ?? true, merchantId: data_walletConfig.apple_pay_merchant_id || 'merchant.com.bjs.pos' },
+          googlePay: { enabled: data_walletConfig.google_pay_enabled ?? true, merchantName: data_walletConfig.merchant_name || "BJ's Bar" },
+          link: { enabled: data_walletConfig.link_enabled ?? false },
+          supportedNetworks: data_walletConfig.supported_networks || ['visa', 'mastercard'],
         });
       } else {
         setWalletConfig({
@@ -104,20 +95,19 @@ export default function PaymentsPage() {
           supportedNetworks: ['visa', 'mastercard', 'amex', 'discover'],
         });
       }
-
       // Stats from wallet
-      if (walletStatsRes.status === 'fulfilled' && walletStatsRes.value.ok) {
-        const data = await walletStatsRes.value.json();
+      if (walletStatsRes.status === 'fulfilled') {
+        const data_stats: any = walletStatsRes.value;
         setStats({
-          totalPayments: data.total_payments || 0,
-          succeeded: data.completed || 0,
-          failed: data.failed || 0,
-          successRate: data.success_rate || 0,
-          totalAmount: (data.total_volume || 0) / 100,
+          totalPayments: data_stats.total_payments || 0,
+          succeeded: data_stats.completed || 0,
+          failed: data_stats.failed || 0,
+          successRate: data_stats.success_rate || 0,
+          totalAmount: (data_stats.total_volume || 0) / 100,
           byWalletType: {
-            apple_pay: data.apple_pay_count || 0,
-            google_pay: data.google_pay_count || 0,
-            link: data.link_count || 0,
+            apple_pay: data_stats.apple_pay_count || 0,
+            google_pay: data_stats.google_pay_count || 0,
+            link: data_stats.link_count || 0,
           },
         });
       } else {
@@ -137,14 +127,12 @@ export default function PaymentsPage() {
       setIsLoading(false);
     }
   };
-
   const formatAmount = (amount: number, currency: string) => {
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
       currency: currency.toUpperCase(),
     }).format(amount / 100);
   };
-
   const getStatusBadge = (status: string) => {
     const styles: Record<string, string> = {
       succeeded: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400',
@@ -159,7 +147,6 @@ export default function PaymentsPage() {
       </span>
     );
   };
-
   const getMethodIcon = (method: string) => {
     switch (method) {
       case 'apple_pay':
@@ -182,7 +169,6 @@ export default function PaymentsPage() {
         );
     }
   };
-
   const processRefund = async (transactionId: string) => {
     setIsProcessing(true);
     try {
@@ -197,7 +183,6 @@ export default function PaymentsPage() {
       setSelectedTransaction(null);
     }
   };
-
   const connectTerminal = async () => {
     setTerminalStatus('processing');
     try {
@@ -207,7 +192,6 @@ export default function PaymentsPage() {
       setTerminalStatus('disconnected');
     }
   };
-
   const toggleWalletSetting = (wallet: 'applePay' | 'googlePay' | 'link') => {
     if (!walletConfig) return;
     setWalletConfig(prev => {
@@ -218,7 +202,6 @@ export default function PaymentsPage() {
       };
     });
   };
-
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -226,7 +209,6 @@ export default function PaymentsPage() {
       </div>
     );
   }
-
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -235,7 +217,6 @@ export default function PaymentsPage() {
           <p className="text-gray-600 dark:text-gray-400">Manage transactions, terminals, and payment methods</p>
         </div>
       </div>
-
       {/* Stats Cards */}
       {stats && (
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
@@ -259,7 +240,6 @@ export default function PaymentsPage() {
           </div>
         </div>
       )}
-
       {/* Tabs */}
       <div className="border-b border-gray-200 dark:border-surface-700">
         <nav className="flex space-x-8">
@@ -278,7 +258,6 @@ export default function PaymentsPage() {
           ))}
         </nav>
       </div>
-
       {/* Tab Content */}
       <AnimatePresence mode="wait">
         {activeTab === 'transactions' && (
@@ -369,7 +348,6 @@ export default function PaymentsPage() {
             </div>
           </motion.div>
         )}
-
         {activeTab === 'terminal' && (
           <motion.div
             key="terminal"
@@ -406,7 +384,6 @@ export default function PaymentsPage() {
                   {terminalStatus === 'connected' ? 'Disconnect' : terminalStatus === 'processing' ? 'Connecting...' : 'Connect'}
                 </button>
               </div>
-
               {terminalStatus === 'connected' && (
                 <div className="mt-6 grid grid-cols-3 gap-4">
                   <button className="p-4 bg-green-50 dark:bg-green-900/20 rounded-lg text-center hover:bg-green-100 dark:hover:bg-green-900/30 transition-colors">
@@ -430,43 +407,46 @@ export default function PaymentsPage() {
                 </div>
               )}
             </div>
-
             <div className="bg-white dark:bg-surface-800 rounded-xl p-6 shadow-sm border border-gray-200 dark:border-surface-700">
               <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Manual Entry</h3>
               <form className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Card Number</label>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Card Number
                   <input
                     type="text"
                     placeholder="4242 4242 4242 4242"
                     className="w-full px-4 py-2 border border-gray-300 dark:border-surface-600 rounded-lg bg-white dark:bg-surface-700 text-gray-900 dark:text-white"
                   />
+                  </label>
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Expiry</label>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Expiry
                     <input
                       type="text"
                       placeholder="MM/YY"
                       className="w-full px-4 py-2 border border-gray-300 dark:border-surface-600 rounded-lg bg-white dark:bg-surface-700 text-gray-900 dark:text-white"
                     />
+                    </label>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">CVC</label>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">CVC
                     <input
                       type="text"
                       placeholder="123"
                       className="w-full px-4 py-2 border border-gray-300 dark:border-surface-600 rounded-lg bg-white dark:bg-surface-700 text-gray-900 dark:text-white"
                     />
+                    </label>
                   </div>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Amount</label>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Amount
                   <input
                     type="text"
                     placeholder="$0.00"
                     className="w-full px-4 py-2 border border-gray-300 dark:border-surface-600 rounded-lg bg-white dark:bg-surface-700 text-gray-900 dark:text-white"
                   />
+                  </label>
                 </div>
                 <button
                   type="button"
@@ -478,7 +458,6 @@ export default function PaymentsPage() {
             </div>
           </motion.div>
         )}
-
         {activeTab === 'wallets' && walletConfig && (
           <motion.div
             key="wallets"
@@ -516,7 +495,6 @@ export default function PaymentsPage() {
                 </p>
               )}
             </div>
-
             {/* Google Pay */}
             <div className="bg-white dark:bg-surface-800 rounded-xl p-6 shadow-sm border border-gray-200 dark:border-surface-700">
               <div className="flex items-center justify-between mb-4">
@@ -546,7 +524,6 @@ export default function PaymentsPage() {
                 </p>
               )}
             </div>
-
             {/* Link */}
             <div className="bg-white dark:bg-surface-800 rounded-xl p-6 shadow-sm border border-gray-200 dark:border-surface-700">
               <div className="flex items-center justify-between mb-4">
@@ -580,7 +557,6 @@ export default function PaymentsPage() {
             </div>
           </motion.div>
         )}
-
         {activeTab === 'settings' && (
           <motion.div
             key="settings"
@@ -592,24 +568,26 @@ export default function PaymentsPage() {
             <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-6">Payment Settings</h3>
             <div className="space-y-6">
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Stripe Publishable Key</label>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Stripe Publishable Key
                 <input
                   type="text"
                   placeholder="pk_live_..."
                   className="w-full px-4 py-2 border border-gray-300 dark:border-surface-600 rounded-lg bg-white dark:bg-surface-700 text-gray-900 dark:text-white"
                 />
+                </label>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Default Currency</label>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Default Currency
                 <select className="w-full px-4 py-2 border border-gray-300 dark:border-surface-600 rounded-lg bg-white dark:bg-surface-700 text-gray-900 dark:text-white">
                   <option value="usd">USD - US Dollar</option>
                   <option value="eur">EUR - Euro</option>
                   <option value="gbp">GBP - British Pound</option>
                   <option value="bgn">BGN - Bulgarian Lev</option>
                 </select>
+                </label>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Accepted Card Networks</label>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Accepted Card Networks
                 <div className="flex flex-wrap gap-2 mt-2">
                   {['Visa', 'Mastercard', 'American Express', 'Discover'].map(network => (
                     <label key={network} className="flex items-center gap-2 px-3 py-2 bg-gray-50 dark:bg-surface-700 rounded-lg cursor-pointer">
@@ -618,6 +596,7 @@ export default function PaymentsPage() {
                     </label>
                   ))}
                 </div>
+                </label>
               </div>
               <div className="pt-4">
                 <button className="px-6 py-2 bg-amber-500 hover:bg-amber-600 text-gray-900 font-medium rounded-lg transition-colors">
@@ -628,7 +607,6 @@ export default function PaymentsPage() {
           </motion.div>
         )}
       </AnimatePresence>
-
       {/* Refund Modal */}
       {selectedTransaction && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">

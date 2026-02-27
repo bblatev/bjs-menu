@@ -344,11 +344,11 @@ export default function RecipeManagementPage() {
                 <h3 className="text-xl font-semibold mb-4">{selectedRecipe.name.bg || selectedRecipe.name.en}</h3>
                 <div className="grid grid-cols-2 gap-6">
                   <div>
-                    <label className="text-gray-400 text-sm">Description (BG)</label>
+                    <span className="text-gray-400 text-sm">Description (BG)</span>
                     <p className="mt-1">{selectedRecipe.description?.bg || "No description"}</p>
                   </div>
                   <div>
-                    <label className="text-gray-400 text-sm">Description (EN)</label>
+                    <span className="text-gray-400 text-sm">Description (EN)</span>
                     <p className="mt-1">{selectedRecipe.description?.en || "No description"}</p>
                   </div>
                 </div>
@@ -457,7 +457,7 @@ export default function RecipeManagementPage() {
                 <h3 className="text-xl font-semibold mb-4">Scale Recipe</h3>
                 <div className="grid grid-cols-2 gap-4 mb-6">
                   <div>
-                    <label className="block text-sm text-gray-400 mb-1">Target Yield</label>
+                    <label className="block text-sm text-gray-400 mb-1">Target Yield
                     <input
                       type="number"
                       value={scaleForm.target_yield}
@@ -466,9 +466,10 @@ export default function RecipeManagementPage() {
                       min={0.1}
                       step={0.5}
                     />
+                    </label>
                   </div>
                   <div>
-                    <label className="block text-sm text-gray-400 mb-1">Unit</label>
+                    <label className="block text-sm text-gray-400 mb-1">Unit
                     <select
                       value={scaleForm.target_unit}
                       onChange={(e) => setScaleForm({ ...scaleForm, target_unit: e.target.value })}
@@ -478,6 +479,7 @@ export default function RecipeManagementPage() {
                       <option value="kg">Kilogram</option>
                       <option value="l">Liter</option>
                     </select>
+                    </label>
                   </div>
                 </div>
                 <button
@@ -561,36 +563,39 @@ export default function RecipeManagementPage() {
               <div className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm text-gray-400 mb-1">Name (BG)</label>
+                    <label className="block text-sm text-gray-400 mb-1">Name (BG)
                     <input
                       type="text"
                       value={recipeForm.name_bg}
                       onChange={(e) => setRecipeForm({ ...recipeForm, name_bg: e.target.value })}
                       className="w-full p-2 bg-gray-100 rounded-lg"
                     />
+                    </label>
                   </div>
                   <div>
-                    <label className="block text-sm text-gray-400 mb-1">Name (EN)</label>
+                    <label className="block text-sm text-gray-400 mb-1">Name (EN)
                     <input
                       type="text"
                       value={recipeForm.name_en}
                       onChange={(e) => setRecipeForm({ ...recipeForm, name_en: e.target.value })}
                       className="w-full p-2 bg-gray-100 rounded-lg"
                     />
+                    </label>
                   </div>
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm text-gray-400 mb-1">Yield Quantity</label>
+                    <label className="block text-sm text-gray-400 mb-1">Yield Quantity
                     <input
                       type="number"
                       value={recipeForm.yield_quantity}
                       onChange={(e) => setRecipeForm({ ...recipeForm, yield_quantity: parseFloat(e.target.value) })}
                       className="w-full p-2 bg-gray-100 rounded-lg"
                     />
+                    </label>
                   </div>
                   <div>
-                    <label className="block text-sm text-gray-400 mb-1">Yield Unit</label>
+                    <label className="block text-sm text-gray-400 mb-1">Yield Unit
                     <select
                       value={recipeForm.yield_unit}
                       onChange={(e) => setRecipeForm({ ...recipeForm, yield_unit: e.target.value })}
@@ -601,29 +606,32 @@ export default function RecipeManagementPage() {
                       <option value="l">Liter</option>
                       <option value="pcs">Pieces</option>
                     </select>
+                    </label>
                   </div>
                 </div>
                 <div className="grid grid-cols-3 gap-4">
                   <div>
-                    <label className="block text-sm text-gray-400 mb-1">Prep Time (min)</label>
+                    <label className="block text-sm text-gray-400 mb-1">Prep Time (min)
                     <input
                       type="number"
                       value={recipeForm.prep_time_minutes}
                       onChange={(e) => setRecipeForm({ ...recipeForm, prep_time_minutes: parseInt(e.target.value) })}
                       className="w-full p-2 bg-gray-100 rounded-lg"
                     />
+                    </label>
                   </div>
                   <div>
-                    <label className="block text-sm text-gray-400 mb-1">Cook Time (min)</label>
+                    <label className="block text-sm text-gray-400 mb-1">Cook Time (min)
                     <input
                       type="number"
                       value={recipeForm.cook_time_minutes}
                       onChange={(e) => setRecipeForm({ ...recipeForm, cook_time_minutes: parseInt(e.target.value) })}
                       className="w-full p-2 bg-gray-100 rounded-lg"
                     />
+                    </label>
                   </div>
                   <div>
-                    <label className="block text-sm text-gray-400 mb-1">Difficulty</label>
+                    <label className="block text-sm text-gray-400 mb-1">Difficulty
                     <select
                       value={recipeForm.difficulty_level}
                       onChange={(e) => setRecipeForm({ ...recipeForm, difficulty_level: e.target.value })}
@@ -633,6 +641,7 @@ export default function RecipeManagementPage() {
                       <option value="medium">Medium</option>
                       <option value="hard">Hard</option>
                     </select>
+                    </label>
                   </div>
                 </div>
               </div>

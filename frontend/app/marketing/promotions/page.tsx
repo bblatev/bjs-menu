@@ -516,7 +516,7 @@ export default function MarketingPromotionsPage() {
               <div className="p-6 space-y-4">
                 {/* Name */}
                 <div>
-                  <label className="block text-sm font-medium text-surface-700 mb-1">Promotion Name</label>
+                  <label className="block text-sm font-medium text-surface-700 mb-1">Promotion Name
                   <input
                     type="text"
                     value={formData.name}
@@ -524,12 +524,13 @@ export default function MarketingPromotionsPage() {
                     className="w-full px-4 py-2 border border-surface-200 rounded-lg focus:ring-2 focus:ring-amber-500"
                     placeholder="e.g., Happy Hour Cocktails"
                   />
+                  </label>
                 </div>
 
                 {/* Type and Discount */}
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-surface-700 mb-1">Type</label>
+                    <label className="block text-sm font-medium text-surface-700 mb-1">Type
                     <select
                       value={formData.type}
                       onChange={(e) => setFormData({ ...formData, type: e.target.value as any })}
@@ -541,9 +542,10 @@ export default function MarketingPromotionsPage() {
                       <option value="bundle">Bundle</option>
                       <option value="discount">Discount</option>
                     </select>
+                    </label>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-surface-700 mb-1">Discount Type</label>
+                    <label className="block text-sm font-medium text-surface-700 mb-1">Discount Type
                     <select
                       value={formData.discount_type}
                       onChange={(e) => setFormData({ ...formData, discount_type: e.target.value as any })}
@@ -553,6 +555,7 @@ export default function MarketingPromotionsPage() {
                       <option value="fixed">Fixed Amount Off</option>
                       <option value="bogo">Buy One Get One</option>
                     </select>
+                    </label>
                   </div>
                 </div>
 
@@ -561,37 +564,39 @@ export default function MarketingPromotionsPage() {
                   <div>
                     <label className="block text-sm font-medium text-surface-700 mb-1">
                       {formData.discount_type === 'percentage' ? 'Percentage' : 'Amount'} Value
-                    </label>
                     <input
                       type="number"
                       value={formData.discount_value}
                       onChange={(e) => setFormData({ ...formData, discount_value: parseFloat(e.target.value) })}
                       className="w-full px-4 py-2 border border-surface-200 rounded-lg focus:ring-2 focus:ring-amber-500"
                     />
+                    </label>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-surface-700 mb-1">Min Purchase (BGN)</label>
+                    <label className="block text-sm font-medium text-surface-700 mb-1">Min Purchase (BGN)
                     <input
                       type="number"
                       value={formData.min_purchase}
                       onChange={(e) => setFormData({ ...formData, min_purchase: parseFloat(e.target.value) })}
                       className="w-full px-4 py-2 border border-surface-200 rounded-lg focus:ring-2 focus:ring-amber-500"
                     />
+                    </label>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-surface-700 mb-1">Max Discount (BGN)</label>
+                    <label className="block text-sm font-medium text-surface-700 mb-1">Max Discount (BGN)
                     <input
                       type="number"
                       value={formData.max_discount}
                       onChange={(e) => setFormData({ ...formData, max_discount: parseFloat(e.target.value) })}
                       className="w-full px-4 py-2 border border-surface-200 rounded-lg focus:ring-2 focus:ring-amber-500"
                     />
+                    </label>
                   </div>
                 </div>
 
                 {/* Days */}
                 <div>
-                  <label className="block text-sm font-medium text-surface-700 mb-2">Active Days</label>
+                  <span className="block text-sm font-medium text-surface-700 mb-2">Active Days</span>
                   <div className="flex flex-wrap gap-2">
                     {DAYS.map(day => (
                       <button
@@ -613,28 +618,30 @@ export default function MarketingPromotionsPage() {
                 {/* Time Range */}
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-surface-700 mb-1">Start Time</label>
+                    <label className="block text-sm font-medium text-surface-700 mb-1">Start Time
                     <input
                       type="time"
                       value={formData.time_start}
                       onChange={(e) => setFormData({ ...formData, time_start: e.target.value })}
                       className="w-full px-4 py-2 border border-surface-200 rounded-lg focus:ring-2 focus:ring-amber-500"
                     />
+                    </label>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-surface-700 mb-1">End Time</label>
+                    <label className="block text-sm font-medium text-surface-700 mb-1">End Time
                     <input
                       type="time"
                       value={formData.time_end}
                       onChange={(e) => setFormData({ ...formData, time_end: e.target.value })}
                       className="w-full px-4 py-2 border border-surface-200 rounded-lg focus:ring-2 focus:ring-amber-500"
                     />
+                    </label>
                   </div>
                 </div>
 
                 {/* Applicable Categories */}
                 <div>
-                  <label className="block text-sm font-medium text-surface-700 mb-2">Applicable To</label>
+                  <span className="block text-sm font-medium text-surface-700 mb-2">Applicable To</span>
                   <div className="flex flex-wrap gap-2">
                     {categories.map(cat => (
                       <button
@@ -656,28 +663,30 @@ export default function MarketingPromotionsPage() {
                 {/* Valid Dates */}
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-surface-700 mb-1">Valid From</label>
+                    <label className="block text-sm font-medium text-surface-700 mb-1">Valid From
                     <input
                       type="date"
                       value={formData.valid_from}
                       onChange={(e) => setFormData({ ...formData, valid_from: e.target.value })}
                       className="w-full px-4 py-2 border border-surface-200 rounded-lg focus:ring-2 focus:ring-amber-500"
                     />
+                    </label>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-surface-700 mb-1">Valid Until</label>
+                    <label className="block text-sm font-medium text-surface-700 mb-1">Valid Until
                     <input
                       type="date"
                       value={formData.valid_until}
                       onChange={(e) => setFormData({ ...formData, valid_until: e.target.value })}
                       className="w-full px-4 py-2 border border-surface-200 rounded-lg focus:ring-2 focus:ring-amber-500"
                     />
+                    </label>
                   </div>
                 </div>
 
                 {/* Conditions */}
                 <div>
-                  <label className="block text-sm font-medium text-surface-700 mb-2">Conditions</label>
+                  <label className="block text-sm font-medium text-surface-700 mb-2">Conditions
                   <div className="space-y-2">
                     {formData.conditions.map((cond, idx) => (
                       <div key={idx} className="flex items-center gap-2">
@@ -709,6 +718,7 @@ export default function MarketingPromotionsPage() {
                       </button>
                     </div>
                   </div>
+                  </label>
                 </div>
               </div>
 

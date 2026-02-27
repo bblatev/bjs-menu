@@ -739,15 +739,16 @@ export default function MarketingPage() {
                 </div>
                 <div className="p-6 space-y-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Campaign Name</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Campaign Name
                     <input
                       type="text"
                       className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
                       placeholder="e.g., Summer Special Offer"
                     />
+                    </label>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Campaign Type</label>
+                    <span className="block text-sm font-medium text-gray-700 mb-1">Campaign Type</span>
                     <div className="grid grid-cols-4 gap-3">
                       {[
                         { type: "email", icon: "📧", label: "Email" },
@@ -766,44 +767,49 @@ export default function MarketingPage() {
                     </div>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Target Segment</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Target Segment
                     <select className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500">
                       <option value="">Select segment...</option>
                       {segments.map((s) => (
                         <option key={s.id} value={s.id}>{s.name} ({s.customer_count} customers)</option>
                       ))}
                     </select>
+                    </label>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Subject / Title</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Subject / Title
                     <input
                       type="text"
                       className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
                       placeholder="e.g., Don't miss our weekend special!"
                     />
+                    </label>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Message Content</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Message Content
                     <textarea
                       rows={4}
                       className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
                       placeholder="Write your campaign message..."
                     />
+                    </label>
                   </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Schedule</label>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Schedule
                       <select className="w-full px-4 py-2 border rounded-lg">
                         <option value="now">Send immediately</option>
                         <option value="schedule">Schedule for later</option>
                       </select>
+                      </label>
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Scheduled Date/Time</label>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Scheduled Date/Time
                       <input
                         type="datetime-local"
                         className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
                       />
+                      </label>
                     </div>
                   </div>
                 </div>
@@ -848,15 +854,16 @@ export default function MarketingPage() {
                 </div>
                 <div className="p-6 space-y-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Promotion Name</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Promotion Name
                     <input
                       type="text"
                       className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
                       placeholder="e.g., Happy Hour Special"
                     />
+                    </label>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Discount Type</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Discount Type
                     <select className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500">
                       <option value="percentage">Percentage Off</option>
                       <option value="fixed">Fixed Amount Off</option>
@@ -864,48 +871,54 @@ export default function MarketingPage() {
                       <option value="bundle">Bundle Deal</option>
                       <option value="loyalty_multiplier">Loyalty Points Multiplier</option>
                     </select>
+                    </label>
                   </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Discount Value</label>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Discount Value
                       <input
                         type="number"
                         className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
                         placeholder="e.g., 15"
                       />
+                      </label>
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Min Order (BGN)</label>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Min Order (BGN)
                       <input
                         type="number"
                         className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
                         placeholder="e.g., 30"
                       />
+                      </label>
                     </div>
                   </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Valid From</label>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Valid From
                       <input
                         type="date"
                         className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
                       />
+                      </label>
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Valid To</label>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Valid To
                       <input
                         type="date"
                         className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
                       />
+                      </label>
                     </div>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Usage Limit (optional)</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Usage Limit (optional)
                     <input
                       type="number"
                       className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
                       placeholder="Leave empty for unlimited"
                     />
+                    </label>
                   </div>
                 </div>
                 <div className="p-6 border-t flex justify-end gap-3">

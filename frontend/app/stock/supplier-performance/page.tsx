@@ -1,10 +1,9 @@
 'use client';
-
 import { useState, useEffect } from 'react';
 import AdminLayout from '@/components/AdminLayout';
-import { API_URL, getAuthHeaders } from '@/lib/api';
-
 import { toast } from '@/lib/toast';
+
+import { api } from '@/lib/api';
 interface SupplierMetrics {
   id: number;
   supplier_name: string;
@@ -25,7 +24,6 @@ interface SupplierMetrics {
   last_order_date: string;
   issues_count: number;
 }
-
 interface SupplierStats {
   total_suppliers: number;
   avg_performance_score: number;
@@ -34,14 +32,12 @@ interface SupplierStats {
   total_spend_ytd: number;
   avg_lead_time: number;
 }
-
 interface PerformanceHistory {
   month: string;
   delivery_rate: number;
   quality_score: number;
   fill_rate: number;
 }
-
 export default function SupplierPerformancePage() {
   const [suppliers, setSuppliers] = useState<SupplierMetrics[]>([]);
   const [stats, setStats] = useState<SupplierStats | null>(null);
@@ -51,27 +47,21 @@ export default function SupplierPerformancePage() {
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [sortBy, setSortBy] = useState<'overall_score' | 'total_value' | 'on_time_delivery_rate'>('overall_score');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
-
-
   useEffect(() => {
     fetchSupplierData();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-
   const fetchSupplierData = async () => {
     setLoading(true);
     try {
-      const headers = getAuthHeaders();
-
       try {
-        const [suppliersRes, statsRes] = await Promise.all([
-          fetch(`${API_URL}/suppliers/performance`, { credentials: 'include', headers }),
-          fetch(`${API_URL}/suppliers/performance/stats`, { credentials: 'include', headers })
+        const [suppliersRes, statsRes] = await Promise.allSettled([
+          api.get('/suppliers/performance'),
+          api.get('/suppliers/performance/stats')
         ]);
-
-        if (suppliersRes.ok && statsRes.ok) {
-          const suppliersData = await suppliersRes.json();
-          const statsData = await statsRes.json();
+        if (suppliersRes.status === 'fulfilled' && statsRes.status === 'fulfilled') {
+          const suppliersData: any = suppliersRes.value;
+          const statsData: any = statsRes.value;
           setSuppliers(suppliersData.suppliers || suppliersData);
           setStats(statsData);
         } else {
@@ -87,7 +77,6 @@ export default function SupplierPerformancePage() {
       setLoading(false);
     }
   };
-
   const loadDemoData = () => {
     const demoSuppliers: SupplierMetrics[] = [
       {
@@ -251,7 +240,6 @@ export default function SupplierPerformancePage() {
         issues_count: 6
       }
     ];
-
     const demoStats: SupplierStats = {
       total_suppliers: 24,
       avg_performance_score: 91.2,
@@ -260,7 +248,6 @@ export default function SupplierPerformancePage() {
       total_spend_ytd: 654800,
       avg_lead_time: 1.8
     };
-
     const demoHistory: PerformanceHistory[] = [
       { month: 'Юли', delivery_rate: 89, quality_score: 90, fill_rate: 92 },
       { month: 'Авг', delivery_rate: 91, quality_score: 91, fill_rate: 93 },
@@ -269,14 +256,11 @@ export default function SupplierPerformancePage() {
       { month: 'Ное', delivery_rate: 94, quality_score: 94, fill_rate: 96 },
       { month: 'Дек', delivery_rate: 95, quality_score: 95, fill_rate: 97 }
     ];
-
     setSuppliers(demoSuppliers);
     setStats(demoStats);
     setPerformanceHistory(demoHistory);
   };
-
   const categories = ['all', ...new Set(suppliers.map(s => s.category))];
-
   const filteredSuppliers = suppliers
     .filter(s => selectedCategory === 'all' || s.category === selectedCategory)
     .sort((a, b) => {
@@ -284,21 +268,18 @@ export default function SupplierPerformancePage() {
       const bVal = b[sortBy];
       return sortOrder === 'desc' ? (bVal as number) - (aVal as number) : (aVal as number) - (bVal as number);
     });
-
   const getScoreColor = (score: number) => {
     if (score >= 95) return 'text-green-400';
     if (score >= 90) return 'text-blue-400';
     if (score >= 80) return 'text-yellow-400';
     return 'text-red-400';
   };
-
   const getScoreBg = (score: number) => {
     if (score >= 95) return 'bg-green-500/20 border-green-500/30';
     if (score >= 90) return 'bg-blue-500/20 border-blue-500/30';
     if (score >= 80) return 'bg-yellow-500/20 border-yellow-500/30';
     return 'bg-red-500/20 border-red-500/30';
   };
-
   const getTrendIcon = (trend: string) => {
     switch (trend) {
       case 'improving': return '↑';
@@ -306,7 +287,6 @@ export default function SupplierPerformancePage() {
       default: return '→';
     }
   };
-
   const getTrendColor = (trend: string) => {
     switch (trend) {
       case 'improving': return 'text-green-400';
@@ -314,11 +294,9 @@ export default function SupplierPerformancePage() {
       default: return 'text-gray-400';
     }
   };
-
   const exportReport = () => {
     toast.success('Експортиране на отчет за представянето на доставчиците...');
   };
-
   return (
     <AdminLayout>
       <div className="p-6 space-y-6">
@@ -340,7 +318,6 @@ export default function SupplierPerformancePage() {
             </button>
           </div>
         </div>
-
         {/* Stats Cards */}
         {stats && (
           <div className="grid grid-cols-1 md:grid-cols-6 gap-4">
@@ -357,7 +334,6 @@ export default function SupplierPerformancePage() {
                 </div>
               </div>
             </div>
-
             <div className="bg-gray-800/50 border border-gray-700 rounded-xl p-4">
               <div className="flex items-center gap-3">
                 <div className="p-2 bg-green-500/20 rounded-lg">
@@ -371,7 +347,6 @@ export default function SupplierPerformancePage() {
                 </div>
               </div>
             </div>
-
             <div className="bg-gray-800/50 border border-gray-700 rounded-xl p-4">
               <div className="flex items-center gap-3">
                 <div className="p-2 bg-purple-500/20 rounded-lg">
@@ -385,7 +360,6 @@ export default function SupplierPerformancePage() {
                 </div>
               </div>
             </div>
-
             <div className="bg-gray-800/50 border border-gray-700 rounded-xl p-4">
               <div className="flex items-center gap-3">
                 <div className="p-2 bg-yellow-500/20 rounded-lg">
@@ -399,7 +373,6 @@ export default function SupplierPerformancePage() {
                 </div>
               </div>
             </div>
-
             <div className="bg-gray-800/50 border border-gray-700 rounded-xl p-4">
               <div className="flex items-center gap-3">
                 <div className="p-2 bg-cyan-500/20 rounded-lg">
@@ -413,7 +386,6 @@ export default function SupplierPerformancePage() {
                 </div>
               </div>
             </div>
-
             <div className="bg-gray-800/50 border border-gray-700 rounded-xl p-4">
               <div className="flex items-center gap-3">
                 <div className="p-2 bg-orange-500/20 rounded-lg">
@@ -429,7 +401,6 @@ export default function SupplierPerformancePage() {
             </div>
           </div>
         )}
-
         {/* Performance Trend Chart */}
         <div className="bg-gray-800/50 border border-gray-700 rounded-xl p-6">
           <h3 className="text-lg font-semibold text-white mb-4">Тренд на представянето (последни 6 месеца)</h3>
@@ -439,7 +410,6 @@ export default function SupplierPerformancePage() {
               {[0, 25, 50, 75, 100].map((val, i) => (
                 <line key={i} x1="0" y1={150 - val * 1.5} x2="500" y2={150 - val * 1.5} stroke="#374151" strokeWidth="1" />
               ))}
-
               {/* Delivery Rate line */}
               <polyline
                 fill="none"
@@ -447,7 +417,6 @@ export default function SupplierPerformancePage() {
                 strokeWidth="3"
                 points={performanceHistory.map((d, i) => `${i * 100},${150 - d.delivery_rate * 1.5}`).join(' ')}
               />
-
               {/* Quality Score line */}
               <polyline
                 fill="none"
@@ -455,7 +424,6 @@ export default function SupplierPerformancePage() {
                 strokeWidth="3"
                 points={performanceHistory.map((d, i) => `${i * 100},${150 - d.quality_score * 1.5}`).join(' ')}
               />
-
               {/* Fill Rate line */}
               <polyline
                 fill="none"
@@ -464,7 +432,6 @@ export default function SupplierPerformancePage() {
                 points={performanceHistory.map((d, i) => `${i * 100},${150 - d.fill_rate * 1.5}`).join(' ')}
               />
             </svg>
-
             {/* X-axis labels */}
             <div className="absolute bottom-0 left-0 right-0 flex justify-between px-4 text-xs text-gray-400">
               {performanceHistory.map((d, i) => (
@@ -472,7 +439,6 @@ export default function SupplierPerformancePage() {
               ))}
             </div>
           </div>
-
           <div className="flex items-center justify-center gap-6 mt-4">
             <div className="flex items-center gap-2">
               <div className="w-4 h-1 bg-blue-500 rounded" />
@@ -488,7 +454,6 @@ export default function SupplierPerformancePage() {
             </div>
           </div>
         </div>
-
         {/* Filters */}
         <div className="flex items-center gap-4 flex-wrap">
           <select
@@ -501,7 +466,6 @@ export default function SupplierPerformancePage() {
               <option key={cat} value={cat}>{cat}</option>
             ))}
           </select>
-
           <select
             value={sortBy}
             onChange={(e) => setSortBy(e.target.value as 'overall_score' | 'total_value' | 'on_time_delivery_rate')}
@@ -511,14 +475,12 @@ export default function SupplierPerformancePage() {
             <option value="total_value">Обща стойност</option>
             <option value="on_time_delivery_rate">Навреме доставка</option>
           </select>
-
           <button
             onClick={() => setSortOrder(sortOrder === 'desc' ? 'asc' : 'desc')}
             className="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg flex items-center gap-2"
           >
             {sortOrder === 'desc' ? '↓' : '↑'} {sortOrder === 'desc' ? 'Низходящо' : 'Възходящо'}
           </button>
-
           <button
             onClick={fetchSupplierData}
             className="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg flex items-center gap-2"
@@ -529,7 +491,6 @@ export default function SupplierPerformancePage() {
             Обнови
           </button>
         </div>
-
         {/* Suppliers Table */}
         <div className="bg-gray-800/50 border border-gray-700 rounded-xl overflow-hidden">
           <div className="overflow-x-auto">
@@ -611,7 +572,6 @@ export default function SupplierPerformancePage() {
             </table>
           </div>
         </div>
-
         {/* Supplier Detail Modal */}
         {selectedSupplier && (
           <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
@@ -627,7 +587,6 @@ export default function SupplierPerformancePage() {
                   </svg>
                 </button>
               </div>
-
               <div className="space-y-6">
                 {/* Supplier Info */}
                 <div className="grid grid-cols-2 gap-4">
@@ -643,7 +602,6 @@ export default function SupplierPerformancePage() {
                     <p className="text-sm text-gray-400">{selectedSupplier.email}</p>
                   </div>
                 </div>
-
                 {/* Overall Score */}
                 <div className={`rounded-lg p-6 border ${getScoreBg(selectedSupplier.overall_score)}`}>
                   <div className="flex items-center justify-between">
@@ -662,7 +620,6 @@ export default function SupplierPerformancePage() {
                     </div>
                   </div>
                 </div>
-
                 {/* KPI Grid */}
                 <div className="grid grid-cols-3 gap-4">
                   <div className="bg-gray-700/50 rounded-lg p-4 text-center">
@@ -684,7 +641,6 @@ export default function SupplierPerformancePage() {
                     </p>
                   </div>
                 </div>
-
                 <div className="grid grid-cols-4 gap-4">
                   <div className="bg-gray-700/50 rounded-lg p-4 text-center">
                     <p className="text-sm text-gray-400">Средно време</p>
@@ -707,7 +663,6 @@ export default function SupplierPerformancePage() {
                     </p>
                   </div>
                 </div>
-
                 {/* Order Stats */}
                 <div className="grid grid-cols-2 gap-4">
                   <div className="bg-gray-700/50 rounded-lg p-4">
@@ -719,7 +674,6 @@ export default function SupplierPerformancePage() {
                     <p className="text-2xl font-bold text-white">{selectedSupplier.total_value.toLocaleString()} лв</p>
                   </div>
                 </div>
-
                 <div className="flex gap-3">
                   <button className="flex-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg">
                     Нова поръчка

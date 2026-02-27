@@ -607,7 +607,7 @@ export default function StockInventoryPage() {
               <h3 className="text-xl font-semibold mb-4">Add Warehouse</h3>
               <div className="space-y-4">
                 <div>
-                  <label className="block text-sm text-gray-400 mb-1">Name</label>
+                  <label className="block text-sm text-gray-400 mb-1">Name
                   <input
                     type="text"
                     value={warehouseForm.name}
@@ -615,9 +615,10 @@ export default function StockInventoryPage() {
                     className="w-full p-2 bg-gray-100 rounded-lg"
                     placeholder="Main Kitchen Storage"
                   />
+                  </label>
                 </div>
                 <div>
-                  <label className="block text-sm text-gray-400 mb-1">Code</label>
+                  <label className="block text-sm text-gray-400 mb-1">Code
                   <input
                     type="text"
                     value={warehouseForm.code}
@@ -625,9 +626,10 @@ export default function StockInventoryPage() {
                     className="w-full p-2 bg-gray-100 rounded-lg"
                     placeholder="WH-MAIN"
                   />
+                  </label>
                 </div>
                 <div>
-                  <label className="block text-sm text-gray-400 mb-1">Type</label>
+                  <label className="block text-sm text-gray-400 mb-1">Type
                   <select
                     value={warehouseForm.warehouse_type}
                     onChange={(e) => setWarehouseForm({ ...warehouseForm, warehouse_type: e.target.value })}
@@ -639,6 +641,7 @@ export default function StockInventoryPage() {
                     <option value="dry_storage">Dry Storage</option>
                     <option value="prep">Prep Area</option>
                   </select>
+                  </label>
                 </div>
               </div>
               <div className="flex gap-3 mt-6">
@@ -682,7 +685,7 @@ export default function StockInventoryPage() {
               <div className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm text-gray-400 mb-1">From Warehouse</label>
+                    <label className="block text-sm text-gray-400 mb-1">From Warehouse
                     <select
                       value={transferForm.from_warehouse_id}
                       onChange={(e) => setTransferForm({ ...transferForm, from_warehouse_id: parseInt(e.target.value) })}
@@ -693,9 +696,10 @@ export default function StockInventoryPage() {
                         <option key={w.id} value={w.id}>{w.name}</option>
                       ))}
                     </select>
+                    </label>
                   </div>
                   <div>
-                    <label className="block text-sm text-gray-400 mb-1">To Warehouse</label>
+                    <label className="block text-sm text-gray-400 mb-1">To Warehouse
                     <select
                       value={transferForm.to_warehouse_id}
                       onChange={(e) => setTransferForm({ ...transferForm, to_warehouse_id: parseInt(e.target.value) })}
@@ -706,10 +710,11 @@ export default function StockInventoryPage() {
                         <option key={w.id} value={w.id}>{w.name}</option>
                       ))}
                     </select>
+                    </label>
                   </div>
                 </div>
                 <div>
-                  <label className="block text-sm text-gray-400 mb-1">Notes</label>
+                  <label className="block text-sm text-gray-400 mb-1">Notes
                   <textarea
                     value={transferForm.notes}
                     onChange={(e) => setTransferForm({ ...transferForm, notes: e.target.value })}
@@ -717,6 +722,7 @@ export default function StockInventoryPage() {
                     rows={2}
                     placeholder="Optional notes..."
                   />
+                  </label>
                 </div>
               </div>
               <div className="flex gap-3 mt-6">

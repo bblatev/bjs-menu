@@ -1,10 +1,9 @@
 'use client';
-
 import { useState, useEffect } from 'react';
 import AdminLayout from '@/components/AdminLayout';
-import { API_URL, getAuthHeaders } from '@/lib/api';
-
 import { toast } from '@/lib/toast';
+
+import { api } from '@/lib/api';
 interface ForecastItem {
   id: number;
   item_name: string;
@@ -21,7 +20,6 @@ interface ForecastItem {
   days_until_stockout: number;
   last_updated: string;
 }
-
 interface ForecastStats {
   total_items_forecasted: number;
   avg_forecast_accuracy: number;
@@ -29,18 +27,15 @@ interface ForecastStats {
   potential_stockouts_7d: number;
   total_recommended_order_value: number;
 }
-
 interface SeasonalityData {
   month: string;
   demand_index: number;
 }
-
 interface TrendData {
   date: string;
   actual: number;
   predicted: number;
 }
-
 export default function DemandForecastingPage() {
   const [forecastItems, setForecastItems] = useState<ForecastItem[]>([]);
   const [stats, setStats] = useState<ForecastStats | null>(null);
@@ -51,28 +46,22 @@ export default function DemandForecastingPage() {
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [forecastHorizon, setForecastHorizon] = useState<'7d' | '30d' | '90d'>('30d');
   const [showReorderOnly, setShowReorderOnly] = useState(false);
-
-
   useEffect(() => {
     fetchForecastData();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [forecastHorizon]);
-
   const fetchForecastData = async () => {
     setLoading(true);
     try {
-      const headers = getAuthHeaders();
-
       // Try to fetch from API, fall back to demo data
       try {
-        const [itemsRes, statsRes] = await Promise.all([
-          fetch(`${API_URL}/stock/forecasting?horizon=${forecastHorizon}`, { credentials: 'include', headers }),
-          fetch(`${API_URL}/stock/forecasting/stats`, { credentials: 'include', headers })
+        const [itemsRes, statsRes] = await Promise.allSettled([
+          api.get(`/stock/forecasting?horizon=${forecastHorizon}`),
+          api.get('/stock/forecasting/stats')
         ]);
-
-        if (itemsRes.ok && statsRes.ok) {
-          const itemsData = await itemsRes.json();
-          const statsData = await statsRes.json();
+        if (itemsRes.status === 'fulfilled' && statsRes.status === 'fulfilled') {
+          const itemsData: any = itemsRes.value;
+          const statsData: any = statsRes.value;
           setForecastItems(itemsData.items || itemsData);
           setStats(statsData);
         } else {
@@ -89,7 +78,6 @@ export default function DemandForecastingPage() {
       setLoading(false);
     }
   };
-
   const loadDemoData = () => {
     const demoItems: ForecastItem[] = [
       {
@@ -221,7 +209,6 @@ export default function DemandForecastingPage() {
         last_updated: new Date().toISOString()
       }
     ];
-
     const demoStats: ForecastStats = {
       total_items_forecasted: 156,
       avg_forecast_accuracy: 89.5,
@@ -229,7 +216,6 @@ export default function DemandForecastingPage() {
       potential_stockouts_7d: 4,
       total_recommended_order_value: 8750
     };
-
     const demoSeasonality: SeasonalityData[] = [
       { month: 'Яну', demand_index: 0.75 },
       { month: 'Фев', demand_index: 0.8 },
@@ -244,7 +230,6 @@ export default function DemandForecastingPage() {
       { month: 'Ное', demand_index: 0.85 },
       { month: 'Дек', demand_index: 1.3 }
     ];
-
     const demoTrend: TrendData[] = [];
     const today = new Date();
     for (let i = 29; i >= 0; i--) {
@@ -257,21 +242,17 @@ export default function DemandForecastingPage() {
         predicted: Math.round(baseValue)
       });
     }
-
     setForecastItems(demoItems);
     setStats(demoStats);
     setSeasonalityData(demoSeasonality);
     setTrendData(demoTrend);
   };
-
   const categories = ['all', ...new Set(forecastItems.map(item => item.category))];
-
   const filteredItems = forecastItems.filter(item => {
     if (selectedCategory !== 'all' && item.category !== selectedCategory) return false;
     if (showReorderOnly && item.recommended_order === 0) return false;
     return true;
   });
-
   const getTrendIcon = (trend: string) => {
     switch (trend) {
       case 'up': return '↑';
@@ -279,7 +260,6 @@ export default function DemandForecastingPage() {
       default: return '→';
     }
   };
-
   const getTrendColor = (trend: string) => {
     switch (trend) {
       case 'up': return 'text-green-400';
@@ -287,19 +267,16 @@ export default function DemandForecastingPage() {
       default: return 'text-gray-400';
     }
   };
-
   const getStockoutRisk = (days: number) => {
     if (days <= 2) return { label: 'Критично', color: 'bg-red-500/20 text-red-400 border-red-500/30' };
     if (days <= 5) return { label: 'Високо', color: 'bg-orange-500/20 text-orange-400 border-orange-500/30' };
     if (days <= 10) return { label: 'Средно', color: 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30' };
     return { label: 'Ниско', color: 'bg-green-500/20 text-green-400 border-green-500/30' };
   };
-
   const generateBulkOrder = () => {
     const itemsToOrder = filteredItems.filter(item => item.recommended_order > 0);
     toast.success(`Генериране на поръчка за ${itemsToOrder.length} артикула...`);
   };
-
   return (
     <AdminLayout>
       <div className="p-6 space-y-6">
@@ -330,7 +307,6 @@ export default function DemandForecastingPage() {
             </button>
           </div>
         </div>
-
         {/* Stats Cards */}
         {stats && (
           <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
@@ -347,7 +323,6 @@ export default function DemandForecastingPage() {
                 </div>
               </div>
             </div>
-
             <div className="bg-gray-800/50 border border-gray-700 rounded-xl p-4">
               <div className="flex items-center gap-3">
                 <div className="p-2 bg-green-500/20 rounded-lg">
@@ -361,7 +336,6 @@ export default function DemandForecastingPage() {
                 </div>
               </div>
             </div>
-
             <div className="bg-gray-800/50 border border-gray-700 rounded-xl p-4">
               <div className="flex items-center gap-3">
                 <div className="p-2 bg-yellow-500/20 rounded-lg">
@@ -375,7 +349,6 @@ export default function DemandForecastingPage() {
                 </div>
               </div>
             </div>
-
             <div className="bg-gray-800/50 border border-gray-700 rounded-xl p-4">
               <div className="flex items-center gap-3">
                 <div className="p-2 bg-red-500/20 rounded-lg">
@@ -389,7 +362,6 @@ export default function DemandForecastingPage() {
                 </div>
               </div>
             </div>
-
             <div className="bg-gray-800/50 border border-gray-700 rounded-xl p-4">
               <div className="flex items-center gap-3">
                 <div className="p-2 bg-purple-500/20 rounded-lg">
@@ -405,7 +377,6 @@ export default function DemandForecastingPage() {
             </div>
           </div>
         )}
-
         {/* Charts Section */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Seasonality Chart */}
@@ -424,7 +395,6 @@ export default function DemandForecastingPage() {
               ))}
             </div>
           </div>
-
           {/* Trend Chart */}
           <div className="bg-gray-800/50 border border-gray-700 rounded-xl p-6">
             <h3 className="text-lg font-semibold text-white mb-4">Тренд: Реално vs Прогнозирано</h3>
@@ -459,7 +429,6 @@ export default function DemandForecastingPage() {
             </div>
           </div>
         </div>
-
         {/* Filters */}
         <div className="flex items-center gap-4 flex-wrap">
           <select
@@ -472,7 +441,6 @@ export default function DemandForecastingPage() {
               <option key={cat} value={cat}>{cat}</option>
             ))}
           </select>
-
           <label className="flex items-center gap-2 text-gray-300 cursor-pointer">
             <input
               type="checkbox"
@@ -482,7 +450,6 @@ export default function DemandForecastingPage() {
             />
             Само за поръчка
           </label>
-
           <button
             onClick={fetchForecastData}
             className="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg flex items-center gap-2"
@@ -493,7 +460,6 @@ export default function DemandForecastingPage() {
             Обнови прогнозите
           </button>
         </div>
-
         {/* Forecast Table */}
         <div className="bg-gray-800/50 border border-gray-700 rounded-xl overflow-hidden">
           <div className="overflow-x-auto">
@@ -597,7 +563,6 @@ export default function DemandForecastingPage() {
             </table>
           </div>
         </div>
-
         {/* Item Detail Modal */}
         {selectedItem && (
           <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
@@ -613,7 +578,6 @@ export default function DemandForecastingPage() {
                   </svg>
                 </button>
               </div>
-
               <div className="space-y-6">
                 <div className="grid grid-cols-2 gap-4">
                   <div className="bg-gray-700/50 rounded-lg p-4">
@@ -625,7 +589,6 @@ export default function DemandForecastingPage() {
                     <p className="text-lg font-semibold text-white">{selectedItem.category}</p>
                   </div>
                 </div>
-
                 <div className="grid grid-cols-3 gap-4">
                   <div className="bg-gray-700/50 rounded-lg p-4 text-center">
                     <p className="text-sm text-gray-400">Текуща наличност</p>
@@ -642,7 +605,6 @@ export default function DemandForecastingPage() {
                     </p>
                   </div>
                 </div>
-
                 <div className="grid grid-cols-2 gap-4">
                   <div className="bg-gray-700/50 rounded-lg p-4">
                     <p className="text-sm text-gray-400 mb-2">Прогноза за търсенето</p>
@@ -677,7 +639,6 @@ export default function DemandForecastingPage() {
                     </div>
                   </div>
                 </div>
-
                 {selectedItem.recommended_order > 0 && (
                   <div className="bg-blue-500/20 border border-blue-500/30 rounded-lg p-4">
                     <div className="flex items-center justify-between">

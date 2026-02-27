@@ -2,7 +2,9 @@
 
 import { useState, useEffect, useCallback } from 'react';
 
-import { API_URL, getAuthHeaders } from '@/lib/api';
+import { api } from '@/lib/api';
+
+
 
 interface TaxFiling {
   id: number;
@@ -78,20 +80,11 @@ export default function TaxCenterPage() {
   const fetchTaxData = useCallback(async () => {
     setIsLoading(true);
     try {
-      const response = await fetch(`${API_URL}/tax/filings?year=${year}`, {
-        credentials: 'include',
-        headers: getAuthHeaders(),
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        setFilings(data.filings || []);
-        setCategories(data.categories || []);
-        setDeadlines(data.deadlines || []);
-        setDocuments(data.documents || []);
-      } else {
-        console.error('Failed to load tax data:', response.status);
-      }
+      const data: any = await api.get(`/tax/filings?year=${year}`);
+            setFilings(data.filings || []);
+      setCategories(data.categories || []);
+      setDeadlines(data.deadlines || []);
+      setDocuments(data.documents || []);
     } catch (err) {
       console.error('Failed to fetch tax data:', err);
     } finally {

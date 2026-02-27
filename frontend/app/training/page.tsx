@@ -247,7 +247,6 @@ export default function TrainingModePage() {
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                   Select Trainee
-                </label>
                 <select
                   value={selectedUser}
                   onChange={e => setSelectedUser(Number(e.target.value))}
@@ -257,6 +256,7 @@ export default function TrainingModePage() {
                     <option key={user.id} value={user.id}>{user.name}</option>
                   ))}
                 </select>
+                </label>
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">

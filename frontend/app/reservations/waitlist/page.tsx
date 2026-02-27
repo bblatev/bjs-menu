@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Link from 'next/link';
 
-import { API_URL, getAuthHeaders } from '@/lib/api';
+import { api } from '@/lib/api';
 
 import { toast } from '@/lib/toast';
 interface WaitlistEntry {
@@ -68,35 +68,20 @@ export default function WaitlistPage() {
   const loadData = async () => {
     try {
       setError(null);
-      const headers = getAuthHeaders();
-      if (!headers['Authorization']) {
-        window.location.href = '/';
-        return;
-      }
+      const [entriesRes, statsRes] = await Promise.allSettled([
+  api.get(`/waitlist/?status=${filter === 'all' ? '' : filter}`),
+  api.get('/waitlist/stats')
+]);
 
-      const [entriesRes, statsRes] = await Promise.all([
-        fetch(`${API_URL}/waitlist/?status=${filter === 'all' ? '' : filter}`, {
-          credentials: 'include',
-          headers: getAuthHeaders(),
-        }),
-        fetch(`${API_URL}/waitlist/stats`, {
-          credentials: 'include',
-          headers: getAuthHeaders(),
-        }),
-      ]);
-
-      if (entriesRes.ok) {
-        const entriesData = await entriesRes.json();
+      if (entriesRes.status === 'fulfilled') {
+        const entriesData: any = entriesRes.value;
         setEntries(entriesData);
-      } else if (entriesRes.status === 401) {
-        window.location.href = '/';
-        return;
       } else {
         throw new Error('Failed to load waitlist entries');
       }
 
-      if (statsRes.ok) {
-        const statsData = await statsRes.json();
+      if (statsRes.status === 'fulfilled') {
+        const statsData: any = statsRes.value;
         setStats(statsData);
       }
     } catch (err) {
@@ -109,30 +94,19 @@ export default function WaitlistPage() {
 
   const addToWaitlist = async () => {
     try {
-      const response = await fetch(`${API_URL}/waitlist/`, {
-        credentials: 'include',
-        method: 'POST',
-        headers: getAuthHeaders(),
-        body: JSON.stringify(newEntry),
+      await api.post('/waitlist/', newEntry);
+      setShowAddModal(false);
+      setNewEntry({
+        guest_name: '',
+        phone: '',
+        party_size: 2,
+        quoted_wait: 15,
+        seating_preference: '',
+        special_requests: '',
+        vip: false,
       });
-
-      if (response.ok) {
-        setShowAddModal(false);
-        setNewEntry({
-          guest_name: '',
-          phone: '',
-          party_size: 2,
-          quoted_wait: 15,
-          seating_preference: '',
-          special_requests: '',
-          vip: false,
-        });
-        loadData();
-        toast.success('Guest added to waitlist successfully!');
-      } else {
-        const errorData = await response.json();
-        toast.error(`Error: ${errorData.detail || 'Failed to add to waitlist'}`);
-      }
+      loadData();
+      toast.success('Guest added to waitlist successfully!');
     } catch (err) {
       console.error('Error adding to waitlist:', err);
       toast.error('Failed to add guest to waitlist');
@@ -141,19 +115,12 @@ export default function WaitlistPage() {
 
   const sendNotification = async (entryId: number) => {
     try {
-      const response = await fetch(`${API_URL}/waitlist/${entryId}/notify`, {
-        credentials: 'include',
-        method: 'POST',
-        headers: getAuthHeaders(),
-      });
-
-      if (response.ok) {
-        if (audioRef.current) {
-          audioRef.current.play().catch(() => {});
-        }
-        loadData();
-        toast.error('SMS notification sent!');
+      await api.post(`/waitlist/${entryId}/notify`);
+      if (audioRef.current) {
+        audioRef.current.play().catch(() => {});
       }
+      loadData();
+      toast.error('SMS notification sent!');
     } catch (err) {
       console.error('Error sending notification:', err);
       toast.error('Failed to send notification');
@@ -162,18 +129,10 @@ export default function WaitlistPage() {
 
   const seatGuest = async (entryId: number, tableId: string) => {
     try {
-      const response = await fetch(`${API_URL}/waitlist/${entryId}/seat`, {
-        credentials: 'include',
-        method: 'POST',
-        headers: getAuthHeaders(),
-        body: JSON.stringify({ table_number: tableId }),
-      });
-
-      if (response.ok) {
-        loadData();
-        const entry = entries.find((e) => e.id === entryId);
-        toast.success(`Guest ${entry?.guest_name} seated at ${tableId}`);
-      }
+      await api.post(`/waitlist/${entryId}/seat`, { table_number: tableId });
+      loadData();
+      const entry = entries.find((e) => e.id === entryId);
+      toast.success(`Guest ${entry?.guest_name} seated at ${tableId}`);
     } catch (err) {
       console.error('Error seating guest:', err);
       toast.error('Failed to seat guest');
@@ -184,18 +143,10 @@ export default function WaitlistPage() {
     try {
       const endpoint =
         reason === 'no_show'
-          ? `${API_URL}/waitlist/${entryId}/no-show`
-          : `${API_URL}/waitlist/${entryId}/cancel`;
-
-      const response = await fetch(endpoint, {
-        credentials: 'include',
-        method: 'POST',
-        headers: getAuthHeaders(),
-      });
-
-      if (response.ok) {
-        loadData();
-      }
+          ? `/waitlist/${entryId}/no-show`
+          : `/waitlist/${entryId}/cancel`;
+      await api.post(endpoint);
+      loadData();
     } catch (err) {
       console.error('Error updating entry:', err);
     }
@@ -518,7 +469,7 @@ export default function WaitlistPage() {
 
               <div className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Guest Name *</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Guest Name *
                   <input
                     type="text"
                     value={newEntry.guest_name}
@@ -526,10 +477,11 @@ export default function WaitlistPage() {
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
                     placeholder="John Doe"
                   />
+                  </label>
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Phone Number *</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Phone Number *
                   <input
                     type="tel"
                     value={newEntry.phone}
@@ -537,11 +489,12 @@ export default function WaitlistPage() {
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
                     placeholder="+1234567890"
                   />
+                  </label>
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Party Size</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Party Size
                     <div className="flex items-center gap-2">
                       <button
                         onClick={() => setNewEntry({ ...newEntry, party_size: Math.max(1, newEntry.party_size - 1) })}
@@ -564,10 +517,11 @@ export default function WaitlistPage() {
                         +
                       </button>
                     </div>
+                    </label>
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Quoted Wait (min)</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Quoted Wait (min)
                     <select
                       value={newEntry.quoted_wait}
                       onChange={(e) => setNewEntry({ ...newEntry, quoted_wait: parseInt(e.target.value) })}
@@ -581,11 +535,12 @@ export default function WaitlistPage() {
                       <option value="45">45 minutes</option>
                       <option value="60">60 minutes</option>
                     </select>
+                    </label>
                   </div>
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Seating Preference</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Seating Preference
                   <select
                     value={newEntry.seating_preference}
                     onChange={(e) => setNewEntry({ ...newEntry, seating_preference: e.target.value })}
@@ -599,10 +554,11 @@ export default function WaitlistPage() {
                     <option value="Bar">Near bar</option>
                     <option value="Booth">Booth</option>
                   </select>
+                  </label>
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Special Requests</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Special Requests
                   <textarea
                     value={newEntry.special_requests}
                     onChange={(e) => setNewEntry({ ...newEntry, special_requests: e.target.value })}
@@ -610,6 +566,7 @@ export default function WaitlistPage() {
                     rows={2}
                     placeholder="Any special requests or notes..."
                   />
+                  </label>
                 </div>
 
                 <label className="flex items-center gap-2 cursor-pointer">

@@ -16,9 +16,9 @@ export default function WhatsAppPage() {
     Promise.all([
       api.get('/api/v1/whatsapp/').catch(() => ({ data: { configured: false } })),
       api.get('/api/v1/whatsapp/log').catch(() => ({ data: { messages: [] } })),
-    ]).then(([s, l]) => {
-      setStatus(s.data);
-      setLog(l.data.messages || []);
+    ]).then(([s, l]: any[]) => {
+      setStatus(s);
+      setLog(l.messages || []);
     }).finally(() => setLoading(false));
   }, []);
 
@@ -39,10 +39,10 @@ export default function WhatsAppPage() {
       <div className="bg-white border rounded-lg p-6 mb-6">
         <div className="flex items-center gap-3 mb-4"><h2 className="text-lg font-semibold">Configuration</h2><span className={`px-2 py-1 rounded text-xs ${status?.configured ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>{status?.configured ? 'Connected' : 'Not Connected'}</span></div>
         <div className="grid grid-cols-2 gap-4">
-          <div><label className="block text-sm font-medium mb-1">Phone Number ID</label><input className="w-full border rounded px-3 py-2" value={config.phoneNumberId} onChange={e => setConfig(p => ({...p, phoneNumberId: e.target.value}))} placeholder="From Meta Business" /></div>
-          <div><label className="block text-sm font-medium mb-1">Access Token</label><input className="w-full border rounded px-3 py-2" type="password" value={config.accessToken} onChange={e => setConfig(p => ({...p, accessToken: e.target.value}))} placeholder="Permanent access token" /></div>
-          <div><label className="block text-sm font-medium mb-1">Verify Token</label><input className="w-full border rounded px-3 py-2" value={config.verifyToken} onChange={e => setConfig(p => ({...p, verifyToken: e.target.value}))} placeholder="For webhook verification" /></div>
-          <div><label className="block text-sm font-medium mb-1">Business Account ID</label><input className="w-full border rounded px-3 py-2" value={config.businessAccountId} onChange={e => setConfig(p => ({...p, businessAccountId: e.target.value}))} /></div>
+          <div><label className="block text-sm font-medium mb-1">Phone Number ID <input className="w-full border rounded px-3 py-2" value={config.phoneNumberId} onChange={e => setConfig(p => ({...p, phoneNumberId: e.target.value}))} placeholder="From Meta Business" /></label></div>
+          <div><label className="block text-sm font-medium mb-1">Access Token <input className="w-full border rounded px-3 py-2" type="password" value={config.accessToken} onChange={e => setConfig(p => ({...p, accessToken: e.target.value}))} placeholder="Permanent access token" /></label></div>
+          <div><label className="block text-sm font-medium mb-1">Verify Token <input className="w-full border rounded px-3 py-2" value={config.verifyToken} onChange={e => setConfig(p => ({...p, verifyToken: e.target.value}))} placeholder="For webhook verification" /></label></div>
+          <div><label className="block text-sm font-medium mb-1">Business Account ID <input className="w-full border rounded px-3 py-2" value={config.businessAccountId} onChange={e => setConfig(p => ({...p, businessAccountId: e.target.value}))} /></label></div>
         </div>
         <button className="mt-4 px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700" onClick={() => toast.success('WhatsApp configuration saved')}>Save</button>
       </div>

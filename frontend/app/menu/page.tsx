@@ -1,20 +1,18 @@
 "use client";
-
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
-import { API_URL, getAuthHeaders } from "@/lib/api";
 import { useConfirm } from "@/hooks/useConfirm";
-
 import { toast } from '@/lib/toast';
+
+import { api } from '@/lib/api';
 interface MultiLang {
   bg: string;
   en: string;
   de?: string;
   ru?: string;
 }
-
 interface Category {
   id: number;
   name: MultiLang;
@@ -22,14 +20,12 @@ interface Category {
   sort_order: number;
   active: boolean;
 }
-
 interface Station {
   id: number;
   name: MultiLang;
   station_type: string;
   active: boolean;
 }
-
 interface ModifierOption {
   id: number;
   group_id: number;
@@ -38,7 +34,6 @@ interface ModifierOption {
   sort_order: number;
   available: boolean;
 }
-
 interface ModifierGroup {
   id: number;
   item_id: number;
@@ -49,7 +44,6 @@ interface ModifierGroup {
   sort_order: number;
   options: ModifierOption[];
 }
-
 interface MenuItem {
   id: number;
   category_id: number;
@@ -61,9 +55,7 @@ interface MenuItem {
   available: boolean;
   allergens?: string[];
 }
-
 type TabType = "items" | "categories" | "modifiers";
-
 export default function MenuPage() {
   const router = useRouter();
   const confirm = useConfirm();
@@ -73,7 +65,6 @@ export default function MenuPage() {
   const [loading, setLoading] = useState(true);
   const [activeCategory, setActiveCategory] = useState<number | null>(null);
   const [activeTab, setActiveTab] = useState<TabType>("items");
-
   // Item modal state
   const [showItemModal, setShowItemModal] = useState(false);
   const [editingItem, setEditingItem] = useState<MenuItem | null>(null);
@@ -87,7 +78,6 @@ export default function MenuPage() {
     station_id: 0,
     available: true,
   });
-
   // Category modal state
   const [showCategoryModal, setShowCategoryModal] = useState(false);
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
@@ -98,10 +88,9 @@ export default function MenuPage() {
     description_en: "",
     sort_order: 0,
   });
-
   // Modifiers state
   const [selectedItemForModifiers, setSelectedItemForModifiers] = useState<MenuItem | null>(null);
-  const [modifierGroups, setModifierGroups] = useState<ModifierGroup[]>([]);
+  const [modifierGroups] = useState<ModifierGroup[]>([]);
   const [showModifierGroupModal, setShowModifierGroupModal] = useState(false);
   const [editingModifierGroup, setEditingModifierGroup] = useState<ModifierGroup | null>(null);
   const [modifierGroupForm, setModifierGroupForm] = useState({
@@ -111,7 +100,6 @@ export default function MenuPage() {
     min_selections: 0,
     max_selections: 1,
   });
-
   const [showOptionModal, setShowOptionModal] = useState(false);
   const [editingOption, setEditingOption] = useState<ModifierOption | null>(null);
   const [targetGroupId, setTargetGroupId] = useState<number | null>(null);
@@ -120,35 +108,30 @@ export default function MenuPage() {
     name_en: "",
     price_delta: 0,
   });
-
   useEffect(() => {
     loadData();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-
   const loadData = async () => {
     try {
-      const headers = getAuthHeaders();
-
-      const [catsRes, itemsRes, stationsRes] = await Promise.all([
-        fetch(`${API_URL}/menu-admin/categories`, { credentials: 'include', headers }),
-        fetch(`${API_URL}/menu-admin/items`, { credentials: 'include', headers }),
-        fetch(`${API_URL}/menu-admin/stations`, { credentials: 'include', headers }),
-      ]);
-
-      if (catsRes.ok) {
-        const catsData = await catsRes.json();
-        const cats = Array.isArray(catsData) ? catsData : (catsData.categories || []);
+      const [catsRes, itemsRes, stationsRes] = await Promise.allSettled([
+  api.get('/menu-admin/categories'),
+  api.get('/menu-admin/items'),
+  api.get('/menu-admin/stations')
+]);
+      if (catsRes.status === 'fulfilled') {
+        const catsData: any = catsRes.value;
+        const cats = Array.isArray(catsData) ? catsData : (catsData.items || catsData.categories || []);
         setCategories(cats);
         if (cats.length > 0 && !activeCategory) setActiveCategory(cats[0].id);
       }
-      if (itemsRes.ok) {
-        const itemsData = await itemsRes.json();
+      if (itemsRes.status === 'fulfilled') {
+        const itemsData: any = itemsRes.value;
         setItems(Array.isArray(itemsData) ? itemsData : (itemsData.items || []));
       }
-      if (stationsRes.ok) {
-        const stationsData = await stationsRes.json();
-        setStations(Array.isArray(stationsData) ? stationsData : (stationsData.stations || []));
+      if (stationsRes.status === 'fulfilled') {
+        const stationsData: any = stationsRes.value;
+        setStations(Array.isArray(stationsData) ? stationsData : (stationsData.items || stationsData.stations || []));
       }
     } catch (error) {
       console.error("Error loading data:", error);
@@ -156,135 +139,69 @@ export default function MenuPage() {
       setLoading(false);
     }
   };
-
   const loadModifiers = async (itemId: number) => {
     try {
-      const res = await fetch(
-        `${API_URL}/menu-admin/items/${itemId}/modifiers`,
-        { credentials: 'include', headers: getAuthHeaders() }
-      );
-      if (res.ok) {
-        setModifierGroups(await res.json());
-      }
+      await api.get(`/menu-admin/items/${itemId}/modifiers`);
     } catch (error) {
       console.error("Error loading modifiers:", error);
     }
   };
-
   // ==================== ITEM HANDLERS ====================
-
   const handleCreateItem = async (e: React.FormEvent) => {
     e.preventDefault();
-
     try {
-      const response = await fetch(
-        `${API_URL}/menu-admin/items`,
-        {
-          credentials: 'include',
-          method: "POST",
-          headers: getAuthHeaders(),
-          body: JSON.stringify({
+      await api.post('/menu-admin/items', {
             name: { bg: itemForm.name_bg, en: itemForm.name_en },
             description: { bg: itemForm.description_bg, en: itemForm.description_en },
             price: itemForm.price,
             category_id: itemForm.category_id,
             station_id: itemForm.station_id,
             available: itemForm.available,
-          }),
-        }
-      );
-
-      if (response.ok) {
-        setShowItemModal(false);
-        resetItemForm();
-        loadData();
-      } else {
-        const err = await response.json();
-        toast.error(err.detail || "Error creating item");
-      }
+          });
+      setShowItemModal(false);
+      resetItemForm();
+      loadData();
     } catch (error) {
       toast.error("Error creating item");
     }
   };
-
   const handleUpdateItem = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingItem) return;
-
     try {
-      const response = await fetch(
-        `${API_URL}/menu-admin/items/${editingItem.id}`,
-        {
-          credentials: 'include',
-          method: "PUT",
-          headers: getAuthHeaders(),
-          body: JSON.stringify({
+      await api.put(`/menu-admin/items/${editingItem.id}`, {
             name: { bg: itemForm.name_bg, en: itemForm.name_en },
             description: { bg: itemForm.description_bg, en: itemForm.description_en },
             price: itemForm.price,
             category_id: itemForm.category_id,
             station_id: itemForm.station_id,
             available: itemForm.available,
-          }),
-        }
-      );
-
-      if (response.ok) {
-        setShowItemModal(false);
-        setEditingItem(null);
-        resetItemForm();
-        loadData();
-      } else {
-        const err = await response.json();
-        toast.error(err.detail || "Error updating item");
-      }
+          });
+      setShowItemModal(false);
+      setEditingItem(null);
+      resetItemForm();
+      loadData();
     } catch (error) {
       toast.error("Error updating item");
     }
   };
-
   const handleDeleteItem = async (itemId: number) => {
     if (!(await confirm({ message: "Are you sure you want to delete this item?", variant: 'danger' }))) return;
-
     try {
-      const response = await fetch(
-        `${API_URL}/menu-admin/items/${itemId}`,
-        {
-          credentials: 'include',
-          method: "DELETE",
-          headers: getAuthHeaders(),
-        }
-      );
-
-      if (response.ok) {
-        loadData();
-      } else {
-        toast.error("Error deleting item");
-      }
+      await api.del(`/menu-admin/items/${itemId}`);
+      loadData();
     } catch (error) {
       toast.error("Error deleting item");
     }
   };
-
   const toggleAvailability = async (item: MenuItem) => {
     try {
-      const response = await fetch(
-        `${API_URL}/menu-admin/items/${item.id}/toggle-available`,
-        {
-          credentials: 'include',
-          method: "PATCH",
-          headers: getAuthHeaders(),
-        }
-      );
-
-      if (response.ok) {
-        loadData();
-      }
+      await api.patch(`/menu-admin/items/${item.id}/toggle-available`);
+      loadData();
     } catch (error) {
       console.error("Error toggling availability:", error);
     }
   };
-
   const openEditItemModal = (item: MenuItem) => {
     setEditingItem(item);
     setItemForm({
@@ -299,7 +216,6 @@ export default function MenuPage() {
     });
     setShowItemModal(true);
   };
-
   const openCreateItemModal = () => {
     setEditingItem(null);
     resetItemForm();
@@ -311,7 +227,6 @@ export default function MenuPage() {
     }
     setShowItemModal(true);
   };
-
   const resetItemForm = () => {
     setItemForm({
       name_bg: "",
@@ -324,73 +239,39 @@ export default function MenuPage() {
       available: true,
     });
   };
-
   // ==================== CATEGORY HANDLERS ====================
-
   const handleCreateCategory = async (e: React.FormEvent) => {
     e.preventDefault();
-
     try {
-      const response = await fetch(
-        `${API_URL}/menu-admin/categories`,
-        {
-          credentials: 'include',
-          method: "POST",
-          headers: getAuthHeaders(),
-          body: JSON.stringify({
+      await api.post('/menu-admin/categories', {
             name: { bg: categoryForm.name_bg, en: categoryForm.name_en },
             description: { bg: categoryForm.description_bg, en: categoryForm.description_en },
             sort_order: categoryForm.sort_order,
-          }),
-        }
-      );
-
-      if (response.ok) {
-        setShowCategoryModal(false);
-        resetCategoryForm();
-        loadData();
-      } else {
-        const err = await response.json();
-        toast.error(err.detail || "Error creating category");
-      }
+          });
+      setShowCategoryModal(false);
+      resetCategoryForm();
+      loadData();
     } catch (error) {
       toast.error("Error creating category");
     }
   };
-
   const handleUpdateCategory = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingCategory) return;
-
     try {
-      const response = await fetch(
-        `${API_URL}/menu-admin/categories/${editingCategory.id}`,
-        {
-          credentials: 'include',
-          method: "PUT",
-          headers: getAuthHeaders(),
-          body: JSON.stringify({
+      await api.put(`/menu-admin/categories/${editingCategory.id}`, {
             name: { bg: categoryForm.name_bg, en: categoryForm.name_en },
             description: { bg: categoryForm.description_bg, en: categoryForm.description_en },
             sort_order: categoryForm.sort_order,
-          }),
-        }
-      );
-
-      if (response.ok) {
-        setShowCategoryModal(false);
-        setEditingCategory(null);
-        resetCategoryForm();
-        loadData();
-      } else {
-        const err = await response.json();
-        toast.error(err.detail || "Error updating category");
-      }
+          });
+      setShowCategoryModal(false);
+      setEditingCategory(null);
+      resetCategoryForm();
+      loadData();
     } catch (error) {
       toast.error("Error updating category");
     }
   };
-
   const handleDeleteCategory = async (categoryId: number) => {
     const itemsInCategory = items.filter(i => i.category_id === categoryId).length;
     if (itemsInCategory > 0) {
@@ -398,31 +279,16 @@ export default function MenuPage() {
       return;
     }
     if (!(await confirm({ message: "Are you sure you want to delete this category?", variant: 'danger' }))) return;
-
     try {
-      const response = await fetch(
-        `${API_URL}/menu-admin/categories/${categoryId}`,
-        {
-          credentials: 'include',
-          method: "DELETE",
-          headers: getAuthHeaders(),
-        }
-      );
-
-      if (response.ok) {
-        loadData();
-        if (activeCategory === categoryId) {
-          setActiveCategory(categories.length > 1 ? categories[0].id : null);
-        }
-      } else {
-        const err = await response.json();
-        toast.error(err.detail || "Error deleting category");
+      await api.del(`/menu-admin/categories/${categoryId}`);
+      loadData();
+      if (activeCategory === categoryId) {
+        setActiveCategory(categories.length > 1 ? categories[0].id : null);
       }
     } catch (error) {
       toast.error("Error deleting category");
     }
   };
-
   const openEditCategoryModal = (cat: Category) => {
     setEditingCategory(cat);
     setCategoryForm({
@@ -434,14 +300,12 @@ export default function MenuPage() {
     });
     setShowCategoryModal(true);
   };
-
   const openCreateCategoryModal = () => {
     setEditingCategory(null);
     resetCategoryForm();
     setCategoryForm(prev => ({ ...prev, sort_order: categories.length }));
     setShowCategoryModal(true);
   };
-
   const resetCategoryForm = () => {
     setCategoryForm({
       name_bg: "",
@@ -451,107 +315,58 @@ export default function MenuPage() {
       sort_order: 0,
     });
   };
-
   // ==================== MODIFIER HANDLERS ====================
-
   const openModifiersPanel = (item: MenuItem) => {
     setSelectedItemForModifiers(item);
     setActiveTab("modifiers");
     loadModifiers(item.id);
   };
-
   const handleCreateModifierGroup = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedItemForModifiers) return;
-
     try {
-      const response = await fetch(
-        `${API_URL}/menu-admin/modifiers`,
-        {
-          credentials: 'include',
-          method: "POST",
-          headers: getAuthHeaders(),
-          body: JSON.stringify({
+      await api.post('/menu-admin/modifiers', {
             item_id: selectedItemForModifiers.id,
             name: { bg: modifierGroupForm.name_bg, en: modifierGroupForm.name_en },
             required: modifierGroupForm.required,
             min_selections: modifierGroupForm.min_selections,
             max_selections: modifierGroupForm.max_selections,
-          }),
-        }
-      );
-
-      if (response.ok) {
-        setShowModifierGroupModal(false);
-        resetModifierGroupForm();
-        loadModifiers(selectedItemForModifiers.id);
-      } else {
-        const err = await response.json();
-        toast.error(err.detail || "Error creating modifier group");
-      }
+          });
+      setShowModifierGroupModal(false);
+      resetModifierGroupForm();
+      loadModifiers(selectedItemForModifiers.id);
     } catch (error) {
       toast.error("Error creating modifier group");
     }
   };
-
   const handleUpdateModifierGroup = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingModifierGroup || !selectedItemForModifiers) return;
-
     try {
-      const response = await fetch(
-        `${API_URL}/menu-admin/modifiers/${editingModifierGroup.id}`,
-        {
-          credentials: 'include',
-          method: "PUT",
-          headers: getAuthHeaders(),
-          body: JSON.stringify({
+      await api.put(`/menu-admin/modifiers/${editingModifierGroup.id}`, {
             name: { bg: modifierGroupForm.name_bg, en: modifierGroupForm.name_en },
             required: modifierGroupForm.required,
             min_selections: modifierGroupForm.min_selections,
             max_selections: modifierGroupForm.max_selections,
-          }),
-        }
-      );
-
-      if (response.ok) {
-        setShowModifierGroupModal(false);
-        setEditingModifierGroup(null);
-        resetModifierGroupForm();
-        loadModifiers(selectedItemForModifiers.id);
-      } else {
-        const err = await response.json();
-        toast.error(err.detail || "Error updating modifier group");
-      }
+          });
+      setShowModifierGroupModal(false);
+      setEditingModifierGroup(null);
+      resetModifierGroupForm();
+      loadModifiers(selectedItemForModifiers.id);
     } catch (error) {
       toast.error("Error updating modifier group");
     }
   };
-
   const handleDeleteModifierGroup = async (groupId: number) => {
     if (!(await confirm({ message: "Delete this modifier group and all its options?", variant: 'danger' }))) return;
     if (!selectedItemForModifiers) return;
-
     try {
-      const response = await fetch(
-        `${API_URL}/menu-admin/modifiers/${groupId}`,
-        {
-          credentials: 'include',
-          method: "DELETE",
-          headers: getAuthHeaders(),
-        }
-      );
-
-      if (response.ok) {
-        loadModifiers(selectedItemForModifiers.id);
-      } else {
-        toast.error("Error deleting modifier group");
-      }
+      await api.del(`/menu-admin/modifiers/${groupId}`);
+      loadModifiers(selectedItemForModifiers.id);
     } catch (error) {
       toast.error("Error deleting modifier group");
     }
   };
-
   const openEditModifierGroupModal = (group: ModifierGroup) => {
     setEditingModifierGroup(group);
     setModifierGroupForm({
@@ -563,13 +378,11 @@ export default function MenuPage() {
     });
     setShowModifierGroupModal(true);
   };
-
   const openCreateModifierGroupModal = () => {
     setEditingModifierGroup(null);
     resetModifierGroupForm();
     setShowModifierGroupModal(true);
   };
-
   const resetModifierGroupForm = () => {
     setModifierGroupForm({
       name_bg: "",
@@ -579,103 +392,54 @@ export default function MenuPage() {
       max_selections: 1,
     });
   };
-
   // ==================== OPTION HANDLERS ====================
-
   const handleCreateOption = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!targetGroupId || !selectedItemForModifiers) return;
-
     try {
-      const response = await fetch(
-        `${API_URL}/menu-admin/modifiers/${targetGroupId}/options`,
-        {
-          credentials: 'include',
-          method: "POST",
-          headers: getAuthHeaders(),
-          body: JSON.stringify({
+      await api.post(`/menu-admin/modifiers/${targetGroupId}/options`, {
             name: { bg: optionForm.name_bg, en: optionForm.name_en },
             price_delta: optionForm.price_delta,
-          }),
-        }
-      );
-
-      if (response.ok) {
-        setShowOptionModal(false);
-        resetOptionForm();
-        loadModifiers(selectedItemForModifiers.id);
-      } else {
-        const err = await response.json();
-        toast.error(err.detail || "Error creating option");
-      }
+          });
+      setShowOptionModal(false);
+      resetOptionForm();
+      loadModifiers(selectedItemForModifiers.id);
     } catch (error) {
       toast.error("Error creating option");
     }
   };
-
   const handleUpdateOption = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingOption || !selectedItemForModifiers) return;
-
     try {
-      const response = await fetch(
-        `${API_URL}/menu-admin/modifier-options/${editingOption.id}`,
-        {
-          credentials: 'include',
-          method: "PUT",
-          headers: getAuthHeaders(),
-          body: JSON.stringify({
+      await api.put(`/menu-admin/modifier-options/${editingOption.id}`, {
             name: { bg: optionForm.name_bg, en: optionForm.name_en },
             price_delta: optionForm.price_delta,
-          }),
-        }
-      );
-
-      if (response.ok) {
-        setShowOptionModal(false);
-        setEditingOption(null);
-        resetOptionForm();
-        loadModifiers(selectedItemForModifiers.id);
-      } else {
-        const err = await response.json();
-        toast.error(err.detail || "Error updating option");
-      }
+          });
+      setShowOptionModal(false);
+      setEditingOption(null);
+      resetOptionForm();
+      loadModifiers(selectedItemForModifiers.id);
     } catch (error) {
       toast.error("Error updating option");
     }
   };
-
   const handleDeleteOption = async (optionId: number) => {
     if (!(await confirm({ message: "Delete this option?", variant: 'danger' }))) return;
     if (!selectedItemForModifiers) return;
-
     try {
-      const response = await fetch(
-        `${API_URL}/menu-admin/modifier-options/${optionId}`,
-        {
-          credentials: 'include',
-          method: "DELETE",
-          headers: getAuthHeaders(),
-        }
-      );
-
-      if (response.ok) {
-        loadModifiers(selectedItemForModifiers.id);
-      } else {
-        toast.error("Error deleting option");
-      }
+      await api.del(`/menu-admin/modifier-options/${optionId}`);
+      loadModifiers(selectedItemForModifiers.id);
     } catch (error) {
       toast.error("Error deleting option");
     }
   };
-
   const openAddOptionModal = (groupId: number) => {
     setTargetGroupId(groupId);
     setEditingOption(null);
     resetOptionForm();
     setShowOptionModal(true);
   };
-
   const openEditOptionModal = (option: ModifierOption) => {
     setEditingOption(option);
     setTargetGroupId(option.group_id);
@@ -686,7 +450,6 @@ export default function MenuPage() {
     });
     setShowOptionModal(true);
   };
-
   const resetOptionForm = () => {
     setOptionForm({
       name_bg: "",
@@ -694,18 +457,14 @@ export default function MenuPage() {
       price_delta: 0,
     });
   };
-
   // ==================== HELPERS ====================
-
   const filteredItems = activeCategory
     ? items.filter((item) => item.category_id === activeCategory)
     : items;
-
   const getStationName = (stationId: number) => {
     const station = stations.find((s) => s.id === stationId);
     return station?.name.en || "Unknown";
   };
-
   if (loading) {
     return (
       <div className="min-h-screen bg-white flex items-center justify-center">
@@ -713,7 +472,6 @@ export default function MenuPage() {
       </div>
     );
   }
-
   return (
     <div className="min-h-screen bg-white p-6">
       <div className="max-w-7xl mx-auto">
@@ -746,7 +504,6 @@ export default function MenuPage() {
             </button>
           </div>
         </div>
-
         {/* Quick Navigation */}
         <div className="grid grid-cols-3 md:grid-cols-7 gap-3 mb-4">
           <Link href="/daily-menu" className="bg-orange-50 hover:bg-orange-100 border border-orange-200 rounded-xl p-3 text-center transition-colors">
@@ -778,7 +535,6 @@ export default function MenuPage() {
             <p className="text-gray-900 text-sm mt-1">Analytics</p>
           </Link>
         </div>
-
         {/* Advanced Features Navigation */}
         <div className="grid grid-cols-4 md:grid-cols-7 gap-2 mb-6">
           <Link href="/menu/features" className="bg-orange-50 hover:bg-orange-100 border border-orange-200 rounded-xl p-2 text-center transition-colors">
@@ -810,7 +566,6 @@ export default function MenuPage() {
             <p className="text-white text-xs mt-1 font-medium">All Features</p>
           </Link>
         </div>
-
         {/* Tabs */}
         <div className="flex gap-2 mb-6">
           {["items", "categories"].map((tab) => (
@@ -852,7 +607,6 @@ export default function MenuPage() {
             </button>
           )}
         </div>
-
         {/* Items Tab */}
         {activeTab === "items" && (
           <>
@@ -885,7 +639,6 @@ export default function MenuPage() {
                 </button>
               ))}
             </div>
-
             {/* Items grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {filteredItems.map((item, i) => (
@@ -909,13 +662,11 @@ export default function MenuPage() {
                       {(item.price || 0).toFixed(2)} lv
                     </div>
                   </div>
-
                   {item.description?.en && (
                     <p className="text-gray-600 text-sm mb-3 line-clamp-2">
                       {item.description.en}
                     </p>
                   )}
-
                   <div className="flex items-center gap-2 mb-4 flex-wrap">
                     <span className="px-2 py-1 bg-blue-500/20 text-blue-400 text-xs rounded">
                       {getStationName(item.station_id)}
@@ -930,7 +681,6 @@ export default function MenuPage() {
                       {item.available ? "Available" : "Unavailable"}
                     </span>
                   </div>
-
                   <div className="flex gap-2 flex-wrap">
                     <button
                       onClick={() => toggleAvailability(item)}
@@ -965,7 +715,6 @@ export default function MenuPage() {
                 </motion.div>
               ))}
             </div>
-
             {filteredItems.length === 0 && (
               <div className="text-center py-16">
                 <div className="text-6xl mb-4">🍽️</div>
@@ -980,7 +729,6 @@ export default function MenuPage() {
             )}
           </>
         )}
-
         {/* Categories Tab */}
         {activeTab === "categories" && (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -1005,11 +753,9 @@ export default function MenuPage() {
                       Order: {cat.sort_order}
                     </span>
                   </div>
-
                   {cat.description?.en && (
                     <p className="text-gray-600 text-sm mb-4">{cat.description.en}</p>
                   )}
-
                   <div className="flex items-center justify-between">
                     <span className="text-gray-500 text-sm">{itemCount} items</span>
                     <div className="flex gap-2">
@@ -1041,7 +787,6 @@ export default function MenuPage() {
                 </motion.div>
               );
             })}
-
             {categories.length === 0 && (
               <div className="col-span-full text-center py-16">
                 <div className="text-6xl mb-4">📁</div>
@@ -1056,7 +801,6 @@ export default function MenuPage() {
             )}
           </div>
         )}
-
         {/* Modifiers Tab */}
         {activeTab === "modifiers" && selectedItemForModifiers && (
           <div className="space-y-6">
@@ -1076,7 +820,6 @@ export default function MenuPage() {
                 + Add Modifier Group
               </button>
             </div>
-
             {modifierGroups.length === 0 ? (
               <div className="text-center py-16 bg-gray-50 rounded-2xl">
                 <div className="text-6xl mb-4">🎛️</div>
@@ -1137,7 +880,6 @@ export default function MenuPage() {
                         </button>
                       </div>
                     </div>
-
                     {/* Options */}
                     {group.options.length === 0 ? (
                       <p className="text-gray-500 text-sm italic">No options yet</p>
@@ -1187,7 +929,6 @@ export default function MenuPage() {
           </div>
         )}
       </div>
-
       {/* Item Modal */}
       <AnimatePresence>
         {showItemModal && (
@@ -1204,7 +945,7 @@ export default function MenuPage() {
               <form onSubmit={editingItem ? handleUpdateItem : handleCreateItem} className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="text-gray-700 text-sm">Name (EN)</label>
+                    <label className="text-gray-700 text-sm">Name (EN)
                     <input
                       type="text"
                       value={itemForm.name_en}
@@ -1212,9 +953,10 @@ export default function MenuPage() {
                       required
                       className="w-full px-4 py-3 bg-gray-100 text-gray-900 rounded-xl mt-1"
                     />
+                    </label>
                   </div>
                   <div>
-                    <label className="text-gray-700 text-sm">Name (BG)</label>
+                    <label className="text-gray-700 text-sm">Name (BG)
                     <input
                       type="text"
                       value={itemForm.name_bg}
@@ -1222,31 +964,32 @@ export default function MenuPage() {
                       required
                       className="w-full px-4 py-3 bg-gray-100 text-gray-900 rounded-xl mt-1"
                     />
+                    </label>
                   </div>
                 </div>
-
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="text-gray-700 text-sm">Description (EN)</label>
+                    <label className="text-gray-700 text-sm">Description (EN)
                     <textarea
                       value={itemForm.description_en}
                       onChange={(e) => setItemForm({ ...itemForm, description_en: e.target.value })}
                       className="w-full px-4 py-3 bg-gray-100 text-gray-900 rounded-xl mt-1 h-20"
                     />
+                    </label>
                   </div>
                   <div>
-                    <label className="text-gray-700 text-sm">Description (BG)</label>
+                    <label className="text-gray-700 text-sm">Description (BG)
                     <textarea
                       value={itemForm.description_bg}
                       onChange={(e) => setItemForm({ ...itemForm, description_bg: e.target.value })}
                       className="w-full px-4 py-3 bg-gray-100 text-gray-900 rounded-xl mt-1 h-20"
                     />
+                    </label>
                   </div>
                 </div>
-
                 <div className="grid grid-cols-3 gap-4">
                   <div>
-                    <label className="text-gray-700 text-sm">Price (lv)</label>
+                    <label className="text-gray-700 text-sm">Price (lv)
                     <input
                       type="number"
                       step="0.01"
@@ -1256,9 +999,10 @@ export default function MenuPage() {
                       required
                       className="w-full px-4 py-3 bg-gray-100 text-gray-900 rounded-xl mt-1"
                     />
+                    </label>
                   </div>
                   <div>
-                    <label className="text-gray-700 text-sm">Category</label>
+                    <label className="text-gray-700 text-sm">Category
                     <select
                       value={itemForm.category_id}
                       onChange={(e) => setItemForm({ ...itemForm, category_id: parseInt(e.target.value) })}
@@ -1272,9 +1016,10 @@ export default function MenuPage() {
                         </option>
                       ))}
                     </select>
+                    </label>
                   </div>
                   <div>
-                    <label className="text-gray-700 text-sm">Station</label>
+                    <label className="text-gray-700 text-sm">Station
                     <select
                       value={itemForm.station_id}
                       onChange={(e) => setItemForm({ ...itemForm, station_id: parseInt(e.target.value) })}
@@ -1288,9 +1033,9 @@ export default function MenuPage() {
                         </option>
                       ))}
                     </select>
+                    </label>
                   </div>
                 </div>
-
                 <div className="flex items-center gap-2">
                   <input
                     type="checkbox"
@@ -1299,11 +1044,10 @@ export default function MenuPage() {
                     onChange={(e) => setItemForm({ ...itemForm, available: e.target.checked })}
                     className="w-5 h-5"
                   />
-                  <label htmlFor="available" className="text-gray-900">
+                  <span className="text-gray-900">
                     Available for ordering
-                  </label>
+                  </span>
                 </div>
-
                 <div className="flex gap-3 pt-4">
                   <button
                     type="button"
@@ -1327,7 +1071,6 @@ export default function MenuPage() {
           </div>
         )}
       </AnimatePresence>
-
       {/* Category Modal */}
       <AnimatePresence>
         {showCategoryModal && (
@@ -1344,7 +1087,7 @@ export default function MenuPage() {
               <form onSubmit={editingCategory ? handleUpdateCategory : handleCreateCategory} className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="text-gray-700 text-sm">Name (EN)</label>
+                    <label className="text-gray-700 text-sm">Name (EN)
                     <input
                       type="text"
                       value={categoryForm.name_en}
@@ -1352,9 +1095,10 @@ export default function MenuPage() {
                       required
                       className="w-full px-4 py-3 bg-gray-100 text-gray-900 rounded-xl mt-1"
                     />
+                    </label>
                   </div>
                   <div>
-                    <label className="text-gray-700 text-sm">Name (BG)</label>
+                    <label className="text-gray-700 text-sm">Name (BG)
                     <input
                       type="text"
                       value={categoryForm.name_bg}
@@ -1362,28 +1106,28 @@ export default function MenuPage() {
                       required
                       className="w-full px-4 py-3 bg-gray-100 text-gray-900 rounded-xl mt-1"
                     />
+                    </label>
                   </div>
                 </div>
-
                 <div>
-                  <label className="text-gray-700 text-sm">Description (EN)</label>
+                  <label className="text-gray-700 text-sm">Description (EN)
                   <textarea
                     value={categoryForm.description_en}
                     onChange={(e) => setCategoryForm({ ...categoryForm, description_en: e.target.value })}
                     className="w-full px-4 py-3 bg-gray-100 text-gray-900 rounded-xl mt-1 h-20"
                   />
+                  </label>
                 </div>
-
                 <div>
-                  <label className="text-gray-700 text-sm">Sort Order</label>
+                  <label className="text-gray-700 text-sm">Sort Order
                   <input
                     type="number"
                     value={categoryForm.sort_order}
                     onChange={(e) => setCategoryForm({ ...categoryForm, sort_order: parseInt(e.target.value) || 0 })}
                     className="w-full px-4 py-3 bg-gray-100 text-gray-900 rounded-xl mt-1"
                   />
+                  </label>
                 </div>
-
                 <div className="flex gap-3 pt-4">
                   <button
                     type="button"
@@ -1407,7 +1151,6 @@ export default function MenuPage() {
           </div>
         )}
       </AnimatePresence>
-
       {/* Modifier Group Modal */}
       <AnimatePresence>
         {showModifierGroupModal && (
@@ -1424,7 +1167,7 @@ export default function MenuPage() {
               <form onSubmit={editingModifierGroup ? handleUpdateModifierGroup : handleCreateModifierGroup} className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="text-gray-700 text-sm">Name (EN)</label>
+                    <label className="text-gray-700 text-sm">Name (EN)
                     <input
                       type="text"
                       value={modifierGroupForm.name_en}
@@ -1433,9 +1176,10 @@ export default function MenuPage() {
                       placeholder="e.g. Size, Sauce, Extras"
                       className="w-full px-4 py-3 bg-gray-100 text-gray-900 rounded-xl mt-1"
                     />
+                    </label>
                   </div>
                   <div>
-                    <label className="text-gray-700 text-sm">Name (BG)</label>
+                    <label className="text-gray-700 text-sm">Name (BG)
                     <input
                       type="text"
                       value={modifierGroupForm.name_bg}
@@ -1443,9 +1187,9 @@ export default function MenuPage() {
                       required
                       className="w-full px-4 py-3 bg-gray-100 text-gray-900 rounded-xl mt-1"
                     />
+                    </label>
                   </div>
                 </div>
-
                 <div className="flex items-center gap-2">
                   <input
                     type="checkbox"
@@ -1454,14 +1198,13 @@ export default function MenuPage() {
                     onChange={(e) => setModifierGroupForm({ ...modifierGroupForm, required: e.target.checked })}
                     className="w-5 h-5"
                   />
-                  <label htmlFor="required" className="text-gray-900">
+                  <span className="text-gray-900">
                     Required (customer must select)
-                  </label>
+                  </span>
                 </div>
-
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="text-gray-700 text-sm">Min Selections</label>
+                    <label className="text-gray-700 text-sm">Min Selections
                     <input
                       type="number"
                       min="0"
@@ -1469,9 +1212,10 @@ export default function MenuPage() {
                       onChange={(e) => setModifierGroupForm({ ...modifierGroupForm, min_selections: parseInt(e.target.value) || 0 })}
                       className="w-full px-4 py-3 bg-gray-100 text-gray-900 rounded-xl mt-1"
                     />
+                    </label>
                   </div>
                   <div>
-                    <label className="text-gray-700 text-sm">Max Selections</label>
+                    <label className="text-gray-700 text-sm">Max Selections
                     <input
                       type="number"
                       min="1"
@@ -1479,9 +1223,9 @@ export default function MenuPage() {
                       onChange={(e) => setModifierGroupForm({ ...modifierGroupForm, max_selections: parseInt(e.target.value) || 1 })}
                       className="w-full px-4 py-3 bg-gray-100 text-gray-900 rounded-xl mt-1"
                     />
+                    </label>
                   </div>
                 </div>
-
                 <div className="flex gap-3 pt-4">
                   <button
                     type="button"
@@ -1505,7 +1249,6 @@ export default function MenuPage() {
           </div>
         )}
       </AnimatePresence>
-
       {/* Option Modal */}
       <AnimatePresence>
         {showOptionModal && (
@@ -1522,7 +1265,7 @@ export default function MenuPage() {
               <form onSubmit={editingOption ? handleUpdateOption : handleCreateOption} className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="text-gray-700 text-sm">Name (EN)</label>
+                    <label className="text-gray-700 text-sm">Name (EN)
                     <input
                       type="text"
                       value={optionForm.name_en}
@@ -1531,9 +1274,10 @@ export default function MenuPage() {
                       placeholder="e.g. Small, Medium, Large"
                       className="w-full px-4 py-3 bg-gray-100 text-gray-900 rounded-xl mt-1"
                     />
+                    </label>
                   </div>
                   <div>
-                    <label className="text-gray-700 text-sm">Name (BG)</label>
+                    <label className="text-gray-700 text-sm">Name (BG)
                     <input
                       type="text"
                       value={optionForm.name_bg}
@@ -1541,11 +1285,11 @@ export default function MenuPage() {
                       required
                       className="w-full px-4 py-3 bg-gray-100 text-gray-900 rounded-xl mt-1"
                     />
+                    </label>
                   </div>
                 </div>
-
                 <div>
-                  <label className="text-gray-700 text-sm">Price Adjustment (lv)</label>
+                  <label className="text-gray-700 text-sm">Price Adjustment (lv)
                   <input
                     type="number"
                     step="0.01"
@@ -1554,11 +1298,11 @@ export default function MenuPage() {
                     className="w-full px-4 py-3 bg-gray-100 text-gray-900 rounded-xl mt-1"
                     placeholder="0 for no change, +2.00 for extra, -1.00 for discount"
                   />
+                  </label>
                   <p className="text-gray-500 text-xs mt-1">
                     Use positive for extra cost, negative for discount
                   </p>
                 </div>
-
                 <div className="flex gap-3 pt-4">
                   <button
                     type="button"

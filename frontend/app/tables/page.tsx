@@ -74,7 +74,7 @@ export default function TablesPage() {
         // Handle different response formats
         const data: ApiTableResponse[] = Array.isArray(responseData)
           ? responseData
-          : (responseData.tables || responseData.items || []);
+          : (responseData.items || responseData.tables || []);
 
         // Map API response to frontend Table interface
         const mappedTables: Table[] = data.map((apiTable) => ({
@@ -661,7 +661,7 @@ export default function TablesPage() {
             </div>
             <div className="p-6 space-y-4">
               <div>
-                <label className="block text-sm font-medium text-surface-700 mb-1">Номер на маса</label>
+                <label className="block text-sm font-medium text-surface-700 mb-1">Номер на маса
                 <input
                   type="text"
                   value={newTable.table_number}
@@ -669,9 +669,10 @@ export default function TablesPage() {
                   className="w-full px-4 py-3 border border-surface-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500"
                   placeholder="напр. T1, 1, VIP1"
                 />
+                </label>
               </div>
               <div>
-                <label className="block text-sm font-medium text-surface-700 mb-1">Брой места</label>
+                <label className="block text-sm font-medium text-surface-700 mb-1">Брой места
                 <input
                   type="number"
                   value={newTable.capacity}
@@ -680,9 +681,10 @@ export default function TablesPage() {
                   min="1"
                   max="20"
                 />
+                </label>
               </div>
               <div>
-                <label className="block text-sm font-medium text-surface-700 mb-1">Зона</label>
+                <label className="block text-sm font-medium text-surface-700 mb-1">Зона
                 <select
                   value={newTable.area}
                   onChange={(e) => setNewTable({ ...newTable, area: e.target.value })}
@@ -694,6 +696,7 @@ export default function TablesPage() {
                   <option value="Bar">Бар</option>
                   <option value="Garden">Градина</option>
                 </select>
+                </label>
               </div>
             </div>
             <div className="p-6 border-t border-surface-100 flex gap-3">
@@ -732,7 +735,7 @@ export default function TablesPage() {
             </div>
             <div className="p-6 space-y-4">
               <div>
-                <label className="block text-sm font-medium text-surface-700 mb-2">Брой гости</label>
+                <span className="block text-sm font-medium text-surface-700 mb-2">Брой гости</span>
                 <div className="flex items-center gap-4">
                   <button
                     onClick={() => setGuestCount(Math.max(1, guestCount - 1))}
@@ -794,7 +797,7 @@ export default function TablesPage() {
             </div>
             <div className="p-6 space-y-4">
               <div>
-                <label className="block text-sm font-medium text-surface-700 mb-1">Име на гост</label>
+                <label className="block text-sm font-medium text-surface-700 mb-1">Име на гост
                 <input
                   type="text"
                   value={newReservation.guest_name}
@@ -802,29 +805,32 @@ export default function TablesPage() {
                   className="w-full px-4 py-3 border border-surface-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500"
                   placeholder="Име на клиента"
                 />
+                </label>
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-surface-700 mb-1">Дата</label>
+                  <label className="block text-sm font-medium text-surface-700 mb-1">Дата
                   <input
                     type="date"
                     value={newReservation.date}
                     onChange={(e) => setNewReservation({ ...newReservation, date: e.target.value })}
                     className="w-full px-4 py-3 border border-surface-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500"
                   />
+                  </label>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-surface-700 mb-1">Час</label>
+                  <label className="block text-sm font-medium text-surface-700 mb-1">Час
                   <input
                     type="time"
                     value={newReservation.time}
                     onChange={(e) => setNewReservation({ ...newReservation, time: e.target.value })}
                     className="w-full px-4 py-3 border border-surface-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500"
                   />
+                  </label>
                 </div>
               </div>
               <div>
-                <label className="block text-sm font-medium text-surface-700 mb-1">Брой гости</label>
+                <span className="block text-sm font-medium text-surface-700 mb-1">Брой гости</span>
                 <div className="flex items-center gap-4">
                   <button
                     onClick={() => setNewReservation({ ...newReservation, guest_count: Math.max(1, newReservation.guest_count - 1) })}
@@ -842,7 +848,7 @@ export default function TablesPage() {
                 </div>
               </div>
               <div>
-                <label className="block text-sm font-medium text-surface-700 mb-1">Бележки</label>
+                <label className="block text-sm font-medium text-surface-700 mb-1">Бележки
                 <textarea
                   value={newReservation.notes}
                   onChange={(e) => setNewReservation({ ...newReservation, notes: e.target.value })}
@@ -850,6 +856,7 @@ export default function TablesPage() {
                   rows={2}
                   placeholder="Специални изисквания..."
                 />
+                </label>
               </div>
             </div>
             <div className="p-6 border-t border-surface-100 flex gap-3">
