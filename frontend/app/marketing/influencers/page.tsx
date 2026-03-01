@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+
 import AdminLayout from '@/components/AdminLayout';
 import { api } from '@/lib/api';
 
@@ -80,7 +81,7 @@ export default function InfluencersPage() {
                     <td className="px-4 py-3 text-gray-600 dark:text-gray-300 capitalize">{inf.platform}</td>
                     <td className="px-4 py-3 text-right text-gray-600 dark:text-gray-300">{inf.followers.toLocaleString()}</td>
                     <td className="px-4 py-3 text-right text-gray-600 dark:text-gray-300">{inf.visits}</td>
-                    <td className="px-4 py-3 text-right font-medium text-gray-900 dark:text-white">${inf.revenue_generated.toFixed(2)}</td>
+                    <td className="px-4 py-3 text-right font-medium text-gray-900 dark:text-white">${(inf.revenue_generated || 0).toFixed(2)}</td>
                     <td className="px-4 py-3 font-mono text-sm text-gray-600 dark:text-gray-300">{inf.referral_code}</td>
                   </tr>
                 ))}

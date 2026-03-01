@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+
 import { api } from '@/lib/api';
 
 // ── Types ───────────────────────────────────────────────────────────────────
@@ -461,7 +462,7 @@ export default function DynamicPricingPage() {
                               <td className="px-3 py-2 text-right text-gray-500">{formatCurrency(s.original_price)}</td>
                               <td className="px-3 py-2 text-right font-medium text-gray-900">{formatCurrency(s.adjusted_price)}</td>
                               <td className={`px-3 py-2 text-right font-medium ${s.change_pct > 0 ? 'text-green-600' : s.change_pct < 0 ? 'text-red-600' : 'text-gray-500'}`}>
-                                {s.change_pct > 0 ? '+' : ''}{s.change_pct.toFixed(1)}%
+                                {s.change_pct > 0 ? '+' : ''}{(s.change_pct || 0).toFixed(1)}%
                               </td>
                             </tr>
                           ))}

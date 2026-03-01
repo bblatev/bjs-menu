@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+
 import AdminLayout from '@/components/AdminLayout';
 import { api } from '@/lib/api';
 
@@ -67,7 +68,7 @@ export default function SubscriptionsPage() {
                       <td className="px-4 py-3 text-gray-600 dark:text-gray-300">{s.plan_name}</td>
                       <td className="px-4 py-3"><span className={`px-2 py-1 text-xs rounded-full ${s.status === 'active' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>{s.status}</span></td>
                       <td className="px-4 py-3 text-gray-600 dark:text-gray-300">{new Date(s.next_billing).toLocaleDateString()}</td>
-                      <td className="px-4 py-3 text-right font-medium text-gray-900 dark:text-white">${s.total_spent.toFixed(2)}</td>
+                      <td className="px-4 py-3 text-right font-medium text-gray-900 dark:text-white">${(s.total_spent || 0).toFixed(2)}</td>
                     </tr>
                   ))}
                 </tbody>

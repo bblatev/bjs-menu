@@ -1,6 +1,8 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import Image from 'next/image';
+
 import { api } from '@/lib/api';
 
 // ============ TYPES ============
@@ -378,8 +380,8 @@ export default function OrderOnlinePage() {
             </div>
             {orderType === 'delivery' && menu && (
               <span className="text-sm text-orange-100">
-                Est. {menu.estimated_delivery_time} | Min. order ${menu.minimum_order.toFixed(2)} |
-                Delivery fee ${menu.delivery_fee.toFixed(2)}
+                Est. {menu.estimated_delivery_time} | Min. order ${(menu.minimum_order || 0).toFixed(2)} |
+                Delivery fee ${(menu.delivery_fee || 0).toFixed(2)}
               </span>
             )}
             {orderType === 'pickup' && (
@@ -473,14 +475,20 @@ export default function OrderOnlinePage() {
                 <div
                   key={item.id}
                   onClick={() => openItemDetail(item)}
+                  role="button"
+                  tabIndex={0}
+                  onKeyDown={(e: React.KeyboardEvent) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openItemDetail(item); } }}
                   className="bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-lg transition-all cursor-pointer overflow-hidden group"
                 >
                   {item.image_url ? (
-                    <div className="h-40 bg-gray-100 overflow-hidden">
-                      <img
+                    <div className="h-40 bg-gray-100 overflow-hidden relative">
+                      <Image
                         src={item.image_url}
                         alt={item.name}
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                        fill
+                        sizes="(max-width: 768px) 100vw, 33vw"
+                        className="object-cover group-hover:scale-105 transition-transform duration-300"
+                        unoptimized
                       />
                     </div>
                   ) : (
@@ -501,7 +509,7 @@ export default function OrderOnlinePage() {
                     </div>
                     <p className="text-sm text-gray-500 mt-1 line-clamp-2">{item.description}</p>
                     <div className="flex items-center justify-between mt-3">
-                      <span className="text-lg font-bold text-gray-900">${item.price.toFixed(2)}</span>
+                      <span className="text-lg font-bold text-gray-900">${(item.price || 0).toFixed(2)}</span>
                       <div className="flex gap-1">
                         {item.dietary_tags.slice(0, 2).map((tag) => (
                           <span key={tag} className="px-1.5 py-0.5 bg-green-50 text-green-600 rounded-full text-xs">
@@ -540,11 +548,14 @@ export default function OrderOnlinePage() {
                       className="flex-shrink-0 w-48 bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden"
                     >
                       {suggestion.image_url && (
-                        <div className="h-24 bg-gray-100">
-                          <img
+                        <div className="h-24 bg-gray-100 relative">
+                          <Image
                             src={suggestion.image_url}
                             alt={suggestion.name}
-                            className="w-full h-full object-cover"
+                            fill
+                            sizes="192px"
+                            className="object-cover"
+                            unoptimized
                           />
                         </div>
                       )}
@@ -552,7 +563,7 @@ export default function OrderOnlinePage() {
                         <h4 className="font-medium text-gray-900 text-sm">{suggestion.name}</h4>
                         <p className="text-xs text-gray-500 mt-0.5">{suggestion.reason}</p>
                         <div className="flex items-center justify-between mt-2">
-                          <span className="font-bold text-gray-900 text-sm">${suggestion.price.toFixed(2)}</span>
+                          <span className="font-bold text-gray-900 text-sm">${(suggestion.price || 0).toFixed(2)}</span>
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
@@ -595,10 +606,11 @@ export default function OrderOnlinePage() {
           <div
             className="bg-white w-full sm:w-[480px] sm:rounded-2xl rounded-t-2xl max-h-[90vh] overflow-y-auto shadow-xl"
             onClick={(e) => e.stopPropagation()}
+            role="presentation"
           >
             {selectedItem.image_url && (
               <div className="h-52 bg-gray-100 relative">
-                <img src={selectedItem.image_url} alt={selectedItem.name} className="w-full h-full object-cover" />
+                <Image src={selectedItem.image_url} alt={selectedItem.name} fill sizes="480px" className="object-cover" unoptimized />
                 <button
                   onClick={() => setSelectedItem(null)}
                   className="absolute top-3 right-3 w-9 h-9 bg-white/90 rounded-full flex items-center justify-center shadow-sm"
@@ -621,7 +633,7 @@ export default function OrderOnlinePage() {
               )}
               <h2 className="text-xl font-bold text-gray-900">{selectedItem.name}</h2>
               <p className="text-gray-600 mt-1">{selectedItem.description}</p>
-              <p className="text-2xl font-bold text-gray-900 mt-3">${selectedItem.price.toFixed(2)}</p>
+              <p className="text-2xl font-bold text-gray-900 mt-3">${(selectedItem.price || 0).toFixed(2)}</p>
 
               {selectedItem.allergens.length > 0 && (
                 <div className="mt-3 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
@@ -659,7 +671,7 @@ export default function OrderOnlinePage() {
                               <span className="text-sm text-gray-700">{mod.name}</span>
                             </div>
                             {mod.price > 0 && (
-                              <span className="text-sm text-gray-500">+${mod.price.toFixed(2)}</span>
+                              <span className="text-sm text-gray-500">+${(mod.price || 0).toFixed(2)}</span>
                             )}
                           </label>
                         ))}
@@ -714,8 +726,8 @@ export default function OrderOnlinePage() {
 
       {/* Cart Drawer */}
       {showCart && (
-        <div className="fixed inset-0 bg-black/50 flex justify-end z-50" onClick={() => setShowCart(false)}>
-          <div className="bg-white w-full sm:w-[420px] h-full overflow-y-auto shadow-xl" onClick={(e) => e.stopPropagation()}>
+        <div className="fixed inset-0 bg-black/50 flex justify-end z-50" onClick={() => setShowCart(false)} role="button" tabIndex={0} onKeyDown={(e: React.KeyboardEvent) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setShowCart(false); } }}>
+          <div className="bg-white w-full sm:w-[420px] h-full overflow-y-auto shadow-xl" onClick={(e) => e.stopPropagation()} role="presentation">
             <div className="p-6 border-b border-gray-200 flex items-center justify-between sticky top-0 bg-white z-10">
               <h2 className="text-xl font-bold text-gray-900">Your Cart ({cartCount})</h2>
               <button onClick={() => setShowCart(false)} className="p-2 hover:bg-gray-100 rounded-lg">
@@ -780,7 +792,7 @@ export default function OrderOnlinePage() {
                           <div key={s.id} className="flex items-center justify-between">
                             <div>
                               <span className="text-sm font-medium text-gray-900">{s.name}</span>
-                              <span className="text-sm text-gray-500 ml-2">${s.price.toFixed(2)}</span>
+                              <span className="text-sm text-gray-500 ml-2">${(s.price || 0).toFixed(2)}</span>
                             </div>
                             <button
                               onClick={() => addUpsellToCart(s)}
@@ -822,7 +834,7 @@ export default function OrderOnlinePage() {
                   </button>
                   {menu && orderType === 'delivery' && cartTotal < menu.minimum_order && (
                     <p className="text-xs text-red-500 text-center">
-                      Minimum order for delivery: ${menu.minimum_order.toFixed(2)}
+                      Minimum order for delivery: ${(menu.minimum_order || 0).toFixed(2)}
                     </p>
                   )}
                 </div>

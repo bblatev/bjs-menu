@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
+
 import { api } from '@/lib/api';
 
 // ============ TYPES ============
@@ -215,6 +216,9 @@ export default function BarRecipesPage() {
           <div
             key={recipe.id}
             onClick={() => openRecipeDetail(recipe.id)}
+            role="button"
+            tabIndex={0}
+            onKeyDown={(e: React.KeyboardEvent) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openRecipeDetail(recipe.id); } }}
             className="bg-white rounded-xl border border-surface-200 shadow-sm hover:shadow-md transition-all cursor-pointer overflow-hidden group"
           >
             <div className={`h-32 flex items-center justify-center text-6xl relative ${
@@ -243,16 +247,16 @@ export default function BarRecipesPage() {
               <div className="grid grid-cols-3 gap-2 text-sm mb-3">
                 <div>
                   <p className="text-surface-400 text-xs">Cost</p>
-                  <p className="font-medium text-surface-900">${recipe.total_cost.toFixed(2)}</p>
+                  <p className="font-medium text-surface-900">${(recipe.total_cost || 0).toFixed(2)}</p>
                 </div>
                 <div>
                   <p className="text-surface-400 text-xs">Price</p>
-                  <p className="font-medium text-green-600">${recipe.sell_price.toFixed(2)}</p>
+                  <p className="font-medium text-green-600">${(recipe.sell_price || 0).toFixed(2)}</p>
                 </div>
                 <div>
                   <p className="text-surface-400 text-xs">Pour %</p>
                   <p className={`font-medium ${getCostColor(recipe.pour_cost_percentage)}`}>
-                    {recipe.pour_cost_percentage.toFixed(1)}%
+                    {(recipe.pour_cost_percentage || 0).toFixed(1)}%
                   </p>
                 </div>
               </div>
@@ -260,7 +264,7 @@ export default function BarRecipesPage() {
               <div className="flex items-center justify-between pt-3 border-t border-surface-100 text-sm">
                 <div className="flex items-center gap-1 text-yellow-500">
                   <span>★</span>
-                  <span className="text-surface-700 font-medium">{recipe.avg_rating.toFixed(1)}</span>
+                  <span className="text-surface-700 font-medium">{(recipe.avg_rating || 0).toFixed(1)}</span>
                 </div>
                 <span className="text-surface-500">{recipe.sold_today} sold today</span>
               </div>
@@ -313,21 +317,21 @@ export default function BarRecipesPage() {
               {/* Stats */}
               <div className="grid grid-cols-4 gap-4 my-6">
                 <div className="text-center p-3 bg-surface-50 rounded-lg">
-                  <p className="text-xl font-bold text-surface-900">${selectedRecipe.total_cost.toFixed(2)}</p>
+                  <p className="text-xl font-bold text-surface-900">${(selectedRecipe.total_cost || 0).toFixed(2)}</p>
                   <p className="text-xs text-surface-500">Cost</p>
                 </div>
                 <div className="text-center p-3 bg-surface-50 rounded-lg">
-                  <p className="text-xl font-bold text-green-600">${selectedRecipe.sell_price.toFixed(2)}</p>
+                  <p className="text-xl font-bold text-green-600">${(selectedRecipe.sell_price || 0).toFixed(2)}</p>
                   <p className="text-xs text-surface-500">Price</p>
                 </div>
                 <div className="text-center p-3 bg-surface-50 rounded-lg">
                   <p className={`text-xl font-bold ${getCostColor(selectedRecipe.pour_cost_percentage)}`}>
-                    {selectedRecipe.pour_cost_percentage.toFixed(1)}%
+                    {(selectedRecipe.pour_cost_percentage || 0).toFixed(1)}%
                   </p>
                   <p className="text-xs text-surface-500">Pour Cost</p>
                 </div>
                 <div className="text-center p-3 bg-surface-50 rounded-lg">
-                  <p className="text-xl font-bold text-primary-600">{selectedRecipe.profit_margin.toFixed(1)}%</p>
+                  <p className="text-xl font-bold text-primary-600">{(selectedRecipe.profit_margin || 0).toFixed(1)}%</p>
                   <p className="text-xs text-surface-500">Margin</p>
                 </div>
               </div>
@@ -348,7 +352,7 @@ export default function BarRecipesPage() {
                       <tr key={ing.id}>
                         <td className="px-4 py-2 font-medium text-surface-900">{ing.name}</td>
                         <td className="px-4 py-2 text-center text-surface-700">{ing.amount} {ing.unit}</td>
-                        <td className="px-4 py-2 text-right text-surface-700">${ing.cost.toFixed(2)}</td>
+                        <td className="px-4 py-2 text-right text-surface-700">${(ing.cost || 0).toFixed(2)}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -356,7 +360,7 @@ export default function BarRecipesPage() {
                     <tr>
                       <td className="px-4 py-2 font-semibold">Total</td>
                       <td></td>
-                      <td className="px-4 py-2 text-right font-semibold">${selectedRecipe.total_cost.toFixed(2)}</td>
+                      <td className="px-4 py-2 text-right font-semibold">${(selectedRecipe.total_cost || 0).toFixed(2)}</td>
                     </tr>
                   </tfoot>
                 </table>
@@ -403,7 +407,7 @@ export default function BarRecipesPage() {
             <div className="p-6 border-t border-surface-200 flex items-center justify-between">
               <div className="flex items-center gap-4 text-sm text-surface-500">
                 <span className="flex items-center gap-1">
-                  <span className="text-yellow-500">★</span> {selectedRecipe.avg_rating.toFixed(1)}
+                  <span className="text-yellow-500">★</span> {(selectedRecipe.avg_rating || 0).toFixed(1)}
                 </span>
                 <span>{selectedRecipe.sold_today} sold today</span>
               </div>

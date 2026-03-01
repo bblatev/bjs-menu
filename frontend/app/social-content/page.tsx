@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+
 import { api } from '@/lib/api';
 
 // ── Types ───────────────────────────────────────────────────────────────────
@@ -299,7 +300,7 @@ export default function SocialContentPage() {
             </div>
             <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
               <p className="text-sm text-gray-500">Avg Engagement</p>
-              <p className="text-3xl font-bold text-indigo-600">{_stats.engagement_rate.toFixed(1)}</p>
+              <p className="text-3xl font-bold text-indigo-600">{(_stats.engagement_rate || 0).toFixed(1)}</p>
               <p className="text-xs text-gray-400">interactions per post</p>
             </div>
             <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-5">

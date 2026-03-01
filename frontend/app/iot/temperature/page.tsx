@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+
 import { api } from '@/lib/api';
 
 // ── Types ───────────────────────────────────────────────────────────────────
@@ -193,7 +194,7 @@ export default function TemperatureMonitoringPage() {
                 {/* Temperature Display */}
                 <div className="text-center mb-3">
                   <div className={`text-4xl font-bold ${config.text}`}>
-                    {sensor.status === 'offline' ? '--' : sensor.current_temp.toFixed(1)}
+                    {sensor.status === 'offline' ? '--' : (sensor.current_temp || 0).toFixed(1)}
                   </div>
                   <div className="text-sm text-gray-500">{sensor.unit}</div>
                 </div>
@@ -275,7 +276,7 @@ export default function TemperatureMonitoringPage() {
                   <p className="text-sm text-gray-600 mt-0.5">{alert.message}</p>
                   {alert.temperature !== null && alert.threshold !== null && (
                     <p className="text-xs text-gray-500 mt-1">
-                      Reading: {alert.temperature.toFixed(1)} | Threshold: {alert.threshold.toFixed(1)}
+                      Reading: {(alert.temperature || 0).toFixed(1)} | Threshold: {(alert.threshold || 0).toFixed(1)}
                     </p>
                   )}
                 </div>

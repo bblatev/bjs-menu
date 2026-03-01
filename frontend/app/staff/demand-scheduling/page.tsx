@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
+
 import { api } from '@/lib/api';
 
 // ============ TYPES ============
@@ -272,13 +273,13 @@ export default function DemandSchedulingPage() {
           <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm">
             <p className="text-xs text-gray-500 uppercase tracking-wide">Labor %</p>
             <p className={`text-2xl font-bold mt-1 ${getLaborPctColor(data.week_summary.avg_labor_pct)}`}>
-              {data.week_summary.avg_labor_pct.toFixed(1)}%
+              {(data.week_summary.avg_labor_pct || 0).toFixed(1)}%
             </p>
           </div>
           <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm">
             <p className="text-xs text-gray-500 uppercase tracking-wide">Efficiency</p>
             <p className={`text-2xl font-bold mt-1 ${getEfficiencyColor(data.week_summary.avg_efficiency_score)}`}>
-              {data.week_summary.avg_efficiency_score.toFixed(0)}%
+              {(data.week_summary.avg_efficiency_score || 0).toFixed(0)}%
             </p>
           </div>
           <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm">
@@ -319,7 +320,7 @@ export default function DemandSchedulingPage() {
                   {date.toLocaleDateString('en-US', { day: 'numeric' })}
                 </div>
                 <div className={`text-xs font-medium ${isSelected ? 'text-blue-100' : getLaborPctColor(schedule.labor_percentage)}`}>
-                  {schedule.labor_percentage.toFixed(0)}% labor
+                  {(schedule.labor_percentage || 0).toFixed(0)}% labor
                 </div>
               </button>
             );
@@ -468,7 +469,7 @@ export default function DemandSchedulingPage() {
                             {role.gap > 0 ? `+${role.gap}` : role.gap}
                           </span>
                         </td>
-                        <td className="py-3 px-2 text-right text-gray-700">${role.hourly_rate.toFixed(2)}</td>
+                        <td className="py-3 px-2 text-right text-gray-700">${(role.hourly_rate || 0).toFixed(2)}</td>
                         <td className="py-3 px-2 text-right text-gray-700 font-medium">${role.total_cost.toLocaleString()}</td>
                       </tr>
                     ))}
@@ -513,13 +514,13 @@ export default function DemandSchedulingPage() {
                 <div className="flex justify-between text-sm">
                   <span className="text-gray-500">Labor %</span>
                   <span className={`text-lg font-bold ${getLaborPctColor(selectedDay.summary.labor_percentage)}`}>
-                    {selectedDay.summary.labor_percentage.toFixed(1)}%
+                    {(selectedDay.summary.labor_percentage || 0).toFixed(1)}%
                   </span>
                 </div>
                 <div className="flex justify-between text-sm">
                   <span className="text-gray-500">Efficiency Score</span>
                   <span className={`text-lg font-bold ${getEfficiencyColor(selectedDay.summary.efficiency_score)}`}>
-                    {selectedDay.summary.efficiency_score.toFixed(0)}%
+                    {(selectedDay.summary.efficiency_score || 0).toFixed(0)}%
                   </span>
                 </div>
                 {/* Labor % visual bar */}

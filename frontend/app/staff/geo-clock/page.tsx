@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
+
 import { api } from '@/lib/api';
 
 // ============ TYPES ============
@@ -202,7 +203,7 @@ export default function GeoClockPage() {
           <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm">
             <p className="text-xs text-gray-500 uppercase tracking-wide">On-Time %</p>
             <p className={`text-2xl font-bold mt-1 ${stats.on_time_pct >= 90 ? 'text-green-600' : stats.on_time_pct >= 75 ? 'text-yellow-600' : 'text-red-600'}`}>
-              {stats.on_time_pct.toFixed(1)}%
+              {(stats.on_time_pct || 0).toFixed(1)}%
             </p>
           </div>
           <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm">
@@ -324,7 +325,7 @@ export default function GeoClockPage() {
                       <td className="py-3 px-4">
                         <div className="text-gray-700">{event.fence_name}</div>
                         <div className="text-xs text-gray-400">
-                          {event.lat.toFixed(4)}, {event.lng.toFixed(4)}
+                          {(event.lat || 0).toFixed(4)}, {(event.lng || 0).toFixed(4)}
                         </div>
                       </td>
                       <td className="py-3 px-4 text-center">
@@ -425,11 +426,11 @@ export default function GeoClockPage() {
               <div className="grid grid-cols-2 gap-3 text-sm">
                 <div>
                   <span className="text-gray-500">Latitude</span>
-                  <p className="font-medium text-gray-900">{fence.lat.toFixed(6)}</p>
+                  <p className="font-medium text-gray-900">{(fence.lat || 0).toFixed(6)}</p>
                 </div>
                 <div>
                   <span className="text-gray-500">Longitude</span>
-                  <p className="font-medium text-gray-900">{fence.lng.toFixed(6)}</p>
+                  <p className="font-medium text-gray-900">{(fence.lng || 0).toFixed(6)}</p>
                 </div>
                 <div>
                   <span className="text-gray-500">Radius</span>

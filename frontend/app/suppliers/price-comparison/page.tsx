@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+
 import AdminLayout from '@/components/AdminLayout';
 import { api } from '@/lib/api';
 
@@ -57,7 +58,7 @@ export default function PriceComparisonPage() {
                   {item.suppliers.map((s, j) => (
                     <div key={j} className={`p-3 rounded-lg border ${s.name === item.best_value ? 'border-green-500 bg-green-50 dark:bg-green-900/20' : 'border-gray-200 dark:border-gray-700'}`}>
                       <div className="font-medium text-gray-900 dark:text-white">{s.name}</div>
-                      <div className="text-lg font-bold text-gray-900 dark:text-white">${s.price.toFixed(2)}/{item.unit}</div>
+                      <div className="text-lg font-bold text-gray-900 dark:text-white">${(s.price || 0).toFixed(2)}/{item.unit}</div>
                       <div className="text-sm text-gray-500">Lead: {s.lead_days}d | Min: {s.min_order}</div>
                     </div>
                   ))}

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+
 import AdminLayout from '@/components/AdminLayout';
 import { api } from '@/lib/api';
 
@@ -69,7 +70,7 @@ export default function DriverTrackingPage() {
                   <div className="flex justify-between"><span className="text-gray-500">Driver</span><span className="text-gray-900 dark:text-white">{d.driver_name}</span></div>
                   <div className="flex justify-between"><span className="text-gray-500">ETA</span><span className={`font-medium ${d.eta_minutes > 30 ? 'text-red-600' : 'text-gray-900 dark:text-white'}`}>{d.eta_minutes} min</span></div>
                   <div className="flex justify-between"><span className="text-gray-500">Items</span><span className="text-gray-900 dark:text-white">{d.items_count}</span></div>
-                  <div className="flex justify-between"><span className="text-gray-500">Total</span><span className="font-medium text-gray-900 dark:text-white">${d.total.toFixed(2)}</span></div>
+                  <div className="flex justify-between"><span className="text-gray-500">Total</span><span className="font-medium text-gray-900 dark:text-white">${(d.total || 0).toFixed(2)}</span></div>
                 </div>
                 <div className="mt-2 pt-2 border-t dark:border-gray-700 text-xs text-gray-500 truncate">{d.customer_address}</div>
               </div>

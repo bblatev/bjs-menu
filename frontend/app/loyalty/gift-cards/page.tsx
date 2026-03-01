@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+
 import AdminLayout from '@/components/AdminLayout';
 import { api } from '@/lib/api';
 
@@ -82,8 +83,8 @@ export default function GiftCardsPage() {
                   <tr key={c.id}>
                     <td className="px-4 py-3 font-mono font-medium text-gray-900 dark:text-white">{c.code}</td>
                     <td className="px-4 py-3 text-right">
-                      <span className="font-bold text-gray-900 dark:text-white">${c.current_balance.toFixed(2)}</span>
-                      <span className="text-gray-400 text-sm"> / ${c.initial_balance.toFixed(2)}</span>
+                      <span className="font-bold text-gray-900 dark:text-white">${(c.current_balance || 0).toFixed(2)}</span>
+                      <span className="text-gray-400 text-sm"> / ${(c.initial_balance || 0).toFixed(2)}</span>
                     </td>
                     <td className="px-4 py-3 text-gray-600 dark:text-gray-300">{c.recipient_email || '-'}</td>
                     <td className="px-4 py-3"><span className={`px-2 py-1 text-xs rounded-full ${c.status === 'active' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>{c.status}</span></td>

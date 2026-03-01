@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
+
 import AdminLayout from '@/components/AdminLayout';
 import { api } from '@/lib/api';
 
@@ -31,11 +32,7 @@ export default function DeliveryProfitabilityPage() {
   const [loading, setLoading] = useState(true);
   const [period, setPeriod] = useState('30d');
 
-  useEffect(() => {
-    loadData();
-  }, [period]);
-
-  async function loadData() {
+  const loadData = useCallback(async () => {
     setLoading(true);
     try {
       const result = await api.get<ProfitSummary>(`/delivery/profitability?period=${period}`);
@@ -45,7 +42,11 @@ export default function DeliveryProfitabilityPage() {
     } finally {
       setLoading(false);
     }
-  }
+  }, [period]);
+
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
 
   const formatCurrency = (val: number) => `$${val.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
@@ -105,7 +106,7 @@ export default function DeliveryProfitabilityPage() {
               <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4">
                 <div className="text-sm text-gray-500 dark:text-gray-400">Net Profit</div>
                 <div className={`text-2xl font-bold ${marginColor(data.avg_margin_pct)}`}>{formatCurrency(data.total_net_profit)}</div>
-                <div className={`text-sm ${marginColor(data.avg_margin_pct)}`}>{data.avg_margin_pct.toFixed(1)}% margin</div>
+                <div className={`text-sm ${marginColor(data.avg_margin_pct)}`}>{(data.avg_margin_pct || 0).toFixed(1)}% margin</div>
               </div>
             </div>
 
@@ -143,7 +144,7 @@ export default function DeliveryProfitabilityPage() {
                       </td>
                       <td className="px-4 py-3 text-right">
                         <span className={`px-2 py-1 text-sm font-medium rounded ${marginColor(p.margin_pct)}`}>
-                          {p.margin_pct.toFixed(1)}%
+                          {(p.margin_pct || 0).toFixed(1)}%
                         </span>
                       </td>
                     </tr>

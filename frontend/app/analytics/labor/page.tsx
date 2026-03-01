@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+
 import { api } from '@/lib/api';
 
 // ── Types ───────────────────────────────────────────────────────────────────
@@ -190,7 +191,7 @@ export default function LaborAnalyticsPage() {
           </div>
           <div className="bg-purple-50 rounded-xl p-5 border border-purple-100">
             <div className="text-sm text-purple-600 font-medium">Overtime</div>
-            <div className="text-2xl font-bold text-purple-900 mt-1">{data.summary.total_overtime_hours.toFixed(1)}h</div>
+            <div className="text-2xl font-bold text-purple-900 mt-1">{(data.summary.total_overtime_hours || 0).toFixed(1)}h</div>
             <div className="text-xs text-purple-500 mt-0.5">{formatCurrency(data.summary.overtime_cost)} cost</div>
           </div>
         </div>
@@ -305,7 +306,7 @@ export default function LaborAnalyticsPage() {
                       />
                     </div>
                     <div className="flex justify-between text-xs text-gray-500 mt-1">
-                      <span>{dept.hours_worked.toFixed(0)}h worked</span>
+                      <span>{(dept.hours_worked || 0).toFixed(0)}h worked</span>
                       <span>{formatCurrency(dept.avg_hourly_rate)}/hr avg</span>
                       <span>Revenue: {formatCurrencyShort(dept.revenue_attributed)}</span>
                     </div>
@@ -320,7 +321,7 @@ export default function LaborAnalyticsPage() {
             <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
               <h2 className="text-xl font-bold text-gray-900">Overtime Tracking</h2>
               <span className="text-sm font-medium text-purple-600">
-                {data.summary.total_overtime_hours.toFixed(1)}h total
+                {(data.summary.total_overtime_hours || 0).toFixed(1)}h total
               </span>
             </div>
             <div className="overflow-x-auto">
@@ -339,11 +340,11 @@ export default function LaborAnalyticsPage() {
                     <tr key={idx} className="hover:bg-gray-50">
                       <td className="px-4 py-3 text-sm font-medium text-gray-900">{entry.staff_name}</td>
                       <td className="px-4 py-3 text-sm text-gray-600">{entry.department}</td>
-                      <td className="px-4 py-3 text-sm text-right text-gray-600">{entry.regular_hours.toFixed(1)}h</td>
+                      <td className="px-4 py-3 text-sm text-right text-gray-600">{(entry.regular_hours || 0).toFixed(1)}h</td>
                       <td className={`px-4 py-3 text-sm text-right font-medium ${
                         entry.overtime_hours > 10 ? 'text-red-600' : entry.overtime_hours > 5 ? 'text-yellow-600' : 'text-gray-900'
                       }`}>
-                        {entry.overtime_hours.toFixed(1)}h
+                        {(entry.overtime_hours || 0).toFixed(1)}h
                       </td>
                       <td className="px-4 py-3 text-sm text-right font-medium text-purple-600">
                         {formatCurrency(entry.overtime_cost)}
@@ -381,7 +382,7 @@ export default function LaborAnalyticsPage() {
               </div>
               <p className="text-sm text-blue-700 leading-relaxed">
                 Avg hourly cost: {formatCurrency(data.summary.avg_hourly_cost)} per employee.
-                Overtime accounts for {formatCurrency(data.summary.overtime_cost)} ({data.summary.total_overtime_hours.toFixed(1)}h) of total labor cost.
+                Overtime accounts for {formatCurrency(data.summary.overtime_cost)} ({(data.summary.total_overtime_hours || 0).toFixed(1)}h) of total labor cost.
               </p>
             </div>
           </div>

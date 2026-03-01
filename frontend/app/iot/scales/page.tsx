@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+
 import { api } from '@/lib/api';
 
 // ── Types ───────────────────────────────────────────────────────────────────
@@ -199,7 +200,7 @@ export default function SmartScalesPage() {
                   {scale.current_weight !== null && (
                     <div className="text-center py-3 bg-gray-50 rounded-lg mb-3">
                       <div className="text-3xl font-bold text-gray-900">
-                        {scale.current_weight.toFixed(2)}
+                        {(scale.current_weight || 0).toFixed(2)}
                       </div>
                       <div className="text-sm text-gray-500">{scale.unit}</div>
                     </div>
@@ -252,7 +253,7 @@ export default function SmartScalesPage() {
                       <td className="px-6 py-3 text-sm font-medium text-gray-900">{r.scale_name}</td>
                       <td className="px-6 py-3 text-sm text-gray-700">{r.item_name}</td>
                       <td className="px-6 py-3 text-sm text-right text-gray-900 font-mono">
-                        {r.weight.toFixed(2)} {r.unit}
+                        {(r.weight || 0).toFixed(2)} {r.unit}
                       </td>
                       <td className="px-6 py-3 text-sm text-right text-gray-900">
                         {r.estimated_count !== null ? r.estimated_count : '--'}
@@ -260,7 +261,7 @@ export default function SmartScalesPage() {
                       <td className="px-6 py-3 text-sm text-right">
                         {r.change_from_previous !== null ? (
                           <span className={r.change_from_previous < 0 ? 'text-red-600' : r.change_from_previous > 0 ? 'text-green-600' : 'text-gray-500'}>
-                            {r.change_from_previous > 0 ? '+' : ''}{r.change_from_previous.toFixed(2)} {r.unit}
+                            {r.change_from_previous > 0 ? '+' : ''}{(r.change_from_previous || 0).toFixed(2)} {r.unit}
                           </span>
                         ) : (
                           <span className="text-gray-400">--</span>
@@ -304,7 +305,7 @@ export default function SmartScalesPage() {
                 <div className="grid grid-cols-4 gap-4 mt-4 text-sm">
                   <div>
                     <div className="text-gray-500">Current Weight</div>
-                    <div className="font-bold text-gray-900">{sug.current_weight.toFixed(2)} kg</div>
+                    <div className="font-bold text-gray-900">{(sug.current_weight || 0).toFixed(2)} kg</div>
                   </div>
                   <div>
                     <div className="text-gray-500">Est. Count</div>

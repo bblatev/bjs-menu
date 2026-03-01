@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
+
 import { api } from '@/lib/api';
 
 // ============ TYPES ============
@@ -257,7 +258,7 @@ export default function SupplierScorecardsPage() {
           <div className="bg-white p-4 rounded-xl border border-surface-200 shadow-sm">
             <p className="text-sm text-surface-500">Avg Score</p>
             <p className="text-2xl font-bold" style={{ color: getScoreColor(data.avg_overall_score) }}>
-              {data.avg_overall_score.toFixed(1)}
+              {(data.avg_overall_score || 0).toFixed(1)}
             </p>
           </div>
           <div className="bg-white p-4 rounded-xl border border-surface-200 shadow-sm">
@@ -275,6 +276,9 @@ export default function SupplierScorecardsPage() {
             <div
               key={supplier.id}
               onClick={() => setSelectedSupplier(supplier)}
+              role="button"
+              tabIndex={0}
+              onKeyDown={(e: React.KeyboardEvent) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setSelectedSupplier(supplier); } }}
               className="bg-white rounded-xl border border-surface-200 shadow-sm hover:shadow-md transition-all cursor-pointer overflow-hidden"
             >
               <div className="p-5">
@@ -295,7 +299,7 @@ export default function SupplierScorecardsPage() {
 
                 <div className="text-center mt-2">
                   <span className="text-3xl font-bold" style={{ color: getScoreColor(supplier.overall_score) }}>
-                    {supplier.overall_score.toFixed(0)}
+                    {(supplier.overall_score || 0).toFixed(0)}
                   </span>
                   <span className="text-surface-400 text-sm"> / 100</span>
                 </div>
@@ -306,7 +310,7 @@ export default function SupplierScorecardsPage() {
                     <p className="text-surface-500">Orders</p>
                   </div>
                   <div className="p-2 bg-surface-50 rounded-lg">
-                    <p className="font-bold text-surface-900">{supplier.on_time_delivery_pct.toFixed(0)}%</p>
+                    <p className="font-bold text-surface-900">{(supplier.on_time_delivery_pct || 0).toFixed(0)}%</p>
                     <p className="text-surface-500">On-Time</p>
                   </div>
                   <div className="p-2 bg-surface-50 rounded-lg">
@@ -366,7 +370,7 @@ export default function SupplierScorecardsPage() {
                     <div className="flex justify-between text-sm mb-1">
                       <span className="text-surface-600">{m.label}</span>
                       <span className="font-bold" style={{ color: getScoreColor(m.value) }}>
-                        {m.value.toFixed(0)}%
+                        {(m.value || 0).toFixed(0)}%
                       </span>
                     </div>
                     <div className="h-2 bg-surface-100 rounded-full overflow-hidden">
@@ -389,11 +393,11 @@ export default function SupplierScorecardsPage() {
                   <p className="text-xs text-surface-500">Total Spend</p>
                 </div>
                 <div className="text-center p-3 bg-surface-50 rounded-lg">
-                  <p className="text-lg font-bold text-surface-900">{selectedSupplier.avg_delivery_days.toFixed(1)}d</p>
+                  <p className="text-lg font-bold text-surface-900">{(selectedSupplier.avg_delivery_days || 0).toFixed(1)}d</p>
                   <p className="text-xs text-surface-500">Avg Delivery</p>
                 </div>
                 <div className="text-center p-3 bg-surface-50 rounded-lg">
-                  <p className="text-lg font-bold text-surface-900">{selectedSupplier.defect_rate_pct.toFixed(1)}%</p>
+                  <p className="text-lg font-bold text-surface-900">{(selectedSupplier.defect_rate_pct || 0).toFixed(1)}%</p>
                   <p className="text-xs text-surface-500">Defect Rate</p>
                 </div>
               </div>

@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import Link from 'next/link';
+
 import { api } from '@/lib/api';
 
 // ============ TYPES ============
@@ -126,7 +127,7 @@ function MiniChart({ data, inRange, min, max }: { data: number[]; inRange: boole
   }));
 
   const pathD = points
-    .map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x.toFixed(1)} ${p.y.toFixed(1)}`)
+    .map((p, i) => `${i === 0 ? 'M' : 'L'} ${(p.x || 0).toFixed(1)} ${(p.y || 0).toFixed(1)}`)
     .join(' ');
 
   // Threshold lines
@@ -486,7 +487,7 @@ export default function IoTDashboardPage() {
                     <>
                       <div className="flex items-baseline gap-1 mb-2">
                         <span className={`text-3xl font-bold ${reading.in_range ? 'text-gray-900' : 'text-red-600'}`}>
-                          {reading.value.toFixed(1)}
+                          {(reading.value || 0).toFixed(1)}
                         </span>
                         <span className="text-sm text-gray-500">{reading.unit}</span>
                         {!reading.in_range && (
@@ -659,7 +660,7 @@ export default function IoTDashboardPage() {
                         </div>
                         <div className="text-right">
                           <span className={`text-xl font-bold ${reading.in_range ? 'text-gray-900' : 'text-red-600'}`}>
-                            {reading.value.toFixed(1)}
+                            {(reading.value || 0).toFixed(1)}
                           </span>
                           <span className="text-sm text-gray-500 ml-1">{reading.unit}</span>
                         </div>

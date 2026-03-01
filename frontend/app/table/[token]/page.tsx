@@ -5,7 +5,6 @@ import { useParams } from 'next/navigation';
 
 
 import { toast } from '@/lib/toast';
-
 import { api } from '@/lib/api';
 interface MenuItem {
   id: number;
@@ -540,7 +539,7 @@ export default function TableOrderPage() {
                             )}
                             <div className="mt-2.5 flex items-center justify-between">
                               <span className="text-base font-bold text-gray-900">
-                                {item.price.toFixed(2)} <span className="text-xs font-medium text-gray-400">лв</span>
+                                {(item.price || 0).toFixed(2)} <span className="text-xs font-medium text-gray-400">лв</span>
                               </span>
                               {item.available ? (
                                 qty > 0 ? (
@@ -607,10 +606,14 @@ export default function TableOrderPage() {
 
       {/* ---- Cart modal ---- */}
       {showCart && (
-        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-end justify-center" onClick={() => setShowCart(false)}>
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-end justify-center" onClick={() => setShowCart(false)}
+        role="button"
+        tabIndex={0}
+        onKeyDown={(e: React.KeyboardEvent) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setShowCart(false); } }}>
           <div
             className="bg-white w-full max-w-lg rounded-t-3xl max-h-[85vh] overflow-hidden flex flex-col animate-slide-up"
             onClick={e => e.stopPropagation()}
+            role="presentation"
           >
             <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
               <h2 className="text-lg font-bold text-gray-900">Your Cart</h2>
@@ -698,10 +701,14 @@ export default function TableOrderPage() {
 
       {/* ---- Orders modal ---- */}
       {showOrders && (
-        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-end justify-center" onClick={() => setShowOrders(false)}>
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-end justify-center" onClick={() => setShowOrders(false)}
+        role="button"
+        tabIndex={0}
+        onKeyDown={(e: React.KeyboardEvent) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setShowOrders(false); } }}>
           <div
             className="bg-white w-full max-w-lg rounded-t-3xl max-h-[85vh] overflow-hidden flex flex-col animate-slide-up"
             onClick={e => e.stopPropagation()}
+            role="presentation"
           >
             <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
               <h2 className="text-lg font-bold text-gray-900">My Orders</h2>
@@ -755,7 +762,7 @@ export default function TableOrderPage() {
                         )}
                         <div className="flex items-center justify-between pt-2 border-t border-gray-200/50">
                           <span className="text-xs text-gray-400">{order.items_count} items</span>
-                          <span className="font-bold text-gray-900">{order.total.toFixed(2)} лв</span>
+                          <span className="font-bold text-gray-900">{(order.total || 0).toFixed(2)} лв</span>
                         </div>
                       </div>
                     );
@@ -788,10 +795,14 @@ export default function TableOrderPage() {
 
       {/* ---- Payment modal ---- */}
       {showPayment && !paymentComplete && (
-        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => setShowPayment(false)}>
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => setShowPayment(false)}
+        role="button"
+        tabIndex={0}
+        onKeyDown={(e: React.KeyboardEvent) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setShowPayment(false); } }}>
           <div
             className="bg-white w-full max-w-md rounded-3xl overflow-hidden max-h-[90vh] overflow-y-auto"
             onClick={e => e.stopPropagation()}
+            role="presentation"
           >
             <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
               <h2 className="text-lg font-bold text-gray-900">Pay Your Bill</h2>

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+
 import { api } from '@/lib/api';
 
 // ── Types ───────────────────────────────────────────────────────────────────
@@ -169,7 +170,7 @@ export default function CustomerCLVPage() {
                 </div>
                 <div className="flex justify-between text-xs text-gray-500 mt-1">
                   <span>Avg Order: {formatCurrency(seg.avg_order_value)}</span>
-                  <span>Frequency: {seg.avg_frequency.toFixed(1)}/mo</span>
+                  <span>Frequency: {(seg.avg_frequency || 0).toFixed(1)}/mo</span>
                   <span>Churn Risk: {(seg.churn_risk * 100).toFixed(0)}%</span>
                   <span>Total: {formatCurrency(seg.total_clv)}</span>
                 </div>
@@ -197,7 +198,7 @@ export default function CustomerCLVPage() {
                 </div>
                 <div>
                   <div className="text-gray-500">Frequency</div>
-                  <div className="font-bold text-gray-900">{seg.avg_frequency.toFixed(1)}/mo</div>
+                  <div className="font-bold text-gray-900">{(seg.avg_frequency || 0).toFixed(1)}/mo</div>
                 </div>
                 <div>
                   <div className="text-gray-500">Churn Risk</div>

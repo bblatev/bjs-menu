@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+
 import AdminLayout from '@/components/AdminLayout';
 import { api } from '@/lib/api';
 
@@ -46,7 +47,7 @@ export default function SentimentPage() {
           <>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
               <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4 text-center">
-                <div className="text-3xl font-bold text-gray-900 dark:text-white">{data.overall_score.toFixed(1)}</div>
+                <div className="text-3xl font-bold text-gray-900 dark:text-white">{(data.overall_score || 0).toFixed(1)}</div>
                 <div className="text-sm text-gray-500">Overall Score</div>
               </div>
               <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4 text-center">

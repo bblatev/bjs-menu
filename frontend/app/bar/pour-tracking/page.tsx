@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
+
 import { api } from '@/lib/api';
 
 // ============ TYPES ============
@@ -187,7 +188,7 @@ export default function PourTrackingPage() {
             <p className="text-sm text-surface-500">Overall Accuracy</p>
             <div className="flex items-end gap-2">
               <p className={`text-4xl font-bold ${getAccuracyColor(accuracy.overall_accuracy_pct)}`}>
-                {accuracy.overall_accuracy_pct.toFixed(1)}%
+                {(accuracy.overall_accuracy_pct || 0).toFixed(1)}%
               </p>
               <p className="text-sm text-surface-400 mb-1">/ {accuracy.target_accuracy_pct}% target</p>
             </div>
@@ -242,7 +243,7 @@ export default function PourTrackingPage() {
                     <div className="flex justify-between text-sm mb-1">
                       <span className="font-medium text-surface-900 truncate">{bt.name}</span>
                       <span className={`font-bold ${getAccuracyColor(bt.accuracy_pct)}`}>
-                        {bt.accuracy_pct.toFixed(1)}%
+                        {(bt.accuracy_pct || 0).toFixed(1)}%
                       </span>
                     </div>
                     <div className="h-2 bg-surface-100 rounded-full overflow-hidden">
@@ -274,7 +275,7 @@ export default function PourTrackingPage() {
                   <div className="flex justify-between text-sm mb-1">
                     <span className="font-medium text-surface-700 capitalize">{shift.shift}</span>
                     <span className={`font-bold ${getAccuracyColor(shift.accuracy_pct)}`}>
-                      {shift.accuracy_pct.toFixed(1)}%
+                      {(shift.accuracy_pct || 0).toFixed(1)}%
                     </span>
                   </div>
                   <div className="h-3 bg-surface-100 rounded-full overflow-hidden">
@@ -334,14 +335,14 @@ export default function PourTrackingPage() {
                     <tr key={product.id} className="border-t border-surface-100 hover:bg-surface-50">
                       <td className="px-4 py-3 font-medium text-surface-900">{product.name}</td>
                       <td className="px-4 py-3 text-surface-600 capitalize">{product.category}</td>
-                      <td className="px-4 py-3 text-right text-surface-700">{product.expected_oz.toFixed(1)}</td>
-                      <td className="px-4 py-3 text-right text-surface-700">{product.actual_avg_oz.toFixed(1)}</td>
+                      <td className="px-4 py-3 text-right text-surface-700">{(product.expected_oz || 0).toFixed(1)}</td>
+                      <td className="px-4 py-3 text-right text-surface-700">{(product.actual_avg_oz || 0).toFixed(1)}</td>
                       <td className="px-4 py-3 text-right">
                         <span className={`font-medium ${product.variance_oz > 0 ? 'text-red-600' : product.variance_oz < 0 ? 'text-blue-600' : 'text-green-600'}`}>
-                          {product.variance_oz > 0 ? '+' : ''}{product.variance_oz.toFixed(2)} oz
+                          {product.variance_oz > 0 ? '+' : ''}{(product.variance_oz || 0).toFixed(2)} oz
                         </span>
                         <span className="text-xs text-surface-400 ml-1">
-                          ({product.variance_pct > 0 ? '+' : ''}{product.variance_pct.toFixed(1)}%)
+                          ({product.variance_pct > 0 ? '+' : ''}{(product.variance_pct || 0).toFixed(1)}%)
                         </span>
                       </td>
                       <td className="px-4 py-3 text-right">

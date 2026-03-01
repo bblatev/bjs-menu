@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
+
 import { api } from '@/lib/api';
 
 // ============ TYPES ============
@@ -219,17 +220,17 @@ export default function SentimentAnalysisPage() {
             </div>
             <div className="bg-green-50 p-4 rounded-xl border border-green-200">
               <p className="text-sm text-green-700">Positive</p>
-              <p className="text-2xl font-bold text-green-700">{summary.positive_pct.toFixed(0)}%</p>
+              <p className="text-2xl font-bold text-green-700">{(summary.positive_pct || 0).toFixed(0)}%</p>
               <p className="text-xs text-green-600">{summary.positive_count} reviews</p>
             </div>
             <div className="bg-yellow-50 p-4 rounded-xl border border-yellow-200">
               <p className="text-sm text-yellow-700">Neutral</p>
-              <p className="text-2xl font-bold text-yellow-700">{summary.neutral_pct.toFixed(0)}%</p>
+              <p className="text-2xl font-bold text-yellow-700">{(summary.neutral_pct || 0).toFixed(0)}%</p>
               <p className="text-xs text-yellow-600">{summary.neutral_count} reviews</p>
             </div>
             <div className="bg-red-50 p-4 rounded-xl border border-red-200">
               <p className="text-sm text-red-700">Negative</p>
-              <p className="text-2xl font-bold text-red-700">{summary.negative_pct.toFixed(0)}%</p>
+              <p className="text-2xl font-bold text-red-700">{(summary.negative_pct || 0).toFixed(0)}%</p>
               <p className="text-xs text-red-600">{summary.negative_count} reviews</p>
             </div>
           </div>

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+
 import { api } from '@/lib/api';
 
 // ── Types ───────────────────────────────────────────────────────────────────
@@ -219,7 +220,7 @@ export default function PourTrackingPage() {
               <p className={`text-3xl font-bold ${
                 Math.abs(stats.avg_variance_pct) <= 5 ? 'text-green-600' : 'text-red-600'
               }`}>
-                {stats.avg_variance_pct > 0 ? '+' : ''}{stats.avg_variance_pct.toFixed(1)}%
+                {stats.avg_variance_pct > 0 ? '+' : ''}{(stats.avg_variance_pct || 0).toFixed(1)}%
               </p>
               <p className="text-sm text-gray-500 mt-1">Target: within +/- 5%</p>
             </div>
@@ -231,7 +232,7 @@ export default function PourTrackingPage() {
                   $
                 </span>
               </div>
-              <p className="text-3xl font-bold text-red-600">${stats.overpour_cost.toFixed(2)}</p>
+              <p className="text-3xl font-bold text-red-600">${(stats.overpour_cost || 0).toFixed(2)}</p>
               <p className="text-sm text-gray-500 mt-1">Lost revenue from overpouring</p>
             </div>
 
@@ -255,7 +256,7 @@ export default function PourTrackingPage() {
                   ? 'text-yellow-600'
                   : 'text-red-600'
               }`}>
-                {stats.accuracy_rate.toFixed(1)}%
+                {(stats.accuracy_rate || 0).toFixed(1)}%
               </p>
               <p className="text-sm text-gray-500 mt-1">Pours within tolerance</p>
             </div>
@@ -439,14 +440,14 @@ export default function PourTrackingPage() {
                           </div>
                         </td>
                         <td className="px-5 py-3 text-right font-mono text-gray-900">
-                          {record.expected_oz.toFixed(2)}
+                          {(record.expected_oz || 0).toFixed(2)}
                         </td>
                         <td className="px-5 py-3 text-right font-mono text-gray-900">
-                          {record.actual_oz.toFixed(2)}
+                          {(record.actual_oz || 0).toFixed(2)}
                         </td>
                         <td className="px-5 py-3 text-right">
                           <span className={`inline-flex items-center px-2 py-1 rounded-md text-sm font-medium ${varianceClasses}`}>
-                            {record.variance_pct > 0 ? '+' : ''}{record.variance_pct.toFixed(1)}%
+                            {record.variance_pct > 0 ? '+' : ''}{(record.variance_pct || 0).toFixed(1)}%
                           </span>
                         </td>
                         <td className="px-5 py-3 text-center">

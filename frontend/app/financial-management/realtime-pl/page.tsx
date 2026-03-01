@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
+
 import { api } from '@/lib/api';
 
 // ============ TYPES ============
@@ -228,7 +229,7 @@ export default function RealtimePLPage() {
                 <div className="flex justify-between text-sm mb-1">
                   <span className="text-surface-600">{item.label}</span>
                   <span className={`font-bold ${item.value > item.target ? 'text-red-600' : 'text-green-600'}`}>
-                    {item.value.toFixed(1)}%
+                    {(item.value || 0).toFixed(1)}%
                   </span>
                 </div>
                 <div className="h-3 bg-surface-100 rounded-full overflow-hidden">
@@ -244,7 +245,7 @@ export default function RealtimePLPage() {
               <div className="flex justify-between text-sm">
                 <span className="font-medium text-surface-700">Prime Cost %</span>
                 <span className={`font-bold ${data.prime_cost_pct.value > 65 ? 'text-red-600' : 'text-green-600'}`}>
-                  {data.prime_cost_pct.value.toFixed(1)}%
+                  {(data.prime_cost_pct.value || 0).toFixed(1)}%
                 </span>
               </div>
               <p className="text-xs text-surface-400 mt-1">Target: under 65%</p>
@@ -268,7 +269,7 @@ export default function RealtimePLPage() {
                     style={{ width: `${ch.pct}%` }}
                   />
                 </div>
-                <p className="text-xs text-surface-400 mt-0.5">{ch.pct.toFixed(1)}% of total</p>
+                <p className="text-xs text-surface-400 mt-0.5">{(ch.pct || 0).toFixed(1)}% of total</p>
               </div>
             ))}
           </div>
@@ -308,7 +309,7 @@ export default function RealtimePLPage() {
           <div className="text-right">
             <p className="text-2xl font-bold text-surface-900">{formatCurrency(data.operating_expenses.value)}</p>
             <p className={`text-sm font-medium ${data.operating_expenses.change_pct <= 0 ? 'text-green-600' : 'text-red-600'}`}>
-              {data.operating_expenses.change_pct > 0 ? '+' : ''}{data.operating_expenses.change_pct.toFixed(1)}% vs previous period
+              {data.operating_expenses.change_pct > 0 ? '+' : ''}{(data.operating_expenses.change_pct || 0).toFixed(1)}% vs previous period
             </p>
           </div>
         </div>

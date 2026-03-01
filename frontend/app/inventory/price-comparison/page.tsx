@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
+
 import { api } from '@/lib/api';
 
 // ============ TYPES ============
@@ -151,7 +152,7 @@ export default function VendorPriceComparisonPage() {
           <div className="bg-gradient-to-br from-green-50 to-emerald-50 p-5 rounded-xl border border-green-200">
             <p className="text-sm text-green-700">Total Potential Savings</p>
             <p className="text-3xl font-bold text-green-700">
-              ${data.total_potential_savings.toFixed(2)}
+              ${(data.total_potential_savings || 0).toFixed(2)}
             </p>
             <p className="text-xs text-green-600 mt-1">By switching to best-price vendors</p>
           </div>
@@ -238,7 +239,7 @@ export default function VendorPriceComparisonPage() {
                   </td>
                   <td className="px-4 py-3 text-surface-600 capitalize">{item.category}</td>
                   <td className="px-4 py-3 text-right text-surface-700">
-                    ${item.current_price.toFixed(2)}/{item.unit}
+                    ${(item.current_price || 0).toFixed(2)}/{item.unit}
                   </td>
                   {data?.vendors.map((vendor) => {
                     const vp = item.vendor_prices.find((v) => v.vendor_name === vendor);
@@ -247,7 +248,7 @@ export default function VendorPriceComparisonPage() {
                       <td key={vendor} className="px-4 py-3 text-right">
                         {vp ? (
                           <span className={`${best ? 'font-bold text-green-600 bg-green-50 px-2 py-0.5 rounded' : vp.in_stock ? 'text-surface-700' : 'text-surface-400 line-through'}`}>
-                            ${vp.price_per_unit.toFixed(2)}
+                            ${(vp.price_per_unit || 0).toFixed(2)}
                           </span>
                         ) : (
                           <span className="text-surface-300">-</span>
@@ -256,13 +257,13 @@ export default function VendorPriceComparisonPage() {
                     );
                   })}
                   <td className="px-4 py-3 text-right font-bold text-green-600">
-                    ${item.best_price.toFixed(2)}
+                    ${(item.best_price || 0).toFixed(2)}
                   </td>
                   <td className="px-4 py-3 text-right">
                     {item.potential_savings > 0 ? (
                       <span className="font-medium text-green-600">
-                        -${item.potential_savings.toFixed(2)}
-                        <span className="text-xs text-green-500 ml-1">({item.savings_pct.toFixed(0)}%)</span>
+                        -${(item.potential_savings || 0).toFixed(2)}
+                        <span className="text-xs text-green-500 ml-1">({(item.savings_pct || 0).toFixed(0)}%)</span>
                       </span>
                     ) : (
                       <span className="text-surface-400">-</span>
@@ -300,10 +301,10 @@ export default function VendorPriceComparisonPage() {
                       </span>
                     )}
                   </div>
-                  <p className="text-2xl font-bold text-surface-900">${vp.unit_price.toFixed(2)}</p>
+                  <p className="text-2xl font-bold text-surface-900">${(vp.unit_price || 0).toFixed(2)}</p>
                   <div className="text-xs text-surface-500 space-y-1 mt-2">
                     <p>Pack: {vp.pack_size}</p>
-                    <p>Per unit: ${vp.price_per_unit.toFixed(2)}/{item.unit}</p>
+                    <p>Per unit: ${(vp.price_per_unit || 0).toFixed(2)}/{item.unit}</p>
                     <p>Delivery: {vp.delivery_days} days</p>
                     <p>Min order: {vp.minimum_order}</p>
                     <p className={vp.in_stock ? 'text-green-600 font-medium' : 'text-red-600 font-medium'}>

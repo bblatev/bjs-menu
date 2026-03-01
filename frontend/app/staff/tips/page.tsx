@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
+
 import { api } from '@/lib/api';
 
 // ============ TYPES ============
@@ -212,7 +213,7 @@ export default function TipCompliancePage() {
           </div>
           <div className="bg-white p-4 rounded-xl border border-surface-200 shadow-sm">
             <p className="text-sm text-surface-500">Tip Pool Total</p>
-            <p className="text-2xl font-bold text-surface-900">${summary.total_tip_pool.toFixed(2)}</p>
+            <p className="text-2xl font-bold text-surface-900">${(summary.total_tip_pool || 0).toFixed(2)}</p>
           </div>
           <div className="bg-white p-4 rounded-xl border border-surface-200 shadow-sm">
             <p className="text-sm text-surface-500">Compliance Score</p>
@@ -246,6 +247,9 @@ export default function TipCompliancePage() {
                   key={rule.id}
                   className="p-4 hover:bg-surface-50 cursor-pointer transition-colors"
                   onClick={() => openEditRule(rule)}
+                  role="button"
+                  tabIndex={0}
+                  onKeyDown={(e: React.KeyboardEvent) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openEditRule(rule); } }}
                 >
                   <div className="flex items-center justify-between mb-2">
                     <h4 className="font-medium text-surface-900">{rule.name}</h4>
@@ -298,9 +302,9 @@ export default function TipCompliancePage() {
                           {s.qualified ? 'Qualified' : 'Non-Qualified'}
                         </span>
                       </td>
-                      <td className="px-4 py-3 text-right text-surface-700">{s.hours_worked.toFixed(1)}h</td>
-                      <td className="px-4 py-3 text-right text-surface-700">${s.tips_eligible.toFixed(2)}</td>
-                      <td className="px-4 py-3 text-right font-medium text-surface-900">${s.tips_received.toFixed(2)}</td>
+                      <td className="px-4 py-3 text-right text-surface-700">{(s.hours_worked || 0).toFixed(1)}h</td>
+                      <td className="px-4 py-3 text-right text-surface-700">${(s.tips_eligible || 0).toFixed(2)}</td>
+                      <td className="px-4 py-3 text-right font-medium text-surface-900">${(s.tips_received || 0).toFixed(2)}</td>
                     </tr>
                   ))}
                 </tbody>
