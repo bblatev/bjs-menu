@@ -31,7 +31,7 @@ try:
     _CLIP_AVAILABLE = True
     logger.info("CLIP available for semantic features")
 except ImportError as e:
-    logger.warning(f"CLIP not available: {e}")
+    logger.debug(f"CLIP not available: {e}")
 
 # Try to import YOLOv8
 try:
@@ -39,7 +39,7 @@ try:
     _YOLO_AVAILABLE = True
     logger.info("YOLOv8 available for object detection")
 except ImportError as e:
-    logger.warning(f"YOLOv8 not available: {e}")
+    logger.debug(f"YOLOv8 not available: {e}")
 
 
 def _get_clip_model():

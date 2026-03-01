@@ -42,7 +42,7 @@ try:
 except ImportError:
     stripe = None  # type: ignore[assignment]
     STRIPE_AVAILABLE = False
-    logger.warning(
+    logger.debug(
         "stripe package is not installed. Payment gateway features will be "
         "unavailable. Install with: pip install stripe"
     )

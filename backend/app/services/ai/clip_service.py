@@ -28,7 +28,7 @@ def is_clip_available() -> bool:
             _clip_available = True
         except ImportError:
             _clip_available = False
-            logger.warning("CLIP not available - transformers package not installed")
+            logger.debug("CLIP not available - transformers package not installed")
     return _clip_available
 
 

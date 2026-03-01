@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, useCallback } from 'react';
-import { WS_URL } from '@/lib/api';
+import { WS_URL, isAuthenticated } from '@/lib/api';
 
 // WebSocket event types
 export enum EventType {
@@ -121,6 +121,11 @@ export function useWebSocket(options: UseWebSocketOptions): UseWebSocketReturn {
       return;
     }
 
+    // Don't attempt WebSocket connection if user is not authenticated
+    if (!isAuthenticated()) {
+      return;
+    }
+
     const url = getWebSocketUrl();
     wsRef.current = new WebSocket(url);
 
@@ -154,13 +159,16 @@ export function useWebSocket(options: UseWebSocketOptions): UseWebSocketReturn {
       }
     };
 
-    wsRef.current.onclose = () => {
+    wsRef.current.onclose = (event) => {
       setIsConnected(false);
       stopPingInterval();
       onDisconnect?.();
 
-      // Auto reconnect with exponential backoff
-      if (autoReconnect && reconnectAttemptsRef.current < maxReconnectAttempts) {
+      // Don't reconnect if server rejected auth (1008 Policy Violation or 403)
+      const authRejected = event.code === 1008 || event.code === 4403 || event.code === 1006;
+
+      // Auto reconnect with exponential backoff (skip if auth was rejected)
+      if (autoReconnect && !authRejected && reconnectAttemptsRef.current < maxReconnectAttempts) {
         reconnectAttemptsRef.current += 1;
         const backoffDelay = Math.min(reconnectInterval * Math.pow(2, reconnectAttemptsRef.current), 30000);
         reconnectTimeoutRef.current = setTimeout(() => {

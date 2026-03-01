@@ -456,6 +456,7 @@ def check_availability_get(
 
 # ==================== RESERVATION CRUD ====================
 
+@router.get("", include_in_schema=False)
 @router.get("/")
 @limiter.limit("60/minute")
 def list_reservations(

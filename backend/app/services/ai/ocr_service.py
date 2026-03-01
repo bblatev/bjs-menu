@@ -50,7 +50,7 @@ try:
     _OCR_AVAILABLE = True
     logger.info("EasyOCR available")
 except ImportError:
-    logger.warning("EasyOCR not available - text recognition disabled")
+    logger.debug("EasyOCR not available - text recognition disabled")
 
 try:
     if SEMANTIC_MATCHING_ENABLED:

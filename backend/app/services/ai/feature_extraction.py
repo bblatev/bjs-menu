@@ -55,7 +55,7 @@ try:
     _TORCH_AVAILABLE = True
     logger.info("PyTorch available - CNN features enabled")
 except ImportError:
-    logger.warning("PyTorch not available - using hand-crafted features only")
+    logger.debug("PyTorch not available - using hand-crafted features only")
 
 
 def _get_cnn_model():
