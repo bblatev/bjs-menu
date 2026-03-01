@@ -3,10 +3,9 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
+
 import { Button, Card, CardBody } from '@/components/ui';
-
 import { api } from '@/lib/api';
-
 import { toast } from '@/lib/toast';
 export default function WorkflowSettingsPage() {
   const [loading, setLoading] = useState(true);

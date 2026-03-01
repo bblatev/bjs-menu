@@ -1,8 +1,8 @@
 'use client';
 import { useState, useEffect } from 'react';
+
 import AdminLayout from '@/components/AdminLayout';
 import { toast } from '@/lib/toast';
-
 import { api } from '@/lib/api';
 interface ForecastItem {
   id: number;

@@ -4,7 +4,6 @@ import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 
 import { api } from '@/lib/api';
-
 import { toast } from '@/lib/toast';
 interface Shift {
   id: number;
@@ -375,6 +374,9 @@ export default function ShiftSchedulingPage() {
                                 <div
                                   key={shift.id}
                                   onClick={() => openEditModal(shift)}
+                                  role="button"
+                                  tabIndex={0}
+                                  onKeyDown={(e: React.KeyboardEvent) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openEditModal(shift); } }}
                                   className={`${getShiftTypeStyle(shift.shift_type)} text-gray-900 text-xs p-2 rounded cursor-pointer hover:opacity-80 transition`}
                                 >
                                   <div className="font-medium">{shift.start_time}-{shift.end_time}</div>

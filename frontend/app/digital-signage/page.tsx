@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+
 import { api } from '@/lib/api';
 
 // ── Types ───────────────────────────────────────────────────────────────────
@@ -318,6 +319,10 @@ export default function DigitalSignagePage() {
                       setSelectedDisplay(display);
                       setPreviewContent(display.current_content);
                     }}
+                    role="button"
+                    tabIndex={0}
+                    onKeyDown={(e: React.KeyboardEvent) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setSelectedDisplay(display);
+                      setPreviewContent(display.current_content); } }}
                     className={`rounded-xl border p-5 cursor-pointer transition-all hover:shadow-md ${
                       selectedDisplay?.id === display.id
                         ? 'border-indigo-400 bg-indigo-50/30'
@@ -424,6 +429,9 @@ export default function DigitalSignagePage() {
                   <div
                     key={content.id}
                     onClick={() => setPreviewContent(content)}
+                    role="button"
+                    tabIndex={0}
+                    onKeyDown={(e: React.KeyboardEvent) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setPreviewContent(content); } }}
                     className={`rounded-lg border p-4 cursor-pointer transition-all hover:border-indigo-300 ${
                       previewContent?.id === content.id ? 'border-indigo-400 bg-indigo-50/30' : 'border-gray-200 bg-white'
                     }`}

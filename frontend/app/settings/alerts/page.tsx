@@ -7,7 +7,6 @@ import { motion, AnimatePresence } from "framer-motion";
 
 
 import { toast } from '@/lib/toast';
-
 import { api } from '@/lib/api';
 interface ManagerAlert {
   id: number;

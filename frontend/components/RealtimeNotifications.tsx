@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
+
 import { useNotificationWebSocket, WebSocketMessage, EventType } from '@/hooks/useWebSocket';
 
 interface Notification {

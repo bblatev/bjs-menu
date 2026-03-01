@@ -2,10 +2,9 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
+
 import { Button, Input, Card, CardBody, Badge } from '@/components/ui';
-
 import { api, isAuthenticated } from '@/lib/api';
-
 import { toast } from '@/lib/toast';
 export default function SettingsFiscalPage() {
   const [loading, setLoading] = useState(true);

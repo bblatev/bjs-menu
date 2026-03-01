@@ -6,7 +6,6 @@ import { useRouter } from 'next/navigation';
 import { api, isAuthenticated } from '@/lib/api';
 import { getVenueId } from '@/lib/auth';
 import { useConfirm } from '@/hooks/useConfirm';
-
 import { toast } from '@/lib/toast';
 interface Reservation {
   id: number;
@@ -603,6 +602,9 @@ export default function ReservationsPage() {
                       <div
                         key={res.id}
                         onClick={() => openEditModal(res)}
+                        role="button"
+                        tabIndex={0}
+                        onKeyDown={(e: React.KeyboardEvent) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openEditModal(res); } }}
                         className={`absolute top-1 bottom-1 rounded cursor-pointer ${statusColors[res.status]} opacity-80 hover:opacity-100`}
                         style={{
                           left: `${leftPercent}%`,
@@ -639,6 +641,9 @@ export default function ReservationsPage() {
                 key={reservation.id}
                 className="p-4 hover:bg-gray-100/50 cursor-pointer"
                 onClick={() => openEditModal(reservation)}
+                role="button"
+                tabIndex={0}
+                onKeyDown={(e: React.KeyboardEvent) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openEditModal(reservation); } }}
               >
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-4">

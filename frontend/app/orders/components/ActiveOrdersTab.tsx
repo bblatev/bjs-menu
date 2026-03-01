@@ -1,6 +1,7 @@
 "use client";
 
 import { motion, AnimatePresence } from 'framer-motion';
+
 import type { Order } from './types';
 
 interface ActiveOrdersTabProps {

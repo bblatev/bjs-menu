@@ -2,6 +2,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Link from 'next/link';
+
 import { api } from '@/lib/api';
 import { toast } from '@/lib/toast';
 // ============ INTERFACES ============
@@ -1398,7 +1399,6 @@ export default function OrdersPage() {
               <h3 className="text-lg font-bold text-gray-900 mb-4">Анулиране на артикул</h3>
               <input
                 type="text"
-                autoFocus
                 value={voidItemReason}
                 onChange={(e) => setVoidItemReason(e.target.value)}
                 onKeyDown={(e) => {

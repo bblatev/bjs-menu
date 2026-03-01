@@ -5,7 +5,6 @@ import { motion, AnimatePresence } from "framer-motion";
 
 
 import { toast } from '@/lib/toast';
-
 import { api } from '@/lib/api';
 // Types
 interface PurchaseOrder {
@@ -765,6 +764,9 @@ export default function PurchaseOrdersManagementPage() {
                               key={grn.id}
                               className="border rounded-lg p-4 hover:shadow-md transition-shadow cursor-pointer"
                               onClick={() => setSelectedGRN(grn)}
+                              role="button"
+                              tabIndex={0}
+                              onKeyDown={(e: React.KeyboardEvent) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setSelectedGRN(grn); } }}
                             >
                               <div className="flex justify-between items-start mb-3">
                                 <div>
@@ -846,6 +848,9 @@ export default function PurchaseOrdersManagementPage() {
                               key={invoice.id}
                               className="border rounded-lg p-4 hover:shadow-md transition-shadow cursor-pointer"
                               onClick={() => setSelectedInvoice(invoice)}
+                              role="button"
+                              tabIndex={0}
+                              onKeyDown={(e: React.KeyboardEvent) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setSelectedInvoice(invoice); } }}
                             >
                               <div className="flex justify-between items-start mb-3">
                                 <div>

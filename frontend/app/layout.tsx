@@ -2,6 +2,7 @@ import './globals.css'
 import '@/styles/high-contrast.css'
 import type { Metadata } from 'next'
 import { DM_Sans, Playfair_Display, JetBrains_Mono } from 'next/font/google'
+
 import AdminLayout from '@/components/AdminLayout'
 import { Providers } from '@/components/Providers'
 import OfflineIndicator from '@/components/OfflineIndicator'

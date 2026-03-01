@@ -3,8 +3,8 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
-import { api } from '@/lib/api';
 
+import { api } from '@/lib/api';
 import { toast } from '@/lib/toast';
 interface DaypartSchedule {
   id: number;
@@ -304,6 +304,9 @@ export default function MenuSchedulingPage() {
                             backgroundColor: daypart.color,
                           }}
                           onClick={() => openEdit(daypart)}
+                          role="button"
+                          tabIndex={0}
+                          onKeyDown={(e: React.KeyboardEvent) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openEdit(daypart); } }}
                           title={`${daypart.name}: ${daypart.start_time} - ${daypart.end_time}`}
                         >
                           {daypart.name}
@@ -422,6 +425,9 @@ export default function MenuSchedulingPage() {
                           }`}
                           style={{ backgroundColor: daypart.color + '30' }}
                           onClick={() => openEdit(daypart)}
+                          role="button"
+                          tabIndex={0}
+                          onKeyDown={(e: React.KeyboardEvent) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openEdit(daypart); } }}
                         >
                           <p className="text-gray-900 text-sm font-medium">{daypart.name}</p>
                           <p className="text-gray-600 text-xs">

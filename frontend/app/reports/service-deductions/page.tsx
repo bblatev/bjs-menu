@@ -3,8 +3,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
-import { Button, Card, CardBody } from '@/components/ui';
 
+import { Button, Card, CardBody } from '@/components/ui';
 import { api } from '@/lib/api';
 
 interface StaffReport {

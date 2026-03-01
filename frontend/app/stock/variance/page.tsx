@@ -6,7 +6,6 @@ import Link from 'next/link';
 
 
 import { toast } from '@/lib/toast';
-
 import { api } from '@/lib/api';
 interface VarianceRecord {
   id: number;

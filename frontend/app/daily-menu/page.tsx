@@ -2,9 +2,9 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
+
 import { useConfirm } from "@/hooks/useConfirm";
 import { toast } from '@/lib/toast';
-
 import { api } from '@/lib/api';
 interface DailyMenuItem {
   product_id: number;
@@ -698,6 +698,9 @@ export default function DailyMenuPage() {
                           <div
                             key={menu.id}
                             onClick={() => openEditModal(menu)}
+                            role="button"
+                            tabIndex={0}
+                            onKeyDown={(e: React.KeyboardEvent) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openEditModal(menu); } }}
                             className={`p-2 rounded-lg cursor-pointer text-sm ${
                               menu.is_active
                                 ? "bg-green-100 text-green-700 hover:bg-green-200"

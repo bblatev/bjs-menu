@@ -309,7 +309,7 @@ class Settings(BaseSettings):
     api_v1_prefix: str = "/api/v1"
 
     # Rate limiting
-    rate_limit_enabled: bool = True
+    rate_limit_enabled: bool = False
     rate_limit_requests: int = 100  # requests per window
     rate_limit_window: int = 60  # window in seconds
 

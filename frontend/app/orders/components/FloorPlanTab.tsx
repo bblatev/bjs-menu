@@ -1,6 +1,7 @@
 "use client";
 
 import { motion } from 'framer-motion';
+
 import type { Order, Table, Staff } from './types';
 
 interface FloorPlanTabProps {

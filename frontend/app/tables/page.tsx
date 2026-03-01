@@ -2,9 +2,9 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+
 import { api, ApiError } from '@/lib/api';
 import { useConfirm } from '@/hooks/useConfirm';
-
 import { toast } from '@/lib/toast';
 interface Table {
   id: number;
@@ -419,6 +419,9 @@ export default function TablesPage() {
             <div
               key={table.id}
               onClick={() => setSelectedTable(table)}
+              role="button"
+              tabIndex={0}
+              onKeyDown={(e: React.KeyboardEvent) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setSelectedTable(table); } }}
               className={`relative p-5 rounded-2xl border-2 cursor-pointer transition-all hover:shadow-lg hover:-translate-y-1 ${statusConfig[table.status].color}`}
             >
               {/* Table Number */}
@@ -520,7 +523,10 @@ export default function TablesPage() {
       {/* Table Detail Modal */}
       {selectedTable && (
         <>
-          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50" onClick={() => setSelectedTable(null)} />
+          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50" onClick={() => setSelectedTable(null)}
+          role="button"
+          tabIndex={0}
+          onKeyDown={(e: React.KeyboardEvent) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setSelectedTable(null); } }} />
           <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-50 w-full max-w-md bg-white rounded-3xl shadow-2xl">
             <div className="p-6 border-b border-surface-100">
               <div className="flex items-center justify-between">
@@ -647,7 +653,10 @@ export default function TablesPage() {
       {/* Add Table Modal */}
       {isAddModalOpen && (
         <>
-          <div className="fixed inset-0 bg-black/30 backdrop-blur-sm z-50" onClick={() => setIsAddModalOpen(false)} />
+          <div className="fixed inset-0 bg-black/30 backdrop-blur-sm z-50" onClick={() => setIsAddModalOpen(false)}
+          role="button"
+          tabIndex={0}
+          onKeyDown={(e: React.KeyboardEvent) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setIsAddModalOpen(false); } }} />
           <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-50 w-full max-w-md bg-white rounded-3xl shadow-2xl">
             <div className="p-6 border-b border-surface-100">
               <div className="flex items-center justify-between">
@@ -721,7 +730,10 @@ export default function TablesPage() {
       {/* New Order Modal */}
       {isOrderModalOpen && selectedTable && (
         <>
-          <div className="fixed inset-0 bg-black/30 backdrop-blur-sm z-50" onClick={() => setIsOrderModalOpen(false)} />
+          <div className="fixed inset-0 bg-black/30 backdrop-blur-sm z-50" onClick={() => setIsOrderModalOpen(false)}
+          role="button"
+          tabIndex={0}
+          onKeyDown={(e: React.KeyboardEvent) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setIsOrderModalOpen(false); } }} />
           <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-50 w-full max-w-md bg-white rounded-3xl shadow-2xl">
             <div className="p-6 border-b border-surface-100">
               <div className="flex items-center justify-between">
@@ -783,7 +795,10 @@ export default function TablesPage() {
       {/* Reservation Modal */}
       {isReservationModalOpen && selectedTable && (
         <>
-          <div className="fixed inset-0 bg-black/30 backdrop-blur-sm z-50" onClick={() => setIsReservationModalOpen(false)} />
+          <div className="fixed inset-0 bg-black/30 backdrop-blur-sm z-50" onClick={() => setIsReservationModalOpen(false)}
+          role="button"
+          tabIndex={0}
+          onKeyDown={(e: React.KeyboardEvent) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setIsReservationModalOpen(false); } }} />
           <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-50 w-full max-w-md bg-white rounded-3xl shadow-2xl">
             <div className="p-6 border-b border-surface-100">
               <div className="flex items-center justify-between">

@@ -4,7 +4,6 @@ import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 
 import { api } from '@/lib/api';
-
 import { toast } from '@/lib/toast';
 interface PayrollEntry {
   id: number;

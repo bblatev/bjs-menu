@@ -2,8 +2,8 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { api } from '@/lib/api';
 
+import { api } from '@/lib/api';
 import { toast } from '@/lib/toast';
 interface RFIDTag {
   id: number;
@@ -437,7 +437,6 @@ export default function RFIDPage() {
                     onChange={e => setScanForm({...scanForm, tag_id: e.target.value})}
                     placeholder="Enter or scan tag ID..."
                     className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg"
-                    autoFocus
                   />
                   </label>
                 </div>

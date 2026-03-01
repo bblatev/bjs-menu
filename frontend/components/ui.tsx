@@ -159,14 +159,17 @@ interface CardProps {
 }
 
 export const Card = ({ children, className = '', hover = false, onClick }: CardProps) => (
-  <div 
+  <div
     className={`
-      bg-white rounded-2xl border border-surface-200 
+      bg-white rounded-2xl border border-surface-200
       shadow-sm overflow-hidden
       ${hover ? 'hover:shadow-lg hover:border-surface-300 hover:-translate-y-0.5 transition-all duration-300 cursor-pointer' : ''}
       ${className}
     `}
     onClick={onClick}
+    role={onClick ? 'button' : undefined}
+    tabIndex={onClick ? 0 : undefined}
+    onKeyDown={onClick ? (e: React.KeyboardEvent) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onClick(); } } : undefined}
   >
     {children}
   </div>

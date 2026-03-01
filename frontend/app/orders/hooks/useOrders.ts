@@ -1,7 +1,9 @@
 'use client';
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { Order, OrderItem, Table, Staff, OrderStats } from '../types';
+
 import { api } from '@/lib/api';
+
+import { Order, OrderItem, Table, Staff, OrderStats } from '../types';
 interface UseOrdersReturn {
   orders: Order[];
   tables: Table[];

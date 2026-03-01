@@ -95,30 +95,30 @@ class DeliveryOrderResponse(BaseModel):
     customer_phone: Optional[str] = None
     delivery_address: Optional[str] = None
     delivery_instructions: Optional[str] = None
-    subtotal: float = 0.0
-    tax: float = 0.0
-    delivery_fee: float = 0.0
-    tip: float = 0.0
-    total: float = 0.0
-    platform_fee: float = 0.0
-    net_payout: float = 0.0
+    subtotal: Optional[float] = 0.0
+    tax: Optional[float] = 0.0
+    delivery_fee: Optional[float] = 0.0
+    tip: Optional[float] = 0.0
+    total: Optional[float] = 0.0
+    platform_fee: Optional[float] = 0.0
+    net_payout: Optional[float] = 0.0
     special_instructions: Optional[str] = None
-    is_scheduled: bool = False
+    is_scheduled: Optional[bool] = False
     scheduled_for: Optional[datetime] = None
     estimated_pickup_at: Optional[datetime] = None
     estimated_delivery_at: Optional[datetime] = None
-    received_at: datetime
+    received_at: Optional[datetime] = None
     confirmed_at: Optional[datetime] = None
     ready_at: Optional[datetime] = None
     picked_up_at: Optional[datetime] = None
     delivered_at: Optional[datetime] = None
     pos_order_id: Optional[int] = None
-    sent_to_kds: bool = False
+    sent_to_kds: Optional[bool] = False
     kds_ticket_id: Optional[int] = None
     error_message: Optional[str] = None
     items: List[DeliveryOrderItemResponse] = []
-    created_at: datetime
-    updated_at: datetime
+    created_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
 
     model_config = {"from_attributes": True}
 

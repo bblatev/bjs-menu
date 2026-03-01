@@ -2,10 +2,9 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
+
 import { Button, Input, Card, CardBody } from '@/components/ui';
-
 import { api, isAuthenticated } from '@/lib/api';
-
 import { toast } from '@/lib/toast';
 const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 

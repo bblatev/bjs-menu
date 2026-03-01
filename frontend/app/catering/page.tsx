@@ -4,7 +4,6 @@ import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 import { api } from '@/lib/api';
-
 import { toast } from '@/lib/toast';
 interface CateringEvent {
   id: number;
@@ -329,6 +328,9 @@ export default function CateringPage() {
                         key={event.id}
                         className="bg-gray-50 rounded-xl p-4 flex items-center gap-4 cursor-pointer hover:bg-gray-100"
                         onClick={() => setSelectedEvent(event)}
+                        role="button"
+                        tabIndex={0}
+                        onKeyDown={(e: React.KeyboardEvent) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setSelectedEvent(event); } }}
                       >
                         <div className="text-4xl">{getEventTypeIcon(event.event_type)}</div>
                         <div className="flex-1">

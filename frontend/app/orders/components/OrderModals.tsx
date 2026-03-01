@@ -1,6 +1,7 @@
 "use client";
 
 import { motion, AnimatePresence } from 'framer-motion';
+
 import type { Order, OrderItem } from './types';
 
 interface OrderModalsProps {
@@ -391,7 +392,7 @@ export default function OrderModals(props: OrderModalsProps) {
             <motion.div initial={{ scale: 0.9, y: 20 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.9, y: 20 }}
               className="bg-white rounded-2xl p-6 w-full max-w-md mx-4" onClick={e => e.stopPropagation()}>
               <h3 className="text-lg font-bold text-gray-900 mb-4">Анулиране на артикул</h3>
-              <input type="text" autoFocus value={voidItemReason} onChange={(e) => setVoidItemReason(e.target.value)}
+              <input type="text" value={voidItemReason} onChange={(e) => setVoidItemReason(e.target.value)}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter' && voidItemReason) handleConfirmVoidItem();
                   if (e.key === 'Escape') { setShowVoidItemModal(false); setVoidItemId(null); setVoidItemReason(''); }

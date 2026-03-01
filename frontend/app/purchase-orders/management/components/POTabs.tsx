@@ -2,6 +2,7 @@
 
 import React from "react";
 import { motion } from "framer-motion";
+
 import { LoadingSpinner, ErrorMessage } from "./POHelpers";
 import type {
   PurchaseOrder, GoodsReceivedNote, Invoice,
@@ -221,7 +222,10 @@ export function ReceivingTab(props: ReceivingTabProps) {
           <div className="text-center py-12 text-gray-500"><div className="text-4xl mb-4">📦</div><p>No goods received notes found</p></div>
         ) : (
           grns.map((grn) => (
-            <div key={grn.id} className="border rounded-lg p-4 hover:shadow-md transition-shadow cursor-pointer" onClick={() => setSelectedGRN(grn)}>
+            <div key={grn.id} className="border rounded-lg p-4 hover:shadow-md transition-shadow cursor-pointer" onClick={() => setSelectedGRN(grn)}
+            role="button"
+            tabIndex={0}
+            onKeyDown={(e: React.KeyboardEvent) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setSelectedGRN(grn); } }}>
               <div className="flex justify-between items-start mb-3">
                 <div>
                   <div className="flex items-center gap-3">
@@ -278,7 +282,10 @@ export function InvoicesTab(props: InvoicesTabProps) {
           <div className="text-center py-12 text-gray-500"><div className="text-4xl mb-4">🧾</div><p>No invoices found</p></div>
         ) : (
           invoices.map((invoice) => (
-            <div key={invoice.id} className="border rounded-lg p-4 hover:shadow-md transition-shadow cursor-pointer" onClick={() => setSelectedInvoice(invoice)}>
+            <div key={invoice.id} className="border rounded-lg p-4 hover:shadow-md transition-shadow cursor-pointer" onClick={() => setSelectedInvoice(invoice)}
+            role="button"
+            tabIndex={0}
+            onKeyDown={(e: React.KeyboardEvent) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setSelectedInvoice(invoice); } }}>
               <div className="flex justify-between items-start mb-3">
                 <div>
                   <div className="flex items-center gap-3">

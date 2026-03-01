@@ -44,6 +44,9 @@ export default function TimelineView({ reservations, tables, timeSlots, openEdit
                     <div
                       key={res.id}
                       onClick={() => openEditModal(res)}
+                      role="button"
+                      tabIndex={0}
+                      onKeyDown={(e: React.KeyboardEvent) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openEditModal(res); } }}
                       className={`absolute top-1 bottom-1 rounded cursor-pointer ${statusColors[res.status]} opacity-80 hover:opacity-100`}
                       style={{
                         left: `${leftPercent}%`,

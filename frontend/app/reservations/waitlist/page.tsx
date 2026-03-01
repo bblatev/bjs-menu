@@ -5,7 +5,6 @@ import { motion, AnimatePresence } from 'framer-motion';
 import Link from 'next/link';
 
 import { api } from '@/lib/api';
-
 import { toast } from '@/lib/toast';
 interface WaitlistEntry {
   id: number;
@@ -213,7 +212,7 @@ export default function WaitlistPage() {
 
   return (
     <div className="min-h-screen bg-white p-6">
-      <audio ref={audioRef} src="/notification.mp3" preload="auto" />
+      <audio ref={audioRef} src="/notification.mp3" preload="auto"><track kind="captions" src="" srcLang="en" label="Notification description" default /></audio>
 
       <div className="max-w-7xl mx-auto">
         {/* Header */}
@@ -604,15 +603,18 @@ export default function WaitlistPage() {
           <div
             className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
             onClick={() => { setShowSeatModal(false); setSeatEntryId(null); setSeatTableNumber(''); }}
+            role="button"
+            tabIndex={0}
+            onKeyDown={(e: React.KeyboardEvent) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setShowSeatModal(false); setSeatEntryId(null); setSeatTableNumber(''); } }}
           >
             <div
               className="bg-white rounded-2xl p-6 w-full max-w-md mx-4"
               onClick={e => e.stopPropagation()}
+              role="presentation"
             >
               <h3 className="text-lg font-bold text-gray-900 mb-4">Seat Guest</h3>
               <input
                 type="text"
-                autoFocus
                 value={seatTableNumber}
                 onChange={(e) => setSeatTableNumber(e.target.value)}
                 onKeyDown={(e) => {

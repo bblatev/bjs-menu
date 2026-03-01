@@ -2,12 +2,9 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
+
 import { Button, Card, CardBody, Badge } from '@/components/ui';
-
-
-
 import { toast } from '@/lib/toast';
-
 import { api } from '@/lib/api';
 
 interface Manufacturer {
@@ -289,6 +286,9 @@ export default function FiscalPrintersPage() {
                     key={idx}
                     className="p-4 bg-white rounded-xl border border-surface-200 hover:border-primary-300 cursor-pointer transition-all"
                     onClick={() => handleSelectDetected(device)}
+                    role="button"
+                    tabIndex={0}
+                    onKeyDown={(e: React.KeyboardEvent) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleSelectDetected(device); } }}
                   >
                     <div className="flex items-start justify-between">
                       <div>

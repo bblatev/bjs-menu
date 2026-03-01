@@ -2,9 +2,9 @@
 
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
+
 import AdminLayout from '@/components/AdminLayout';
 import { api } from '@/lib/api';
-
 import { toast } from '@/lib/toast';
 interface AlertConfig {
   type: string;

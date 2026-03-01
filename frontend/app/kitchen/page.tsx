@@ -4,7 +4,6 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import Link from 'next/link';
 
 import { api, clearAuth } from '@/lib/api';
-
 import { toast } from '@/lib/toast';
 type OrderType = 'dine_in' | 'takeout' | 'delivery' | 'drive_thru';
 type TicketStatus = 'new' | 'in_progress' | 'ready' | 'bumped' | 'recalled' | 'voided';
@@ -550,8 +549,8 @@ export default function KitchenPage() {
 
   return (
     <div className={`min-h-screen ${isFullscreen ? 'bg-white' : 'bg-white'}`}>
-      <audio ref={audioRef} src="/sounds/notification.mp3" preload="auto" />
-      <audio ref={overdueAudioRef} src="/sounds/alert.mp3" preload="auto" />
+      <audio ref={audioRef} src="/sounds/notification.mp3" preload="auto"><track kind="captions" src="" srcLang="en" label="Notification description" default /></audio>
+      <audio ref={overdueAudioRef} src="/sounds/alert.mp3" preload="auto"><track kind="captions" src="" srcLang="en" label="Notification description" default /></audio>
 
       {/* 86 Alert Banner */}
       {items86.length > 0 && (
@@ -1029,15 +1028,18 @@ export default function KitchenPage() {
         <div
           className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
           onClick={() => { setShowVoidItemModal(false); setVoidItemContext(null); setVoidItemReason(''); }}
+          role="button"
+          tabIndex={0}
+          onKeyDown={(e: React.KeyboardEvent) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setShowVoidItemModal(false); setVoidItemContext(null); setVoidItemReason(''); } }}
         >
           <div
             className="bg-white rounded-2xl p-6 w-full max-w-md mx-4"
             onClick={e => e.stopPropagation()}
+            role="presentation"
           >
             <h3 className="text-lg font-semibold text-surface-900 mb-4">Void Item</h3>
             <input
               type="text"
-              autoFocus
               value={voidItemReason}
               onChange={(e) => setVoidItemReason(e.target.value)}
               onKeyDown={(e) => {
@@ -1071,15 +1073,18 @@ export default function KitchenPage() {
         <div
           className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
           onClick={() => { setShow86Modal(false); setMark86Context(null); setMark86Reason(''); }}
+          role="button"
+          tabIndex={0}
+          onKeyDown={(e: React.KeyboardEvent) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setShow86Modal(false); setMark86Context(null); setMark86Reason(''); } }}
         >
           <div
             className="bg-white rounded-2xl p-6 w-full max-w-md mx-4"
             onClick={e => e.stopPropagation()}
+            role="presentation"
           >
             <h3 className="text-lg font-semibold text-surface-900 mb-4">86 Item: {mark86Context.itemName}</h3>
             <input
               type="text"
-              autoFocus
               value={mark86Reason}
               onChange={(e) => setMark86Reason(e.target.value)}
               onKeyDown={(e) => {

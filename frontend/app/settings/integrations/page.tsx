@@ -2,10 +2,9 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
+
 import { Button, Input, Card, CardBody, Badge } from '@/components/ui';
-
 import { api, isAuthenticated } from '@/lib/api';
-
 import { toast } from '@/lib/toast';
 interface Integration {
   id: string;
@@ -540,16 +539,19 @@ export default function SettingsIntegrationsPage() {
         <div
           className="fixed inset-0 bg-black/50 flex items-center justify-center z-50"
           onClick={() => { setShowConnectModal(false); setConnectIntegrationId(null); setConnectCredentials(''); }}
+          role="button"
+          tabIndex={0}
+          onKeyDown={(e: React.KeyboardEvent) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setShowConnectModal(false); setConnectIntegrationId(null); setConnectCredentials(''); } }}
         >
           <div
             className="bg-white rounded-2xl p-6 w-full max-w-md mx-4"
             onClick={e => e.stopPropagation()}
+            role="presentation"
           >
             <h3 className="text-lg font-semibold text-surface-900 mb-4">Connect Integration</h3>
             <p className="text-sm text-surface-500 mb-4">Enter API key or credentials for {connectIntegrationId}.</p>
             <input
               type="text"
-              autoFocus
               value={connectCredentials}
               onChange={(e) => setConnectCredentials(e.target.value)}
               onKeyDown={(e) => {
@@ -583,15 +585,18 @@ export default function SettingsIntegrationsPage() {
         <div
           className="fixed inset-0 bg-black/50 flex items-center justify-center z-50"
           onClick={() => { setShowCreateApiKeyModal(false); setNewApiKeyName(''); }}
+          role="button"
+          tabIndex={0}
+          onKeyDown={(e: React.KeyboardEvent) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setShowCreateApiKeyModal(false); setNewApiKeyName(''); } }}
         >
           <div
             className="bg-white rounded-2xl p-6 w-full max-w-md mx-4"
             onClick={e => e.stopPropagation()}
+            role="presentation"
           >
             <h3 className="text-lg font-semibold text-surface-900 mb-4">Create API Key</h3>
             <input
               type="text"
-              autoFocus
               value={newApiKeyName}
               onChange={(e) => setNewApiKeyName(e.target.value)}
               onKeyDown={(e) => {

@@ -37,9 +37,11 @@ export default function ConfirmDialog({
     }
   }, [open]);
 
-  // Handle escape key and focus trap
+  // Handle escape key and focus trap via document-level listener
   const handleKeyDown = useCallback(
-    (e: React.KeyboardEvent) => {
+    (e: KeyboardEvent) => {
+      if (!open) return;
+
       if (e.key === 'Escape') {
         onCancel();
         return;
@@ -68,8 +70,13 @@ export default function ConfirmDialog({
         }
       }
     },
-    [onCancel]
+    [onCancel, open]
   );
+
+  useEffect(() => {
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [handleKeyDown]);
 
   if (!open) return null;
 
@@ -81,18 +88,22 @@ export default function ConfirmDialog({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
-      onClick={onCancel}
-      onKeyDown={handleKeyDown}
+      className="fixed inset-0 z-50 flex items-center justify-center"
       role="dialog"
       aria-modal="true"
       aria-labelledby="confirm-dialog-title"
       aria-describedby="confirm-dialog-message"
     >
+      <button
+        type="button"
+        className="fixed inset-0 bg-black/50 cursor-default border-0 p-0 m-0"
+        onClick={onCancel}
+        aria-label="Close dialog"
+        tabIndex={-1}
+      />
       <div
         ref={dialogRef}
-        className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-md w-full mx-4 p-6"
-        onClick={(e) => e.stopPropagation()}
+        className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-md w-full mx-4 p-6 relative z-10"
       >
         <h3
           id="confirm-dialog-title"

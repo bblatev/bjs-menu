@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
+
 import { api } from '@/lib/api';
 
 interface TrainingSession {
@@ -261,7 +262,6 @@ export default function TrainingModePage() {
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                   Session Notes (optional)
-                </label>
                 <textarea
                   value={notes}
                   onChange={e => setNotes(e.target.value)}
@@ -269,6 +269,7 @@ export default function TrainingModePage() {
                   className="w-full px-4 py-2 border border-gray-300 dark:border-surface-600 rounded-lg bg-white dark:bg-surface-700 text-gray-900 dark:text-white resize-none"
                   rows={3}
                 />
+                </label>
               </div>
               <button
                 onClick={startTrainingSession}

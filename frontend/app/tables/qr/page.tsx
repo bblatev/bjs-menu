@@ -352,6 +352,9 @@ export default function TablesQrPage() {
                 <div
                   className="bg-white rounded-xl p-3 mb-3 cursor-pointer hover:shadow-md transition-shadow"
                   onClick={() => setPreviewTable(table)}
+                  role="button"
+                  tabIndex={0}
+                  onKeyDown={(e: React.KeyboardEvent) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setPreviewTable(table); } }}
                 >
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
@@ -516,7 +519,10 @@ export default function TablesQrPage() {
       {/* QR Preview Modal */}
       {previewTable && (
         <>
-          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50" onClick={() => setPreviewTable(null)} />
+          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50" onClick={() => setPreviewTable(null)}
+          role="button"
+          tabIndex={0}
+          onKeyDown={(e: React.KeyboardEvent) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setPreviewTable(null); } }} />
           <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-50 w-full max-w-lg bg-white rounded-3xl shadow-2xl">
             <div className="p-6 border-b border-surface-100">
               <div className="flex items-center justify-between">

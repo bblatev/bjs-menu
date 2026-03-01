@@ -4,7 +4,6 @@ import { useState, useEffect } from 'react';
 
 
 import { toast } from '@/lib/toast';
-
 import { api } from '@/lib/api';
 interface MobileApp {
   id: number;

@@ -362,19 +362,35 @@ def _format_discount_response(discount: AutoDiscount) -> AutoDiscountResponse:
     except (ValueError, KeyError):
         discount_type_val = AutoDiscountType("percentage")
 
+    # Map valid_days (list of day names) to days_of_week (list of ints)
+    day_name_to_int = {
+        "monday": 0, "tuesday": 1, "wednesday": 2, "thursday": 3,
+        "friday": 4, "saturday": 5, "sunday": 6,
+    }
+    raw_days = discount.valid_days or []
+    days_of_week = []
+    for d in raw_days:
+        if isinstance(d, int):
+            days_of_week.append(d)
+        elif isinstance(d, str):
+            days_of_week.append(day_name_to_int.get(d.lower(), 0))
+
     return AutoDiscountResponse(
         id=discount.id,
         name=discount.name or "",
         discount_type=discount_type_val,
+        percentage=discount.discount_percentage or 0.0,
         discount_percentage=discount.discount_percentage,
         discount_amount=discount.discount_amount,
         start_time=discount.start_time or "",
         end_time=discount.end_time or "",
-        valid_days=discount.valid_days or [],
+        days_of_week=days_of_week,
+        valid_days=raw_days,
         applicable_categories=discount.applicable_categories or [],
         applicable_items=discount.applicable_items or [],
         min_order_amount=discount.min_order_amount,
         max_discount_amount=discount.max_discount_amount,
+        weather_condition=None,
         active=discount.active if discount.active is not None else False,
         currently_active=is_discount_currently_active(discount),
         created_at=discount.created_at

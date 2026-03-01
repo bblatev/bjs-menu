@@ -4,7 +4,6 @@ import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 import { api } from '@/lib/api';
-
 import { toast } from '@/lib/toast';
 interface Location {
   id: number;
@@ -350,6 +349,9 @@ export default function MultiLocationPage() {
                       key={location.id}
                       className="bg-white rounded-2xl border border-gray-200 shadow-sm hover:shadow-md transition-shadow cursor-pointer"
                       onClick={() => setSelectedLocation(location)}
+                      role="button"
+                      tabIndex={0}
+                      onKeyDown={(e: React.KeyboardEvent) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setSelectedLocation(location); } }}
                     >
                       <div className="p-5">
                         <div className="flex justify-between items-start mb-4">

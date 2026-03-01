@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+
 import { toast } from '@/lib/toast';
 
 export default function SupplierPortalPage() {

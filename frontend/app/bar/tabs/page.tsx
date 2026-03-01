@@ -1,6 +1,7 @@
 'use client';
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
+
 import { api } from '@/lib/api';
 import { toast } from '@/lib/toast';
 interface BarTab {
@@ -285,6 +286,9 @@ export default function BarTabsPage() {
               <div
                 key={tab.id}
                 onClick={() => setSelectedTab(tab)}
+                role="button"
+                tabIndex={0}
+                onKeyDown={(e: React.KeyboardEvent) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setSelectedTab(tab); } }}
                 className={`bg-secondary rounded-lg p-4 cursor-pointer hover:bg-gray-100/50 transition ${
                   selectedTab?.id === tab.id ? 'ring-2 ring-primary' : ''
                 }`}

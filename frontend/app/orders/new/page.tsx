@@ -2,8 +2,8 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { toast } from '@/lib/toast';
 
+import { toast } from '@/lib/toast';
 import { api } from '@/lib/api';
 interface MenuItem {
   id: number;

@@ -1,8 +1,9 @@
 'use client';
 
 import { useState, useEffect, createContext, useContext, useCallback, ReactNode, useRef } from 'react';
-import { onToast } from '@/lib/toast';
 import { motion, AnimatePresence } from 'framer-motion';
+
+import { onToast } from '@/lib/toast';
 
 type ToastType = 'success' | 'error' | 'warning' | 'info';
 

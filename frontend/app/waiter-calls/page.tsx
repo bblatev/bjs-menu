@@ -3,6 +3,7 @@
 import { useEffect, useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
+
 import { api, WS_URL, isAuthenticated } from '@/lib/api';
 
 interface WaiterCall {
@@ -419,7 +420,7 @@ export default function WaiterCallsPage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <audio ref={audioRef} src="/notification.mp3" preload="auto" />
+      <audio ref={audioRef} src="/notification.mp3" preload="auto"><track kind="captions" src="" srcLang="en" label="Notification description" default /></audio>
 
       {/* Header */}
       <div className="bg-white border-b border-gray-200 shadow-sm">
@@ -648,6 +649,9 @@ export default function WaiterCallsPage() {
                         setShowCallModal(true);
                       }
                     }}
+                    role="button"
+                    tabIndex={0}
+                    onKeyDown={(e: React.KeyboardEvent) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); const call = calls.find(c => c.table_number === table.number); if (call) { setSelectedCall(call); setShowCallModal(true); } } }}
                   >
                     <div className="text-center">
                       <div className="text-xl">{table.number}</div>

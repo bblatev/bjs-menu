@@ -2,6 +2,7 @@
 
 import React from 'react';
 import { motion } from 'framer-motion';
+
 import { Order } from '../types';
 import { getStatusConfig, getTypeLabel, getPriorityColor, getTimeColor, formatCurrency } from '../utils';
 

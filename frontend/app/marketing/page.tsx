@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
+
 import { api } from "@/lib/api";
 
 // Types
@@ -384,6 +385,9 @@ export default function MarketingPage() {
                         key={campaign.id}
                         className="border rounded-lg p-4 hover:shadow-md transition-shadow cursor-pointer"
                         onClick={() => setSelectedCampaign(campaign)}
+                        role="button"
+                        tabIndex={0}
+                        onKeyDown={(e: React.KeyboardEvent) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setSelectedCampaign(campaign); } }}
                       >
                         <div className="flex items-center justify-between mb-3">
                           <div className="flex items-center gap-3">

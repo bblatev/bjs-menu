@@ -35,7 +35,10 @@ export default function ReservationsList(props: ReservationsListProps) {
           <div className="p-8 text-center text-gray-500">No reservations for this date</div>
         ) : (
           reservations.map((reservation) => (
-            <div key={reservation.id} className="p-4 hover:bg-gray-100/50 cursor-pointer" onClick={() => openEditModal(reservation)}>
+            <div key={reservation.id} className="p-4 hover:bg-gray-100/50 cursor-pointer" onClick={() => openEditModal(reservation)}
+            role="button"
+            tabIndex={0}
+            onKeyDown={(e: React.KeyboardEvent) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openEditModal(reservation); } }}>
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-4">
                   <div className="text-2xl font-bold text-primary">{formatReservationTime(reservation.reservation_date)}</div>

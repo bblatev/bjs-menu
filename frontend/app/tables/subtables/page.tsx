@@ -2,8 +2,8 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
-import { toast } from '@/lib/toast';
 
+import { toast } from '@/lib/toast';
 import { api } from '@/lib/api';
 interface Table {
   id: number;

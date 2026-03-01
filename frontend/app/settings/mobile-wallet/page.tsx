@@ -230,6 +230,9 @@ export default function MobileWalletPage() {
                       : 'border-surface-200 hover:border-surface-300'
                   }`}
                   onClick={() => setConfig({ ...config, apple_pay_enabled: !config.apple_pay_enabled })}
+                  role="button"
+                  tabIndex={0}
+                  onKeyDown={(e: React.KeyboardEvent) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setConfig({ ...config, apple_pay_enabled: !config.apple_pay_enabled }); } }}
                 >
                   <div className="flex items-center justify-between mb-3">
                     <div className="flex items-center gap-3">
@@ -267,6 +270,9 @@ export default function MobileWalletPage() {
                       : 'border-surface-200 hover:border-surface-300'
                   }`}
                   onClick={() => setConfig({ ...config, google_pay_enabled: !config.google_pay_enabled })}
+                  role="button"
+                  tabIndex={0}
+                  onKeyDown={(e: React.KeyboardEvent) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setConfig({ ...config, google_pay_enabled: !config.google_pay_enabled }); } }}
                 >
                   <div className="flex items-center justify-between mb-3">
                     <div className="flex items-center gap-3">

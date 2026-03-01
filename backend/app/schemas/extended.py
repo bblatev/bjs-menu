@@ -218,13 +218,20 @@ class AutoDiscountResponse(BaseModel):
     id: int
     name: str
     discount_type: AutoDiscountType
-    percentage: float
+    percentage: float = 0.0
+    discount_percentage: Optional[float] = None
+    discount_amount: Optional[float] = None
     start_time: str
     end_time: str
-    days_of_week: List[int]
-    applicable_categories: Optional[List[int]]
-    weather_condition: Optional[str]
-    active: bool
+    days_of_week: List[int] = []
+    valid_days: Optional[List[Any]] = None
+    applicable_categories: Optional[List[int]] = None
+    applicable_items: Optional[List[int]] = None
+    min_order_amount: Optional[float] = None
+    max_discount_amount: Optional[float] = None
+    weather_condition: Optional[str] = None
+    active: bool = False
+    currently_active: Optional[bool] = None
     created_at: datetime
 
     model_config = ConfigDict(from_attributes=True)

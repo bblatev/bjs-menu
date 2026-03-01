@@ -1,6 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
+
 import type { Category, MenuItem } from "./types";
 
 interface ItemsTabProps {
