@@ -450,7 +450,7 @@ export default function HACCPFoodSafetyPage() {
                         <td className="p-3">
                           {batch.allergens.length > 0 ? (
                             <div className="flex flex-wrap gap-1">
-                              {batch.allergens.map(a => (
+                              {(batch.allergens || []).map(a => (
                                 <span key={a} className="bg-orange-100 text-orange-800 text-xs px-1 rounded">{a}</span>
                               ))}
                             </div>

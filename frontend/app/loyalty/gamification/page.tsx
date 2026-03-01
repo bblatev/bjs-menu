@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+
 import AdminLayout from '@/components/AdminLayout';
 import { api } from '@/lib/api';
 
@@ -49,7 +50,7 @@ export default function GamificationPage() {
                   <div className="text-sm text-gray-700 dark:text-gray-300 mb-2">{tier.multiplier}x point multiplier</div>
                   <div className="text-sm font-medium text-gray-900 dark:text-white">{tier.member_count} members</div>
                   <ul className="mt-2 text-sm text-gray-500 space-y-1">
-                    {tier.perks.map((p, i) => <li key={i}>&bull; {p}</li>)}
+                    {(tier.perks || []).map((p, i) => <li key={i}>&bull; {p}</li>)}
                   </ul>
                 </div>
               ))}

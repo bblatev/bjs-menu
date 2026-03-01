@@ -525,6 +525,10 @@ export default function RFMAnalyticsPage() {
                           setSelectedSegment(segment.name);
                           setActiveTab('segments');
                         }}
+                        role="button"
+                        tabIndex={0}
+                        onKeyDown={(e: React.KeyboardEvent) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setSelectedSegment(segment.name);
+                          setActiveTab('segments'); } }}
                       >
                         <div className="flex items-center gap-3">
                           <div className={`w-3 h-3 rounded-full ${segment.color}`}></div>
@@ -639,7 +643,7 @@ export default function RFMAnalyticsPage() {
                   </div>
 
                   <div className="flex flex-wrap gap-2">
-                    {segment.campaign_suggestions.map((suggestion, idx) => (
+                    {(segment.campaign_suggestions || []).map((suggestion, idx) => (
                       <span
                         key={idx}
                         className="px-3 py-1 bg-orange-100 text-orange-800 rounded-full text-xs cursor-pointer hover:bg-orange-200"
@@ -648,6 +652,9 @@ export default function RFMAnalyticsPage() {
                           setCampaignForm({ ...campaignForm, segment: segment.name, name: suggestion });
                           setShowCampaignModal(true);
                         }}
+                        role="button"
+                        tabIndex={0}
+                        onKeyDown={(e: React.KeyboardEvent) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); setCampaignForm({ ...campaignForm, segment: segment.name, name: suggestion }); setShowCampaignModal(true); } }}
                       >
                         {suggestion}
                       </span>

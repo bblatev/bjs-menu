@@ -2,8 +2,8 @@
 
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { api } from '@/lib/api';
 
+import { api } from '@/lib/api';
 import { toast } from '@/lib/toast';
 interface Warehouse {
   id: number;
@@ -113,7 +113,8 @@ export default function StockInventoryPage() {
     try {
       // Fetch warehouses
       try {
-        const data = await api.get<any>('/warehouses');
+        const raw = await api.get<any>('/warehouses');
+        const data = Array.isArray(raw) ? raw : (raw.items || raw.warehouses || []);
         setWarehouses(data);
         if (data.length > 0) setSelectedWarehouse(data[0]);
       } catch {}

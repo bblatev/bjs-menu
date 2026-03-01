@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useCallback } from 'react';
+
 import { api } from '@/lib/api';
 
 // ── Types ───────────────────────────────────────────────────────────────────
@@ -234,9 +235,9 @@ export default function SocialContentPage() {
                     </div>
 
                     {/* Hashtags */}
-                    {generatedContent.hashtags.length > 0 && (
+                    {(generatedContent.hashtags || []).length > 0 && (
                       <div className="flex flex-wrap gap-1">
-                        {generatedContent.hashtags.map(tag => (
+                        {(generatedContent.hashtags || []).map(tag => (
                           <span key={tag} className="text-indigo-600 text-sm">#{tag}</span>
                         ))}
                       </div>

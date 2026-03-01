@@ -60,11 +60,11 @@ export default function KDSLocalizationPage() {
 ]);
       if (stationsRes.status === 'fulfilled') {
         const data: any = stationsRes.value;
-        setStations(data);
+        setStations(Array.isArray(data) ? data : (data.items || data.stations || []));
       }
       if (translationsRes.status === 'fulfilled') {
         const data_translations: any = translationsRes.value;
-        setTranslations(data_translations);
+        setTranslations(Array.isArray(data_translations) ? data_translations : (data_translations.items || data_translations.translations || []));
       }
     } catch (err) {
       console.error('Error loading data:', err);

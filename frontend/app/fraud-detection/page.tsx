@@ -2,8 +2,8 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { isAuthenticated, api } from '@/lib/api';
 
+import { isAuthenticated, api } from '@/lib/api';
 import { toast } from '@/lib/toast';
 interface FraudAlert {
   id: string;
@@ -485,6 +485,10 @@ export default function FraudDetectionPage() {
                         setSelectedAlert(alert);
                         setShowAlertModal(true);
                       }}
+                      role="button"
+                      tabIndex={0}
+                      onKeyDown={(e: React.KeyboardEvent) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setSelectedAlert(alert);
+                        setShowAlertModal(true); } }}
                     >
                       <div className="flex justify-between items-start mb-2">
                         <div className="flex items-center gap-2">
@@ -526,6 +530,10 @@ export default function FraudDetectionPage() {
                         setSelectedCase(c);
                         setShowCaseModal(true);
                       }}
+                      role="button"
+                      tabIndex={0}
+                      onKeyDown={(e: React.KeyboardEvent) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setSelectedCase(c);
+                        setShowCaseModal(true); } }}
                     >
                       <div className="flex justify-between items-start mb-2">
                         <div className="text-gray-900 font-medium">{c.title}</div>
@@ -563,6 +571,10 @@ export default function FraudDetectionPage() {
                       setSelectedStaff(staff);
                       setShowStaffModal(true);
                     }}
+                    role="button"
+                    tabIndex={0}
+                    onKeyDown={(e: React.KeyboardEvent) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setSelectedStaff(staff);
+                      setShowStaffModal(true); } }}
                   >
                     <div className="w-16 h-16 mx-auto bg-gray-200 rounded-full flex items-center justify-center mb-3 text-2xl">
                       👤
@@ -649,7 +661,8 @@ export default function FraudDetectionPage() {
                         {new Date(alert.created_at).toLocaleString()}
                       </td>
                       <td className="px-6 py-4 text-center">
-                        <div className="flex gap-2 justify-center" onClick={(e) => e.stopPropagation()}>
+                        <div className="flex gap-2 justify-center" onClick={(e) => e.stopPropagation()}
+                        role="presentation">
                           {!alert.acknowledged && (
                             <button
                               onClick={() => acknowledgeAlert(alert.id)}
@@ -1109,7 +1122,7 @@ export default function FraudDetectionPage() {
               <div className="mb-6">
                 <h3 className="text-lg font-bold text-gray-900 mb-3">Investigation Notes</h3>
                 <div className="space-y-3 mb-4 max-h-64 overflow-y-auto">
-                  {selectedCase.notes.map((note) => (
+                  {(selectedCase.notes || []).map((note) => (
                     <div key={note.id} className="bg-gray-50 rounded-xl p-4">
                       <div className="flex justify-between items-start mb-2">
                         <span className="text-gray-900 font-medium">{note.author}</span>

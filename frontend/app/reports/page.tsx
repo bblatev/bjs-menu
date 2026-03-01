@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import Link from 'next/link';
+
 import { api, isAuthenticated } from '@/lib/api';
 
 interface SalesReportItem {
@@ -372,7 +373,7 @@ export default function ReportsPage() {
             </div>
 
             {/* Top items */}
-            {salesReport.top_items.length > 0 && (
+            {(salesReport.top_items || []).length > 0 && (
               <div className="bg-gray-50 p-6 rounded-2xl border border-gray-200">
                 <h3 className="text-xl font-bold text-gray-900 mb-4">🏆 Най-продавани продукти</h3>
                 <div className="overflow-x-auto">
@@ -386,7 +387,7 @@ export default function ReportsPage() {
                       </tr>
                     </thead>
                     <tbody>
-                      {salesReport.top_items.map((item, idx) => (
+                      {(salesReport.top_items || []).map((item, idx) => (
                         <tr key={idx} className="border-b border-white/5">
                           <td className="py-3 text-gray-500">{idx + 1}</td>
                           <td className="py-3 text-gray-900">{item.item_name}</td>

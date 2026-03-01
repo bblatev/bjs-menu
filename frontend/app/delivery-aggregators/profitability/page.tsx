@@ -128,7 +128,7 @@ export default function DeliveryProfitabilityPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-                  {data.platforms.map((p) => (
+                  {(data.platforms || []).map((p) => (
                     <tr key={p.platform} className="hover:bg-gray-50 dark:hover:bg-gray-700">
                       <td className="px-4 py-3 font-medium text-gray-900 dark:text-white">
                         {platformIcon(p.platform)} {p.platform}
@@ -157,10 +157,10 @@ export default function DeliveryProfitabilityPage() {
             <div className="mt-6 bg-blue-50 dark:bg-blue-900/20 rounded-lg p-4">
               <h3 className="font-semibold text-blue-800 dark:text-blue-200 mb-2">Optimization Recommendations</h3>
               <ul className="space-y-1 text-sm text-blue-700 dark:text-blue-300">
-                {data.platforms.filter(p => p.margin_pct < 10).map(p => (
+                {(data.platforms || []).filter(p => p.margin_pct < 10).map(p => (
                   <li key={p.platform}>Consider renegotiating {p.platform} commission rates ({p.commission_pct}%) or increasing menu prices for that platform.</li>
                 ))}
-                {data.platforms.some(p => p.platform.toLowerCase().includes('direct')) ? (
+                {(data.platforms || []).some(p => p.platform.toLowerCase().includes('direct')) ? (
                   <li>Push direct ordering to increase margin — promote your branded ordering page.</li>
                 ) : (
                   <li>Enable commission-free direct ordering to capture more margin.</li>

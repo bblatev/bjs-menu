@@ -3,8 +3,8 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Link from 'next/link';
-import { api } from '@/lib/api';
 
+import { api } from '@/lib/api';
 import { toast } from '@/lib/toast';
 interface ScheduledReport {
   schedule_id: string;
@@ -84,7 +84,7 @@ export default function ScheduledReportsPage() {
     setError(null);
     try {
       const data: any = await api.get('/scheduled-reports/schedules');
-            setSchedules(data);
+            setSchedules(Array.isArray(data) ? data : (data.items || data.schedules || []));
     } catch (err) {
       console.error('Error loading data:', err);
       setError('Failed to load scheduled reports. Please try again.');

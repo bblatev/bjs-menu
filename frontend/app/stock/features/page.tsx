@@ -1,8 +1,8 @@
 "use client";
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { toast } from '@/lib/toast';
 
+import { toast } from '@/lib/toast';
 import { api } from '@/lib/api';
 // Types
 interface StockItem {
@@ -151,8 +151,9 @@ export default function StockFeaturesPage() {
   const loadStockItems = async () => {
     try {
       const data: any = await api.get('/stock');
-            setStockItems(data);
-      if (data.length > 0) setSelectedItem(data[0]);
+            const stockArr = Array.isArray(data) ? data : (data.items || []);
+            setStockItems(stockArr);
+      if (stockArr.length > 0) setSelectedItem(stockArr[0]);
     } catch (error) {
       console.error("Error loading stock items:", error);
     } finally {

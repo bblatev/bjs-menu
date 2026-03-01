@@ -448,9 +448,9 @@ export default function SocialContentPage() {
                       />
 
                       {/* Hashtags */}
-                      {generatedContent.hashtags.length > 0 && (
+                      {(generatedContent.hashtags || []).length > 0 && (
                         <div className="flex flex-wrap gap-1 mt-3">
-                          {generatedContent.hashtags.map((tag) => (
+                          {(generatedContent.hashtags || []).map((tag) => (
                             <span key={tag} className="text-indigo-600 text-sm">#{tag}</span>
                           ))}
                         </div>

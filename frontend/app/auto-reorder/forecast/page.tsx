@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+
 import { api } from '@/lib/api';
 
 // ── Types ───────────────────────────────────────────────────────────────────
@@ -61,7 +62,7 @@ export default function ForecastOrdersPage() {
     setError(null);
     try {
       const data = await api.get<ForecastOrder[]>('/auto-reorder/forecast-orders');
-      setOrders(data);
+      setOrders(Array.isArray(data) ? data : ((data as any).items || (data as any).orders || []));
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load forecast orders');
     } finally {
@@ -311,7 +312,6 @@ export default function ForecastOrdersPage() {
                                     onChange={e => setEditQtyValue(parseInt(e.target.value) || 0)}
                                     onKeyDown={e => e.key === 'Enter' && saveEditQty()}
                                     className="w-20 px-2 py-1 border border-blue-300 rounded text-right text-sm text-gray-900 bg-white"
-                                    autoFocus
                                   />
                                   <button onClick={saveEditQty} className="text-green-600 hover:text-green-700 text-xs font-bold px-1">
                                     OK

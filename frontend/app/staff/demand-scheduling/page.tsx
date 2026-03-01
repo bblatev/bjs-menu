@@ -349,8 +349,8 @@ export default function DemandSchedulingPage() {
                   <span className="w-20 text-right">Covers</span>
                   <span className="w-20 text-right">Revenue</span>
                 </div>
-                {selectedDay.hourly_slots.map((slot) => {
-                  const maxCovers = Math.max(...selectedDay.hourly_slots.map((s) => s.expected_covers), 1);
+                {(selectedDay.hourly_slots || []).map((slot) => {
+                  const maxCovers = Math.max(...(selectedDay.hourly_slots || []).map((s) => s.expected_covers), 1);
                   return (
                     <div key={slot.hour} className="flex items-center gap-3 px-2 py-1.5 rounded-lg hover:bg-gray-50">
                       <span className="text-sm font-medium text-gray-600 w-14 flex-shrink-0">{slot.hour}</span>
@@ -390,8 +390,8 @@ export default function DemandSchedulingPage() {
                   <span className="w-16 text-center">Sched</span>
                   <span className="w-16 text-center">Gap</span>
                 </div>
-                {selectedDay.hourly_slots.map((slot) => {
-                  const maxStaff = Math.max(...selectedDay.hourly_slots.map((s) => Math.max(s.required_staff, s.scheduled_staff)), 1);
+                {(selectedDay.hourly_slots || []).map((slot) => {
+                  const maxStaff = Math.max(...(selectedDay.hourly_slots || []).map((s) => Math.max(s.required_staff, s.scheduled_staff)), 1);
                   return (
                     <div key={slot.hour} className="flex items-center gap-3 px-2 py-1.5 rounded-lg hover:bg-gray-50">
                       <span className="text-sm font-medium text-gray-600 w-14 flex-shrink-0">{slot.hour}</span>
@@ -553,7 +553,7 @@ export default function DemandSchedulingPage() {
             </div>
 
             {/* AI Recommendations */}
-            {selectedDay.recommendations.length > 0 && (
+            {(selectedDay.recommendations || []).length > 0 && (
               <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl border border-blue-200 p-6">
                 <h4 className="text-sm font-semibold text-blue-900 mb-3 flex items-center gap-2">
                   <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -562,7 +562,7 @@ export default function DemandSchedulingPage() {
                   AI Recommendations
                 </h4>
                 <ul className="space-y-2">
-                  {selectedDay.recommendations.map((rec, i) => (
+                  {(selectedDay.recommendations || []).map((rec, i) => (
                     <li key={i} className="text-sm text-blue-800 flex items-start gap-2">
                       <span className="mt-1.5 w-1.5 h-1.5 rounded-full bg-blue-400 flex-shrink-0" />
                       {rec}

@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
+
 import AdminLayout from '@/components/AdminLayout';
 import { api } from '@/lib/api';
 
@@ -126,10 +127,10 @@ export default function ForecastingPage() {
               <div className="text-sm text-surface-500">Sales Trend</div>
               <div className="mt-2 flex items-center gap-2">
                 <span className="text-2xl font-bold">
-                  {dashboardData.sales_trend.direction === 'up' ? '↗' : dashboardData.sales_trend.direction === 'down' ? '↘' : '→'}
+                  {dashboardData.sales_trend?.direction === 'up' ? '↗' : dashboardData.sales_trend?.direction === 'down' ? '↘' : '→'}
                 </span>
-                <span className={`text-lg font-semibold ${dashboardData.sales_trend.change_percent > 0 ? 'text-green-600' : 'text-red-600'}`}>
-                  {dashboardData.sales_trend.change_percent > 0 ? '+' : ''}{(dashboardData.sales_trend.change_percent || 0).toFixed(1)}%
+                <span className={`text-lg font-semibold ${(dashboardData.sales_trend?.change_percent || 0) > 0 ? 'text-green-600' : 'text-red-600'}`}>
+                  {(dashboardData.sales_trend?.change_percent || 0) > 0 ? '+' : ''}{(dashboardData.sales_trend?.change_percent || 0).toFixed(1)}%
                 </span>
               </div>
             </motion.div>

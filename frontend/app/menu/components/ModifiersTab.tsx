@@ -1,6 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
+
 import type { MenuItem, ModifierGroup, ModifierOption } from "./types";
 
 interface ModifiersTabProps {
@@ -70,11 +71,11 @@ export default function ModifiersTab({
                 </div>
               </div>
 
-              {group.options.length === 0 ? (
+              {(group.options || []).length === 0 ? (
                 <p className="text-gray-500 text-sm italic">No options yet</p>
               ) : (
                 <div className="space-y-2">
-                  {group.options.map((option) => (
+                  {(group.options || []).map((option) => (
                     <div key={option.id}
                       className={`flex items-center justify-between p-3 bg-gray-50 rounded-xl ${!option.available ? "opacity-50" : ""}`}>
                       <div>

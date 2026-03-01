@@ -1,9 +1,11 @@
 "use client";
 
 import { useState, useEffect } from "react";
+
 import { apiFetch, api } from '@/lib/api';
 import { useConfirm } from "@/hooks/useConfirm";
 import { toast } from "@/lib/toast";
+
 import type {
   Category, MenuItem, Station, ModifierGroup, ModifierOption,
   TabType, ItemFormData, CategoryFormData, ModifierGroupFormData, OptionFormData,
@@ -82,7 +84,7 @@ export function useMenuData() {
   const loadModifiers = async (itemId: number) => {
     try {
       const data: any = await api.get(`/menu-admin/items/${itemId}/modifiers`);
-      setModifierGroups(data);
+      setModifierGroups(Array.isArray(data) ? data : (data.items || data.modifier_groups || data.groups || []));
     } catch (error) {
       console.error("Error loading modifiers:", error);
     }

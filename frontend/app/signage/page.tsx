@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+
 import { api } from '@/lib/api';
 
 // ── Types ───────────────────────────────────────────────────────────────────
@@ -200,6 +201,9 @@ export default function SignagePage() {
                 <div
                   key={display.id}
                   onClick={() => setSelectedDisplay(display)}
+                  role="button"
+                  tabIndex={0}
+                  onKeyDown={(e: React.KeyboardEvent) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setSelectedDisplay(display); } }}
                   className={`rounded-xl border p-5 cursor-pointer transition-all hover:shadow-md ${
                     selectedDisplay?.id === display.id ? 'border-indigo-400 bg-indigo-50/30' : 'border-gray-200 bg-white'
                   }`}
@@ -301,7 +305,7 @@ export default function SignagePage() {
                     </div>
                   </div>
                   <div className="flex flex-wrap gap-1 mt-2">
-                    {template.tags.map(tag => (
+                    {(template.tags || []).map(tag => (
                       <span key={tag} className="px-2 py-0.5 bg-gray-100 rounded text-xs text-gray-600">
                         {tag}
                       </span>

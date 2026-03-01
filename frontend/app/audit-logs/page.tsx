@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
+
 import { api, isAuthenticated } from '@/lib/api';
 
 interface AuditLog {
@@ -66,8 +67,8 @@ export default function AuditLogsPage() {
       if (staffFilter) params.append('staff_user_id', staffFilter);
       params.append('limit', '100');
 
-      const data = await api.get<AuditLog[]>(`/audit-logs/?${params}`);
-      setLogs(data);
+      const raw: any = await api.get(`/audit-logs/?${params}`);
+      setLogs(Array.isArray(raw) ? raw : (raw.items || raw.logs || []));
     } catch (err) {
       console.error('Error fetching audit logs:', err);
     } finally {
@@ -88,13 +89,13 @@ export default function AuditLogsPage() {
   const fetchFilterOptions = async () => {
     if (!authenticated) return;
     try {
-      const [actions, types] = await Promise.all([
-        api.get<string[]>('/audit-logs/actions'),
-        api.get<string[]>('/audit-logs/entity-types'),
+      const [rawActions, rawTypes] = await Promise.all([
+        api.get<any>('/audit-logs/actions'),
+        api.get<any>('/audit-logs/entity-types'),
       ]);
 
-      setAvailableActions(actions);
-      setAvailableEntityTypes(types);
+      setAvailableActions(Array.isArray(rawActions) ? rawActions : (rawActions.items || rawActions.actions || []));
+      setAvailableEntityTypes(Array.isArray(rawTypes) ? rawTypes : (rawTypes.items || rawTypes.entity_types || []));
     } catch (err) {
       console.error('Error fetching filter options:', err);
     }

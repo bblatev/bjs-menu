@@ -3,8 +3,8 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
-import { api } from '@/lib/api';
 
+import { api } from '@/lib/api';
 import { toast } from '@/lib/toast';
 interface NutritionInfo {
   calories: number;
@@ -175,10 +175,10 @@ export default function AllergensNutritionPage() {
       item.name.bg.toLowerCase().includes(searchQuery.toLowerCase());
 
     const matchesAllergen = filterAllergen === null ||
-      item.allergens.includes(filterAllergen);
+      (item.allergens || []).includes(filterAllergen);
 
     const matchesDietary = filterDietary === null ||
-      item.dietary_labels.includes(filterDietary);
+      (item.dietary_labels || []).includes(filterDietary);
 
     return matchesSearch && matchesAllergen && matchesDietary;
   });
@@ -255,7 +255,7 @@ export default function AllergensNutritionPage() {
           <div className="bg-gray-100 rounded-xl p-4">
             <p className="text-gray-600 text-sm">Dietary Labels</p>
             <p className="text-2xl font-bold text-blue-400">
-              {items.filter(i => i.dietary_labels.length > 0).length}
+              {items.filter(i => (i.dietary_labels || []).length > 0).length}
             </p>
           </div>
         </div>
@@ -370,11 +370,11 @@ export default function AllergensNutritionPage() {
                 </div>
 
                 {/* Allergens */}
-                {item.allergens.length > 0 && (
+                {(item.allergens || []).length > 0 && (
                   <div className="mb-3">
                     <p className="text-gray-500 text-xs mb-1">Allergens:</p>
                     <div className="flex flex-wrap gap-1">
-                      {item.allergens.map(a => {
+                      {(item.allergens || []).map(a => {
                         const allergen = ALLERGENS.find(al => al.id === a);
                         return allergen ? (
                           <span
@@ -392,11 +392,11 @@ export default function AllergensNutritionPage() {
                 )}
 
                 {/* Dietary Labels */}
-                {item.dietary_labels.length > 0 && (
+                {(item.dietary_labels || []).length > 0 && (
                   <div className="mb-3">
                     <p className="text-gray-500 text-xs mb-1">Dietary:</p>
                     <div className="flex flex-wrap gap-1">
-                      {item.dietary_labels.map(d => {
+                      {(item.dietary_labels || []).map(d => {
                         const label = DIETARY_LABELS.find(dl => dl.id === d);
                         return label ? (
                           <span
@@ -475,7 +475,7 @@ export default function AllergensNutritionPage() {
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex flex-wrap gap-1">
-                        {item.allergens.map(a => {
+                        {(item.allergens || []).map(a => {
                           const allergen = ALLERGENS.find(al => al.id === a);
                           return allergen ? (
                             <span key={a} title={allergen.label} className="text-lg">
@@ -483,14 +483,14 @@ export default function AllergensNutritionPage() {
                             </span>
                           ) : null;
                         })}
-                        {item.allergens.length === 0 && (
+                        {(item.allergens || []).length === 0 && (
                           <span className="text-gray-400 text-sm">None</span>
                         )}
                       </div>
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex flex-wrap gap-1">
-                        {item.dietary_labels.map(d => {
+                        {(item.dietary_labels || []).map(d => {
                           const label = DIETARY_LABELS.find(dl => dl.id === d);
                           return label ? (
                             <span key={d} title={label.label} className="text-lg">
@@ -498,7 +498,7 @@ export default function AllergensNutritionPage() {
                             </span>
                           ) : null;
                         })}
-                        {item.dietary_labels.length === 0 && (
+                        {(item.dietary_labels || []).length === 0 && (
                           <span className="text-gray-400 text-sm">-</span>
                         )}
                       </div>

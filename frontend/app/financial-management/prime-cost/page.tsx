@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+
 import { api } from '@/lib/api';
 
 // ── Types ───────────────────────────────────────────────────────────────────
@@ -257,11 +258,11 @@ export default function PrimeCostPage() {
         </div>
 
         {/* Alerts */}
-        {data.alerts.length > 0 && (
+        {(data.alerts || []).length > 0 && (
           <div className="mb-8">
             <h2 className="text-xl font-bold text-gray-900 mb-4">Alerts</h2>
             <div className="space-y-3">
-              {data.alerts.map(alert => (
+              {(data.alerts || []).map(alert => (
                 <div
                   key={alert.id}
                   className={`rounded-lg border p-4 flex items-start gap-3 ${

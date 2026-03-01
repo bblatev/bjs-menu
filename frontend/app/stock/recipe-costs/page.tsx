@@ -1,9 +1,9 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
+
 import AdminLayout from '@/components/AdminLayout';
 import { api } from '@/lib/api';
-
 import { toast } from '@/lib/toast';
 interface Ingredient {
   id: number;
@@ -723,7 +723,7 @@ export default function RecipeCostsPage() {
                         </tr>
                       </thead>
                       <tbody>
-                        {selectedRecipe.ingredients.map((ing) => (
+                        {(selectedRecipe.ingredients || []).map((ing) => (
                           <tr key={ing.id} className="border-t border-gray-600/50">
                             <td className="px-4 py-2 text-white">{ing.name}</td>
                             <td className="px-4 py-2 text-right text-gray-300">{ing.quantity} {ing.unit}</td>
@@ -758,7 +758,7 @@ export default function RecipeCostsPage() {
                 <div>
                   <h3 className="text-lg font-semibold text-white mb-3">Разпределение на разходите</h3>
                   <div className="h-8 bg-gray-700 rounded-full overflow-hidden flex">
-                    {selectedRecipe.ingredients.map((ing, index) => {
+                    {(selectedRecipe.ingredients || []).map((ing, index) => {
                       const colors = ['bg-blue-500', 'bg-green-500', 'bg-yellow-500', 'bg-purple-500', 'bg-pink-500', 'bg-cyan-500'];
                       return (
                         <div
@@ -775,7 +775,7 @@ export default function RecipeCostsPage() {
                     })}
                   </div>
                   <div className="flex flex-wrap gap-3 mt-3">
-                    {selectedRecipe.ingredients.map((ing, index) => {
+                    {(selectedRecipe.ingredients || []).map((ing, index) => {
                       const colors = ['bg-blue-500', 'bg-green-500', 'bg-yellow-500', 'bg-purple-500', 'bg-pink-500', 'bg-cyan-500'];
                       return (
                         <div key={ing.id} className="flex items-center gap-2">

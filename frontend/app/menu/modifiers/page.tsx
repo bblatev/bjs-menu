@@ -3,8 +3,8 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
-import { api } from '@/lib/api';
 
+import { api } from '@/lib/api';
 import { toast } from '@/lib/toast';
 interface MultiLang {
   bg: string;
@@ -360,6 +360,9 @@ export default function MenuModifiersPage() {
                 <div
                   className="p-4 flex items-center justify-between cursor-pointer hover:bg-gray-50"
                   onClick={() => toggleExpand(group.id)}
+                  role="button"
+                  tabIndex={0}
+                  onKeyDown={(e: React.KeyboardEvent) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleExpand(group.id); } }}
                 >
                   <div className="flex items-center gap-4">
                     <button className="text-gray-500 hover:text-gray-900">
@@ -389,7 +392,7 @@ export default function MenuModifiersPage() {
                           <span className="px-2 py-0.5 bg-red-500/20 text-red-400 text-xs rounded">Required</span>
                         )}
                         <span className="px-2 py-0.5 bg-gray-100 text-gray-600 text-xs rounded">
-                          {group.options.length} options
+                          {(group.options || []).length} options
                         </span>
                         {group.free_selections > 0 && (
                           <span className="px-2 py-0.5 bg-green-500/20 text-green-400 text-xs rounded">
@@ -402,7 +405,8 @@ export default function MenuModifiersPage() {
                       </div>
                     </div>
                   </div>
-                  <div className="flex items-center gap-2" onClick={e => e.stopPropagation()}>
+                  <div className="flex items-center gap-2" onClick={e => e.stopPropagation()}
+                  role="presentation">
                     <button
                       onClick={() => openAddOption(group.id)}
                       className="px-3 py-1.5 bg-green-500/20 text-green-400 rounded-lg hover:bg-green-500/30 text-sm"
@@ -444,10 +448,10 @@ export default function MenuModifiersPage() {
                       className="border-t border-gray-200"
                     >
                       <div className="p-4 space-y-2">
-                        {group.options.length === 0 ? (
+                        {(group.options || []).length === 0 ? (
                           <p className="text-gray-500 text-center py-4">No options yet. Add your first option.</p>
                         ) : (
-                          group.options
+                          (group.options || [])
                             .sort((a, b) => a.sort_order - b.sort_order)
                             .map((option) => (
                               <div

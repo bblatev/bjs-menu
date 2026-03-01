@@ -2,8 +2,8 @@
 
 import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { api, isAuthenticated, WS_URL } from '@/lib/api';
 
+import { api, isAuthenticated, WS_URL } from '@/lib/api';
 import { toast } from '@/lib/toast';
 export default function KitchenStationPage() {
   const params = useParams();
@@ -32,10 +32,10 @@ export default function KitchenStationPage() {
     try {
       setLoading(true);
       setError('');
-      const data = await api.get<any[]>(
+      const raw: any = await api.get(
         `/orders/station/${stationId}?status=new&status=accepted&status=preparing&status=ready`
       );
-      setOrders(data);
+      setOrders(Array.isArray(raw) ? raw : (raw.items || raw.orders || []));
     } catch (err: any) {
       console.error('Failed to load orders', err);
       const message = err?.message || err?.data?.detail || 'Failed to load orders';
@@ -241,7 +241,7 @@ export default function KitchenStationPage() {
                 </div>
 
                 <div className="space-y-3 mb-4">
-                  {order.items.map((item: any) => (
+                  {(order.items || []).map((item: any) => (
                     <div key={item.id} className={`border-l-4 pl-3 ${
                       order.order_type === 'takeaway' ? 'border-amber-500' : 'border-primary'
                     }`}>

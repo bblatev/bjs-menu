@@ -3,10 +3,9 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
+
 import { Button, Card, CardBody } from '@/components/ui';
-
 import { api } from '@/lib/api';
-
 import { toast } from '@/lib/toast';
 interface StaffMember {
   id: number;
@@ -37,8 +36,8 @@ export default function StaffCommissionPage() {
 
   const loadStaff = async () => {
     try {
-      const data = await api.get<StaffMember[]>('/staff');
-      setStaff(data);
+      const raw: any = await api.get('/staff');
+      setStaff(Array.isArray(raw) ? raw : (raw.items || raw.staff || []));
     } catch (err) {
       console.error('Error loading staff:', err);
     } finally {

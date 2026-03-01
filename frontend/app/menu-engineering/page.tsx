@@ -257,6 +257,9 @@ export default function MenuEngineeringPage() {
                     <div
                       key={item.id}
                       onClick={() => { setSelectedItem(item); setShowItemModal(true); }}
+                      role="button"
+                      tabIndex={0}
+                      onKeyDown={(e: React.KeyboardEvent) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setSelectedItem(item); setShowItemModal(true); } }}
                       className="bg-white rounded-lg p-2 shadow-sm hover:shadow-md cursor-pointer transition-shadow"
                     >
                       <p className="font-medium text-sm text-surface-900">{item.name}</p>
@@ -277,6 +280,9 @@ export default function MenuEngineeringPage() {
                     <div
                       key={item.id}
                       onClick={() => { setSelectedItem(item); setShowItemModal(true); }}
+                      role="button"
+                      tabIndex={0}
+                      onKeyDown={(e: React.KeyboardEvent) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setSelectedItem(item); setShowItemModal(true); } }}
                       className="bg-white rounded-lg p-2 shadow-sm hover:shadow-md cursor-pointer transition-shadow"
                     >
                       <p className="font-medium text-sm text-surface-900">{item.name}</p>
@@ -297,6 +303,9 @@ export default function MenuEngineeringPage() {
                     <div
                       key={item.id}
                       onClick={() => { setSelectedItem(item); setShowItemModal(true); }}
+                      role="button"
+                      tabIndex={0}
+                      onKeyDown={(e: React.KeyboardEvent) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setSelectedItem(item); setShowItemModal(true); } }}
                       className="bg-white rounded-lg p-2 shadow-sm hover:shadow-md cursor-pointer transition-shadow"
                     >
                       <p className="font-medium text-sm text-surface-900">{item.name}</p>
@@ -317,6 +326,9 @@ export default function MenuEngineeringPage() {
                     <div
                       key={item.id}
                       onClick={() => { setSelectedItem(item); setShowItemModal(true); }}
+                      role="button"
+                      tabIndex={0}
+                      onKeyDown={(e: React.KeyboardEvent) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setSelectedItem(item); setShowItemModal(true); } }}
                       className="bg-white rounded-lg p-2 shadow-sm hover:shadow-md cursor-pointer transition-shadow"
                     >
                       <p className="font-medium text-sm text-surface-900">{item.name}</p>
@@ -597,7 +609,7 @@ export default function MenuEngineeringPage() {
               <div>
                 <h4 className="font-semibold text-surface-900 mb-2">Recommendations</h4>
                 <ul className="space-y-2">
-                  {selectedItem.recommendations.map((rec, index) => (
+                  {(selectedItem.recommendations || []).map((rec, index) => (
                     <li key={index} className="flex items-start gap-2 text-sm">
                       <span className="text-primary-500 mt-0.5">•</span>
                       <span className="text-surface-700">{rec}</span>

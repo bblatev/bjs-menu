@@ -2,8 +2,8 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { api } from '@/lib/api';
 
+import { api } from '@/lib/api';
 import { toast } from '@/lib/toast';
 interface Server {
   id: number;
@@ -68,8 +68,8 @@ export default function ServerSectionsPage() {
 
   const loadServers = async () => {
     try {
-      const data = await api.get<Server[]>('/staff/sections/servers');
-      setServers(data);
+      const data: any = await api.get('/staff/sections/servers');
+      setServers(Array.isArray(data) ? data : (data.items || data.servers || []));
     } catch (error) {
       console.error('Error loading servers:', error);
     }
@@ -77,8 +77,8 @@ export default function ServerSectionsPage() {
 
   const loadSections = async () => {
     try {
-      const data = await api.get<TableSection[]>('/tables/sections');
-      setSections(data);
+      const data: any = await api.get('/tables/sections');
+      setSections(Array.isArray(data) ? data : (data.items || data.sections || []));
     } catch (error) {
       console.error('Error loading sections:', error);
     }
@@ -86,8 +86,8 @@ export default function ServerSectionsPage() {
 
   const loadTables = async () => {
     try {
-      const data = await api.get<Table[]>('/tables/');
-      setTables(data);
+      const data: any = await api.get('/tables/');
+      setTables(Array.isArray(data) ? data : (data.items || data.tables || []));
     } catch (error) {
       console.error('Error loading tables:', error);
     }
@@ -223,6 +223,9 @@ export default function ServerSectionsPage() {
               <div
                 key={server.id}
                 onClick={() => setSelectedServer(selectedServer === server.id ? null : server.id)}
+                role="button"
+                tabIndex={0}
+                onKeyDown={(e: React.KeyboardEvent) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setSelectedServer(selectedServer === server.id ? null : server.id); } }}
                 className={`p-3 rounded-lg cursor-pointer transition ${
                   selectedServer === server.id
                     ? 'bg-primary/20 ring-2 ring-primary'

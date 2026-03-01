@@ -2,8 +2,8 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { api } from '@/lib/api';
 
+import { api } from '@/lib/api';
 import { toast } from '@/lib/toast';
 interface StaffMember {
   id: number;
@@ -100,7 +100,7 @@ export default function StaffPerformancePage() {
       const data = await api.get<LeaderboardEntry[]>(
         `/staff/performance/leaderboard?period=${period}&sort_by=${sortBy}`
       );
-      setLeaderboard(data);
+      setLeaderboard(Array.isArray(data) ? data : ((data as any).items || (data as any).leaderboard || []));
     } catch (error) {
       console.error('Error loading leaderboard:', error);
     }
@@ -108,7 +108,8 @@ export default function StaffPerformancePage() {
 
   const loadGoals = async () => {
     try {
-      const data = await api.get<any[]>('/staff/performance/goals');
+      const raw = await api.get<any[]>('/staff/performance/goals');
+      const data = Array.isArray(raw) ? raw : ((raw as any).items || (raw as any).goals || []);
       if (data && data.length > 0) {
         setGoals(data);
       }
@@ -262,6 +263,10 @@ export default function StaffPerformancePage() {
                   setSelectedStaff(entry.staff.id);
                   setSelectedMetrics(entry.metrics);
                 }}
+                role="button"
+                tabIndex={0}
+                onKeyDown={(e: React.KeyboardEvent) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setSelectedStaff(entry.staff.id);
+                  setSelectedMetrics(entry.metrics); } }}
                 className="p-4 hover:bg-surface-50 cursor-pointer"
               >
                 <div className="flex items-center gap-4">

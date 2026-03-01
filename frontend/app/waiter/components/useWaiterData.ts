@@ -1,7 +1,9 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+
 import { api, isAuthenticated } from "@/lib/api";
+
 import type {
   Table, MenuItem, CartItem, Check, CheckItem, Screen, Course,
   Reservation, Tab, HeldOrder, TableMerge,
@@ -96,8 +98,8 @@ export function useWaiterData() {
   // API calls
   const loadTables = useCallback(async () => {
     try {
-      const data = await api.get<Table[]>('/waiter/floor-plan');
-      setTables(data);
+      const data: any = await api.get('/waiter/floor-plan');
+      setTables(Array.isArray(data) ? data : (data.items || data.tables || []));
     } catch (err) {
       console.error('loadTables failed:', err);
     }

@@ -3,8 +3,8 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Link from 'next/link';
-import { api } from '@/lib/api';
 
+import { api } from '@/lib/api';
 import { toast } from '@/lib/toast';
 interface Budget {
   id: number;
@@ -61,8 +61,8 @@ export default function BudgetsPage() {
 
   const loadBudgets = async () => {
     try {
-      const data = await api.get<Budget[]>('/financial/budgets');
-      setBudgets(data);
+      const raw: any = await api.get('/financial/budgets');
+      setBudgets(Array.isArray(raw) ? raw : (raw.items || raw.budgets || []));
     } catch (error) {
       console.error('Error loading budgets:', error);
     } finally {

@@ -149,7 +149,7 @@ export default function BenchmarkingPage() {
         if (summaryRes.status === 'fulfilled') {
           const data: any = summaryRes.value;
           if (data.metrics && Array.isArray(data.metrics)) {
-            const mappedMetrics: BenchmarkMetric[] = data.metrics.map((m: any, idx: number) => ({
+            const mappedMetrics: BenchmarkMetric[] = (data.metrics || []).map((m: any, idx: number) => ({
               id: String(idx + 1),
               category: m.metric?.includes('cost') || m.metric?.includes('Cost') ? 'Costs' :
                        m.metric?.includes('ticket') || m.metric?.includes('revenue') ? 'Revenue' :
@@ -616,7 +616,7 @@ export default function BenchmarkingPage() {
                           <div className="border-t pt-4">
                             <div className="font-medium text-sm mb-2">Action Items:</div>
                             <ul className="space-y-2">
-                              {rec.actions.map((action, idx) => (
+                              {(rec.actions || []).map((action, idx) => (
                                 <li key={idx} className="flex items-center gap-2 text-sm">
                                   <input type="checkbox" className="rounded border-gray-300" />
                                   <span>{action}</span>

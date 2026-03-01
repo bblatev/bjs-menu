@@ -3,11 +3,10 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Link from 'next/link';
+
 import { PageLoading } from '@/components/ui/LoadingSpinner';
 import { ErrorAlert } from '@/components/ui/ErrorAlert';
-
 import { api } from '@/lib/api';
-
 import { toast } from '@/lib/toast';
 interface RewardRule {
   rule_id: string;
@@ -101,11 +100,11 @@ export default function BirthdayRewardsPage() {
 
       if (rulesRes.status === 'fulfilled') {
         const data: any = rulesRes.value;
-        setRules(data);
+        setRules(Array.isArray(data) ? data : (data.items || data.rules || []));
       }
       if (rewardsRes.status === 'fulfilled') {
         const data_issuedRewards: any = rewardsRes.value;
-        setIssuedRewards(data_issuedRewards);
+        setIssuedRewards(Array.isArray(data_issuedRewards) ? data_issuedRewards : (data_issuedRewards.items || data_issuedRewards.rewards || []));
       }
       if (statsRes.status === 'fulfilled') {
         const data_stats: any = statsRes.value;

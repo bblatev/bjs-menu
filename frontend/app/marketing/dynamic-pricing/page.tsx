@@ -85,8 +85,8 @@ export default function DynamicPricingPage() {
     setLoading(true);
     setError(null);
     try {
-      const data = await api.get<PricingRule[]>('/marketing/pricing-rules');
-      setRules(data);
+      const raw: any = await api.get('/marketing/pricing-rules');
+      setRules(Array.isArray(raw) ? raw : (raw.items || raw.rules || []));
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load pricing rules');
     } finally {

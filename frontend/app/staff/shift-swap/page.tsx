@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+
 import { api } from '@/lib/api';
 
 // ── Types ───────────────────────────────────────────────────────────────────
@@ -55,8 +56,8 @@ export default function ShiftSwapPage() {
     setLoading(true);
     setError(null);
     try {
-      const data = await api.get<ShiftSwap[]>('/staff/shift-swaps');
-      setSwaps(data);
+      const raw: any = await api.get('/staff/shift-swaps');
+      setSwaps(Array.isArray(raw) ? raw : (raw.items || raw.swaps || []));
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load shift swaps');
     } finally {

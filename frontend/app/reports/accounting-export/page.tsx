@@ -3,10 +3,9 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
+
 import { Button, Card, CardBody } from '@/components/ui';
-
 import { api, API_URL } from '@/lib/api';
-
 import { toast } from '@/lib/toast';
 interface PreviewEntry {
   document_number: string;
@@ -345,7 +344,7 @@ export default function AccountingExportPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {preview.preview_entries.map((entry, idx) => (
+                  {(preview.preview_entries || []).map((entry, idx) => (
                     <tr key={idx} className="border-b border-surface-100">
                       <td className="py-2 px-3 font-mono text-xs">{entry.document_number}</td>
                       <td className="py-2 px-3">{entry.document_date}</td>

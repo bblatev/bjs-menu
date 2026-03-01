@@ -5,7 +5,6 @@ import { motion } from 'framer-motion';
 
 
 import { toast } from '@/lib/toast';
-
 import { api } from '@/lib/api';
 interface OCRJob {
   id: number;
@@ -56,7 +55,7 @@ export default function InvoiceOCRPage() {
   const loadJobs = async () => {
     try {
       const data: any = await api.get('/enterprise/invoice-ocr/jobs');
-            setJobs(data);
+            setJobs(Array.isArray(data) ? data : (data.items || data.jobs || []));
     } catch (error) {
       console.error('Error loading OCR jobs:', error);
       setJobs(getMockJobs());
@@ -439,7 +438,10 @@ export default function InvoiceOCRPage() {
 
       {/* Review Modal */}
       {selectedJob && selectedJob.extracted_data && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => setSelectedJob(null)}>
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => setSelectedJob(null)}
+        role="button"
+        tabIndex={0}
+        onKeyDown={(e: React.KeyboardEvent) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setSelectedJob(null); } }}>
           <motion.div
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}

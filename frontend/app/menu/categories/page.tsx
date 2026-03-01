@@ -3,8 +3,8 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
-import { api } from '@/lib/api';
 
+import { api } from '@/lib/api';
 import { toast } from '@/lib/toast';
 interface MultiLang {
   bg: string;
@@ -129,7 +129,8 @@ export default function MenuCategoriesPage() {
 
   const loadCategories = async () => {
     try {
-      const data = await api.get<Category[]>('/menu-admin/categories');
+      const raw = await api.get<Category[]>('/menu-admin/categories');
+      const data = Array.isArray(raw) ? raw : ((raw as any).items || (raw as any).categories || []);
       setCategories(data);
     } catch (error) {
       console.error('Error loading categories:', error);

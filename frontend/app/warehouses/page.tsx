@@ -161,8 +161,8 @@ export default function WarehousesPage() {
     setLoading((prev) => ({ ...prev, warehouses: true }));
     setError((prev) => ({ ...prev, warehouses: null }));
     try {
-      const data: any = await api.get('/warehouses/');
-      setWarehouses(data);
+      const raw: any = await api.get('/warehouses/');
+      setWarehouses(Array.isArray(raw) ? raw : (raw.items || raw.warehouses || []));
     } catch (err) {
       console.error("Error fetching warehouses:", err);
       setError((prev) => ({
@@ -183,8 +183,8 @@ export default function WarehousesPage() {
         params.append("warehouse_id", warehouseId);
       }
       const path = `/warehouses/stock-levels/${params.toString() ? `?${params.toString()}` : ""}`;
-      const data: any = await api.get(path);
-      setStockLevels(data);
+      const raw: any = await api.get(path);
+      setStockLevels(Array.isArray(raw) ? raw : (raw.items || raw.stock_levels || []));
     } catch (err) {
       console.error("Error fetching stock levels:", err);
       setError((prev) => ({
@@ -200,8 +200,8 @@ export default function WarehousesPage() {
     setLoading((prev) => ({ ...prev, transfers: true }));
     setError((prev) => ({ ...prev, transfers: null }));
     try {
-      const data: any = await api.get('/warehouses/transfers/');
-      setTransfers(data);
+      const raw: any = await api.get('/warehouses/transfers/');
+      setTransfers(Array.isArray(raw) ? raw : (raw.items || raw.transfers || []));
     } catch (err) {
       console.error("Error fetching transfers:", err);
       setError((prev) => ({
@@ -217,8 +217,8 @@ export default function WarehousesPage() {
     setLoading((prev) => ({ ...prev, activities: true }));
     setError((prev) => ({ ...prev, activities: null }));
     try {
-      const data: any = await api.get('/warehouses/activities/');
-      setActivities(data);
+      const raw: any = await api.get('/warehouses/activities/');
+      setActivities(Array.isArray(raw) ? raw : (raw.items || raw.activities || []));
     } catch (err) {
       console.error("Error fetching activities:", err);
       setError((prev) => ({
@@ -459,6 +459,9 @@ export default function WarehousesPage() {
                             key={warehouse.id}
                             className="border rounded-lg p-4 hover:shadow-md transition-shadow cursor-pointer"
                             onClick={() => setSelectedWarehouse(warehouse)}
+                            role="button"
+                            tabIndex={0}
+                            onKeyDown={(e: React.KeyboardEvent) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setSelectedWarehouse(warehouse); } }}
                           >
                             <div className="flex items-center justify-between mb-3">
                               <div className="flex items-center gap-3">

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+
 import { api } from '@/lib/api';
 
 interface PriceList {
@@ -76,8 +77,8 @@ export default function PriceListsPage() {
 
   const loadPriceLists = useCallback(async () => {
     try {
-      const data = await api.get<PriceList[]>('/price-lists');
-      setPriceLists(data);
+      const raw: any = await api.get('/price-lists');
+      setPriceLists(Array.isArray(raw) ? raw : (raw.items || raw.price_lists || []));
     } catch (err) {
       console.error('Failed to load price lists:', err);
     }
@@ -85,8 +86,8 @@ export default function PriceListsPage() {
 
   const loadProducts = useCallback(async () => {
     try {
-      const data = await api.get<Product[]>('/waiter/menu/quick');
-      setProducts(data);
+      const raw: any = await api.get('/waiter/menu/quick');
+      setProducts(Array.isArray(raw) ? raw : (raw.items || raw.products || []));
     } catch (err) {
       console.error('Failed to load products:', err);
     }
@@ -94,8 +95,8 @@ export default function PriceListsPage() {
 
   const loadProductPrices = async (priceListId: number) => {
     try {
-      const data = await api.get<ProductPrice[]>(`/price-lists/${priceListId}/products`);
-      setProductPrices(data);
+      const raw: any = await api.get(`/price-lists/${priceListId}/products`);
+      setProductPrices(Array.isArray(raw) ? raw : (raw.items || raw.product_prices || []));
     } catch (err) {
       console.error('Failed to load product prices:', err);
     }

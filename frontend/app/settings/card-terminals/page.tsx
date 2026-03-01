@@ -3,11 +3,9 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Link from 'next/link';
+
 import { PageLoading } from '@/components/ui/LoadingSpinner';
 import { ErrorAlert } from '@/components/ui/ErrorAlert';
-
-
-
 import { api } from '@/lib/api';
 interface Terminal {
   terminal_id: string;
@@ -113,7 +111,7 @@ export default function CardTerminalsPage() {
 
       if (terminalsRes.status === 'fulfilled') {
         const data: any = terminalsRes.value;
-        setTerminals(data);
+        setTerminals(Array.isArray(data) ? data : (data.items || data.terminals || []));
       }
       if (typesRes.status === 'fulfilled') {
         const data_terminalTypes: any = typesRes.value;
@@ -121,7 +119,7 @@ export default function CardTerminalsPage() {
       }
       if (paymentsRes.status === 'fulfilled') {
         const data_payments: any = paymentsRes.value;
-        setPayments(data_payments);
+        setPayments(Array.isArray(data_payments) ? data_payments : (data_payments.items || data_payments.payments || []));
       }
       if (statsRes.status === 'fulfilled') {
         const data_stats: any = statsRes.value;

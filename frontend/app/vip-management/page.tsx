@@ -1,8 +1,8 @@
 'use client';
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { toast } from '@/lib/toast';
 
+import { toast } from '@/lib/toast';
 import { api } from '@/lib/api';
 interface VIPCustomer {
   id: number;
@@ -577,17 +577,17 @@ export default function VIPManagementPage() {
                   </div>
                   <div className="space-y-2 mb-4">
                     <div className="text-gray-500 text-sm font-medium">Benefits:</div>
-                    {tier.benefits.map((benefit, bIdx) => (
+                    {(tier.benefits || []).map((benefit, bIdx) => (
                       <div key={bIdx} className="flex items-center gap-2 text-sm text-gray-900">
                         <span className="text-green-600">✓</span>
                         {benefit}
                       </div>
                     ))}
                   </div>
-                  {tier.complimentaryItems.length > 0 && (
+                  {(tier.complimentaryItems || []).length > 0 && (
                     <div className="space-y-2 mb-4">
                       <div className="text-gray-500 text-sm font-medium">Complimentary:</div>
-                      {tier.complimentaryItems.map((item, iIdx) => (
+                      {(tier.complimentaryItems || []).map((item, iIdx) => (
                         <div key={iIdx} className="flex items-center gap-2 text-sm text-gray-900">
                           <span className="text-yellow-500">🎁</span>
                           {item}
@@ -1024,21 +1024,21 @@ export default function VIPManagementPage() {
                   <div className="text-gray-900 font-medium">{selectedCustomer.preferredTable}</div>
                 </div>
               )}
-              {selectedCustomer.favoriteItems.length > 0 && (
+              {(selectedCustomer.favoriteItems || []).length > 0 && (
                 <div className="bg-gray-50 rounded-xl p-4 mb-4">
                   <div className="text-gray-500 text-sm mb-2">Favorite Items</div>
                   <div className="flex flex-wrap gap-2">
-                    {selectedCustomer.favoriteItems.map((item, idx) => (
+                    {(selectedCustomer.favoriteItems || []).map((item, idx) => (
                       <span key={idx} className="px-3 py-1 bg-gray-200 text-gray-900 rounded-full text-sm">{item}</span>
                     ))}
                   </div>
                 </div>
               )}
-              {selectedCustomer.dietaryRestrictions.length > 0 && (
+              {(selectedCustomer.dietaryRestrictions || []).length > 0 && (
                 <div className="bg-red-100 rounded-xl p-4 mb-4">
                   <div className="text-red-800 text-sm mb-2">Dietary Restrictions</div>
                   <div className="flex flex-wrap gap-2">
-                    {selectedCustomer.dietaryRestrictions.map((item, idx) => (
+                    {(selectedCustomer.dietaryRestrictions || []).map((item, idx) => (
                       <span key={idx} className="px-3 py-1 bg-red-200 text-red-800 rounded-full text-sm">{item}</span>
                     ))}
                   </div>

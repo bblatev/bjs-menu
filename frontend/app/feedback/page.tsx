@@ -324,6 +324,9 @@ export default function FeedbackPage() {
               <div
                 key={review.id}
                 onClick={() => setSelectedReview(review)}
+                role="button"
+                tabIndex={0}
+                onKeyDown={(e: React.KeyboardEvent) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setSelectedReview(review); } }}
                 className={`bg-secondary rounded-lg p-4 cursor-pointer hover:bg-gray-100/50 transition ${
                   selectedReview?.id === review.id ? 'ring-2 ring-primary' : ''
                 } ${review.status === 'flagged' ? 'border-l-4 border-red-500' : ''}`}
@@ -357,7 +360,7 @@ export default function FeedbackPage() {
                 <p className="text-gray-300 mb-3">{review.comment}</p>
 
                 <div className="flex flex-wrap gap-2 mb-3">
-                  {review.tags.map((tag) => (
+                  {(review.tags || []).map((tag) => (
                     <span key={tag} className="px-2 py-0.5 bg-white rounded text-xs text-gray-400">
                       #{tag}
                     </span>

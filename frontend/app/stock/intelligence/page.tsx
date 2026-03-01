@@ -685,7 +685,7 @@ export default function InventoryIntelligencePage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-surface-100">
-                  {cycleCount.schedule.map((item) => (
+                  {(cycleCount.schedule || []).map((item) => (
                     <tr key={item.product_id} className="hover:bg-surface-50">
                       <td className="px-4 py-3 font-medium text-surface-900">{item.product_name}</td>
                       <td className="px-4 py-3 text-center">

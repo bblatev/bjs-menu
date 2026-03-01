@@ -2,8 +2,8 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { api } from '@/lib/api';
 
+import { api } from '@/lib/api';
 import { toast } from '@/lib/toast';
 interface StaffMember {
   id: number;
@@ -115,8 +115,8 @@ export default function StaffSchedulesPage() {
 
   const loadStaff = async () => {
     try {
-      const data = await api.get<StaffMember[]>('/staff/schedules/staff');
-      setStaff(data);
+      const raw: any = await api.get('/staff/schedules/staff');
+      setStaff(Array.isArray(raw) ? raw : (raw.items || raw.staff || []));
     } catch (error) {
       console.error('Error loading staff:', error);
     }
@@ -129,10 +129,10 @@ export default function StaffSchedulesPage() {
       endDateObj.setDate(endDateObj.getDate() + 6);
       const endDate = formatDateKey(endDateObj);
 
-      const data = await api.get<Shift[]>(
+      const raw: any = await api.get(
         `/staff/shifts?start_date=${startDate}&end_date=${endDate}`
       );
-      setShifts(data);
+      setShifts(Array.isArray(raw) ? raw : (raw.items || raw.shifts || []));
     } catch (error) {
       console.error('Error loading shifts:', error);
     }
@@ -145,10 +145,10 @@ export default function StaffSchedulesPage() {
       endDateObj.setDate(endDateObj.getDate() + 6);
       const endDate = formatDateKey(endDateObj);
 
-      const data = await api.get<TimeOff[]>(
+      const raw: any = await api.get(
         `/staff/time-off?start_date=${startDate}&end_date=${endDate}`
       );
-      setTimeOffs(data);
+      setTimeOffs(Array.isArray(raw) ? raw : (raw.items || raw.time_offs || []));
     } catch (error) {
       console.error('Error loading time off:', error);
     }
@@ -462,6 +462,9 @@ export default function StaffSchedulesPage() {
                       timeOff ? 'bg-gray-100/50' : ''
                     }`}
                     onClick={() => !timeOff && dayShifts.length === 0 && openAddShift(member.id, dateKey)}
+                    role="button"
+                    tabIndex={0}
+                    onKeyDown={(e: React.KeyboardEvent) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); !timeOff && dayShifts.length === 0 && openAddShift(member.id, dateKey); } }}
                   >
                     {timeOff ? (
                       <div className={`p-2 rounded text-xs ${
@@ -480,6 +483,9 @@ export default function StaffSchedulesPage() {
                               e.stopPropagation();
                               openEditShift(shift);
                             }}
+                            role="button"
+                            tabIndex={0}
+                            onKeyDown={(e: React.KeyboardEvent) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); openEditShift(shift); } }}
                             className={`p-2 rounded mb-1 cursor-pointer hover:opacity-80 ${
                               SHIFT_TYPES[shift.shift_type].color
                             }`}

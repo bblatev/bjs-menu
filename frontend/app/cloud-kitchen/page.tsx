@@ -1,7 +1,7 @@
 'use client';
 import React, { useState, useEffect, useCallback } from 'react';
-import { getVenueId } from '@/lib/auth';
 
+import { getVenueId } from '@/lib/auth';
 import { api } from '@/lib/api';
 
 
@@ -291,7 +291,7 @@ export default function CloudKitchenPage() {
                         </div>
                         
                         <div className="flex flex-wrap gap-2 mb-4">
-                          {brand.platforms.map(p => (
+                          {(brand.platforms || []).map(p => (
                             <span key={p} className="bg-gray-100 text-gray-700 text-xs px-2 py-1 rounded capitalize">
                               {p.replace('_', ' ')}
                             </span>
@@ -299,7 +299,7 @@ export default function CloudKitchenPage() {
                         </div>
                       </>
                     )}
-                    
+
                     <div className="flex gap-2">
                       <button 
                         onClick={() => { setEditingBrand(brand); setShowBrandModal(true); }}
@@ -549,7 +549,7 @@ export default function CloudKitchenPage() {
                       </td>
                       <td className="p-3">
                         <div className="flex gap-1">
-                          {brand.platforms.map(p => (
+                          {(brand.platforms || []).map(p => (
                             <span key={p} className="bg-gray-100 text-xs px-2 py-1 rounded capitalize">{p}</span>
                           ))}
                         </div>

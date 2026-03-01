@@ -89,11 +89,11 @@ export default function OpenTableIntegrationPage() {
 
       if (reservationsRes.status === 'fulfilled') {
         const data: any = reservationsRes.value;
-        setReservations(data);
+        setReservations(Array.isArray(data) ? data : (data.items || data.reservations || []));
       }
       if (guestsRes.status === 'fulfilled') {
         const data_guests: any = guestsRes.value;
-        setGuests(data_guests);
+        setGuests(Array.isArray(data_guests) ? data_guests : (data_guests.items || data_guests.guests || []));
       }
       if (statsRes.status === 'fulfilled') {
         const data_stats: any = statsRes.value;

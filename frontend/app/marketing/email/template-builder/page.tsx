@@ -116,8 +116,8 @@ export default function TemplateBuilderPage() {
     setLoading(true);
     setError(null);
     try {
-      const data: any = await api.get('/email-campaigns/templates');
-            setTemplates(data);
+      const raw: any = await api.get('/email-campaigns/templates');
+      setTemplates(Array.isArray(raw) ? raw : (raw.items || raw.templates || []));
     } catch (err) {
       console.error('Error loading templates:', err);
       setError('Failed to load email templates. Please try again.');
@@ -378,6 +378,9 @@ export default function TemplateBuilderPage() {
                   key={v.name}
                   className="px-2 py-1 bg-surface-100 rounded text-xs font-mono cursor-pointer hover:bg-surface-200"
                   onClick={() => navigator.clipboard.writeText(`{{${v.name}}}`)}
+                  role="button"
+                  tabIndex={0}
+                  onKeyDown={(e: React.KeyboardEvent) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); navigator.clipboard.writeText(`{{${v.name}}}`); } }}
                   title="Click to copy"
                 >
                   {`{{${v.name}}}`}
@@ -438,6 +441,9 @@ export default function TemplateBuilderPage() {
                     <div
                       className="p-4 cursor-pointer"
                       onClick={() => setSelectedBlock(block.block_id)}
+                      role="button"
+                      tabIndex={0}
+                      onKeyDown={(e: React.KeyboardEvent) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setSelectedBlock(block.block_id); } }}
                     >
                       <div className="flex items-center justify-between mb-2">
                         <div className="flex items-center gap-2">

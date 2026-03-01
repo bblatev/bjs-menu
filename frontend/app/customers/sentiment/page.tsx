@@ -366,9 +366,9 @@ export default function SentimentAnalysisPage() {
                     </span>
                   </div>
                   <p className="text-surface-700 text-sm">{review.text}</p>
-                  {review.tags.length > 0 && (
+                  {(review.tags || []).length > 0 && (
                     <div className="flex flex-wrap gap-1 mt-2">
-                      {review.tags.map((tag) => (
+                      {(review.tags || []).map((tag) => (
                         <span key={tag} className="px-2 py-0.5 bg-surface-100 text-surface-600 rounded text-xs">
                           {tag}
                         </span>

@@ -4,6 +4,7 @@ import { useState, ReactNode, useEffect, useRef, useCallback } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import dynamic from 'next/dynamic';
+
 import { ThemeToggle } from '@/components/ui/ThemeProvider';
 import { SkipLink } from '@/components/ui/SkipLink';
 import { getVenueId } from '@/lib/auth';
@@ -41,7 +42,7 @@ const navigationGroups = [
       { name: 'KDS Localization', href: '/kitchen/localization', icon: '🌐' },
       { name: '86\'d Items', href: '/kitchen/86-items', icon: '🚫' },
       { name: 'Bar Management', href: '/bar', icon: '🍺' },
-      { name: 'Prep Lists', href: '/kitchen/prep-lists', icon: '📋' },
+      { name: 'Prep Lists', href: '/prep-lists', icon: '📋' },
       { name: 'Cocktail Recipes', href: '/bar/recipes', icon: '🍹' },
       { name: 'Pour Tracking', href: '/bar/pour-tracking', icon: '🥃' },
       { name: 'Keg Tracking', href: '/bar/kegs', icon: '🛢️' },

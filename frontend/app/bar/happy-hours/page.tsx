@@ -68,8 +68,9 @@ export default function HappyHoursPage() {
       // Process happy hours
       if (happyHoursRes.status === 'fulfilled') {
         const data: any = happyHoursRes.value;
-        if (Array.isArray(data)) {
-          setHappyHours(data);
+        const hhArr = Array.isArray(data) ? data : (data.items || data.happy_hours || []);
+        if (hhArr.length > 0 || Array.isArray(data)) {
+          setHappyHours(hhArr);
         }
       } else {
         // Fallback data

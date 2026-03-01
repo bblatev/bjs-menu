@@ -2,8 +2,8 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { api } from '@/lib/api';
 
+import { api } from '@/lib/api';
 import { toast } from '@/lib/toast';
 interface WasteRecord {
   id: number;
@@ -78,8 +78,8 @@ export default function WasteManagementPage() {
     try {
       // Load waste records
       try {
-        const data = await api.get<any>('/stock/waste/records');
-        setRecords(data);
+        const raw: any = await api.get('/stock/waste/records');
+        setRecords(Array.isArray(raw) ? raw : (raw.items || raw.records || []));
       } catch { /* ignore */ }
 
       // Load waste stats

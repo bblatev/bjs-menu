@@ -5,7 +5,6 @@ import { motion } from 'framer-motion';
 
 
 import { toast } from '@/lib/toast';
-
 import { api } from '@/lib/api';
 interface Integration {
   id: string;
@@ -63,11 +62,11 @@ export default function IntegrationMarketplacePage() {
     try {
       // Load all integrations
       const data: any = await api.get('/enterprise/integrations/marketplace');
-            setIntegrations(data);
+            setIntegrations(Array.isArray(data) ? data : (data.items || data.integrations || []));
 
       // Load connected integrations
       const data_connectedIntegrations: any = await api.get('/enterprise/integrations/connected');
-            setConnectedIntegrations(data_connectedIntegrations);
+            setConnectedIntegrations(Array.isArray(data_connectedIntegrations) ? data_connectedIntegrations : (data_connectedIntegrations.items || data_connectedIntegrations.connections || []));
     } catch (error) {
       console.error('Error loading integrations:', error);
       setIntegrations(getMockIntegrations());
@@ -312,7 +311,10 @@ export default function IntegrationMarketplacePage() {
 
       {/* Integration Detail Modal */}
       {selectedIntegration && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => setSelectedIntegration(null)}>
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => setSelectedIntegration(null)}
+        role="button"
+        tabIndex={0}
+        onKeyDown={(e: React.KeyboardEvent) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setSelectedIntegration(null); } }}>
           <motion.div
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
@@ -340,7 +342,7 @@ export default function IntegrationMarketplacePage() {
               <div className="mb-6">
                 <h3 className="font-semibold text-surface-900 mb-2">Features</h3>
                 <ul className="space-y-2">
-                  {selectedIntegration.features.map((feature, i) => (
+                  {(selectedIntegration.features || []).map((feature, i) => (
                     <li key={i} className="flex items-center gap-2 text-sm text-surface-600">
                       <svg className="w-4 h-4 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />

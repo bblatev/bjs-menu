@@ -2,9 +2,9 @@
 
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
+
 import AdminLayout from '@/components/AdminLayout';
 import { api } from '@/lib/api';
-
 import { toast } from '@/lib/toast';
 interface Integration {
   type: string;
@@ -128,7 +128,7 @@ export default function AccountingIntegrationsPage() {
                   <div className="mt-4">
                     <div className="text-sm text-surface-500 mb-2">Features:</div>
                     <div className="flex flex-wrap gap-2">
-                      {integration.features.map(feature => (
+                      {(integration.features || []).map(feature => (
                         <span key={feature} className="px-2 py-1 bg-surface-100 text-surface-700 text-xs rounded">
                           {feature.replace(/_/g, ' ')}
                         </span>

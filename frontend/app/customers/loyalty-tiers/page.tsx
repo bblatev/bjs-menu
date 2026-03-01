@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+
 import { api } from '@/lib/api';
 
 // ── Types ───────────────────────────────────────────────────────────────────
@@ -66,8 +67,8 @@ export default function LoyaltyTiersPage() {
     setLoading(true);
     setError(null);
     try {
-      const data = await api.get<LoyaltyTier[]>('/loyalty/tiers');
-      setTiers(data);
+      const raw: any = await api.get('/loyalty/tiers');
+      setTiers(Array.isArray(raw) ? raw : (raw.items || raw.tiers || []));
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load loyalty tiers');
     } finally {
@@ -194,7 +195,7 @@ export default function LoyaltyTiersPage() {
                   {/* Benefits */}
                   <div className="space-y-2 mb-4">
                     <div className="text-sm font-semibold text-gray-700">Benefits:</div>
-                    {tier.benefits.map(b => (
+                    {(tier.benefits || []).map(b => (
                       <div key={b.id} className="flex items-start gap-2 text-sm text-gray-600">
                         <span className="text-green-500 mt-0.5 flex-shrink-0">&#10003;</span>
                         <span>{b.description}</span>

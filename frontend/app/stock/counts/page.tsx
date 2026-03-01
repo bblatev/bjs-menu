@@ -2,8 +2,8 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { api } from '@/lib/api';
 
+import { api } from '@/lib/api';
 import { toast } from '@/lib/toast';
 interface StockItem {
   id: number;
@@ -83,8 +83,8 @@ export default function StockCountsPage() {
 
   const loadCounts = async () => {
     try {
-      const data = await api.get<any>('/stock/counts');
-      setCounts(data);
+      const raw: any = await api.get('/stock/counts');
+      setCounts(Array.isArray(raw) ? raw : (raw.items || raw.counts || []));
     } catch (error) {
       console.error('Error loading counts:', error);
     }

@@ -2,9 +2,9 @@
 
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
+
 import { api } from '@/lib/api';
 import { useConfirm } from "@/hooks/useConfirm";
-
 import { toast } from '@/lib/toast';
 interface StaffUser {
   id: number;
@@ -117,11 +117,12 @@ export default function StaffManagementPage() {
 
   const loadStaffAssignments = async (staffId: number) => {
     try {
-      const data = await api.get<TableAssignment[]>(`/tables/assignments/?staff_user_id=${staffId}`);
-      setStaffAssignments(data);
+      const raw: any = await api.get(`/tables/assignments/?staff_user_id=${staffId}`);
+      const assignments: TableAssignment[] = Array.isArray(raw) ? raw : (raw.items || raw.assignments || []);
+      setStaffAssignments(assignments);
       // Set selected tables and areas based on current assignments
-      const tableIds = data.filter((a: TableAssignment) => a.table_id != null).map((a: TableAssignment) => a.table_id as number);
-      const areaNames = data.filter((a: TableAssignment) => a.area != null).map((a: TableAssignment) => a.area as string);
+      const tableIds = assignments.filter((a: TableAssignment) => a.table_id != null).map((a: TableAssignment) => a.table_id as number);
+      const areaNames = assignments.filter((a: TableAssignment) => a.area != null).map((a: TableAssignment) => a.area as string);
       setSelectedTables(tableIds);
       setSelectedAreas(areaNames);
     } catch (error) {

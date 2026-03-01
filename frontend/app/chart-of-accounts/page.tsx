@@ -3,8 +3,8 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Link from 'next/link';
-import { api } from '@/lib/api';
 
+import { api } from '@/lib/api';
 import { toast } from '@/lib/toast';
 interface Account {
   id: number;
@@ -47,8 +47,8 @@ export default function ChartOfAccountsPage() {
 
   const loadAccounts = async () => {
     try {
-      const data = await api.get<Account[]>('/financial/chart-of-accounts');
-      setAccounts(data);
+      const raw: any = await api.get('/financial/chart-of-accounts');
+      setAccounts(Array.isArray(raw) ? raw : (raw.items || raw.accounts || []));
     } catch (error) {
       console.error('Error loading accounts:', error);
     } finally {

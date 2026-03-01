@@ -3,9 +3,9 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
+
 import { useConfirm } from "@/hooks/useConfirm";
 import { toast } from '@/lib/toast';
-
 import { api } from '@/lib/api';
 interface MultiLang {
   bg: string;
@@ -881,11 +881,11 @@ export default function MenuPage() {
                       </div>
                     </div>
                     {/* Options */}
-                    {group.options.length === 0 ? (
+                    {(group.options || []).length === 0 ? (
                       <p className="text-gray-500 text-sm italic">No options yet</p>
                     ) : (
                       <div className="space-y-2">
-                        {group.options.map((option) => (
+                        {(group.options || []).map((option) => (
                           <div
                             key={option.id}
                             className={`flex items-center justify-between p-3 bg-gray-50 rounded-xl ${

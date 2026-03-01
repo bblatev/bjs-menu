@@ -1,8 +1,8 @@
 'use client';
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { toast } from '@/lib/toast';
 
+import { toast } from '@/lib/toast';
 import { api } from '@/lib/api';
 interface Referral {
   id: number;
@@ -706,7 +706,7 @@ export default function ReferralsPage() {
                   </div>
                   <div className="space-y-2">
                     <div className="text-gray-600 text-sm font-medium">Perks:</div>
-                    {tier.perks.map((perk, perkIdx) => (
+                    {(tier.perks || []).map((perk, perkIdx) => (
                       <div key={perkIdx} className="flex items-center gap-2 text-sm text-gray-900">
                         <span className="text-green-400">✓</span>
                         {perk}

@@ -348,7 +348,7 @@ export default function BarRecipesPage() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-surface-200">
-                    {selectedRecipe.ingredients.map((ing) => (
+                    {(selectedRecipe.ingredients || []).map((ing) => (
                       <tr key={ing.id}>
                         <td className="px-4 py-2 font-medium text-surface-900">{ing.name}</td>
                         <td className="px-4 py-2 text-center text-surface-700">{ing.amount} {ing.unit}</td>
@@ -369,7 +369,7 @@ export default function BarRecipesPage() {
               {/* Preparation Steps */}
               <h3 className="font-semibold text-surface-900 mb-3">Preparation</h3>
               <ol className="space-y-2 mb-6">
-                {selectedRecipe.preparation.map((step, i) => (
+                {(selectedRecipe.preparation || []).map((step, i) => (
                   <li key={i} className="flex items-start gap-3">
                     <span className="w-6 h-6 bg-primary-100 text-primary-700 rounded-full flex items-center justify-center text-sm font-medium flex-shrink-0">
                       {i + 1}
@@ -395,10 +395,10 @@ export default function BarRecipesPage() {
                 </div>
               </div>
 
-              {selectedRecipe.allergens.length > 0 && (
+              {(selectedRecipe.allergens || []).length > 0 && (
                 <div className="p-3 bg-yellow-50 rounded-lg border border-yellow-200">
                   <p className="text-sm text-yellow-800">
-                    <span className="font-medium">Allergens:</span> {selectedRecipe.allergens.join(', ')}
+                    <span className="font-medium">Allergens:</span> {(selectedRecipe.allergens || []).join(', ')}
                   </p>
                 </div>
               )}

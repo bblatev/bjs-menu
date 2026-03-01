@@ -638,6 +638,9 @@ export default function CustomersPage() {
                 <div
                   key={customer.id}
                   onClick={() => selectCustomer(customer)}
+                  role="button"
+                  tabIndex={0}
+                  onKeyDown={(e: React.KeyboardEvent) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); selectCustomer(customer); } }}
                   className={`p-4 hover:bg-gray-100/50 cursor-pointer ${
                     selectedCustomer?.id === customer.id ? 'bg-gray-100/50' : ''
                   }`}
@@ -836,7 +839,7 @@ export default function CustomersPage() {
                 <div className="bg-white rounded-lg p-3 mb-4">
                   <h4 className="text-gray-400 text-sm mb-2">Favorite Items</h4>
                   <div className="flex flex-wrap gap-1">
-                    {selectedCustomer.favorite_items.map((item) => (
+                    {(selectedCustomer.favorite_items || []).map((item) => (
                       <span key={item} className="px-2 py-1 bg-primary/20 text-primary rounded text-xs">
                         {item}
                       </span>
@@ -850,7 +853,7 @@ export default function CustomersPage() {
                 <div className="mb-4">
                   <h4 className="text-gray-400 text-sm mb-2">Tags</h4>
                   <div className="flex flex-wrap gap-2">
-                    {selectedCustomer.tags.map((tag) => (
+                    {(selectedCustomer.tags || []).map((tag) => (
                       <span
                         key={tag}
                         className={`px-3 py-1 rounded text-sm ${

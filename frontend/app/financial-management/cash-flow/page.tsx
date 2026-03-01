@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+
 import { api } from '@/lib/api';
 
 // ── Types ───────────────────────────────────────────────────────────────────
@@ -169,7 +170,7 @@ export default function CashFlowPage() {
 
         {/* Scenario Comparison */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
-          {forecast.scenarios.map(scenario => {
+          {(forecast.scenarios || []).map(scenario => {
             const colors = scenarioColors[scenario.name] || scenarioColors.likely;
             const isSelected = selectedScenario === scenario.name;
 
@@ -231,13 +232,13 @@ export default function CashFlowPage() {
             )}
 
             {/* Scenario lines */}
-            {forecast.scenarios.map(scenario => {
+            {(forecast.scenarios || []).map(scenario => {
               const colors = scenarioColors[scenario.name] || scenarioColors.likely;
               const isActive = selectedScenario === scenario.name;
 
               return (
                 <div key={scenario.name} className="absolute inset-0 flex items-end">
-                  {scenario.projections.map((proj, idx) => {
+                  {(scenario.projections || []).map((proj, idx) => {
                     const height = ((proj.cumulative - minCumulative) / range) * 100;
                     return (
                       <div
@@ -260,7 +261,7 @@ export default function CashFlowPage() {
 
           {/* Legend */}
           <div className="flex justify-center gap-6">
-            {forecast.scenarios.map(s => {
+            {(forecast.scenarios || []).map(s => {
               const colors = scenarioColors[s.name] || scenarioColors.likely;
               return (
                 <div key={s.name} className="flex items-center gap-2">
@@ -316,11 +317,11 @@ export default function CashFlowPage() {
         )}
 
         {/* Alerts */}
-        {forecast.alerts.length > 0 && (
+        {(forecast.alerts || []).length > 0 && (
           <div>
             <h2 className="text-xl font-bold text-gray-900 mb-4">Cash Flow Alerts</h2>
             <div className="space-y-3">
-              {forecast.alerts.map(alert => (
+              {(forecast.alerts || []).map(alert => (
                 <div
                   key={alert.id}
                   className={`rounded-lg border p-4 flex items-start gap-3 ${

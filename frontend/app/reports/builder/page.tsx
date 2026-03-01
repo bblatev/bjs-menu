@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Link from 'next/link';
+
 import { api } from '@/lib/api';
 
 interface DataSource {
@@ -100,9 +101,10 @@ export default function ReportBuilderPage() {
       setError(null);
       try {
         const data: any = await api.get('/custom-reports/data-sources');
-                setDataSources(data);
-        if (data.length > 0 && !report.data_source_id) {
-        setReport({ ...report, data_source_id: data[0].id });
+                const dsArr = Array.isArray(data) ? data : (data.items || data.data_sources || []);
+                setDataSources(dsArr);
+        if (dsArr.length > 0 && !report.data_source_id) {
+        setReport({ ...report, data_source_id: dsArr[0].id });
         }
       } catch (err) {
         console.error('Error loading data sources:', err);
@@ -119,7 +121,7 @@ export default function ReportBuilderPage() {
   const loadSavedReports = async () => {
     try {
       const data: any = await api.get('/custom-reports/reports');
-            setSavedReports(data);
+            setSavedReports(Array.isArray(data) ? data : (data.items || data.reports || []));
     } catch (error) {
       console.error('Error loading saved reports:', error);
     }
@@ -383,6 +385,9 @@ export default function ReportBuilderPage() {
                           onDragStart={() => setDraggedColumn(col.id)}
                           onDragEnd={() => setDraggedColumn(null)}
                           onClick={() => isSelected ? removeColumn(col.id) : addColumn(col.id)}
+                          role="button"
+                          tabIndex={0}
+                          onKeyDown={(e: React.KeyboardEvent) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); isSelected ? removeColumn(col.id) : addColumn(col.id); } }}
                           className={`p-2 rounded-lg cursor-pointer flex items-center justify-between transition-colors ${
                             isSelected
                               ? 'bg-amber-100 text-amber-800'
@@ -521,6 +526,9 @@ export default function ReportBuilderPage() {
                       <div
                         key={col.id}
                         onClick={() => toggleGrouping(col.id)}
+                        role="button"
+                        tabIndex={0}
+                        onKeyDown={(e: React.KeyboardEvent) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleGrouping(col.id); } }}
                         className={`p-2 rounded-lg cursor-pointer flex items-center justify-between transition-colors ${
                           isGrouped
                             ? 'bg-green-100 text-green-800'

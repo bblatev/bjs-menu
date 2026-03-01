@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+
 import { api } from '@/lib/api';
 
 // ============ TYPES ============
@@ -210,7 +211,7 @@ export default function PrepListsPage() {
         <div className="bg-primary-50 border border-primary-200 rounded-xl p-4">
           <h4 className="text-sm font-semibold text-primary-900 mb-2">AI Insights</h4>
           <ul className="space-y-1">
-            {data.ai_notes.map((note, i) => (
+            {(data.ai_notes || []).map((note, i) => (
               <li key={i} className="text-sm text-primary-700 flex items-start gap-2">
                 <span className="mt-1 w-1.5 h-1.5 rounded-full bg-primary-400 flex-shrink-0" />
                 {note}

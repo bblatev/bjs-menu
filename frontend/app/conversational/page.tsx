@@ -534,6 +534,9 @@ export default function ConversationalOrderingPage() {
                         key={session.session_id}
                         className="bg-gray-50 rounded-xl p-4 cursor-pointer hover:bg-gray-100 transition-all"
                         onClick={() => setSelectedSession(session)}
+                        role="button"
+                        tabIndex={0}
+                        onKeyDown={(e: React.KeyboardEvent) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setSelectedSession(session); } }}
                       >
                         <div className="flex items-center justify-between mb-2">
                           <div className="flex items-center gap-2">
@@ -632,6 +635,9 @@ export default function ConversationalOrderingPage() {
                           : 'bg-gray-50 hover:bg-white/10'
                       }`}
                       onClick={() => setSelectedSession(session)}
+                      role="button"
+                      tabIndex={0}
+                      onKeyDown={(e: React.KeyboardEvent) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setSelectedSession(session); } }}
                     >
                       <div className="flex items-center justify-between mb-2">
                         <div className="flex items-center gap-2">
@@ -759,7 +765,7 @@ export default function ConversationalOrderingPage() {
                     <div className="mb-3">
                       <div className="text-gray-500 text-xs mb-1">Required slots:</div>
                       <div className="flex flex-wrap gap-1">
-                        {intent.slots.map((slot, i) => (
+                        {(intent.slots || []).map((slot, i) => (
                           <span key={i} className="px-2 py-1 bg-purple-500/30 text-purple-300 rounded text-xs">
                             {slot}
                           </span>
@@ -1234,7 +1240,7 @@ export default function ConversationalOrderingPage() {
 
                 <div>
                   <span className="text-gray-600 text-sm">Required Slots</span>
-                  {newIntent.slots.map((slot, i) => (
+                  {(newIntent.slots || []).map((slot, i) => (
                     <div key={i} className="flex gap-2 mt-1">
                       <input
                         type="text"

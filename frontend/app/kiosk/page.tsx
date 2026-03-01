@@ -403,6 +403,9 @@ export default function KioskManagementPage() {
                     key={kiosk.id}
                     className="bg-gray-100 rounded-2xl p-5 cursor-pointer hover:bg-white/15 transition-all"
                     onClick={() => setSelectedKiosk(kiosk)}
+                    role="button"
+                    tabIndex={0}
+                    onKeyDown={(e: React.KeyboardEvent) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setSelectedKiosk(kiosk); } }}
                   >
                     <div className="flex justify-between items-start mb-3">
                       <div>
@@ -787,13 +790,16 @@ export default function KioskManagementPage() {
                         onClick={() => {
                           setLayouts(l => l.map(lay => ({ ...lay, is_active: lay.id === layout.id })));
                         }}
+                        role="button"
+                        tabIndex={0}
+                        onKeyDown={(e: React.KeyboardEvent) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setLayouts(l => l.map(lay => ({ ...lay, is_active: lay.id === layout.id }))); } }}
                       >
                         <div className="flex justify-between items-center mb-2">
                           <h3 className="text-gray-900 font-semibold">{layout.name}</h3>
                           {layout.is_active && <span className="text-green-400 text-sm">Active</span>}
                         </div>
                         <div className="flex flex-wrap gap-1">
-                          {layout.categories.map((cat, i) => (
+                          {(layout.categories || []).map((cat, i) => (
                             <span key={i} className="px-2 py-0.5 bg-gray-100 text-gray-700 rounded text-xs">
                               {cat}
                             </span>

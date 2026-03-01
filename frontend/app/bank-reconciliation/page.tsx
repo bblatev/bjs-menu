@@ -3,8 +3,8 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Link from 'next/link';
-import { api } from '@/lib/api';
 
+import { api } from '@/lib/api';
 import { toast } from '@/lib/toast';
 interface BankAccount {
   id: number;
@@ -59,7 +59,8 @@ export default function BankReconciliationPage() {
 
   const loadBankAccounts = async () => {
     try {
-      const data = await api.get<BankAccount[]>('/financial/bank-accounts');
+      const raw = await api.get<BankAccount[]>('/financial/bank-accounts');
+      const data = Array.isArray(raw) ? raw : ((raw as any).items || (raw as any).accounts || []);
       setBankAccounts(data);
       if (data.length > 0) {
         setSelectedAccount(data[0]);
