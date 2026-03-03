@@ -525,7 +525,7 @@ async def add_to_tab(
     # Get or create order for this tab
     order = db.query(Order).filter(
         Order.session_id == tab_id,
-        Order.status.in_(["new", "sent", "preparing"])
+        Order.status.in_([OrderStatus.NEW, OrderStatus.ACCEPTED, OrderStatus.PREPARING])
     ).first()
 
     if not order:
@@ -534,7 +534,7 @@ async def add_to_tab(
             session_id=tab_id,
             venue_id=current_user.venue_id,
             waiter_id=current_user.id,
-            status="new"
+            status=OrderStatus.NEW
         )
         db.add(order)
         db.flush()

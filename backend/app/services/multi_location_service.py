@@ -221,7 +221,8 @@ class MultiLocationService:
         """Get real metrics for a location from database"""
         # Query actual orders and sales
         from app.models import Order
-        
+        from app.models.platform_compat import OrderStatus
+
         today = date.today()
         
         # Today's sales
@@ -229,7 +230,7 @@ class MultiLocationService:
             and_(
                 Order.venue_id == location_id,
                 func.date(Order.created_at) == today,
-                Order.status.in_(["completed", "paid"])
+                Order.status == OrderStatus.SERVED
             )
         ).scalar() or 0
         
@@ -492,7 +493,8 @@ class MultiLocationService:
     ) -> Dict[str, Any]:
         """Get consolidated sales report from database"""
         from app.models import Order
-        
+        from app.models.platform_compat import OrderStatus
+
         query = self.db.query(
             Location.id,
             Location.name,
@@ -504,7 +506,7 @@ class MultiLocationService:
             and_(
                 func.date(Order.created_at) >= start_date,
                 func.date(Order.created_at) <= end_date,
-                Order.status.in_(["completed", "paid"])
+                Order.status == OrderStatus.SERVED
             )
         ).group_by(Location.id, Location.name)
         
@@ -564,6 +566,7 @@ class MultiLocationService:
         
         # Get today's totals
         from app.models import Order
+        from app.models.platform_compat import OrderStatus
         today = date.today()
         
         today_stats = self.db.query(
@@ -572,7 +575,7 @@ class MultiLocationService:
         ).filter(
             and_(
                 func.date(Order.created_at) == today,
-                Order.status.in_(["completed", "paid"])
+                Order.status == OrderStatus.SERVED
             )
         ).first()
         

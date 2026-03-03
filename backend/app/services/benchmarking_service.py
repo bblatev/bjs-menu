@@ -277,6 +277,7 @@ class BenchmarkingService:
     ) -> Dict[str, Any]:
         """Compare to peer group using real venue data"""
         from app.models import Venue, Order
+        from app.models.platform_compat import OrderStatus
         from sqlalchemy import func
 
         if group_id not in self._peer_groups:
@@ -313,7 +314,7 @@ class BenchmarkingService:
             Order.venue_id.in_(venue_ids),
             Order.created_at >= start_date,
             Order.created_at <= end_date,
-            Order.status.in_(["COMPLETED", "PAID"])
+            Order.status == OrderStatus.SERVED
         ).group_by(Order.venue_id).all()
 
         days_in_period = (end_date - start_date).days or 1
@@ -618,6 +619,7 @@ class BenchmarkingService:
     ) -> Dict[str, Any]:
         """Get performance trends over time using historical Order data"""
         from app.models import Order, OrderItem, VenueStation
+        from app.models.platform_compat import OrderStatus
         from sqlalchemy import func
 
         # Calculate period parameters
@@ -739,6 +741,7 @@ class BenchmarkingService:
     ) -> Dict[str, Any]:
         """Get leaderboard for a metric based on real venue/staff performance"""
         from app.models import Venue, Order, OrderItem, StaffUser, VenueStation
+        from app.models.platform_compat import OrderStatus
         from sqlalchemy import func
 
         # Calculate time period (last 30 days)
@@ -762,7 +765,7 @@ class BenchmarkingService:
                 func.count(Order.id).label('order_count'),
                 func.sum(Order.total).label('total_sales'),
                 func.sum(Order.tip_amount).label('total_tips'),
-                func.count(func.nullif(Order.status.notin_(["COMPLETED", "PAID"]), True)).label('completed_count')
+                func.count(func.nullif(Order.status == OrderStatus.SERVED, False)).label('completed_count')
             ).filter(
                 Order.waiter_id.in_(staff_ids),
                 Order.created_at >= start_date,

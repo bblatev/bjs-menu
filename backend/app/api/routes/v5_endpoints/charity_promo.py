@@ -14,6 +14,7 @@ from app.models import (
     Reservation, ReservationDeposit, DepositStatus, VenueSettings,
     Promotion, PromotionUsage, Table, StaffShift
 )
+from app.models.platform_compat import OrderStatus
 from app.models.missing_features_models import (
     CateringEvent, CateringEventStatus, CateringOrderItem, CateringInvoice,
     CustomerReferral, VIPTier, CustomerVIPStatus, GuestbookEntry,
@@ -573,7 +574,7 @@ async def get_prep_time_estimate(
     # Get current kitchen load (active orders in progress)
     active_orders = db.query(func.count(Order.id)).filter(
         Order.venue_id == venue_id,
-        Order.status.in_(["pending", "preparing", "in_progress"]),
+        Order.status.in_([OrderStatus.NEW, OrderStatus.ACCEPTED, OrderStatus.PREPARING]),
         Order.created_at >= datetime.now(timezone.utc) - timedelta(hours=2)
     ).scalar() or 0
 

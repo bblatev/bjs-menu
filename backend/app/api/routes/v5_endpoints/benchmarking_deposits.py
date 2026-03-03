@@ -14,6 +14,7 @@ from app.models import (
     Reservation, ReservationDeposit, DepositStatus, VenueSettings,
     Promotion, PromotionUsage, Table, StaffShift
 )
+from app.models.platform_compat import OrderStatus
 from app.models.missing_features_models import (
     CateringEvent, CateringEventStatus, CateringOrderItem, CateringInvoice,
     CustomerReferral, VIPTier, CustomerVIPStatus, GuestbookEntry,
@@ -96,7 +97,7 @@ async def get_benchmark_summary(
             Order.venue_id == venue_id,
             Order.created_at >= start_date,
             Order.created_at <= end_date,
-            Order.status != "cancelled"
+            Order.status != OrderStatus.CANCELLED
         ).scalar()
         avg_ticket = float(avg_ticket_result) if avg_ticket_result else 0.0
 
@@ -137,7 +138,7 @@ async def get_benchmark_summary(
             Order.venue_id == venue_id,
             Order.created_at >= start_date,
             Order.created_at <= end_date,
-            Order.status != "cancelled"
+            Order.status != OrderStatus.CANCELLED
         ).scalar() or 0)
 
         active_staff_count = db.query(func.count(StaffUser.id)).filter(
@@ -212,7 +213,7 @@ async def get_peer_comparison(
         func.count(Order.id).label("order_count"),
         func.sum(Order.total).label("total_revenue")
     ).filter(
-        Order.status != "cancelled",
+        Order.status != OrderStatus.CANCELLED,
         Order.created_at >= date.today() - relativedelta(months=1)
     ).group_by(Order.venue_id).all()
 
@@ -289,7 +290,7 @@ async def get_benchmark_trends(
                 Order.venue_id == venue_id,
                 Order.created_at >= period_start,
                 Order.created_at <= period_end,
-                Order.status != "cancelled"
+                Order.status != OrderStatus.CANCELLED
             ).scalar()
             venue_value = round(float(value), 2) if value else 0
             industry_value = INDUSTRY_BENCHMARKS["avg_ticket"]
@@ -299,7 +300,7 @@ async def get_benchmark_trends(
                 Order.venue_id == venue_id,
                 Order.created_at >= period_start,
                 Order.created_at <= period_end,
-                Order.status != "cancelled"
+                Order.status != OrderStatus.CANCELLED
             ).scalar()
             venue_value = value or 0
             industry_value = 500  # Estimated industry average orders per month
@@ -309,7 +310,7 @@ async def get_benchmark_trends(
                 Order.venue_id == venue_id,
                 Order.created_at >= period_start,
                 Order.created_at <= period_end,
-                Order.status != "cancelled"
+                Order.status != OrderStatus.CANCELLED
             ).scalar()
             venue_value = round(float(value), 2) if value else 0
             industry_value = 25000  # Estimated industry average revenue per month
@@ -323,7 +324,7 @@ async def get_benchmark_trends(
                 Order.venue_id == venue_id,
                 Order.created_at >= period_start,
                 Order.created_at <= period_end,
-                Order.status != "cancelled"
+                Order.status != OrderStatus.CANCELLED
             ).group_by(OrderItem.order_id).subquery()
 
             value = db.query(func.avg(subq.c.total_items)).scalar()
@@ -338,7 +339,7 @@ async def get_benchmark_trends(
                 Order.venue_id == venue_id,
                 Order.created_at >= period_start,
                 Order.created_at <= period_end,
-                Order.status != "cancelled"
+                Order.status != OrderStatus.CANCELLED
             ).group_by(OrderItem.menu_item_id).order_by(
                 func.sum(OrderItem.quantity).desc()
             ).first()
@@ -383,7 +384,7 @@ async def get_improvement_recommendations(
     avg_ticket = db.query(func.avg(Order.total)).filter(
         Order.venue_id == venue_id,
         Order.created_at >= start_date,
-        Order.status != "cancelled"
+        Order.status != OrderStatus.CANCELLED
     ).scalar() or 0
 
     # Get average items per order
@@ -393,7 +394,7 @@ async def get_improvement_recommendations(
     ).join(Order).filter(
         Order.venue_id == venue_id,
         Order.created_at >= start_date,
-        Order.status != "cancelled"
+        Order.status != OrderStatus.CANCELLED
     ).group_by(OrderItem.order_id).subquery()
 
     avg_items = db.query(func.avg(items_per_order_subq.c.total_items)).scalar() or 0
@@ -402,7 +403,7 @@ async def get_improvement_recommendations(
     order_count = db.query(func.count(Order.id)).filter(
         Order.venue_id == venue_id,
         Order.created_at >= start_date,
-        Order.status != "cancelled"
+        Order.status != OrderStatus.CANCELLED
     ).scalar() or 0
 
     # Get top selling items
@@ -414,7 +415,7 @@ async def get_improvement_recommendations(
     ).filter(
         Order.venue_id == venue_id,
         Order.created_at >= start_date,
-        Order.status != "cancelled"
+        Order.status != OrderStatus.CANCELLED
     ).group_by(MenuItem.id).order_by(
         func.sum(OrderItem.quantity).desc()
     ).limit(5).all()

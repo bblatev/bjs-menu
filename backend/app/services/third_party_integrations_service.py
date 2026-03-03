@@ -725,13 +725,14 @@ class AccountingSyncService:
 
         # Get sales data
         from app.models.orders import Order
+        from app.models.platform_compat import OrderStatus
         result = self.db.execute(
             select(Order).where(
                 and_(
                     Order.venue_id == self.venue_id,
                     Order.created_at >= start_date,
                     Order.created_at <= end_date,
-                    Order.status == "completed"
+                    Order.status == OrderStatus.SERVED
                 )
             )
         )

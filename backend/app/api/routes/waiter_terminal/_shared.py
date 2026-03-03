@@ -25,6 +25,7 @@ from app.models import (
     StaffUser, StaffRole, Order, OrderItem, Table, MenuItem,
     TableSession, Payment, Customer, VenueStation
 )
+from app.models.platform_compat import OrderStatus
 from app.core.security import verify_pin
 from app.services.stock_deduction_service import StockDeductionService
 from app.schemas.pagination import paginate_query, PaginatedResponse

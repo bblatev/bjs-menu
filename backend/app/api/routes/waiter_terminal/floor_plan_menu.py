@@ -45,7 +45,7 @@ async def get_floor_plan(
         if session:
             current_order = db.query(Order).filter(
                 Order.session_id == session.id,
-                Order.status.notin_(["paid", "voided"])
+                Order.status.notin_([OrderStatus.SERVED, OrderStatus.CANCELLED])
             ).first()
 
         waiter = None
@@ -173,7 +173,7 @@ async def clear_table(
     # Check for unpaid orders
     unpaid = db.query(Order).filter(
         Order.session_id == session.id,
-        Order.status.notin_(["paid", "voided"])
+        Order.status.notin_([OrderStatus.SERVED, OrderStatus.CANCELLED])
     ).first()
 
     if unpaid:
@@ -214,7 +214,7 @@ async def get_my_tables(
 
         order = db.query(Order).filter(
             Order.session_id == session.id,
-            Order.status.notin_(["paid", "voided"])
+            Order.status.notin_([OrderStatus.SERVED, OrderStatus.CANCELLED])
         ).first()
 
         time_seated = int((datetime.now(timezone.utc) - session.started_at.replace(tzinfo=timezone.utc)).total_seconds() / 60)

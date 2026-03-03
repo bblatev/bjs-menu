@@ -13,6 +13,7 @@ from app.core.rbac import get_current_user
 from app.models import (
     TableMerge, TableMergeItem, Table, Order, OrderItem, StaffUser
 )
+from app.models.platform_compat import OrderStatus
 
 
 router = APIRouter()
@@ -91,7 +92,7 @@ def merge_tables(
         # Move orders from secondary to primary
         orders = db.query(Order).filter(
             Order.table_id == table.id,
-            Order.status.in_(["pending", "preparing", "ready"])
+            Order.status.in_([OrderStatus.NEW, OrderStatus.ACCEPTED, OrderStatus.PREPARING, OrderStatus.READY])
         ).all()
         for order in orders:
             if hasattr(order, 'original_table_id'):
@@ -224,7 +225,7 @@ def split_order_to_table(
         venue_id=venue_id,
         table_id=data.new_table_id,
         staff_user_id=current_user.id,
-        status="pending",
+        status=OrderStatus.NEW,
         notes=f"Split from table {source_table.number}",
         total=0
     )
